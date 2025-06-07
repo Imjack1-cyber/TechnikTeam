@@ -1,0 +1,22 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<header class="app-header admin-header">
+	<a href="${pageContext.request.contextPath}/admin/dashboard"
+		class="logo">Admin Panel</a>
+	<nav class="main-nav">
+		<ul>
+            <li><a href="${pageContext.request.contextPath}/admin/dashboard">Dashboard</a></li>
+            <li><a href="${pageContext.request.contextPath}/admin/users">Benutzer</a></li>
+            <li><a href="${pageContext.request.contextPath}/admin/events">Events</a></li>
+            <li><a href="${pageContext.request.contextPath}/admin/courses">Lehrgänge</a></li>
+            <li><a href="${pageContext.request.contextPath}/admin/storage">Lager</a></li>
+            <li><a href="${pageContext.request.contextPath}/admin/files">Dateien</a></li>
+            <li><a href="${pageContext.request.contextPath}/admin/history">Historie</a></li>
+            <li style="margin-left: auto;"><a href="${pageContext.request.contextPath}/home" style="font-weight: bold;">Zur Hauptseite</a></li>
+        </ul>
+	</nav>
+	<div>
+        <span style="margin-right: 20px;">Admin: ${sessionScope.username}</span>
+        <button id="theme-switcher" class="theme-switcher">🌓</button>
+    </div>
+</header>
+<main class="admin-main">

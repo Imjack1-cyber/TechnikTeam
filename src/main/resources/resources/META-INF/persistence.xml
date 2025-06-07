@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence version="2.0"
+	xmlns="http://java.sun.com/xml/ns/persistence" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd">
+	<persistence-unit name="photoalbum"
+		transaction-type="RESOURCE_LOCAL">
+		<provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
+		<class>info.galleria.domain.User</class>
+		<class>info.galleria.domain.Group</class>
+		<class>info.galleria.domain.Album</class>
+		<class>info.galleria.domain.Photo</class>
+		<properties>
+
+			<property name="eclipselink.cache.shared.default" value="false" />
+			<property name="javax.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/photoalbum" />
+			<property name="javax.persistence.jdbc.user" value="postgres" />
+			<property name="javax.persistence.jdbc.password" value="1234" />
+			<property name="javax.persistence.jdbc.driver" value="org.postgresql.Driver" />
+			<property name="eclipselink.logging.level" value="ALL" />
+
+			<!-- -->
+			<property name="eclipselink.ddl-generation" value="drop-and-create-tables" />
+			<property name="eclipselink.ddl-generation.output-mode"
+				value="database" />
+
+			<!-- Configure simple SQL logging for demonstration. -->
+			<property name="eclipselink.logging.level" value="FINE" />
+			<property name="eclipselink.logging.thread" value="false" />
+			<property name="eclipselink.logging.session" value="false" />
+			<property name="eclipselink.logging.exceptions" value="false" />
+			<property name="eclipselink.logging.timestamp" value="false" />
+
+		</properties>
+	</persistence-unit>
+</persistence>
+
