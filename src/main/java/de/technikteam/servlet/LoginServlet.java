@@ -17,6 +17,10 @@ import de.technikteam.model.User;
 
 @WebServlet("/login")
 public class LoginServlet extends HttpServlet {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(LoginServlet.class);
 	private UserDAO userDAO;
 
@@ -43,6 +47,7 @@ public class LoginServlet extends HttpServlet {
 			response.sendRedirect(request.getContextPath() + "/home");
 		} else {
 			logger.warn("Login failed for username: {}.", username);
+			logger.warn("Password given: {}.", password);
 			request.setAttribute("errorMessage", "Benutzername oder Passwort ungültig.");
 			request.getRequestDispatcher("login.jsp").forward(request, response);
 		}

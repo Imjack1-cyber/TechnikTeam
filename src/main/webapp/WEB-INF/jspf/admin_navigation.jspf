@@ -1,21 +1,24 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+
 <header class="app-header admin-header">
-	<a href="${pageContext.request.contextPath}/admin/dashboard"
-		class="logo">Admin Panel</a>
-	<nav class="main-nav">
-		<ul>
+    <a href="${pageContext.request.contextPath}/admin/dashboard" class="logo">Admin Panel</a>
+    <nav class="main-nav">
+        <ul>
             <li><a href="${pageContext.request.contextPath}/admin/dashboard">Dashboard</a></li>
+            <li style="font-weight: bold;"><a href="${pageContext.request.contextPath}/admin/matrix">Qualifikations-Matrix</a></li>
             <li><a href="${pageContext.request.contextPath}/admin/users">Benutzer</a></li>
             <li><a href="${pageContext.request.contextPath}/admin/events">Events</a></li>
             <li><a href="${pageContext.request.contextPath}/admin/courses">Lehrgänge</a></li>
             <li><a href="${pageContext.request.contextPath}/admin/storage">Lager</a></li>
             <li><a href="${pageContext.request.contextPath}/admin/files">Dateien</a></li>
-            <li><a href="${pageContext.request.contextPath}/admin/history">Historie</a></li>
+            <%-- KORREKTUR: Link zur neuen Log-Seite --%>
+            <li><a href="${pageContext.request.contextPath}/admin/log">Admin Log</a></li>
             <li style="margin-left: auto;"><a href="${pageContext.request.contextPath}/home" style="font-weight: bold;">Zur Hauptseite</a></li>
         </ul>
-	</nav>
-	<div>
-        <span style="margin-right: 20px;">Admin: ${sessionScope.username}</span>
+    </nav>
+    <div class="user-actions">
+        <span>Admin: ${sessionScope.user.username}</span>
         <button id="theme-switcher" class="theme-switcher">🌓</button>
     </div>
 </header>

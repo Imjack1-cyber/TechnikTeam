@@ -283,6 +283,91 @@ a:hover {
 	background-color: var(--header-footer-bg);
 }
 
+/* --- Lightbox Styles for Storage Images --- */
+
+/* Das Overlay, das den ganzen Bildschirm abdunkelt. Standardmäßig versteckt. */
+.lightbox {
+    display: none;
+    position: fixed;
+    z-index: 999;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    text-align: center;
+}
+
+/* Wenn die URL einen Hash hat, der auf eine Lightbox-ID zeigt (z.B. #img-1),
+   wird das Overlay sichtbar gemacht. Das ist der CSS :target-Trick. */
+.lightbox:target {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Das vergrößerte Bild innerhalb der Lightbox */
+.lightbox img {
+    max-width: 90%;
+    max-height: 90%;
+    border: 3px solid white;
+    box-shadow: 0 0 25px rgba(0,0,0,0.5);
+}
+
+/* Fügen Sie dies zu Ihrer style.css hinzu, um das Layout zu verbessern */
+.user-actions {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem; /* Abstand zwischen den Elementen */
+}
+
+/* --- Animierter Theme Switcher --- */
+.theme-switch-wrapper {
+  display: flex;
+  align-items: center;
+}
+.theme-switch {
+  display: inline-block;
+  height: 24px;
+  position: relative;
+  width: 50px;
+}
+.theme-switch input {
+  display:none;
+}
+.slider {
+  background-color: #ccc;
+  bottom: 0;
+  cursor: pointer;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  transition: .4s;
+}
+.slider:before {
+  background-color: #fff;
+  bottom: 4px;
+  content: "";
+  height: 16px;
+  left: 4px;
+  position: absolute;
+  transition: .4s;
+  width: 16px;
+}
+input:checked + .slider {
+  background-color: var(--primary-color);
+}
+input:checked + .slider:before {
+  transform: translateX(26px);
+}
+.slider.round {
+  border-radius: 34px;
+}
+.slider.round:before {
+  border-radius: 50%;
+}
+
 /* --- Responsive Design --- */
 @media ( max-width : 768px) {
 	.app-header {

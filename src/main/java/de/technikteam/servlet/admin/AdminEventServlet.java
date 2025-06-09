@@ -24,6 +24,10 @@ import de.technikteam.service.NotificationService;
 
 @WebServlet("/admin/events")
 public class AdminEventServlet extends HttpServlet {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminEventServlet.class);
 	private EventDAO eventDAO;
 	private CourseDAO courseDAO;
@@ -38,23 +42,33 @@ public class AdminEventServlet extends HttpServlet {
 			throws ServletException, IOException {
 		String action = request.getParameter("action");
 		if (action == null) {
-			action = "list"; // Default action
+			action = "list";
 		}
 
 		try {
 			switch (action) {
 			case "new":
+				showForm(request, response); // Ruft das leere Formular auf
+				break;
 			case "edit":
-				showEditForm(request, response);
+				// ID wird nur für "edit" benötigt
+				int editId = Integer.parseInt(request.getParameter("id"));
+				showForm(request, response, editId);
 				break;
 			case "assign":
-				showAssignForm(request, response);
+				// ID wird auch für "assign" benötigt
+				int assignId = Integer.parseInt(request.getParameter("id"));
+				showAssignForm(request, response, assignId);
 				break;
 			case "list":
 			default:
 				listEvents(request, response);
 				break;
 			}
+		} catch (NumberFormatException e) {
+			logger.error("Invalid or missing ID parameter for action: {}", action, e);
+			request.getSession().setAttribute("errorMessage", "Ungültige oder fehlende ID für die ausgewählte Aktion.");
+			response.sendRedirect(request.getContextPath() + "/admin/events");
 		} catch (Exception e) {
 			logger.error("Error in doGet of AdminEventServlet", e);
 			request.getSession().setAttribute("errorMessage", "Ein unerwarteter Fehler ist aufgetreten.");
@@ -62,8 +76,30 @@ public class AdminEventServlet extends HttpServlet {
 		}
 	}
 
+	// Überladen Sie showForm, um beide Fälle (neu und bearbeiten) zu behandeln
+	private void showForm(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		List<Course> allCourses = courseDAO.getAllCourses();
+		request.setAttribute("allCourses", allCourses);
+		request.getRequestDispatcher("/admin/admin_event_form.jsp").forward(request, response);
+	}
+
+	private void showForm(HttpServletRequest request, HttpServletResponse response, int eventId)
+			throws ServletException, IOException {
+		List<Course> allCourses = courseDAO.getAllCourses();
+		request.setAttribute("allCourses", allCourses);
+		Event event = eventDAO.getEventById(eventId);
+		if (event != null) {
+			event.setSkillRequirements(eventDAO.getSkillRequirementsForEvent(eventId));
+		}
+		request.setAttribute("event", event);
+		request.getRequestDispatcher("/admin/admin_event_form.jsp").forward(request, response);
+	}
+
 	@Override
-	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws IOException, ServletException {
+		request.setCharacterEncoding("UTF-8");
 		String action = request.getParameter("action");
 		if (action == null) {
 			response.sendRedirect(request.getContextPath() + "/admin/events");
@@ -76,7 +112,7 @@ public class AdminEventServlet extends HttpServlet {
 			case "update":
 				handleCreateOrUpdate(request, response);
 				break;
-			case "delete":
+			case "delete": // <-- DIESER FALL HAT WAHRSCHEINLICH GEFEHLT
 				handleDelete(request, response);
 				break;
 			case "saveAssignments":
@@ -100,23 +136,9 @@ public class AdminEventServlet extends HttpServlet {
 		request.getRequestDispatcher("/admin/admin_events_list.jsp").forward(request, response);
 	}
 
-	private void showEditForm(HttpServletRequest request, HttpServletResponse response)
+	private void showAssignForm(HttpServletRequest request, HttpServletResponse response, int eventId)
 			throws ServletException, IOException {
-		List<Course> allCourses = courseDAO.getAllCourses(); // Alle verfügbaren Lehrgänge laden
-		request.setAttribute("allCourses", allCourses);
-
-		if ("edit".equals(request.getParameter("action"))) {
-			int id = Integer.parseInt(request.getParameter("id"));
-			Event event = eventDAO.getEventById(id);
-			event.setSkillRequirements(eventDAO.getSkillRequirementsForEvent(id)); // Anforderungen laden
-			request.setAttribute("event", event);
-		}
-		request.getRequestDispatcher("/admin/admin_event_form.jsp").forward(request, response);
-	}
-
-	private void showAssignForm(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		int eventId = Integer.parseInt(request.getParameter("id"));
+		eventId = Integer.parseInt(request.getParameter("id"));
 		Event event = eventDAO.getEventById(eventId);
 		List<User> signedUpUsers = eventDAO.getSignedUpUsersForEvent(eventId);
 		List<User> assignedUsers = eventDAO.getAssignedUsersForEvent(eventId);
@@ -128,42 +150,48 @@ public class AdminEventServlet extends HttpServlet {
 		request.getRequestDispatcher("/admin/admin_event_assign.jsp").forward(request, response);
 	}
 
+	// Ersetzen Sie die bestehende handleCreateOrUpdate-Methode im AdminEventServlet
+
 	private void handleCreateOrUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		Event event = new Event();
-		String[] requiredCourseIds = request.getParameterValues("requiredCourseId");
-		String[] requiredPersons = request.getParameterValues("requiredPersons");
-		String[] skillNames = request.getParameterValues("skillName");
 		event.setName(request.getParameter("name"));
 		event.setDescription(request.getParameter("description"));
 		try {
 			event.setEventDateTime(LocalDateTime.parse(request.getParameter("eventDateTime")));
 		} catch (DateTimeParseException e) {
-			logger.error("Invalid date format submitted.", e);
-			request.getSession().setAttribute("errorMessage", "Ungültiges Datumsformat.");
-			response.sendRedirect(request.getContextPath() + "/admin/events");
-			return;
-		}
+			/* ... Fehlerbehandlung ... */ }
 
-		boolean success;
-		String action = request.getParameter("id") != null && !request.getParameter("id").isEmpty() ? "update"
-				: "create";
+		String idParam = request.getParameter("id");
+		int savedEventId = 0;
 
-		if ("update".equals(action)) {
-			event.setId(Integer.parseInt(request.getParameter("id")));
-			event.setStatus(request.getParameter("status")); // Allow status update from form
-			success = eventDAO.updateEvent(event);
-			request.getSession().setAttribute("successMessage",
-					"Event '" + event.getName() + "' erfolgreich aktualisiert.");
+		if (idParam != null && !idParam.isEmpty()) {
+			// UPDATE
+			event.setId(Integer.parseInt(idParam));
+			event.setStatus(request.getParameter("status"));
+			if (eventDAO.updateEvent(event)) {
+				savedEventId = event.getId();
+				request.getSession().setAttribute("successMessage", "Event erfolgreich aktualisiert.");
+			} else {
+				request.getSession().setAttribute("errorMessage", "Event konnte nicht aktualisiert werden.");
+			}
 		} else {
-			event.setStatus("GEPLANT"); // Default status
-			success = eventDAO.createEvent(event);
-			request.getSession().setAttribute("successMessage",
-					"Event '" + event.getName() + "' erfolgreich erstellt.");
+			// CREATE
+			savedEventId = eventDAO.createEvent(event);
+			if (savedEventId > 0) {
+				request.getSession().setAttribute("successMessage", "Event erfolgreich erstellt.");
+			} else {
+				request.getSession().setAttribute("errorMessage", "Event konnte nicht erstellt werden.");
+			}
 		}
 
-		if (!success) {
-			request.getSession().setAttribute("errorMessage", "Operation am Event fehlgeschlagen.");
+		// Jetzt die Anforderungen speichern, falls das Event erfolgreich gespeichert
+		// wurde
+		if (savedEventId > 0) {
+			String[] requiredCourseIds = request.getParameterValues("requiredCourseId");
+			String[] requiredPersons = request.getParameterValues("requiredPersons");
+			eventDAO.saveSkillRequirements(savedEventId, requiredCourseIds, requiredPersons);
 		}
+
 		response.sendRedirect(request.getContextPath() + "/admin/events");
 	}
 

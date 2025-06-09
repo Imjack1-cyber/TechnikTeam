@@ -2,17 +2,31 @@ package de.technikteam.model;
 
 import java.time.LocalDateTime;
 
-// Represents a course entity.
+/**
+ * Represents a course entity. Includes fields for course details and the
+ * attendance status of the currently logged-in user.
+ */
 public class Course {
 	private int id;
 	private String name;
 	private String type;
-	private String leader; // leitende Person
+	private String leader;
 	private LocalDateTime courseDateTime;
-	private String description; // <-- FIX: Added missing field
+	private String description;
+	private String userAttendanceStatus; // Specific to the logged-in user, e.g., "ANGEMELDET"
+	private String abbreviation;
 
-	// Constructors, Getters, and Setters
 	public Course() {
+	}
+
+	// --- Getters and Setters ---
+
+	public String getAbbreviation() {
+		return abbreviation;
+	}
+
+	public void setAbbreviation(String abbreviation) {
+		this.abbreviation = abbreviation;
 	}
 
 	public int getId() {
@@ -55,7 +69,6 @@ public class Course {
 		this.courseDateTime = courseDateTime;
 	}
 
-	// --- FIX: Added missing getters and setters for description ---
 	public String getDescription() {
 		return description;
 	}
@@ -63,5 +76,12 @@ public class Course {
 	public void setDescription(String description) {
 		this.description = description;
 	}
-	// --- End of Fix ---
+
+	public String getUserAttendanceStatus() {
+		return userAttendanceStatus;
+	}
+
+	public void setUserAttendanceStatus(String userAttendanceStatus) {
+		this.userAttendanceStatus = userAttendanceStatus;
+	}
 }

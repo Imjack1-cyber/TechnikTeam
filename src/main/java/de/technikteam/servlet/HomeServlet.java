@@ -18,6 +18,10 @@ import de.technikteam.model.User;
 // Servlet for the home page.
 @WebServlet("/home")
 public class HomeServlet extends HttpServlet {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private EventDAO eventDAO;
 	private CourseDAO courseDAO;
 
@@ -26,15 +30,20 @@ public class HomeServlet extends HttpServlet {
 		courseDAO = new CourseDAO(); // <-- FIX: Diese Zeile hinzufügen, um das Objekt zu erstellen
 	}
 
+	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+
 		User user = (User) request.getSession().getAttribute("user");
 
+		// Fetch max 3 upcoming events for this user
 		List<Event> upcomingEvents = eventDAO.getUpcomingEventsForUser(user, 3);
-		List<Course> upcomingCourses = courseDAO.getUpcomingCourses(3); // Updated
+
+		// Fetch max 3 upcoming courses (this call will now work correctly)
+		List<Course> upcomingCourses = courseDAO.getUpcomingCourses(3);
 
 		request.setAttribute("upcomingEvents", upcomingEvents);
-		request.setAttribute("upcomingCourses", upcomingCourses); // Updated
+		request.setAttribute("upcomingCourses", upcomingCourses);
 
 		request.getRequestDispatcher("home.jsp").forward(request, response);
 	}

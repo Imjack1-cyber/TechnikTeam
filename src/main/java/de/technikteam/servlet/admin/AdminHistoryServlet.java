@@ -14,6 +14,10 @@ import de.technikteam.model.ParticipationHistory;
 
 @WebServlet("/admin/history")
 public class AdminHistoryServlet extends HttpServlet {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private HistoryDAO historyDAO;
 
 	@Override

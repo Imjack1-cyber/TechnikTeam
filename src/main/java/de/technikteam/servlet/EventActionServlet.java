@@ -14,8 +14,15 @@ import org.apache.logging.log4j.Logger;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.model.User;
 
+/**
+ * Handles user actions related to events, such as signing up or signing off.
+ */
 @WebServlet("/event-action")
 public class EventActionServlet extends HttpServlet {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(EventActionServlet.class);
 	private EventDAO eventDAO;
 
@@ -24,20 +31,44 @@ public class EventActionServlet extends HttpServlet {
 		eventDAO = new EventDAO();
 	}
 
+	/**
+	 * Handles POST requests from the event list page to sign up or sign off.
+	 */
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+
 		User user = (User) request.getSession().getAttribute("user");
 		String action = request.getParameter("action");
-		int eventId = Integer.parseInt(request.getParameter("eventId"));
+		String eventIdParam = request.getParameter("eventId");
 
-		if ("signup".equals(action)) {
-			eventDAO.signUpForEvent(user.getId(), eventId);
-		} else if ("signoff".equals(action)) {
-			eventDAO.signOffFromEvent(user.getId(), eventId);
+		if (user == null || action == null || eventIdParam == null) {
+			logger.warn("Invalid request to EventActionServlet. Missing parameters.");
+			response.sendRedirect(request.getContextPath() + "/events");
+			return;
 		}
 
-		// Redirect back to the events page to see the result.
+		try {
+			int eventId = Integer.parseInt(eventIdParam);
+
+			if ("signup".equals(action)) {
+				eventDAO.signUpForEvent(user.getId(), eventId);
+				request.getSession().setAttribute("successMessage", "Erfolgreich zum Event angemeldet.");
+
+			} else if ("signoff".equals(action)) {
+				eventDAO.signOffFromEvent(user.getId(), eventId);
+				request.getSession().setAttribute("successMessage", "Erfolgreich vom Event abgemeldet.");
+
+			} else {
+				logger.warn("Unknown action received in EventActionServlet: {}", action);
+			}
+
+		} catch (NumberFormatException e) {
+			logger.error("Invalid event ID format in EventActionServlet.", e);
+			request.getSession().setAttribute("errorMessage", "Ungültige Event-ID.");
+		}
+
+		// Redirect back to the event list page to show the updated status
 		response.sendRedirect(request.getContextPath() + "/events");
 	}
 }

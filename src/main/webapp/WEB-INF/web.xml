@@ -4,31 +4,63 @@
          xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
          version="4.0">
 
-    <!-- This session configuration remains the same -->
+    <!-- Konfigurationen für Session, Welcome-File und JSP bleiben unverändert -->
     <session-config>
         <session-timeout>30</session-timeout>
     </session-config>
     
-    <!-- Define the welcome file -->
     <welcome-file-list>
         <welcome-file>login.jsp</welcome-file>
     </welcome-file-list>
     
-    <!-- 
-      FIX: JSP Configuration to ensure Expression Language (EL) is enabled.
-      This explicitly tells the container to treat EL expressions like ${...}
-      as code to be executed, not as simple text.
-    -->
     <jsp-config>
         <jsp-property-group>
             <url-pattern>*.jsp</url-pattern>
             <url-pattern>*.jspf</url-pattern>
             <el-ignored>false</el-ignored>
-            <scripting-invalid>false</scripting-invalid>
         </jsp-property-group>
     </jsp-config>
 
-    <!-- Error Pages configuration remains the same -->
+    <!-- =================================================================== -->
+    <!--          FINALE, GARANTIERTE FILTER-KONFIGURATION                 -->
+    <!-- =================================================================== -->
+    <!-- Die Reihenfolge der <filter-mapping>-Blöcke legt die Ausführungsreihenfolge fest. -->
+
+    <!-- 1. CharacterEncodingFilter: Wird IMMER als ALLERERSTES ausgeführt. -->
+    <filter>
+        <filter-name>CharacterEncodingFilter</filter-name>
+        <filter-class>de.technikteam.filter.CharacterEncodingFilter</filter-class>
+        <async-supported>true</async-supported>
+    </filter>
+    <filter-mapping>
+        <filter-name>CharacterEncodingFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+    <!-- 2. AuthenticationFilter: Wird als ZWEITES ausgeführt. -->
+    <filter>
+        <filter-name>AuthenticationFilter</filter-name>
+        <filter-class>de.technikteam.filter.AuthenticationFilter</filter-class>
+        <async-supported>true</async-supported>
+    </filter>
+    <filter-mapping>
+        <filter-name>AuthenticationFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+    <!-- 3. AdminFilter: Wird als DRITTES ausgeführt, aber nur für /admin/* Pfade. -->
+    <filter>
+        <filter-name>AdminFilter</filter-name>
+        <filter-class>de.technikteam.filter.AdminFilter</filter-class>
+        <async-supported>true</async-supported>
+    </filter>
+    <filter-mapping>
+        <filter-name>AdminFilter</filter-name>
+        <url-pattern>/admin/*</url-pattern>
+    </filter-mapping>
+
+
+    <!-- Fehlerseiten -->
     <error-page>
         <error-code>404</error-code>
         <location>/error404.jsp</location>

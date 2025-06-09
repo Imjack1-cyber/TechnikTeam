@@ -1,31 +1,35 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <!DOCTYPE html>
+<html lang="de">
 <head>
+<meta charset="UTF-8">
+<title>Logout - Technik Team</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
+<body>
+	<div class="error-container"
+		style="text-align: center; margin-top: 5rem;">
+		<%-- Verwende den 'username' Parameter, der vom LogoutServlet übergeben wird --%>
+		<h1>${param.username},du wurdest erfolgreich ausgeloggt!</h1>
+		<p>Du wirst in 5 Sekunden automatisch zur Login-Seite
+			weitergeleitet.</p>
+		<p>
+			<a href="${pageContext.request.contextPath}/login">Jetzt zur
+				Login-Seite</a>
+		</p>
+	</div>
 
-<c:import url="/WEB-INF/jspf/header.jspf">
-	<c:param name="title" value="Logout" />
-</c:import>
-
-<script>
-	// Redirect to login page after 5 seconds
-	setTimeout(function() {
-		window.location.href = "${pageContext.request.contextPath}/login";
-	}, 5000); // 5000 milliseconds = 5 seconds
-</script>
-
-<div style="text-align: center; margin-top: 5rem;">
-	<h1>${param.username},du wurdest erfolgreich ausgeloggt!</h1>
-	<p>Du wirst in 5 Sekunden automatisch zur Login-Seite
-		weitergeleitet.</p>
-	<p>
-		<a href="${pageContext.request.contextPath}/login">Jetzt zur
-			Login-Seite</a>
-	</p>
-</div>
-
-<!-- No navigation or footer needed here -->
+	<%-- ======================================================= --%>
+	<%--          DIES IST DER ENTSCHEIDENDE FIX                 --%>
+	<%-- ======================================================= --%>
+	<%-- Das Weiterleitungs-Skript ist jetzt NUR HIER und isoliert --%>
+	<script>
+		setTimeout(function() {
+			// Verwende den contextPath, um die URL sicher aufzubauen
+			window.location.href = "${pageContext.request.contextPath}/login";
+		}, 5000); // 5000 Millisekunden = 5 Sekunden
+	</script>
 </body>
 </html>

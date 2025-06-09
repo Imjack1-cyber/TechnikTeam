@@ -17,6 +17,10 @@ import de.technikteam.model.Course;
 
 @WebServlet("/admin/courses")
 public class AdminCourseServlet extends HttpServlet {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private CourseDAO courseDAO;
 
 	@Override
@@ -68,8 +72,8 @@ public class AdminCourseServlet extends HttpServlet {
 		Course course = new Course();
 		course.setName(req.getParameter("name"));
 		course.setType(req.getParameter("type"));
+		course.setAbbreviation(req.getParameter("abbreviation")); // <-- NEU
 		course.setLeader(req.getParameter("leader"));
-		course.setDescription(req.getParameter("description"));
 		try {
 			course.setCourseDateTime(LocalDateTime.parse(req.getParameter("courseDateTime")));
 		} catch (DateTimeParseException e) {

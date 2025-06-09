@@ -5,6 +5,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,23 +35,41 @@ public class FileDAO {
 		return file;
 	}
 
+	// Innerhalb Ihrer FileDAO-Klasse
+
 	public Map<String, List<File>> getAllFilesGroupedByCategory() {
-		// ... (existing implementation)
 		logger.debug("Fetching all files grouped by category.");
 		List<File> files = new ArrayList<>();
-		String sql = "SELECT * FROM files ORDER BY category, filename";
+		// This query joins with file_categories to get the category name and sorts by
+		// it.
+		String sql = "SELECT f.id, f.filename, f.filepath, f.uploaded_at, fc.name as category_name " + "FROM files f "
+				+ "LEFT JOIN file_categories fc ON f.category_id = fc.id " + "ORDER BY fc.name, f.filename";
 
 		try (Connection conn = DatabaseManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
 
 			while (rs.next()) {
-				files.add(mapResultSetToFile(rs));
+				File file = new File();
+				file.setId(rs.getInt("id"));
+				file.setFilename(rs.getString("filename"));
+				file.setFilepath(rs.getString("filepath"));
+
+				String categoryName = rs.getString("category_name");
+				file.setCategory(categoryName == null ? "Ohne Kategorie" : categoryName);
+
+				Timestamp ts = rs.getTimestamp("uploaded_at");
+				if (ts != null) {
+					file.setUploadedAt(ts.toLocalDateTime());
+				}
+
+				files.add(file);
 			}
 		} catch (SQLException e) {
 			logger.error("SQL error while fetching files.", e);
 		}
 
+		// Group the flat list into a map for the JSP.
 		return files.stream().collect(Collectors.groupingBy(File::getCategory));
 	}
 

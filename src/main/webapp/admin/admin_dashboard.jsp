@@ -1,4 +1,4 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" isELIgnored="false" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <!DOCTYPE html>
 <head>
@@ -19,7 +19,7 @@
 		<ul>
 			<li><a href="${pageContext.request.contextPath}/admin/users">Benutzer
 					verwalten</a></li>
-			<li><a href="${pageContext.request.contextPath}/admin/events">Events erstellen & bearbeiten</a></li>
+			<li><a href="${pageContext.request.contextPath}/admin/events">Events erstellen &amp; bearbeiten</a></li>
 			<li><a href="${pageContext.request.contextPath}/admin/files">Dateien hochladen</a></li>
 		</ul>
 	</div>

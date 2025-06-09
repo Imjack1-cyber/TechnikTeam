@@ -95,10 +95,20 @@ public class StorageDAO {
 	}
 
 	public boolean updateItem(StorageItem item) {
+		logger.info("Updating storage item with ID: {}", item.getId());
 		String sql = "UPDATE storage_items SET name=?, location=?, cabinet=?, shelf=?, compartment=?, quantity=?, image_path=? WHERE id=?";
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			// ... (set all parameters from item object)
-			pstmt.setInt(8, item.getId());
+
+			// --- DIES IST DER FIX: Alle Parameter müssen gesetzt werden ---
+			pstmt.setString(1, item.getName());
+			pstmt.setString(2, item.getLocation());
+			pstmt.setString(3, item.getCabinet());
+			pstmt.setString(4, item.getShelf());
+			pstmt.setString(5, item.getCompartment());
+			pstmt.setInt(6, item.getQuantity());
+			pstmt.setString(7, item.getImagePath());
+			pstmt.setInt(8, item.getId()); // Das WHERE-Kriterium
+
 			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
 			logger.error("SQL error updating storage item with ID: {}", item.getId(), e);

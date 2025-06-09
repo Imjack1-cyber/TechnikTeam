@@ -1,10 +1,13 @@
 package de.technikteam.model;
 
+import java.time.LocalDateTime;
+
 public class File {
 	private int id;
 	private String filename;
 	private String filepath;
 	private String category;
+	private LocalDateTime uploadedAt;
 	// Optional: Add an upload timestamp if needed.
 	// private LocalDateTime uploadedAt;
 
@@ -13,6 +16,15 @@ public class File {
 	}
 
 	// Getters and Setters
+
+	public LocalDateTime getUploadedAt() {
+		return uploadedAt;
+	}
+
+	public void setUploadedAt(LocalDateTime uploadedAt) {
+		this.uploadedAt = uploadedAt;
+	}
+
 	public int getId() {
 		return id;
 	}

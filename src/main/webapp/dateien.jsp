@@ -1,8 +1,8 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" isELIgnored="false" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <!DOCTYPE html>
 <head>
-	<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css">
 </head>
 
 <c:import url="/WEB-INF/jspf/header.jspf">
@@ -10,16 +10,18 @@
 </c:import>
 <c:import url="/WEB-INF/jspf/navigation.jspf" />
 
-<h1>Dateien & Dokumente</h1>
+<h1>Dateien &amp; Dokumente</h1>
 
 <c:forEach var="categoryEntry" items="${fileData}">
 	<div class="card file-category">
 		<h2 class="card-title">${categoryEntry.key}</h2>
 		<ul>
 			<c:forEach var="file" items="${categoryEntry.value}">
-				<li><a
-					href="${pageContext.request.contextPath}/${file.filepath}"
-					target="_blank" download> ${file.filename} </a></li>
+				<li>
+					<%-- In dateien.jsp --%> <a
+					href="${pageContext.request.contextPath}/download?file=${file.filepath}">
+						${file.filename} </a>
+				</li>
 			</c:forEach>
 		</ul>
 	</div>

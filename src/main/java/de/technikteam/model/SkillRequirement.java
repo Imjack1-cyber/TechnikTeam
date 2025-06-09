@@ -1,16 +1,26 @@
 package de.technikteam.model;
 
 public class SkillRequirement {
-	private String skillName;
+	// Der Name des Lehrgangs wird jetzt aus der Course-Beziehung geholt
+	private int requiredCourseId;
+	private String courseName; // Nützlich für die Anzeige
 	private int requiredPersons;
 
 	// Getters and Setters
-	public String getSkillName() {
-		return skillName;
+	public int getRequiredCourseId() {
+		return requiredCourseId;
 	}
 
-	public void setSkillName(String skillName) {
-		this.skillName = skillName;
+	public void setRequiredCourseId(int requiredCourseId) {
+		this.requiredCourseId = requiredCourseId;
+	}
+
+	public String getCourseName() {
+		return courseName;
+	}
+
+	public void setCourseName(String courseName) {
+		this.courseName = courseName;
 	}
 
 	public int getRequiredPersons() {

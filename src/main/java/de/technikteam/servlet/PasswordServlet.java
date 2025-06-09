@@ -17,6 +17,10 @@ import de.technikteam.model.User;
 
 @WebServlet("/passwort")
 public class PasswordServlet extends HttpServlet {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(PasswordServlet.class);
 	private UserDAO userDAO;
 

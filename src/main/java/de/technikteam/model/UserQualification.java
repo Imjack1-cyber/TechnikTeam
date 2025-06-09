@@ -3,12 +3,22 @@ package de.technikteam.model;
 import java.time.LocalDate;
 
 public class UserQualification {
+	private int userId; // <-- NEU
 	private int courseId;
 	private String courseName;
 	private String status;
 	private LocalDate completionDate;
+	private String remarks; // <-- NEU
 
 	// Getters and Setters
+	public int getUserId() {
+		return userId;
+	}
+
+	public void setUserId(int userId) {
+		this.userId = userId;
+	}
+
 	public int getCourseId() {
 		return courseId;
 	}
@@ -39,5 +49,13 @@ public class UserQualification {
 
 	public void setCompletionDate(LocalDate completionDate) {
 		this.completionDate = completionDate;
+	}
+
+	public String getRemarks() {
+		return remarks;
+	}
+
+	public void setRemarks(String remarks) {
+		this.remarks = remarks;
 	}
 }

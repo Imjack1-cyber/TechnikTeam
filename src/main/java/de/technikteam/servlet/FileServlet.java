@@ -15,6 +15,10 @@ import de.technikteam.model.File;
 
 @WebServlet("/dateien")
 public class FileServlet extends HttpServlet {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private FileDAO fileDAO;
 
 	@Override

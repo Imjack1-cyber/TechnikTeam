@@ -16,6 +16,10 @@ import de.technikteam.dao.StatisticsDAO; // Import new DAO
 
 @WebServlet("/admin/dashboard")
 public class AdminDashboardServlet extends HttpServlet {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminDashboardServlet.class);
 	private StatisticsDAO statisticsDAO;
 

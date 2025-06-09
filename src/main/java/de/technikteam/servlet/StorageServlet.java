@@ -16,6 +16,10 @@ import de.technikteam.model.StorageItem;
 // Servlet for the storage page.
 @WebServlet("/lager")
 public class StorageServlet extends HttpServlet {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private StorageDAO storageDAO;
 
 	public void init() {

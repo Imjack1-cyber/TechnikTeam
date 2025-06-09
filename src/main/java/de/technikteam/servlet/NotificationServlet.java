@@ -12,6 +12,11 @@ import de.technikteam.service.NotificationService;
 
 @WebServlet(urlPatterns = "/notifications", asyncSupported = true)
 public class NotificationServlet extends HttpServlet {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {

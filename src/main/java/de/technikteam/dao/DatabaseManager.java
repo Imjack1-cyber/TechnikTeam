@@ -8,11 +8,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class DatabaseManager {
-	// Logger instance for this class
 	private static final Logger logger = LogManager.getLogger(DatabaseManager.class);
 
-	private static final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
-	private static final String DB_URL = "jdbc:mysql://localhost:3306/technik_team_db?useSSL=false&serverTimezone=UTC";
+	private static final String DB_URL = "jdbc:mysql://localhost:3306/technik_team_db?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=UTC";
 	private static final String USER = "technik_user";
 	private static final String PASS = "ein_sicheres_passwort";
 
@@ -24,16 +22,25 @@ public class DatabaseManager {
 	public static Connection getConnection() {
 		try {
 			if (connection == null || connection.isClosed()) {
-				logger.info("Database connection is closed or null. Creating a new one.");
-				Class.forName(JDBC_DRIVER);
+				logger.info("Database connection is closed or null. Attempting to create a new one.");
+				Class.forName("com.mysql.cj.jdbc.Driver");
 				connection = DriverManager.getConnection(DB_URL, USER, PASS);
-				logger.info("Successfully established a new database connection.");
+
+				// =================================================================
+				// DER ENTSCHEIDENDE BEWEIS
+				// =================================================================
+				// Wir loggen den exakten Katalognamen (Datenbanknamen) der Verbindung.
+				String dbName = connection.getCatalog();
+				logger.info("================================================================");
+				logger.info("SUCCESSFULLY CONNECTED TO DATABASE: '{}'", dbName);
+				logger.info("JDBC URL USED: {}", DB_URL);
+				logger.info("================================================================");
 			}
 		} catch (SQLException e) {
-			logger.error("Database connection failed!", e);
+			logger.error("DATABASE CONNECTION FAILED!", e);
 			throw new RuntimeException("Failed to connect to the database", e);
 		} catch (ClassNotFoundException e) {
-			logger.error("MySQL JDBC Driver not found!", e);
+			logger.error("MYSQL JDBC DRIVER NOT FOUND!", e);
 			throw new RuntimeException("JDBC Driver not found", e);
 		}
 		return connection;
