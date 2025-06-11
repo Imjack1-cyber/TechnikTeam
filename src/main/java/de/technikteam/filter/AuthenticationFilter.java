@@ -11,6 +11,7 @@ import javax.servlet.FilterConfig;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
+import javax.servlet.annotation.WebFilter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
@@ -19,6 +20,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 // KEINE @WebFilter Annotation mehr, Konfiguration erfolgt in web.xml
+@WebFilter(value = "/*", asyncSupported = true)
 public class AuthenticationFilter implements Filter {
 
 	private static final Logger logger = LogManager.getLogger(AuthenticationFilter.class);

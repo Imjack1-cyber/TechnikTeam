@@ -1,27 +1,32 @@
 -- =====================================================================================
---          Technik-Team Web-Anwendung - Finales Datenbank-Setup (mit Umlaut-Unterstützung)
+--          Technik-Team Web-Anwendung - Finales Datenbank-Setup
 -- =====================================================================================
+-- Dieses Skript erstellt die Datenbank, den Benutzer und alle notwendigen Tabellen.
+-- Es ist dafür gedacht, in einem Durchlauf ausgeführt zu werden.
+-- Führen Sie diesen Code im "SQL"-Tab von phpMyAdmin aus.
+-- =====================================================================================
+
 
 -- -----------------------------------------------------
 -- Schritt 1: Datenbank und Benutzer erstellen
 -- -----------------------------------------------------
 
--- Erstellt die neue Datenbank mit dem empfohlenen Zeichensatz für volle Unicode-Unterstützung (Umlaute, Emojis etc.)
-CREATE DATABASE IF NOT EXISTS technik_team_db
+-- Erstellt die neue Datenbank mit dem empfohlenen Zeichensatz für volle Unicode-Unterstützung.
+CREATE DATABASE IF NOT EXISTS `technik_team_db`
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
--- Wechselt zur neu erstellten Datenbank
-USE technik_team_db;
+-- Wechselt zur neu erstellten Datenbank, damit alle folgenden Befehle hier ausgeführt werden.
+USE `technik_team_db`;
 
 -- Erstellt einen neuen Benutzer für die Anwendung.
 -- !! WICHTIG: Ersetzen Sie 'ein_sicheres_passwort' durch ein starkes, geheimes Passwort!
-CREATE USER IF NOT EXISTS 'technik_user'@'localhost' IDENTIFIED BY 'ein_sicheres_passwort';
+CREATE USER IF NOT EXISTS 'admin'@'localhost' IDENTIFIED BY 'admin123';
 
--- Gibt dem neuen Benutzer alle Rechte für die Anwendungs-Datenbank
-GRANT ALL PRIVILEGES ON technik_team_db.* TO 'technik_user'@'localhost';
+-- Gibt dem neuen Benutzer alle Rechte für die Anwendungs-Datenbank.
+GRANT ALL PRIVILEGES ON `technik_team_db`.* TO 'admin'@'localhost';
 
--- Lädt die Berechtigungen neu, um die Änderungen zu übernehmen
+-- Lädt die Berechtigungen neu, um die Änderungen sofort zu übernehmen.
 FLUSH PRIVILEGES;
 
 
@@ -29,92 +34,108 @@ FLUSH PRIVILEGES;
 -- Schritt 2: Tabellen erstellen (mit expliziter Deklaration für Sonderzeichen)
 -- -----------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    role ENUM('NUTZER', 'ADMIN') NOT NULL DEFAULT 'NUTZER',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- Tabelle für Benutzer mit allen Erweiterungen
+CREATE TABLE IF NOT EXISTS `users` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `username` VARCHAR(50) NOT NULL UNIQUE,
+    `password_hash` VARCHAR(255) NOT NULL, -- Im Code als Klartext behandelt, in Produktion HASHEN!
+    `role` ENUM('NUTZER', 'ADMIN') NOT NULL DEFAULT 'NUTZER',
+    `graduation_year` INT NULL COMMENT 'Abschlussjahrgang des Nutzers',
+    `class_name` VARCHAR(10) NULL COMMENT 'Klasse des Nutzers',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS courses (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE,
-    type VARCHAR(50) NOT NULL,
-    course_datetime DATETIME NOT NULL,
-    leader VARCHAR(100) NULL,
-    description TEXT
+-- Tabelle für Lehrgänge/Qualifikationen mit Abkürzung
+CREATE TABLE IF NOT EXISTS `courses` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL UNIQUE,
+    `abbreviation` VARCHAR(10) NULL UNIQUE COMMENT 'Abkürzung für die Matrix-Ansicht',
+    `type` VARCHAR(50) NOT NULL,
+    `course_datetime` DATETIME NOT NULL,
+    `leader` VARCHAR(100) NULL,
+    `description` TEXT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS events (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    event_datetime DATETIME NOT NULL,
-    description TEXT,
-    status ENUM('GEPLANT', 'KOMPLETT', 'ABGESCHLOSSEN') NOT NULL DEFAULT 'GEPLANT'
+-- Tabelle für Events
+CREATE TABLE IF NOT EXISTS `events` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `event_datetime` DATETIME NOT NULL,
+    `description` TEXT,
+    `status` ENUM('GEPLANT', 'KOMPLETT', 'ABGESCHLOSSEN') NOT NULL DEFAULT 'GEPLANT'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS files (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    filename VARCHAR(255) NOT NULL,
-    filepath VARCHAR(512) NOT NULL UNIQUE,
-    category ENUM('BEDIENUNGSANLEITUNGEN', 'LEHRGAENGE', 'LAGER', 'SONSTIGES') NOT NULL,
-    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- Tabelle für Dateien
+CREATE TABLE IF NOT EXISTS `files` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `filename` VARCHAR(255) NOT NULL,
+    `filepath` VARCHAR(255) NOT NULL UNIQUE COMMENT 'Nur der Dateiname, der Pfad ist in der AppConfig',
+    `category` ENUM('BEDIENUNGSANLEITUNGEN', 'LEHRGAENGE', 'LAGER', 'SONSTIGES') NOT NULL,
+    `uploaded_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS storage_items (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    location VARCHAR(50) NOT NULL,
-    cabinet VARCHAR(50),
-    shelf VARCHAR(50),
-    compartment VARCHAR(50),
-    quantity INT NOT NULL DEFAULT 1,
-    image_path VARCHAR(512)
+-- Tabelle für Lagerartikel
+CREATE TABLE IF NOT EXISTS `storage_items` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `location` VARCHAR(50) NOT NULL,
+    `cabinet` VARCHAR(50),
+    `shelf` VARCHAR(50),
+    `compartment` VARCHAR(50),
+    `quantity` INT NOT NULL DEFAULT 1,
+    `image_path` VARCHAR(255) NULL COMMENT 'Nur Dateiname, Pfad ist in AppConfig + /images'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS user_qualifications (
-    user_id INT NOT NULL,
-    course_id INT NOT NULL,
-    PRIMARY KEY (user_id, course_id),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+-- Verknüpfungstabelle: Welche Qualifikation hat welcher Benutzer? Mit Status und Bemerkungen.
+CREATE TABLE IF NOT EXISTS `user_qualifications` (
+    `user_id` INT NOT NULL,
+    `course_id` INT NOT NULL,
+    `completion_date` DATE NULL COMMENT 'Datum des Abschlusses',
+    `status` ENUM('BESUCHT', 'ABSOLVIERT') NOT NULL DEFAULT 'BESUCHT',
+    `remarks` TEXT NULL COMMENT 'Bemerkungen des Admins',
+    PRIMARY KEY (`user_id`, `course_id`),
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`course_id`) REFERENCES `courses`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS event_skill_requirements (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    event_id INT NOT NULL,
-    required_course_id INT NOT NULL,
-    required_persons INT NOT NULL DEFAULT 1,
-    skill_name VARCHAR(50) NOT NULL,
-    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
-    FOREIGN KEY (required_course_id) REFERENCES courses(id) ON DELETE CASCADE
+-- Verknüpfungstabelle: Welche Qualifikation wird für ein Event benötigt?
+CREATE TABLE IF NOT EXISTS `event_skill_requirements` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `event_id` INT NOT NULL,
+    `required_course_id` INT NOT NULL,
+    `required_persons` INT NOT NULL DEFAULT 1,
+    `skill_name` VARCHAR(50) NOT NULL COMMENT 'Wird nicht mehr aktiv genutzt, aber für Abwärtskompatibilität behalten',
+    FOREIGN KEY (`event_id`) REFERENCES `events`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`required_course_id`) REFERENCES `courses`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS event_attendance (
-    user_id INT NOT NULL,
-    event_id INT NOT NULL,
-    signup_status ENUM('ANGEMELDET', 'ABGEMELDET') NOT NULL,
-    PRIMARY KEY (user_id, event_id),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+-- Verknüpfungstabelle: Wer hat sich für ein Event angemeldet/abgemeldet?
+CREATE TABLE IF NOT EXISTS `event_attendance` (
+    `user_id` INT NOT NULL,
+    `event_id` INT NOT NULL,
+    `signup_status` ENUM('ANGEMELDET', 'ABGEMELDET') NOT NULL,
+    PRIMARY KEY (`user_id`, `event_id`),
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`event_id`) REFERENCES `events`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS event_assignments (
-    user_id INT NOT NULL,
-    event_id INT NOT NULL,
-    PRIMARY KEY (user_id, event_id),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+-- Verknüpfungstabelle: Wer wurde final für ein Event von einem Admin zugewiesen?
+CREATE TABLE IF NOT EXISTS `event_assignments` (
+    `user_id` INT NOT NULL,
+    `event_id` INT NOT NULL,
+    PRIMARY KEY (`user_id`, `event_id`),
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`event_id`) REFERENCES `events`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS course_attendance (
-    user_id INT NOT NULL,
-    course_id INT NOT NULL,
-    signup_status ENUM('ANGEMELDET', 'ABGEMELDET') NOT NULL,
-    PRIMARY KEY (user_id, course_id),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+-- Verknüpfungstabelle: Wer hat sich für einen Lehrgang angemeldet/abgemeldet?
+CREATE TABLE IF NOT EXISTS `course_attendance` (
+    `user_id` INT NOT NULL,
+    `course_id` INT NOT NULL,
+    `signup_status` ENUM('ANGEMELDET', 'ABGEMELDET') NOT NULL,
+    PRIMARY KEY (`user_id`, `course_id`),
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`course_id`) REFERENCES `courses`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -122,42 +143,53 @@ CREATE TABLE IF NOT EXISTS course_attendance (
 -- Schritt 3: Beispieldaten mit Umlauten und Sonderzeichen einfügen
 -- -----------------------------------------------------
 
-INSERT INTO users (username, password_hash, role) VALUES
-('admin', 'admin123', 'ADMIN'),
-('j_müller', 'nutzer123', 'NUTZER'),
-('s_groß', 'ton123', 'NUTZER'),
-('a_jäger', 'licht123', 'NUTZER');
+INSERT INTO `users` (`id`, `username`, `password_hash`, `role`, `graduation_year`, `class_name`) VALUES
+(1, 'admin', 'admin123', 'ADMIN', 2024, 'IT-ADMIN'),
+(2, 'j_müller', 'nutzer123', 'NUTZER', 2026, '11b'),
+(3, 's_groß', 'ton123', 'NUTZER', 2025, '12a'),
+(4, 'a_jäger', 'licht123', 'NUTZER', 2025, '12c');
 
-INSERT INTO courses (id, name, type, course_datetime, leader, description) VALUES
-(1, 'Grundlehrgang für Veranstaltungstechnik', 'Allgemein', '2024-09-10 18:00:00', 'Jörg Müller', 'Basiswissen für alle Helfer. Themen sind Sicherheit, Kabel & grundlegende Abläufe.'),
-(2, 'Tonlehrgang für Anfänger', 'Technik', '2024-09-15 17:00:00', 'Sabine Groß', 'Bedienung von Mischpulten und Mikrofonen. Schwerpunkt: Störungsfreier Betrieb.'),
-(3, 'Lichtlehrgang (DMX)', 'Technik', '2024-09-20 18:30:00', 'André Jäger', 'Einführung in die DMX-Steuerung und typische Licht-Setups für kleine Bühnen.');
+INSERT INTO `courses` (`id`, `name`, `abbreviation`, `type`, `course_datetime`, `leader`, `description`) VALUES
+(1, 'Grundlehrgang Veranstaltungstechnik', 'GLG', 'Allgemein', '2024-09-10 18:00:00', 'Jörg Müller', 'Basiswissen für alle Helfer.'),
+(2, 'Tonlehrgang für Anfänger', 'Ton-A', 'Technik', '2024-09-15 17:00:00', 'Sabine Groß', 'Bedienung von Mischpulten und Mikrofonen.'),
+(3, 'Lichtlehrgang (DMX)', 'Licht-A', 'Technik', '2024-09-20 18:30:00', 'André Jäger', 'Grundlagen der DMX-Steuerung.');
 
-INSERT INTO events (id, name, event_datetime, description, status) VALUES
-(1, 'Aufbau für das jährliche Sommerfest', '2024-08-15 10:00:00', 'Aufbau der Hauptbühne für das jährliche Sommerfest. Wir brauchen viele helfende Hände!', 'GEPLANT'),
-(2, 'Theaterprobe für "Die Räuber"', '2024-09-02 18:30:00', 'Technische Betreuung der Theater-Hauptprobe. Licht- und Tontechnik wird benötigt.', 'GEPLANT'),
-(3, 'Konzert der Band "Grüner Würfel"', '2024-10-05 19:00:00', 'Komplette technische Durchführung eines Konzertes für eine lokale Band. Die Straße vor der Halle wird gesperrt.', 'GEPLANT');
+INSERT INTO `events` (`id`, `name`, `event_datetime`, `description`, `status`) VALUES
+(1, 'Aufbau für das jährliche Sommerfest', '2025-08-15 10:00:00', 'Aufbau der Hauptbühne. Wir brauchen viele Hände!', 'GEPLANT'),
+(2, 'Theaterprobe für "Die Räuber"', '2025-09-02 18:30:00', 'Technische Betreuung der Hauptprobe.', 'GEPLANT'),
+(3, 'Konzert der Band "Grüner Würfel"', '2025-10-05 19:00:00', 'Komplette technische Durchführung eines Konzertes.', 'GEPLANT');
 
-INSERT INTO storage_items (name, location, cabinet, shelf, compartment, quantity, image_path) VALUES
-('Mischpult Behringer X32', 'Erdgeschoss', 'Schrank "Bässe"', 'Regal A', 'Fach 2', 1, 'images/x32.jpg'),
-('Mikrofon Shure SM58', 'Erdgeschoss', 'Schrank "Höhen"', 'Kiste 3', '', 8, 'images/sm58.jpg'),
-('LED PAR Scheinwerfer', 'Obergeschoss', 'Regal C', 'Etage 4', '', 12, 'images/ledpar.jpg');
+INSERT INTO `storage_items` (`name`, `location`, `cabinet`, `shelf`, `compartment`, `quantity`, `image_path`) VALUES
+('Mischpult Behringer X32', 'Erdgeschoss', 'Schrank "Bässe"', 'Regal A', 'Fach 2', 1, 'x32.jpg'),
+('Mikrofon Shure SM58', 'Erdgeschoss', 'Schrank "Höhen"', 'Kiste 3', NULL, 8, 'sm58.jpg'),
+('LED PAR Scheinwerfer', 'Obergeschoss', 'Regal C', 'Etage 4', NULL, 12, 'ledpar.jpg');
 
-INSERT INTO files (filename, filepath, category) VALUES
-('Anleitung Mischpult.pdf', 'uploads/anleitung_mischpult.pdf', 'BEDIENUNGSANLEITUNGEN'),
-('DMX Grundlagen für Anfänger.pdf', 'uploads/dmx_grundlagen_fuer_anfaenger.pdf', 'LEHRGAENGE'),
-('Lagerplan Erdgeschoß.pdf', 'uploads/lagerplan_eg.pdf', 'LAGER');
+INSERT INTO `files` (`filename`, `filepath`, `category`) VALUES
+('Anleitung Mischpult.pdf', 'Anleitung Mischpult.pdf', 'BEDIENUNGSANLEITUNGEN'),
+('DMX Grundlagen für Anfänger.pdf', 'DMX Grundlagen für Anfänger.pdf', 'LEHRGAENGE'),
+('Lagerplan Erdgeschoß.pdf', 'Lagerplan Erdgeschoß.pdf', 'LAGER');
 
-INSERT INTO user_qualifications (user_id, course_id) VALUES
-(1, 1), (1, 2), (1, 3), (2, 1), (3, 1), (3, 2), (4, 1), (4, 3);
+INSERT INTO `user_qualifications` (`user_id`, `course_id`, `completion_date`, `status`, `remarks`) VALUES
+(1, 1, '2023-09-10', 'ABSOLVIERT', 'Admin-Qualifikation'),
+(1, 2, '2023-09-15', 'ABSOLVIERT', NULL),
+(1, 3, '2023-09-20', 'ABSOLVIERT', NULL),
+(2, 1, '2024-01-15', 'BESUCHT', 'Muss noch geprüft werden'),
+(3, 1, '2024-01-15', 'ABSOLVIERT', 'Sehr gute Mitarbeit'),
+(3, 2, '2024-02-20', 'BESUCHT', NULL),
+(4, 1, '2024-01-15', 'ABSOLVIERT', NULL),
+(4, 3, '2024-03-10', 'ABSOLVIERT', 'Ausgezeichnetes Verständnis der Lichtkonsole.');
 
-INSERT INTO event_skill_requirements (event_id, required_course_id, required_persons, skill_name) VALUES
-(2, 2, 1, 'Tontechniker'), (2, 3, 1, 'Lichttechniker'), (3, 2, 2, 'Ton'), (3, 3, 1, 'Licht');
+INSERT INTO `event_skill_requirements` (`event_id`, `required_course_id`, `required_persons`, `skill_name`) VALUES
+(2, 2, 1, 'Ton'),
+(2, 3, 1, 'Licht'),
+(3, 2, 2, 'Ton'),
+(3, 3, 1, 'Licht');
 
-INSERT INTO event_attendance (user_id, event_id, signup_status) VALUES
-(3, 2, 'ANGEMELDET'), (4, 2, 'ANGEMELDET');
+INSERT INTO `event_attendance` (`user_id`, `event_id`, `signup_status`) VALUES
+(3, 2, 'ANGEMELDET'),
+(4, 2, 'ANGEMELDET');
 
 -- -----------------------------------------------------
 -- Skript Ende
 -- -----------------------------------------------------
-SELECT 'Datenbank erfolgreich erstellt und mit Umlaut-fähigen Beispieldaten befüllt.' AS status;
+SELECT 'Datenbank erfolgreich erstellt und mit Beispieldaten befüllt.' AS `Status`;

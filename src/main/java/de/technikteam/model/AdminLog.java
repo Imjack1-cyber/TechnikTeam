@@ -3,9 +3,7 @@ package de.technikteam.model;
 import java.time.LocalDateTime;
 
 /**
- * Represents a single log entry for an action performed by an administrator.
- * This is a simple Plain Old Java Object (POJO) to hold data retrieved from the
- * database.
+ * Represents a single log entry for an administrative action.
  */
 public class AdminLog {
 	private int id;

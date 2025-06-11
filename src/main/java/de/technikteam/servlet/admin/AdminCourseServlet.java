@@ -12,8 +12,13 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import de.technikteam.dao.CourseDAO;
 import de.technikteam.model.Course;
+import de.technikteam.model.User;
+import de.technikteam.service.AdminLogService;
 
 @WebServlet("/admin/courses")
 public class AdminCourseServlet extends HttpServlet {
@@ -21,6 +26,7 @@ public class AdminCourseServlet extends HttpServlet {
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(AdminCourseServlet.class);
 	private CourseDAO courseDAO;
 
 	@Override
@@ -68,25 +74,64 @@ public class AdminCourseServlet extends HttpServlet {
 		req.getRequestDispatcher("/admin/admin_course_form.jsp").forward(req, resp);
 	}
 
-	private void handleCreateOrUpdate(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		Course course = new Course();
-		course.setName(req.getParameter("name"));
-		course.setType(req.getParameter("type"));
-		course.setAbbreviation(req.getParameter("abbreviation")); // <-- NEU
-		course.setLeader(req.getParameter("leader"));
-		try {
-			course.setCourseDateTime(LocalDateTime.parse(req.getParameter("courseDateTime")));
-		} catch (DateTimeParseException e) {
-			/* Fehlerbehandlung */ }
+	/**
+	 * Handles both creation and update of a course from the admin form.
+	 * Differentiates based on the presence of a course ID.
+	 *
+	 * @param request  The HttpServletRequest object.
+	 * @param response The HttpServletResponse object.
+	 * @throws IOException If an I/O error occurs.
+	 */
+	private void handleCreateOrUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		String idParam = request.getParameter("id");
+		String name = request.getParameter("name");
 
-		String idParam = req.getParameter("id");
-		if (idParam != null && !idParam.isEmpty()) {
-			course.setId(Integer.parseInt(idParam));
-			courseDAO.updateCourse(course);
-		} else {
-			courseDAO.createCourse(course);
+		try {
+			Course course = new Course();
+			course.setName(name);
+			course.setAbbreviation(request.getParameter("abbreviation")); // Assuming you add this field
+			course.setType(request.getParameter("type"));
+			course.setLeader(request.getParameter("leader"));
+			course.setDescription(request.getParameter("description"));
+			course.setCourseDateTime(LocalDateTime.parse(request.getParameter("courseDateTime")));
+
+			boolean success = false;
+			User adminUser = (User) request.getSession().getAttribute("user");
+
+			if (idParam != null && !idParam.isEmpty()) {
+				// This is an UPDATE action
+				int courseId = Integer.parseInt(idParam);
+				course.setId(courseId);
+				logger.info("Attempting to update course ID: {}", courseId);
+				success = courseDAO.updateCourse(course);
+				if (success) {
+					AdminLogService.log(adminUser.getUsername(), "UPDATE_COURSE",
+							"Updated course '" + name + "' (ID: " + courseId + ")");
+					request.getSession().setAttribute("successMessage", "Lehrgang erfolgreich aktualisiert.");
+				}
+			} else {
+				// This is a CREATE action
+				logger.info("Attempting to create new course: {}", name);
+				success = courseDAO.createCourse(course); // Assuming createCourse now returns boolean
+				if (success) {
+					AdminLogService.log(adminUser.getUsername(), "CREATE_COURSE", "Created new course '" + name + "'");
+					request.getSession().setAttribute("successMessage", "Lehrgang erfolgreich erstellt.");
+				}
+			}
+
+			if (!success) {
+				request.getSession().setAttribute("errorMessage",
+						"Lehrgang konnte nicht gespeichert werden. Name oder Abkürzung existiert möglicherweise bereits.");
+			}
+		} catch (DateTimeParseException e) {
+			logger.error("Invalid date format submitted for course.", e);
+			request.getSession().setAttribute("errorMessage", "Ungültiges Datumsformat.");
+		} catch (Exception e) {
+			logger.error("Error during course creation/update.", e);
+			request.getSession().setAttribute("errorMessage", "Ein unerwarteter Fehler ist aufgetreten.");
 		}
-		resp.sendRedirect(req.getContextPath() + "/admin/courses");
+
+		response.sendRedirect(request.getContextPath() + "/admin/courses");
 	}
 
 	private void handleDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {

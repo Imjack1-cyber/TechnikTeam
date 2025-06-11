@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.dao.UserQualificationsDAO;
 import de.technikteam.model.Event;
@@ -25,36 +26,35 @@ public class AdminUserServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminUserServlet.class);
 
-	// DAOs for database access
 	private UserDAO userDAO;
 	private UserQualificationsDAO userQualificationsDAO;
-	// We need EventDAO to show the user's history on the details page
-	private de.technikteam.dao.EventDAO eventDAO;
+	private EventDAO eventDAO;
 
 	@Override
 	public void init() {
 		userDAO = new UserDAO();
 		userQualificationsDAO = new UserQualificationsDAO();
-		eventDAO = new de.technikteam.dao.EventDAO();
+		eventDAO = new EventDAO();
+		logger.info("AdminUserServlet initialized.");
 	}
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		String action = request.getParameter("action") == null ? "list" : request.getParameter("action");
+		logger.debug("doGet received action: {}", action);
+
 		try {
 			switch (action) {
 			case "details":
 				showUserDetails(request, response);
 				break;
-			case "list":
 			default:
 				listUsers(request, response);
 				break;
 			}
 		} catch (Exception e) {
-			logger.error("Error in doGet of AdminUserServlet", e);
-			request.getSession().setAttribute("errorMessage", "Ein unerwarteter Fehler ist aufgetreten.");
+			logger.error("Error in AdminUserServlet doGet", e);
 			response.sendRedirect(request.getContextPath() + "/admin/users");
 		}
 	}
@@ -63,6 +63,8 @@ public class AdminUserServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		request.setCharacterEncoding("UTF-8");
 		String action = request.getParameter("action");
+		logger.debug("doPost received action: {}", action);
+
 		if (action == null) {
 			response.sendRedirect(request.getContextPath() + "/admin/users");
 			return;
@@ -83,17 +85,20 @@ public class AdminUserServlet extends HttpServlet {
 				handleUpdateQualification(request, response);
 				break;
 			default:
+				logger.warn("Unknown POST action received: {}", action);
 				response.sendRedirect(request.getContextPath() + "/admin/users");
 				break;
 			}
 		} catch (Exception e) {
-			logger.error("Error in doPost of AdminUserServlet", e);
+			logger.error("Error in AdminUserServlet doPost", e);
+			request.getSession().setAttribute("errorMessage", "Ein schwerwiegender Fehler ist aufgetreten.");
 			response.sendRedirect(request.getContextPath() + "/admin/users");
 		}
 	}
 
 	private void listUsers(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+		logger.debug("Listing all users.");
 		List<User> userList = userDAO.getAllUsers();
 		request.setAttribute("userList", userList);
 		request.getRequestDispatcher("/admin/admin_users.jsp").forward(request, response);
@@ -102,6 +107,7 @@ public class AdminUserServlet extends HttpServlet {
 	private void showUserDetails(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		int userId = Integer.parseInt(request.getParameter("id"));
+		logger.debug("Showing details for user ID: {}", userId);
 		User user = userDAO.getUserById(userId);
 		List<UserQualification> qualifications = userQualificationsDAO.getQualificationsForUser(userId);
 		List<Event> eventHistory = eventDAO.getEventHistoryForUser(userId);
@@ -113,90 +119,165 @@ public class AdminUserServlet extends HttpServlet {
 		request.getRequestDispatcher("/admin/admin_user_details.jsp").forward(request, response);
 	}
 
+	/**
+	 * Handles the creation of a new user from the form on the user list page. It
+	 * validates input and provides user feedback via session attributes.
+	 *
+	 * @param request  The HttpServletRequest object.
+	 * @param response The HttpServletResponse object.
+	 * @throws IOException If an I/O error occurs.
+	 */
 	private void handleCreateUser(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		User newUser = new User();
-		newUser.setUsername(request.getParameter("username"));
-		newUser.setRole(request.getParameter("role"));
-		newUser.setClassYear(Integer.parseInt(request.getParameter("classYear")));
-		newUser.setClassName(request.getParameter("className"));
+		String username = request.getParameter("username");
 		String pass = request.getParameter("password");
+		String role = request.getParameter("role");
+		String classYearStr = request.getParameter("classYear");
+		String className = request.getParameter("className");
 
-		if (userDAO.createUser(newUser, pass)) {
-			request.getSession().setAttribute("successMessage", "Benutzer erfolgreich erstellt.");
-		} else {
-			request.getSession().setAttribute("errorMessage", "Benutzer konnte nicht erstellt werden.");
+		logger.info("Attempting to create new user: {}", username);
+
+		// --- Input Validation ---
+		if (username == null || username.trim().isEmpty() || pass == null || pass.trim().isEmpty()) {
+			request.getSession().setAttribute("errorMessage", "Benutzername und Passwort dürfen nicht leer sein.");
+			response.sendRedirect(request.getContextPath() + "/admin/users");
+			return;
 		}
+
+		try {
+			User newUser = new User();
+			newUser.setUsername(username.trim());
+			newUser.setRole(role);
+			// Handle potentially empty number field gracefully
+			newUser.setClassYear(classYearStr != null && !classYearStr.isEmpty() ? Integer.parseInt(classYearStr) : 0);
+			newUser.setClassName(className);
+
+			int newUserId = userDAO.createUser(newUser, pass);
+
+			if (newUserId > 0) {
+				logger.info("Successfully created new user '{}' with ID: {}", username, newUserId);
+				// Log the administrative action
+				User adminUser = (User) request.getSession().getAttribute("user");
+				AdminLogService.log(adminUser.getUsername(), "CREATE_USER",
+						"Created user '" + username + "' (ID: " + newUserId + ")");
+				request.getSession().setAttribute("successMessage",
+						"Benutzer '" + username + "' erfolgreich erstellt.");
+			} else {
+				logger.error("Failed to create new user: {}", username);
+				request.getSession().setAttribute("errorMessage",
+						"Benutzer konnte nicht erstellt werden (ggf. existiert der Name bereits).");
+			}
+		} catch (NumberFormatException e) {
+			logger.error("Invalid format for 'classYear': {}", classYearStr, e);
+			request.getSession().setAttribute("errorMessage", "Ungültiges Format für Jahrgang.");
+		}
+
 		response.sendRedirect(request.getContextPath() + "/admin/users");
 	}
 
 	private void handleUpdateUser(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		int userId = Integer.parseInt(request.getParameter("userId"));
-		User user = userDAO.getUserById(userId); // Get existing user to preserve createdAt
+		logger.info("Attempting to update user data for ID: {}", userId);
+		User user = userDAO.getUserById(userId);
+		if (user != null) {
+			user.setUsername(request.getParameter("username"));
+			user.setRole(request.getParameter("role"));
+			user.setClassYear(Integer.parseInt(request.getParameter("classYear")));
+			user.setClassName(request.getParameter("className"));
 
-		user.setUsername(request.getParameter("username"));
-		user.setRole(request.getParameter("role"));
-		user.setClassYear(Integer.parseInt(request.getParameter("classYear")));
-		user.setClassName(request.getParameter("className"));
-
-		if (userDAO.updateUser(user)) {
-			request.getSession().setAttribute("successMessage", "Benutzerdaten erfolgreich aktualisiert.");
-		} else {
-			request.getSession().setAttribute("errorMessage", "Benutzerdaten konnten nicht aktualisiert werden.");
+			if (userDAO.updateUser(user)) {
+				request.getSession().setAttribute("successMessage", "Benutzerdaten erfolgreich aktualisiert.");
+			} else {
+				request.getSession().setAttribute("errorMessage", "Benutzerdaten konnten nicht aktualisiert werden.");
+			}
 		}
 		response.sendRedirect(request.getContextPath() + "/admin/users?action=details&id=" + userId);
 	}
 
+	/**
+	 * Handles the deletion of a user. THIS IS THE FINAL, CORRECTED METHOD.
+	 */
 	private void handleDeleteUser(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		int userId = Integer.parseInt(request.getParameter("userId"));
-		User adminUser = (User) request.getSession().getAttribute("user");
-		User userToDelete = userDAO.getUserById(userId);
+		try {
+			int userId = Integer.parseInt(request.getParameter("userId"));
+			logger.warn("Attempting to delete user with ID: {}", userId);
 
-		if (userDAO.deleteUser(userId)) {
-			AdminLogService.log(adminUser, "BENUTZER GELÖSCHT", userToDelete.getUsername());
-			request.getSession().setAttribute("successMessage", "Benutzer erfolgreich gelöscht.");
-		} else {
-			request.getSession().setAttribute("errorMessage", "Benutzer konnte nicht gelöscht werden.");
+			User loggedInUser = (User) request.getSession().getAttribute("user");
+			if (loggedInUser != null && loggedInUser.getId() == userId) {
+				logger.warn("Admin {} attempted to delete themselves. Operation denied.", loggedInUser.getUsername());
+				request.getSession().setAttribute("errorMessage", "Sie können sich nicht selbst löschen.");
+				response.sendRedirect(request.getContextPath() + "/admin/users");
+				return;
+			}
+
+			// CORRECT LOGIC: Call the DAO method and check its boolean return value.
+			if (userDAO.deleteUser(userId)) {
+				logger.info("Successfully deleted user with ID: {}", userId);
+				request.getSession().setAttribute("successMessage", "Benutzer erfolgreich gelöscht.");
+			} else {
+				logger.error("Failed to delete user with ID: {}. DAO returned false.", userId);
+				request.getSession().setAttribute("errorMessage", "Benutzer konnte nicht gelöscht werden.");
+			}
+		} catch (NumberFormatException e) {
+			logger.error("Invalid user ID format for deletion.", e);
+			request.getSession().setAttribute("errorMessage", "Ungültige Benutzer-ID.");
 		}
 		response.sendRedirect(request.getContextPath() + "/admin/users");
 	}
 
+	/**
+	 * Handles the submission from the qualification editing modal in the matrix or
+	 * details view. It creates, updates, or deletes a user's qualification record
+	 * based on the selected status.
+	 *
+	 * @param request  The HttpServletRequest object.
+	 * @param response The HttpServletResponse object.
+	 * @throws IOException If an I/O error occurs.
+	 */
 	private void handleUpdateQualification(HttpServletRequest request, HttpServletResponse response)
 			throws IOException {
-		String redirectUrl = request.getContextPath() + "/admin/matrix";
+		String redirectUrl = request.getContextPath() + "/admin/matrix"; // Default redirect
+		int userId = 0; // Initialize to handle potential errors
+
 		try {
-			int userId = Integer.parseInt(request.getParameter("userId"));
-			int courseId = Integer.parseInt(request.getParameter("courseId"));
+			String userIdStr = request.getParameter("userId");
+			String courseIdStr = request.getParameter("courseId");
 			String status = request.getParameter("status");
 			String remarks = request.getParameter("remarks");
+			String dateParam = request.getParameter("completionDate");
+
+			logger.info("--- QUALIFICATION UPDATE RECEIVED ---");
+			logger.info("Raw userId: '{}', courseId: '{}', status: '{}', date: '{}', remarks: '{}'", userIdStr,
+					courseIdStr, status, dateParam, remarks);
+
+			userId = Integer.parseInt(userIdStr);
+			int courseId = Integer.parseInt(courseIdStr);
 
 			LocalDate completionDate = null;
-			String dateParam = request.getParameter("completionDate");
 			if (dateParam != null && !dateParam.isEmpty()) {
 				completionDate = LocalDate.parse(dateParam);
 			}
 
-			logger.info("Admin updating qualification for user: {}, course: {}, new status: {}", userId, courseId,
-					status);
-
-			boolean success = false;
-			if ("NONE".equals(status)) {
-				success = userQualificationsDAO.deleteQualification(userId, courseId);
-			} else if (userQualificationsDAO.qualificationExists(userId, courseId)) {
-				success = userQualificationsDAO.updateQualificationStatus(userId, courseId, status, completionDate,
-						remarks);
-			} else {
-				success = userQualificationsDAO.createQualification(userId, courseId, status, completionDate, remarks);
-			}
-
-			if (success) {
+			if (userQualificationsDAO.updateQualificationStatus(userId, courseId, status, completionDate, remarks)) {
+				AdminLogService.log(((User) request.getSession().getAttribute("user")).getUsername(),
+						"UPDATE_QUALIFICATION", "Updated qualification for user ID " + userId + " and course ID "
+								+ courseId + " to status " + status);
 				request.getSession().setAttribute("successMessage", "Qualifikation erfolgreich aktualisiert.");
 			} else {
-				request.getSession().setAttribute("errorMessage", "Operation an der Qualifikation ist fehlgeschlagen.");
+				request.getSession().setAttribute("errorMessage", "Qualifikation konnte nicht aktualisiert werden.");
 			}
+
+			if ("userDetails".equals(request.getParameter("returnTo"))) {
+				redirectUrl = request.getContextPath() + "/admin/users?action=details&id=" + userId;
+			}
+
+		} catch (NumberFormatException e) {
+			logger.error("Invalid ID format during qualification update.", e);
+			request.getSession().setAttribute("errorMessage", "Fehler: Ungültige ID-Parameter empfangen.");
 		} catch (Exception e) {
-			logger.error("Error during qualification update.", e);
-			request.getSession().setAttribute("errorMessage", "Ein Fehler ist aufgetreten.");
+			logger.error("A generic error occurred during qualification update.", e);
+			request.getSession().setAttribute("errorMessage", "Ein unerwarteter Fehler ist aufgetreten.");
 		}
+
 		response.sendRedirect(redirectUrl);
 	}
 }

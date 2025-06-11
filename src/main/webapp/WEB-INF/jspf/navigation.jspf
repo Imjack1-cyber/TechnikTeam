@@ -1,35 +1,40 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
 <header class="app-header">
-    <a href="${pageContext.request.contextPath}/home" class="logo">Technik Team</a>
-    
-    <nav class="main-nav">
-        <ul>
-            <li><a href="${pageContext.request.contextPath}/events">Events</a></li>
-            <li><a href="${pageContext.request.contextPath}/lehrgaenge">Lehrgänge</a></li>
-            <li><a href="${pageContext.request.contextPath}/lager">Lager</a></li>
-            <li><a href="${pageContext.request.contextPath}/dateien">Dateien</a></li>
-            
-            <%-- Dieser Block wird nur angezeigt, wenn die Rolle 'ADMIN' ist --%>
-            <c:if test="${sessionScope.user.role == 'ADMIN'}">
-                <li><a href="${pageContext.request.contextPath}/admin/dashboard" style="font-weight: bold; color: var(--danger-color);">Admin Panel</a></li>
-            </c:if>
-        </ul>
-    </nav>
-    
-    <%-- KORREKTUR: Dieser Container ist jetzt separat und wird für JEDEN eingeloggten User angezeigt. --%>
-    <div class="user-actions">
-        <span>Hallo, ${sessionScope.user.username}!</span>
-        <a href="${pageContext.request.contextPath}/passwort">Passwort ändern</a>
-        <a href="${pageContext.request.contextPath}/logout" id="logout-link">Ausloggen</a>
-        <%-- Ersetzen Sie den alten <button id="theme-switcher">...</button> --%>
-<div class="theme-switch-wrapper">
-    <label class="theme-switch" for="theme-checkbox">
-        <input type="checkbox" id="theme-checkbox" />
-        <div class="slider round"></div>
-    </label>
-</div>
-    </div>
+	<a href="${pageContext.request.contextPath}/home" class="logo">Technik
+		Team</a>
+
+	<nav class="main-nav">
+		<ul>
+			<li><a href="${pageContext.request.contextPath}/events">Events</a></li>
+			<li><a href="${pageContext.request.contextPath}/lehrgaenge">Lehrgänge</a></li>
+			<li><a href="${pageContext.request.contextPath}/lager">Lager</a></li>
+			<li><a href="${pageContext.request.contextPath}/dateien">Dateien</a></li>
+
+			<%-- Dieser Block wird nur angezeigt, wenn die Rolle 'ADMIN' ist --%>
+			<c:if test="${sessionScope.user.role == 'ADMIN'}">
+				<li><a
+					href="${pageContext.request.contextPath}/admin/dashboard"
+					style="font-weight: bold; color: var(--danger-color);">Admin
+						Panel</a></li>
+			</c:if>
+		</ul>
+	</nav>
+
+	<%-- KORREKTUR: Dieser Container ist jetzt separat und wird für JEDEN eingeloggten User angezeigt. --%>
+	<div class="user-actions">
+		<span>Hallo, ${sessionScope.user.username}!</span> <a
+			href="${pageContext.request.contextPath}/passwort">Passwort
+			ändern</a> <a href="${pageContext.request.contextPath}/logout"
+			id="logout-link">Ausloggen</a>
+		<%-- Ersetzen Sie den alten <button id="theme-switcher">...</button> --%>
+		<div class="theme-switch-wrapper">
+			<label class="theme-switch" for="theme-checkbox"> <input
+				type="checkbox" id="theme-checkbox" />
+				<div class="slider round"></div>
+			</label>
+		</div>
+	</div>
 </header>
 <main>

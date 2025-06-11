@@ -6,25 +6,11 @@ public class File {
 	private int id;
 	private String filename;
 	private String filepath;
-	private String category;
+	private int categoryId;
+	private String categoryName; // Für die Anzeige
 	private LocalDateTime uploadedAt;
-	// Optional: Add an upload timestamp if needed.
-	// private LocalDateTime uploadedAt;
-
-	// Constructors
-	public File() {
-	}
 
 	// Getters and Setters
-
-	public LocalDateTime getUploadedAt() {
-		return uploadedAt;
-	}
-
-	public void setUploadedAt(LocalDateTime uploadedAt) {
-		this.uploadedAt = uploadedAt;
-	}
-
 	public int getId() {
 		return id;
 	}
@@ -49,11 +35,27 @@ public class File {
 		this.filepath = filepath;
 	}
 
-	public String getCategory() {
-		return category;
+	public int getCategoryId() {
+		return categoryId;
 	}
 
-	public void setCategory(String category) {
-		this.category = category;
+	public void setCategoryId(int categoryId) {
+		this.categoryId = categoryId;
+	}
+
+	public String getCategoryName() {
+		return categoryName;
+	}
+
+	public void setCategoryName(String categoryName) {
+		this.categoryName = categoryName;
+	}
+
+	public LocalDateTime getUploadedAt() {
+		return uploadedAt;
+	}
+
+	public void setUploadedAt(LocalDateTime uploadedAt) {
+		this.uploadedAt = uploadedAt;
 	}
 }

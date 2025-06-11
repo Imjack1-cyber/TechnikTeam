@@ -4,7 +4,10 @@
          xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
          version="4.0">
 
-    <!-- Konfigurationen für Session, Welcome-File und JSP bleiben unverändert -->
+    <display-name>TechnikTeam Web Application</display-name>
+
+    <!-- Globale Konfigurationen, die nicht per Annotation gesetzt werden können -->
+
     <session-config>
         <session-timeout>30</session-timeout>
     </session-config>
@@ -13,6 +16,7 @@
         <welcome-file>login.jsp</welcome-file>
     </welcome-file-list>
     
+    <!-- Stellt sicher, dass die Expression Language (${...}) immer aktiviert ist -->
     <jsp-config>
         <jsp-property-group>
             <url-pattern>*.jsp</url-pattern>
@@ -21,46 +25,7 @@
         </jsp-property-group>
     </jsp-config>
 
-    <!-- =================================================================== -->
-    <!--          FINALE, GARANTIERTE FILTER-KONFIGURATION                 -->
-    <!-- =================================================================== -->
-    <!-- Die Reihenfolge der <filter-mapping>-Blöcke legt die Ausführungsreihenfolge fest. -->
-
-    <!-- 1. CharacterEncodingFilter: Wird IMMER als ALLERERSTES ausgeführt. -->
-    <filter>
-        <filter-name>CharacterEncodingFilter</filter-name>
-        <filter-class>de.technikteam.filter.CharacterEncodingFilter</filter-class>
-        <async-supported>true</async-supported>
-    </filter>
-    <filter-mapping>
-        <filter-name>CharacterEncodingFilter</filter-name>
-        <url-pattern>/*</url-pattern>
-    </filter-mapping>
-
-    <!-- 2. AuthenticationFilter: Wird als ZWEITES ausgeführt. -->
-    <filter>
-        <filter-name>AuthenticationFilter</filter-name>
-        <filter-class>de.technikteam.filter.AuthenticationFilter</filter-class>
-        <async-supported>true</async-supported>
-    </filter>
-    <filter-mapping>
-        <filter-name>AuthenticationFilter</filter-name>
-        <url-pattern>/*</url-pattern>
-    </filter-mapping>
-
-    <!-- 3. AdminFilter: Wird als DRITTES ausgeführt, aber nur für /admin/* Pfade. -->
-    <filter>
-        <filter-name>AdminFilter</filter-name>
-        <filter-class>de.technikteam.filter.AdminFilter</filter-class>
-        <async-supported>true</async-supported>
-    </filter>
-    <filter-mapping>
-        <filter-name>AdminFilter</filter-name>
-        <url-pattern>/admin/*</url-pattern>
-    </filter-mapping>
-
-
-    <!-- Fehlerseiten -->
+    <!-- Benutzerdefinierte Fehlerseiten -->
     <error-page>
         <error-code>404</error-code>
         <location>/error404.jsp</location>
@@ -69,5 +34,7 @@
         <error-code>500</error-code>
         <location>/error500.jsp</location>
     </error-page>
+    
+    <!-- Alle Servlet- und Filter-Mappings werden jetzt über Annotationen gesteuert. -->
 
 </web-app>

@@ -22,8 +22,8 @@ import de.technikteam.dao.FileDAO;
 import de.technikteam.model.File; // Our own model: de.technikteam.model.File
 import de.technikteam.model.FileCategory;
 
-@WebServlet("/admin/files")
 @MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 20, maxRequestSize = 1024 * 1024 * 50)
+@WebServlet("/admin/files")
 public class AdminFileServlet extends HttpServlet {
 	/**
 	 * 
@@ -45,15 +45,12 @@ public class AdminFileServlet extends HttpServlet {
 
 		logger.debug("GET request for AdminFileServlet received. Forwarding to file management page.");
 
-		// 1. Alle Dateien für die Liste holen
+		// Daten für die beiden Haupt-Blöcke der Seite laden
 		Map<String, List<File>> groupedFiles = fileDAO.getAllFilesGroupedByCategory();
+		List<FileCategory> allCategories = fileDAO.getAllCategories(); // Liste für das Dropdown
 
-		// 2. Alle Kategorien für das Dropdown-Menü holen
-		List<FileCategory> categories = fileCategoryDAO.getAll();
-
-		// 3. Beide Daten an die JSP übergeben
 		request.setAttribute("groupedFiles", groupedFiles);
-		request.setAttribute("categories", categories);
+		request.setAttribute("allCategories", allCategories); // An JSP übergeben
 
 		request.getRequestDispatcher("/admin/admin_files.jsp").forward(request, response);
 	}
@@ -80,28 +77,37 @@ public class AdminFileServlet extends HttpServlet {
 
 			Part filePart = request.getPart("file");
 			String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
-			String category = request.getParameter("category");
 
-			if (fileName.isEmpty()) {
-				request.getSession().setAttribute("errorMessage", "Bitte wählen Sie eine Datei aus.");
-			} else if (category == null || category.isEmpty()) {
+			// Die categoryId als Zahl aus dem Formular lesen
+			int categoryId = 0;
+			try {
+				categoryId = Integer.parseInt(request.getParameter("categoryId"));
+			} catch (NumberFormatException e) {
+				logger.warn("No valid category ID provided.");
+			}
+
+			if (fileName == null || fileName.isEmpty()) {
+				request.getSession().setAttribute("errorMessage", "Bitte wählen Sie eine Datei zum Hochladen aus.");
+			} else if (categoryId == 0) {
 				request.getSession().setAttribute("errorMessage", "Bitte wählen Sie eine Kategorie aus.");
 			} else {
 				java.io.File targetFile = new java.io.File(uploadDir, fileName);
 				filePart.write(targetFile.getAbsolutePath());
 				logger.info("File uploaded to: {}", targetFile.getAbsolutePath());
 
+				// Das File-Objekt mit den korrekten Daten erstellen
 				File newDbFile = new File();
 				newDbFile.setFilename(fileName);
-				newDbFile.setFilepath(fileName); // Store only the filename in DB
-				newDbFile.setCategory(category);
+				newDbFile.setFilepath(fileName); // Nur der Dateiname für den Download-Servlet
+				newDbFile.setCategoryId(categoryId); // Die ID setzen, nicht den String
 
-				if (!fileDAO.createFile(newDbFile)) {
-					request.getSession().setAttribute("errorMessage", "DB-Fehler: Datei existiert bereits.");
-					targetFile.delete(); // Delete the uploaded file if DB insert fails
-				} else {
+				if (fileDAO.createFile(newDbFile)) {
 					request.getSession().setAttribute("successMessage",
 							"Datei '" + fileName + "' erfolgreich hochgeladen.");
+				} else {
+					request.getSession().setAttribute("errorMessage",
+							"DB-Fehler: Eine Datei mit diesem Namen existiert bereits.");
+					targetFile.delete();
 				}
 			}
 		} catch (Exception e) {

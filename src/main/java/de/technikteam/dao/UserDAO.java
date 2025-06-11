@@ -5,6 +5,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -94,21 +95,41 @@ public class UserDAO {
 		return null;
 	}
 
-	// --- HIER SIND DIE FEHLENDEN METHODEN ---
+	// Ersetzen Sie die bestehende createUser-Methode
 
-	public boolean createUser(User user, String password) {
+	/**
+	 * Creates a new user in the database.
+	 * 
+	 * @param user     The User object containing the data.
+	 * @param password The plain text password.
+	 * @return The ID of the newly created user, or 0 if creation failed.
+	 */
+	public int createUser(User user, String password) {
 		String sql = "INSERT INTO users (username, password_hash, role, class_year, class_name) VALUES (?, ?, ?, ?, ?)";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = DatabaseManager.getConnection();
+				PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
 			pstmt.setString(1, user.getUsername());
 			pstmt.setString(2, password);
 			pstmt.setString(3, user.getRole());
 			pstmt.setInt(4, user.getClassYear());
 			pstmt.setString(5, user.getClassName());
-			return pstmt.executeUpdate() > 0;
+
+			int affectedRows = pstmt.executeUpdate();
+
+			if (affectedRows > 0) {
+				try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
+					if (generatedKeys.next()) {
+						int newUserId = generatedKeys.getInt(1);
+						logger.info("Successfully created user '{}' with ID: {}", user.getUsername(), newUserId);
+						return newUserId; // Gibt die neue ID zurück
+					}
+				}
+			}
 		} catch (SQLException e) {
 			logger.error("SQL error creating user '{}'.", user.getUsername(), e);
-			return false;
 		}
+		return 0; // Fehlerfall
 	}
 
 	// Ersetzen Sie die bestehende updateUser-Methode

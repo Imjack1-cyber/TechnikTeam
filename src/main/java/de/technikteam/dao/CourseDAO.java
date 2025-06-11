@@ -3,6 +3,7 @@ package de.technikteam.dao;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
@@ -22,25 +23,6 @@ import de.technikteam.model.User;
  */
 public class CourseDAO {
 	private static final Logger logger = LogManager.getLogger(CourseDAO.class);
-
-	/**
-	 * Helper method to map a row from a ResultSet to a Course object. Reduces code
-	 * duplication.
-	 * 
-	 * @param rs The ResultSet to map.
-	 * @return A populated Course object.
-	 * @throws SQLException If a database access error occurs.
-	 */
-	private Course mapResultSetToCourse(ResultSet rs) throws SQLException {
-		Course course = new Course();
-		course.setId(rs.getInt("id"));
-		course.setName(rs.getString("name"));
-		course.setType(rs.getString("type"));
-		course.setCourseDateTime(rs.getTimestamp("course_datetime").toLocalDateTime());
-		course.setLeader(rs.getString("leader"));
-		course.setDescription(rs.getString("description"));
-		return course;
-	}
 
 	// --- Methods for Public (User-Facing) Views ---
 
@@ -94,27 +76,6 @@ public class CourseDAO {
 			logger.error("SQL error fetching course by ID: {}", courseId, e);
 		}
 		return null;
-	}
-
-	/**
-	 * Fetches all courses, typically for an admin list view.
-	 * 
-	 * @return A list of all Course objects.
-	 */
-	public List<Course> getAllCourses() {
-		logger.debug("Fetching all courses from database.");
-		List<Course> courses = new ArrayList<>();
-		String sql = "SELECT * FROM courses ORDER BY course_datetime DESC";
-		try (Connection conn = DatabaseManager.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
-			while (rs.next()) {
-				courses.add(mapResultSetToCourse(rs));
-			}
-		} catch (SQLException e) {
-			logger.error("SQL error fetching all courses.", e);
-		}
-		return courses;
 	}
 
 	/**
@@ -285,5 +246,72 @@ public class CourseDAO {
 			logger.error("SQL error fetching signed-up users for course ID: {}", courseId, e);
 		}
 		return users;
+	}
+
+	/**
+	 * Helper method to map a row from a ResultSet to a Course object. It safely
+	 * checks for the existence of optional columns like 'abbreviation'.
+	 *
+	 * @param rs The ResultSet to map from.
+	 * @return A populated Course object.
+	 * @throws SQLException If a database access error occurs.
+	 */
+	private Course mapResultSetToCourse(ResultSet rs) throws SQLException {
+		Course course = new Course();
+		course.setId(rs.getInt("id"));
+		course.setName(rs.getString("name"));
+		course.setType(rs.getString("type"));
+		course.setCourseDateTime(rs.getTimestamp("course_datetime").toLocalDateTime());
+		course.setLeader(rs.getString("leader"));
+		course.setDescription(rs.getString("description"));
+
+		// Safely check if the 'abbreviation' column was part of the SELECT query
+		if (hasColumn(rs, "abbreviation")) {
+			course.setAbbreviation(rs.getString("abbreviation"));
+		}
+
+		return course;
+	}
+
+	/**
+	 * Fetches all courses from the database, sorted by date. This is typically used
+	 * for the admin list view. The "SELECT *" ensures all columns, including the
+	 * new 'abbreviation', are fetched.
+	 *
+	 * @return A list of all Course objects.
+	 */
+	public List<Course> getAllCourses() {
+		logger.debug("Fetching all courses from database.");
+		List<Course> courses = new ArrayList<>();
+		// Using "SELECT *" is a simple way to ensure all columns are retrieved.
+		String sql = "SELECT * FROM courses ORDER BY course_datetime DESC";
+
+		try (Connection conn = DatabaseManager.getConnection();
+				Statement stmt = conn.createStatement();
+				ResultSet rs = stmt.executeQuery(sql)) {
+
+			while (rs.next()) {
+				courses.add(mapResultSetToCourse(rs));
+			}
+			logger.info("Fetched {} total courses.", courses.size());
+		} catch (SQLException e) {
+			logger.error("SQL error while fetching all courses.", e);
+		}
+		return courses;
+	}
+
+	/**
+	 * Helper method to check if a ResultSet contains a certain column name. This
+	 * prevents errors if a query doesn't select all columns.
+	 */
+	private boolean hasColumn(ResultSet rs, String columnName) throws SQLException {
+		ResultSetMetaData rsmd = rs.getMetaData();
+		int columns = rsmd.getColumnCount();
+		for (int x = 1; x <= columns; x++) {
+			if (columnName.equalsIgnoreCase(rsmd.getColumnName(x))) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

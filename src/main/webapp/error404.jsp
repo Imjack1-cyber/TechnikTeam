@@ -1,54 +1,105 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" isErrorPage="true" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt"%>
+<jsp:useBean id="now" class="java.util.Date" />
 
-<%-- 
-  This page is displayed for 404 Not Found errors.
-  It informs the user that the requested page does not exist and provides a clear way back.
---%>
-<!DOCTYPE html>
+<%-- Import the standard header. It provides the HTML structure, CSS, and JS. --%>
 <c:import url="/WEB-INF/jspf/header.jspf">
-    <c:param name="title" value="Seite nicht gefunden"/>
+	<c:param name="title" value="404 - Seite nicht gefunden" />
 </c:import>
 
-<%-- We don't include the main navigation here, as a 404 can be hit by unauthenticated users. --%>
+<%-- 
+  We will NOT import the main navigation (navigation.jspf) because this error
+  can occur for users who are not logged in. Showing the nav could be confusing.
+  Instead, we create a simplified header.
+--%>
+<header class="app-header">
+	<a href="${pageContext.request.contextPath}/home" class="logo">Technik
+		Team</a>
+	<div class="theme-switch-wrapper">
+		<label class="theme-switch" for="theme-checkbox"> <input
+			type="checkbox" id="theme-checkbox" />
+			<div class="slider round"></div>
+		</label>
+	</div>
+</header>
 
 <main>
-    <div class="error-container">
-        <h1>Fehler 404 - Seite nicht gefunden</h1>
-        <p>
-            Ups! Die von Ihnen angeforderte URL konnte auf diesem Server nicht gefunden werden.
-            Möglicherweise haben Sie sich vertippt oder der Link ist veraltet.
-        </p>
-        <p>
-            Bitte überprüfen Sie die Adresse oder kehren Sie zur Startseite zurück.
-        </p>
-        <a href="${pageContext.request.contextPath}/home" class="btn">Zur Startseite</a>
-    </div>
+	<div class="error-container">
+		<div class="error-icon">⚠️</div>
+		<h1>Seite nicht gefunden</h1>
+		<h2>Fehlercode 404</h2>
+
+		<p>
+			Die von Ihnen aufgerufene Seite <strong><c:out
+					value="${pageContext.errorData.requestURI}" /></strong> existiert leider
+			nicht.
+		</p>
+		<p>Möglicherweise haben Sie sich vertippt oder der Link ist
+			veraltet.</p>
+
+		<a href="${pageContext.request.contextPath}/home" class="btn">Zurück
+			zur Startseite</a>
+
+		<div class="error-details">
+			Fehlerzeitpunkt:
+			<fmt:formatDate value="${now}" type="both" dateStyle="long"
+				timeStyle="medium" />
+		</div>
+	</div>
 </main>
 
 <style>
-    /* Specific styles for the error page content */
-    .error-container {
-        text-align: center;
-        padding: 4rem 1rem;
-        max-width: 600px;
-        margin: 2rem auto;
-        background-color: var(--card-bg);
-        border-radius: 8px;
-        border: 1px solid var(--border-color);
-    }
-    .error-container h1 {
-        font-size: 2.5rem;
-        color: var(--danger-color);
-    }
-    .error-container p {
-        margin-bottom: 1.5rem;
-        font-size: 1.1rem;
-    }
-    .error-container .btn {
-        font-size: 1.2rem;
-        padding: 0.8rem 2rem;
-    }
+/* Specific styles for the error page content */
+.error-container {
+	text-align: center;
+	padding: 2rem;
+	margin: 2rem auto;
+	max-width: 650px;
+	background-color: var(--card-bg);
+	border-radius: 12px;
+	border: 1px solid var(--border-color);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.error-icon {
+	font-size: 4rem;
+	color: var(--primary-color);
+	margin-bottom: 1rem;
+}
+
+.error-container h1 {
+	font-size: 2.2rem;
+	color: var(--text-color);
+	margin-bottom: 0.25rem;
+}
+
+.error-container h2 {
+	font-size: 1.2rem;
+	color: #888;
+	font-weight: 500;
+	margin-bottom: 2rem;
+}
+
+.error-container p {
+	margin-bottom: 1rem;
+	font-size: 1.1rem;
+	line-height: 1.6;
+}
+
+.error-container .btn {
+	margin-top: 1rem;
+}
+
+.error-details {
+	margin-top: 2rem;
+	font-size: 0.85rem;
+	color: #aaa;
+	border-top: 1px solid var(--border-color);
+	padding-top: 1rem;
+}
 </style>
 
+<%-- Import the standard footer --%>
 <c:import url="/WEB-INF/jspf/footer.jspf" />

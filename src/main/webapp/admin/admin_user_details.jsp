@@ -1,112 +1,54 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" isELIgnored="false" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
-<%@ taglib prefix="java-time" uri="http://sargue.net/jsptags/time"%>
-<c:import url="/WEB-INF/jspf/header.jspf">
-	<c:param name="title" value="Benutzerdetails" />
-</c:import>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib prefix="java-time" uri="http://sargue.net/jsptags/time" %>
+
+<c:import url="/WEB-INF/jspf/header.jspf"><c:param name="title" value="Benutzerdetails bearbeiten"/></c:import>
 <c:import url="/WEB-INF/jspf/admin_navigation.jspf" />
 
-<h1>Benutzerdetails: ${userToEdit.username}</h1>
+<h1>Benutzerdetails bearbeiten: <c:out value="${userToEdit.username}"/></h1>
+<a href="${pageContext.request.contextPath}/admin/users" style="display: inline-block; margin-bottom: 1rem;">« Zurück zur Benutzerliste</a>
 
-<!-- User Data Form -->
-<div class="card">
-	<h2 class="card-title">Stammdaten</h2>
-	<form action="${pageContext.request.contextPath}/admin/users"
-		method="post" class="user-form">
-		<input type="hidden" name="action" value="update"> <input
-			type="hidden" name="userId" value="${userToEdit.id}">
-		<div class="form-group">
-			<label>Benutzername</label><input type="text" name="username"
-				value="${userToEdit.username}" required>
-		</div>
-		<div class="form-group">
-			<label>Rolle</label><select name="role"><option
-					value="NUTZER" ${userToEdit.role == 'NUTZER' ? 'selected' : ''}>Nutzer</option>
-				<option value="ADMIN"
-					${userToEdit.role == 'ADMIN' ? 'selected' : ''}>Admin</option></select>
-		</div>
-		<div class="form-group">
-			<label>Registriert seit</label><input type="text"
-				value="<java-time:format value="${userToEdit.createdAt}" pattern="dd.MM.yyyy HH:mm"/>"
-				readonly>
-		</div>
-		<div class="form-group">
-			<label>Jahrgang</label>
-			<input type="number" name="classYear" value="${userToEdit.classYear}">
-		</div>
-		<div class="form-group">
-			<label>Klasse</label><input type="text" name="className"
-				value="${userToEdit.className}">
-		</div>
-		<button type="submit" class="btn">Stammdaten speichern</button>
-	</form>
+<!-- Display success or error messages -->
+<c:if test="${not empty sessionScope.successMessage}"><p class="success-message">${sessionScope.successMessage}</p><c:remove var="successMessage" scope="session" /></c:if>
+<c:if test="${not empty sessionScope.errorMessage}"><p class="error-message">${sessionScope.errorMessage}</p><c:remove var="errorMessage" scope="session" /></c:if>
+
+<div class="card form-container">
+    <form action="${pageContext.request.contextPath}/admin/users" method="post">
+        <input type="hidden" name="action" value="update">
+        <input type="hidden" name="userId" value="${userToEdit.id}">
+        
+        <h2 class="card-title">Stammdaten</h2>
+        <div class="form-group">
+            <label for="username">Benutzername</label>
+            <input type="text" id="username" name="username" value="${userToEdit.username}" required>
+        </div>
+        <div class="form-group">
+            <label for="role">Rolle</label>
+            <select name="role" id="role">
+                <option value="NUTZER" ${userToEdit.role == 'NUTZER' ? 'selected' : ''}>Nutzer</option>
+                <option value="ADMIN" ${userToEdit.role == 'ADMIN' ? 'selected' : ''}>Admin</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="classYear">Jahrgang</label>
+            <input type="number" id="classYear" name="classYear" value="${userToEdit.classYear}" placeholder="z.B. 2025">
+        </div>
+        <div class="form-group">
+            <label for="className">Klasse</label>
+            <input type="text" id="className" name="className" value="${userToEdit.className}" placeholder="z.B. 10b">
+        </div>
+        <div class="form-group">
+            <label>Registriert seit</label>
+            <%-- Formatierung des Datums, das jetzt vom DAO geladen wird --%>
+            <input type="text" value="<c:if test='${not empty userToEdit.createdAt}'><java-time:format value='${userToEdit.createdAt}' pattern='dd.MM.yyyy HH:mm'/></c:if>" readonly class="readonly-field">
+        </div>
+        <button type="submit" class="btn">Änderungen speichern</button>
+    </form>
 </div>
 
-<!-- Qualifications Management Table -->
-<div class="card" style="margin-top: 2rem;">
-	<h2 class="card-title">Lehrg&auml;nge &amp; Qualifikationen verwalten</h2>
-	<c:if test="${empty qualifications}">
-		<p>Dieser Benutzer hat noch keine Lehrgänge besucht.</p>
-	</c:if>
-	<table class="styled-table"
-		<c:if test="${empty qualifications}">style="display:none;"</c:if>>
-		<thead>
-			<tr>
-				<th>Lehrgang</th>
-				<th>Status</th>
-				<th>Absolviert am</th>
-				<th>Aktion</th>
-			</tr>
-		</thead>
-		<tbody>
-			<c:forEach var="q" items="${qualifications}">
-				<form action="${pageContext.request.contextPath}/admin/users"
-					method="post">
-					<input type="hidden" name="action" value="updateQualification">
-					<input type="hidden" name="userId" value="${userToEdit.id}">
-					<input type="hidden" name="courseId" value="${q.courseId}">
-					<tr>
-						<td>${q.courseName}</td>
-						<td><select name="status"><option value="BESUCHT"
-									${q.status == 'BESUCHT' ? 'selected' : ''}>Besucht</option>
-								<option value="ABSOLVIERT"
-									${q.status == 'ABSOLVIERT' ? 'selected' : ''}>Absolviert</option></select></td>
-						<td><input type="date" name="completionDate"
-							value="${q.completionDate}"></td>
-						<td><button type="submit" class="btn-small">Update</button></td>
-					</tr>
-				</form>
-			</c:forEach>
-		</tbody>
-	</table>
-</div>
-
-<!-- Event History Table -->
-<div class="card" style="margin-top: 2rem;">
-	<h2 class="card-title">Event-Teilnahmehistorie</h2>
-	<c:if test="${empty eventHistory}">
-		<p>Dieser Benutzer hat noch an keinen Events teilgenommen.</p>
-	</c:if>
-	<table class="styled-table"
-		<c:if test="${empty eventHistory}">style="display:none;"</c:if>>
-		<thead>
-			<tr>
-				<th>Event</th>
-				<th>Datum</th>
-				<th>Teilnahmestatus</th>
-			</tr>
-		</thead>
-		<tbody>
-			<c:forEach var="event" items="${eventHistory}">
-				<tr>
-					<td>${event.name}</td>
-					<td><java-time:format value="${event.eventDateTime}"
-							pattern="dd.MM.yyyy" /></td>
-					<td>${event.userAttendanceStatus}</td>
-				</tr>
-			</c:forEach>
-		</tbody>
-	</table>
-</div>
+<style>
+.form-container { max-width: 700px; margin: auto; }
+.readonly-field { background-color: var(--secondary-color); border: 1px solid var(--border-color); cursor: not-allowed; }
+</style>
 
 <c:import url="/WEB-INF/jspf/footer.jspf" />
