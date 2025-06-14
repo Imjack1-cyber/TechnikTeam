@@ -20,43 +20,37 @@
 
     <dependencies>
         <!-- Servlet API -->
-        <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>javax.servlet-api</artifactId>
-            <version>4.0.1</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- JSP API -->
-        <dependency>
-            <groupId>javax.servlet.jsp</groupId>
-            <artifactId>javax.servlet.jsp-api</artifactId>
-            <version>2.3.3</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- JSTL API -->
-        <dependency>
-            <groupId>javax.servlet.jsp.jstl</groupId>
-            <artifactId>javax.servlet.jsp.jstl-api</artifactId>
-            <version>1.2.2</version>
-        </dependency>
+        <!-- Replace the old servlet-api with this one -->
+		<dependency>
+		    <groupId>jakarta.servlet</groupId>
+		    <artifactId>jakarta.servlet-api</artifactId>
+		    <version>6.0.0</version>
+		    <scope>provided</scope>
+		</dependency>
+		
+		<!-- Replace the old jsp-api with this one -->
+		<dependency>
+		    <groupId>jakarta.servlet.jsp</groupId>
+		    <artifactId>jakarta.servlet.jsp-api</artifactId>
+		    <version>3.1.0</version>
+		    <scope>provided</scope>
+		</dependency>
         
-        <!-- JSTL Implementation (Standard Tag Library) -->
-        <dependency>
-            <groupId>org.glassfish.web</groupId>
-            <artifactId>javax.servlet.jsp.jstl</artifactId>
-            <version>1.2.5</version>
-        </dependency>
+        <!-- ADD THIS BLOCK -->
+		<dependency>
+		    <groupId>org.glassfish.web</groupId>
+		    <artifactId>jakarta.servlet.jsp.jstl</artifactId>
+		    <version>3.0.1</version> <!-- Use the modern version for Jakarta EE -->
+		</dependency>
 
-        <!-- MySQL JDBC Driver -->
+		<!-- MySQL JDBC Driver -->
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <version>8.0.33</version>
         </dependency>
-        
-        <!-- Logging -->
+
+		<!-- Logging -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>
@@ -68,7 +62,7 @@
             <version>2.23.1</version>
         </dependency>
 
-        <!-- JUnit for Testing -->
+		<!-- JUnit for Testing -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
