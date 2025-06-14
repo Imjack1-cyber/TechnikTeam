@@ -4,15 +4,15 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Enumeration;
 
-import javax.servlet.ServletContextEvent;
-import javax.servlet.ServletContextListener;
-import javax.servlet.annotation.WebListener;
-
 // Wir benötigen den Import für den AbandonedConnectionCleanupThread nicht mehr.
 // import com.mysql.cj.jdbc.AbandonedConnectionCleanupThread; 
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import jakarta.servlet.ServletContextEvent;
+import jakarta.servlet.ServletContextListener;
+import jakarta.servlet.annotation.WebListener;
 
 @WebListener
 public class AppContextListener implements ServletContextListener {

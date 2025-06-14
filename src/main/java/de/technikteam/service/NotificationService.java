@@ -5,11 +5,11 @@ import java.io.PrintWriter;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import javax.servlet.AsyncContext;
-import javax.servlet.http.HttpServletRequest;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import jakarta.servlet.AsyncContext;
+import jakarta.servlet.http.HttpServletRequest;
 
 // Singleton service to manage SSE connections
 public class NotificationService {

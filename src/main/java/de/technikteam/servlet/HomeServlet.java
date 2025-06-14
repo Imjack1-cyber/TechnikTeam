@@ -3,17 +3,16 @@ package de.technikteam.servlet;
 import java.io.IOException;
 import java.util.List;
 
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import de.technikteam.dao.CourseDAO;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.model.Course;
 import de.technikteam.model.Event;
 import de.technikteam.model.User;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 // Servlet for the home page.
 @WebServlet("/home")
