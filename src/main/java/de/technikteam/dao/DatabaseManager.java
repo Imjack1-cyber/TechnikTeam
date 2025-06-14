@@ -11,8 +11,8 @@ public class DatabaseManager {
 	private static final Logger logger = LogManager.getLogger(DatabaseManager.class);
 
 	private static final String DB_URL = "jdbc:mysql://localhost:3306/technik_team_db?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=UTC";
-	private static final String USER = "technik_user";
-	private static final String PASS = "ein_sicheres_passwort";
+	private static final String USER = "admin";
+	private static final String PASS = "cvoqgcecxa";
 
 	private static Connection connection = null;
 
