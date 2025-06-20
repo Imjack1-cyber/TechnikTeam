@@ -97,24 +97,15 @@ public class AdminCourseServlet extends HttpServlet {
 			boolean success = false;
 			User adminUser = (User) request.getSession().getAttribute("user");
 
-			if (idParam != null && !idParam.isEmpty()) {
-				// This is an UPDATE action
-				int courseId = Integer.parseInt(idParam);
-				course.setId(courseId);
-				logger.info("Attempting to update course ID: {}", courseId);
-				success = courseDAO.updateCourse(course);
-				if (success) {
+			if (idParam != null && !idParam.isEmpty()) { // Update
+				if (courseDAO.updateCourse(course)) {
 					AdminLogService.log(adminUser.getUsername(), "UPDATE_COURSE",
-							"Updated course '" + name + "' (ID: " + courseId + ")");
-					request.getSession().setAttribute("successMessage", "Lehrgang erfolgreich aktualisiert.");
+							"Lehrgang '" + course.getName() + "' (ID: " + course.getId() + ") aktualisiert.");
 				}
-			} else {
-				// This is a CREATE action
-				logger.info("Attempting to create new course: {}", name);
-				success = courseDAO.createCourse(course); // Assuming createCourse now returns boolean
-				if (success) {
-					AdminLogService.log(adminUser.getUsername(), "CREATE_COURSE", "Created new course '" + name + "'");
-					request.getSession().setAttribute("successMessage", "Lehrgang erfolgreich erstellt.");
+			} else { // Create
+				if (courseDAO.createCourse(course)) {
+					AdminLogService.log(adminUser.getUsername(), "CREATE_COURSE",
+							"Lehrgang '" + course.getName() + "' erstellt.");
 				}
 			}
 
@@ -135,7 +126,12 @@ public class AdminCourseServlet extends HttpServlet {
 
 	private void handleDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		int courseId = Integer.parseInt(req.getParameter("id"));
-		courseDAO.deleteCourse(courseId);
+		Course course = courseDAO.getCourseById(courseId); // Namen holen
+		if (courseDAO.deleteCourse(courseId)) {
+			User adminUser = (User) req.getSession().getAttribute("user");
+			AdminLogService.log(adminUser.getUsername(), "DELETE_COURSE",
+					"Lehrgang '" + course.getName() + "' (ID: " + courseId + ") gelöscht.");
+		}
 		resp.sendRedirect(req.getContextPath() + "/admin/courses");
 	}
 }

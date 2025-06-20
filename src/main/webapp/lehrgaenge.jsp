@@ -1,6 +1,5 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" isELIgnored="false" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
-<%@ taglib prefix="java-time" uri="http://sargue.net/jsptags/time" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <c:import url="/WEB-INF/jspf/header.jspf"><c:param name="title" value="Lehrgänge"/></c:import>
 <c:import url="/WEB-INF/jspf/navigation.jspf" />
 
@@ -23,7 +22,7 @@
                         <tr class="course-row" data-attended="${attendedCourseIds.contains(course.id) ? 'true' : 'false'}">
                             <td><a href="${pageContext.request.contextPath}/courseDetails?id=${course.id}">${course.name}</a></td>
                             <td>${course.type}</td>
-                            <td><java-time:format value="${course.courseDateTime}" pattern="dd.MM.yyyy HH:mm" /> Uhr</td>
+                            <td><strong>Datum:</strong> ${event.formattedEventDateTime} Uhr</td>
                             <td>${course.leader}</td>
                             <td>
                                 <form action="${pageContext.request.contextPath}/course-action" method="post" class="attendance-form" style="display: flex; align-items: center; gap: 1rem;">

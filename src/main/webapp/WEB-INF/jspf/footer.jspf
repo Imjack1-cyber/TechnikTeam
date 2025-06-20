@@ -1,7 +1,6 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 </main>
 <footer class="app-footer">
-    <p>Bei Problemen bitte bei jacques.serenz@no-bs.de melden.</p>
+    <p>© 2025 Technik Team. Alle Rechte vorbehalten.</p>
 </footer>
 <script src="${pageContext.request.contextPath}/js/main.js"></script>
 </body>

@@ -1,13 +1,12 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" isELIgnored="false" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
-<%@ taglib prefix="java-time" uri="http://sargue.net/jsptags/time" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <c:import url="/WEB-INF/jspf/header.jspf"><c:param name="title" value="Lehrgangsdetails"/></c:import>
 <c:import url="/WEB-INF/jspf/navigation.jspf" />
 
 <div class="details-container">
     <h1>${course.name}</h1>
     <p class="details-info">
-        <strong>Termin:</strong> <java-time:format value="${course.courseDateTime}" pattern="EEEE, dd. MMMM yyyy 'um' HH:mm" /> Uhr
+        <strong>Termin:</strong> <strong>Datum:</strong> ${event.formattedEventDateTime} Uhr
     </p>
     <p class="details-info">
         <strong>Leitung:</strong> ${not empty course.leader ? course.leader : 'N/A'}

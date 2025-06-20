@@ -5,39 +5,24 @@
 <c:import url="/WEB-INF/jspf/admin_navigation.jspf" />
 
 <h1>Lehrgangsverwaltung</h1>
-<p>Hier können Sie neue Lehrgänge anlegen und bestehende verwalten.</p>
-
-<c:if test="${not empty sessionScope.successMessage}"><p class="success-message">${sessionScope.successMessage}</p><c:remove var="successMessage" scope="session" /></c:if>
-<c:if test="${not empty sessionScope.errorMessage}"><p class="error-message">${sessionScope.errorMessage}</p><c:remove var="errorMessage" scope="session" /></c:if>
-
-<a href="${pageContext.request.contextPath}/admin/courses?action=new" class="btn" style="margin-bottom: 1rem; display: inline-block;">Neuen Lehrgang anlegen</a>
-
+<a href="${pageContext.request.contextPath}/admin/courses?action=new" class="btn" style="margin-bottom: 1rem;">Neuen Lehrgang anlegen</a>
 <div class="card">
     <table class="styled-table">
         <thead>
-            <tr>
-                <th>Name</th>
-                <th>Typ</th>
-                <th>Abkürzung</th>
-                <th>Datum & Uhrzeit</th>
-                <th>Leitung</th>
-                <th>Aktionen</th>
-            </tr>
+            <tr><th>Name</th><th>Typ</th><th>Datum & Uhrzeit</th><th>Leitung</th><th>Aktionen</th></tr>
         </thead>
         <tbody>
             <c:forEach var="course" items="${courseList}">
                 <tr>
-                    <td>${course.name}</td>
-                    <td>${course.type}</td>
-                    <td>${course.abbreviation}</td>
-                    <td><java-time:format value="${course.courseDateTime}" pattern="dd.MM.yyyy HH:mm" /> Uhr</td>
-                    <td>${course.leader}</td>
-                    <td>
+                    <td data-label="Name">${course.name}</td>
+                    <td data-label="Typ">${course.type}</td>
+                    <td data-label="Datum & Uhrzeit"><java-time:format value="${course.courseDateTime}" pattern="dd.MM.yyyy HH:mm" /> Uhr</td>
+                    <td data-label="Leitung">${course.leader}</td>
+                    <td data-label="Aktionen">
                         <a href="${pageContext.request.contextPath}/admin/courses?action=edit&id=${course.id}" class="btn-small">Bearbeiten</a>
                         <form action="${pageContext.request.contextPath}/admin/courses" method="post" style="display:inline;">
-                           <input type="hidden" name="action" value="delete">
-                           <input type="hidden" name="id" value="${course.id}">
-                           <button type="submit" class="btn-small btn-danger" onclick="return confirm('Lehrgang \'${course.name}\' wirklich löschen?')">Löschen</button>
+                           <input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="${course.id}">
+                           <button type="submit" class="btn-small btn-danger" onclick="return confirm('Lehrgang wirklich löschen?')">Löschen</button>
                         </form>
                     </td>
                 </tr>
@@ -45,5 +30,4 @@
         </tbody>
     </table>
 </div>
-
 <c:import url="/WEB-INF/jspf/footer.jspf" />

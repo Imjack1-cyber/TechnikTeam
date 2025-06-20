@@ -84,4 +84,8 @@ public class Course {
 	public void setUserAttendanceStatus(String userAttendanceStatus) {
 		this.userAttendanceStatus = userAttendanceStatus;
 	}
+
+	public String getFormattedCourseDateTime() {
+		return de.technikteam.config.DateFormatter.formatDateTime(this.courseDateTime);
+	}
 }

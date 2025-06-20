@@ -153,11 +153,10 @@ public class AdminUserServlet extends HttpServlet {
 			int newUserId = userDAO.createUser(newUser, pass);
 
 			if (newUserId > 0) {
-				logger.info("Successfully created new user '{}' with ID: {}", username, newUserId);
-				// Log the administrative action
 				User adminUser = (User) request.getSession().getAttribute("user");
 				AdminLogService.log(adminUser.getUsername(), "CREATE_USER",
-						"Created user '" + username + "' (ID: " + newUserId + ")");
+						"Benutzer '" + newUser.getUsername() + "' (ID: " + newUserId + ") erstellt.");
+				logger.info("Successfully created new user '{}' with ID: {}", username, newUserId);
 				request.getSession().setAttribute("successMessage",
 						"Benutzer '" + username + "' erfolgreich erstellt.");
 			} else {
@@ -184,6 +183,9 @@ public class AdminUserServlet extends HttpServlet {
 			user.setClassName(request.getParameter("className"));
 
 			if (userDAO.updateUser(user)) {
+				User adminUser = (User) request.getSession().getAttribute("user");
+				AdminLogService.log(adminUser.getUsername(), "UPDATE_USER",
+						"Daten für Benutzer '" + user.getUsername() + "' (ID: " + user.getId() + ") aktualisiert.");
 				request.getSession().setAttribute("successMessage", "Benutzerdaten erfolgreich aktualisiert.");
 			} else {
 				request.getSession().setAttribute("errorMessage", "Benutzerdaten konnten nicht aktualisiert werden.");
@@ -208,8 +210,11 @@ public class AdminUserServlet extends HttpServlet {
 				return;
 			}
 
-			// CORRECT LOGIC: Call the DAO method and check its boolean return value.
+			User userToDelete = userDAO.getUserById(userId); // Holen des Namens VOR dem Löschen
 			if (userDAO.deleteUser(userId)) {
+				User adminUser = (User) request.getSession().getAttribute("user");
+				AdminLogService.log(adminUser.getUsername(), "DELETE_USER",
+						"Benutzer '" + userToDelete.getUsername() + "' (ID: " + userId + ") gelöscht.");
 				logger.info("Successfully deleted user with ID: {}", userId);
 				request.getSession().setAttribute("successMessage", "Benutzer erfolgreich gelöscht.");
 			} else {
@@ -257,9 +262,11 @@ public class AdminUserServlet extends HttpServlet {
 			}
 
 			if (userQualificationsDAO.updateQualificationStatus(userId, courseId, status, completionDate, remarks)) {
-				AdminLogService.log(((User) request.getSession().getAttribute("user")).getUsername(),
-						"UPDATE_QUALIFICATION", "Updated qualification for user ID " + userId + " and course ID "
-								+ courseId + " to status " + status);
+				User adminUser = (User) request.getSession().getAttribute("user");
+				String details = String.format("Status für Nutzer '%s' / Lehrgang '%d' auf '%s' gesetzt.",
+						userDAO.getUserById(userId).getUsername(), courseId, status);
+				AdminLogService.log(adminUser.getUsername(), "UPDATE_QUALIFICATION", details);
+
 				request.getSession().setAttribute("successMessage", "Qualifikation erfolgreich aktualisiert.");
 			} else {
 				request.getSession().setAttribute("errorMessage", "Qualifikation konnte nicht aktualisiert werden.");

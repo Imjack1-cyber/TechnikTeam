@@ -65,4 +65,10 @@ public class AdminLog {
 	public void setDetails(String details) {
 		this.details = details;
 	}
+
+	// Ersetzen Sie die bestehende getFormattedActionTimestamp-Methode
+
+	public String getFormattedActionTimestamp() {
+		return de.technikteam.config.DateFormatter.formatDateTime(this.actionTimestamp);
+	}
 }

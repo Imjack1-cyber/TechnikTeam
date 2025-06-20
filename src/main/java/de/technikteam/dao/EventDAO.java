@@ -36,6 +36,17 @@ public class EventDAO {
 		return event;
 	}
 
+	public void setAttendanceCommitment(int eventId, int userId, String commitment) {
+		String sql = "UPDATE event_attendance SET commitment_status = ? WHERE event_id = ? AND user_id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setString(1, commitment);
+			pstmt.setInt(2, eventId);
+			pstmt.setInt(3, userId);
+			pstmt.executeUpdate();
+		} catch (SQLException e) {
+			/* ... */ }
+	}
+
 	private User mapResultSetToSimpleUser(ResultSet rs) throws SQLException {
 		return new User(rs.getInt("id"), rs.getString("username"), rs.getString("role"));
 	}

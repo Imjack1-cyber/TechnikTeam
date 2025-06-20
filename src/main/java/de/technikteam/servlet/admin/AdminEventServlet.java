@@ -117,6 +117,9 @@ public class AdminEventServlet extends HttpServlet {
 			case "saveAssignments":
 				handleSaveAssignments(request, response);
 				break;
+			case "confirmAttendance":
+				handleConfirmAttendance(request, response);
+				break;
 			default:
 				response.sendRedirect(request.getContextPath() + "/admin/events");
 				break;
@@ -126,6 +129,17 @@ public class AdminEventServlet extends HttpServlet {
 			request.getSession().setAttribute("errorMessage", "Ein unerwarteter Fehler ist aufgetreten.");
 			response.sendRedirect(request.getContextPath() + "/admin/events");
 		}
+	}
+
+	private void handleConfirmAttendance(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		int eventId = Integer.parseInt(request.getParameter("eventId"));
+		int userId = Integer.parseInt(request.getParameter("userId"));
+
+		// Neue Methode im EventDAO, die wir erstellen müssen
+		eventDAO.setAttendanceCommitment(eventId, userId, "ZUGESAGT");
+
+		// Leite zurück zur Teilnehmer-Zuweisungs-Seite
+		response.sendRedirect(request.getContextPath() + "/admin/events?action=assign&id=" + eventId);
 	}
 
 	private void listEvents(HttpServletRequest request, HttpServletResponse response)

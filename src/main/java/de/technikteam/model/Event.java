@@ -86,4 +86,8 @@ public class Event {
 	public void setAssignedAttendees(List<User> assignedAttendees) {
 		this.assignedAttendees = assignedAttendees;
 	}
+
+	public String getFormattedEventDateTime() {
+		return de.technikteam.config.DateFormatter.formatDateTime(this.eventDateTime);
+	}
 }
