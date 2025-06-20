@@ -5,40 +5,32 @@
 document.addEventListener('DOMContentLoaded', () => {
     
     // --- 1. Theme Switcher Logic ---
-	// Ersetzen Sie die alte themeSwitcher-Logik mit dieser Version
-	const themeCheckbox = document.getElementById('theme-checkbox');
+    const themeCheckbox = document.getElementById('theme-checkbox');
 
-	function applyTheme(theme) {
-	    document.documentElement.setAttribute('data-theme', theme);
-	    if (theme === 'dark') {
-	        themeCheckbox.checked = true;
-	    } else {
-	        themeCheckbox.checked = false;
-	    }
-	}
+    function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        if (themeCheckbox) {
+            themeCheckbox.checked = (theme === 'dark');
+        }
+    }
 
-	// Apply saved theme on page load
-	const savedTheme = localStorage.getItem('theme') || 'light';
-	applyTheme(savedTheme);
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    applyTheme(savedTheme);
 
-	// Add event listener to toggle the theme
-	themeCheckbox.addEventListener('change', () => {
-	    if (themeCheckbox.checked) {
-	        localStorage.setItem('theme', 'dark');
-	        applyTheme('dark');
-	    } else {
-	        localStorage.setItem('theme', 'light');
-	        applyTheme('light');
-	    }
-	});
+    if (themeCheckbox) {
+        themeCheckbox.addEventListener('change', () => {
+            const newTheme = themeCheckbox.checked ? 'dark' : 'light';
+            localStorage.setItem('theme', newTheme);
+            applyTheme(newTheme);
+        });
+    }
 
     // --- 2. Logout Confirmation Logic ---
     const logoutLink = document.getElementById('logout-link');
     if (logoutLink) {
         logoutLink.addEventListener('click', (event) => {
-            const userIsSure = confirm('Bist du sicher, dass du dich ausloggen möchtest?');
-            if (!userIsSure) {
-                event.preventDefault(); // Prevent the browser from following the link if the user clicks "Cancel"
+            if (!confirm('Bist du sicher, dass du dich ausloggen möchtest?')) {
+                event.preventDefault();
             }
         });
     }
@@ -46,27 +38,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 3. Event Details Toggle Logic ---
     document.querySelectorAll('.btn-details').forEach(button => {
         button.addEventListener('click', () => {
-            // Find the details container, which is assumed to be the next sibling element
-            // of the button's parent container (.event-actions)
             const detailsContainer = button.closest('.event-actions').nextElementSibling;
             if (detailsContainer && detailsContainer.classList.contains('event-details')) {
-                if (detailsContainer.style.display === 'none' || detailsContainer.style.display === '') {
-                    detailsContainer.style.display = 'block';
-                    button.textContent = 'Details ausblenden';
-                } else {
-                    detailsContainer.style.display = 'none';
-                    button.textContent = 'Details anzeigen';
-                }
+                const isHidden = detailsContainer.style.display === 'none' || detailsContainer.style.display === '';
+                detailsContainer.style.display = isHidden ? 'block' : 'none';
+                button.textContent = isHidden ? 'Details ausblenden' : 'Details anzeigen';
             }
         });
     });
 
     // --- 4. Server-Sent Events (SSE) Notification Logic ---
-    // Only attempt to connect if the user is logged in (i.e., the main navigation is present)
     const mainNav = document.querySelector('.main-nav');
     if (mainNav && window.EventSource) {
         console.log("User is logged in. Connecting to SSE notification stream...");
-        const eventSource = new EventSource('notifications'); // Relative URL is fine here
+        
+        // Build a reliable, absolute URL using the context path from the body tag.
+        const contextPath = document.body.dataset.contextPath || '';
+        const eventSource = new EventSource(`${contextPath}/notifications`);
 
         eventSource.onopen = () => {
             console.log("SSE connection established.");
@@ -79,14 +67,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         eventSource.onerror = (err) => {
             console.error("EventSource failed. Connection will be closed.", err);
-            eventSource.close(); // Prevent the browser from endlessly trying to reconnect
+            eventSource.close();
         };
     }
 
-    /**
-     * Shows a native browser notification after requesting permission if necessary.
-     * @param {string} message The message to display in the notification body.
-     */
     function showBrowserNotification(message) {
         if (!("Notification" in window)) {
             console.warn("This browser does not support desktop notifications.");
@@ -103,7 +87,4 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     }
-	
-	
-	
 });

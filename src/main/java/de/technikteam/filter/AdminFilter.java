@@ -1,10 +1,8 @@
 package de.technikteam.filter;
 
 import java.io.IOException;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 import de.technikteam.model.User;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
@@ -17,8 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
-// KEINE @WebFilter Annotation mehr, Konfiguration erfolgt in web.xml
-@WebFilter(value = "/admin/*", asyncSupported = true)
+@WebFilter(urlPatterns = "/admin/*", asyncSupported = true)
 public class AdminFilter implements Filter {
 
 	private static final Logger logger = LogManager.getLogger(AdminFilter.class);
@@ -28,11 +25,6 @@ public class AdminFilter implements Filter {
 		logger.info("AdminFilter initialized.");
 	}
 
-	/**
-	 * This filter protects all resources under the /admin/ path. It assumes the
-	 * AuthenticationFilter has already run and a user is present in the session. It
-	 * checks if the logged-in user has the 'ADMIN' role.
-	 */
 	@Override
 	public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
 			throws IOException, ServletException {
@@ -41,26 +33,27 @@ public class AdminFilter implements Filter {
 		HttpServletResponse response = (HttpServletResponse) res;
 		HttpSession session = request.getSession(false);
 
-		// At this point, the AuthenticationFilter has already ensured a session exists.
-		User user = (User) session.getAttribute("user");
-
 		String path = request.getRequestURI().substring(request.getContextPath().length());
+
+		// --- FIX IS HERE: Add a comprehensive null-check ---
+        // Check if the session exists AND if the user object is in the session.
+		if (session == null || session.getAttribute("user") == null) {
+			logger.warn("Admin access DENIED to path '{}' because there is no active session. Redirecting to login.", path);
+			response.sendRedirect(request.getContextPath() + "/login");
+			return; // Stop processing this request.
+		}
+
+		User user = (User) session.getAttribute("user");
 		logger.debug("AdminFilter processing request for path: '{}' for user: '{}'", path, user.getUsername());
 
-		// Use equalsIgnoreCase for a more robust role check.
 		if ("ADMIN".equalsIgnoreCase(user.getRole())) {
-			// User is an admin. Allow access.
 			logger.info("ADMIN access GRANTED for user '{}' to path '{}'. Passing to next filter/servlet.",
 					user.getUsername(), path);
 			chain.doFilter(request, response);
 		} else {
-			// User is logged in but is NOT an admin. Deny access.
 			logger.warn("ADMIN access DENIED for user '{}' (Role: '{}') to path '{}'. Redirecting to user home.",
 					user.getUsername(), user.getRole(), path);
-
-			// Set a friendly error message for the user.
-			request.getSession().setAttribute("accessErrorMessage",
-					"Sie haben keine Berechtigung, auf diese Seite zuzugreifen.");
+			request.getSession().setAttribute("accessErrorMessage", "Sie haben keine Berechtigung, auf diese Seite zuzugreifen.");
 			response.sendRedirect(request.getContextPath() + "/home");
 		}
 	}

@@ -1,6 +1,5 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" isELIgnored="false" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
-<%@ taglib prefix="java-time" uri="http://sargue.net/jsptags/time" %>
 <c:import url="/WEB-INF/jspf/header.jspf"><c:param name="title" value="Lehrgangsverwaltung"/></c:import>
 <c:import url="/WEB-INF/jspf/admin_navigation.jspf" />
 

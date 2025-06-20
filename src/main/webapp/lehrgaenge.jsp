@@ -22,7 +22,7 @@
                         <tr class="course-row" data-attended="${attendedCourseIds.contains(course.id) ? 'true' : 'false'}">
                             <td><a href="${pageContext.request.contextPath}/courseDetails?id=${course.id}">${course.name}</a></td>
                             <td>${course.type}</td>
-                            <td><strong>Datum:</strong> ${event.formattedEventDateTime} Uhr</td>
+                            <td><strong>Datum:</strong> ${course.formattedCourseDateTime} Uhr</td>
                             <td>${course.leader}</td>
                             <td>
                                 <form action="${pageContext.request.contextPath}/course-action" method="post" class="attendance-form" style="display: flex; align-items: center; gap: 1rem;">

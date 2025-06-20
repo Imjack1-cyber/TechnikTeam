@@ -6,7 +6,7 @@
 <div class="details-container">
     <h1>${course.name}</h1>
     <p class="details-info">
-        <strong>Termin:</strong> <strong>Datum:</strong> ${event.formattedEventDateTime} Uhr
+        <strong>Termin:</strong> <strong>Datum:</strong> ${course.formattedCourseDateTime} Uhr
     </p>
     <p class="details-info">
         <strong>Leitung:</strong> ${not empty course.leader ? course.leader : 'N/A'}

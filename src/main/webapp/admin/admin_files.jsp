@@ -6,6 +6,32 @@
 <h1>Dateiverwaltung</h1>
 
 <div class="card">
+    <h2 class="card-title">Vorhandene Dateien</h2>
+    <table class="styled-table">
+        <thead><tr><th>Dateiname</th><th>Kategorie</th><th>Aktionen</th></tr></thead>
+        <tbody>
+            <c:forEach var="categoryEntry" items="${groupedFiles}">
+                <c:if test="${not empty categoryEntry.value}">
+                    <tr style="background-color: var(--secondary-color); font-weight: bold;"><td colspan="3">${categoryEntry.key}</td></tr>
+                    <c:forEach var="file" items="${categoryEntry.value}">
+                        <tr>
+                            <td><a href="${pageContext.request.contextPath}/download?file=${file.filepath}" target="_blank">${file.filename}</a></td>
+                            <td>${file.categoryName}</td>
+                            <td>
+                                <form action="${pageContext.request.contextPath}/admin/files" method="post" style="display:inline;">
+                                    <input type="hidden" name="action" value="delete"><input type="hidden" name="fileId" value="${file.id}">
+                                    <button type="submit" class="btn-small btn-danger" onclick="return confirm('Datei \'${file.filename}\' wirklich löschen?')">Löschen</button>
+                                </form>
+                            </td>
+                        </tr>
+                    </c:forEach>
+                </c:if>
+            </c:forEach>
+        </tbody>
+    </table>
+</div>
+
+<div class="card" style="margin-top: 2rem;">
     <h2 class="card-title">Neue Datei hochladen</h2>
     <form action="${pageContext.request.contextPath}/admin/files" method="post" enctype="multipart/form-data">
         <div class="form-group">
@@ -56,32 +82,6 @@
                     </form>
                     </td>
                 </tr>
-            </c:forEach>
-        </tbody>
-    </table>
-</div>
-
-<div class="card" style="margin-top: 2rem;">
-    <h2 class="card-title">Vorhandene Dateien</h2>
-    <table class="styled-table">
-        <thead><tr><th>Dateiname</th><th>Kategorie</th><th>Aktionen</th></tr></thead>
-        <tbody>
-            <c:forEach var="categoryEntry" items="${groupedFiles}">
-                <c:if test="${not empty categoryEntry.value}">
-                    <tr style="background-color: var(--secondary-color); font-weight: bold;"><td colspan="3">${categoryEntry.key}</td></tr>
-                    <c:forEach var="file" items="${categoryEntry.value}">
-                        <tr>
-                            <td><a href="${pageContext.request.contextPath}/download?file=${file.filepath}" target="_blank">${file.filename}</a></td>
-                            <td>${file.categoryName}</td>
-                            <td>
-                                <form action="${pageContext.request.contextPath}/admin/files" method="post" style="display:inline;">
-                                    <input type="hidden" name="action" value="delete"><input type="hidden" name="fileId" value="${file.id}">
-                                    <button type="submit" class="btn-small btn-danger" onclick="return confirm('Datei \'${file.filename}\' wirklich löschen?')">Löschen</button>
-                                </form>
-                            </td>
-                        </tr>
-                    </c:forEach>
-                </c:if>
             </c:forEach>
         </tbody>
     </table>

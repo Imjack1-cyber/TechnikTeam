@@ -354,4 +354,72 @@ public class EventDAO {
 			logger.error("SQL transaction error during user assignment for event ID: {}", eventId, e);
 		}
 	}
+	
+	// File: src/main/java/de/technikteam/dao/EventDAO.java
+
+	// ... existing methods ...
+
+	/**
+	 * Fetches a list of users who have been definitively assigned to an event.
+	 * @param eventId The ID of the event.
+	 * @return A list of assigned User objects.
+	 */
+	public List<User> getAssignedUsersForEvent(int eventId) {
+	    List<User> users = new ArrayList<>();
+	    String sql = "SELECT u.id, u.username, u.role FROM users u "
+	            + "JOIN event_assignments ea ON u.id = ea.user_id WHERE ea.event_id = ?";
+	    try (Connection conn = DatabaseManager.getConnection(); 
+	         PreparedStatement pstmt = conn.prepareStatement(sql)) {
+	        pstmt.setInt(1, eventId);
+	        try (ResultSet rs = pstmt.executeQuery()) {
+	            while (rs.next()) {
+	                users.add(mapResultSetToSimpleUser(rs)); // Assuming you have this helper method
+	            }
+	        }
+	    } catch (SQLException e) {
+	        logger.error("SQL error fetching assigned users for event ID: {}", eventId, e);
+	    }
+	    return users;
+	}
+
+	/**
+	 * Saves the final assignment of users to an event.
+	 * This is a transactional operation: it first clears all existing assignments
+	 * for the event and then inserts the new ones.
+	 * @param eventId The ID of the event.
+	 * @param userIds An array of user IDs to be assigned.
+	 */
+	public void assignUsersToEvent(int eventId, String[] userIds) {
+	    String deleteSql = "DELETE FROM event_assignments WHERE event_id = ?";
+	    String insertSql = "INSERT INTO event_assignments (event_id, user_id) VALUES (?, ?)";
+	    
+	    try (Connection conn = DatabaseManager.getConnection()) {
+	        conn.setAutoCommit(false); // Start transaction
+
+	        // 1. Delete all previous assignments for this event
+	        try (PreparedStatement deletePstmt = conn.prepareStatement(deleteSql)) {
+	            deletePstmt.setInt(1, eventId);
+	            deletePstmt.executeUpdate();
+	        }
+
+	        // 2. Insert the new assignments if any users were selected
+	        if (userIds != null && userIds.length > 0) {
+	            try (PreparedStatement insertPstmt = conn.prepareStatement(insertSql)) {
+	                for (String userId : userIds) {
+	                    insertPstmt.setInt(1, eventId);
+	                    insertPstmt.setInt(2, Integer.parseInt(userId));
+	                    insertPstmt.addBatch();
+	                }
+	                insertPstmt.executeBatch();
+	            }
+	        }
+	        
+	        conn.commit(); // Commit transaction
+	        logger.info("Successfully assigned {} users to event ID {}", (userIds != null ? userIds.length : 0), eventId);
+
+	    } catch (SQLException | NumberFormatException e) {
+	        logger.error("SQL transaction error during user assignment for event ID: {}", eventId, e);
+	        // In a real app, you would handle transaction rollback here.
+	    }
+	}
 }
