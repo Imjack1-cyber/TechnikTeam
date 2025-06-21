@@ -1,8 +1,8 @@
 package de.technikteam.config;
 
+/*
+ *  A simple configuration class that holds a single, application-wide constant: the file path for the upload directory.
+ */
 public class AppConfig {
-	// Definieren Sie hier den zentralen Pfad für alle Uploads.
-	// WICHTIG: Erstellen Sie diesen Ordner manuell auf Ihrem System!
-	// Verwenden Sie doppelte Backslashes unter Windows.
 	public static final String UPLOAD_DIRECTORY = "C:\\dev\\eclipse\\workspace\\TechnikTeam\\resources\\uploads";
 }

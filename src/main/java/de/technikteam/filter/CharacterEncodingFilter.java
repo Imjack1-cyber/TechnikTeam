@@ -13,7 +13,10 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.annotation.WebFilter;
 
-// KEINE @WebFilter Annotation mehr, Konfiguration erfolgt in web.xml
+/* 
+ * A simple utility filter that intercepts all requests to set the character encoding to UTF-8. This is a crucial filter that ensures special characters (like German umlauts) are correctly handled throughout the application.
+ */
+
 @WebFilter(value = "/*", asyncSupported = true)
 public class CharacterEncodingFilter implements Filter {
 

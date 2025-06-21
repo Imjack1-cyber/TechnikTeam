@@ -19,7 +19,11 @@ import de.technikteam.model.SkillRequirement;
 import de.technikteam.model.User;
 
 /**
- * Data Access Object for all Event-related database operations.
+ * A comprehensive DAO for all database operations related to events. It handles
+ * creating, reading, updating, and deleting events. Additionally, it manages
+ * user sign-ups/sign-offs, event skill requirements, and the final assignment
+ * of users to an event. It contains methods to supply data for both regular
+ * user views (like upcoming events) and administrative back-end pages.
  */
 public class EventDAO {
 	private static final Logger logger = LogManager.getLogger(EventDAO.class);
@@ -62,37 +66,6 @@ public class EventDAO {
 	}
 
 	// --- Methods for Public and User-Specific Views ---
-
-	public List<Event> getUpcomingEventsForUser(User user, int limit) {
-		List<Event> events = new ArrayList<>();
-		String sql = "SELECT e.*, ea.signup_status FROM events e "
-				+ "LEFT JOIN event_attendance ea ON e.id = ea.event_id AND ea.user_id = ? "
-				+ "WHERE e.event_datetime >= NOW() " + "AND ("
-				+ "  NOT EXISTS (SELECT 1 FROM event_skill_requirements esr WHERE esr.event_id = e.id)" + "  OR "
-				+ "  EXISTS (" + "    SELECT 1 FROM event_skill_requirements esr "
-				+ "    JOIN user_qualifications uq ON esr.required_course_id = uq.course_id "
-				+ "    WHERE esr.event_id = e.id AND uq.user_id = ?" + "  )" + ") " + "ORDER BY e.event_datetime ASC"
-				+ (limit > 0 ? " LIMIT ?" : "");
-
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, user.getId());
-			pstmt.setInt(2, user.getId());
-			if (limit > 0)
-				pstmt.setInt(3, limit);
-			try (ResultSet rs = pstmt.executeQuery()) {
-				while (rs.next()) {
-					Event event = mapResultSetToEvent(rs);
-					if (hasColumn(rs, "signup_status")) {
-						event.setUserAttendanceStatus(rs.getString("signup_status"));
-					}
-					events.add(event);
-				}
-			}
-		} catch (SQLException e) {
-			logger.error("SQL error fetching qualified upcoming events", e);
-		}
-		return events;
-	}
 
 	public List<Event> getEventHistoryForUser(int userId) {
 		List<Event> history = new ArrayList<>();
@@ -312,8 +285,12 @@ public class EventDAO {
 		}
 	}
 
-	// --- HIER SIND DIE FEHLENDEN METHODEN ---
-
+	/**
+	 * Fetches a list of users who have been definitively assigned to an event.
+	 * 
+	 * @param eventId The ID of the event.
+	 * @return A list of assigned User objects.
+	 */
 	public List<User> getAssignedUsersForEvent(int eventId) {
 		List<User> users = new ArrayList<>();
 		String sql = "SELECT u.id, u.username, u.role FROM users u "
@@ -321,8 +298,9 @@ public class EventDAO {
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, eventId);
 			try (ResultSet rs = pstmt.executeQuery()) {
-				while (rs.next())
-					users.add(mapResultSetToSimpleUser(rs));
+				while (rs.next()) {
+					users.add(mapResultSetToSimpleUser(rs)); // Assuming you have this helper method
+				}
 			}
 		} catch (SQLException e) {
 			logger.error("SQL error fetching assigned users for event ID: {}", eventId, e);
@@ -330,16 +308,29 @@ public class EventDAO {
 		return users;
 	}
 
+	/**
+	 * Saves the final assignment of users to an event. This is a transactional
+	 * operation: it first clears all existing assignments for the event and then
+	 * inserts the new ones.
+	 * 
+	 * @param eventId The ID of the event.
+	 * @param userIds An array of user IDs to be assigned.
+	 */
 	public void assignUsersToEvent(int eventId, String[] userIds) {
 		String deleteSql = "DELETE FROM event_assignments WHERE event_id = ?";
 		String insertSql = "INSERT INTO event_assignments (event_id, user_id) VALUES (?, ?)";
+
 		try (Connection conn = DatabaseManager.getConnection()) {
-			conn.setAutoCommit(false);
+			conn.setAutoCommit(false); // Start transaction
+
+			// 1. Delete all previous assignments for this event
 			try (PreparedStatement deletePstmt = conn.prepareStatement(deleteSql)) {
 				deletePstmt.setInt(1, eventId);
 				deletePstmt.executeUpdate();
 			}
-			if (userIds != null) {
+
+			// 2. Insert the new assignments if any users were selected
+			if (userIds != null && userIds.length > 0) {
 				try (PreparedStatement insertPstmt = conn.prepareStatement(insertSql)) {
 					for (String userId : userIds) {
 						insertPstmt.setInt(1, eventId);
@@ -349,77 +340,74 @@ public class EventDAO {
 					insertPstmt.executeBatch();
 				}
 			}
-			conn.commit();
-		} catch (SQLException e) {
+
+			conn.commit(); // Commit transaction
+			logger.info("Successfully assigned {} users to event ID {}", (userIds != null ? userIds.length : 0),
+					eventId);
+
+		} catch (SQLException | NumberFormatException e) {
 			logger.error("SQL transaction error during user assignment for event ID: {}", eventId, e);
+			// In a real app, you would handle transaction rollback here.
 		}
 	}
 	
-	// File: src/main/java/de/technikteam/dao/EventDAO.java
-
-	// ... existing methods ...
+	// In: src/main/java/de/technikteam/dao/EventDAO.java
 
 	/**
-	 * Fetches a list of users who have been definitively assigned to an event.
-	 * @param eventId The ID of the event.
-	 * @return A list of assigned User objects.
+	 * Fetches all upcoming events for a user, with a calculated status that
+	 * prioritizes assignments over simple sign-ups.
+	 * Status can be: ZUGEWIESEN, ANGEMELDET, ABGEMELDET, or OFFEN.
+	 *
+	 * @param user The currently logged-in user.
+	 * @param limit The maximum number of events to return (0 for no limit).
+	 * @return A list of upcoming Event objects with the correctly calculated user status.
 	 */
-	public List<User> getAssignedUsersForEvent(int eventId) {
-	    List<User> users = new ArrayList<>();
-	    String sql = "SELECT u.id, u.username, u.role FROM users u "
-	            + "JOIN event_assignments ea ON u.id = ea.user_id WHERE ea.event_id = ?";
-	    try (Connection conn = DatabaseManager.getConnection(); 
+	public List<Event> getUpcomingEventsForUser(User user, int limit) {
+	    List<Event> events = new ArrayList<>();
+	    
+	    // THE NEW, MORE INTELLIGENT SQL QUERY
+	    String sql = "SELECT e.*, " +
+	                 "CASE " +
+	                 "    WHEN eas.user_id IS NOT NULL THEN 'ZUGEWIESEN' " + // 1. Check for assignment first
+	                 "    WHEN ea.signup_status IS NOT NULL THEN ea.signup_status " + // 2. Fall back to signup status
+	                 "    ELSE 'OFFEN' " + // 3. Default to open
+	                 "END AS calculated_user_status " +
+	                 "FROM events e " +
+	                 "LEFT JOIN event_attendance ea ON e.id = ea.event_id AND ea.user_id = ? " +
+	                 "LEFT JOIN event_assignments eas ON e.id = eas.event_id AND eas.user_id = ? " +
+	                 "WHERE e.event_datetime >= NOW() " +
+	                 "AND (" + // Qualification check remains the same
+	                 "  NOT EXISTS (SELECT 1 FROM event_skill_requirements esr WHERE esr.event_id = e.id) OR " +
+	                 "  EXISTS (SELECT 1 FROM event_skill_requirements esr JOIN user_qualifications uq ON esr.required_course_id = uq.course_id WHERE esr.event_id = e.id AND uq.user_id = ?)" +
+	                 ") " +
+	                 "ORDER BY e.event_datetime ASC" +
+	                 (limit > 0 ? " LIMIT ?" : "");
+
+	    try (Connection conn = DatabaseManager.getConnection();
 	         PreparedStatement pstmt = conn.prepareStatement(sql)) {
-	        pstmt.setInt(1, eventId);
+
+	        // Set the user ID for all three placeholders in the query
+	        pstmt.setInt(1, user.getId());
+	        pstmt.setInt(2, user.getId());
+	        pstmt.setInt(3, user.getId());
+	        if (limit > 0) {
+	            pstmt.setInt(4, limit);
+	        }
+
 	        try (ResultSet rs = pstmt.executeQuery()) {
 	            while (rs.next()) {
-	                users.add(mapResultSetToSimpleUser(rs)); // Assuming you have this helper method
+	                Event event = mapResultSetToEvent(rs); // Use your existing helper
+	                
+	                // Get the final calculated status from our new CASE statement
+	                String finalStatus = rs.getString("calculated_user_status");
+	                event.setUserAttendanceStatus(finalStatus);
+	                
+	                events.add(event);
 	            }
 	        }
 	    } catch (SQLException e) {
-	        logger.error("SQL error fetching assigned users for event ID: {}", eventId, e);
+	        logger.error("SQL error fetching qualified upcoming events for user {}", user.getId(), e);
 	    }
-	    return users;
-	}
-
-	/**
-	 * Saves the final assignment of users to an event.
-	 * This is a transactional operation: it first clears all existing assignments
-	 * for the event and then inserts the new ones.
-	 * @param eventId The ID of the event.
-	 * @param userIds An array of user IDs to be assigned.
-	 */
-	public void assignUsersToEvent(int eventId, String[] userIds) {
-	    String deleteSql = "DELETE FROM event_assignments WHERE event_id = ?";
-	    String insertSql = "INSERT INTO event_assignments (event_id, user_id) VALUES (?, ?)";
-	    
-	    try (Connection conn = DatabaseManager.getConnection()) {
-	        conn.setAutoCommit(false); // Start transaction
-
-	        // 1. Delete all previous assignments for this event
-	        try (PreparedStatement deletePstmt = conn.prepareStatement(deleteSql)) {
-	            deletePstmt.setInt(1, eventId);
-	            deletePstmt.executeUpdate();
-	        }
-
-	        // 2. Insert the new assignments if any users were selected
-	        if (userIds != null && userIds.length > 0) {
-	            try (PreparedStatement insertPstmt = conn.prepareStatement(insertSql)) {
-	                for (String userId : userIds) {
-	                    insertPstmt.setInt(1, eventId);
-	                    insertPstmt.setInt(2, Integer.parseInt(userId));
-	                    insertPstmt.addBatch();
-	                }
-	                insertPstmt.executeBatch();
-	            }
-	        }
-	        
-	        conn.commit(); // Commit transaction
-	        logger.info("Successfully assigned {} users to event ID {}", (userIds != null ? userIds.length : 0), eventId);
-
-	    } catch (SQLException | NumberFormatException e) {
-	        logger.error("SQL transaction error during user assignment for event ID: {}", eventId, e);
-	        // In a real app, you would handle transaction rollback here.
-	    }
+	    return events;
 	}
 }

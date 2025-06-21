@@ -15,6 +15,10 @@ import org.apache.logging.log4j.Logger;
 
 import de.technikteam.model.StorageItem;
 
+/*
+ *  This is a full-featured DAO for managing storage_items. It provides complete CRUD (Create, Read, Update, Delete) functionality for inventory items and includes a method to fetch all items grouped by their storage location for display.
+ */
+
 public class StorageDAO {
 	private static final Logger logger = LogManager.getLogger(StorageDAO.class);
 

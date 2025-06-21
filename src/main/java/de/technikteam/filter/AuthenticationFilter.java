@@ -19,6 +19,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
+/*
+ * This is a general security filter that applies to all incoming requests (/*). It ensures that a user is logged in before allowing access to any page, except for a predefined list of public resources like the login page, CSS, and JavaScript files. Unauthorized requests are redirected to the login page.
+ */
+
 @WebFilter(value = "/*", asyncSupported = true)
 public class AuthenticationFilter implements Filter {
 
@@ -60,7 +64,7 @@ public class AuthenticationFilter implements Filter {
 			chain.doFilter(request, response);
 			return;
 		}
-		
+
 		logger.warn("Unauthorized access attempt by a guest to protected path: '{}'. Redirecting to login page.", path);
 		response.sendRedirect(contextPath + "/login");
 	}

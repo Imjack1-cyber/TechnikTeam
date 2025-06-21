@@ -1,40 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
-         version="4.0">
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
+	version="4.0">
 
-    <display-name>TechnikTeam Web Application</display-name>
+	<!-- The core deployment descriptor for the application. It configures session 
+		timeout, sets login.jsp as the welcome file (what users see when they visit 
+		the root URL), ensures Expression Language is active on JSP pages, and maps 
+		the 404 and 500 error codes to custom error pages (error404.jsp and error500.jsp). -->
 
-    <!-- Globale Konfigurationen, die nicht per Annotation gesetzt werden können -->
+	<display-name>TechnikTeam Web Application</display-name>
 
-    <session-config>
-        <session-timeout>30</session-timeout>
-    </session-config>
-    
-    <welcome-file-list>
-        <welcome-file>login.jsp</welcome-file>
-    </welcome-file-list>
-    
-    <!-- Stellt sicher, dass die Expression Language (${...}) immer aktiviert ist -->
-    <jsp-config>
-        <jsp-property-group>
-            <url-pattern>*.jsp</url-pattern>
-            <url-pattern>*.jspf</url-pattern>
-            <el-ignored>false</el-ignored>
-        </jsp-property-group>
-    </jsp-config>
+	<!-- Globale Konfigurationen, die nicht per Annotation gesetzt werden können -->
 
-    <!-- Benutzerdefinierte Fehlerseiten -->
-    <error-page>
-        <error-code>404</error-code>
-        <location>/error404.jsp</location>
-    </error-page>
-    <error-page>
-        <error-code>500</error-code>
-        <location>/error500.jsp</location>
-    </error-page>
-    
-    <!-- Alle Servlet- und Filter-Mappings werden jetzt über Annotationen gesteuert. -->
+	<session-config>
+		<session-timeout>30</session-timeout>
+	</session-config>
+
+	<welcome-file-list>
+		<welcome-file>login.jsp</welcome-file>
+	</welcome-file-list>
+
+	<!-- Stellt sicher, dass die Expression Language (${...}) immer aktiviert 
+		ist -->
+	<jsp-config>
+		<jsp-property-group>
+			<url-pattern>*.jsp</url-pattern>
+			<url-pattern>*.jspf</url-pattern>
+			<el-ignored>false</el-ignored>
+		</jsp-property-group>
+	</jsp-config>
+
+	<!-- Benutzerdefinierte Fehlerseiten -->
+	<error-page>
+		<error-code>404</error-code>
+		<location>/error404.jsp</location>
+	</error-page>
+	<error-page>
+		<error-code>500</error-code>
+		<location>/error500.jsp</location>
+	</error-page>
+
+	<!-- Alle Servlet- und Filter-Mappings werden jetzt über Annotationen gesteuert. -->
 
 </web-app>

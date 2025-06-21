@@ -2,13 +2,17 @@ package de.technikteam.model;
 
 import java.time.LocalDate;
 
+/* 
+ * Represents the link between a user and a course they have completed, acting as a record of their qualification or skill.
+ */
+
 public class UserQualification {
-	private int userId; // <-- NEU
+	private int userId;
 	private int courseId;
 	private String courseName;
 	private String status;
 	private LocalDate completionDate;
-	private String remarks; // <-- NEU
+	private String remarks;
 
 	// Getters and Setters
 	public int getUserId() {

@@ -7,6 +7,8 @@
 </c:import>
 <c:import url="/WEB-INF/jspf/navigation.jspf" />
 
+<!--  The public-facing detail page for a single event, served by EventDetailsServlet. It shows event details, required skills, and for admins, the list of signed-up and finally assigned users. -->
+
 <div class="details-container">
 
 	<%-- Event Title and Status Badge --%>

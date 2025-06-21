@@ -14,6 +14,10 @@ import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
 import jakarta.servlet.annotation.WebListener;
 
+/*
+ *  This is an application lifecycle listener. Its main purpose is to perform cleanup tasks when the web application is shut down. Specifically, it deregisters the JDBC driver to prevent potential memory leaks in the server environment.
+ */
+
 @WebListener
 public class AppContextListener implements ServletContextListener {
 

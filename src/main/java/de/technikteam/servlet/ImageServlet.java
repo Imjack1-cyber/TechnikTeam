@@ -17,8 +17,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Servlet to safely serve images from an external directory. It prevents direct
- * web access to the file system.
+ * Mapped to /image, this servlet acts as a secure proxy to serve images. It
+ * prevents direct filesystem access by taking a file parameter, locating the
+ * image within a designated images subdirectory in the upload path, and then
+ * streaming it to the browser with the correct Content-Disposition: inline
+ * header so it displays directly on the page.
  */
 @WebServlet("/image")
 public class ImageServlet extends HttpServlet {

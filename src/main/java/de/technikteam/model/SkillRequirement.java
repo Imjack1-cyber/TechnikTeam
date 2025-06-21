@@ -1,5 +1,9 @@
 package de.technikteam.model;
 
+/*
+ *  Represents a specific skill (defined by a course) and the number of people with that skill required for an event.
+ */
+
 public class SkillRequirement {
 	// Der Name des Lehrgangs wird jetzt aus der Course-Beziehung geholt
 	private int requiredCourseId;

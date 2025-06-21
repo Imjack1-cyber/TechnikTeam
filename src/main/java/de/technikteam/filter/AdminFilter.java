@@ -15,6 +15,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
+/*
+ * This is a security filter that protects all URLs under the /admin/* path. It checks if the user in the current session has the "ADMIN" role. If the user is not an admin or is not logged in, it denies access and redirects them.
+ */
+
 @WebFilter(urlPatterns = "/admin/*", asyncSupported = true)
 public class AdminFilter implements Filter {
 
@@ -36,9 +40,10 @@ public class AdminFilter implements Filter {
 		String path = request.getRequestURI().substring(request.getContextPath().length());
 
 		// --- FIX IS HERE: Add a comprehensive null-check ---
-        // Check if the session exists AND if the user object is in the session.
+		// Check if the session exists AND if the user object is in the session.
 		if (session == null || session.getAttribute("user") == null) {
-			logger.warn("Admin access DENIED to path '{}' because there is no active session. Redirecting to login.", path);
+			logger.warn("Admin access DENIED to path '{}' because there is no active session. Redirecting to login.",
+					path);
 			response.sendRedirect(request.getContextPath() + "/login");
 			return; // Stop processing this request.
 		}
@@ -53,7 +58,8 @@ public class AdminFilter implements Filter {
 		} else {
 			logger.warn("ADMIN access DENIED for user '{}' (Role: '{}') to path '{}'. Redirecting to user home.",
 					user.getUsername(), user.getRole(), path);
-			request.getSession().setAttribute("accessErrorMessage", "Sie haben keine Berechtigung, auf diese Seite zuzugreifen.");
+			request.getSession().setAttribute("accessErrorMessage",
+					"Sie haben keine Berechtigung, auf diese Seite zuzugreifen.");
 			response.sendRedirect(request.getContextPath() + "/home");
 		}
 	}

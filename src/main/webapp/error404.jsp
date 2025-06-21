@@ -9,11 +9,8 @@
 	<c:param name="title" value="404 - Seite nicht gefunden" />
 </c:import>
 
-<%-- 
-  We will NOT import the main navigation (navigation.jspf) because this error
-  can occur for users who are not logged in. Showing the nav could be confusing.
-  Instead, we create a simplified header.
---%>
+<!-- A custom, user-friendly "Page Not Found" page. It is configured in web.xml and does not use the standard navigation. -->
+
 <header class="app-header">
 	<a href="${pageContext.request.contextPath}/home" class="logo">Technik
 		Team</a>
@@ -32,11 +29,11 @@
 		<h2>Fehlercode 404</h2>
 
 		<p>
-			Die von Ihnen aufgerufene Seite <strong><c:out
+			Die von dir aufgerufene Seite <strong><c:out
 					value="${pageContext.errorData.requestURI}" /></strong> existiert leider
 			nicht.
 		</p>
-		<p>Möglicherweise haben Sie sich vertippt oder der Link ist
+		<p>Möglicherweise hast du dich vertippt oder der Link ist
 			veraltet.</p>
 
 		<a href="${pageContext.request.contextPath}/home" class="btn">Zurück

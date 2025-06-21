@@ -3,8 +3,9 @@ package de.technikteam.model;
 import java.time.LocalDateTime;
 
 /**
- * Represents a course entity. Includes fields for course details and the
- * attendance status of the currently logged-in user.
+ * Represents a training course, including all its details like name, leader,
+ * and date. It also has a dynamic field to hold the current user's sign-up
+ * status.
  */
 public class Course {
 	private int id;

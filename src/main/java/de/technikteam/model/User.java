@@ -3,15 +3,18 @@ package de.technikteam.model;
 
 import java.time.LocalDateTime;
 
+/* 
+ *  The core model for an application user, containing their ID, username, role, and other profile information.
+ */
+
 public class User {
 	private int id;
 	private String username;
 	private String role;
 	private LocalDateTime createdAt;
-	private int classYear; // KORRIGIERT: von graduationYear zu classYear
+	private int classYear;
 	private String className;
 
-	// Passen Sie die Konstruktoren an
 	public User() {
 	}
 
@@ -24,7 +27,7 @@ public class User {
 		this.username = username;
 		this.role = role;
 		this.createdAt = createdAt;
-		this.classYear = classYear; // KORRIGIERT
+		this.classYear = classYear;
 		this.className = className;
 	}
 

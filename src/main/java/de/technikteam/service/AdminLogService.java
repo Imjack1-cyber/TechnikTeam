@@ -4,7 +4,10 @@ import de.technikteam.dao.AdminLogDAO;
 import de.technikteam.model.AdminLog;
 
 /**
- * A central service for logging administrative actions.
+ * A simple service that acts as a middleman for logging. It provides a static
+ * log method that other parts of the application can call to create an
+ * administrative audit log entry without having to interact directly with the
+ * AdminLogDAO.
  */
 public class AdminLogService {
 	private static final AdminLogDAO logDAO = new AdminLogDAO();

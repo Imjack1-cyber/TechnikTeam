@@ -12,7 +12,10 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-// Servlet for displaying the events page.
+/*
+ Responsible for the main event listing page at /events. It fetches a list of all upcoming events that the current user is qualified for, along with detailed information for each (like skill requirements), and passes the data to events.jsp for rendering.
+ */
+
 @WebServlet("/events")
 public class EventServlet extends HttpServlet {
 	/**

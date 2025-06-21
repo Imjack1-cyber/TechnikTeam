@@ -8,8 +8,13 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+/* 
+ *  This servlet is uniquely mapped to multiple URL patterns (/admin/categories/create, /admin/categories/update, /admin/categories/delete) to handle specific actions for file categories. It processes POST requests to create, update, or delete a category and then redirects back to the main admin file management page.
+ */
+
 @WebServlet({ "/admin/categories/create", "/admin/categories/update", "/admin/categories/delete" })
 public class AdminFileCategoryServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
 	private FileDAO fileDAO;
 
 	@Override

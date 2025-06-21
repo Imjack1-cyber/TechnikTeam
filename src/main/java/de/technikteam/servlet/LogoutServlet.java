@@ -9,12 +9,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
-// Servlet to handle user logout.
+/*
+ * Mapped to /logout, this servlet handles the user logout process. It invalidates the current session, effectively logging the user out, and then redirects to a logout.jsp confirmation page.
+ */
+
 @WebServlet("/logout")
 public class LogoutServlet extends HttpServlet {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)

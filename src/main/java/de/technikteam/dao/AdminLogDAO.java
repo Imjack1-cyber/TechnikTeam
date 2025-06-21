@@ -5,12 +5,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,7 +14,9 @@ import org.apache.logging.log4j.Logger;
 import de.technikteam.model.AdminLog;
 
 /**
- * Data Access Object for handling admin audit logs.
+ * A Data Access Object (DAO) responsible for all database interactions with the
+ * admin_logs table. It provides methods to create new log entries and retrieve
+ * all existing logs.
  */
 public class AdminLogDAO {
 	private static final Logger logger = LogManager.getLogger(AdminLogDAO.class);
@@ -66,17 +64,17 @@ public class AdminLogDAO {
 				ResultSet rs = stmt.executeQuery(sql)) {
 			// The loop iterates through each row returned by the SQL query
 			while (rs.next()) {
-			    // Step 2: Create a new AdminLog Java object for this row
-			    AdminLog logEntry = new AdminLog();
+				// Step 2: Create a new AdminLog Java object for this row
+				AdminLog logEntry = new AdminLog();
 
-			    // Steps 1 & 3: Extract data from the row and populate the object
-			    logEntry.setId(rs.getInt("id")); // Assumes an 'id' column exists
-			    logEntry.setAdminUsername(rs.getString("admin_username"));
-			    logEntry.setDetails(rs.getString("details"));
-			    logEntry.setActionTimestamp(rs.getTimestamp("action_timestamp").toLocalDateTime());
+				// Steps 1 & 3: Extract data from the row and populate the object
+				logEntry.setId(rs.getInt("id")); // Assumes an 'id' column exists
+				logEntry.setAdminUsername(rs.getString("admin_username"));
+				logEntry.setDetails(rs.getString("details"));
+				logEntry.setActionTimestamp(rs.getTimestamp("action_timestamp").toLocalDateTime());
 
-			    // Step 4: Add the fully populated object to the list
-			    logs.add(logEntry);
+				// Step 4: Add the fully populated object to the list
+				logs.add(logEntry);
 			}
 		} catch (SQLException e) {
 			logger.error("Failed to fetch admin logs.", e);

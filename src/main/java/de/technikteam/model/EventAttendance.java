@@ -1,8 +1,8 @@
 package de.technikteam.model;
 
 /**
- * Represents the attendance record of a single user for a single event.
- * Includes user details for display purposes.
+ * A model that links a user to an event, capturing their sign-up status
+ * (ANGEMELDET/ABGEMELDET) and their commitment level (BESTÄTIGT/OFFEN).
  */
 public class EventAttendance {
 	private int eventId;

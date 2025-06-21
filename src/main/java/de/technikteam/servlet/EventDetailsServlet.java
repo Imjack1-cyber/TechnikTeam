@@ -16,7 +16,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Servlet for displaying the detailed view of a single event.
+ * Mapped to /eventDetails, this servlet provides the detailed view of a single
+ * event. It fetches all relevant information for a specific event ID, including
+ * skill requirements, assigned attendees (if applicable), and a list of all
+ * signed-up users for admins. It then forwards this data to eventDetails.jsp.
  */
 @WebServlet("/eventDetails")
 public class EventDetailsServlet extends HttpServlet {

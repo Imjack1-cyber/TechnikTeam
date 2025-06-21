@@ -16,6 +16,10 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+/*
+ * Mapped to /download, this servlet handles file download requests. It takes a file parameter, securely constructs the file path, and streams the file from the server's upload directory to the user's browser, setting the correct headers for the download to start.
+ */
+
 @WebServlet("/download")
 public class DownloadServlet extends HttpServlet {
 	/**

@@ -2,6 +2,10 @@ package de.technikteam.model;
 
 import java.time.LocalDateTime;
 
+/*
+ *  A data object specifically for creating reports, combining user and event data to show a historical record of participation.
+ */
+
 public class ParticipationHistory {
 	private String username;
 	private String eventName;

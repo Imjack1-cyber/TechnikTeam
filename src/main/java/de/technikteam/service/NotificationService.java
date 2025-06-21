@@ -11,7 +11,10 @@ import org.apache.logging.log4j.Logger;
 import jakarta.servlet.AsyncContext;
 import jakarta.servlet.http.HttpServletRequest;
 
-// Singleton service to manage SSE connections
+/*
+ * A singleton service designed to handle real-time notifications using Server-Sent Events (SSE). It manages a list of connected clients and provides a method to sendNotification to all of them simultaneously.
+ */
+
 public class NotificationService {
 	private static final Logger logger = LogManager.getLogger(NotificationService.class);
 	private static final NotificationService INSTANCE = new NotificationService();

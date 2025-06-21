@@ -3,7 +3,7 @@ package de.technikteam.model;
 import java.time.LocalDateTime;
 
 /**
- * Represents a single log entry for an administrative action.
+ * Represents a single audit log entry made by an administrator.
  */
 public class AdminLog {
 	private int id;

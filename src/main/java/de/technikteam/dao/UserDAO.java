@@ -14,6 +14,10 @@ import org.apache.logging.log4j.Logger;
 
 import de.technikteam.model.User;
 
+/*
+ * A core DAO responsible for all user account management. Its functions include validating user credentials for login, fetching single or all user records, creating, updating, and deleting users, and handling password changes.
+ */
+
 public class UserDAO {
 	private static final Logger logger = LogManager.getLogger(UserDAO.class);
 

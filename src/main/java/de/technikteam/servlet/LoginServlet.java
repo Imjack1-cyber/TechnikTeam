@@ -14,11 +14,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
+/*
+ * Mapped to /login, this servlet is central to the application's authentication. It handles POST requests with username and password, validates them against the database via UserDAO, and if successful, creates a user session. It also handles GET requests to simply display the login.jsp page.
+ */
+
 @WebServlet("/login")
 public class LoginServlet extends HttpServlet {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(LoginServlet.class);
 	private UserDAO userDAO;

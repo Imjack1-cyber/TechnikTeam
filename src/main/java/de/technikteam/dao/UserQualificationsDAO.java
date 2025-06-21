@@ -18,10 +18,13 @@ import org.apache.logging.log4j.Logger;
 import de.technikteam.model.UserQualification;
 
 /**
- * Data Access Object for managing user qualifications. This class handles all
- * database interactions with the 'user_qualifications' table, which links users
- * to the courses they have attended or completed.
+ * This DAO manages the relationship between users and courses in the
+ * user_qualifications table. It's used to track which courses a user has
+ * attended or completed. Its key functions are fetching qualifications for a
+ * single user or all users (for a matrix view) and updating a user's status for
+ * a specific course.
  */
+
 public class UserQualificationsDAO {
 	private static final Logger logger = LogManager.getLogger(UserQualificationsDAO.class);
 

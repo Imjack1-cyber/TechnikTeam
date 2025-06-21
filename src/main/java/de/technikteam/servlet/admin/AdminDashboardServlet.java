@@ -13,11 +13,12 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+/*
+ * Mapped to /admin/dashboard, this servlet provides data for the main administrative dashboard. It uses the StatisticsDAO to fetch key metrics like user count and active event count, then forwards this data to admin_dashboard.jsp.
+ */
+
 @WebServlet("/admin/dashboard")
 public class AdminDashboardServlet extends HttpServlet {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminDashboardServlet.class);
 	private StatisticsDAO statisticsDAO;

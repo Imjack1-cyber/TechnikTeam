@@ -1,12 +1,12 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" isELIgnored="false" %>
 <%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <!DOCTYPE html>
-<html lang="de" data-theme="light">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${param.title} - Technik Team</title>
+    <%-- THIS ABSOLUTE PATH IS THE KEY TO FIXING STYLES --%>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
 </head>
-<%-- Add the data-context-path attribute to the body tag --%>
 <body data-context-path="${pageContext.request.contextPath}">

@@ -1,6 +1,9 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
 <%@ taglib uri="jakarta.tags.core" prefix="c"%>
+
+<!--  A confirmation page shown after a user logs out. It is served by LogoutServlet and uses JavaScript to redirect to the login page. -->
+
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -12,7 +15,7 @@
 	<div class="error-container"
 		style="text-align: center; margin-top: 5rem;">
 		<%-- Verwende den 'username' Parameter, der vom LogoutServlet übergeben wird --%>
-		<h1>${param.username},du wurdest erfolgreich ausgeloggt!</h1>
+		<h1>${param.username},duwurdest erfolgreich ausgeloggt!</h1>
 		<p>Du wirst in 5 Sekunden automatisch zur Login-Seite
 			weitergeleitet.</p>
 		<p>
@@ -20,11 +23,6 @@
 				Login-Seite</a>
 		</p>
 	</div>
-
-	<%-- ======================================================= --%>
-	<%--          DIES IST DER ENTSCHEIDENDE FIX                 --%>
-	<%-- ======================================================= --%>
-	<%-- Das Weiterleitungs-Skript ist jetzt NUR HIER und isoliert --%>
 	<script>
 		setTimeout(function() {
 			// Verwende den contextPath, um die URL sicher aufzubauen

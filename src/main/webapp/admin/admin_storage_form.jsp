@@ -3,6 +3,16 @@
 <c:import url="/WEB-INF/jspf/header.jspf"><c:param name="title" value="Lagerartikel bearbeiten"/></c:import>
 <c:import url="/WEB-INF/jspf/admin_navigation.jspf" />
 
+<!--  
+admin_storage_form.jsp: The form for creating and editing inventory/storage items.
+
+    Served by: AdminStorageServlet (doGet with action=new|edit).
+
+    Submits to: AdminStorageServlet (doPost with action=create|update).
+
+    Dependencies: Includes header.jspf, admin_navigation.jspf, footer.jspf.
+-->
+
 <h1><c:out value="${empty storageItem ? 'Neuen Lagerartikel anlegen' : 'Lagerartikel bearbeiten'}"/></h1>
 
 <div class="card form-container" style="max-width: 800px;">

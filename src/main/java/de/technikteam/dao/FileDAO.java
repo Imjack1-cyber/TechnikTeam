@@ -3,7 +3,6 @@ package de.technikteam.dao;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
@@ -18,6 +17,9 @@ import org.apache.logging.log4j.Logger;
 import de.technikteam.model.File;
 import de.technikteam.model.FileCategory;
 
+/*
+ * This DAO manages the metadata of uploaded files stored in the files table. It includes methods for creating, reading, and deleting file records. It also features logic to group files by their category for display purposes and contains methods to manage categories, which overlaps with the functionality in FileCategoryDAO.
+ */
 public class FileDAO {
 	private static final Logger logger = LogManager.getLogger(FileDAO.class);
 
@@ -92,18 +94,6 @@ public class FileDAO {
 			logger.error("SQL error fetching file categories.", e);
 		}
 		return categories;
-	}
-
-	// Hilfsmethode zur Überprüfung der Spaltenexistenz
-	private boolean hasColumn(ResultSet rs, String columnName) throws SQLException {
-		ResultSetMetaData rsmd = rs.getMetaData();
-		int columns = rsmd.getColumnCount();
-		for (int x = 1; x <= columns; x++) {
-			if (columnName.equalsIgnoreCase(rsmd.getColumnName(x))) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 	/**
@@ -208,4 +198,47 @@ public class FileDAO {
 			/* ... */ return false;
 		}
 	}
+
+	public String getCategoryNameById(int categoryId) {
+		String sql = "SELECT name FROM file_categories WHERE id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, categoryId);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				if (rs.next()) {
+					return rs.getString("name");
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching category name for ID: {}", categoryId, e);
+		}
+		return null; // Return null if not found
+	}
+
+	public String getDocumentContent(String documentName) {
+		String sql = "SELECT content FROM shared_documents WHERE document_name = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setString(1, documentName);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				if (rs.next()) {
+					return rs.getString("content");
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching document content for name: {}", documentName, e);
+		}
+		return ""; // Return empty string if not found
+	}
+
+	public boolean updateDocumentContent(String documentName, String content) {
+		String sql = "UPDATE shared_documents SET content = ? WHERE document_name = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setString(1, content);
+			pstmt.setString(2, documentName);
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("Error updating document content for name: {}", documentName, e);
+			return false;
+		}
+	}
+
 }

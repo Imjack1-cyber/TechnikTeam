@@ -14,7 +14,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Handles user actions related to events, such as signing up or signing off.
+ * This servlet, mapped to /event-action, is analogous to CourseActionServlet.
+ * It processes POST requests when a user signs up for (signup) or signs off
+ * from (signoff) an event, updating the database accordingly.
  */
 @WebServlet("/event-action")
 public class EventActionServlet extends HttpServlet {

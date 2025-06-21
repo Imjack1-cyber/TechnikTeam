@@ -12,7 +12,10 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-// Servlet for the storage page.
+/*
+ *  This servlet, mapped to /lager, is responsible for the main inventory/storage page. It fetches all storage items from the database, grouped by their physical location, and forwards this data to lager.jsp for display.
+ */
+
 @WebServlet("/lager")
 public class StorageServlet extends HttpServlet {
 	/**

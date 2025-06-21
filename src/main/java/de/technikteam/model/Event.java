@@ -4,7 +4,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * Represents an event entity.
+ * Represents a single event. It holds the event's data and also contains lists
+ * to store related information like skill requirements and assigned attendees
+ * for detailed views.
  */
 public class Event {
 	private int id;

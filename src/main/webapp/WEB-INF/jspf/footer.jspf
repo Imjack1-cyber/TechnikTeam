@@ -1,7 +1,8 @@
-</main>
+</main> <%-- Closes the <main> tag opened in the navigation files --%>
 <footer class="app-footer">
     <p>© 2025 Technik Team. Alle Rechte vorbehalten.</p>
 </footer>
+<%-- THIS ABSOLUTE PATH IS THE KEY TO FIXING SCRIPTS --%>
 <script src="${pageContext.request.contextPath}/js/main.js"></script>
 </body>
 </html>

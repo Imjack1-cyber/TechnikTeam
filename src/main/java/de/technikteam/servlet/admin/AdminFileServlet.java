@@ -9,7 +9,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import de.technikteam.config.AppConfig;
-import de.technikteam.dao.FileCategoryDAO;
 import de.technikteam.dao.FileDAO;
 import de.technikteam.model.File; // Our own model: de.technikteam.model.File
 import de.technikteam.model.FileCategory;
@@ -21,21 +20,20 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
 
+/* 
+ *  Mapped to /admin/files, this servlet manages the file upload and deletion functionality for administrators. The GET request displays the management page (admin_files.jsp) with a list of all files and categories. The POST request handles either uploading a new file or deleting an existing one (both the database record and the physical file).
+ */
+
 @MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 20, maxRequestSize = 1024 * 1024 * 50)
 @WebServlet("/admin/files")
 public class AdminFileServlet extends HttpServlet {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminFileServlet.class);
 	private FileDAO fileDAO;
-	private FileCategoryDAO fileCategoryDAO; // DAO für Kategorien hinzufügen
 
 	@Override
 	public void init() {
 		fileDAO = new FileDAO();
-		fileCategoryDAO = new FileCategoryDAO(); // Initialisieren
 	}
 
 	@Override

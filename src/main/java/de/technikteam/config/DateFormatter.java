@@ -5,7 +5,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 /**
- * A utility class to consistently format date and time objects for the UI.
+ * A utility class with static methods to format java.time.LocalDateTime objects
+ * into German-style date (dd.MM.yyyy) and date-time (dd.MM.yyyy HH:mm) strings
+ * for consistent display in the user interface.
  */
 public class DateFormatter {
 

@@ -14,8 +14,10 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-// Stellen Sie sicher, dass diese Annotation exakt so da ist
-//In AdminLogServlet.java
+/*
+ * Mapped to /admin/log, this servlet retrieves all entries from the administrative action log using the AdminLogDAO. It then passes the list of logs to admin_log.jsp for display.
+ */
+
 @WebServlet("/admin/log")
 public class AdminLogServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;

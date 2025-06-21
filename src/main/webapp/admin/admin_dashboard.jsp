@@ -1,4 +1,5 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" isELIgnored="false" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
 <%@ taglib uri="jakarta.tags.core" prefix="c"%>
 <!DOCTYPE html>
 <head>
@@ -8,6 +9,14 @@
 	<c:param name="title" value="Admin Dashboard" />
 </c:import>
 <c:import url="/WEB-INF/jspf/admin_navigation.jspf" />
+
+<!-- 
+admin_dashboard.jsp: The main landing page for the admin area, showing statistics and quick links.
+
+    Served by: AdminDashboardServlet (doGet).
+
+    Dependencies: Includes css/style.css, header.jspf, admin_navigation.jspf, footer.jspf. Links to other admin pages like /admin/users, /admin/events, etc.
+-->
 
 <h1>Willkommen im Admin-Bereich</h1>
 <p>Hier können Sie die Anwendung verwalten. Wählen Sie eine Option
@@ -19,8 +28,10 @@
 		<ul>
 			<li><a href="${pageContext.request.contextPath}/admin/users">Benutzer
 					verwalten</a></li>
-			<li><a href="${pageContext.request.contextPath}/admin/events">Events erstellen &amp; bearbeiten</a></li>
-			<li><a href="${pageContext.request.contextPath}/admin/files">Dateien hochladen</a></li>
+			<li><a href="${pageContext.request.contextPath}/admin/events">Events
+					erstellen &amp; bearbeiten</a></li>
+			<li><a href="${pageContext.request.contextPath}/admin/files">Dateien
+					hochladen</a></li>
 		</ul>
 	</div>
 

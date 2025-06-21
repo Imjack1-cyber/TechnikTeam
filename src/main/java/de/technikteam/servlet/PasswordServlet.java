@@ -14,11 +14,12 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+/*
+ * Mapped to /passwort, this servlet allows a logged-in user to change their own password. It handles both displaying the change form (GET) and processing the password change request (POST), including validation of the current password and confirmation of the new password.
+ */
+
 @WebServlet("/passwort")
 public class PasswordServlet extends HttpServlet {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(PasswordServlet.class);
 	private UserDAO userDAO;

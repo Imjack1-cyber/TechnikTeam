@@ -2,6 +2,10 @@ package de.technikteam.model;
 
 import java.time.LocalDateTime;
 
+/*
+ * Represents the metadata for a single uploaded file, including its name, path, and associated category.
+ */
+
 public class File {
 	private int id;
 	private String filename;

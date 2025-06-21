@@ -7,6 +7,16 @@
 </c:import>
 <c:import url="/WEB-INF/jspf/admin_navigation.jspf" />
 
+<!--  
+admin_user_details.jsp: The detailed view for a single user, which includes their profile data, qualifications, and event history. Crucially, this page also contains the form to update the user's information.
+
+    Served by: AdminUserServlet (doGet with action=details).
+
+    Submits to: AdminUserServlet (doPost with action=update).
+
+    Dependencies: Includes header.jspf, admin_navigation.jspf, footer.jspf.
+-->
+
 <h1>
 	Benutzerdetails bearbeiten:
 	<c:out value="${userToEdit.username}" />
@@ -73,13 +83,14 @@
 
 /* Style für schreibgeschützte Felder, damit sie klar als solche erkennbar sind */
 .readonly-field {
-    background-color: var(--secondary-color);
-    border: 1px solid var(--border-color);
-    cursor: not-allowed;
-    color: #777;
+	background-color: var(--secondary-color);
+	border: 1px solid var(--border-color);
+	cursor: not-allowed;
+	color: #777;
 }
+
 [data-theme="dark"] .readonly-field {
-    color: #aaa;
+	color: #aaa;
 }
 </style>
 

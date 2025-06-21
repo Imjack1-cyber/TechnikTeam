@@ -1,6 +1,9 @@
 package de.technikteam.model;
 
-// Represents an item in storage.
+/* 
+ * Represents a physical item in inventory, detailing its name, quantity, and specific storage location (cabinet, shelf, etc.).
+ */
+
 public class StorageItem {
 	private int id;
 	private String name;

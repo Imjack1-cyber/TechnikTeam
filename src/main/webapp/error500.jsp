@@ -4,9 +4,7 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt"%>
 <jsp:useBean id="now" class="java.util.Date" />
 
-<%--
-  CRITICAL: isErrorPage="true" makes the 'exception' object available for debugging.
---%>
+<!--  A custom "Internal Server Error" page. It is configured in web.xml and includes a hidden HTML comment with debugging information for developers. -->
 
 <c:import url="/WEB-INF/jspf/header.jspf">
 	<c:param name="title" value="500 - Interner Serverfehler" />
@@ -29,9 +27,9 @@
 		<h1>Interner Serverfehler</h1>
 		<h2>Fehlercode 500</h2>
 
-		<p>Es ist ein unerwarteter technischer Fehler aufgetreten. Bitte kontaktieren Sie jacques.serenz@no-bs.de.</p>
-		<p>Bitte entschuldigen Sie die Unannehmlichkeiten. Versuchen Sie
-			später erneut.</p>
+		<p>Es ist ein unerwarteter technischer Fehler aufgetreten.</p>
+		<p>Bitte wende dich an <a href="mailto:jacques.serenz@no-bs.de">jacques.serenz@no-bs.de</a>, wenn der Fehler
+			weiterhin bestehen bleibt.</p>
 
 		<a href="${pageContext.request.contextPath}/home" class="btn">Zurück
 			zur Startseite</a>
