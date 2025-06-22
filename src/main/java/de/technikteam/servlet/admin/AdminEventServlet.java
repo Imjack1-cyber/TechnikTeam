@@ -3,11 +3,10 @@ package de.technikteam.servlet.admin;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.Arrays;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -25,59 +24,61 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
+ * 
  * Mapped to /admin/events, this is a complex servlet that manages all aspects
+ * 
  * of events from an administrative perspective. It handles full CRUD operations
- * (create, read, update, delete) for events, manages skill requirements, and
- * provides the interface for assigning users to events. It forwards to
- * admin_events_list.jsp, admin_event_form.jsp, and admin_event_assign.jsp.
+ * 
+ * (create, read, update, delete) for events, manages skill requirements,
+ * 
+ * updates event statuses, and provides the interface for assigning users to an
+ * 
+ * event's final team. It routes to various JSPs like admin_events_list.jsp,
+ * 
+ * admin_event_form.jsp, and admin_event_assign.jsp.
  */
-
 @WebServlet("/admin/events")
 public class AdminEventServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminEventServlet.class);
 
 	private EventDAO eventDAO;
-	private CourseDAO courseDAO; // Needed for skill requirements in the form
+	private CourseDAO courseDAO; // Needed for skill requirements dropdown in the form
 
 	@Override
 	public void init() {
 		eventDAO = new EventDAO();
-		courseDAO = new CourseDAO(); // Initialize here
+		courseDAO = new CourseDAO();
 	}
 
-	/**
-	 * Routes GET requests based on the 'action' parameter. - list (default): Shows
-	 * the list of all events. - new/edit: Shows the form to create or edit an
-	 * event. - assign: Shows the form to assign users to an event.
-	 */
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		String action = req.getParameter("action") == null ? "list" : req.getParameter("action");
-		switch (action) {
-		case "edit":
-		case "new":
-			showEventForm(req, resp);
-			break;
-		case "assign":
-			showAssignForm(req, resp);
-			break;
-		default:
-			listEvents(req, resp);
-			break;
+		logger.debug("AdminEventServlet received GET request with action: {}", action);
+		try {
+			switch (action) {
+			case "edit":
+				showEventForm(req, resp);
+				break;
+			case "assign":
+				showAssignForm(req, resp);
+				break;
+			default:
+				listEvents(req, resp);
+				break;
+			}
+		} catch (Exception e) {
+			logger.error("Error in AdminEventServlet doGet", e);
+			req.getSession().setAttribute("errorMessage", "Ein Fehler ist aufgetreten: " + e.getMessage());
+			resp.sendRedirect(req.getContextPath() + "/admin/events");
 		}
 	}
 
-	/**
-	 * Routes POST requests based on the 'action' parameter. - create/update:
-	 * Handles event creation and updates. - delete: Handles event deletion. -
-	 * assignUsers: Handles the final assignment of users.
-	 */
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		req.setCharacterEncoding("UTF-8");
 		String action = req.getParameter("action");
-
+		logger.debug("AdminEventServlet received POST request with action: {}", action);
 		switch (action) {
 		case "create":
 		case "update":
@@ -89,49 +90,44 @@ public class AdminEventServlet extends HttpServlet {
 		case "assignUsers":
 			handleAssignUsers(req, resp);
 			break;
+		case "updateStatus":
+			handleStatusUpdate(req, resp);
+			break;
 		default:
+			logger.warn("Unknown POST action received: {}", action);
 			resp.sendRedirect(req.getContextPath() + "/admin/events");
 			break;
 		}
 	}
 
-	/**
-	 * Fetches all events and forwards to the list view.
-	 */
 	private void listEvents(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		logger.info("Listing all events for admin view.");
 		List<Event> eventList = eventDAO.getAllEvents();
+		// Also fetch courses for the 'Create New Event' modal form
+		List<Course> allCourses = courseDAO.getAllCourses();
 		req.setAttribute("eventList", eventList);
+		req.setAttribute("allCourses", allCourses);
 		req.getRequestDispatcher("/admin/admin_events_list.jsp").forward(req, resp);
 	}
 
-	/**
-	 * Prepares data for and displays the create/edit event form.
-	 */
 	private void showEventForm(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		if ("edit".equals(req.getParameter("action"))) {
-			int eventId = Integer.parseInt(req.getParameter("id"));
-			Event event = eventDAO.getEventById(eventId);
-			event.setSkillRequirements(eventDAO.getSkillRequirementsForEvent(eventId)); // Load existing requirements
-			req.setAttribute("event", event);
-		}
-		// Provide all available courses to the form for the dropdown list
+		int eventId = Integer.parseInt(req.getParameter("id"));
+		logger.info("Showing edit form for event ID: {}", eventId);
+		Event event = eventDAO.getEventById(eventId);
+		event.setSkillRequirements(eventDAO.getSkillRequirementsForEvent(eventId));
+		req.setAttribute("event", event);
 		List<Course> allCourses = courseDAO.getAllCourses();
 		req.setAttribute("allCourses", allCourses);
-
 		req.getRequestDispatcher("/admin/admin_event_form.jsp").forward(req, resp);
 	}
 
-	/**
-	 * Prepares data for and displays the user assignment form.
-	 */
 	private void showAssignForm(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		try {
 			int eventId = Integer.parseInt(req.getParameter("id"));
+			logger.info("Showing user assignment form for event ID: {}", eventId);
 			Event event = eventDAO.getEventById(eventId);
 			List<User> signedUpUsers = eventDAO.getSignedUpUsersForEvent(eventId);
 			List<User> assignedUsers = eventDAO.getAssignedUsersForEvent(eventId);
-
-			// Convert to a Set for efficient .contains() check in the JSP
 			Set<Integer> assignedUserIds = assignedUsers.stream().map(User::getId).collect(Collectors.toSet());
 
 			req.setAttribute("event", event);
@@ -141,132 +137,138 @@ public class AdminEventServlet extends HttpServlet {
 			req.getRequestDispatcher("/admin/admin_event_assign.jsp").forward(req, resp);
 		} catch (NumberFormatException e) {
 			logger.error("Invalid event ID for assignment form.", e);
+			req.getSession().setAttribute("errorMessage", "Ungültige Event-ID.");
 			resp.sendRedirect(req.getContextPath() + "/admin/events");
 		}
 	}
 
-	/**
-	 * Processes form submission for creating or updating an event.
-	 */
+	private void handleCreateOrUpdate(HttpServletRequest request, HttpServletResponse response)
+			throws IOException, ServletException {
+		User adminUser = (User) request.getSession().getAttribute("user");
+		String idParam = request.getParameter("id");
+		boolean isUpdate = idParam != null && !idParam.isEmpty();
+		try {
+			Event event = new Event();
+			event.setName(request.getParameter("name"));
+			event.setDescription(request.getParameter("description"));
+			event.setEventDateTime(LocalDateTime.parse(request.getParameter("eventDateTime")));
 
-	private void handleCreateOrUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
-	    User adminUser = (User) request.getSession().getAttribute("user");
-	    String idParam = request.getParameter("id");
+			String endDateTimeParam = request.getParameter("endDateTime");
+			if (endDateTimeParam != null && !endDateTimeParam.isEmpty()) {
+				event.setEndDateTime(LocalDateTime.parse(endDateTimeParam));
+			}
 
-	    try {
-	        Event event = new Event();
-	        event.setName(request.getParameter("name"));
-	        event.setDescription(request.getParameter("description"));
-	        event.setEventDateTime(LocalDateTime.parse(request.getParameter("eventDateTime")));
+			boolean success = false;
+			String actionType;
 
-	        boolean success = false;
+			if (isUpdate) {
+				actionType = "UPDATE_EVENT";
+				int eventId = Integer.parseInt(idParam);
+				event.setId(eventId);
+				event.setStatus(request.getParameter("status"));
+				logger.info("Attempting to update event ID: {}", eventId);
+				success = eventDAO.updateEvent(event);
+				if (success) {
+					AdminLogService.log(adminUser.getUsername(), actionType,
+							"Event '" + event.getName() + "' (ID: " + eventId + ") aktualisiert.");
+				}
+			} else { // CREATE
+				actionType = "CREATE_EVENT";
+				event.setStatus("GEPLANT");
+				logger.info("Attempting to create new event: {}", event.getName());
+				int newEventId = eventDAO.createEvent(event);
+				if (newEventId > 0) {
+					success = true;
+					event.setId(newEventId);
+					AdminLogService.log(adminUser.getUsername(), actionType,
+							"Event '" + event.getName() + "' (ID: " + newEventId + ") erstellt.");
+				}
+			}
 
-	        if (idParam != null && !idParam.isEmpty()) { // This is an UPDATE
-	            int eventId = Integer.parseInt(idParam);
-	            Event originalEvent = eventDAO.getEventById(eventId);
-	            if (originalEvent == null) { throw new ServletException("Zu aktualisierendes Event nicht gefunden."); }
+			if (success) {
+				String[] requiredCourseIds = request.getParameterValues("requiredCourseId");
+				String[] requiredPersons = request.getParameterValues("requiredPersons");
+				eventDAO.saveSkillRequirements(event.getId(), requiredCourseIds, requiredPersons);
+				request.getSession().setAttribute("successMessage", "Event erfolgreich gespeichert.");
+			} else {
+				request.getSession().setAttribute("errorMessage", "Event konnte nicht gespeichert werden.");
+			}
 
-	            event.setId(eventId);
-	            event.setStatus(request.getParameter("status"));
+		} catch (DateTimeParseException e) {
+			logger.error("Invalid date format submitted for event.", e);
+			request.getSession().setAttribute("errorMessage",
+					"Ungültiges Datumsformat. Bitte 'TT.MM.JJJJ hh:mm' verwenden.");
+		} catch (Exception e) {
+			logger.error("Error during event creation/update.", e);
+			request.getSession().setAttribute("errorMessage",
+					"Ein unerwarteter Fehler ist aufgetreten: " + e.getMessage());
+		}
 
-	            List<String> changes = new ArrayList<>();
-	            if (!Objects.equals(originalEvent.getName(), event.getName())) changes.add("Name zu '" + event.getName() + "'");
-	            if (!Objects.equals(originalEvent.getDescription(), event.getDescription())) changes.add("Beschreibung geändert");
-	            if (!originalEvent.getEventDateTime().equals(event.getEventDateTime())) changes.add("Datum zu " + event.getFormattedEventDateTime());
-	            if (!Objects.equals(originalEvent.getStatus(), event.getStatus())) changes.add("Status zu '" + event.getStatus() + "'");
-
-	            success = eventDAO.updateEvent(event);
-	            if (success) {
-	                String logDetails = changes.isEmpty()
-	                    ? "Event '" + originalEvent.getName() + "' (ID: " + eventId + ") gespeichert (keine Stammdaten-Änderungen)."
-	                    : "Event '" + originalEvent.getName() + "' (ID: " + eventId + ") aktualisiert. Änderungen: " + String.join(", ", changes) + ".";
-	                AdminLogService.log(adminUser.getUsername(), "UPDATE_EVENT", logDetails);
-	            }
-
-	        } else { // This is a CREATE
-	            event.setStatus("GEPLANT"); // Default status for new events
-	            int newEventId = eventDAO.createEvent(event);
-	            if (newEventId > 0) {
-	                success = true;
-	                event.setId(newEventId);
-	                String logDetails = "Event '" + event.getName() + "' (ID: " + newEventId + ") erstellt.";
-	                AdminLogService.log(adminUser.getUsername(), "CREATE_EVENT", logDetails);
-	            }
-	        }
-
-	        // After creating/updating, save the associated skill requirements
-	        if (success) {
-	            String[] requiredCourseIds = request.getParameterValues("requiredCourseId");
-	            String[] requiredPersons = request.getParameterValues("requiredPersons");
-	            // Here you could add more complex logging for skill changes if needed
-	            eventDAO.saveSkillRequirements(event.getId(), requiredCourseIds, requiredPersons);
-	            request.getSession().setAttribute("successMessage", "Event erfolgreich gespeichert.");
-	        } else {
-	            request.getSession().setAttribute("errorMessage", "Event konnte nicht gespeichert werden.");
-	        }
-
-	    } catch (DateTimeParseException e) {
-	        logger.error("Invalid date format submitted for event.", e);
-	        request.getSession().setAttribute("errorMessage", "Ungültiges Datumsformat.");
-	    } catch (Exception e) {
-	        logger.error("Error during event creation/update.", e);
-	        request.getSession().setAttribute("errorMessage", "Ein unerwarteter Fehler ist aufgetreten: " + e.getMessage());
-	    }
-
-	    response.sendRedirect(request.getContextPath() + "/admin/events");
+		response.sendRedirect(request.getContextPath() + "/admin/events");
 	}
 
-	/**
-	 * Processes request to delete an event.
-	 */
 	private void handleDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		int eventId = Integer.parseInt(req.getParameter("id"));
-		Event event = eventDAO.getEventById(eventId); // Get details for logging before deleting
-
-		if (event != null && eventDAO.deleteEvent(eventId)) {
-			User adminUser = (User) req.getSession().getAttribute("user");
-			AdminLogService.log(adminUser.getUsername(), "DELETE_EVENT",
-					"Event '" + event.getName() + "' (ID: " + eventId + ") gelöscht.");
-			req.getSession().setAttribute("successMessage", "Event wurde gelöscht.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Event konnte nicht gelöscht werden.");
+		User adminUser = (User) req.getSession().getAttribute("user");
+		try {
+			int eventId = Integer.parseInt(req.getParameter("id"));
+			logger.warn("Attempting to delete event with ID: {}", eventId);
+			Event event = eventDAO.getEventById(eventId);
+			if (event != null && eventDAO.deleteEvent(eventId)) {
+				AdminLogService.log(adminUser.getUsername(), "DELETE_EVENT",
+						"Event '" + event.getName() + "' (ID: " + eventId + ") endgültig gelöscht.");
+				req.getSession().setAttribute("successMessage", "Event wurde gelöscht.");
+			} else {
+				req.getSession().setAttribute("errorMessage", "Event konnte nicht gelöscht werden.");
+			}
+		} catch (NumberFormatException e) {
+			logger.error("Invalid event ID format for deletion.", e);
+			req.getSession().setAttribute("errorMessage", "Ungültige Event-ID.");
 		}
 		resp.sendRedirect(req.getContextPath() + "/admin/events");
 	}
 
-	/**
-	 * Processes form submission for assigning users to an event.
-	 */
 	private void handleAssignUsers(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-	    int eventId = Integer.parseInt(req.getParameter("eventId"));
-	    String[] userIds = req.getParameterValues("userIds");
-	    User adminUser = (User) req.getSession().getAttribute("user");
-	    Event event = eventDAO.getEventById(eventId);
+		User adminUser = (User) req.getSession().getAttribute("user");
+		try {
+			int eventId = Integer.parseInt(req.getParameter("eventId"));
+			String[] userIds = req.getParameterValues("userIds");
+			logger.info("Assigning {} users to event ID {}", (userIds != null ? userIds.length : 0), eventId);
+			Event event = eventDAO.getEventById(eventId);
+			eventDAO.assignUsersToEvent(eventId, userIds);
 
-	    // 1. Fetch old assignments for comparison
-	    List<String> oldAssignedNames = eventDAO.getAssignedUsersForEvent(eventId)
-	                                            .stream().map(User::getUsername)
-	                                            .collect(Collectors.toList());
+			String assignedUserCount = (userIds != null) ? String.valueOf(userIds.length) : "0";
+			String logDetails = String.format("Team für Event '%s' (ID: %d) finalisiert. %s Benutzer zugewiesen.",
+					event.getName(), eventId, assignedUserCount);
+			AdminLogService.log(adminUser.getUsername(), "ASSIGN_TEAM", logDetails);
 
-	    // 2. Perform the assignment
-	    eventDAO.assignUsersToEvent(eventId, userIds);
-
-	    // 3. Fetch new assignments and log the difference
-	    List<String> newAssignedNames = eventDAO.getAssignedUsersForEvent(eventId)
-	                                            .stream().map(User::getUsername)
-	                                            .collect(Collectors.toList());
-
-	    String logDetails = String.format("Team für Event '%s' (ID: %d) finalisiert. Alt: [%s], Neu: [%s].",
-	        event.getName(), eventId, String.join(", ", oldAssignedNames), String.join(", ", newAssignedNames));
-	    AdminLogService.log(adminUser.getUsername(), "ASSIGN_TEAM", logDetails);
-
-	    // Also update the event status to "KOMPLETT" as a helpful shortcut
-	    if (event != null) {
-	        event.setStatus("KOMPLETT");
-	        eventDAO.updateEvent(event);
-	    }
-	    
-	    req.getSession().setAttribute("successMessage", "Team für das Event wurde erfolgreich zugewiesen und der Status auf 'Komplett' gesetzt.");
-	    resp.sendRedirect(req.getContextPath() + "/admin/events");
+			req.getSession().setAttribute("successMessage", "Team für das Event wurde erfolgreich zugewiesen.");
+		} catch (NumberFormatException e) {
+			logger.error("Invalid event ID format for user assignment.", e);
+			req.getSession().setAttribute("errorMessage", "Ungültige Event-ID.");
+		}
+		resp.sendRedirect(req.getContextPath() + "/admin/events");
 	}
+
+	private void handleStatusUpdate(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		User adminUser = (User) req.getSession().getAttribute("user");
+		try {
+			int eventId = Integer.parseInt(req.getParameter("id"));
+			String newStatus = req.getParameter("newStatus");
+			logger.info("Updating status for event ID {} to '{}'", eventId, newStatus);
+			Event event = eventDAO.getEventById(eventId);
+			if (event != null && eventDAO.updateEventStatus(eventId, newStatus)) {
+				String logDetails = String.format("Status für Event '%s' (ID: %d) von '%s' auf '%s' geändert.",
+						event.getName(), eventId, event.getStatus(), newStatus);
+				AdminLogService.log(adminUser.getUsername(), "UPDATE_EVENT_STATUS", logDetails);
+				req.getSession().setAttribute("successMessage", "Event-Status erfolgreich aktualisiert.");
+			} else {
+				req.getSession().setAttribute("errorMessage", "Fehler beim Aktualisieren des Event-Status.");
+			}
+		} catch (NumberFormatException e) {
+			logger.error("Invalid event ID format for status update.", e);
+			req.getSession().setAttribute("errorMessage", "Ungültige Event-ID.");
+		}
+		resp.sendRedirect(req.getContextPath() + "/admin/events");
+	}
+
 }

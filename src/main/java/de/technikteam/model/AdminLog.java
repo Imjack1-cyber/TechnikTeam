@@ -1,17 +1,19 @@
 package de.technikteam.model;
 
+import de.technikteam.config.DateFormatter;
 import java.time.LocalDateTime;
 
 /**
- * Represents a single audit log entry made by an administrator.
+ * Represents a single audit log entry from the `admin_logs` table. It captures
+ * who performed an action, what type of action it was, detailed information
+ * about the action, and when it occurred.
  */
 public class AdminLog {
 	private int id;
 	private String adminUsername;
 	private String actionType;
-	private String targetEntity;
-	private LocalDateTime actionTimestamp;
 	private String details;
+	private LocalDateTime actionTimestamp;
 
 	public AdminLog() {
 	}
@@ -42,12 +44,12 @@ public class AdminLog {
 		this.actionType = actionType;
 	}
 
-	public String getTargetEntity() {
-		return targetEntity;
+	public String getDetails() {
+		return details;
 	}
 
-	public void setTargetEntity(String targetEntity) {
-		this.targetEntity = targetEntity;
+	public void setDetails(String details) {
+		this.details = details;
 	}
 
 	public LocalDateTime getActionTimestamp() {
@@ -58,17 +60,15 @@ public class AdminLog {
 		this.actionTimestamp = actionTimestamp;
 	}
 
-	public String getDetails() {
-		return details;
-	}
+	// --- Formatted Helper ---
 
-	public void setDetails(String details) {
-		this.details = details;
-	}
-
-	// Ersetzen Sie die bestehende getFormattedActionTimestamp-Methode
-
+	/**
+	 * A convenience method to get the action timestamp as a formatted string,
+	 * suitable for display in the user interface.
+	 * 
+	 * @return A German-style date-time string (e.g., "10.06.2025 17:45").
+	 */
 	public String getFormattedActionTimestamp() {
-		return de.technikteam.config.DateFormatter.formatDateTime(this.actionTimestamp);
+		return DateFormatter.formatDateTime(this.actionTimestamp);
 	}
 }

@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -17,17 +18,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Mapped to /image, this servlet acts as a secure proxy to serve images. It
- * prevents direct filesystem access by taking a file parameter, locating the
- * image within a designated images subdirectory in the upload path, and then
- * streaming it to the browser with the correct Content-Disposition: inline
- * header so it displays directly on the page.
+ * Mapped to `/image`, this servlet acts as a secure proxy to serve images. It
+ * prevents direct filesystem access by taking a `file` parameter, locating the
+ * image within a designated `images` subdirectory in the main upload path, and
+ * then streaming it to the browser. It sets the `Content-Disposition: inline`
+ * header so the image is displayed directly on the web page rather than
+ * downloaded.
  */
 @WebServlet("/image")
 public class ImageServlet extends HttpServlet {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(ImageServlet.class);
 
@@ -41,10 +40,17 @@ public class ImageServlet extends HttpServlet {
 		}
 
 		try {
-			filename = URLDecoder.decode(filename, "UTF-8");
+			filename = URLDecoder.decode(filename, StandardCharsets.UTF_8.toString());
 		} catch (IllegalArgumentException e) {
 			logger.warn("Could not decode filename: {}", filename, e);
 			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid filename encoding.");
+			return;
+		}
+
+		// Prevent path traversal
+		if (filename.contains("..")) {
+			logger.warn("Potential path traversal attack detected for image filename: {}", filename);
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
 			return;
 		}
 
@@ -64,12 +70,13 @@ public class ImageServlet extends HttpServlet {
 		}
 
 		response.setContentType(contentType);
-		response.setContentLength((int) imageFile.length());
+		response.setContentLengthLong(imageFile.length());
 
-		// Header 'inline' tells the browser to display the file, not to download it.
+		// The 'inline' header tells the browser to display the file, not to download
+		// it.
 		response.setHeader("Content-Disposition", "inline; filename=\"" + imageFile.getName() + "\"");
 
-		logger.debug("Serving image: {}", imageFile.getAbsolutePath());
+		logger.debug("Serving image: {} with content type {}", imageFile.getAbsolutePath(), contentType);
 
 		// Stream the file content to the response
 		try (FileInputStream inStream = new FileInputStream(imageFile);

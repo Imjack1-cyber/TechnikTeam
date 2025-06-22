@@ -13,10 +13,13 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.annotation.WebFilter;
 
-/* 
- * A simple utility filter that intercepts all requests to set the character encoding to UTF-8. This is a crucial filter that ensures special characters (like German umlauts) are correctly handled throughout the application.
+/**
+ * A crucial utility filter that intercepts all incoming requests (`/*`) to set
+ * the character encoding to UTF-8. This ensures that any data submitted in
+ * requests (e.g., form fields with special characters like German umlauts) and
+ * any content sent in responses is correctly interpreted and rendered by the
+ * browser. It should be the first filter in the chain.
  */
-
 @WebFilter(value = "/*", asyncSupported = true)
 public class CharacterEncodingFilter implements Filter {
 
@@ -24,19 +27,16 @@ public class CharacterEncodingFilter implements Filter {
 
 	@Override
 	public void init(FilterConfig filterConfig) throws ServletException {
-		logger.info("CharacterEncodingFilter initialized.");
+		logger.info("CharacterEncodingFilter initialized and set to enforce UTF-8.");
 	}
 
 	/**
-	 * This filter ensures that all incoming requests and outgoing responses are
-	 * handled with UTF-8 encoding to support special characters and umlauts. It is
-	 * configured in web.xml to be the VERY FIRST filter in the chain.
+	 * Sets the character encoding for both the request and response to UTF-8.
 	 */
 	@Override
 	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
 			throws IOException, ServletException {
 
-		// Log the start of the filtering process at TRACE level for verbosity
 		logger.trace("Applying UTF-8 character encoding to request and response.");
 
 		// Set the character encoding for the request to correctly interpret incoming
@@ -47,9 +47,7 @@ public class CharacterEncodingFilter implements Filter {
 		// correctly
 		response.setCharacterEncoding("UTF-8");
 
-		// Log successful application and pass the request to the next filter in the
-		// chain
-		logger.trace("Encoding set. Passing request to the next filter.");
+		// Pass the request along the filter chain
 		chain.doFilter(request, response);
 	}
 

@@ -4,9 +4,6 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Enumeration;
 
-// Wir benötigen den Import für den AbandonedConnectionCleanupThread nicht mehr.
-// import com.mysql.cj.jdbc.AbandonedConnectionCleanupThread; 
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -14,10 +11,13 @@ import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
 import jakarta.servlet.annotation.WebListener;
 
-/*
- *  This is an application lifecycle listener. Its main purpose is to perform cleanup tasks when the web application is shut down. Specifically, it deregisters the JDBC driver to prevent potential memory leaks in the server environment.
+/**
+ * This is an application lifecycle listener that performs crucial cleanup tasks
+ * when the web application is shut down or undeployed from the server. Its
+ * primary purpose is to manually deregister the JDBC driver that was loaded by
+ * this application's classloader. This prevents potential memory leaks in
+ * application servers like Tomcat.
  */
-
 @WebListener
 public class AppContextListener implements ServletContextListener {
 
@@ -25,18 +25,17 @@ public class AppContextListener implements ServletContextListener {
 
 	@Override
 	public void contextInitialized(ServletContextEvent sce) {
-		logger.info("TechnikTeam Application Context Initialized.");
-		// Hier können Aktionen beim Start der Anwendung ausgeführt werden.
+		logger.info(">>>>>>>>>> TechnikTeam Application Context Initialized <<<<<<<<<<");
 	}
 
 	@Override
 	public void contextDestroyed(ServletContextEvent sce) {
-		logger.info("TechnikTeam Application Context Destroyed. Cleaning up resources...");
+		logger.info(">>>>>>>>>> TechnikTeam Application Context Being Destroyed. Cleaning up resources... <<<<<<<<<<");
 
-		// Dies ist der wichtigste und offiziell unterstützte Schritt, um Speicherlecks
-		// durch JDBC-Treiber beim Herunterfahren der Anwendung zu verhindern.
-		// Wir iterieren durch alle geladenen Treiber und deregistrieren denjenigen,
-		// der vom ClassLoader unserer Anwendung geladen wurde.
+		// This is the officially supported way to prevent memory leaks caused by JDBC
+		// drivers
+		// when a web application is shut down. We iterate through all loaded drivers
+		// and deregister any that were loaded by this application's classloader.
 		Enumeration<java.sql.Driver> drivers = DriverManager.getDrivers();
 		while (drivers.hasMoreElements()) {
 			java.sql.Driver driver = drivers.nextElement();

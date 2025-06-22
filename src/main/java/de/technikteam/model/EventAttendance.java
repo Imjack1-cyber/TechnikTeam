@@ -1,15 +1,17 @@
 package de.technikteam.model;
 
 /**
- * A model that links a user to an event, capturing their sign-up status
- * (ANGEMELDET/ABGEMELDET) and their commitment level (BESTÄTIGT/OFFEN).
+ * A model that represents a record from the `event_attendance` table. It links
+ * a user to an event, capturing their sign-up status (e.g.,
+ * ANGEMELDET/ABGEMELDET) and their commitment level (e.g., BESTÄTIGT/OFFEN),
+ * which can be updated by an admin.
  */
 public class EventAttendance {
 	private int eventId;
 	private int userId;
-	private String username; // To display the user's name
-	private String signupStatus; // ANGEMELDET, ABGEMELDET
-	private String commitmentStatus; // BESTÄTIGT, OFFEN
+	private String username; // To display the user's name in lists
+	private String signupStatus; // e.g., ANGEMELDET, ABGEMELDET
+	private String commitmentStatus; // e.g., BESTÄTIGT, OFFEN
 
 	public EventAttendance() {
 	}

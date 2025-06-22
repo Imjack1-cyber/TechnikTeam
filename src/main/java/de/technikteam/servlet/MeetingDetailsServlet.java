@@ -1,26 +1,37 @@
-// CREATE THIS NEW FILE: src/main/java/de/technikteam/servlet/MeetingDetailsServlet.java
 package de.technikteam.servlet;
 
+import de.technikteam.dao.MeetingAttachmentDAO;
 import de.technikteam.dao.MeetingDAO;
 import de.technikteam.model.Meeting;
+import de.technikteam.model.User;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 
 /**
- * Handles GET requests to display the detailed view of a single Meeting.
+ * Mapped to `/meetingDetails`, this servlet handles GET requests to display the
+ * detailed view of a single course meeting. It fetches the core meeting data as
+ * well as any associated file attachments, applying role-based filtering for
+ * the attachments. The collected data is then forwarded to
+ * `meetingDetails.jsp`.
  */
 @WebServlet("/meetingDetails")
 public class MeetingDetailsServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(MeetingDetailsServlet.class);
 	private MeetingDAO meetingDAO;
+	private MeetingAttachmentDAO attachmentDAO;
 
 	@Override
 	public void init() {
 		meetingDAO = new MeetingDAO();
+		attachmentDAO = new MeetingAttachmentDAO();
 	}
 
 	@Override
@@ -29,29 +40,33 @@ public class MeetingDetailsServlet extends HttpServlet {
 
 		String meetingIdParam = request.getParameter("id");
 		if (meetingIdParam == null || meetingIdParam.isEmpty()) {
+			logger.warn("Bad request to MeetingDetailsServlet: missing ID parameter.");
 			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Meeting-ID fehlt.");
 			return;
 		}
 
 		try {
 			int meetingId = Integer.parseInt(meetingIdParam);
+			User user = (User) request.getSession().getAttribute("user");
+			logger.info("Meeting details for ID {} requested by user '{}'", meetingId, user.getUsername());
+
 			Meeting meeting = meetingDAO.getMeetingById(meetingId);
 
-			// If no meeting is found for the given ID, show a 404 error.
 			if (meeting == null) {
+				logger.warn("Meeting with ID {} not found.", meetingId);
 				response.sendError(HttpServletResponse.SC_NOT_FOUND, "Meeting nicht gefunden.");
 				return;
 			}
 
-			// In the future, you could fetch participant lists here if needed.
-			// List<User> participants =
-			// meetingAttendanceDAO.getAttendeesForMeeting(meetingId);
-			// request.setAttribute("participants", participants);
-
+			// Fetch attachments for the meeting, respecting the user's role
+			request.setAttribute("attachments", attachmentDAO.getAttachmentsForMeeting(meetingId, user.getRole()));
 			request.setAttribute("meeting", meeting);
+
+			logger.debug("Forwarding to meetingDetails.jsp for meeting '{}'", meeting.getName());
 			request.getRequestDispatcher("/meetingDetails.jsp").forward(request, response);
 
 		} catch (NumberFormatException e) {
+			logger.error("Invalid meeting ID format: {}", meetingIdParam, e);
 			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Ungültige Meeting-ID.");
 		}
 	}

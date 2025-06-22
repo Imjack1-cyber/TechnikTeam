@@ -1,25 +1,25 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
-<%@ taglib uri="jakarta.tags.core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt"%>
 <jsp:useBean id="now" class="java.util.Date" />
 
-<%-- Import the standard header. It provides the HTML structure, CSS, and JS. --%>
+<%--
+  error404.jsp
+  
+  This is a custom, user-friendly "Page Not Found" page. It is displayed
+  whenever a user navigates to a URL that does not map to any servlet or
+  resource in the application. The mapping is configured in web.xml.
+  It does not use the standard navigation for a cleaner error display.
+--%>
+
 <c:import url="/WEB-INF/jspf/header.jspf">
 	<c:param name="title" value="404 - Seite nicht gefunden" />
 </c:import>
 
-<!-- A custom, user-friendly "Page Not Found" page. It is configured in web.xml and does not use the standard navigation. -->
-
 <header class="app-header">
 	<a href="${pageContext.request.contextPath}/home" class="logo">Technik
 		Team</a>
-	<div class="theme-switch-wrapper">
-		<label class="theme-switch" for="theme-checkbox"> <input
-			type="checkbox" id="theme-checkbox" />
-			<div class="slider round"></div>
-		</label>
-	</div>
 </header>
 
 <main>
@@ -54,7 +54,7 @@
 	padding: 2rem;
 	margin: 2rem auto;
 	max-width: 650px;
-	background-color: var(--card-bg);
+	background-color: var(--surface-color);
 	border-radius: 12px;
 	border: 1px solid var(--border-color);
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
@@ -74,7 +74,7 @@
 
 .error-container h2 {
 	font-size: 1.2rem;
-	color: #888;
+	color: var(--text-muted-color);
 	font-weight: 500;
 	margin-bottom: 2rem;
 }
@@ -92,11 +92,10 @@
 .error-details {
 	margin-top: 2rem;
 	font-size: 0.85rem;
-	color: #aaa;
+	color: var(--text-muted-color);
 	border-top: 1px solid var(--border-color);
 	padding-top: 1rem;
 }
 </style>
 
-<%-- Import the standard footer --%>
 <c:import url="/WEB-INF/jspf/footer.jspf" />

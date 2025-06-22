@@ -11,41 +11,39 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-/*
- Responsible for the main event listing page at /events. It fetches a list of all upcoming events that the current user is qualified for, along with detailed information for each (like skill requirements), and passes the data to events.jsp for rendering.
+/**
+ * Mapped to `/events`, this servlet is responsible for the main event listing
+ * page for a logged-in user. It fetches a list of all upcoming events for which
+ * the user is qualified, along with their specific attendance status for each
+ * event (e.g., ZUGEWIESEN, ANGEMELDET, OFFEN). It then passes this data to
+ * `events.jsp`.
  */
-
 @WebServlet("/events")
 public class EventServlet extends HttpServlet {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(EventServlet.class);
 	private EventDAO eventDAO;
 
 	public void init() {
 		eventDAO = new EventDAO();
 	}
 
-	// Modify doGet in src/main/java/de/technikteam/servlet/EventServlet.java
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		User user = (User) request.getSession().getAttribute("user");
+		logger.info("Fetching upcoming events for user '{}' (ID: {})", user.getUsername(), user.getId());
 
-		// Dieser Aufruf ist bereits korrekt, da die DAO-Methode den Status holt.
-		List<Event> events = eventDAO.getUpcomingEventsForUser(user, 0);
-
-		// Die Logik, um Details für die ausklappbare Ansicht zu laden, bleibt.
-		for (Event event : events) {
-			event.setSkillRequirements(eventDAO.getSkillRequirementsForEvent(event.getId()));
-			if ("KOMPLETT".equals(event.getStatus())) {
-				event.setAssignedAttendees(eventDAO.getAssignedUsersForEvent(event.getId()));
-			}
-		}
+		// The DAO method intelligently calculates the most relevant status for the
+		// user.
+		List<Event> events = eventDAO.getUpcomingEventsForUser(user, 0); // 0 means no limit
 
 		request.setAttribute("events", events);
+		logger.debug("Found {} upcoming events for user '{}'. Forwarding to events.jsp.", events.size(),
+				user.getUsername());
 		request.getRequestDispatcher("/events.jsp").forward(request, response);
 	}
 }

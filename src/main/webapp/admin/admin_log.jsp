@@ -1,6 +1,20 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
-<%@ taglib uri="jakarta.tags.core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<%--
+  admin_log.jsp
+  
+  This JSP displays the administrative audit log. It receives a list of all
+  log entries and renders them in a responsive table/card layout. It includes
+  a client-side JavaScript search filter that allows the admin to quickly find
+  specific log entries by searching across all their fields.
+  
+  - It is served by: AdminLogServlet.
+  - Expected attributes:
+    - 'logs' (List<de.technikteam.model.AdminLog>): A list of all log entries, newest first.
+--%>
+
 <c:import url="/WEB-INF/jspf/header.jspf">
 	<c:param name="title" value="Admin Log" />
 </c:import>
@@ -8,21 +22,28 @@
 
 <h1>Admin Aktions-Protokoll</h1>
 
-<div class="card">
-	<div class="form-group">
-		<label for="log-filter">Protokoll filtern</label> <input type="search"
-			id="log-filter"
-			placeholder="Nach Details, Name oder Aktion filtern...">
+<div class="table-controls">
+	<div class="form-group" style="margin-bottom: 0; flex-grow: 1;">
+		<input type="search" id="table-filter"
+			placeholder="Nach Details, Name oder Aktion filtern..."
+			style="width: 100%;" aria-label="Protokoll filtern">
 	</div>
 </div>
 
+
 <!-- MOBILE LAYOUT -->
-<div class="mobile-card-list" id="log-card-list">
+<div class="mobile-card-list searchable-list">
 	<c:forEach var="log" items="${logs}">
-		<div class="list-item-card">
-			<p>${log.details}</p>
+		<div class="list-item-card"
+			data-searchable-content="${log.details} ${log.adminUsername} ${log.actionType}">
+			<p>
+				<strong>${log.details}</strong>
+			</p>
 			<div class="card-row">
 				<span>Wer:</span> <span>${log.adminUsername}</span>
+			</div>
+			<div class="card-row">
+				<span>Aktionstyp:</span> <span>${log.actionType}</span>
 			</div>
 			<div class="card-row">
 				<span>Wann:</span> <span>${log.formattedActionTimestamp} Uhr</span>
@@ -33,12 +54,13 @@
 
 <!-- DESKTOP LAYOUT -->
 <div class="desktop-table-wrapper">
-	<table class="desktop-table" id="log-table">
+	<table class="desktop-table searchable-table">
 		<thead>
 			<tr>
 				<th>Wann</th>
 				<th>Wer</th>
-				<th>Was</th>
+				<th>Aktionstyp</th>
+				<th>Details</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -46,6 +68,7 @@
 				<tr>
 					<td>${log.formattedActionTimestamp}Uhr</td>
 					<td>${log.adminUsername}</td>
+					<td>${log.actionType}</td>
 					<td>${log.details}</td>
 				</tr>
 			</c:forEach>
@@ -53,25 +76,5 @@
 	</table>
 </div>
 
+<c:import url="/WEB-INF/jspf/table-helper.jspf" />
 <c:import url="/WEB-INF/jspf/footer.jspf" />
-
-<%-- This script provides the live filtering functionality --%>
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const filterInput = document.getElementById('log-filter');
-    const desktopRows = document.querySelectorAll('#log-table tbody tr');
-    const mobileCards = document.querySelectorAll('#log-card-list .list-item-card');
-
-    filterInput.addEventListener('input', (e) => {
-        const searchTerm = e.target.value.toLowerCase();
-        
-        desktopRows.forEach(row => {
-            row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
-        });
-
-        mobileCards.forEach(card => {
-            card.style.display = card.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
-        });
-    });
-});
-</script>

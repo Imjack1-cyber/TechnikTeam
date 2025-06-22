@@ -1,4 +1,3 @@
-// In: src/main/java/de/technikteam/dao/CourseDAO.java
 package de.technikteam.dao;
 
 import java.sql.Connection;
@@ -15,9 +14,10 @@ import org.apache.logging.log4j.Logger;
 import de.technikteam.model.Course;
 
 /**
- * Data Access Object for managing the parent 'courses' table. This DAO only
- * handles the course templates (e.g., "Grundlehrgang"), not the schedulable
- * meetings.
+ * Data Access Object for managing `Course` templates in the `courses` table.
+ * This DAO handles CRUD operations for the parent course definitions (e.g.,
+ * "Grundlehrgang Tontechnik"), which serve as blueprints for individual,
+ * schedulable `Meeting` instances.
  */
 public class CourseDAO {
 	private static final Logger logger = LogManager.getLogger(CourseDAO.class);
@@ -25,21 +25,25 @@ public class CourseDAO {
 	/**
 	 * Creates a new parent course template in the database.
 	 * 
-	 * @param course The Course object to create (only name, abbreviation,
+	 * @param course The Course object to create (containing name, abbreviation, and
 	 *               description).
 	 * @return true if creation was successful, false otherwise.
 	 */
 	public boolean createCourse(Course course) {
-		// FIX: SQL statement now matches the new 'courses' table schema.
 		String sql = "INSERT INTO courses (name, abbreviation, description) VALUES (?, ?, ?)";
+		logger.debug("Attempting to create parent course: {}", course.getName());
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
 			pstmt.setString(1, course.getName());
 			pstmt.setString(2, course.getAbbreviation());
 			pstmt.setString(3, course.getDescription());
 
-			logger.info("Creating parent course: {}", course.getName());
-			return pstmt.executeUpdate() > 0;
+			int affectedRows = pstmt.executeUpdate();
+			if (affectedRows > 0) {
+				logger.info("Successfully created parent course: {}", course.getName());
+				return true;
+			}
+			return false;
 
 		} catch (SQLException e) {
 			logger.error("SQL error creating course: {}", course.getName(), e);
@@ -55,31 +59,32 @@ public class CourseDAO {
 	 */
 	public Course getCourseById(int courseId) {
 		String sql = "SELECT * FROM courses WHERE id = ?";
+		logger.debug("Attempting to fetch course by ID: {}", courseId);
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
 			pstmt.setInt(1, courseId);
 			try (ResultSet rs = pstmt.executeQuery()) {
 				if (rs.next()) {
+					logger.info("Found course with ID: {}", courseId);
 					return mapResultSetToCourse(rs);
 				}
 			}
 		} catch (SQLException e) {
 			logger.error("SQL error fetching course by ID: {}", courseId, e);
 		}
+		logger.warn("No course found with ID: {}", courseId);
 		return null;
 	}
 
 	/**
-	 * Fetches all parent courses from the database, sorted by name.
+	 * Fetches all parent courses from the database, sorted alphabetically by name.
 	 * 
 	 * @return A list of all Course objects.
 	 */
 	public List<Course> getAllCourses() {
 		List<Course> courses = new ArrayList<>();
-		// FIX: The query is now simple and orders by name, not a non-existent date
-		// column.
 		String sql = "SELECT * FROM courses ORDER BY name ASC";
-
+		logger.debug("Attempting to fetch all parent courses.");
 		try (Connection conn = DatabaseManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
@@ -109,54 +114,61 @@ public class CourseDAO {
 		course.setDescription(rs.getString("description"));
 		return course;
 	}
-	
-	// In: src/main/java/de/technikteam/dao/CourseDAO.java
 
-	// ... (keep createCourse, getCourseById, getAllCourses, and mapResultSetToCourse as they are)
+	/**
+	 * Updates an existing parent course's name, abbreviation, and description.
+	 * 
+	 * @param course The Course object with the updated data.
+	 * @return true if the update was successful, false otherwise.
+	 */
+	public boolean updateCourse(Course course) {
+		String sql = "UPDATE courses SET name = ?, abbreviation = ?, description = ? WHERE id = ?";
+		logger.debug("Attempting to update parent course: {}", course.getName());
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-	    /**
-	     * Updates an existing parent course's name, abbreviation, and description.
-	     * @param course The Course object with the updated data.
-	     * @return true if the update was successful, false otherwise.
-	     */
-	    public boolean updateCourse(Course course) {
-	        String sql = "UPDATE courses SET name = ?, abbreviation = ?, description = ? WHERE id = ?";
-	        try (Connection conn = DatabaseManager.getConnection();
-	             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-	            
-	            pstmt.setString(1, course.getName());
-	            pstmt.setString(2, course.getAbbreviation());
-	            pstmt.setString(3, course.getDescription());
-	            pstmt.setInt(4, course.getId());
-	            
-	            logger.info("Updating parent course: {}", course.getName());
-	            return pstmt.executeUpdate() > 0;
-	            
-	        } catch (SQLException e) {
-	            logger.error("SQL error updating course: {}", course.getName(), e);
-	            return false;
-	        }
-	    }
+			pstmt.setString(1, course.getName());
+			pstmt.setString(2, course.getAbbreviation());
+			pstmt.setString(3, course.getDescription());
+			pstmt.setInt(4, course.getId());
 
-	    /**
-	     * Deletes a parent course from the database.
-	     * NOTE: ON DELETE CASCADE in the database should also delete all associated meetings.
-	     * @param courseId The ID of the course to delete.
-	     * @return true if the deletion was successful, false otherwise.
-	     */
-	    public boolean deleteCourse(int courseId) {
-	        String sql = "DELETE FROM courses WHERE id = ?";
-	        try (Connection conn = DatabaseManager.getConnection();
-	             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-	            
-	            pstmt.setInt(1, courseId);
-	            
-	            logger.warn("Deleting parent course with ID: {}", courseId);
-	            return pstmt.executeUpdate() > 0;
-	            
-	        } catch (SQLException e) {
-	            logger.error("SQL error deleting course with ID: {}", courseId, e);
-	            return false;
-	        }
-	    }
+			int affectedRows = pstmt.executeUpdate();
+			if (affectedRows > 0) {
+				logger.info("Successfully updated parent course: {}", course.getName());
+				return true;
+			}
+			return false;
+
+		} catch (SQLException e) {
+			logger.error("SQL error updating course: {}", course.getName(), e);
+			return false;
+		}
+	}
+
+	/**
+	 * Deletes a parent course from the database. NOTE: This relies on `ON DELETE
+	 * CASCADE` in the database schema to also delete all associated meetings and
+	 * qualifications.
+	 * 
+	 * @param courseId The ID of the course to delete.
+	 * @return true if the deletion was successful, false otherwise.
+	 */
+	public boolean deleteCourse(int courseId) {
+		String sql = "DELETE FROM courses WHERE id = ?";
+		logger.debug("Attempting to delete parent course with ID: {}", courseId);
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+			pstmt.setInt(1, courseId);
+
+			int affectedRows = pstmt.executeUpdate();
+			if (affectedRows > 0) {
+				logger.warn("Successfully deleted parent course with ID: {}", courseId);
+				return true;
+			}
+			return false;
+
+		} catch (SQLException e) {
+			logger.error("SQL error deleting course with ID: {}", courseId, e);
+			return false;
+		}
+	}
 }

@@ -14,15 +14,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * This servlet, mapped to /event-action, is analogous to CourseActionServlet.
- * It processes POST requests when a user signs up for (signup) or signs off
- * from (signoff) an event, updating the database accordingly.
+ * Mapped to `/event-action`, this servlet processes POST requests from the main
+ * event listing page (`events.jsp`). It allows a logged-in user to either sign
+ * up for (`signup`) or sign off from (`signoff`) an event by updating the
+ * `event_attendance` table via the `EventDAO`.
  */
 @WebServlet("/event-action")
 public class EventActionServlet extends HttpServlet {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(EventActionServlet.class);
 	private EventDAO eventDAO;
@@ -32,9 +30,6 @@ public class EventActionServlet extends HttpServlet {
 		eventDAO = new EventDAO();
 	}
 
-	/**
-	 * Handles POST requests from the event list page to sign up or sign off.
-	 */
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
@@ -44,22 +39,22 @@ public class EventActionServlet extends HttpServlet {
 		String eventIdParam = request.getParameter("eventId");
 
 		if (user == null || action == null || eventIdParam == null) {
-			logger.warn("Invalid request to EventActionServlet. Missing parameters.");
+			logger.warn("Invalid request to EventActionServlet. Missing user, action, or eventId parameter.");
 			response.sendRedirect(request.getContextPath() + "/events");
 			return;
 		}
 
 		try {
 			int eventId = Integer.parseInt(eventIdParam);
+			logger.info("User '{}' (ID: {}) is performing action '{}' on event ID {}", user.getUsername(), user.getId(),
+					action, eventId);
 
 			if ("signup".equals(action)) {
 				eventDAO.signUpForEvent(user.getId(), eventId);
 				request.getSession().setAttribute("successMessage", "Erfolgreich zum Event angemeldet.");
-
 			} else if ("signoff".equals(action)) {
 				eventDAO.signOffFromEvent(user.getId(), eventId);
 				request.getSession().setAttribute("successMessage", "Erfolgreich vom Event abgemeldet.");
-
 			} else {
 				logger.warn("Unknown action received in EventActionServlet: {}", action);
 			}

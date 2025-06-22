@@ -1,130 +1,295 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
-<%@ taglib uri="jakarta.tags.core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+
+<%--
+  eventDetails.jsp
+  
+  This JSP displays the detailed view of a single event. It shows general info
+  (description, requirements, assigned team) for all users. For events with a
+  status of 'LAUFEND', it reveals an interactive section with a task list and
+  a real-time chat, available only to assigned team members and admins.
+  
+  - It is served by: EventDetailsServlet.
+  - Expected attributes:
+    - 'event' (de.technikteam.model.Event): The event object, populated with all necessary details.
+    - 'assignedUsers' (List<User>): For admins, the list of users assigned to the event.
+    - 'isUserAssigned' (boolean): For regular users, indicates if they are on the team.
+--%>
 
 <c:import url="/WEB-INF/jspf/header.jspf">
 	<c:param name="title" value="Event Details" />
 </c:import>
 <c:import url="/WEB-INF/jspf/navigation.jspf" />
 
-<!--  The public-facing detail page for a single event, served by EventDetailsServlet. It shows event details, required skills, and for admins, the list of signed-up and finally assigned users. -->
+<div class="details-container" data-event-id="${event.id}">
 
-<div class="details-container">
-
-	<%-- Event Title and Status Badge --%>
-	<h1>
-		<c:out value="${event.name}" />
-		<c:if test="${event.status == 'KOMPLETT'}">
-			<span class="status-badge">Team steht!</span>
+	<div
+		style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+		<h1>
+			<c:out value="${event.name}" />
+		</h1>
+		<c:if test="${not empty event.status}">
+			<c:set var="statusClass"
+				value="${event.status == 'KOMPLETT' or event.status == 'ZUGEWIESEN' ? 'status-ok' : event.status == 'LAUFEND' ? 'status-warn' : event.status == 'ABGESCHLOSSEN' ? 'status-info' : 'status-info'}" />
+			<span class="status-badge ${statusClass}">${event.status}</span>
 		</c:if>
-	</h1>
+	</div>
 
-	<%-- Event Date --%>
 	<p class="details-subtitle">
-		<strong>Datum:</strong> ${event.formattedEventDateTime} Uhr
+		<strong>Zeitraum:</strong> ${event.formattedEventDateTimeRange}
 	</p>
 
-	<%-- Card for the Event Description --%>
+	<%-- Interactive section for running events, visible only to assigned users and admins --%>
+	<c:if
+		test="${event.status == 'LAUFEND' and (isUserAssigned or sessionScope.user.role == 'ADMIN')}">
+		<div class="responsive-dashboard-grid">
+			<div class="card">
+				<h2 class="card-title">Aufgaben</h2>
+				<%-- Admin view for tasks: manage all tasks --%>
+				<c:if test="${sessionScope.user.role == 'ADMIN'}">
+					<div id="admin-task-manager">
+						<ul id="task-list-admin" class="details-list">
+							<c:if test="${empty event.eventTasks}">
+								<p>Noch keine Aufgaben erstellt.</p>
+							</c:if>
+							<c:forEach var="task" items="${event.eventTasks}">
+								<li id="task-item-${task.id}">
+									<div style="flex-grow: 1;">
+										<strong>${task.description}</strong><br> <small>Zugewiesen:
+											${not empty task.assignedUsernames ? task.assignedUsernames : 'Niemand'}</small>
+									</div>
+									<div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+										<span
+											class="status-badge ${task.status == 'ERLEDIGT' ? 'status-ok' : 'status-warn'}">${task.status}</span>
+										<button class="btn btn-small assign-task-btn"
+											data-task-id="${task.id}">Zuweisen</button>
+										<button class="btn btn-small btn-danger delete-task-btn"
+											data-task-id="${task.id}">×</button>
+									</div>
+								</li>
+							</c:forEach>
+						</ul>
+						<form action="${pageContext.request.contextPath}/admin/tasks"
+							method="post"
+							style="margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+							<input type="hidden" name="action" value="create"> <input
+								type="hidden" name="eventId" value="${event.id}">
+							<div class="form-group">
+								<label for="task-description">Neue Aufgabe</label> <input
+									type="text" name="description" id="task-description" required
+									placeholder="z.B. Mischpult aufbauen">
+							</div>
+							<button type="submit" class="btn btn-small">Aufgabe
+								erstellen</button>
+						</form>
+					</div>
+				</c:if>
+				<%-- User view for tasks: see and complete only their own tasks --%>
+				<c:if test="${sessionScope.user.role != 'ADMIN'}">
+					<ul id="task-list-user" class="details-list">
+						<c:forEach var="task" items="${event.eventTasks}">
+							<c:if
+								test="${fn:contains(task.assignedUsernames, sessionScope.user.username) and task.status == 'OFFEN'}">
+								<li id="task-item-user-${task.id}"><label
+									style="display: flex; align-items: center; gap: 0.5rem; width: 100%; cursor: pointer;">
+										<input type="checkbox" class="task-checkbox"
+										data-task-id="${task.id}"
+										style="width: auto; height: 1.2rem; flex-shrink: 0;">
+										<span>${task.description}</span>
+								</label></li>
+							</c:if>
+						</c:forEach>
+					</ul>
+				</c:if>
+			</div>
+			<div class="card">
+				<h2 class="card-title">Event-Chat</h2>
+				<div id="chat-box"
+					style="height: 300px; overflow-y: auto; border: 1px solid var(--border-color); padding: 0.5rem; margin-bottom: 1rem; background: var(--bg-color);"></div>
+				<form id="chat-form" style="display: flex; gap: 0.5rem;">
+					<input type="text" id="chat-message-input" class="form-group"
+						style="flex-grow: 1; margin: 0;"
+						placeholder="Nachricht eingeben...">
+					<button type="submit" class="btn">Senden</button>
+				</form>
+			</div>
+		</div>
+	</c:if>
+
 	<div class="card">
 		<h2 class="card-title">Beschreibung</h2>
 		<p>${not empty event.description ? event.description : 'Keine Beschreibung für dieses Event vorhanden.'}</p>
 	</div>
-
-	<%-- Card for Required Skills/Qualifications --%>
 	<div class="card">
 		<h2 class="card-title">Benötigter Personalbedarf</h2>
-		<c:choose>
-			<c:when test="${not empty event.skillRequirements}">
-				<ul class="details-list">
-					<c:forEach var="req" items="${event.skillRequirements}">
-						<li><strong>${req.courseName}:</strong>
-							${req.requiredPersons} Person(en) benötigt</li>
-					</c:forEach>
-				</ul>
-			</c:when>
-			<c:otherwise>
-				<p>Für dieses Event werden keine speziellen Qualifikationen
-					benötigt. Alle können sich anmelden.</p>
-			</c:otherwise>
-		</c:choose>
-	</div>
-
-	<%-- Admin-Only Section: Display Participants --%>
-	<c:if test="${sessionScope.user.role == 'ADMIN'}">
-		<div class="card">
-			<h2 class="card-title">Teilnehmer-Status</h2>
-
-			<c:choose>
-				<c:when test="${not empty signedUpUsers}">
-					<ul class="details-list">
-						<c:forEach var="participant" items="${signedUpUsers}">
-							<li><a
-								href="${pageContext.request.contextPath}/admin/users?action=details&id=${participant.id}">
-									${participant.username} </a> - Angemeldet</li>
-						</c:forEach>
-					</ul>
-				</c:when>
-				<c:otherwise>
-					<p>Bisher hat sich niemand für dieses Event angemeldet.</p>
-				</c:otherwise>
-			</c:choose>
-
-			<%-- Display the final assigned team if the event is 'KOMPLETT' --%>
-			<c:if
-				test="${event.status == 'KOMPLETT' && not empty event.assignedAttendees}">
-				<h3
-					style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">Final
-					zugewiesenes Team:</h3>
-				<ul class="details-list">
-					<c:forEach var="attendee" items="${event.assignedAttendees}">
-						<li><a
-							href="${pageContext.request.contextPath}/admin/users?action=details&id=${attendee.id}">
-								${attendee.username} </a></li>
-					</c:forEach>
-				</ul>
+		<ul class="details-list">
+			<c:if test="${empty event.skillRequirements}">
+				<p>Keine speziellen Qualifikationen benötigt.</p>
 			</c:if>
-		</div>
-	</c:if>
-
+			<c:forEach var="req" items="${event.skillRequirements}">
+				<li><strong>${req.courseName}:</strong> ${req.requiredPersons}
+					Person(en) benötigt</li>
+			</c:forEach>
+		</ul>
+	</div>
+	<div class="card">
+		<h2 class="card-title">Zugewiesenes Team</h2>
+		<ul class="details-list">
+			<c:if test="${empty event.assignedAttendees}">
+				<p>Noch kein Team zugewiesen.</p>
+			</c:if>
+			<c:forEach var="attendee" items="${event.assignedAttendees}">
+				<li><a
+					href="${pageContext.request.contextPath}/admin/users?action=details&id=${attendee.id}">${attendee.username}</a></li>
+			</c:forEach>
+		</ul>
+	</div>
 	<div style="margin-top: 2rem;">
 		<a href="${pageContext.request.contextPath}/events" class="btn">Zurück
 			zur Event-Übersicht</a>
 	</div>
-
 </div>
 
-<%-- Specific CSS for this details page --%>
+<div class="modal-overlay" id="assign-task-modal">
+	<div class="modal-content">
+		<button class="modal-close-btn">×</button>
+		<h3>Aufgabe zuweisen</h3>
+		<form action="${pageContext.request.contextPath}/admin/tasks"
+			method="post">
+			<input type="hidden" name="action" value="assign"> <input
+				type="hidden" name="eventId" value="${event.id}"> <input
+				type="hidden" name="taskId" id="modal-task-id">
+			<div class="form-group">
+				<label>Verfügbare Teammitglieder</label>
+				<div id="modal-user-checkboxes"
+					style="display: flex; flex-direction: column; gap: 0.5rem;">
+					<c:forEach var="user" items="${assignedUsers}">
+						<label><input type="checkbox" name="userIds"
+							value="${user.id}"> ${user.username}</label>
+					</c:forEach>
+				</div>
+			</div>
+			<button type="submit" class="btn">Zuweisung speichern</button>
+		</form>
+	</div>
+</div>
+
 <style>
-.details-container {
-	max-width: 800px;
-	margin: 0 auto;
-}
-
-.details-container .card {
-	margin-bottom: 1.5rem;
-}
-
 .details-subtitle {
-	font-style: italic;
-	color: #6c757d; /* A subtle grey color */
-	margin-top: -1rem;
-	margin-bottom: 1.5rem;
 	font-size: 1.1rem;
+	color: var(--text-muted-color);
+	margin-bottom: 1.5rem;
 }
 
 .details-list {
 	list-style-type: none;
 	padding-left: 0;
+	margin: 0;
 }
 
 .details-list li {
-	padding: 0.5rem 0;
+	padding: 0.75rem 0;
 	border-bottom: 1px solid var(--border-color);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 1rem;
 }
 
 .details-list li:last-child {
 	border-bottom: none;
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const mainContainer = document.querySelector('.details-container');
+    if (!mainContainer) return;
+    
+    const contextPath = "${pageContext.request.contextPath}";
+    const eventId = mainContainer.dataset.eventId;
+    const currentUserId = "${sessionScope.user.id}";
+    const isAdmin = "${sessionScope.user.role}" === "ADMIN";
+
+    if (!eventId) {
+        console.error("Event ID is missing. Real-time features disabled.");
+        return;
+    }
+    
+    // --- Admin-specific JS for task management ---
+    if (isAdmin) {
+        const assignModal = document.getElementById('assign-task-modal');
+        if (assignModal) {
+            const modalTaskIdInput = document.getElementById('modal-task-id');
+            const modalCloseBtn = assignModal.querySelector('.modal-close-btn');
+            
+            document.querySelectorAll('.assign-task-btn').forEach(btn => btn.addEventListener('click', () => {
+                modalTaskIdInput.value = btn.dataset.taskId;
+                assignModal.classList.add('active');
+            }));
+            
+            if(modalCloseBtn) modalCloseBtn.addEventListener('click', () => assignModal.classList.remove('active'));
+            assignModal.addEventListener('click', e => { if (e.target === assignModal) assignModal.classList.remove('active'); });
+        }
+        
+        document.querySelectorAll('.delete-task-btn').forEach(btn => btn.addEventListener('click', (e) => {
+            if (confirm('Aufgabe wirklich löschen?')) {
+                fetch(`${contextPath}/admin/tasks?taskId=${e.target.dataset.taskId}`, { method: 'DELETE' })
+                    .then(res => res.ok ? e.target.closest('li').remove() : alert('Löschen fehlgeschlagen!'));
+            }
+        }));
+    }
+
+    // --- User-specific JS for completing tasks ---
+    document.querySelectorAll('.task-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+            const params = new URLSearchParams({ taskId: e.target.dataset.taskId, status: e.target.checked ? 'ERLEDIGT' : 'OFFEN' });
+            fetch(`${contextPath}/task-action`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
+                .then(res => {
+                    if (res.ok) {
+                        if (e.target.checked) e.target.closest('li').style.display = 'none';
+                    } else { e.target.checked = !e.target.checked; alert('Status konnte nicht aktualisiert werden.'); }
+                }).catch(() => { e.target.checked = !e.target.checked; alert('Netzwerkfehler.'); });
+        });
+    });
+
+    // --- JS for Event Chat (if present) ---
+    const chatBox = document.getElementById('chat-box');
+    if (chatBox) {
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-message-input');
+        
+        const fetchMessages = () => {
+            fetch(`${contextPath}/api/event-chat?eventId=${eventId}`)
+                .then(res => res.ok ? res.json() : Promise.reject(`HTTP error! status: ${res.status}`))
+                .then(messages => {
+                    chatBox.innerHTML = messages.length > 0 ? messages.map(msg =>
+                        `<p style="margin-bottom:0.25rem; ${msg.userId == currentUserId ? 'text-align:right;' : ''}">
+                            <strong ${msg.userId == currentUserId ? 'style="color:var(--primary-color);"' : ''}>${msg.username}:</strong> ${msg.messageText}
+                         </p>`
+                    ).join('') : '<p style="color:var(--text-muted-color);">Noch keine Nachrichten.</p>';
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }).catch(error => console.error("Error fetching chat messages:", error));
+        };
+        
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const message = chatInput.value.trim();
+            if (message) {
+                const formData = new URLSearchParams({ eventId: eventId, messageText: message });
+                fetch(`${contextPath}/api/event-chat`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData })
+                    .then(res => { if (res.ok) { chatInput.value = ''; fetchMessages(); } else { alert('Nachricht konnte nicht gesendet werden.'); } })
+                    .catch(() => alert('Netzwerkfehler beim Senden.'));
+            }
+        });
+        
+        setInterval(fetchMessages, 3000);
+        fetchMessages();
+    }
+});
+</script>
 
 <c:import url="/WEB-INF/jspf/footer.jspf" />

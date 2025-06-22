@@ -1,17 +1,50 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
-<%@ taglib uri="jakarta.tags.core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<%--
+  admin_matrix.jsp
+  
+  This JSP displays the main qualification and attendance matrix. It's a complex
+  view that cross-references users with all scheduled meetings for every course.
+  Each cell indicates if a user attended a specific meeting. The cells are
+  interactive; clicking one opens a modal window to edit that specific attendance
+  record. The modal's form is submitted to the AdminAttendanceServlet.
+  
+  - It is served by: MatrixServlet.
+  - Expected attributes:
+    - 'allUsers' (List<de.technikteam.model.User>): All users for the rows.
+    - 'allCourses' (List<de.technikteam.model.Course>): All courses for the main columns.
+    - 'meetingsByCourse' (Map<Integer, List<Meeting>>): Meetings for each course for the sub-columns.
+    - 'attendanceMap' (Map<String, MeetingAttendance>): A map for quick lookup of attendance records.
+--%>
+
 <c:import url="/WEB-INF/jspf/header.jspf">
 	<c:param name="title" value="Qualifikations-Matrix" />
 </c:import>
 <c:import url="/WEB-INF/jspf/admin_navigation.jspf" />
 
-<h1>Qualifikations-Matrix (Modular)</h1>
+<h1>
+	<i class="fas fa-th-list"></i> Qualifikations-Matrix (Modular)
+</h1>
 <p>Klicken Sie auf eine Zelle, um die Teilnahme an einem Meeting zu
 	bearbeiten.</p>
-<%-- ... Feedback Messages ... --%>
 
-<!-- MOBILE LAYOUT -->
+<c:if test="${not empty sessionScope.successMessage}">
+	<p class="success-message">
+		<i class="fas fa-check-circle"></i> ${sessionScope.successMessage}
+	</p>
+	<c:remove var="successMessage" scope="session" />
+</c:if>
+<c:if test="${not empty sessionScope.errorMessage}">
+	<p class="error-message">
+		<i class="fas fa-exclamation-triangle"></i>
+		${sessionScope.errorMessage}
+	</p>
+	<c:remove var="errorMessage" scope="session" />
+</c:if>
+
+<!-- This wrapper ensures mobile-only display -->
 <div class="mobile-matrix-wrapper card">
 	<table class="mobile-matrix-table">
 		<thead>
@@ -30,19 +63,16 @@
 					<td>${user.username}</td>
 					<c:forEach var="course" items="${allCourses}">
 						<c:forEach var="meeting" items="${meetingsByCourse[course.id]}">
-							<c:set var="attendance"
-								value="${attendanceMap[user.id.toString().concat('-').concat(meeting.id)]}" />
-
-							<%-- Data for the modal is attached directly to each cell --%>
+							<c:set var="attendanceKey" value="${user.id}-${meeting.id}" />
+							<c:set var="attendance" value="${attendanceMap[attendanceKey]}" />
 							<td class="qual-cell" data-user-id="${user.id}"
 								data-user-name="${user.username}"
 								data-meeting-id="${meeting.id}"
 								data-meeting-name="${course.name} - ${meeting.name}"
 								data-attended="${not empty attendance && attendance.attended}"
 								data-remarks="${not empty attendance ? attendance.remarks : ''}">
-
 								<c:if test="${not empty attendance && attendance.attended}">
-									<span class="text-success">✔</span>
+									<span class="text-success" style="font-weight: bold;">✔</span>
 								</c:if> <c:if test="${empty attendance || !attendance.attended}">-</c:if>
 							</td>
 						</c:forEach>
@@ -53,24 +83,29 @@
 	</table>
 </div>
 
-<!-- DESKTOP LAYOUT -->
+<!-- This wrapper ensures desktop-only display -->
 <div class="desktop-table-wrapper">
 	<table class="desktop-table matrix-table">
 		<thead>
 			<tr>
-				<th rowspan="2" style="vertical-align: middle;">Nutzer /
-					Lehrgang ↓</th>
+				<th rowspan="2"
+					style="vertical-align: middle; position: sticky; left: 0; z-index: 10;">Nutzer
+					/ Lehrgang ↓</th>
 				<c:forEach var="course" items="${allCourses}">
 					<th colspan="${meetingsByCourse[course.id].size()}"
 						style="text-align: center;"><a
-						href="${pageContext.request.contextPath}/admin/courses?action=edit&id=${course.id}">${course.abbreviation}</a></th>
+						href="${pageContext.request.contextPath}/admin/courses?action=edit&id=${course.id}"
+						title="Vorlage '${course.name}' bearbeiten">${course.abbreviation}</a>
+					</th>
 				</c:forEach>
 			</tr>
 			<tr>
 				<c:forEach var="course" items="${allCourses}">
 					<c:forEach var="meeting" items="${meetingsByCourse[course.id]}">
 						<th style="text-align: center;"><a
-							href="${pageContext.request.contextPath}/admin/meetings?action=edit&courseId=${course.id}&meetingId=${meeting.id}">${meeting.name}</a></th>
+							href="${pageContext.request.contextPath}/admin/meetings?action=edit&courseId=${course.id}&meetingId=${meeting.id}"
+							title="Meeting '${meeting.name}' bearbeiten">${meeting.name}</a>
+						</th>
 					</c:forEach>
 				</c:forEach>
 			</tr>
@@ -78,14 +113,15 @@
 		<tbody>
 			<c:forEach var="user" items="${allUsers}">
 				<tr>
-					<td><a
-						href="${pageContext.request.contextPath}/admin/users?action=details&id=${user.id}">${user.username}</a></td>
+					<td
+						style="font-weight: 500; position: sticky; left: 0; background-color: var(--surface-color); z-index: 5;">
+						<a
+						href="${pageContext.request.contextPath}/admin/users?action=details&id=${user.id}">${user.username}</a>
+					</td>
 					<c:forEach var="course" items="${allCourses}">
 						<c:forEach var="meeting" items="${meetingsByCourse[course.id]}">
-							<c:set var="attendance"
-								value="${attendanceMap[user.id.toString().concat('-').concat(meeting.id)]}" />
-
-							<%-- Data for the modal is attached directly to each cell --%>
+							<c:set var="attendanceKey" value="${user.id}-${meeting.id}" />
+							<c:set var="attendance" value="${attendanceMap[attendanceKey]}" />
 							<td class="qual-cell" data-user-id="${user.id}"
 								data-user-name="${user.username}"
 								data-meeting-id="${meeting.id}"
@@ -114,7 +150,6 @@
 		<p id="modal-title" style="font-weight: bold; margin-bottom: 1rem;"></p>
 		<form action="${pageContext.request.contextPath}/admin/attendance"
 			method="post">
-			<input type="hidden" name="action" value="updateMeetingAttendance">
 			<input type="hidden" name="returnTo" value="matrix"> <input
 				type="hidden" name="userId" id="modal-user-id"> <input
 				type="hidden" name="meetingId" id="modal-meeting-id">
@@ -128,23 +163,20 @@
 				<label for="modal-remarks">Bemerkungen:</label>
 				<textarea name="remarks" id="modal-remarks" rows="3"></textarea>
 			</div>
-			<button type="submit" class="btn">Speichern</button>
+			<button type="submit" class="btn">
+				<i class="fas fa-save"></i> Speichern
+			</button>
 		</form>
 	</div>
 </div>
 
 <c:import url="/WEB-INF/jspf/footer.jspf" />
 
-<%-- ======================================================================== --%>
-<%-- NEW, SIMPLIFIED, AND ROBUST JAVASCRIPT LOGIC                           --%>
-<%-- The old "data island" script has been completely removed.              --%>
-<%-- ======================================================================== --%>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const modalOverlay = document.getElementById('attendance-modal');
     if (!modalOverlay) return;
     
-    // Select all modal form elements once for efficiency
     const modalTitle = document.getElementById('modal-title');
     const modalUserId = document.getElementById('modal-user-id');
     const modalMeetingId = document.getElementById('modal-meeting-id');
@@ -153,33 +185,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeBtn = modalOverlay.querySelector('.modal-close-btn');
 
     const openModal = (cell) => {
-        // Read data directly from the clicked cell's "data-*" attributes.
-        // The browser automatically makes these available in the `dataset` object.
         const userData = cell.dataset;
-
-        // Populate the modal with the data from the cell's attributes. This will now work.
         modalTitle.textContent = `Nutzer: ${userData.userName} | Meeting: ${userData.meetingName}`;
         modalUserId.value = userData.userId;
         modalMeetingId.value = userData.meetingId;
         modalRemarks.value = userData.remarks;
-        
-        // The data attribute gives a string "true" or "false". 
-        // We must compare it to the string "true" to set the checkbox correctly.
         modalAttended.checked = (userData.attended === 'true');
-        
         modalOverlay.classList.add('active');
     };
 
-    const closeModal = () => {
-        modalOverlay.classList.remove('active');
-    };
+    const closeModal = () => modalOverlay.classList.remove('active');
 
-    // Attach the click event listener to every cell with the "qual-cell" class.
     document.querySelectorAll('.qual-cell').forEach(cell => {
         cell.addEventListener('click', () => openModal(cell));
     });
 
-    // Event listeners for closing the modal
     if (closeBtn) closeBtn.addEventListener('click', closeModal);
     modalOverlay.addEventListener('click', (event) => { if (event.target === modalOverlay) closeModal(); });
     document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && modalOverlay.classList.contains('active')) closeModal(); });

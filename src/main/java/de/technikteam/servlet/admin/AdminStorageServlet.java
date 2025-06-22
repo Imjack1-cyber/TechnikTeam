@@ -1,17 +1,5 @@
 package de.technikteam.servlet.admin;
 
-import java.io.File; // java.io.File
-import java.io.IOException;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import de.technikteam.config.AppConfig;
 import de.technikteam.dao.StorageDAO;
 import de.technikteam.model.StorageItem;
@@ -24,25 +12,34 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
+import java.util.stream.Collectors;
 
 /**
- * This is the complete administrative backend for inventory management, mapped
- * to /admin/storage. It handles listing all storage items, showing forms for
- * creation/editing, and processing those submissions, including image uploads.
- * It directs traffic to admin_storage_list.jsp and admin_storage_form.jsp.
+ * 
+ * Mapped to /admin/storage, this servlet provides full administrative control
+ * 
+ * over the inventory (storage_items table). It handles listing all items,
+ * 
+ * and processing the create, update, and delete actions (now via modals),
+ * 
+ * including associated image file uploads and deletions.
  */
-
 @WebServlet("/admin/storage")
-@MultipartConfig(fileSizeThreshold = 1024 * 1024, // 1 MB
-		maxFileSize = 1024 * 1024 * 5, // 5 MB
-		maxRequestSize = 1024 * 1024 * 10 // 10 MB
-)
+@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 5, maxRequestSize = 1024 * 1024 * 10)
 public class AdminStorageServlet extends HttpServlet {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminStorageServlet.class);
+	private static final Logger logger = LogManager.getLogger(AdminStorageServlet.class.getName());
 	private StorageDAO storageDAO;
 
 	@Override
@@ -53,21 +50,17 @@ public class AdminStorageServlet extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		String action = request.getParameter("action") == null ? "list" : request.getParameter("action");
 		try {
-			switch (action) {
-			case "edit":
-			case "new":
-				showForm(request, response);
-				break;
-			default:
-				listItems(request, response);
-				break;
-			}
+			logger.info("Listing all storage items for admin view.");
+			Map<String, List<StorageItem>> groupedItems = storageDAO.getAllItemsGroupedByLocation();
+			List<StorageItem> flatList = groupedItems.values().stream().flatMap(List::stream)
+					.collect(Collectors.toList());
+			request.setAttribute("storageList", flatList);
+			request.getRequestDispatcher("/admin/admin_storage_list.jsp").forward(request, response);
 		} catch (Exception e) {
 			logger.error("Error in doGet of AdminStorageServlet", e);
 			request.getSession().setAttribute("errorMessage", "Ein Fehler ist aufgetreten: " + e.getMessage());
-			response.sendRedirect(request.getContextPath() + "/admin/storage");
+			response.sendRedirect(request.getContextPath() + "/admin/dashboard");
 		}
 	}
 
@@ -75,123 +68,116 @@ public class AdminStorageServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
 		request.setCharacterEncoding("UTF-8");
-		String action = request.getParameter("action");
-		if (action == null) {
-			response.sendRedirect(request.getContextPath() + "/admin/storage");
-			return;
+		String contentType = request.getContentType();
+		// Differentiate between multipart and standard forms
+		if (contentType != null && contentType.toLowerCase().startsWith("multipart/")) {
+			String action = getPartValue(request.getPart("action"));
+			if ("create".equals(action)) {
+				handleCreateOrUpdate(request, response, true);
+			} else if ("update".equals(action)) {
+				handleCreateOrUpdate(request, response, false);
+			} else {
+				logger.warn("Unknown multipart action received: {}", action);
+				response.sendRedirect(request.getContextPath() + "/admin/storage");
+			}
+		} else {
+			String action = request.getParameter("action");
+			if ("delete".equals(action)) {
+				handleDelete(request, response);
+			} else {
+				logger.warn("Unknown non-multipart action received: {}", action);
+				response.sendRedirect(request.getContextPath() + "/admin/storage");
+			}
 		}
-
-		switch (action) {
-		case "create":
-			handleCreateOrUpdate(request, response, true);
-			break;
-		case "update":
-			handleCreateOrUpdate(request, response, false);
-			break;
-		case "delete":
-			handleDelete(request, response);
-			break;
-		default:
-			response.sendRedirect(request.getContextPath() + "/admin/storage");
-			break;
-		}
-	}
-
-	private void listItems(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		Map<String, List<StorageItem>> groupedItems = storageDAO.getAllItemsGroupedByLocation();
-		List<StorageItem> flatList = groupedItems.values().stream().flatMap(List::stream).collect(Collectors.toList());
-		request.setAttribute("storageList", flatList);
-		request.getRequestDispatcher("/admin/admin_storage_list.jsp").forward(request, response);
-	}
-
-	private void showForm(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		if ("edit".equals(request.getParameter("action"))) {
-			int itemId = Integer.parseInt(request.getParameter("id"));
-			StorageItem item = storageDAO.getItemById(itemId);
-			request.setAttribute("storageItem", item);
-		}
-		request.getRequestDispatcher("/admin/admin_storage_form.jsp").forward(request, response);
 	}
 
 	private void handleCreateOrUpdate(HttpServletRequest request, HttpServletResponse response, boolean isCreate)
-	        throws IOException, ServletException {
-	    User adminUser = (User) request.getSession().getAttribute("user");
-	    try {
-	        StorageItem item = new StorageItem();
-	        item.setName(request.getParameter("name"));
-	        item.setLocation(request.getParameter("location"));
-	        item.setCabinet(request.getParameter("cabinet"));
-	        item.setShelf(request.getParameter("shelf"));
-	        item.setCompartment(request.getParameter("compartment"));
-	        item.setQuantity(Integer.parseInt(request.getParameter("quantity")));
+			throws IOException, ServletException {
+		User adminUser = (User) request.getSession().getAttribute("user");
+		try {
+			StorageItem item = new StorageItem();
+			item.setName(getPartValue(request.getPart("name")));
+			item.setLocation(getPartValue(request.getPart("location")));
+			item.setCabinet(getPartValue(request.getPart("cabinet")));
+			item.setShelf(getPartValue(request.getPart("shelf")));
+			item.setCompartment(getPartValue(request.getPart("compartment")));
+			item.setQuantity(Integer.parseInt(getPartValue(request.getPart("quantity"))));
+			item.setMaxQuantity(Integer.parseInt(getPartValue(request.getPart("maxQuantity"))));
+			logger.debug("SERVLET: Read from form -> Name: '{}', Quantity: {}, MaxQuantity: {}", item.getName(),
+					item.getQuantity(), item.getMaxQuantity());
 
-	        // --- Image Upload Logic ---
-	        Part filePart = request.getPart("imageFile");
-	        String imagePath = request.getParameter("imagePath"); // Keep old path as fallback
+			Part filePart = request.getPart("imageFile");
+			String imagePath = null;
+			if (!isCreate) {
+				int itemId = Integer.parseInt(getPartValue(request.getPart("id")));
+				item.setId(itemId);
+				StorageItem originalItem = storageDAO.getItemById(itemId);
+				if (originalItem != null) {
+					imagePath = originalItem.getImagePath();
+				}
+			}
 
-	        if (filePart != null && filePart.getSize() > 0) {
-	            String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
-	            if (!fileName.isEmpty()) {
-	                File imageUploadDir = new File(AppConfig.UPLOAD_DIRECTORY, "images");
-	                if (!imageUploadDir.exists()) imageUploadDir.mkdirs();
-	                File targetFile = new File(imageUploadDir, fileName);
-	                filePart.write(targetFile.getAbsolutePath());
-	                imagePath = fileName;
-	            }
-	        }
-	        item.setImagePath(imagePath);
+			if (filePart != null && filePart.getSize() > 0) {
+				String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
+				if (!fileName.isEmpty()) {
+					File imageUploadDir = new File(AppConfig.UPLOAD_DIRECTORY, "images");
+					if (!imageUploadDir.exists())
+						imageUploadDir.mkdirs();
+					File targetFile = new File(imageUploadDir, fileName);
+					filePart.write(targetFile.getAbsolutePath());
+					imagePath = fileName;
+				}
+			}
+			item.setImagePath(imagePath);
 
-	        boolean success;
-	        if (isCreate) {
-	            success = storageDAO.createItem(item);
-	            if (success) {
-	                AdminLogService.log(adminUser.getUsername(), "CREATE_STORAGE_ITEM", "Lagerartikel '" + item.getName() + "' erstellt.");
-	                request.getSession().setAttribute("successMessage", "Artikel '" + item.getName() + "' erfolgreich erstellt.");
-	            }
-	        } else { // UPDATE
-	            int itemId = Integer.parseInt(request.getParameter("id"));
-	            item.setId(itemId);
-	            StorageItem originalItem = storageDAO.getItemById(itemId);
-	            if (originalItem == null) { throw new ServletException("Zu aktualisierender Artikel nicht gefunden."); }
+			boolean success;
+			if (isCreate) {
+				success = storageDAO.createItem(item);
+				if (success) {
+					String logDetails = String.format(
+							"Lagerartikel '%s' erstellt. Ort: %s, Schrank: %s, Anzahl: %d/%d.", item.getName(),
+							item.getLocation(), item.getCabinet(), item.getQuantity(), item.getMaxQuantity());
+					AdminLogService.log(adminUser.getUsername(), "CREATE_STORAGE_ITEM", logDetails);
+					request.getSession().setAttribute("successMessage",
+							"Artikel '" + item.getName() + "' erfolgreich erstellt.");
+				}
+			} else { // UPDATE
+				StorageItem originalItem = storageDAO.getItemById(item.getId());
+				success = storageDAO.updateItem(item);
+				if (success) {
+					String logDetails = String.format(
+							"Lagerartikel '%s' (ID: %d) aktualisiert. Anzahl: %d -> %d, Ort: '%s' -> '%s'.",
+							originalItem.getName(), item.getId(), originalItem.getQuantity(), item.getQuantity(),
+							originalItem.getLocation(), item.getLocation());
+					AdminLogService.log(adminUser.getUsername(), "UPDATE_STORAGE_ITEM", logDetails);
+					request.getSession().setAttribute("successMessage",
+							"Artikel '" + item.getName() + "' erfolgreich aktualisiert.");
+				}
+			}
 
-	            List<String> changes = new ArrayList<>();
-	            if (!Objects.equals(originalItem.getName(), item.getName())) changes.add("Name zu '" + item.getName() + "'");
-	            if (!Objects.equals(originalItem.getLocation(), item.getLocation())) changes.add("Ort zu '" + item.getLocation() + "'");
-	            if (originalItem.getQuantity() != item.getQuantity()) changes.add("Anzahl zu " + item.getQuantity());
-	            if (!Objects.equals(originalItem.getImagePath(), item.getImagePath())) changes.add("Bildpfad zu '" + item.getImagePath() + "'");
-
-	            success = storageDAO.updateItem(item);
-	            if (success) {
-	                 String logDetails = changes.isEmpty()
-	                    ? "Lagerartikel '" + originalItem.getName() + "' (ID: " + itemId + ") gespeichert (keine Änderungen)."
-	                    : "Lagerartikel '" + originalItem.getName() + "' (ID: " + itemId + ") aktualisiert. Änderungen: " + String.join(", ", changes) + ".";
-	                AdminLogService.log(adminUser.getUsername(), "UPDATE_STORAGE_ITEM", logDetails);
-	                request.getSession().setAttribute("successMessage", "Artikel '" + item.getName() + "' erfolgreich aktualisiert.");
-	            }
-	        }
-
-	        if (!success) {
-	            request.getSession().setAttribute("errorMessage", "Operation am Artikel fehlgeschlagen.");
-	        }
-	    } catch (NumberFormatException e) {
-	        request.getSession().setAttribute("errorMessage", "Ungültiges Zahlenformat für Anzahl oder ID.");
-	    } catch (Exception e) {
-	        logger.error("Error creating/updating storage item.", e);
-	        request.getSession().setAttribute("errorMessage", "Fehler: " + e.getMessage());
-	    }
-	    response.sendRedirect(request.getContextPath() + "/admin/storage");
+			if (!success) {
+				request.getSession().setAttribute("errorMessage",
+						"Operation am Artikel fehlgeschlagen. Möglicherweise gab es keine Änderungen.");
+			}
+		} catch (NumberFormatException e) {
+			logger.error("Invalid number format for quantity or ID.", e);
+			request.getSession().setAttribute("errorMessage", "Ungültiges Zahlenformat für Anzahl oder ID.");
+		} catch (Exception e) {
+			logger.error("Error creating/updating storage item.", e);
+			request.getSession().setAttribute("errorMessage", "Fehler: " + e.getMessage());
+		}
+		response.sendRedirect(request.getContextPath() + "/admin/storage");
 	}
 
 	private void handleDelete(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		User adminUser = (User) request.getSession().getAttribute("user");
 		try {
 			int itemId = Integer.parseInt(request.getParameter("id"));
 			StorageItem item = storageDAO.getItemById(itemId);
-
-			// First, delete physical image if it exists
 			if (item != null && item.getImagePath() != null && !item.getImagePath().isEmpty()) {
-				File imageFile = new File(AppConfig.UPLOAD_DIRECTORY + File.separator + "images", item.getImagePath());
+				// Correctly construct the path to the image directory
+				File imageDir = new File(AppConfig.UPLOAD_DIRECTORY, "images");
+				File imageFile = new File(imageDir, item.getImagePath());
 				if (imageFile.exists()) {
 					if (imageFile.delete()) {
 						logger.info("Deleted physical image file: {}", imageFile.getAbsolutePath());
@@ -201,8 +187,12 @@ public class AdminStorageServlet extends HttpServlet {
 				}
 			}
 
-			// Then, delete the database record
 			if (storageDAO.deleteItem(itemId)) {
+				String itemName = (item != null) ? item.getName() : "N/A";
+				String itemLocation = (item != null) ? item.getLocation() : "N/A";
+				String logDetails = String.format("Lagerartikel '%s' (ID: %d) von Ort '%s' gelöscht.", itemName, itemId,
+						itemLocation);
+				AdminLogService.log(adminUser.getUsername(), "DELETE_STORAGE_ITEM", logDetails);
 				request.getSession().setAttribute("successMessage", "Artikel erfolgreich gelöscht.");
 			} else {
 				request.getSession().setAttribute("errorMessage",
@@ -213,4 +203,14 @@ public class AdminStorageServlet extends HttpServlet {
 		}
 		response.sendRedirect(request.getContextPath() + "/admin/storage");
 	}
+
+	private String getPartValue(Part part) throws IOException {
+    if (part == null) {
+    return null;
+    }
+    try (InputStream inputStream = part.getInputStream();
+    Scanner scanner = new Scanner(inputStream, StandardCharsets.UTF_8.name())) {
+    return scanner.useDelimiter("\A").hasNext() ? scanner.next() : "";
+    }
+    }
 }

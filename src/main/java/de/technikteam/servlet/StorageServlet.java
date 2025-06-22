@@ -11,17 +11,19 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-/*
- *  This servlet, mapped to /lager, is responsible for the main inventory/storage page. It fetches all storage items from the database, grouped by their physical location, and forwards this data to lager.jsp for display.
+/**
+ * This servlet, mapped to `/lager`, is responsible for displaying the main
+ * inventory/storage page for users. On a GET request, it fetches all storage
+ * items from the database, grouped by their physical location, and forwards
+ * this structured data to `lager.jsp` for rendering.
  */
-
 @WebServlet("/lager")
 public class StorageServlet extends HttpServlet {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(StorageServlet.class);
 	private StorageDAO storageDAO;
 
 	public void init() {
@@ -30,10 +32,14 @@ public class StorageServlet extends HttpServlet {
 
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		// Fetch all items grouped by their location.
+		logger.info("Main storage page requested. Fetching all items.");
+
+		// Fetch all items, grouped by their location (e.g., "Erdgeschoss",
+		// "Lagercontainer").
 		Map<String, List<StorageItem>> storageData = storageDAO.getAllItemsGroupedByLocation();
 
 		request.setAttribute("storageData", storageData);
+		logger.debug("Forwarding {} location groups to lager.jsp.", storageData.size());
 		request.getRequestDispatcher("lager.jsp").forward(request, response);
 	}
 }

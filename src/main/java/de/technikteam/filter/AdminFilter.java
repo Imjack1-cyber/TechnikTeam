@@ -15,10 +15,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
-/*
- * This is a security filter that protects all URLs under the /admin/* path. It checks if the user in the current session has the "ADMIN" role. If the user is not an admin or is not logged in, it denies access and redirects them.
+/**
+ * A security filter that protects all URLs under the `/admin/*` path. It
+ * intercepts requests to these protected endpoints and checks if the user
+ * object in the current session has the "ADMIN" role. If the user is not an
+ * admin or is not logged in at all, it denies access and redirects them to an
+ * appropriate page (login or home).
  */
-
 @WebFilter(urlPatterns = "/admin/*", asyncSupported = true)
 public class AdminFilter implements Filter {
 
@@ -26,7 +29,7 @@ public class AdminFilter implements Filter {
 
 	@Override
 	public void init(FilterConfig filterConfig) throws ServletException {
-		logger.info("AdminFilter initialized.");
+		logger.info("AdminFilter initialized and protecting /admin/* paths.");
 	}
 
 	@Override
@@ -39,20 +42,19 @@ public class AdminFilter implements Filter {
 
 		String path = request.getRequestURI().substring(request.getContextPath().length());
 
-		// --- FIX IS HERE: Add a comprehensive null-check ---
+		logger.trace("AdminFilter is processing request for path: '{}'", path);
+
 		// Check if the session exists AND if the user object is in the session.
 		if (session == null || session.getAttribute("user") == null) {
-			logger.warn("Admin access DENIED to path '{}' because there is no active session. Redirecting to login.",
-					path);
+			logger.warn("Admin access DENIED to path '{}'. No active session found. Redirecting to login.", path);
 			response.sendRedirect(request.getContextPath() + "/login");
 			return; // Stop processing this request.
 		}
 
 		User user = (User) session.getAttribute("user");
-		logger.debug("AdminFilter processing request for path: '{}' for user: '{}'", path, user.getUsername());
 
 		if ("ADMIN".equalsIgnoreCase(user.getRole())) {
-			logger.info("ADMIN access GRANTED for user '{}' to path '{}'. Passing to next filter/servlet.",
+			logger.debug("ADMIN access GRANTED for user '{}' to path '{}'. Passing to next filter/servlet.",
 					user.getUsername(), path);
 			chain.doFilter(request, response);
 		} else {

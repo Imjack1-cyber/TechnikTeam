@@ -1,8 +1,8 @@
 package de.technikteam.model;
 
 /**
- * A simple model representing a category used to organize files, containing
- * just an ID and a name.
+ * A simple model representing a category from the `file_categories` table, used
+ * to organize uploaded files. It contains just a unique ID and a name.
  */
 public class FileCategory {
 	private int id;

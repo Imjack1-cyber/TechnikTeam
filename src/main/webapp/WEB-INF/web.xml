@@ -1,28 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
-	version="4.0">
+	xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
+	version="6.0">
 
-	<!-- The core deployment descriptor for the application. It configures session 
-		timeout, sets login.jsp as the welcome file (what users see when they visit 
-		the root URL), ensures Expression Language is active on JSP pages, and maps 
-		the 404 and 500 error codes to custom error pages (error404.jsp and error500.jsp). -->
+	<!-- web.xml: The core deployment descriptor for the web application. This 
+		file configures essential, application-wide settings that cannot be handled 
+		by Java annotations. It defines: - Session Timeout: How long a user's session 
+		remains active during inactivity. - Welcome File: The default page a user 
+		sees when they visit the root URL. - JSP Configuration: Ensures Expression 
+		Language (EL) is enabled on all JSPs. - Custom Error Pages: Maps HTTP error 
+		codes like 404 (Not Found) and 500 (Internal Server Error) to user-friendly, 
+		custom JSP pages. Note: All Servlet, Filter, and Listener mappings are now 
+		managed via annotations in their respective Java classes for a more modern 
+		and decentralized configuration approach. -->
 
 	<display-name>TechnikTeam Web Application</display-name>
 
-	<!-- Globale Konfigurationen, die nicht per Annotation gesetzt werden können -->
-
 	<session-config>
-		<session-timeout>30</session-timeout>
+		<session-timeout>30</session-timeout> <!-- in minutes -->
 	</session-config>
 
 	<welcome-file-list>
 		<welcome-file>login.jsp</welcome-file>
 	</welcome-file-list>
 
-	<!-- Stellt sicher, dass die Expression Language (${...}) immer aktiviert 
-		ist -->
+	<!-- Ensures that Expression Language (${...}) is always enabled on JSPs. -->
 	<jsp-config>
 		<jsp-property-group>
 			<url-pattern>*.jsp</url-pattern>
@@ -31,7 +34,7 @@
 		</jsp-property-group>
 	</jsp-config>
 
-	<!-- Benutzerdefinierte Fehlerseiten -->
+	<!-- Custom Error Pages -->
 	<error-page>
 		<error-code>404</error-code>
 		<location>/error404.jsp</location>
@@ -40,7 +43,9 @@
 		<error-code>500</error-code>
 		<location>/error500.jsp</location>
 	</error-page>
-
-	<!-- Alle Servlet- und Filter-Mappings werden jetzt über Annotationen gesteuert. -->
+	<error-page>
+		<exception-type>java.lang.Throwable</exception-type>
+		<location>/error500.jsp</location>
+	</error-page>
 
 </web-app>

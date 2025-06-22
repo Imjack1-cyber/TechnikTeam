@@ -4,7 +4,6 @@ import java.io.IOException;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-// ... other imports
 
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.User;
@@ -14,10 +13,13 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-/*
- * Mapped to /passwort, this servlet allows a logged-in user to change their own password. It handles both displaying the change form (GET) and processing the password change request (POST), including validation of the current password and confirmation of the new password.
+/**
+ * Mapped to `/passwort`, this servlet allows a logged-in user to change their
+ * own password. It handles GET requests by displaying the change form
+ * (`passwort.jsp`) and POST requests by processing the password change. This
+ * includes validating the user's current password and ensuring the new password
+ * confirmation matches before updating the database via `UserDAO`.
  */
-
 @WebServlet("/passwort")
 public class PasswordServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
@@ -38,12 +40,18 @@ public class PasswordServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		User user = (User) request.getSession().getAttribute("user");
+		if (user == null) {
+			response.sendRedirect(request.getContextPath() + "/login");
+			return;
+		}
+
 		logger.info("Password change attempt for user: {}", user.getUsername());
 
 		String currentPassword = request.getParameter("currentPassword");
 		String newPassword = request.getParameter("newPassword");
 		String confirmPassword = request.getParameter("confirmPassword");
 
+		// Validate that the user knows their current password
 		User authenticatedUser = userDAO.validateUser(user.getUsername(), currentPassword);
 		if (authenticatedUser == null) {
 			logger.warn("Password change failed for {}: incorrect current password.", user.getUsername());
@@ -72,7 +80,7 @@ public class PasswordServlet extends HttpServlet {
 			request.setAttribute("successMessage", "Ihr Passwort wurde erfolgreich geändert.");
 		} else {
 			logger.error("Password change failed for {} due to a DAO error.", user.getUsername());
-			request.setAttribute("errorMessage", "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
+			request.setAttribute("errorMessage", "Ein interner Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
 		}
 		request.getRequestDispatcher("passwort.jsp").forward(request, response);
 	}

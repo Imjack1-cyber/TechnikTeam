@@ -1,30 +1,59 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" isELIgnored="false" %>
-<%@ taglib uri="jakarta.tags.core" prefix="c" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<%--
+  navigation.jspf
+  
+  This is the standard navigation bar for a logged-in user. It provides
+  links to all user-facing sections of the application and includes user
+  actions like changing their password, theme switching, and logging out.
+--%>
+
 <header class="app-header">
-    <a href="${pageContext.request.contextPath}/home" class="logo">TechnikTeam</a>
-    <button class="mobile-nav-toggle" aria-label="Menu"><div class="line line-1"></div><div class="line line-2"></div><div class="line line-3"></div></button>
-    <nav class="main-nav">
-        <ul>
-            <li><a href="${pageContext.request.contextPath}/events">Veranstaltungen</a></li>
-            <li><a href="${pageContext.request.contextPath}/lehrgaenge">Lehrgänge</a></li>
-            <li><a href="${pageContext.request.contextPath}/lager">Lager</a></li>
-            <li><a href="${pageContext.request.contextPath}/dateien">Dateien</a></li>
-            <c:if test="${sessionScope.user.role == 'ADMIN'}">
-                <li><a href="${pageContext.request.contextPath}/admin/dashboard" style="font-weight: bold;">Admin Panel</a></li>
-            </c:if>
-        </ul>
-        <div class="user-actions">
-            <span>Hallo, ${sessionScope.user.username}!</span>
-            <a href="${pageContext.request.contextPath}/passwort">Passwort ändern</a>
-            <a href="${pageContext.request.contextPath}/logout" id="logout-link">Ausloggen</a>
-            <%-- ** FIX: Theme switcher implemented ** --%>
-            <div class="theme-switch-wrapper">
-                <label class="theme-switch" for="theme-checkbox">
-                    <input type="checkbox" id="theme-checkbox" />
-                    <div class="slider round"></div>
-                </label>
-            </div>
-        </div>
-    </nav>
+	<a href="${pageContext.request.contextPath}/home" class="logo"
+		title="Zur Startseite"> <i class="fas fa-home"></i> Technik Team
+	</a>
+
+	<button class="mobile-nav-toggle" aria-label="Toggle Navigation">
+		<div class="line line-1"></div>
+		<div class="line line-2"></div>
+		<div class="line line-3"></div>
+	</button>
+
+	<nav class="main-nav">
+		<ul>
+			<li><a href="${pageContext.request.contextPath}/events"><i
+					class="fas fa-calendar-check"></i> Veranstaltungen</a></li>
+			<li><a href="${pageContext.request.contextPath}/lehrgaenge"><i
+					class="fas fa-book-reader"></i> Lehrgänge</a></li>
+			<li><a href="${pageContext.request.contextPath}/lager"><i
+					class="fas fa-boxes"></i> Lager</a></li>
+			<li><a href="${pageContext.request.contextPath}/dateien"><i
+					class="fas fa-file-alt"></i> Dateien</a></li>
+			<li><a href="${pageContext.request.contextPath}/passwort"><i
+					class="fas fa-key"></i> Passwort</a></li>
+		</ul>
+		<div class="user-actions">
+			<c:if test="${sessionScope.user.role == 'ADMIN'}">
+				<a href="${pageContext.request.contextPath}/admin/dashboard"
+					class="btn btn-small"
+					style="background-color: var(--warning-color); color: black;"
+					title="Zum Admin-Bereich wechseln"> <i
+					class="fas fa-user-shield"></i> Admin
+				</a>
+			</c:if>
+			<div class="theme-switch-wrapper">
+				<label class="theme-switch" for="theme-checkbox"> <input
+					type="checkbox" id="theme-checkbox" />
+					<div class="slider round"></div>
+				</label>
+			</div>
+			<a href="${pageContext.request.contextPath}/logout" id="logout-link"
+				class="btn btn-small btn-danger-outline" title="Ausloggen"> <i
+				class="fas fa-sign-out-alt"></i>
+			</a>
+		</div>
+	</nav>
 </header>
 <main>

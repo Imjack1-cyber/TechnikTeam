@@ -8,10 +8,18 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-
+/**
+ * Mapped to `/editor-page`, this is a very simple servlet whose only purpose is
+ * to forward the user to the `collaborative_editor.jsp` page. All the dynamic
+ * functionality for the editor is handled client-side by JavaScript and the
+ * `DocumentApiServlet`.
+ */
 @WebServlet("/editor-page")
 public class CollaborativeEditorServlet extends HttpServlet {
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        request.getRequestDispatcher("/collaborative_editor.jsp").forward(request, response);
-    }
+	private static final long serialVersionUID = 1L;
+
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		request.getRequestDispatcher("/collaborative_editor.jsp").forward(request, response);
+	}
 }

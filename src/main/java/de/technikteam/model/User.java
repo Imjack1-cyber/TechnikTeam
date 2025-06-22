@@ -1,12 +1,12 @@
-// Pfad: src/main/java/de/technikteam/model/User.java
 package de.technikteam.model;
 
 import java.time.LocalDateTime;
 
-/* 
- *  The core model for an application user, containing their ID, username, role, and other profile information.
+/**
+ * The core model for an application user, representing a record from the
+ * `users` table. It contains the user's ID, username, role ("ADMIN" or
+ * "NUTZER"), and other profile information like class year and creation date.
  */
-
 public class User {
 	private int id;
 	private String username;
@@ -31,14 +31,15 @@ public class User {
 		this.className = className;
 	}
 
-	// Getters and Setters...
+	// --- Getters and Setters ---
+
 	public int getClassYear() {
 		return classYear;
-	} // KORRIGIERT
+	}
 
 	public void setClassYear(int classYear) {
 		this.classYear = classYear;
-	} // KORRIGIERT
+	}
 
 	public String getClassName() {
 		return className;
@@ -80,6 +81,12 @@ public class User {
 		this.createdAt = createdAt;
 	}
 
+	/**
+	 * A convenience method to get the creation timestamp as a formatted string,
+	 * suitable for display in the user interface.
+	 * 
+	 * @return A German-style date-time string (e.g., "10.06.2025 17:45").
+	 */
 	public String getFormattedCreatedAt() {
 		return de.technikteam.config.DateFormatter.formatDateTime(this.createdAt);
 	}

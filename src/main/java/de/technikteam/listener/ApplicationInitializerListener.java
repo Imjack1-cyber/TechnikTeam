@@ -2,15 +2,20 @@ package de.technikteam.listener;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
+import de.technikteam.dao.DatabaseManager;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
 import jakarta.servlet.annotation.WebListener;
 
-/*
- * This is another application lifecycle listener that runs when the application starts. It manually loads the MySQL JDBC driver to ensure it's available for the application to use, which is a good practice for robust database connectivity.
+/**
+ * An application lifecycle listener that runs when the application starts. It
+ * performs two critical initialization tasks: 1. Manually loads the MySQL JDBC
+ * driver to ensure it's available for the application. This is a robust
+ * practice that prevents connectivity issues if the server's automatic service
+ * discovery fails. 2. Explicitly triggers the initialization of the
+ * `DatabaseManager` and its connection pool, and ensures the pool is closed on
+ * application shutdown.
  */
-
 @WebListener
 public class ApplicationInitializerListener implements ServletContextListener {
 
@@ -18,23 +23,28 @@ public class ApplicationInitializerListener implements ServletContextListener {
 
 	@Override
 	public void contextInitialized(ServletContextEvent sce) {
-		logger.info("Application context is being initialized...");
+		logger.info("Application Initializer: Context is being initialized...");
 
 		try {
 			// Manually load the MySQL JDBC driver.
-			// This is the fallback for when automatic service discovery fails.
 			logger.info("Attempting to manually load MySQL JDBC driver...");
 			Class.forName("com.mysql.cj.jdbc.Driver");
 			logger.info("MySQL JDBC driver loaded successfully.");
+
+			// Eagerly initialize the database connection pool on startup
+			logger.info("Triggering database connection pool initialization...");
+			Class.forName("de.technikteam.dao.DatabaseManager");
+
 		} catch (ClassNotFoundException e) {
-			logger.fatal("FATAL: MySQL JDBC driver not found in WEB-INF/lib. Application will likely fail.", e);
+			logger.fatal("FATAL: MySQL JDBC driver or DatabaseManager not found in classpath. Application will fail.",
+					e);
 		}
 	}
 
 	@Override
 	public void contextDestroyed(ServletContextEvent sce) {
-		logger.info("Application context is being destroyed.");
-		// You can also add logic here to properly shut down the database pool.
-		// de.technikteam.dao.DatabaseManager.closeDataSource();
+		logger.info("Application Initializer: Context is being destroyed.");
+		// Properly shut down the database connection pool.
+		DatabaseManager.closeDataSource();
 	}
 }

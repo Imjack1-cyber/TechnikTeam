@@ -1,21 +1,32 @@
-package de.technikteam.servlet; 
+package de.technikteam.servlet;
 
 import java.io.IOException;
-import java.util.ArrayList; // <-- Add this import
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import de.technikteam.dao.FileDAO;
-import de.technikteam.model.File; // Your model class
+import de.technikteam.model.File;
+import de.technikteam.model.User;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
+/**
+ * Mapped to `/dateien`, this servlet handles the display of the main files and
+ * documents page for users. It fetches all files the user is permitted to see,
+ * grouped by category. In a unique step, it programmatically injects a
+ * "virtual" file entry that links to the collaborative live editor, placing it
+ * in a specific category for a seamless user experience.
+ */
 @WebServlet("/dateien")
 public class FileServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(FileServlet.class);
 	private FileDAO fileDAO;
 
 	@Override
@@ -26,27 +37,29 @@ public class FileServlet extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		
-		// 1. Fetch the real files from the database as before
-		Map<String, List<File>> fileData = fileDAO.getAllFilesGroupedByCategory();
 
-		// 2. Create our "virtual" collaborative file object
+		User user = (User) request.getSession().getAttribute("user");
+		logger.info("File page requested by user '{}' (Role: {})", user.getUsername(), user.getRole());
+
+		// 1. Fetch files from the database, already filtered by the user's role in the
+		// DAO.
+		Map<String, List<File>> fileData = fileDAO.getAllFilesGroupedByCategory(user);
+
+		// 2. Create our "virtual" file object for the collaborative editor.
 		File collaborativeFile = new File();
-		collaborativeFile.setId(-1); // Use a special ID to identify it
+		collaborativeFile.setId(-1); // Use a special ID to identify it in the JSP.
 		collaborativeFile.setFilename("Gemeinsamer Notizblock (Live-Editor)");
-		// No filepath is needed as it's not a download
+		collaborativeFile.setFilepath(null); // No physical file path.
 
-		// 3. Add it to a specific category (e.g., "Allgemein")
+		// 3. Add the virtual file to a specific category. If the category doesn't
+		// exist, create it.
 		String virtualCategoryName = "Allgemeine Dokumente";
-		
-		// Get the list for the category, or create a new list if it doesn't exist
 		List<File> generalFiles = fileData.computeIfAbsent(virtualCategoryName, k -> new ArrayList<>());
-		
-		// Add our new file to the beginning of that list
-		generalFiles.add(0, collaborativeFile);
-		
-		// 4. Send the modified map to the JSP
+		generalFiles.add(0, collaborativeFile); // Add to the beginning of the list.
+
+		// 4. Send the modified map to the JSP.
 		request.setAttribute("fileData", fileData);
+		logger.debug("Forwarding file data (including virtual editor link) to dateien.jsp.");
 		request.getRequestDispatcher("/dateien.jsp").forward(request, response);
 	}
 }

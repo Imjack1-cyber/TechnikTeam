@@ -18,19 +18,17 @@ import org.apache.logging.log4j.Logger;
 import de.technikteam.model.UserQualification;
 
 /**
- * This DAO manages the relationship between users and courses in the
- * user_qualifications table. It's used to track which courses a user has
- * attended or completed. Its key functions are fetching qualifications for a
- * single user or all users (for a matrix view) and updating a user's status for
- * a specific course.
+ * This DAO manages the `user_qualifications` table, which links users to the
+ * courses they have completed. It's used to track which skills a user
+ * possesses. Its key functions are fetching qualifications for a single user or
+ * all users, and updating a user's qualification status for a specific course.
  */
-
 public class UserQualificationsDAO {
 	private static final Logger logger = LogManager.getLogger(UserQualificationsDAO.class);
 
 	/**
-	 * Fetches all qualifications for a single user. This is used for the user
-	 * details page.
+	 * Fetches all qualifications for a single user. This is typically used for a
+	 * user's profile or details page.
 	 * 
 	 * @param userId The ID of the user.
 	 * @return A list of UserQualification objects.
@@ -38,7 +36,6 @@ public class UserQualificationsDAO {
 	public List<UserQualification> getQualificationsForUser(int userId) {
 		logger.debug("Fetching qualifications for user ID: {}", userId);
 		List<UserQualification> qualifications = new ArrayList<>();
-		// The SQL query joins with the courses table to get the course name.
 		String sql = "SELECT uq.course_id, c.name, uq.status, uq.completion_date, uq.remarks "
 				+ "FROM user_qualifications uq " + "JOIN courses c ON uq.course_id = c.id " + "WHERE uq.user_id = ?";
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -57,15 +54,15 @@ public class UserQualificationsDAO {
 	}
 
 	/**
-	 * Fetches all qualifications for all users. This is used to build the data map
-	 * for the qualification matrix page.
+	 * Fetches all qualification records for all users. This is used to build the
+	 * data for an overview or matrix page.
 	 * 
 	 * @return A list of all UserQualification objects in the database.
 	 */
 	public List<UserQualification> getAllQualifications() {
-		logger.debug("Fetching all user qualifications for the matrix.");
+		logger.debug("Fetching all user qualifications.");
 		List<UserQualification> qualifications = new ArrayList<>();
-		// This query needs the user_id to build the lookup map later.
+		// This query needs the user_id to build a lookup map later.
 		String sql = "SELECT uq.user_id, uq.course_id, c.name, uq.status, uq.completion_date, uq.remarks "
 				+ "FROM user_qualifications uq " + "JOIN courses c ON uq.course_id = c.id";
 		try (Connection conn = DatabaseManager.getConnection();
@@ -82,10 +79,11 @@ public class UserQualificationsDAO {
 	}
 
 	/**
-	 * Updates or creates a qualification status for a user. If the status is set to
-	 * "NICHT BESUCHT", the corresponding record is deleted. Otherwise, it performs
-	 * an "upsert" (INSERT ... ON DUPLICATE KEY UPDATE) to create or modify the
-	 * record.
+	 * Updates or creates a qualification status for a user and a course. If the
+	 * status is set to "NICHT BESUCHT", the corresponding record is deleted.
+	 * Otherwise, it performs an "upsert" (INSERT ... ON DUPLICATE KEY UPDATE) to
+	 * create or modify the record. This is a key method for admin management of
+	 * user skills.
 	 * 
 	 * @param userId         The ID of the user.
 	 * @param courseId       The ID of the course.
@@ -153,7 +151,7 @@ public class UserQualificationsDAO {
 	 * 
 	 * @param rs The ResultSet to map.
 	 * @return A populated UserQualification object.
-	 * @throws SQLException If a database access error occurs.
+	 * @throws SQLException If a database error occurs.
 	 */
 	private UserQualification mapResultSetToUserQualification(ResultSet rs) throws SQLException {
 		UserQualification uq = new UserQualification();

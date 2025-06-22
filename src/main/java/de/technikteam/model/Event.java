@@ -1,24 +1,30 @@
 package de.technikteam.model;
 
+import de.technikteam.config.DateFormatter;
 import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * Represents a single event. It holds the event's data and also contains lists
- * to store related information like skill requirements and assigned attendees
- * for detailed views.
+ * Represents a single event from the `events` table. It holds the event's core
+ * data (name, date, description, status) and also contains transient lists to
+ * store related information like skill requirements, assigned attendees, tasks,
+ * and chat messages for use in detailed views.
  */
 public class Event {
 	private int id;
 	private String name;
 	private LocalDateTime eventDateTime;
+	private LocalDateTime endDateTime;
 	private String description;
 	private String status;
-	private String userAttendanceStatus; // Specific to the logged-in user
+	private String userAttendanceStatus; // Specific to the logged-in user (e.g., ANGEMELDET, ZUGEWIESEN)
 
-	// Added for detailed views
+	// These fields are populated on-demand for detailed views and are not direct
+	// table columns.
 	private List<SkillRequirement> skillRequirements;
 	private List<User> assignedAttendees;
+	private List<EventTask> eventTasks;
+	private List<EventChatMessage> chatMessages;
 
 	public Event() {
 	}
@@ -47,6 +53,14 @@ public class Event {
 
 	public void setEventDateTime(LocalDateTime eventDateTime) {
 		this.eventDateTime = eventDateTime;
+	}
+
+	public LocalDateTime getEndDateTime() {
+		return endDateTime;
+	}
+
+	public void setEndDateTime(LocalDateTime endDateTime) {
+		this.endDateTime = endDateTime;
 	}
 
 	public String getDescription() {
@@ -89,7 +103,29 @@ public class Event {
 		this.assignedAttendees = assignedAttendees;
 	}
 
+	public List<EventTask> getEventTasks() {
+		return eventTasks;
+	}
+
+	public void setEventTasks(List<EventTask> eventTasks) {
+		this.eventTasks = eventTasks;
+	}
+
+	public List<EventChatMessage> getChatMessages() {
+		return chatMessages;
+	}
+
+	public void setChatMessages(List<EventChatMessage> chatMessages) {
+		this.chatMessages = chatMessages;
+	}
+
+	// --- Formatted Helpers ---
+
 	public String getFormattedEventDateTime() {
 		return de.technikteam.config.DateFormatter.formatDateTime(this.eventDateTime);
+	}
+
+	public String getFormattedEventDateTimeRange() {
+		return DateFormatter.formatDateTimeRange(this.eventDateTime, this.endDateTime);
 	}
 }

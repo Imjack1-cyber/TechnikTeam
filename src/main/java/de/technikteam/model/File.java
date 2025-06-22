@@ -2,19 +2,22 @@ package de.technikteam.model;
 
 import java.time.LocalDateTime;
 
-/*
- * Represents the metadata for a single uploaded file, including its name, path, and associated category.
+/**
+ * Represents the metadata for a single uploaded file from the `files` table. It
+ * includes the file's name, its path on the server, its associated category,
+ * and the required role ("NUTZER" or "ADMIN") needed to view or download it.
  */
-
 public class File {
 	private int id;
 	private String filename;
 	private String filepath;
 	private int categoryId;
-	private String categoryName; // Für die Anzeige
+	private String categoryName; // For display purposes, joined from file_categories
 	private LocalDateTime uploadedAt;
+	private String requiredRole; // "NUTZER" or "ADMIN"
 
-	// Getters and Setters
+	// --- Getters and Setters ---
+
 	public int getId() {
 		return id;
 	}
@@ -61,5 +64,13 @@ public class File {
 
 	public void setUploadedAt(LocalDateTime uploadedAt) {
 		this.uploadedAt = uploadedAt;
+	}
+
+	public String getRequiredRole() {
+		return requiredRole;
+	}
+
+	public void setRequiredRole(String requiredRole) {
+		this.requiredRole = requiredRole;
 	}
 }

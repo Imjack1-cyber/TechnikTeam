@@ -1,16 +1,19 @@
 package de.technikteam.model;
 
-/*
- *  Represents a specific skill (defined by a course) and the number of people with that skill required for an event.
+/**
+ * Represents a record from the `event_skill_requirements` table. It defines a
+ * specific skill (by referencing a `Course`) and the number of people with that
+ * skill required for a particular event.
  */
-
 public class SkillRequirement {
-	// Der Name des Lehrgangs wird jetzt aus der Course-Beziehung geholt
 	private int requiredCourseId;
-	private String courseName; // Nützlich für die Anzeige
 	private int requiredPersons;
 
-	// Getters and Setters
+	// Transient field for UI display, populated by a DAO join
+	private String courseName;
+
+	// --- Getters and Setters ---
+
 	public int getRequiredCourseId() {
 		return requiredCourseId;
 	}

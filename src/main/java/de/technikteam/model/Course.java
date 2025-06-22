@@ -1,34 +1,21 @@
 package de.technikteam.model;
 
-import java.time.LocalDateTime;
-
 /**
- * Represents a training course, including all its details like name, leader,
- * and date. It also has a dynamic field to hold the current user's sign-up
- * status.
+ * Represents a parent course template from the `courses` table. This is not a
+ * schedulable event itself, but a blueprint for a type of training (e.g.,
+ * "Grundlehrgang Tontechnik"). Individual dates/sessions for a course are
+ * handled by the 'Meeting' model.
  */
 public class Course {
 	private int id;
 	private String name;
-	private String type;
-	private String leader;
-	private LocalDateTime courseDateTime;
-	private String description;
-	private String userAttendanceStatus; // Specific to the logged-in user, e.g., "ANGEMELDET"
 	private String abbreviation;
+	private String description;
 
 	public Course() {
 	}
 
 	// --- Getters and Setters ---
-
-	public String getAbbreviation() {
-		return abbreviation;
-	}
-
-	public void setAbbreviation(String abbreviation) {
-		this.abbreviation = abbreviation;
-	}
 
 	public int getId() {
 		return id;
@@ -46,28 +33,12 @@ public class Course {
 		this.name = name;
 	}
 
-	public String getType() {
-		return type;
+	public String getAbbreviation() {
+		return abbreviation;
 	}
 
-	public void setType(String type) {
-		this.type = type;
-	}
-
-	public String getLeader() {
-		return leader;
-	}
-
-	public void setLeader(String leader) {
-		this.leader = leader;
-	}
-
-	public LocalDateTime getCourseDateTime() {
-		return courseDateTime;
-	}
-
-	public void setCourseDateTime(LocalDateTime courseDateTime) {
-		this.courseDateTime = courseDateTime;
+	public void setAbbreviation(String abbreviation) {
+		this.abbreviation = abbreviation;
 	}
 
 	public String getDescription() {
@@ -76,17 +47,5 @@ public class Course {
 
 	public void setDescription(String description) {
 		this.description = description;
-	}
-
-	public String getUserAttendanceStatus() {
-		return userAttendanceStatus;
-	}
-
-	public void setUserAttendanceStatus(String userAttendanceStatus) {
-		this.userAttendanceStatus = userAttendanceStatus;
-	}
-
-	public String getFormattedCourseDateTime() {
-		return de.technikteam.config.DateFormatter.formatDateTime(this.courseDateTime);
 	}
 }
