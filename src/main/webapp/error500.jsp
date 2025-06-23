@@ -30,9 +30,11 @@
 		<h2>Fehlercode 500</h2>
 
 		<p>Es ist ein unerwarteter technischer Fehler aufgetreten.</p>
-		<p>Unser Team wurde bereits benachrichtigt. Bitte versuche es
-			später erneut oder wende dich an einen Administrator, wenn der Fehler
-			weiterhin bestehen bleibt.</p>
+		<p>
+			Bitte versuche es später erneut oder wende dich an <a
+				href="mailto:jacques.serenz@no-bs.de">jacques.serenz@no-bs.de</a>,
+			wenn der Fehler weiterhin bestehen bleibt.
+		</p>
 
 		<a href="${pageContext.request.contextPath}/home" class="btn">Zurück
 			zur Startseite</a>
@@ -85,6 +87,7 @@
 	font-size: 2.2rem;
 	color: var(--text-color);
 	margin-bottom: 0.25rem;
+	text-align: center;
 }
 
 .error-container h2 {
@@ -92,6 +95,7 @@
 	color: var(--text-muted-color);
 	font-weight: 500;
 	margin-bottom: 2rem;
+	text-align: center;
 }
 
 .error-container p {

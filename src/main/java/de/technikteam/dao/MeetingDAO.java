@@ -3,7 +3,6 @@ package de.technikteam.dao;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
@@ -33,7 +32,7 @@ public class MeetingDAO {
 	 * @return The ID of the newly created meeting, or 0 on failure.
 	 */
 	public int createMeeting(Meeting meeting) {
-		String sql = "INSERT INTO meetings (course_id, name, meeting_datetime, end_datetime, leader, description) VALUES (?, ?, ?, ?, ?, ?)";
+		String sql = "INSERT INTO meetings (course_id, name, meeting_datetime, end_datetime, leader_user_id, description) VALUES (?, ?, ?, ?, ?, ?)";
 		logger.debug("Attempting to create meeting '{}' for course ID {}", meeting.getName(), meeting.getCourseId());
 		try (Connection conn = DatabaseManager.getConnection();
 				PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -46,7 +45,11 @@ public class MeetingDAO {
 			} else {
 				pstmt.setNull(4, Types.TIMESTAMP);
 			}
-			pstmt.setString(5, meeting.getLeader());
+			if (meeting.getLeaderUserId() > 0) {
+				pstmt.setInt(5, meeting.getLeaderUserId());
+			} else {
+				pstmt.setNull(5, Types.INTEGER);
+			}
 			pstmt.setString(6, meeting.getDescription());
 
 			int affectedRows = pstmt.executeUpdate();
@@ -66,15 +69,16 @@ public class MeetingDAO {
 	}
 
 	/**
-	 * Fetches a single meeting by its ID, joining with the courses table to get the
-	 * parent course name.
+	 * Fetches a single meeting by its ID, joining with the courses and users tables
+	 * to get the parent course name and leader's username.
 	 * 
 	 * @param meetingId The ID of the meeting to retrieve.
 	 * @return A Meeting object, or null if not found.
 	 */
 	public Meeting getMeetingById(int meetingId) {
-		String sql = "SELECT m.*, c.name as parent_course_name FROM meetings m "
-				+ "JOIN courses c ON m.course_id = c.id WHERE m.id = ?";
+		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username " + "FROM meetings m "
+				+ "JOIN courses c ON m.course_id = c.id "
+				+ "LEFT JOIN users u ON m.leader_user_id = u.id WHERE m.id = ?";
 		logger.debug("Fetching meeting by ID: {}", meetingId);
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -101,7 +105,10 @@ public class MeetingDAO {
 	 */
 	public List<Meeting> getMeetingsForCourse(int courseId) {
 		List<Meeting> meetings = new ArrayList<>();
-		String sql = "SELECT m.*, c.name as parent_course_name FROM meetings m JOIN courses c ON m.course_id = c.id WHERE m.course_id = ? ORDER BY meeting_datetime ASC";
+		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username "
+				+ "FROM meetings m JOIN courses c ON m.course_id = c.id "
+				+ "LEFT JOIN users u ON m.leader_user_id = u.id "
+				+ "WHERE m.course_id = ? ORDER BY meeting_datetime ASC";
 		logger.debug("Fetching all meetings for course ID: {}", courseId);
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -120,14 +127,15 @@ public class MeetingDAO {
 
 	/**
 	 * Fetches all meetings from the database, typically for an admin list view.
-	 * Includes the parent course name.
+	 * Includes the parent course name and leader's username.
 	 * 
 	 * @return A list of all Meeting objects.
 	 */
 	public List<Meeting> getAllMeetings() {
 		List<Meeting> meetings = new ArrayList<>();
-		String sql = "SELECT m.*, c.name as parent_course_name FROM meetings m "
-				+ "JOIN courses c ON m.course_id = c.id ORDER BY m.meeting_datetime DESC";
+		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username " + "FROM meetings m "
+				+ "JOIN courses c ON m.course_id = c.id " + "LEFT JOIN users u ON m.leader_user_id = u.id "
+				+ "ORDER BY m.meeting_datetime DESC";
 		logger.debug("Fetching all meetings from the database.");
 		try (Connection conn = DatabaseManager.getConnection();
 				Statement stmt = conn.createStatement();
@@ -159,18 +167,10 @@ public class MeetingDAO {
 		if (rs.getTimestamp("end_datetime") != null) {
 			meeting.setEndDateTime(rs.getTimestamp("end_datetime").toLocalDateTime());
 		}
-		meeting.setLeader(rs.getString("leader"));
+		meeting.setLeaderUserId(rs.getInt("leader_user_id"));
 		meeting.setDescription(rs.getString("description"));
-
-		// If the parent course name was joined, add it.
-		// A more robust check for the column's existence
-		ResultSetMetaData rsmd = rs.getMetaData();
-		for (int i = 1; i <= rsmd.getColumnCount(); i++) {
-			if ("parent_course_name".equalsIgnoreCase(rsmd.getColumnName(i))) {
-				meeting.setParentCourseName(rs.getString("parent_course_name"));
-				break;
-			}
-		}
+		meeting.setParentCourseName(rs.getString("parent_course_name"));
+		meeting.setLeaderUsername(rs.getString("leader_username"));
 
 		return meeting;
 	}
@@ -182,7 +182,7 @@ public class MeetingDAO {
 	 * @return true if the update was successful.
 	 */
 	public boolean updateMeeting(Meeting meeting) {
-		String sql = "UPDATE meetings SET name = ?, meeting_datetime = ?, end_datetime = ?, leader = ?, description = ? WHERE id = ?";
+		String sql = "UPDATE meetings SET name = ?, meeting_datetime = ?, end_datetime = ?, leader_user_id = ?, description = ? WHERE id = ?";
 		logger.debug("Attempting to update meeting ID: {}", meeting.getId());
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -193,7 +193,11 @@ public class MeetingDAO {
 			} else {
 				pstmt.setNull(3, Types.TIMESTAMP);
 			}
-			pstmt.setString(4, meeting.getLeader());
+			if (meeting.getLeaderUserId() > 0) {
+				pstmt.setInt(4, meeting.getLeaderUserId());
+			} else {
+				pstmt.setNull(4, Types.INTEGER);
+			}
 			pstmt.setString(5, meeting.getDescription());
 			pstmt.setInt(6, meeting.getId());
 
@@ -239,8 +243,9 @@ public class MeetingDAO {
 	 */
 	public List<Meeting> getUpcomingMeetingsForUser(User user) {
 		List<Meeting> meetings = new ArrayList<>();
-		String sql = "SELECT m.*, c.name as parent_course_name, ma.attended " + "FROM meetings m "
-				+ "JOIN courses c ON m.course_id = c.id "
+		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username, ma.attended "
+				+ "FROM meetings m " + "JOIN courses c ON m.course_id = c.id "
+				+ "LEFT JOIN users u ON m.leader_user_id = u.id "
 				+ "LEFT JOIN meeting_attendance ma ON m.id = ma.meeting_id AND ma.user_id = ? "
 				+ "WHERE m.meeting_datetime >= NOW() ORDER BY m.meeting_datetime ASC";
 

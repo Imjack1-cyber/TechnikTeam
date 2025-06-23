@@ -60,48 +60,49 @@ public class AdminCourseServlet extends HttpServlet {
 	}
 
 	private void handleCreateOrUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
-    User adminUser = (User) request.getSession().getAttribute("user");
-    String idParam = request.getParameter("id");
-    Course course = new Course();
-    course.setName(request.getParameter("name"));
-    course.setAbbreviation(request.getParameter("abbreviation"));
-    course.setDescription(request.getParameter("description"));
+		User adminUser = (User) request.getSession().getAttribute("user");
+		String idParam = request.getParameter("id");
+		Course course = new Course();
+		course.setName(request.getParameter("name"));
+		course.setAbbreviation(request.getParameter("abbreviation"));
+		course.setDescription(request.getParameter("description"));
 
-    boolean success;
-    if (idParam != null && !idParam.isEmpty()) { // UPDATE
-    	course.setId(Integer.parseInt(idParam));
-    	logger.info("Attempting to update course: {}", course.getName());
-    	Course originalCourse = courseDAO.getCourseById(course.getId());
-    	success = courseDAO.updateCourse(course);
-    	if (success) {
-    		StringBuilder changes = new StringBuilder();
-    		if (!Objects.equals(originalCourse.getName(), course.getName())) {
-    			changes.append(String.format("Name: '%s' -> '%s'. ", originalCourse.getName(), course.getName()));
-    		}
-    		if (!Objects.equals(originalCourse.getAbbreviation(), course.getAbbreviation())) {
-    			changes.append(String.format("Abk.: '%s' -> '%s'. ", originalCourse.getAbbreviation(),
-    					course.getAbbreviation()));
-    		}
-    		String logDetails = String.format("Lehrgangs-Vorlage '%s' (ID: %d) aktualisiert. %s",
-    				originalCourse.getName(), course.getId(), changes.toString());
-    		AdminLogService.log(adminUser.getUsername(), "UPDATE_COURSE", logDetails);
-    		request.getSession().setAttribute("successMessage", "Lehrgangs-Vorlage erfolgreich aktualisiert.");
-    	} else {
-    		request.getSession().setAttribute("errorMessage", "Fehler beim Aktualisieren der Vorlage.");
-    	}
-    } else { // CREATE
-    	logger.info("Attempting to create new course: {}", course.getName());
-    	success = courseDAO.createCourse(course);
-    	if (success) {
-    		String logDetails = String.format("Lehrgangs-Vorlage '%s' (Abk.: %s) erstellt.", course.getName(),
-    				course.getAbbreviation());
-    		AdminLogService.log(adminUser.getUsername(), "CREATE_COURSE", logDetails);
-    		request.getSession().setAttribute("successMessage", "Neue Lehrgangs-Vorlage erfolgreich erstellt.");
-    	} else {
-    		request.getSession().setAttribute("errorMessage", "Fehler beim Erstellen der Vorlage.");
-    	}
-    }
-    response.sendRedirect(request.getContextPath() + "/admin/courses");
+		boolean success;
+		if (idParam != null && !idParam.isEmpty()) { // UPDATE
+			course.setId(Integer.parseInt(idParam));
+			logger.info("Attempting to update course: {}", course.getName());
+			Course originalCourse = courseDAO.getCourseById(course.getId());
+			success = courseDAO.updateCourse(course);
+			if (success) {
+				StringBuilder changes = new StringBuilder();
+				if (!Objects.equals(originalCourse.getName(), course.getName())) {
+					changes.append(String.format("Name: '%s' -> '%s'. ", originalCourse.getName(), course.getName()));
+				}
+				if (!Objects.equals(originalCourse.getAbbreviation(), course.getAbbreviation())) {
+					changes.append(String.format("Abk.: '%s' -> '%s'. ", originalCourse.getAbbreviation(),
+							course.getAbbreviation()));
+				}
+				String logDetails = String.format("Lehrgangs-Vorlage '%s' (ID: %d) aktualisiert. %s",
+						originalCourse.getName(), course.getId(), changes.toString());
+				AdminLogService.log(adminUser.getUsername(), "UPDATE_COURSE", logDetails);
+				request.getSession().setAttribute("successMessage", "Lehrgangs-Vorlage erfolgreich aktualisiert.");
+			} else {
+				request.getSession().setAttribute("errorMessage", "Fehler beim Aktualisieren der Vorlage.");
+			}
+		} else { // CREATE
+			logger.info("Attempting to create new course: {}", course.getName());
+			success = courseDAO.createCourse(course);
+			if (success) {
+				String logDetails = String.format("Lehrgangs-Vorlage '%s' (Abk.: %s) erstellt.", course.getName(),
+						course.getAbbreviation());
+				AdminLogService.log(adminUser.getUsername(), "CREATE_COURSE", logDetails);
+				request.getSession().setAttribute("successMessage", "Neue Lehrgangs-Vorlage erfolgreich erstellt.");
+			} else {
+				request.getSession().setAttribute("errorMessage", "Fehler beim Erstellen der Vorlage.");
+			}
+		}
+		response.sendRedirect(request.getContextPath() + "/admin/courses");
+	}
 
 	private void handleDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		User adminUser = (User) req.getSession().getAttribute("user");

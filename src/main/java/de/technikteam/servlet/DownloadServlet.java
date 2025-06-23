@@ -50,7 +50,10 @@ public class DownloadServlet extends HttpServlet {
 			return;
 		}
 
-		File file = new File(AppConfig.UPLOAD_DIRECTORY, relativePath);
+		// Normalize path separators to be OS-independent, crucial for deployment
+		String sanitizedPath = relativePath.replace("/", File.separator).replace("\\", File.separator);
+
+		File file = new File(AppConfig.UPLOAD_DIRECTORY, sanitizedPath);
 		if (!file.exists() || !file.isFile()) {
 			logger.error("Download failed: File not found at resolved path {}", file.getAbsolutePath());
 			response.sendError(HttpServletResponse.SC_NOT_FOUND, "Datei nicht gefunden.");

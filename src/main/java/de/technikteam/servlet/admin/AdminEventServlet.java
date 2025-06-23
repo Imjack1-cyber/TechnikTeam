@@ -6,11 +6,15 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.Arrays;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
+import de.technikteam.config.LocalDateAdapter;
+import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.CourseDAO;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.model.Course;
@@ -33,9 +37,9 @@ import jakarta.servlet.http.HttpServletResponse;
  * 
  * updates event statuses, and provides the interface for assigning users to an
  * 
- * event's final team. It routes to various JSPs like admin_events_list.jsp,
+ * event's final team. All create/edit operations are handled via modals on the
  * 
- * admin_event_form.jsp, and admin_event_assign.jsp.
+ * list page.
  */
 @WebServlet("/admin/events")
 public class AdminEventServlet extends HttpServlet {
@@ -43,12 +47,17 @@ public class AdminEventServlet extends HttpServlet {
 	private static final Logger logger = LogManager.getLogger(AdminEventServlet.class);
 
 	private EventDAO eventDAO;
-	private CourseDAO courseDAO; // Needed for skill requirements dropdown in the form
+	private CourseDAO courseDAO;
+	private Gson gson;
 
 	@Override
 	public void init() {
 		eventDAO = new EventDAO();
 		courseDAO = new CourseDAO();
+		// Configure Gson to handle LocalDateTime and LocalDate, which it doesn't by
+		// default
+		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+				.registerTypeAdapter(java.time.LocalDate.class, new LocalDateAdapter()).create();
 	}
 
 	@Override
@@ -57,11 +66,11 @@ public class AdminEventServlet extends HttpServlet {
 		logger.debug("AdminEventServlet received GET request with action: {}", action);
 		try {
 			switch (action) {
-			case "edit":
-				showEventForm(req, resp);
-				break;
 			case "assign":
 				showAssignForm(req, resp);
+				break;
+			case "getEventData":
+				getEventDataAsJson(req, resp);
 				break;
 			default:
 				listEvents(req, resp);
@@ -103,22 +112,28 @@ public class AdminEventServlet extends HttpServlet {
 	private void listEvents(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		logger.info("Listing all events for admin view.");
 		List<Event> eventList = eventDAO.getAllEvents();
-		// Also fetch courses for the 'Create New Event' modal form
 		List<Course> allCourses = courseDAO.getAllCourses();
 		req.setAttribute("eventList", eventList);
 		req.setAttribute("allCourses", allCourses);
 		req.getRequestDispatcher("/admin/admin_events_list.jsp").forward(req, resp);
 	}
 
-	private void showEventForm(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		int eventId = Integer.parseInt(req.getParameter("id"));
-		logger.info("Showing edit form for event ID: {}", eventId);
-		Event event = eventDAO.getEventById(eventId);
-		event.setSkillRequirements(eventDAO.getSkillRequirementsForEvent(eventId));
-		req.setAttribute("event", event);
-		List<Course> allCourses = courseDAO.getAllCourses();
-		req.setAttribute("allCourses", allCourses);
-		req.getRequestDispatcher("/admin/admin_event_form.jsp").forward(req, resp);
+	private void getEventDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		try {
+			int eventId = Integer.parseInt(req.getParameter("id"));
+			Event event = eventDAO.getEventById(eventId);
+			if (event != null) {
+				event.setSkillRequirements(eventDAO.getSkillRequirementsForEvent(eventId));
+				String eventJson = gson.toJson(event);
+				resp.setContentType("application/json");
+				resp.setCharacterEncoding("UTF-8");
+				resp.getWriter().write(eventJson);
+			} else {
+				resp.sendError(HttpServletResponse.SC_NOT_FOUND);
+			}
+		} catch (NumberFormatException e) {
+			resp.sendError(HttpServletResponse.SC_BAD_REQUEST);
+		}
 	}
 
 	private void showAssignForm(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -160,12 +175,14 @@ public class AdminEventServlet extends HttpServlet {
 
 			boolean success = false;
 			String actionType;
+			Event originalEvent = null;
 
 			if (isUpdate) {
 				actionType = "UPDATE_EVENT";
 				int eventId = Integer.parseInt(idParam);
+				originalEvent = eventDAO.getEventById(eventId);
 				event.setId(eventId);
-				event.setStatus(request.getParameter("status"));
+				event.setStatus(originalEvent.getStatus()); // Status is updated via its own action
 				logger.info("Attempting to update event ID: {}", eventId);
 				success = eventDAO.updateEvent(event);
 				if (success) {
@@ -174,7 +191,6 @@ public class AdminEventServlet extends HttpServlet {
 				}
 			} else { // CREATE
 				actionType = "CREATE_EVENT";
-				event.setStatus("GEPLANT");
 				logger.info("Attempting to create new event: {}", event.getName());
 				int newEventId = eventDAO.createEvent(event);
 				if (newEventId > 0) {
@@ -197,7 +213,7 @@ public class AdminEventServlet extends HttpServlet {
 		} catch (DateTimeParseException e) {
 			logger.error("Invalid date format submitted for event.", e);
 			request.getSession().setAttribute("errorMessage",
-					"Ungültiges Datumsformat. Bitte 'TT.MM.JJJJ hh:mm' verwenden.");
+					"Ungültiges Datumsformat. Bitte das Format 'YYYY-MM-DDTHH:MM' verwenden.");
 		} catch (Exception e) {
 			logger.error("Error during event creation/update.", e);
 			request.getSession().setAttribute("errorMessage",

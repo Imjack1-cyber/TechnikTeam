@@ -54,17 +54,20 @@ public class EventTaskDAO {
 	 * @param userIds The array of user IDs to assign to the task.
 	 */
 	public void assignTaskToUsers(int taskId, int[] userIds) {
-		// Transactional: clear old assignments, add new ones.
 		String deleteSql = "DELETE FROM event_task_assignments WHERE task_id = ?";
 		String insertSql = "INSERT INTO event_task_assignments (task_id, user_id) VALUES (?, ?)";
 		logger.debug("Assigning task ID {} to {} users.", taskId, userIds != null ? userIds.length : 0);
-		try (Connection conn = DatabaseManager.getConnection()) {
+		Connection conn = null;
+		try {
+			conn = DatabaseManager.getConnection();
 			conn.setAutoCommit(false); // Start transaction
+
 			// 1. Delete old assignments
 			try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
 				deleteStmt.setInt(1, taskId);
 				deleteStmt.executeUpdate();
 			}
+
 			// 2. Insert new assignments
 			if (userIds != null && userIds.length > 0) {
 				try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
@@ -76,12 +79,27 @@ public class EventTaskDAO {
 					insertStmt.executeBatch();
 				}
 			}
+
 			conn.commit(); // Commit transaction
 			logger.info("Successfully assigned task {} to {} users.", taskId, userIds != null ? userIds.length : 0);
 		} catch (SQLException e) {
-			logger.error("Error during transaction for assigning task {}", taskId, e);
-			// Consider rollback logic here if connection is not auto-closed with
-			// try-with-resources
+			logger.error("Error during transaction for assigning task {}. Rolling back.", taskId, e);
+			if (conn != null) {
+				try {
+					conn.rollback();
+				} catch (SQLException ex) {
+					logger.error("Failed to rollback transaction for task assignment.", ex);
+				}
+			}
+		} finally {
+			if (conn != null) {
+				try {
+					conn.setAutoCommit(true);
+					conn.close();
+				} catch (SQLException ex) {
+					logger.error("Failed to close connection after task assignment transaction.", ex);
+				}
+			}
 		}
 	}
 

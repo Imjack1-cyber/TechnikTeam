@@ -25,11 +25,15 @@
 <h1>Anstehende Lehrgänge & Meetings</h1>
 
 <c:if test="${not empty sessionScope.successMessage}">
-	<p class="success-message">${sessionScope.successMessage}</p>
+	<p class="success-message">
+		<c:out value="${sessionScope.successMessage}" />
+	</p>
 	<c:remove var="successMessage" scope="session" />
 </c:if>
 <c:if test="${not empty sessionScope.errorMessage}">
-	<p class="error-message">${sessionScope.errorMessage}</p>
+	<p class="error-message">
+		<c:out value="${sessionScope.errorMessage}" />
+	</p>
 	<c:remove var="errorMessage" scope="session" />
 </c:if>
 
@@ -51,13 +55,15 @@
 <div class="mobile-card-list searchable-list">
 	<c:forEach var="meeting" items="${meetings}">
 		<div class="list-item-card"
-			data-searchable-content="${meeting.name} ${meeting.parentCourseName} ${meeting.userAttendanceStatus}">
+			data-searchable-content="<c:out value='${meeting.name}'/> <c:out value='${meeting.parentCourseName}'/> <c:out value='${meeting.userAttendanceStatus}'/>">
 			<h3 class="card-title">
 				<a
-					href="${pageContext.request.contextPath}/meetingDetails?id=${meeting.id}">${meeting.name}</a>
+					href="${pageContext.request.contextPath}/meetingDetails?id=${meeting.id}"><c:out
+						value="${meeting.name}" /></a>
 			</h3>
 			<div class="card-row">
-				<span>Gehört zu:</span> <span>${meeting.parentCourseName}</span>
+				<span>Gehört zu:</span> <span><c:out
+						value="${meeting.parentCourseName}" /></span>
 			</div>
 			<div class="card-row">
 				<span>Dein Status:</span> <span> <c:choose>
@@ -105,9 +111,11 @@
 			<c:forEach var="meeting" items="${meetings}">
 				<tr>
 					<td><a
-						href="${pageContext.request.contextPath}/meetingDetails?id=${meeting.id}">${meeting.name}</a></td>
-					<td>${meeting.parentCourseName}</td>
-					<td data-sort-value="${meeting.meetingDateTime}">${meeting.formattedMeetingDateTimeRange}</td>
+						href="${pageContext.request.contextPath}/meetingDetails?id=${meeting.id}"><c:out
+								value="${meeting.name}" /></a></td>
+					<td><c:out value="${meeting.parentCourseName}" /></td>
+					<td data-sort-value="${meeting.meetingDateTime}"><c:out
+							value="${meeting.formattedMeetingDateTimeRange}" /></td>
 					<td><c:choose>
 							<c:when test="${meeting.userAttendanceStatus == 'ANGEMELDET'}">
 								<span class="text-success">Angemeldet</span>

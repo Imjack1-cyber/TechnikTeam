@@ -5,6 +5,7 @@ import de.technikteam.dao.StorageDAO;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
+import de.technikteam.util.ServletUtils;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
@@ -17,15 +18,13 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
 import java.util.stream.Collectors;
 
 /**
+ *
  * 
  * Mapped to /admin/storage, this servlet provides full administrative control
  * 
@@ -71,7 +70,7 @@ public class AdminStorageServlet extends HttpServlet {
 		String contentType = request.getContentType();
 		// Differentiate between multipart and standard forms
 		if (contentType != null && contentType.toLowerCase().startsWith("multipart/")) {
-			String action = getPartValue(request.getPart("action"));
+			String action = ServletUtils.getPartValue(request.getPart("action"));
 			if ("create".equals(action)) {
 				handleCreateOrUpdate(request, response, true);
 			} else if ("update".equals(action)) {
@@ -96,20 +95,19 @@ public class AdminStorageServlet extends HttpServlet {
 		User adminUser = (User) request.getSession().getAttribute("user");
 		try {
 			StorageItem item = new StorageItem();
-			item.setName(getPartValue(request.getPart("name")));
-			item.setLocation(getPartValue(request.getPart("location")));
-			item.setCabinet(getPartValue(request.getPart("cabinet")));
-			item.setShelf(getPartValue(request.getPart("shelf")));
-			item.setCompartment(getPartValue(request.getPart("compartment")));
-			item.setQuantity(Integer.parseInt(getPartValue(request.getPart("quantity"))));
-			item.setMaxQuantity(Integer.parseInt(getPartValue(request.getPart("maxQuantity"))));
+			item.setName(ServletUtils.getPartValue(request.getPart("name")));
+			item.setLocation(ServletUtils.getPartValue(request.getPart("location")));
+			item.setCabinet(ServletUtils.getPartValue(request.getPart("cabinet")));
+			item.setShelf(ServletUtils.getPartValue(request.getPart("shelf")));
+			item.setCompartment(ServletUtils.getPartValue(request.getPart("compartment")));
+			item.setQuantity(Integer.parseInt(ServletUtils.getPartValue(request.getPart("quantity"))));
+			item.setMaxQuantity(Integer.parseInt(ServletUtils.getPartValue(request.getPart("maxQuantity"))));
 			logger.debug("SERVLET: Read from form -> Name: '{}', Quantity: {}, MaxQuantity: {}", item.getName(),
 					item.getQuantity(), item.getMaxQuantity());
-
 			Part filePart = request.getPart("imageFile");
 			String imagePath = null;
 			if (!isCreate) {
-				int itemId = Integer.parseInt(getPartValue(request.getPart("id")));
+				int itemId = Integer.parseInt(ServletUtils.getPartValue(request.getPart("id")));
 				item.setId(itemId);
 				StorageItem originalItem = storageDAO.getItemById(itemId);
 				if (originalItem != null) {
@@ -186,7 +184,6 @@ public class AdminStorageServlet extends HttpServlet {
 					}
 				}
 			}
-
 			if (storageDAO.deleteItem(itemId)) {
 				String itemName = (item != null) ? item.getName() : "N/A";
 				String itemLocation = (item != null) ? item.getLocation() : "N/A";
@@ -204,13 +201,4 @@ public class AdminStorageServlet extends HttpServlet {
 		response.sendRedirect(request.getContextPath() + "/admin/storage");
 	}
 
-	private String getPartValue(Part part) throws IOException {
-    if (part == null) {
-    return null;
-    }
-    try (InputStream inputStream = part.getInputStream();
-    Scanner scanner = new Scanner(inputStream, StandardCharsets.UTF_8.name())) {
-    return scanner.useDelimiter("\A").hasNext() ? scanner.next() : "";
-    }
-    }
 }

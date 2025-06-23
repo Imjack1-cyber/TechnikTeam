@@ -3,6 +3,8 @@ package de.technikteam.dao;
 import de.technikteam.model.File;
 import de.technikteam.model.FileCategory;
 import de.technikteam.model.User;
+import de.technikteam.util.DaoUtils;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -38,7 +40,7 @@ public class FileDAO {
 		file.setUploadedAt(rs.getTimestamp("uploaded_at").toLocalDateTime());
 		file.setCategoryId(rs.getInt("category_id"));
 
-		if (hasColumn(rs, "required_role")) {
+		if (DaoUtils.hasColumn(rs, "required_role")) {
 			file.setRequiredRole(rs.getString("required_role"));
 		}
 
@@ -46,26 +48,6 @@ public class FileDAO {
 		file.setCategoryName(categoryName == null ? "Ohne Kategorie" : categoryName);
 
 		return file;
-	}
-
-	/**
-	 * Checks if a ResultSet contains a column with the given name
-	 * (case-insensitive).
-	 * 
-	 * @param rs         The ResultSet to check.
-	 * @param columnName The name of the column.
-	 * @return true if the column exists, false otherwise.
-	 * @throws SQLException If a database error occurs.
-	 */
-	private boolean hasColumn(ResultSet rs, String columnName) throws SQLException {
-		ResultSetMetaData rsmd = rs.getMetaData();
-		int columns = rsmd.getColumnCount();
-		for (int x = 1; x <= columns; x++) {
-			if (columnName.equalsIgnoreCase(rsmd.getColumnName(x))) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 	/**

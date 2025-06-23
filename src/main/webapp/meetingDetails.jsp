@@ -21,31 +21,30 @@
 <c:import url="/WEB-INF/jspf/navigation.jspf" />
 
 <div class="details-container" style="max-width: 800px; margin: 0 auto;">
-	<h1>${meeting.name}</h1>
+	<h1>
+		<c:out value="${meeting.name}" />
+	</h1>
 	<p
 		style="color: var(--text-muted-color); margin-top: -1rem; margin-bottom: 2rem;">
-		Teil des Lehrgangs: <strong>${meeting.parentCourseName}</strong>
+		Teil des Lehrgangs: <strong><c:out
+				value="${meeting.parentCourseName}" /></strong>
 	</p>
 
 	<div class="card">
 		<h2>Details</h2>
 		<ul class="details-list">
-			<li><strong>Termin:</strong>
-				${meeting.formattedMeetingDateTimeRange}</li>
-			<li><strong>Leitung:</strong> <c:choose>
-					<c:when test="${not empty meeting.leader}">${meeting.leader}</c:when>
-					<c:otherwise>N/A</c:otherwise>
-				</c:choose></li>
+			<li><strong>Termin:</strong> <c:out
+					value="${meeting.formattedMeetingDateTimeRange}" /></li>
+			<li><strong>Leitung:</strong> <c:out
+					value="${not empty meeting.leaderUsername ? meeting.leaderUsername : 'N/A'}" /></li>
 		</ul>
 	</div>
 
 	<div class="card">
 		<h2>Beschreibung</h2>
 		<p>
-			<c:choose>
-				<c:when test="${not empty meeting.description}">${meeting.description}</c:when>
-				<c:otherwise>Keine Beschreibung vorhanden.</c:otherwise>
-			</c:choose>
+			<c:out
+				value="${not empty meeting.description ? meeting.description : 'Keine Beschreibung vorhanden.'}" />
 		</p>
 	</div>
 
@@ -56,11 +55,13 @@
 				<ul class="details-list">
 					<c:forEach var="att" items="${attachments}">
 						<li><a
-							href="${pageContext.request.contextPath}/download?file=${att.filepath}">${att.filename}</a>
-							<c:if test="${sessionScope.user.role == 'ADMIN'}">
+							href="${pageContext.request.contextPath}/download?file=${att.filepath}"><c:out
+									value="${att.filename}" /></a> <c:if
+								test="${sessionScope.user.role == 'ADMIN'}">
 								<small
 									style="color: var(--text-muted-color); margin-left: 1rem;">(Sichtbar
-									für: ${att.requiredRole})</small>
+									für: <c:out value="${att.requiredRole}" />)
+								</small>
 							</c:if></li>
 					</c:forEach>
 				</ul>
@@ -83,7 +84,7 @@
 
 .details-list li {
 	padding: 0.75rem 0;
-	border-bottom: 1px solid var(--border-color); 
+	border-bottom: 1px solid var(--border-color);
 	display: flex;
 	justify-content: space-between;
 	align-items: center;

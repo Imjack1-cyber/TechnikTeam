@@ -1,5 +1,6 @@
 package de.technikteam.dao;
 
+import de.technikteam.dao.DatabaseManager;
 import de.technikteam.model.MeetingAttachment;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -96,6 +97,7 @@ public class MeetingAttachmentDAO {
 					att.setId(rs.getInt("id"));
 					att.setFilename(rs.getString("filename"));
 					att.setFilepath(rs.getString("filepath"));
+					att.setMeetingId(rs.getInt("meeting_id"));
 					return att;
 				}
 			}

@@ -1,6 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
 <%--
   admin_files.jsp
@@ -30,14 +31,15 @@
 
 <c:if test="${not empty sessionScope.successMessage}">
 	<p class="success-message">
-		<i class="fas fa-check-circle"></i> ${sessionScope.successMessage}
+		<i class="fas fa-check-circle"></i>
+		<c:out value="${sessionScope.successMessage}" />
 	</p>
 	<c:remove var="successMessage" scope="session" />
 </c:if>
 <c:if test="${not empty sessionScope.errorMessage}">
 	<p class="error-message">
 		<i class="fas fa-exclamation-triangle"></i>
-		${sessionScope.errorMessage}
+		<c:out value="${sessionScope.errorMessage}" />
 	</p>
 	<c:remove var="errorMessage" scope="session" />
 </c:if>
@@ -49,7 +51,7 @@
 		<ul class="category-list">
 			<c:forEach var="cat" items="${allCategories}">
 				<li data-category-id="${cat.id}"><i class="fas fa-folder"></i>
-					${cat.name}</li>
+					<c:out value="${cat.name}" /></li>
 			</c:forEach>
 		</ul>
 		<hr>
@@ -140,7 +142,8 @@
 				</form>
 				<form
 					action="${pageContext.request.contextPath}/admin/categories/delete"
-					method="post" class="category-action-form">
+					method="post" class="category-action-form js-confirm-form"
+					data-confirm-message="Kategorie wirklich löschen? Zugehörige Dateien verlieren ihre Kategoriezuordnung.">
 					<input type="hidden" name="categoryId" class="category-id-input">
 					<div class="form-group">
 						<label>Löschen</label>
@@ -149,8 +152,7 @@
 								Kategoriezuordnung.</small>
 						</p>
 					</div>
-					<button type="submit" class="btn btn-small btn-danger"
-						onclick="return confirm('Kategorie wirklich löschen?')">
+					<button type="submit" class="btn btn-small btn-danger">
 						<i class="fas fa-trash-alt"></i> Endgültig Löschen
 					</button>
 				</form>
@@ -166,11 +168,12 @@
 			<small class="file-meta"></small>
 		</div>
 		<form action="${pageContext.request.contextPath}/admin/files"
-			method="post">
+			method="post" class="js-confirm-form"
+			data-confirm-message="Datei wirklich löschen?">
 			<input type="hidden" name="action" value="delete"> <input
 				type="hidden" name="fileId" class="file-id-input">
 			<button type="submit" class="btn btn-small btn-danger-outline"
-				title="Löschen" onclick="return confirm('Datei wirklich löschen?')">
+				title="Löschen">
 				<i class="fas fa-trash-alt"></i>
 			</button>
 		</form>
@@ -183,9 +186,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Data from JSP to JS
     const groupedFiles = {
         <c:forEach var="entry" items="${groupedFiles}" varStatus="status">
-            "${entry.key}": [
+            "<c:out value="${entry.key}"/>": [
                 <c:forEach var="file" items="${entry.value}" varStatus="fileStatus">
-                    { id: ${file.id}, filename: "${file.filename}", filepath: "${file.filepath}", requiredRole: "${file.requiredRole}" }
+                    { id: ${file.id}, filename: "${fn:replace(file.filename, '"', '\\"')}", filepath: "${fn:replace(file.filepath, '"', '\\"')}", requiredRole: "${file.requiredRole}" }
                     ${!fileStatus.last ? ',' : ''}
                 </c:forEach>
             ]
@@ -195,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const allCategories = [
         <c:forEach var="cat" items="${allCategories}" varStatus="status">
-            { id: ${cat.id}, name: "${cat.name}" }
+            { id: ${cat.id}, name: "${fn:replace(cat.name, '"', '\\"')}" }
             ${!status.last ? ',' : ''}
         </c:forEach>
     ];
@@ -238,15 +241,19 @@ document.addEventListener('DOMContentLoaded', () => {
             filesForCategory.forEach(file => {
                 const fileItemClone = fileItemTemplate.content.cloneNode(true);
                 const downloadLink = fileItemClone.querySelector('.file-download-link');
-                downloadLink.href = `${contextPath}/download?file=${file.filepath}`;
+                // CORRECTED LINE: Use standard string concatenation to avoid EL conflict
+                downloadLink.href = contextPath + '/download?file=' + encodeURIComponent(file.filepath);
                 downloadLink.textContent = file.filename;
                 fileItemClone.querySelector('.file-meta').textContent = `(Sichtbar für: ${file.requiredRole})`;
                 fileItemClone.querySelector('.file-id-input').value = file.id;
-                fileItemClone.querySelector('form').onclick = (e) => {
-                    if (!confirm(`Datei '${file.filename}' wirklich löschen?`)) {
-                        e.preventDefault();
-                    }
-                };
+                
+                const fileForm = fileItemClone.querySelector('form');
+                fileForm.dataset.confirmMessage = `Datei '${file.filename}' wirklich löschen?`;
+                fileForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    showConfirmationModal(this.dataset.confirmMessage, () => this.submit());
+                });
+                
                 fileList.appendChild(fileItemClone);
             });
         } else {
@@ -255,8 +262,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dynamicContentArea.appendChild(sectionClone);
         
-        // Re-attach file size validation to the newly added input
+        // Re-attach file size validation and confirmation to the newly added forms
         attachFileSizeValidator(dynamicContentArea.querySelector('.file-input'));
+        dynamicContentArea.querySelectorAll('.js-confirm-form').forEach(form => {
+             form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                showConfirmationModal(this.dataset.confirmMessage, () => this.submit());
+            });
+        });
     };
     
     const attachFileSizeValidator = (input) => {

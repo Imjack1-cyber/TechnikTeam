@@ -3,7 +3,6 @@ package de.technikteam.dao;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -13,6 +12,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import de.technikteam.model.User;
+import de.technikteam.util.DaoUtils;
 
 /**
  * A core DAO responsible for all user account management, interacting with the
@@ -24,26 +24,6 @@ public class UserDAO {
 	private static final Logger logger = LogManager.getLogger(UserDAO.class);
 
 	/**
-	 * Helper method to check if a ResultSet contains a certain column,
-	 * case-insensitive.
-	 * 
-	 * @param rs         The ResultSet to check.
-	 * @param columnName The name of the column.
-	 * @return true if the column exists.
-	 * @throws SQLException if a database error occurs.
-	 */
-	private boolean hasColumn(ResultSet rs, String columnName) throws SQLException {
-		ResultSetMetaData rsmd = rs.getMetaData();
-		int columns = rsmd.getColumnCount();
-		for (int x = 1; x <= columns; x++) {
-			if (columnName.equalsIgnoreCase(rsmd.getColumnName(x))) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	/**
 	 * Robustly maps a ResultSet row to a User object, checking for optional columns
 	 * before attempting to read them.
 	 * 
@@ -53,13 +33,13 @@ public class UserDAO {
 	 */
 	private User mapResultSetToUser(ResultSet rs) throws SQLException {
 		User user = new User(rs.getInt("id"), rs.getString("username"), rs.getString("role"));
-		if (hasColumn(rs, "created_at") && rs.getTimestamp("created_at") != null) {
+		if (DaoUtils.hasColumn(rs, "created_at") && rs.getTimestamp("created_at") != null) {
 			user.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
 		}
-		if (hasColumn(rs, "class_year")) {
+		if (DaoUtils.hasColumn(rs, "class_year")) {
 			user.setClassYear(rs.getInt("class_year"));
 		}
-		if (hasColumn(rs, "class_name")) {
+		if (DaoUtils.hasColumn(rs, "class_name")) {
 			user.setClassName(rs.getString("class_name"));
 		}
 		return user;

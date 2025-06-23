@@ -1,6 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
 <%--
 admin_storage_list.jsp
@@ -22,30 +23,19 @@ Creating and editing items are handled via a modal dialog on this page.
 <c:import url="/WEB-INF/jspf/admin_navigation.jspf" />
 <h1>Lagerverwaltung</h1>
 
-<c:if test="
-
-        
-notemptysessionScope.successMessage">
-	<pclass="success−message">notemptysessionScope.successMessage"><pclass="success−message">
-
-
-
-	{sessionScope.successMessage}
+<c:if test="${not empty sessionScope.successMessage}">
+	<p class="success-message">
+		<c:out value="${sessionScope.successMessage}" />
 	</p>
 	<c:remove var="successMessage" scope="session" />
 </c:if>
-<c:if test="
-
-        
-notemptysessionScope.errorMessage">
-	<pclass="error−message">notemptysessionScope.errorMessage"><pclass="error−message">
-
-
-
-	{sessionScope.errorMessage}
+<c:if test="${not empty sessionScope.errorMessage}">
+	<p class="error-message">
+		<c:out value="${sessionScope.errorMessage}" />
 	</p>
 	<c:remove var="errorMessage" scope="session" />
 </c:if>
+
 <div class="table-controls">
 	<button type="button" class="btn" id="new-item-btn">Neuen
 		Artikel anlegen</button>
@@ -64,26 +54,39 @@ notemptysessionScope.errorMessage">
 <div class="mobile-card-list searchable-list">
 	<c:forEach var="item" items="${storageList}">
 		<div class="list-item-card"
-			data-searchable-content="${item.name} ${item.location} ${item.cabinet}">
-			<h3 class="card-title">${item.name}</h3>
+			data-searchable-content="<c:out value='${item.name}'/> <c:out value='${item.location}'/> <c:out value='${item.cabinet}'/>">
+			<h3 class="card-title">
+				<c:out value="${item.name}" />
+			</h3>
 			<div class="card-row">
-				<span>Ort:</span> <span>${item.location}</span>
+				<span>Ort:</span> <span><c:out value="${item.location}" /></span>
 			</div>
 			<div class="card-row">
-				<span>Anzahl:</span> <span>${item.quantity}</span>
+				<span>Anzahl:</span> <span><c:out value="${item.quantity}" /></span>
 			</div>
 			<div class="card-actions">
 				<button type="button" class="btn btn-small edit-item-btn"
-					data-item='{"id":${item.id}, "name":"${item.name}", "location":"${item.location}", "cabinet":"${item.cabinet}", "shelf":"${item.shelf}", "compartment":"${item.compartment}", "quantity":${item.quantity}, "maxQuantity":${item.maxQuantity}}'>Bearbeiten</button>
+					data-id="${item.id}" data-name="${fn:replace(item.name, '"
+					', '&quot;')}"
+                    data-location="${fn:replace(item.location, '"
+					', '&quot;')}"
+                    data-cabinet="${fn:replace(item.cabinet, '"
+					', '&quot;')}"
+                    data-shelf="${fn:replace(item.shelf, '"
+					', '&quot;')}"
+                    data-compartment="${fn:replace(item.compartment, '"
+					', '&quot;')}"
+                    data-quantity="${item.quantity}"
+					data-max-quantity="${item.maxQuantity}">Bearbeiten</button>
 				<a
 					href="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${pageContext.request.scheme}://${pageContext.request.serverName}:${pageContext.request.serverPort}${pageContext.request.contextPath}/storage-item?id=${item.id}"
 					target="_blank" class="btn btn-small btn-success">QR-Code</a>
 				<form action="${pageContext.request.contextPath}/admin/storage"
-					method="post" style="display: inline;">
+					method="post" class="js-confirm-form"
+					data-confirm-message="Artikel '${fn:escapeXml(item.name)}' wirklich löschen?">
 					<input type="hidden" name="action" value="delete"> <input
 						type="hidden" name="id" value="${item.id}">
-					<button type="submit" class="btn btn-small btn-danger"
-						onclick="return confirm('Artikel \'${item.name}\' wirklich löschen?')">Löschen</button>
+					<button type="submit" class="btn btn-small btn-danger">Löschen</button>
 				</form>
 			</div>
 		</div>
@@ -105,22 +108,33 @@ notemptysessionScope.errorMessage">
 			<c:forEach var="item" items="${storageList}">
 				<tr>
 					<td><a
-						href="${pageContext.request.contextPath}/storage-item?id=${item.id}">${item.name}</a></td>
-					<td>${item.location}</td>
-					<td>${item.cabinet}</td>
-					<td>${item.quantity}</td>
+						href="${pageContext.request.contextPath}/storage-item?id=${item.id}"><c:out
+								value="${item.name}" /></a></td>
+					<td><c:out value="${item.location}" /></td>
+					<td><c:out value="${item.cabinet}" /></td>
+					<td><c:out value="${item.quantity}" /></td>
 					<td style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
 						<button type="button" class="btn btn-small edit-item-btn"
-							data-item='{"id":${item.id}, "name":"${item.name}", "location":"${item.location}", "cabinet":"${item.cabinet}", "shelf":"${item.shelf}", "compartment":"${item.compartment}", "quantity":${item.quantity}, "maxQuantity":${item.maxQuantity}}'>Bearbeiten</button>
-						<a
+							data-id="${item.id}" data-name="${fn:replace(item.name, '"
+							', '&quot;')}"
+                            data-location="${fn:replace(item.location, '"
+							', '&quot;')}"
+                            data-cabinet="${fn:replace(item.cabinet, '"
+							', '&quot;')}"
+                            data-shelf="${fn:replace(item.shelf, '"
+							', '&quot;')}"
+                            data-compartment="${fn:replace(item.compartment, '"
+							', '&quot;')}"
+                            data-quantity="${item.quantity}"
+							data-max-quantity="${item.maxQuantity}">Bearbeiten</button> <a
 						href="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${pageContext.request.scheme}://${pageContext.request.serverName}:${pageContext.request.serverPort}${pageContext.request.contextPath}/storage-item?id=${item.id}"
 						target="_blank" class="btn btn-small btn-success">QR-Code</a>
 						<form action="${pageContext.request.contextPath}/admin/storage"
-							method="post" style="display: inline;">
+							method="post" class="js-confirm-form"
+							data-confirm-message="Artikel '${fn:escapeXml(item.name)}' wirklich löschen?">
 							<input type="hidden" name="action" value="delete"> <input
 								type="hidden" name="id" value="${item.id}">
-							<button type="submit" class="btn btn-small btn-danger"
-								onclick="return confirm('Artikel \'${item.name}\' wirklich löschen?')">Löschen</button>
+							<button type="submit" class="btn btn-small btn-danger">Löschen</button>
 						</form>
 					</td>
 				</tr>
@@ -187,55 +201,64 @@ notemptysessionScope.errorMessage">
 <c:import url="/WEB-INF/jspf/footer.jspf" />
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-// Modal Logic
-const modal = document.getElementById('item-modal');
-if (!modal) return;
+    // Custom confirmation for delete forms
+    document.querySelectorAll('.js-confirm-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const message = this.dataset.confirmMessage || 'Sind Sie sicher?';
+            showConfirmationModal(message, () => this.submit());
+        });
+    });
 
-const form = document.getElementById('item-modal-form');
-const title = document.getElementById('item-modal-title');
-const actionInput = document.getElementById('item-modal-action');
-const idInput = document.getElementById('item-modal-id');
+    // Modal Logic
+    const modal = document.getElementById('item-modal');
+    if (!modal) return;
 
-const openModalBtn = document.getElementById('new-item-btn');
-const closeModalBtn = modal.querySelector('.modal-close-btn');
+    const form = document.getElementById('item-modal-form');
+    const title = document.getElementById('item-modal-title');
+    const actionInput = document.getElementById('item-modal-action');
+    const idInput = document.getElementById('item-modal-id');
 
-const openCreateModal = () => {
-form.reset();
-title.textContent = 'Neuen Lagerartikel anlegen';
-actionInput.value = 'create';
-idInput.value = '';
-modal.classList.add('active');
-};
+    const openModalBtn = document.getElementById('new-item-btn');
+    const closeModalBtn = modal.querySelector('.modal-close-btn');
 
-const openEditModal = (btn) => {
-form.reset();
-const itemData = JSON.parse(btn.dataset.item);
-title.textContent = 'Lagerartikel bearbeiten';
-actionInput.value = 'update';
-idInput.value = itemData.id;
-form.querySelector('#name-modal').value = itemData.name;
-form.querySelector('#location-modal').value = itemData.location;
-form.querySelector('#cabinet-modal').value = itemData.cabinet;
-form.querySelector('#shelf-modal').value = itemData.shelf;
-form.querySelector('#compartment-modal').value = itemData.compartment;
-form.querySelector('#quantity-modal').value = itemData.quantity;
-form.querySelector('#maxQuantity-modal').value = itemData.maxQuantity;
-modal.classList.add('active');
-};
+    const openCreateModal = () => {
+        form.reset();
+        title.textContent = 'Neuen Lagerartikel anlegen';
+        actionInput.value = 'create';
+        idInput.value = '';
+        modal.classList.add('active');
+    };
 
-const closeModal = () => modal.classList.remove('active');
+    const openEditModal = (btn) => {
+        form.reset();
+        const itemData = btn.dataset;
+        title.textContent = 'Lagerartikel bearbeiten';
+        actionInput.value = 'update';
+        idInput.value = itemData.id;
+        form.querySelector('#name-modal').value = itemData.name;
+        form.querySelector('#location-modal').value = itemData.location;
+        form.querySelector('#cabinet-modal').value = itemData.cabinet;
+        form.querySelector('#shelf-modal').value = itemData.shelf;
+        form.querySelector('#compartment-modal').value = itemData.compartment;
+        form.querySelector('#quantity-modal').value = itemData.quantity;
+        form.querySelector('#maxQuantity-modal').value = itemData.maxQuantity;
+        modal.classList.add('active');
+    };
 
-openModalBtn.addEventListener('click', openCreateModal);
-document.querySelectorAll('.edit-item-btn').forEach(btn => {
-btn.addEventListener('click', () => openEditModal(btn));
-});
+    const closeModal = () => modal.classList.remove('active');
 
-closeModalBtn.addEventListener('click', closeModal);
-modal.addEventListener('click', e => {
-if (e.target === modal) closeModal();
-});
-document.addEventListener('keydown', e => {
-if (e.key === 'Escape' && modal.classList.contains('active')) closeModal();
-});
+    openModalBtn.addEventListener('click', openCreateModal);
+    document.querySelectorAll('.edit-item-btn').forEach(btn => {
+        btn.addEventListener('click', () => openEditModal(btn));
+    });
+
+    closeModalBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', e => {
+        if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) closeModal();
+    });
 });
 </script>

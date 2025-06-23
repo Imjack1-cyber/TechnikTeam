@@ -17,6 +17,7 @@ public class Event {
 	private LocalDateTime endDateTime;
 	private String description;
 	private String status;
+	private int leaderUserId;
 	private String userAttendanceStatus; // Specific to the logged-in user (e.g., ANGEMELDET, ZUGEWIESEN)
 
 	// These fields are populated on-demand for detailed views and are not direct
@@ -25,6 +26,7 @@ public class Event {
 	private List<User> assignedAttendees;
 	private List<EventTask> eventTasks;
 	private List<EventChatMessage> chatMessages;
+	private String leaderUsername;
 
 	public Event() {
 	}
@@ -77,6 +79,22 @@ public class Event {
 
 	public void setStatus(String status) {
 		this.status = status;
+	}
+
+	public int getLeaderUserId() {
+		return leaderUserId;
+	}
+
+	public void setLeaderUserId(int leaderUserId) {
+		this.leaderUserId = leaderUserId;
+	}
+
+	public String getLeaderUsername() {
+		return leaderUsername;
+	}
+
+	public void setLeaderUsername(String leaderUsername) {
+		this.leaderUsername = leaderUsername;
 	}
 
 	public String getUserAttendanceStatus() {

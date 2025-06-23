@@ -15,11 +15,12 @@ public class Meeting {
 	private String name;
 	private LocalDateTime meetingDateTime;
 	private LocalDateTime endDateTime;
-	private String leader;
+	private int leaderUserId;
 	private String description;
 
 	// Transient fields populated by DAO joins for UI display
 	private String parentCourseName;
+	private String leaderUsername; // For displaying the leader's name
 	private String userAttendanceStatus; // User-specific status (ANGEMELDET, ABGEMELDET, OFFEN)
 
 	// --- Formatted Helpers ---
@@ -33,6 +34,22 @@ public class Meeting {
 	}
 
 	// --- Getters and Setters ---
+
+	public int getLeaderUserId() {
+		return leaderUserId;
+	}
+
+	public void setLeaderUserId(int leaderUserId) {
+		this.leaderUserId = leaderUserId;
+	}
+
+	public String getLeaderUsername() {
+		return leaderUsername;
+	}
+
+	public void setLeaderUsername(String leaderUsername) {
+		this.leaderUsername = leaderUsername;
+	}
 
 	public String getUserAttendanceStatus() {
 		return userAttendanceStatus;
@@ -80,14 +97,6 @@ public class Meeting {
 
 	public void setEndDateTime(LocalDateTime endDateTime) {
 		this.endDateTime = endDateTime;
-	}
-
-	public String getLeader() {
-		return leader;
-	}
-
-	public void setLeader(String leader) {
-		this.leader = leader;
 	}
 
 	public String getDescription() {

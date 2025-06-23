@@ -14,6 +14,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -26,9 +27,9 @@ import java.util.Objects;
  * 
  * detailed view for a single user (including their event history), and
  * 
- * processing POST requests for creating, updating, and deleting user accounts
+ * processing POST requests for creating, updating, deleting, and resetting
  * 
- * via modal dialogs.
+ * passwords for user accounts via modal dialogs.
  */
 @WebServlet("/admin/users")
 public class AdminUserServlet extends HttpServlet {
@@ -85,6 +86,9 @@ public class AdminUserServlet extends HttpServlet {
 				break;
 			case "delete":
 				handleDeleteUser(request, response);
+				break;
+			case "resetPassword":
+				handleResetPassword(request, response);
 				break;
 			default:
 				logger.warn("Unknown POST action received: {}", action);
@@ -234,5 +238,47 @@ public class AdminUserServlet extends HttpServlet {
 			request.getSession().setAttribute("errorMessage", "Benutzer konnte nicht gelöscht werden.");
 		}
 		response.sendRedirect(request.getContextPath() + "/admin/users");
+	}
+
+	private void handleResetPassword(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		User adminUser = (User) request.getSession().getAttribute("user");
+		try {
+			int userId = Integer.parseInt(request.getParameter("userId"));
+			User userToReset = userDAO.getUserById(userId);
+
+			if (userToReset == null) {
+				request.getSession().setAttribute("errorMessage", "Benutzer zum Zurücksetzen nicht gefunden.");
+			} else {
+				String newPassword = generateRandomPassword(8);
+				if (userDAO.changePassword(userId, newPassword)) {
+					String logDetails = String.format("Passwort für Benutzer '%s' (ID: %d) zurückgesetzt.",
+							userToReset.getUsername(), userId);
+					AdminLogService.log(adminUser.getUsername(), "RESET_PASSWORD", logDetails);
+
+					// This message will be displayed on the JSP and JS will handle the clipboard
+					// copy
+					String successMessage = String.format(
+							"Passwort für '%s' wurde zurückgesetzt auf: <strong class=\"copyable-password\">%s</strong> (wurde in die Zwischenablage kopiert).",
+							userToReset.getUsername(), newPassword);
+					request.getSession().setAttribute("passwordResetInfo", successMessage);
+				} else {
+					request.getSession().setAttribute("errorMessage", "Passwort konnte nicht zurückgesetzt werden.");
+				}
+			}
+		} catch (NumberFormatException e) {
+			logger.error("Invalid user ID for password reset.", e);
+			request.getSession().setAttribute("errorMessage", "Ungültige Benutzer-ID.");
+		}
+		response.sendRedirect(request.getContextPath() + "/admin/users");
+	}
+
+	private String generateRandomPassword(int length) {
+		final String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+		SecureRandom random = new SecureRandom();
+		StringBuilder sb = new StringBuilder(length);
+		for (int i = 0; i < length; i++) {
+			sb.append(chars.charAt(random.nextInt(chars.length())));
+		}
+		return sb.toString();
 	}
 }

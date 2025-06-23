@@ -2,10 +2,8 @@
 / MODERN TECHNIKTEAM DESIGN V14 (MODALS) /
 / =================================================================== */
 
-/* --- 1. THEME & COLOR PALETTE --- /
+/* --- 1. THEME & COLOR PALETTE --- */
 :root {
-/ Light Theme */
-[data-theme="light"] {
 	--primary-color: #0d6efd;
 	--primary-color-hover: #0a58ca;
 	--primary-color-light: rgba(13, 110, 253, 0.1);
@@ -62,7 +60,7 @@ body.nav-open {
 }
 
 main {
-	padding: 1rem;
+	padding: 1.5rem 1rem;
 	width: 100%;
 	flex: 1;
 }
@@ -363,6 +361,18 @@ input:checked+.slider:before {
 	filter: brightness(0.9);
 }
 
+.btn-secondary {
+	background-color: transparent;
+	border-color: var(--primary-color);
+	color: var(--primary-color);
+}
+
+.btn-secondary:hover {
+	background-color: var(--primary-color);
+	border-color: var(--primary-color);
+	color: #fff;
+}
+
 .success-message, .error-message, .info-message {
 	padding: 1rem;
 	margin-bottom: 1.5rem;
@@ -453,7 +463,7 @@ input:checked+.slider:before {
 	border-radius: 8px;
 	border: 1px solid var(--border-color);
 	box-shadow: var(--shadow-sm);
-	padding: 1rem;
+	padding: 1.25rem 1rem;
 	display: flex;
 	flex-direction: column;
 	gap: 0.75rem;
@@ -471,7 +481,7 @@ input:checked+.slider:before {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	font-size: 0.95rem;
+	font-size: 1rem;
 }
 
 .card-row span:first-child {
@@ -479,7 +489,7 @@ input:checked+.slider:before {
 }
 
 .card-actions {
-	margin-top: 0.5rem;
+	margin-top: 1rem;
 	display: flex;
 	gap: 0.5rem;
 	flex-wrap: wrap;
@@ -640,10 +650,10 @@ table.mobile-matrix-table th {
 
 /* --- 10. FILE MANAGER --- */
 .file-manager-layout {
-	display: grid;
-	grid-template-columns: 1fr;
+	display: flex;
+	flex-direction: column;
 	gap: 1.5rem;
-	align-items: flex-start;
+	align-items: stretch;
 }
 
 ul.category-list {
@@ -695,14 +705,26 @@ ul.file-list li:last-child {
 	border-bottom: none;
 }
 
+.file-info {
+	flex-grow: 1;
+	min-width: 0;
+}
+
 .file-info a {
 	font-weight: 500;
+	word-break: break-all;
 }
 
 .file-meta {
 	color: var(--text-muted-color);
 	display: block;
 	font-size: 0.9em;
+}
+
+.category-actions-grid {
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
 }
 
 /* --- 11. DESKTOP MEDIA QUERIES --- */
@@ -836,7 +858,16 @@ ul.file-list li:last-child {
 		grid-template-columns: 1fr 1.5fr;
 	}
 	.file-manager-layout {
+		display: grid;
 		grid-template-columns: 320px 1fr;
+		flex-direction: row;
+		align-items: flex-start;
+	}
+	.category-actions-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 1rem;
+		align-items: end;
 	}
 	.responsive-form-grid {
 		grid-template-columns: 1fr 1fr;

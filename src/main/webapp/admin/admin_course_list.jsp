@@ -1,6 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
 <%--
 admin_course_list.jsp
@@ -24,27 +25,15 @@ Creating and editing courses are now handled via modal dialogs on this page.
 <p>Dies sind die übergeordneten Lehrgänge. Einzelne Termine
 	(Meetings) werden für jede Vorlage separat verwaltet.</p>
 
-<c:if test="
-
-        
-notemptysessionScope.successMessage">
-	<pclass="success−message">notemptysessionScope.successMessage"><pclass="success−message">
-
-
-
-	{sessionScope.successMessage}
+<c:if test="${not empty sessionScope.successMessage}">
+	<p class="success-message">
+		<c:out value="${sessionScope.successMessage}" />
 	</p>
 	<c:remove var="successMessage" scope="session" />
 </c:if>
-<c:if test="
-
-        
-notemptysessionScope.errorMessage">
-	<pclass="error−message">notemptysessionScope.errorMessage"><pclass="error−message">
-
-
-
-	{sessionScope.errorMessage}
+<c:if test="${not empty sessionScope.errorMessage}">
+	<p class="error-message">
+		<c:out value="${sessionScope.errorMessage}" />
 	</p>
 	<c:remove var="errorMessage" scope="session" />
 </c:if>
@@ -66,26 +55,31 @@ notemptysessionScope.errorMessage">
 <div class="mobile-card-list searchable-list">
 	<c:forEach var="course" items="${courseList}">
 		<div class="list-item-card"
-			data-searchable-content="${course.name} ${course.abbreviation}">
-			<h3 class="card-title">${course.name}</h3>
+			data-searchable-content="<c:out value='${course.name}'/> <c:out value='${course.abbreviation}'/>">
+			<h3 class="card-title">
+				<c:out value="${course.name}" />
+			</h3>
 			<div class="card-row">
-				<span>Abkürzung:</span> <span>${course.abbreviation}</span>
+				<span>Abkürzung:</span> <span><c:out
+						value="${course.abbreviation}" /></span>
 			</div>
 			<div class="card-actions">
 				<a
 					href="${pageContext.request.contextPath}/admin/meetings?courseId=${course.id}"
 					class="btn btn-small btn-success">Meetings verwalten</a>
 				<button type="button" class="btn btn-small edit-course-btn"
-					data-id="${course.id}" data-name="${course.name}"
-					data-abbreviation="${course.abbreviation}"
-					data-description="${course.description}">Vorlage
+					data-id="${course.id}" data-name="${fn:replace(course.name, '"
+					', '&quot;')}"
+					data-abbreviation="${fn:replace(course.abbreviation, '"
+					', '&quot;')}"
+					data-description="${fn:replace(course.description, '"', '&quot;')}">Vorlage
 					bearbeiten</button>
 				<form action="${pageContext.request.contextPath}/admin/courses"
-					method="post" style="display: inline;">
+					method="post" class="js-confirm-form"
+					data-confirm-message="Vorlage '${fn:escapeXml(course.name)}' wirklich löschen? Alle zugehörigen Meetings und Qualifikationen werden auch gelöscht!">
 					<input type="hidden" name="action" value="delete"> <input
 						type="hidden" name="id" value="${course.id}">
-					<button type="submit" class="btn btn-small btn-danger"
-						onclick="return confirm('Vorlage \'${course.name}\' wirklich löschen? Alle zugehörigen Meetings und Qualifikationen werden auch gelöscht!')">Löschen</button>
+					<button type="submit" class="btn btn-small btn-danger">Löschen</button>
 				</form>
 			</div>
 		</div>
@@ -105,22 +99,24 @@ notemptysessionScope.errorMessage">
 		<tbody>
 			<c:forEach var="course" items="${courseList}">
 				<tr>
-					<td>${course.name}</td>
-					<td>${course.abbreviation}</td>
+					<td><c:out value="${course.name}" /></td>
+					<td><c:out value="${course.abbreviation}" /></td>
 					<td style="display: flex; gap: 0.5rem; flex-wrap: wrap;"><a
 						href="${pageContext.request.contextPath}/admin/meetings?courseId=${course.id}"
 						class="btn btn-small btn-success">Meetings verwalten</a>
 						<button type="button" class="btn btn-small edit-course-btn"
-							data-id="${course.id}" data-name="${course.name}"
-							data-abbreviation="${course.abbreviation}"
-							data-description="${course.description}">Vorlage
+							data-id="${course.id}" data-name="${fn:replace(course.name, '"
+							', '&quot;')}"
+                            data-abbreviation="${fn:replace(course.abbreviation, '"
+							', '&quot;')}"
+                            data-description="${fn:replace(course.description, '"', '&quot;')}">Vorlage
 							bearbeiten</button>
 						<form action="${pageContext.request.contextPath}/admin/courses"
-							method="post" style="display: inline;">
+							method="post" class="js-confirm-form"
+							data-confirm-message="Vorlage '${fn:escapeXml(course.name)}' wirklich löschen? Alle zugehörigen Meetings und Qualifikationen werden auch gelöscht!">
 							<input type="hidden" name="action" value="delete"> <input
 								type="hidden" name="id" value="${course.id}">
-							<button type="submit" class="btn btn-small btn-danger"
-								onclick="return confirm('Vorlage \'${course.name}\' wirklich löschen? Alle zugehörigen Meetings und Qualifikationen werden auch gelöscht!')">Löschen</button>
+							<button type="submit" class="btn btn-small btn-danger">Löschen</button>
 						</form></td>
 				</tr>
 			</c:forEach>
@@ -160,51 +156,60 @@ notemptysessionScope.errorMessage">
 <c:import url="/WEB-INF/jspf/footer.jspf" />
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-// Modal Logic
-const modalOverlay = document.getElementById('course-modal');
-const form = document.getElementById('course-modal-form');
-const title = document.getElementById('course-modal-title');
-const actionInput = document.getElementById('course-modal-action');
-const idInput = document.getElementById('course-modal-id');
-const nameInput = document.getElementById('name-modal');
-const abbrInput = document.getElementById('abbreviation-modal');
-const descInput = document.getElementById('description-modal');
+    // Custom confirmation for delete forms
+    document.querySelectorAll('.js-confirm-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const message = this.dataset.confirmMessage || 'Sind Sie sicher?';
+            showConfirmationModal(message, () => this.submit());
+        });
+    });
 
-const closeModalBtn = modalOverlay.querySelector('.modal-close-btn');
-
-const closeModal = () => modalOverlay.classList.remove('active');
-
-const openCreateModal = () => {
-form.reset();
-title.textContent = "Neue Lehrgangs-Vorlage anlegen";
-actionInput.value = "create";
-idInput.value = "";
-modalOverlay.classList.add('active');
-};
-
-const openEditModal = (btn) => {
-form.reset();
-const data = btn.dataset;
-title.textContent = "Lehrgangs-Vorlage bearbeiten";
-actionInput.value = "update";
-idInput.value = data.id;
-nameInput.value = data.name;
-abbrInput.value = data.abbreviation;
-descInput.value = data.description;
-modalOverlay.classList.add('active');
-};
-
-document.getElementById('new-course-btn').addEventListener('click', openCreateModal);
-document.querySelectorAll('.edit-course-btn').forEach(btn => {
-btn.addEventListener('click', () => openEditModal(btn));
-});
-
-closeModalBtn.addEventListener('click', closeModal);
-modalOverlay.addEventListener('click', (e) => {
-if (e.target === modalOverlay) closeModal();
-});
-document.addEventListener('keydown', (e) => {
-if (e.key === 'Escape' && modalOverlay.classList.contains('active')) closeModal();
-});
+    // Modal Logic
+    const modalOverlay = document.getElementById('course-modal');
+    const form = document.getElementById('course-modal-form');
+    const title = document.getElementById('course-modal-title');
+    const actionInput = document.getElementById('course-modal-action');
+    const idInput = document.getElementById('course-modal-id');
+    const nameInput = document.getElementById('name-modal');
+    const abbrInput = document.getElementById('abbreviation-modal');
+    const descInput = document.getElementById('description-modal');
+    
+    const closeModalBtn = modalOverlay.querySelector('.modal-close-btn');
+    
+    const closeModal = () => modalOverlay.classList.remove('active');
+    
+    const openCreateModal = () => {
+        form.reset();
+        title.textContent = "Neue Lehrgangs-Vorlage anlegen";
+        actionInput.value = "create";
+        idInput.value = "";
+        modalOverlay.classList.add('active');
+    };
+    
+    const openEditModal = (btn) => {
+        form.reset();
+        const data = btn.dataset;
+        title.textContent = "Lehrgangs-Vorlage bearbeiten";
+        actionInput.value = "update";
+        idInput.value = data.id;
+        nameInput.value = data.name;
+        abbrInput.value = data.abbreviation;
+        descInput.value = data.description;
+        modalOverlay.classList.add('active');
+    };
+    
+    document.getElementById('new-course-btn').addEventListener('click', openCreateModal);
+    document.querySelectorAll('.edit-course-btn').forEach(btn => {
+        btn.addEventListener('click', () => openEditModal(btn));
+    });
+    
+    closeModalBtn.addEventListener('click', closeModal);
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modalOverlay.classList.contains('active')) closeModal();
+    });
 });
 </script>

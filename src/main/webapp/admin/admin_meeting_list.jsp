@@ -1,52 +1,45 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
 <%--
 admin_meeting_list.jsp
 
 This JSP displays a list of meetings for a specific parent course. An admin
-can edit or delete each meeting. Creating and editing meetings is now handled via modals.
+can edit or delete each meeting. Creating meetings is now handled via modals,
+and editing is done on a separate page to accommodate file uploads.
 
     It is served by: AdminMeetingServlet (doGet).
 
     Expected attributes:
-
         'parentCourse' (de.technikteam.model.Course): The course whose meetings are being listed.
-
         'meetings' (List<de.technikteam.model.Meeting>): The list of meetings for this course.
-        --%>
+        'allUsers' (List<de.technikteam.model.User>): For the leader dropdown in the modal.
+--%>
 
 <c:import url="/WEB-INF/jspf/header.jspf">
 	<c:param name="title" value="Meetings für ${parentCourse.name}" />
 </c:import>
 <c:import url="/WEB-INF/jspf/admin_navigation.jspf" />
-<h1>Meetings für "${parentCourse.name}"</h1>
+<h1>
+	Meetings für "
+	<c:out value="${parentCourse.name}" />
+	"
+</h1>
 <a href="${pageContext.request.contextPath}/admin/courses"
-	style="margin-bottom: 1rem; display: inline-block;"> &laquo; Zurück
-	zu allen Vorlagen </a>
+	style="margin-bottom: 1rem; display: inline-block;"> « Zurück zu
+	allen Vorlagen </a>
 
-<c:if test="
-
-        
-notemptysessionScope.successMessage">
-	<pclass="success−message">notemptysessionScope.successMessage"><pclass="success−message">
-
-
-
-	{sessionScope.successMessage}
+<c:if test="${not empty sessionScope.successMessage}">
+	<p class="success-message">
+		<c:out value="${sessionScope.successMessage}" />
 	</p>
 	<c:remove var="successMessage" scope="session" />
 </c:if>
-<c:if test="
-
-        
-notemptysessionScope.errorMessage">
-	<pclass="error−message">notemptysessionScope.errorMessage"><pclass="error−message">
-
-
-
-	{sessionScope.errorMessage}
+<c:if test="${not empty sessionScope.errorMessage}">
+	<p class="error-message">
+		<c:out value="${sessionScope.errorMessage}" />
 	</p>
 	<c:remove var="errorMessage" scope="session" />
 </c:if>
@@ -68,28 +61,29 @@ notemptysessionScope.errorMessage">
 <div class="mobile-card-list searchable-list">
 	<c:forEach var="meeting" items="${meetings}">
 		<div class="list-item-card"
-			data-searchable-content="${meeting.name} ${meeting.leader}">
-			<h3 class="card-title">${meeting.name}</h3>
+			data-searchable-content="<c:out value='${meeting.name}'/> <c:out value='${meeting.leaderUsername}'/>">
+			<h3 class="card-title">
+				<c:out value="${meeting.name}" />
+			</h3>
 			<div class="card-row">
-				<span>Datum:</span> <span>${meeting.formattedMeetingDateTimeRange}</span>
+				<span>Datum:</span> <span><c:out
+						value="${meeting.formattedMeetingDateTimeRange}" /></span>
 			</div>
 			<div class="card-row">
-				<span>Leitung:</span> <span>${empty meeting.leader ? 'N/A' : meeting.leader}</span>
+				<span>Leitung:</span> <span><c:out
+						value="${empty meeting.leaderUsername ? 'N/A' : meeting.leaderUsername}" /></span>
 			</div>
 			<div class="card-actions">
-				<button type="button" class="btn btn-small edit-meeting-btn"
-					data-id="${meeting.id}" data-name="${meeting.name}"
-					data-meeting-date-time="${meeting.meetingDateTime}"
-					data-end-date-time="${meeting.endDateTime}"
-					data-leader="${meeting.leader}"
-					data-description="${meeting.description}">Bearbeiten</button>
+				<a
+					href="${pageContext.request.contextPath}/admin/meetings?action=edit&id=${meeting.id}"
+					class="btn btn-small">Bearbeiten</a>
 				<form action="${pageContext.request.contextPath}/admin/meetings"
-					method="post" style="display: inline;">
+					method="post" class="inline-form js-confirm-form"
+					data-confirm-message="Meeting '${fn:escapeXml(meeting.name)}' wirklich löschen?">
 					<input type="hidden" name="action" value="delete"> <input
 						type="hidden" name="courseId" value="${parentCourse.id}">
 					<input type="hidden" name="meetingId" value="${meeting.id}">
-					<button type="submit" class="btn btn-small btn-danger"
-						onclick="return confirm('Meeting \'${meeting.name}\' wirklich löschen?')">Löschen</button>
+					<button type="submit" class="btn btn-small btn-danger">Löschen</button>
 				</form>
 			</div>
 		</div>
@@ -109,42 +103,39 @@ notemptysessionScope.errorMessage">
 		<tbody>
 			<c:forEach var="meeting" items="${meetings}">
 				<tr>
-					<td>${meeting.name}</td>
-					<td>${meeting.formattedMeetingDateTimeRange}</td>
-					<td>${empty meeting.leader ? 'N/A' : meeting.leader}</td>
-					<td style="display: flex; gap: 0.5rem;">
-						<button type="button" class="btn btn-small edit-meeting-btn"
-							data-id="${meeting.id}" data-name="${meeting.name}"
-							data-meeting-date-time="${meeting.meetingDateTime}"
-							data-end-date-time="${meeting.endDateTime}"
-							data-leader="${meeting.leader}"
-							data-description="${meeting.description}">Bearbeiten</button>
+					<td><a
+						href="${pageContext.request.contextPath}/meetingDetails?id=${meeting.id}"><c:out
+								value="${meeting.name}" /></a></td>
+					<td><c:out value="${meeting.formattedMeetingDateTimeRange}" /></td>
+					<td><c:out
+							value="${empty meeting.leaderUsername ? 'N/A' : meeting.leaderUsername}" /></td>
+					<td style="display: flex; gap: 0.5rem;"><a
+						href="${pageContext.request.contextPath}/admin/meetings?action=edit&id=${meeting.id}"
+						class="btn btn-small">Bearbeiten & Anhänge</a>
 						<form action="${pageContext.request.contextPath}/admin/meetings"
-							method="post" style="display: inline;">
+							method="post" class="inline-form js-confirm-form"
+							data-confirm-message="Meeting '${fn:escapeXml(meeting.name)}' wirklich löschen?">
 							<input type="hidden" name="action" value="delete"> <input
 								type="hidden" name="courseId" value="${parentCourse.id}">
 							<input type="hidden" name="meetingId" value="${meeting.id}">
-							<button type="submit" class="btn btn-small btn-danger"
-								onclick="return confirm('Meeting \'${meeting.name}\' wirklich löschen?')">Löschen</button>
-						</form>
-					</td>
+							<button type="submit" class="btn btn-small btn-danger">Löschen</button>
+						</form></td>
 				</tr>
 			</c:forEach>
 		</tbody>
 	</table>
 </div>
-<!-- MODAL FOR NEW/EDIT MEETING -->
+<!-- MODAL FOR NEW MEETING -->
 <div class="modal-overlay" id="meeting-modal">
 	<div class="modal-content">
 		<button class="modal-close-btn">×</button>
-		<h3 id="meeting-modal-title">Meeting</h3>
+		<h3 id="meeting-modal-title">Meeting planen</h3>
 		<form id="meeting-modal-form"
 			action="${pageContext.request.contextPath}/admin/meetings"
 			method="post" enctype="multipart/form-data">
 
-			<input type="hidden" name="action" id="meeting-modal-action">
-			<input type="hidden" name="courseId" value="${parentCourse.id}">
-			<input type="hidden" name="meetingId" id="meeting-modal-id">
+			<input type="hidden" name="action" value="create"> <input
+				type="hidden" name="courseId" value="${parentCourse.id}">
 
 			<div class="form-group">
 				<label for="name-modal">Name des Meetings (z.B. Teil 1)</label> <input
@@ -162,8 +153,14 @@ notemptysessionScope.errorMessage">
 				</div>
 			</div>
 			<div class="form-group">
-				<label for="leader-modal">Leitende Person</label> <input type="text"
-					id="leader-modal" name="leader">
+				<label for="leader-modal">Leitende Person</label> <select
+					name="leaderUserId" id="leader-modal">
+					<option value="">(Keine)</option>
+					<c:forEach var="user" items="${allUsers}">
+						<option value="${user.id}"><c:out
+								value="${user.username}" /></option>
+					</c:forEach>
+				</select>
 			</div>
 			<div class="form-group">
 				<label for="description-modal">Beschreibung</label>
@@ -175,56 +172,50 @@ notemptysessionScope.errorMessage">
 
 </div>
 
+<!-- Confirmation Modal Structure -->
+<div class="modal-overlay" id="confirmation-modal">
+	<div class="modal-content" style="max-width: 450px;">
+		<h3 id="confirmation-title">Bestätigung</h3>
+		<p id="confirmation-message"
+			style="margin: 1.5rem 0; font-size: 1.1rem;"></p>
+		<div style="display: flex; justify-content: flex-end; gap: 1rem;">
+			<button id="confirmation-btn-cancel" class="btn btn-secondary">Abbrechen</button>
+			<button id="confirmation-btn-confirm" class="btn btn-danger">Bestätigen</button>
+		</div>
+	</div>
+</div>
+
 <c:import url="/WEB-INF/jspf/table-helper.jspf" />
 <c:import url="/WEB-INF/jspf/footer.jspf" />
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-const modal = document.getElementById('meeting-modal');
-if (!modal) return;
+	// Custom confirmation for delete forms
+	document.querySelectorAll('.js-confirm-form').forEach(form => {
+		form.addEventListener('submit', function(e) {
+			e.preventDefault();
+			const message = this.dataset.confirmMessage || 'Sind Sie sicher?';
+			showConfirmationModal(message, () => this.submit());
+		});
+	});
 
-const form = document.getElementById('meeting-modal-form');
-const title = document.getElementById('meeting-modal-title');
-const actionInput = document.getElementById('meeting-modal-action');
-const idInput = document.getElementById('meeting-modal-id');
-const nameInput = document.getElementById('name-modal');
-const startInput = document.getElementById('meetingDateTime-modal');
-const endInput = document.getElementById('endDateTime-modal');
-const leaderInput = document.getElementById('leader-modal');
-const descInput = document.getElementById('description-modal');
+	// Modal Logic for "Create"
+	const modal = document.getElementById('meeting-modal');
+	if (!modal) return;
 
-const closeModalBtn = modal.querySelector('.modal-close-btn');
+	const form = document.getElementById('meeting-modal-form');
+	const closeModalBtn = modal.querySelector('.modal-close-btn');
 
-const closeModal = () => modal.classList.remove('active');
+	const closeModal = () => modal.classList.remove('active');
 
-const openCreateModal = () => {
-form.reset();
-title.textContent = 'Neues Meeting für "${parentCourse.name}" planen';
-actionInput.value = 'create';
-idInput.value = '';
-modal.classList.add('active');
-};
+	const openCreateModal = () => {
+		form.reset();
+		modal.classList.add('active');
+	};
 
-const openEditModal = (btn) => {
-form.reset();
-const data = btn.dataset;
-title.textContent = "Meeting bearbeiten";
-actionInput.value = 'update';
-idInput.value = data.id;
-nameInput.value = data.name;
-startInput.value = data.meetingDateTime || '';
-endInput.value = data.endDateTime || '';
-leaderInput.value = data.leader;
-descInput.value = data.description;
-modal.classList.add('active');
-};
+	document.getElementById('new-meeting-btn').addEventListener('click', openCreateModal);
 
-document.getElementById('new-meeting-btn').addEventListener('click', openCreateModal);
-document.querySelectorAll('.edit-meeting-btn').forEach(btn => {
-btn.addEventListener('click', () => openEditModal(btn));
-});
-
-closeModalBtn.addEventListener('click', closeModal);
-modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.classList.contains('active')) closeModal(); });
+	closeModalBtn.addEventListener('click', closeModal);
+	modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+	document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.classList.contains('active')) closeModal(); });
 });
 </script>

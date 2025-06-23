@@ -35,18 +35,20 @@
 <div class="mobile-card-list searchable-list">
 	<c:forEach var="log" items="${logs}">
 		<div class="list-item-card"
-			data-searchable-content="${log.details} ${log.adminUsername} ${log.actionType}">
+			data-searchable-content="<c:out value='${log.details}'/> <c:out value='${log.adminUsername}'/> <c:out value='${log.actionType}'/>">
 			<p>
-				<strong>${log.details}</strong>
+				<strong><c:out value="${log.details}" /></strong>
 			</p>
 			<div class="card-row">
-				<span>Wer:</span> <span>${log.adminUsername}</span>
+				<span>Wer:</span> <span><c:out value="${log.adminUsername}" /></span>
 			</div>
 			<div class="card-row">
-				<span>Aktionstyp:</span> <span>${log.actionType}</span>
+				<span>Aktionstyp:</span> <span><c:out
+						value="${log.actionType}" /></span>
 			</div>
 			<div class="card-row">
-				<span>Wann:</span> <span>${log.formattedActionTimestamp} Uhr</span>
+				<span>Wann:</span> <span><c:out
+						value="${log.formattedActionTimestamp}" /> Uhr</span>
 			</div>
 		</div>
 	</c:forEach>
@@ -66,10 +68,10 @@
 		<tbody>
 			<c:forEach var="log" items="${logs}">
 				<tr>
-					<td>${log.formattedActionTimestamp}Uhr</td>
-					<td>${log.adminUsername}</td>
-					<td>${log.actionType}</td>
-					<td>${log.details}</td>
+					<td><c:out value="${log.formattedActionTimestamp}" /> Uhr</td>
+					<td><c:out value="${log.adminUsername}" /></td>
+					<td><c:out value="${log.actionType}" /></td>
+					<td><c:out value="${log.details}" /></td>
 				</tr>
 			</c:forEach>
 		</tbody>

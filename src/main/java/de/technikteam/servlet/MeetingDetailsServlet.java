@@ -58,8 +58,17 @@ public class MeetingDetailsServlet extends HttpServlet {
 				return;
 			}
 
-			// Fetch attachments for the meeting, respecting the user's role
-			request.setAttribute("attachments", attachmentDAO.getAttachmentsForMeeting(meetingId, user.getRole()));
+			// If current user is the leader, they act as an ADMIN for viewing attachments
+			String attachmentUserRole = user.getRole();
+			if (user.getId() == meeting.getLeaderUserId()) {
+				attachmentUserRole = "ADMIN";
+				logger.debug("User {} is leader of meeting {}. Granting admin view for attachments.",
+						user.getUsername(), meetingId);
+			}
+
+			// Fetch attachments for the meeting, respecting the user's role (or leader
+			// override)
+			request.setAttribute("attachments", attachmentDAO.getAttachmentsForMeeting(meetingId, attachmentUserRole));
 			request.setAttribute("meeting", meeting);
 
 			logger.debug("Forwarding to meetingDetails.jsp for meeting '{}'", meeting.getName());

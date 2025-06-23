@@ -1,6 +1,7 @@
 package de.technikteam.servlet.admin;
 
 import de.technikteam.dao.EventTaskDAO;
+import de.technikteam.dao.UserDAO;
 import de.technikteam.model.EventTask;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
@@ -13,7 +14,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -28,10 +31,12 @@ public class AdminTaskServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminTaskServlet.class);
 	private EventTaskDAO taskDAO;
+	private UserDAO userDAO;
 
 	@Override
 	public void init() {
 		taskDAO = new EventTaskDAO();
+		userDAO = new UserDAO();
 	}
 
 	@Override
@@ -84,11 +89,24 @@ public class AdminTaskServlet extends HttpServlet {
 		logger.info("Assigning task ID {} to {} users for event ID {}", taskId, userIds.length, eventId);
 		taskDAO.assignTaskToUsers(taskId, userIds);
 
-		String assignedUserIdsString = userIds.length > 0
-				? Arrays.stream(userIds).mapToObj(String::valueOf).collect(Collectors.joining(", "))
-				: "niemandem";
-		AdminLogService.log(adminUser.getUsername(), "ASSIGN_TASK", "Aufgabe (ID: " + taskId + ") für Event-ID "
-				+ eventId + " an Nutzer-IDs [" + assignedUserIdsString + "] zugewiesen.");
+		String assignedUsersString;
+		if (userIds.length > 0) {
+			List<String> usernames = new ArrayList<>();
+			for (int userId : userIds) {
+				User u = userDAO.getUserById(userId);
+				if (u != null) {
+					usernames.add(u.getUsername());
+				} else {
+					usernames.add("ID:" + userId);
+				}
+			}
+			assignedUsersString = String.join(", ", usernames);
+		} else {
+			assignedUsersString = "niemandem";
+		}
+
+		AdminLogService.log(adminUser.getUsername(), "ASSIGN_TASK",
+				"Aufgabe (ID: " + taskId + ") für Event-ID " + eventId + " an " + assignedUsersString + " zugewiesen.");
 
 		response.sendRedirect(request.getContextPath() + "/eventDetails?id=" + eventId);
 	}

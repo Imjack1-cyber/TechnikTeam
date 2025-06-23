@@ -1,4 +1,3 @@
-
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
@@ -22,7 +21,11 @@
 </c:import>
 <c:import url="/WEB-INF/jspf/navigation.jspf" />
 
-<h1>Willkommen zurück, ${sessionScope.user.username}!</h1>
+<h1>
+	Willkommen zurück,
+	<c:out value="${sessionScope.user.username}" />
+	!
+</h1>
 
 <div class="dashboard-grid">
 	<div class="card">
@@ -34,8 +37,9 @@
 						<li
 							style="padding: 0.5rem 0; ${!loop.last ? 'border-bottom: 1px solid var(--border-color);' : ''}">
 							<a
-							href="${pageContext.request.contextPath}/eventDetails?id=${event.id}">${event.name}</a>
-							<br> <small>${event.formattedEventDateTimeRange}</small>
+							href="${pageContext.request.contextPath}/eventDetails?id=${event.id}"><c:out
+									value="${event.name}" /></a> <br> <small><c:out
+									value="${event.formattedEventDateTimeRange}" /></small>
 						</li>
 					</c:forEach>
 				</ul>
@@ -55,8 +59,9 @@
 						<li
 							style="padding: 0.5rem 0; ${!loop.last ? 'border-bottom: 1px solid var(--border-color);' : ''}">
 							<a
-							href="${pageContext.request.contextPath}/meetingDetails?id=${meeting.id}">${meeting.name}</a>
-							<br> <small>${meeting.formattedMeetingDateTimeRange}</small>
+							href="${pageContext.request.contextPath}/meetingDetails?id=${meeting.id}"><c:out
+									value="${meeting.name}" /></a> <br> <small><c:out
+									value="${meeting.formattedMeetingDateTimeRange}" /></small>
 						</li>
 					</c:forEach>
 				</ul>

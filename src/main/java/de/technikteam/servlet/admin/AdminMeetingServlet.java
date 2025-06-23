@@ -4,11 +4,13 @@ import de.technikteam.config.AppConfig;
 import de.technikteam.dao.CourseDAO;
 import de.technikteam.dao.MeetingAttachmentDAO;
 import de.technikteam.dao.MeetingDAO;
+import de.technikteam.dao.UserDAO;
 import de.technikteam.model.Course;
 import de.technikteam.model.Meeting;
 import de.technikteam.model.MeetingAttachment;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
+import de.technikteam.util.ServletUtils;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
@@ -21,15 +23,12 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Scanner;
 
-@WebServlet("/admin/meetings/*")
+@WebServlet("/admin/meetings")
 @MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 20, maxRequestSize = 1024 * 1024 * 50)
 public class AdminMeetingServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
@@ -37,18 +36,20 @@ public class AdminMeetingServlet extends HttpServlet {
 	private MeetingDAO meetingDAO;
 	private CourseDAO courseDAO;
 	private MeetingAttachmentDAO attachmentDAO;
+	private UserDAO userDAO;
 
 	@Override
 	public void init() {
 		meetingDAO = new MeetingDAO();
 		courseDAO = new CourseDAO();
 		attachmentDAO = new MeetingAttachmentDAO();
+		userDAO = new UserDAO();
 	}
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		String pathInfo = req.getPathInfo();
-		if (pathInfo != null && pathInfo.equals("/edit")) {
+		String action = req.getParameter("action");
+		if ("edit".equals(action)) {
 			showEditForm(req, resp);
 		} else {
 			listMeetings(req, resp);
@@ -58,45 +59,102 @@ public class AdminMeetingServlet extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		req.setCharacterEncoding("UTF-8");
-		String contentType = req.getContentType();
+		String action;
 
-		if (contentType != null && contentType.toLowerCase().startsWith("multipart/")) {
-			handleCreateOrUpdate(req, resp);
+		if (req.getContentType() != null && req.getContentType().toLowerCase().startsWith("multipart/")) {
+			action = ServletUtils.getPartValue(req.getPart("action"));
 		} else {
-			String action = req.getParameter("action");
-			logger.debug("AdminMeetingServlet received non-multipart POST with action: {}", action);
-			if ("delete".equals(action)) {
-				handleDelete(req, resp);
-			} else if ("deleteAttachment".equals(action)) {
-				handleDeleteAttachment(req, resp);
+			action = req.getParameter("action");
+		}
+
+		logger.debug("AdminMeetingServlet received POST with action: {}", action);
+
+		switch (action) {
+		case "create":
+		case "update":
+			handleCreateOrUpdate(req, resp);
+			break;
+		case "delete":
+			handleDelete(req, resp);
+			break;
+		case "deleteAttachment":
+			handleDeleteAttachment(req, resp);
+			break;
+		default:
+			logger.warn("Unknown action received in doPost: {}", action);
+			resp.sendRedirect(req.getContextPath() + "/admin/courses");
+			break;
+		}
+	}
+
+	private void listMeetings(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		int courseId = Integer.parseInt(req.getParameter("courseId"));
+		logger.info("Listing all meetings for course ID: {}", courseId);
+		Course parentCourse = courseDAO.getCourseById(courseId);
+		List<Meeting> meetings = meetingDAO.getMeetingsForCourse(courseId);
+		List<User> allUsers = userDAO.getAllUsers();
+
+		req.setAttribute("parentCourse", parentCourse);
+		req.setAttribute("meetings", meetings);
+		req.setAttribute("allUsers", allUsers);
+
+		req.getRequestDispatcher("/admin/admin_meeting_list.jsp").forward(req, resp);
+	}
+
+	private void showEditForm(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		try {
+			int meetingId = Integer.parseInt(req.getParameter("id"));
+			logger.info("Showing edit form for meeting ID: {}", meetingId);
+			Meeting meeting = meetingDAO.getMeetingById(meetingId);
+			if (meeting != null) {
+				req.setAttribute("meeting", meeting);
+				req.setAttribute("attachments", attachmentDAO.getAttachmentsForMeeting(meetingId, "ADMIN")); // Admins
+																												// see
+																												// all
+				req.setAttribute("allUsers", userDAO.getAllUsers()); // For leader dropdown
+				req.getRequestDispatcher("/admin/admin_meeting_edit.jsp").forward(req, resp);
 			} else {
-				logger.warn("Unknown non-multipart action received in doPost: {}", action);
+				req.getSession().setAttribute("errorMessage", "Meeting nicht gefunden.");
 				resp.sendRedirect(req.getContextPath() + "/admin/courses");
 			}
+		} catch (NumberFormatException e) {
+			logger.error("Invalid ID for meeting edit form.", e);
+			req.getSession().setAttribute("errorMessage", "Ungültige Meeting-ID.");
+			resp.sendRedirect(req.getContextPath() + "/admin/courses");
 		}
 	}
 
 	private void handleCreateOrUpdate(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException, ServletException {
 		User adminUser = (User) req.getSession().getAttribute("user");
-		String action = getPartValue(req.getPart("action"));
+		String action = ServletUtils.getPartValue(req.getPart("action"));
 		boolean isUpdate = "update".equals(action);
 
-		int courseId = Integer.parseInt(getPartValue(req.getPart("courseId")));
-		String redirectUrl = req.getContextPath() + "/admin/meetings?courseId=" + courseId;
+		int courseId = Integer.parseInt(ServletUtils.getPartValue(req.getPart("courseId")));
+		int meetingId = 0;
+		if (isUpdate) {
+			meetingId = Integer.parseInt(ServletUtils.getPartValue(req.getPart("meetingId")));
+		}
+
+		String redirectUrl = isUpdate ? req.getContextPath() + "/admin/meetings?action=edit&id=" + meetingId
+				: req.getContextPath() + "/admin/meetings?courseId=" + courseId;
 
 		try {
 			Meeting meeting = new Meeting();
 			meeting.setCourseId(courseId);
-			meeting.setName(getPartValue(req.getPart("name")));
-			meeting.setLeader(getPartValue(req.getPart("leader")));
-			meeting.setDescription(getPartValue(req.getPart("description")));
+			meeting.setName(ServletUtils.getPartValue(req.getPart("name")));
+			meeting.setDescription(ServletUtils.getPartValue(req.getPart("description")));
 
-			String startDateTimeStr = getPartValue(req.getPart("meetingDateTime"));
+			String leaderIdStr = ServletUtils.getPartValue(req.getPart("leaderUserId"));
+			if (leaderIdStr != null && !leaderIdStr.isEmpty()) {
+				meeting.setLeaderUserId(Integer.parseInt(leaderIdStr));
+			}
+
+			String startDateTimeStr = ServletUtils.getPartValue(req.getPart("meetingDateTime"));
 			if (startDateTimeStr != null && !startDateTimeStr.isEmpty()) {
 				meeting.setMeetingDateTime(LocalDateTime.parse(startDateTimeStr));
 			}
-			String endDateTimeStr = getPartValue(req.getPart("endDateTime"));
+			String endDateTimeStr = ServletUtils.getPartValue(req.getPart("endDateTime"));
 			if (endDateTimeStr != null && !endDateTimeStr.isEmpty()) {
 				meeting.setEndDateTime(LocalDateTime.parse(endDateTimeStr));
 			}
@@ -104,8 +162,8 @@ public class AdminMeetingServlet extends HttpServlet {
 			Course parentCourse = courseDAO.getCourseById(courseId);
 			String parentCourseName = (parentCourse != null) ? parentCourse.getName() : "N/A";
 
+			int newMeetingId = -1;
 			if (isUpdate) {
-				int meetingId = Integer.parseInt(getPartValue(req.getPart("meetingId")));
 				meeting.setId(meetingId);
 				if (meetingDAO.updateMeeting(meeting)) {
 					AdminLogService.log(adminUser.getUsername(), "UPDATE_MEETING", "Meeting '" + meeting.getName()
@@ -114,13 +172,13 @@ public class AdminMeetingServlet extends HttpServlet {
 				} else {
 					req.getSession().setAttribute("infoMessage", "Keine Änderungen am Meeting vorgenommen.");
 				}
-				redirectUrl = req.getContextPath() + "/admin/meetings/edit?id=" + meetingId + "&courseId=" + courseId;
 			} else { // CREATE
-				int newMeetingId = meetingDAO.createMeeting(meeting);
+				newMeetingId = meetingDAO.createMeeting(meeting);
 				if (newMeetingId > 0) {
 					AdminLogService.log(adminUser.getUsername(), "CREATE_MEETING", "Meeting '" + meeting.getName()
 							+ "' (ID: " + newMeetingId + ") für Lehrgang '" + parentCourseName + "' geplant.");
 					req.getSession().setAttribute("successMessage", "Neues Meeting erfolgreich geplant.");
+					redirectUrl = req.getContextPath() + "/admin/meetings?action=edit&id=" + newMeetingId;
 				} else {
 					req.getSession().setAttribute("errorMessage", "Meeting konnte nicht erstellt werden.");
 				}
@@ -128,10 +186,10 @@ public class AdminMeetingServlet extends HttpServlet {
 
 			Part filePart = req.getPart("attachment");
 			if (filePart != null && filePart.getSize() > 0) {
-				int meetingIdForAttachment = isUpdate ? meeting.getId() : meetingDAO.createMeeting(meeting);
-				if (meetingIdForAttachment > 0) {
-					String requiredRole = getPartValue(req.getPart("requiredRole"));
-					handleAttachmentUpload(filePart, meetingIdForAttachment, requiredRole, adminUser, req);
+				int targetMeetingId = isUpdate ? meetingId : newMeetingId;
+				if (targetMeetingId > 0) {
+					String requiredRole = ServletUtils.getPartValue(req.getPart("requiredRole"));
+					handleAttachmentUpload(filePart, targetMeetingId, requiredRole, adminUser, req);
 				}
 			}
 
@@ -144,37 +202,6 @@ public class AdminMeetingServlet extends HttpServlet {
 		}
 
 		resp.sendRedirect(redirectUrl);
-	}
-
-	private void listMeetings(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		int courseId = Integer.parseInt(req.getParameter("courseId"));
-		logger.info("Listing all meetings for course ID: {}", courseId);
-		Course parentCourse = courseDAO.getCourseById(courseId);
-		List<Meeting> meetings = meetingDAO.getMeetingsForCourse(courseId);
-		req.setAttribute("parentCourse", parentCourse);
-		req.setAttribute("meetings", meetings);
-		req.getRequestDispatcher("/admin/admin_meeting_list.jsp").forward(req, resp);
-	}
-
-	private void showEditForm(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		try {
-			int meetingId = Integer.parseInt(req.getParameter("id"));
-			User user = (User) req.getSession().getAttribute("user");
-			logger.info("Showing edit form for meeting ID: {}", meetingId);
-			Meeting meeting = meetingDAO.getMeetingById(meetingId);
-			if (meeting != null) {
-				req.setAttribute("meeting", meeting);
-				req.setAttribute("attachments", attachmentDAO.getAttachmentsForMeeting(meetingId, user.getRole()));
-				req.getRequestDispatcher("/admin/admin_meeting_edit.jsp").forward(req, resp);
-			} else {
-				req.getSession().setAttribute("errorMessage", "Meeting nicht gefunden.");
-				resp.sendRedirect(req.getContextPath() + "/admin/courses");
-			}
-		} catch (NumberFormatException e) {
-			logger.error("Invalid ID for meeting edit form.", e);
-			req.getSession().setAttribute("errorMessage", "Ungültige Meeting-ID.");
-			resp.sendRedirect(req.getContextPath() + "/admin/courses");
-		}
 	}
 
 	private void handleDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -203,25 +230,29 @@ public class AdminMeetingServlet extends HttpServlet {
 	private void handleDeleteAttachment(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		User adminUser = (User) req.getSession().getAttribute("user");
 		int attachmentId = Integer.parseInt(req.getParameter("attachmentId"));
-		int meetingId = Integer.parseInt(req.getParameter("meetingId"));
-		int courseId = Integer.parseInt(req.getParameter("courseId"));
-		logger.warn("Attempting to delete attachment ID {} from meeting ID {}", attachmentId, meetingId);
+		logger.warn("Attempting to delete attachment ID {}", attachmentId);
 
 		MeetingAttachment attachment = attachmentDAO.getAttachmentById(attachmentId);
 		if (attachment != null) {
+			int meetingId = attachment.getMeetingId();
 			File physicalFile = new File(AppConfig.UPLOAD_DIRECTORY, attachment.getFilepath());
+
 			if (physicalFile.exists()) {
 				physicalFile.delete();
 			}
+
 			if (attachmentDAO.deleteAttachment(attachmentId)) {
 				AdminLogService.log(adminUser.getUsername(), "DELETE_MEETING_ATTACHMENT",
 						"Anhang '" + attachment.getFilename() + "' von Meeting ID " + meetingId + " gelöscht.");
 				req.getSession().setAttribute("successMessage", "Anhang gelöscht.");
+			} else {
+				req.getSession().setAttribute("errorMessage", "Anhang konnte nicht aus DB gelöscht werden.");
 			}
+			resp.sendRedirect(req.getContextPath() + "/admin/meetings?action=edit&id=" + meetingId);
 		} else {
 			req.getSession().setAttribute("errorMessage", "Anhang nicht gefunden.");
+			resp.sendRedirect(req.getContextPath() + "/admin/courses");
 		}
-		resp.sendRedirect(req.getContextPath() + "/admin/meetings/edit?id=" + meetingId + "&courseId=" + courseId);
 	}
 
 	private void handleAttachmentUpload(Part filePart, int meetingId, String requiredRole, User adminUser,
@@ -236,7 +267,8 @@ public class AdminMeetingServlet extends HttpServlet {
 		MeetingAttachment attachment = new MeetingAttachment();
 		attachment.setMeetingId(meetingId);
 		attachment.setFilename(fileName);
-		attachment.setFilepath("meetings" + File.separator + fileName);
+		// Always use forward slashes for URL paths
+		attachment.setFilepath("meetings/" + fileName);
 		attachment.setRequiredRole(requiredRole);
 		if (attachmentDAO.addAttachment(attachment)) {
 			logger.info("Attachment '{}' uploaded for meeting ID {} by '{}'", fileName, meetingId,
@@ -244,17 +276,10 @@ public class AdminMeetingServlet extends HttpServlet {
 			String logDetails = String.format("Anhang '%s' zu Meeting ID %d hinzugefügt. Sichtbar für: %s.", fileName,
 					meetingId, requiredRole);
 			AdminLogService.log(adminUser.getUsername(), "ADD_MEETING_ATTACHMENT", logDetails);
-			req.getSession().setAttribute("successMessage", "Anhang '" + fileName + "' erfolgreich hochgeladen.");
+			// Do not set success message here, let the main method handle it
+		} else {
+			req.getSession().setAttribute("errorMessage", "Anhang konnte nicht in DB gespeichert werden.");
 		}
 	}
 
-	private String getPartValue(Part part) throws IOException {
-		if (part == null) {
-			return null;
-		}
-		try (InputStream inputStream = part.getInputStream();
-				Scanner scanner = new Scanner(inputStream, StandardCharsets.UTF_8.name())) {
-			return scanner.useDelimiter("\\A").hasNext() ? scanner.next() : "";
-		}
-	}
 }

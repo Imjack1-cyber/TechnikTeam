@@ -33,12 +33,14 @@
 		<c:if test="${not empty event.status}">
 			<c:set var="statusClass"
 				value="${event.status == 'KOMPLETT' or event.status == 'ZUGEWIESEN' ? 'status-ok' : event.status == 'LAUFEND' ? 'status-warn' : event.status == 'ABGESCHLOSSEN' ? 'status-info' : 'status-info'}" />
-			<span class="status-badge ${statusClass}">${event.status}</span>
+			<span class="status-badge ${statusClass}"><c:out
+					value="${event.status}" /></span>
 		</c:if>
 	</div>
 
 	<p class="details-subtitle">
-		<strong>Zeitraum:</strong> ${event.formattedEventDateTimeRange}
+		<strong>Zeitraum:</strong>
+		<c:out value="${event.formattedEventDateTimeRange}" />
 	</p>
 
 	<%-- Interactive section for running events, visible only to assigned users and admins --%>
@@ -52,17 +54,20 @@
 					<div id="admin-task-manager">
 						<ul id="task-list-admin" class="details-list">
 							<c:if test="${empty event.eventTasks}">
-								<p>Noch keine Aufgaben erstellt.</p>
+								<li>Noch keine Aufgaben erstellt.</li>
 							</c:if>
 							<c:forEach var="task" items="${event.eventTasks}">
 								<li id="task-item-${task.id}">
 									<div style="flex-grow: 1;">
-										<strong>${task.description}</strong><br> <small>Zugewiesen:
-											${not empty task.assignedUsernames ? task.assignedUsernames : 'Niemand'}</small>
+										<strong><c:out value="${task.description}" /></strong><br>
+										<small>Zugewiesen: <c:out
+												value="${not empty task.assignedUsernames ? task.assignedUsernames : 'Niemand'}" />
+										</small>
 									</div>
 									<div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
 										<span
-											class="status-badge ${task.status == 'ERLEDIGT' ? 'status-ok' : 'status-warn'}">${task.status}</span>
+											class="status-badge ${task.status == 'ERLEDIGT' ? 'status-ok' : 'status-warn'}"><c:out
+												value="${task.status}" /></span>
 										<button class="btn btn-small assign-task-btn"
 											data-task-id="${task.id}">Zuweisen</button>
 										<button class="btn btn-small btn-danger delete-task-btn"
@@ -89,6 +94,9 @@
 				<%-- User view for tasks: see and complete only their own tasks --%>
 				<c:if test="${sessionScope.user.role != 'ADMIN'}">
 					<ul id="task-list-user" class="details-list">
+						<c:if test="${empty event.eventTasks}">
+							<li>Keine Aufgaben vorhanden.</li>
+						</c:if>
 						<c:forEach var="task" items="${event.eventTasks}">
 							<c:if
 								test="${fn:contains(task.assignedUsernames, sessionScope.user.username) and task.status == 'OFFEN'}">
@@ -97,7 +105,7 @@
 										<input type="checkbox" class="task-checkbox"
 										data-task-id="${task.id}"
 										style="width: auto; height: 1.2rem; flex-shrink: 0;">
-										<span>${task.description}</span>
+										<span><c:out value="${task.description}" /></span>
 								</label></li>
 							</c:if>
 						</c:forEach>
@@ -120,17 +128,20 @@
 
 	<div class="card">
 		<h2 class="card-title">Beschreibung</h2>
-		<p>${not empty event.description ? event.description : 'Keine Beschreibung für dieses Event vorhanden.'}</p>
+		<p>
+			<c:out
+				value="${not empty event.description ? event.description : 'Keine Beschreibung für dieses Event vorhanden.'}" />
+		</p>
 	</div>
 	<div class="card">
 		<h2 class="card-title">Benötigter Personalbedarf</h2>
 		<ul class="details-list">
 			<c:if test="${empty event.skillRequirements}">
-				<p>Keine speziellen Qualifikationen benötigt.</p>
+				<li>Keine speziellen Qualifikationen benötigt.</li>
 			</c:if>
 			<c:forEach var="req" items="${event.skillRequirements}">
-				<li><strong>${req.courseName}:</strong> ${req.requiredPersons}
-					Person(en) benötigt</li>
+				<li><strong><c:out value="${req.courseName}" />:</strong> <c:out
+						value="${req.requiredPersons}" /> Person(en) benötigt</li>
 			</c:forEach>
 		</ul>
 	</div>
@@ -138,11 +149,12 @@
 		<h2 class="card-title">Zugewiesenes Team</h2>
 		<ul class="details-list">
 			<c:if test="${empty event.assignedAttendees}">
-				<p>Noch kein Team zugewiesen.</p>
+				<li>Noch kein Team zugewiesen.</li>
 			</c:if>
 			<c:forEach var="attendee" items="${event.assignedAttendees}">
 				<li><a
-					href="${pageContext.request.contextPath}/admin/users?action=details&id=${attendee.id}">${attendee.username}</a></li>
+					href="${pageContext.request.contextPath}/admin/users?action=details&id=${attendee.id}"><c:out
+							value="${attendee.username}" /></a></li>
 			</c:forEach>
 		</ul>
 	</div>
@@ -167,7 +179,7 @@
 					style="display: flex; flex-direction: column; gap: 0.5rem;">
 					<c:forEach var="user" items="${assignedUsers}">
 						<label><input type="checkbox" name="userIds"
-							value="${user.id}"> ${user.username}</label>
+							value="${user.id}"> <c:out value="${user.username}" /></label>
 					</c:forEach>
 				</div>
 			</div>
@@ -236,10 +248,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         document.querySelectorAll('.delete-task-btn').forEach(btn => btn.addEventListener('click', (e) => {
-            if (confirm('Aufgabe wirklich löschen?')) {
-                fetch(`${contextPath}/admin/tasks?taskId=${e.target.dataset.taskId}`, { method: 'DELETE' })
-                    .then(res => res.ok ? e.target.closest('li').remove() : alert('Löschen fehlgeschlagen!'));
-            }
+            e.preventDefault();
+            const taskItem = e.target.closest('li');
+            const taskDescription = taskItem.querySelector('strong').textContent;
+            showConfirmationModal(`Aufgabe "${taskDescription}" wirklich löschen?`, () => {
+                 fetch(`${contextPath}/admin/tasks?taskId=${btn.dataset.taskId}`, { method: 'DELETE' })
+                    .then(res => res.ok ? taskItem.remove() : alert('Löschen fehlgeschlagen!'));
+            });
         }));
     }
 
@@ -266,11 +281,29 @@ document.addEventListener('DOMContentLoaded', () => {
             fetch(`${contextPath}/api/event-chat?eventId=${eventId}`)
                 .then(res => res.ok ? res.json() : Promise.reject(`HTTP error! status: ${res.status}`))
                 .then(messages => {
-                    chatBox.innerHTML = messages.length > 0 ? messages.map(msg =>
-                        `<p style="margin-bottom:0.25rem; ${msg.userId == currentUserId ? 'text-align:right;' : ''}">
-                            <strong ${msg.userId == currentUserId ? 'style="color:var(--primary-color);"' : ''}>${msg.username}:</strong> ${msg.messageText}
-                         </p>`
-                    ).join('') : '<p style="color:var(--text-muted-color);">Noch keine Nachrichten.</p>';
+                    // XSS FIX: Build DOM elements instead of using innerHTML
+                    chatBox.innerHTML = '';
+                    if (messages.length > 0) {
+                        messages.forEach(msg => {
+                            const p = document.createElement('p');
+                            p.style.marginBottom = '0.25rem';
+                            if (msg.userId == currentUserId) {
+                                p.style.textAlign = 'right';
+                            }
+                            
+                            const strong = document.createElement('strong');
+                            strong.textContent = msg.username + ': ';
+                             if (msg.userId == currentUserId) {
+                                strong.style.color = 'var(--primary-color)';
+                            }
+
+                            p.appendChild(strong);
+                            p.appendChild(document.createTextNode(msg.messageText));
+                            chatBox.appendChild(p);
+                        });
+                    } else {
+                        chatBox.innerHTML = '<p style="color:var(--text-muted-color); text-align: center; padding-top: 1rem;">Noch keine Nachrichten.</p>';
+                    }
                     chatBox.scrollTop = chatBox.scrollHeight;
                 }).catch(error => console.error("Error fetching chat messages:", error));
         };
@@ -281,7 +314,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (message) {
                 const formData = new URLSearchParams({ eventId: eventId, messageText: message });
                 fetch(`${contextPath}/api/event-chat`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData })
-                    .then(res => { if (res.ok) { chatInput.value = ''; fetchMessages(); } else { alert('Nachricht konnte nicht gesendet werden.'); } })
+                    .then(res => { 
+                        if (res.ok) { 
+                            chatInput.value = ''; 
+                            fetchMessages();
+                        } else { 
+                            alert('Nachricht konnte nicht gesendet werden.'); 
+                        } 
+                    })
                     .catch(() => alert('Netzwerkfehler beim Senden.'));
             }
         });

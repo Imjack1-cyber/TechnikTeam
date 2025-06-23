@@ -30,7 +30,9 @@
 
 <c:forEach var="categoryEntry" items="${fileData}">
 	<div class="card">
-		<h2>${categoryEntry.key}</h2>
+		<h2>
+			<c:out value="${categoryEntry.key}" />
+		</h2>
 		<ul style="list-style: none; padding-left: 0;">
 			<c:forEach var="file" items="${categoryEntry.value}" varStatus="loop">
 				<li
@@ -39,12 +41,13 @@
 						<%-- The virtual file with ID -1 links to the editor page --%>
 						<c:when test="${file.id == -1}">
 							<a href="${pageContext.request.contextPath}/editor-page"
-								style="font-weight: 600;">${file.filename}</a>
+								style="font-weight: 600;"><c:out value="${file.filename}" /></a>
 						</c:when>
 						<%-- All other files link to the download servlet --%>
 						<c:otherwise>
 							<a
-								href="${pageContext.request.contextPath}/download?file=${file.filepath}">${file.filename}</a>
+								href="${pageContext.request.contextPath}/download?file=${file.filepath}"><c:out
+									value="${file.filename}" /></a>
 						</c:otherwise>
 					</c:choose>
 				</li>

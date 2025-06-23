@@ -28,166 +28,170 @@ lightbox for viewing item images and client-side filtering and sorting.
 
 <c:if test="${not empty sessionScope.successMessage}">
 	<p class="success-message">
-		<i class="fas fa-check-circle"></i> sessionScope.successMessage
+		<i class="fas fa-check-circle"></i>
+		<c:out value="${sessionScope.successMessage}" />
 	</p>
-	<c:removevar ="successMessage"scope="session" />
+	<%-- This removes the message from the session so it doesn't appear again on the next page load. --%>
+	<c:remove var="successMessage" scope="session" />
 </c:if>
-<c:iftest ="sessionScope.successMessage
+
+<c:if test="${not empty sessionScope.errorMessage}">
+	<p class="error-message">
+		<i class="fas fa-exclamation-triangle"></i>
+		<c:out value="${sessionScope.errorMessage}" />
 	</p>
-	<c:removevar ="successMessage"scope="session" />
-	</c:if>
-	<c:iftest ="
+	<%-- This removes the message from the session so it doesn't appear again on the next page load. --%>
+	<c:remove var="errorMessage" scope="session" />
+</c:if>
+<div class="table-controls">
+	<div class="form-group" style="margin-bottom: 0; flex-grow: 1;">
+		<input type="search" id="table-filter"
+			placeholder="Alle Artikel filtern..." style="width: 100%;"
+			aria-label="Lager filtern">
+	</div>
+</div>
 
-      
+<c:if test="${empty storageData}">
+	<div class="card">
+		<p>Derzeit sind keine Artikel im Lager erfasst.</p>
+	</div>
+</c:if>
 
-{notemptysessionScope.errorMessage}">
-		<p class="error-message">
-			<i class="fas fa-exclamation-triangle"></i>
-			${sessionScope.errorMessage}
-		</p>
-		<c:remove var="errorMessage" scope="session" />
-		</c:if>
-		<div class="table-controls">
-			<div class="form-group" style="margin-bottom: 0; flex-grow: 1;">
-				<input type="search" id="table-filter"
-					placeholder="Alle Artikel filtern..." style="width: 100%;"
-					aria-label="Lager filtern">
-			</div>
+<c:forEach var="locationEntry" items="${storageData}">
+	<div class="location-group">
+		<h2>
+			<i class="fas fa-map-marker-alt"></i>
+			<c:out value="${locationEntry.key}" />
+		</h2>
+
+		<!-- MOBILE LAYOUT -->
+		<div class="mobile-card-list searchable-list">
+			<c:forEach var="item" items="${locationEntry.value}">
+				<div class="list-item-card"
+					data-searchable-content="<c:out value='${item.name}'/> <c:out value='${item.cabinet}'/> <c:out value='${item.shelf}'/>">
+					<h3 class="card-title">
+						<c:out value="${item.name}" />
+					</h3>
+					<div class="card-row">
+						<span>Anzahl:</span> <span><c:out value="${item.quantity}" />
+							<span class="status-badge ${item.availabilityStatusCssClass}"><c:out
+									value="${item.availabilityStatus}" /></span></span>
+					</div>
+					<div class="card-row">
+						<span>Ort:</span> <span><c:out value="${item.cabinet}" /> /
+							<c:out value="${item.shelf}" /></span>
+					</div>
+					<div class="card-actions">
+						<button class="btn btn-small btn-success transaction-btn"
+							data-item-id="${item.id}"
+							data-item-name="<c:out value="${item.name}"/>"
+							data-type="checkin">
+							<i class="fas fa-plus"></i> Einräumen
+						</button>
+						<button class="btn btn-small btn-danger transaction-btn"
+							data-item-id="${item.id}"
+							data-item-name="<c:out value="${item.name}"/>"
+							data-type="checkout">
+							<i class="fas fa-minus"></i> Entnehmen
+						</button>
+						<c:if test="${not empty item.imagePath}">
+							<a href="#" class="btn btn-small btn-secondary lightbox-trigger"
+								data-src="${pageContext.request.contextPath}/image?file=${item.imagePath}"><i
+								class="fas fa-image"></i> Bild</a>
+						</c:if>
+					</div>
+				</div>
+			</c:forEach>
 		</div>
 
-		<c:if test="${empty storageData}">
-			<div class="card">
-				<p>Derzeit sind keine Artikel im Lager erfasst.</p>
-			</div>
-		</c:if>
-
-		<c:forEach var="locationEntry" items="${storageData}">
-			<div class="location-group">
-				<h2>
-					<i class="fas fa-map-marker-alt"></i> ${locationEntry.key}
-				</h2>
-
-				<!-- MOBILE LAYOUT -->
-				<div class="mobile-card-list searchable-list">
+		<!-- DESKTOP LAYOUT -->
+		<div class="desktop-table-wrapper">
+			<table class="desktop-table sortable-table searchable-table">
+				<thead>
+					<tr>
+						<th class="sortable" data-sort-type="string">Gerät</th>
+						<th class="sortable" data-sort-type="string">Schrank</th>
+						<th class="sortable" data-sort-type="string">Regal</th>
+						<th class="sortable" data-sort-type="number">Anzahl</th>
+						<th class="sortable" data-sort-type="string">Status</th>
+						<th>Bild</th>
+						<th>Aktion</th>
+					</tr>
+				</thead>
+				<tbody>
 					<c:forEach var="item" items="${locationEntry.value}">
-						<div class="list-item-card"
-							data-searchable-content="${item.name} ${item.cabinet} ${item.shelf}">
-							<h3 class="card-title">${item.name}</h3>
-							<div class="card-row">
-								<span>Anzahl:</span> <span>${item.quantity} <span
-									class="status-badge ${item.availabilityStatusCssClass}">${item.availabilityStatus}</span></span>
-							</div>
-							<div class="card-row">
-								<span>Ort:</span> <span>${item.cabinet} / ${item.shelf}</span>
-							</div>
-							<div class="card-actions">
+						<tr>
+							<td><c:out value="${item.name}" /></td>
+							<td><c:out value="${item.cabinet}" /></td>
+							<td><c:out value="${item.shelf}" /></td>
+							<td><c:out value="${item.quantity}" /></td>
+							<td><span
+								class="status-badge ${item.availabilityStatusCssClass}"><c:out
+										value="${item.availabilityStatus}" /></span></td>
+							<td><c:if test="${not empty item.imagePath}">
+									<a href="#" class="lightbox-trigger"
+										data-src="${pageContext.request.contextPath}/image?file=${item.imagePath}">
+										<img
+										src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
+										alt="<c:out value='${item.name}'/>" width="60"
+										style="border-radius: 4px; vertical-align: middle; cursor: pointer; aspect-ratio: 4/3; object-fit: cover;">
+									</a>
+								</c:if></td>
+							<td style="display: flex; gap: 0.5rem;">
 								<button class="btn btn-small btn-success transaction-btn"
-									data-item-id="${item.id}" data-item-name="${item.name}"
+									data-item-id="${item.id}"
+									data-item-name="<c:out value="${item.name}"/>"
 									data-type="checkin">
 									<i class="fas fa-plus"></i> Einräumen
 								</button>
 								<button class="btn btn-small btn-danger transaction-btn"
-									data-item-id="${item.id}" data-item-name="${item.name}"
+									data-item-id="${item.id}"
+									data-item-name="<c:out value="${item.name}"/>"
 									data-type="checkout">
 									<i class="fas fa-minus"></i> Entnehmen
 								</button>
-								<c:if test="${not empty item.imagePath}">
-									<a href="#"
-										class="btn btn-small btn-secondary lightbox-trigger"
-										data-src="${pageContext.request.contextPath}/image?file=${item.imagePath}"><i
-										class="fas fa-image"></i> Bild</a>
-								</c:if>
-							</div>
-						</div>
+							</td>
+						</tr>
 					</c:forEach>
-				</div>
-
-				<!-- DESKTOP LAYOUT -->
-				<div class="desktop-table-wrapper">
-					<table class="desktop-table sortable-table searchable-table">
-						<thead>
-							<tr>
-								<th class="sortable" data-sort-type="string">Gerät</th>
-								<th class="sortable" data-sort-type="string">Schrank</th>
-								<th class="sortable" data-sort-type="string">Regal</th>
-								<th class="sortable" data-sort-type="number">Anzahl</th>
-								<th class="sortable" data-sort-type="string">Status</th>
-								<th>Bild</th>
-								<th>Aktion</th>
-							</tr>
-						</thead>
-						<tbody>
-							<c:forEach var="item" items="${locationEntry.value}">
-								<tr>
-									<td>${item.name}</td>
-									<td>${item.cabinet}</td>
-									<td>${item.shelf}</td>
-									<td>${item.quantity}</td>
-									<td><span
-										class="status-badge ${item.availabilityStatusCssClass}">${item.availabilityStatus}</span></td>
-									<td><c:if test="${not empty item.imagePath}">
-											<a href="#" class="lightbox-trigger"
-												data-src="${pageContext.request.contextPath}/image?file=${item.imagePath}">
-												<img
-												src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
-												alt="${item.name}" width="60"
-												style="border-radius: 4px; vertical-align: middle; cursor: pointer; aspect-ratio: 4/3; object-fit: cover;">
-											</a>
-										</c:if></td>
-									<td style="display: flex; gap: 0.5rem;">
-										<button class="btn btn-small btn-success transaction-btn"
-											data-item-id="${item.id}" data-item-name="${item.name}"
-											data-type="checkin">
-											<i class="fas fa-plus"></i> Einräumen
-										</button>
-										<button class="btn btn-small btn-danger transaction-btn"
-											data-item-id="${item.id}" data-item-name="${item.name}"
-											data-type="checkout">
-											<i class="fas fa-minus"></i> Entnehmen
-										</button>
-									</td>
-								</tr>
-							</c:forEach>
-						</tbody>
-					</table>
-				</div>
-			</div>
-
-		</c:forEach>
-		<!-- Lightbox structure, placed once at the end of the page -->
-		<div class="lightbox-overlay" id="lightbox">
-			<img src="" alt="Vergrößerte Ansicht">
+				</tbody>
+			</table>
 		</div>
-		<!-- Transaction Modal -->
-		<div class="modal-overlay" id="transaction-modal">
-			<div class="modal-content">
-				<button class="modal-close-btn">×</button>
-				<h3 id="transaction-modal-title">Artikel bewegen</h3>
-				<form
-					action="${pageContext.request.contextPath}/storage-transaction"
-					method="post">
-					<input type="hidden" name="itemId" id="transaction-item-id">
-					<input type="hidden" name="type" id="transaction-type"> <input
-						type="hidden" name="redirectUrl"
-						value="${pageContext.request.contextPath}${requestScope['jakarta.servlet.forward.request_uri']}">
-					<div class="form-group">
-						<label for="transaction-quantity">Anzahl</label> <input
-							type="number" name="quantity" id="transaction-quantity" required
-							min="1" value="1">
-					</div>
-					<div class="form-group">
-						<label for="transaction-notes">Notiz (optional)</label>
-						<textarea name="notes" id="transaction-notes" rows="2"
-							placeholder="z.B. für Event X, Reparatur, etc."></textarea>
-					</div>
-					<button type="submit" class="btn">Bestätigen</button>
-				</form>
-			</div>
-		</div>
+	</div>
 
-		<c:import url="/WEB-INF/jspf/table-helper.jspf" />
-		<c:import url="/WEB-INF/jspf/footer.jspf" />
-		<script>
+</c:forEach>
+<!-- Lightbox structure, placed once at the end of the page -->
+<div class="lightbox-overlay" id="lightbox">
+	<img src="" alt="Vergrößerte Ansicht">
+</div>
+<!-- Transaction Modal -->
+<div class="modal-overlay" id="transaction-modal">
+	<div class="modal-content">
+		<button class="modal-close-btn">×</button>
+		<h3 id="transaction-modal-title">Artikel bewegen</h3>
+		<form action="${pageContext.request.contextPath}/storage-transaction"
+			method="post">
+			<input type="hidden" name="itemId" id="transaction-item-id">
+			<input type="hidden" name="type" id="transaction-type"> <input
+				type="hidden" name="redirectUrl"
+				value="${pageContext.request.contextPath}${requestScope['jakarta.servlet.forward.request_uri']}">
+			<div class="form-group">
+				<label for="transaction-quantity">Anzahl</label> <input
+					type="number" name="quantity" id="transaction-quantity" required
+					min="1" value="1">
+			</div>
+			<div class="form-group">
+				<label for="transaction-notes">Notiz (optional)</label>
+				<textarea name="notes" id="transaction-notes" rows="2"
+					placeholder="z.B. für Event X, Reparatur, etc."></textarea>
+			</div>
+			<button type="submit" class="btn">Bestätigen</button>
+		</form>
+	</div>
+</div>
+
+<c:import url="/WEB-INF/jspf/table-helper.jspf" />
+<c:import url="/WEB-INF/jspf/footer.jspf" />
+<script>
 document.addEventListener('DOMContentLoaded', () => {
 // Lightbox Logic
 const lightbox = document.getElementById('lightbox');

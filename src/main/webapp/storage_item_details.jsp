@@ -24,27 +24,41 @@
 	aufgerufen über einen QR-Code.</p>
 
 <div class="card" style="max-width: 600px; margin: 1rem auto;">
-	<h2 class="card-title">${item.name}</h2>
+	<h2 class="card-title">
+		<c:out value="${item.name}" />
+	</h2>
 
 	<c:if test="${not empty item.imagePath}">
-		<img
+		<a href="#" class="lightbox-trigger"
+			data-src="${pageContext.request.contextPath}/image?file=${item.imagePath}">
+			<img
 			src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
 			alt="Bild von ${item.name}"
-			style="width: 100%; max-width: 400px; height: auto; border-radius: 8px; margin: 0 auto 1.5rem; display: block;">
+			style="width: 100%; max-width: 400px; height: auto; border-radius: 8px; margin: 0 auto 1.5rem; display: block; cursor: pointer;">
+		</a>
 	</c:if>
 
 	<ul class="details-list">
-		<li><strong>Aktuelle Anzahl:</strong> ${item.quantity}</li>
-		<li><strong>Ort:</strong> ${item.location}</li>
-		<li><strong>Schrank:</strong> ${not empty item.cabinet ? item.cabinet : 'N/A'}</li>
-		<li><strong>Regal:</strong> ${not empty item.shelf ? item.shelf : 'N/A'}</li>
-		<li><strong>Fach/Kiste:</strong> ${not empty item.compartment ? item.compartment : 'N/A'}</li>
+		<li><strong>Aktuelle Anzahl:</strong> <c:out
+				value="${item.quantity}" /></li>
+		<li><strong>Ort:</strong> <c:out value="${item.location}" /></li>
+		<li><strong>Schrank:</strong> <c:out
+				value="${not empty item.cabinet ? item.cabinet : 'N/A'}" /></li>
+		<li><strong>Regal:</strong> <c:out
+				value="${not empty item.shelf ? item.shelf : 'N/A'}" /></li>
+		<li><strong>Fach/Kiste:</strong> <c:out
+				value="${not empty item.compartment ? item.compartment : 'N/A'}" /></li>
 	</ul>
 
 	<div style="margin-top: 2rem;">
 		<a href="${pageContext.request.contextPath}/lager" class="btn">Zurück
 			zur Lagerübersicht</a>
 	</div>
+</div>
+
+<!-- Lightbox structure -->
+<div class="lightbox-overlay" id="lightbox">
+	<img src="" alt="Vergrößerte Ansicht">
 </div>
 
 <style>
@@ -66,3 +80,21 @@
 </style>
 
 <c:import url="/WEB-INF/jspf/footer.jspf" />
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Lightbox Logic
+    const lightbox = document.getElementById('lightbox');
+    if (lightbox) {
+        const lightboxImage = lightbox.querySelector('img');
+        document.querySelectorAll('.lightbox-trigger').forEach(trigger => {
+            trigger.addEventListener('click', (e) => {
+                e.preventDefault();
+                lightboxImage.setAttribute('src', trigger.dataset.src);
+                lightbox.classList.add('active');
+            });
+        });
+        lightbox.addEventListener('click', () => lightbox.classList.remove('active'));
+    }
+});
+</script>

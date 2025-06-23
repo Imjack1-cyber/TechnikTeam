@@ -23,7 +23,11 @@
 </c:import>
 <c:import url="/WEB-INF/jspf/admin_navigation.jspf" />
 
-<h1>Teilnehmer für "${event.name}" zuweisen</h1>
+<h1>
+	Teilnehmer für "
+	<c:out value="${event.name}" />
+	" zuweisen
+</h1>
 <p>Wählen Sie die Benutzer aus, die dem finalen Team für dieses
 	Event angehören sollen. Nach dem Speichern wird der Event-Status
 	automatisch auf "KOMPLETT" gesetzt.</p>
@@ -45,7 +49,7 @@
 								name="userIds" value="${user.id}"
 								style="width: auto; height: 1.2rem;"
 								<c:if test="${assignedUserIds.contains(user.id)}">checked</c:if>>
-								${user.username}
+								<c:out value="${user.username}" />
 							</label>
 						</c:forEach>
 					</div>

@@ -7,16 +7,14 @@ admin_events_list.jsp
 
 This JSP displays a list of all events for administrators. It provides a comprehensive
 set of actions for each event, such as editing, assigning users, changing the
-event status, and deleting. Creating new events is now handled via a modal dialog.
+event status, and deleting. Creating and editing events are handled via a modal dialog.
 
     It is served by: AdminEventServlet (doGet).
 
     Expected attributes:
-
         'eventList' (List<de.technikteam.model.Event>): A list of all events.
-
-        'allCourses' (List<de.technikteam.model.Course>): For the "create" modal.
-        --%>
+        'allCourses' (List<de.technikteam.model.Course>): For the create/edit modal.
+--%>
 
 <c:import url="/WEB-INF/jspf/header.jspf">
 	<c:param name="title" value="Eventverwaltung" />
@@ -24,28 +22,12 @@ event status, and deleting. Creating new events is now handled via a modal dialo
 <c:import url="/WEB-INF/jspf/admin_navigation.jspf" />
 <h1>Eventverwaltung</h1>
 
-<c:if test="
-
-        
-notemptysessionScope.successMessage">
-	<pclass="success−message">notemptysessionScope.successMessage"><pclass="success−message">
-
-
-
-	{sessionScope.successMessage}
-	</p>
+<c:if test="${not empty sessionScope.successMessage}">
+	<p class="success-message">${sessionScope.successMessage}</p>
 	<c:remove var="successMessage" scope="session" />
 </c:if>
-<c:if test="
-
-        
-notemptysessionScope.errorMessage">
-	<pclass="error−message">notemptysessionScope.errorMessage"><pclass="error−message">
-
-
-
-	{sessionScope.errorMessage}
-	</p>
+<c:if test="${not empty sessionScope.errorMessage}">
+	<p class="error-message">${sessionScope.errorMessage}</p>
 	<c:remove var="errorMessage" scope="session" />
 </c:if>
 <div class="table-controls">
@@ -75,9 +57,8 @@ notemptysessionScope.errorMessage">
 				<span>Status:</span> <span>${event.status}</span>
 			</div>
 			<div class="card-actions">
-				<a
-					href="${pageContext.request.contextPath}/admin/events?action=edit&id=${event.id}"
-					class="btn btn-small">Bearbeiten</a>
+				<button type="button" class="btn btn-small edit-event-btn"
+					data-event-id="${event.id}">Bearbeiten</button>
 				<c:if test="${event.status != 'ABGESCHLOSSEN'}">
 					<a
 						href="${pageContext.request.contextPath}/admin/events?action=assign&id=${event.id}"
@@ -106,11 +87,11 @@ notemptysessionScope.errorMessage">
 				</c:if>
 
 				<form action="${pageContext.request.contextPath}/admin/events"
-					method="post" style="display: inline;">
+					method="post" class="inline-form js-confirm-form"
+					data-confirm-message="Soll das Event '${event.name}' wirklich endgültig gelöscht werden?">
 					<input type="hidden" name="action" value="delete"> <input
 						type="hidden" name="id" value="${event.id}">
-					<button type="submit" class="btn btn-small btn-danger"
-						onclick="return confirm('Soll das Event \'${event.name}\' wirklich endgültig gelöscht werden?')">Löschen</button>
+					<button type="submit" class="btn btn-small btn-danger">Löschen</button>
 				</form>
 			</div>
 		</div>
@@ -134,9 +115,9 @@ notemptysessionScope.errorMessage">
 						href="${pageContext.request.contextPath}/eventDetails?id=${event.id}">${event.name}</a></td>
 					<td>${event.formattedEventDateTimeRange}</td>
 					<td>${event.status}</td>
-					<td style="display: flex; gap: 5px; flex-wrap: wrap;"><a
-						href="${pageContext.request.contextPath}/admin/events?action=edit&id=${event.id}"
-						class="btn btn-small">Bearbeiten</a> <c:if
+					<td style="display: flex; gap: 5px; flex-wrap: wrap;">
+						<button type="button" class="btn btn-small edit-event-btn"
+							data-event-id="${event.id}">Bearbeiten</button> <c:if
 							test="${event.status != 'ABGESCHLOSSEN'}">
 							<a
 								href="${pageContext.request.contextPath}/admin/events?action=assign&id=${event.id}"
@@ -164,25 +145,29 @@ notemptysessionScope.errorMessage">
 							</c:if>
 						</c:if>
 						<form action="${pageContext.request.contextPath}/admin/events"
-							method="post" style="display: inline;">
+							method="post" class="inline-form js-confirm-form"
+							data-confirm-message="Soll das Event '${event.name}' wirklich endgültig gelöscht werden?">
 							<input type="hidden" name="action" value="delete"> <input
 								type="hidden" name="id" value="${event.id}">
-							<button type="submit" class="btn btn-small btn-danger"
-								onclick="return confirm('Soll das Event \'${event.name}\' wirklich endgültig gelöscht werden?')">Löschen</button>
-						</form></td>
+							<button type="submit" class="btn btn-small btn-danger">Löschen</button>
+						</form>
+					</td>
 				</tr>
 			</c:forEach>
 		</tbody>
 	</table>
 </div>
-<!-- MODAL FOR NEW EVENT -->
-<div class="modal-overlay" id="new-event-modal">
+<!-- MODAL FOR NEW/EDIT EVENT -->
+<div class="modal-overlay" id="event-modal">
 	<div class="modal-content">
 		<button class="modal-close-btn">×</button>
-		<h3>Neues Event erstellen</h3>
-		<form action="${pageContext.request.contextPath}/admin/events"
+		<h3 id="event-modal-title">Event</h3>
+		<form id="event-modal-form"
+			action="${pageContext.request.contextPath}/admin/events"
 			method="post">
-			<input type="hidden" name="action" value="create">
+			<input type="hidden" name="action" id="event-modal-action"> <input
+				type="hidden" name="id" id="event-modal-id">
+
 			<div class="form-group">
 				<label for="name-modal">Name des Events</label> <input type="text"
 					id="name-modal" name="name" required>
@@ -205,8 +190,8 @@ notemptysessionScope.errorMessage">
 
 			<div class="card"
 				style="margin-top: 1.5rem; padding: 1rem; background-color: var(--bg-color);">
-				<h3 class="card-title" style="border: none; padding: 0;">Benötigte
-					Qualifikationen</h3>
+				<h4 class="card-title" style="border: none; padding: 0;">Benötigte
+					Qualifikationen</h4>
 				<div id="modal-requirements-container"></div>
 				<button type="button" id="modal-add-requirement-btn"
 					class="btn btn-small" style="margin-top: 1rem;">Anforderung
@@ -233,40 +218,120 @@ notemptysessionScope.errorMessage">
 .requirement-row select {
 	flex-grow: 1;
 }
+
+.requirement-row input {
+	max-width: 100px;
+}
+
+.inline-form {
+	display: inline;
+}
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-// Modal Logic
-const openModalBtn = document.getElementById('new-event-btn');
-const modalOverlay = document.getElementById('new-event-modal');
-if (!openModalBtn || !modalOverlay) return;
+	// Custom confirmation for delete forms
+	document.querySelectorAll('.js-confirm-form').forEach(form => {
+		form.addEventListener('submit', function(e) {
+			e.preventDefault();
+			const message = this.dataset.confirmMessage || 'Sind Sie sicher?';
+			showConfirmationModal(message, () => this.submit());
+		});
+	});
 
-const closeModalBtn = modalOverlay.querySelector('.modal-close-btn');
+	// Modal Logic
+	const modalOverlay = document.getElementById('event-modal');
+	const form = document.getElementById('event-modal-form');
+	const modalTitle = document.getElementById('event-modal-title');
+	const actionInput = document.getElementById('event-modal-action');
+	const idInput = document.getElementById('event-modal-id');
+	const reqContainer = document.getElementById('modal-requirements-container');
 
-const openModal = () => modalOverlay.classList.add('active');
-const closeModal = () => modalOverlay.classList.remove('active');
+	const openModal = () => modalOverlay.classList.add('active');
+	const closeModal = () => modalOverlay.classList.remove('active');
 
-openModalBtn.addEventListener('click', openModal);
-closeModalBtn.addEventListener('click', closeModal);
-modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) closeModal(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && modalOverlay.classList.contains('active')) closeModal(); });
+	modalOverlay.querySelector('.modal-close-btn').addEventListener('click', closeModal);
+	modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) closeModal(); });
+	document.addEventListener('keydown', e => { if (e.key === 'Escape' && modalOverlay.classList.contains('active')) closeModal(); });
 
-// Skill Requirement Logic for Modal
-document.getElementById('modal-add-requirement-btn').addEventListener('click', () => {
-const container = document.getElementById('modal-requirements-container');
-const newRow = document.createElement('div');
-newRow.className = 'requirement-row';
-newRow.innerHTML = `
-<select name="requiredCourseId" class="form-group" style="padding: 0.5rem; margin-bottom: 0;">
-<option value="">-- Lehrgang auswählen --</option>
-<c:forEach var="course" items="${allCourses}">
-<option value="${course.id}">${course.name}</option>
-</c:forEach>
-</select>
-<input type="number" name="requiredPersons" value="1" placeholder="Anzahl" min="1" class="form-group" style="padding: 0.5rem; margin-bottom: 0; max-width: 100px;">
-<button type="button" class="btn-small btn-danger" onclick="this.parentElement.remove()">X</button>
-`;
-container.appendChild(newRow);
-});
+	// Open "Create" Modal
+	document.getElementById('new-event-btn').addEventListener('click', () => {
+		form.reset();
+		reqContainer.innerHTML = ''; // Clear old requirements
+		modalTitle.textContent = "Neues Event anlegen";
+		actionInput.value = "create";
+		idInput.value = "";
+		openModal();
+	});
+
+	// Open "Edit" Modal
+	document.querySelectorAll('.edit-event-btn').forEach(btn => {
+		btn.addEventListener('click', async () => {
+			const eventId = btn.dataset.eventId;
+			try {
+				const response = await fetch(`${'${pageContext.request.contextPath}'}/admin/events?action=getEventData&id=${eventId}`);
+				if (!response.ok) throw new Error('Event data could not be fetched.');
+				const event = await response.json();
+
+				form.reset();
+				reqContainer.innerHTML = '';
+				modalTitle.textContent = "Event bearbeiten";
+				actionInput.value = "update";
+				idInput.value = event.id;
+				form.querySelector('#name-modal').value = event.name || '';
+				form.querySelector('#eventDateTime-modal').value = event.eventDateTime ? event.eventDateTime.substring(0, 16) : '';
+				form.querySelector('#endDateTime-modal').value = event.endDateTime ? event.endDateTime.substring(0, 16) : '';
+				form.querySelector('#description-modal').value = event.description || '';
+				
+				// Populate skill requirements
+				if(event.skillRequirements && event.skillRequirements.length > 0) {
+					event.skillRequirements.forEach(req => addRequirementRow(req.requiredCourseId, req.requiredPersons));
+				}
+				
+				openModal();
+
+			} catch (error) {
+				console.error('Error opening edit modal:', error);
+				alert('Fehler beim Laden der Event-Daten.');
+			}
+		});
+	});
+
+	// Skill Requirement Logic
+	const addRequirementRow = (courseId = '', personCount = 1) => {
+		const newRow = document.createElement('div');
+		newRow.className = 'requirement-row';
+		
+		const select = document.createElement('select');
+		select.name = 'requiredCourseId';
+		select.className = 'form-group';
+		select.style.cssText = 'padding: 0.5rem; margin-bottom: 0;';
+		let optionsHtml = '<option value="">-- Lehrgang auswählen --</option>';
+		<c:forEach var="course" items="${allCourses}">
+			optionsHtml += `<option value="${course.id}">${course.name}</option>`;
+		</c:forEach>
+		select.innerHTML = optionsHtml;
+		select.value = courseId; // Set selected value
+		
+		const input = document.createElement('input');
+		input.type = 'number';
+		input.name = 'requiredPersons';
+		input.value = personCount;
+		input.min = '1';
+		input.className = 'form-group';
+		input.style.cssText = 'padding: 0.5rem; margin-bottom: 0;';
+
+		const removeBtn = document.createElement('button');
+		removeBtn.type = 'button';
+		removeBtn.className = 'btn-small btn-danger';
+		removeBtn.innerHTML = 'X';
+		removeBtn.onclick = () => newRow.remove();
+
+		newRow.appendChild(select);
+		newRow.appendChild(input);
+		newRow.appendChild(removeBtn);
+		reqContainer.appendChild(newRow);
+	};
+
+	document.getElementById('modal-add-requirement-btn').addEventListener('click', () => addRequirementRow());
 });
 </script>

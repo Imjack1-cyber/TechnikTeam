@@ -25,11 +25,15 @@
 <h1>Anstehende Veranstaltungen</h1>
 
 <c:if test="${not empty sessionScope.successMessage}">
-	<p class="success-message">${sessionScope.successMessage}</p>
+	<p class="success-message">
+		<c:out value="${sessionScope.successMessage}" />
+	</p>
 	<c:remove var="successMessage" scope="session" />
 </c:if>
 <c:if test="${not empty sessionScope.errorMessage}">
-	<p class="error-message">${sessionScope.errorMessage}</p>
+	<p class="error-message">
+		<c:out value="${sessionScope.errorMessage}" />
+	</p>
 	<c:remove var="errorMessage" scope="session" />
 </c:if>
 
@@ -52,13 +56,15 @@
 <div class="mobile-card-list searchable-list">
 	<c:forEach var="event" items="${events}">
 		<div class="list-item-card"
-			data-searchable-content="${event.name} ${event.userAttendanceStatus}">
+			data-searchable-content="<c:out value='${event.name}'/> <c:out value='${event.userAttendanceStatus}'/>">
 			<h3 class="card-title">
 				<a
-					href="${pageContext.request.contextPath}/eventDetails?id=${event.id}">${event.name}</a>
+					href="${pageContext.request.contextPath}/eventDetails?id=${event.id}"><c:out
+						value="${event.name}" /></a>
 			</h3>
 			<div class="card-row">
-				<span>Datum:</span> <span>${event.formattedEventDateTimeRange}</span>
+				<span>Datum:</span> <span><c:out
+						value="${event.formattedEventDateTimeRange}" /></span>
 			</div>
 			<div class="card-row">
 				<span>Dein Status:</span> <span> <c:choose>
@@ -111,8 +117,10 @@
 			<c:forEach var="event" items="${events}">
 				<tr>
 					<td><a
-						href="${pageContext.request.contextPath}/eventDetails?id=${event.id}">${event.name}</a></td>
-					<td data-sort-value="${event.eventDateTime}">${event.formattedEventDateTimeRange}</td>
+						href="${pageContext.request.contextPath}/eventDetails?id=${event.id}"><c:out
+								value="${event.name}" /></a></td>
+					<td data-sort-value="${event.eventDateTime}"><c:out
+							value="${event.formattedEventDateTimeRange}" /></td>
 					<td><c:choose>
 							<c:when test="${event.userAttendanceStatus == 'ZUGEWIESEN'}">
 								<strong class="text-success">Zugewiesen</strong>

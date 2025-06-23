@@ -9,15 +9,12 @@ a specific meeting. It includes fields for meeting details and allows for
 uploading and deleting file attachments.
 
     It is served by: AdminMeetingServlet (doGet, action=edit).
-
     It submits to: AdminMeetingServlet (doPost, action=update).
-
     Expected attributes:
-
         'meeting' (Meeting): The meeting object to edit.
-
         'attachments' (List<MeetingAttachment>): Existing attachments for the meeting.
-        --%>
+        'allUsers' (List<User>): For the leader dropdown.
+--%>
 
 <c:import url="/WEB-INF/jspf/header.jspf">
 	<c:param name="title" value="Meeting bearbeiten" />
@@ -29,28 +26,12 @@ uploading and deleting file attachments.
 	style="display: inline-block; margin-bottom: 1rem;"> « Zurück zur
 	Meeting-Liste </a>
 
-<c:if test="
-
-        
-notemptysessionScope.successMessage">
-	<pclass="success−message">notemptysessionScope.successMessage"><pclass="success−message">
-
-
-
-	{sessionScope.successMessage}
-	</p>
+<c:if test="${not empty sessionScope.successMessage}">
+	<p class="success-message">${sessionScope.successMessage}</p>
 	<c:remove var="successMessage" scope="session" />
 </c:if>
-<c:if test="
-
-        
-notemptysessionScope.errorMessage">
-	<pclass="error−message">notemptysessionScope.errorMessage"><pclass="error−message">
-
-
-
-	{sessionScope.errorMessage}
-	</p>
+<c:if test="${not empty sessionScope.errorMessage}">
+	<p class="error-message">${sessionScope.errorMessage}</p>
 	<c:remove var="errorMessage" scope="session" />
 </c:if>
 <div class="card" style="max-width: 700px; margin: 1rem auto;">
@@ -81,8 +62,14 @@ notemptysessionScope.errorMessage">
 		</div>
 
 		<div class="form-group">
-			<label for="leader">Leitende Person</label> <input type="text"
-				id="leader" name="leader" value="${meeting.leader}">
+			<label for="leaderUserId">Leitende Person</label> <select
+				name="leaderUserId" id="leaderUserId">
+				<option value="">(Keine)</option>
+				<c:forEach var="user" items="${allUsers}">
+					<option value="${user.id}"
+						${meeting.leaderUserId == user.id ? 'selected' : ''}>${user.username}</option>
+				</c:forEach>
+			</select>
 		</div>
 
 		<div class="form-group">
@@ -91,54 +78,34 @@ notemptysessionScope.errorMessage">
 			<textarea id="description" name="description" rows="4">${meeting.description}</textarea>
 		</div>
 
-		<button type="submit" class="btn">Änderungen speichern</button>
-	</form>
+		<hr style="margin: 2rem 0;">
 
-	<hr style="margin: 2rem 0;">
+		<%-- Attachment Section --%>
+		<h3>Anhänge verwalten</h3>
+		<c:if test="${not empty attachments}">
+			<ul class="details-list" style="margin-bottom: 1rem;">
+				<c:forEach var="att" items="${attachments}">
+					<li><span><a
+							href="${pageContext.request.contextPath}/download?file=${att.filepath}">${att.filename}</a>
+							(Rolle: ${att.requiredRole})</span>
+						<form action="${pageContext.request.contextPath}/admin/meetings"
+							method="post" class="js-confirm-form"
+							data-confirm-message="Anhang '${att.filename}' wirklich löschen?">
+							<input type="hidden" name="action" value="deleteAttachment">
+							<input type="hidden" name="attachmentId" value="${att.id}">
+							<button type="submit" class="btn btn-small btn-danger-outline">X</button>
+						</form></li>
+				</c:forEach>
+			</ul>
+		</c:if>
 
-	<%-- Attachment Section --%>
-	<h3>Anhänge verwalten</h3>
-	<c:if test="${not empty attachments}">
-		<ul style="list-style: none; padding-left: 0; margin-bottom: 1rem;">
-			<c:forEach var="att" items="${attachments}">
-				<li
-					style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border-color);">
-					<span><a
-						href="${pageContext.request.contextPath}/download?file=${att.filepath}">${att.filename}</a></span>
-					<form action="${pageContext.request.contextPath}/admin/meetings"
-						method="post"
-						onsubmit="return confirm('Anhang \'${att.filename}\' wirklich löschen?')">
-						<input type="hidden" name="action" value="deleteAttachment">
-						<input type="hidden" name="attachmentId" value="${att.id}">
-						<input type="hidden" name="meetingId" value="${meeting.id}">
-						<input type="hidden" name="courseId" value="${meeting.courseId}">
-						<button type="submit" class="btn btn-small btn-danger">X</button>
-					</form>
-				</li>
-			</c:forEach>
-		</ul>
-	</c:if>
-
-	<h4 style="margin-top: 1rem;">Neuen Anhang hochladen</h4>
-	<form action="${pageContext.request.contextPath}/admin/meetings"
-		method="post" enctype="multipart/form-data">
-		<input type="hidden" name="action" value="update"> <input
-			type="hidden" name="courseId" value="${meeting.courseId}"> <input
-			type="hidden" name="meetingId" value="${meeting.id}">
-		<%-- Also send other data to prevent it from being nulled on update --%>
-		<input type="hidden" name="name" value="${meeting.name}"> <input
-			type="hidden" name="meetingDateTime"
-			value="${meeting.meetingDateTime}"> <input type="hidden"
-			name="endDateTime" value="${meeting.endDateTime}"> <input
-			type="hidden" name="leader" value="${meeting.leader}"> <input
-			type="hidden" name="description" value="${meeting.description}">
-
+		<h4 style="margin-top: 1rem;">Neuen Anhang hochladen</h4>
 		<div class="form-group">
-			<label for="attachment">Datei</label> <input type="file"
+			<label for="attachment">Datei auswählen</label> <input type="file"
 				name="attachment" id="attachment" class="file-input"
-				data-max-size="20971520" required> <small
-				class="file-size-warning" style="color: red; display: none;">Datei
-				ist zu groß! (Max. 20 MB)</small>
+				data-max-size="20971520"> <small class="file-size-warning"
+				style="color: red; display: none;">Datei ist zu groß! (Max.
+				20 MB)</small>
 		</div>
 		<div class="form-group">
 			<label for="requiredRole">Sichtbar für</label> <select
@@ -147,25 +114,35 @@ notemptysessionScope.errorMessage">
 				<option value="ADMIN">Nur Admins</option>
 			</select>
 		</div>
-		<button type="submit" class="btn">Anhang hochladen</button>
-	</form>
 
+		<button type="submit" class="btn">Änderungen speichern &
+			Anhang hochladen</button>
+	</form>
 </div>
+
 <script>
 // File size validation script
 document.querySelectorAll('.file-input').forEach(input => {
-input.addEventListener('change', (e) => {
-const file = e.target.files[0];
-const maxSize = parseInt(e.target.dataset.maxSize, 10);
-const warningElement = e.target.nextElementSibling;
+	input.addEventListener('change', (e) => {
+		const file = e.target.files[0];
+		const maxSize = parseInt(e.target.dataset.maxSize, 10);
+		const warningElement = e.target.nextElementSibling;
 
-if (file && file.size > maxSize) {
-warningElement.style.display = 'block';
-e.target.value = ''; // Clear the invalid file selection
-} else {
-warningElement.style.display = 'none';
-}
+		if (file && file.size > maxSize) {
+			warningElement.style.display = 'block';
+			e.target.value = ''; // Clear the invalid file selection
+		} else {
+			warningElement.style.display = 'none';
+		}
+	});
 });
+// Custom confirmation for delete forms
+document.querySelectorAll('.js-confirm-form').forEach(form => {
+	form.addEventListener('submit', function(e) {
+		e.preventDefault();
+		const message = this.dataset.confirmMessage || 'Sind Sie sicher?';
+		showConfirmationModal(message, () => this.submit());
+	});
 });
 </script>
 

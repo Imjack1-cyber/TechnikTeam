@@ -1,12 +1,9 @@
 package de.technikteam.servlet.admin;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -17,6 +14,7 @@ import de.technikteam.model.File; // Our own model: de.technikteam.model.File
 import de.technikteam.model.FileCategory;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
+import de.technikteam.util.ServletUtils;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
@@ -96,8 +94,8 @@ public class AdminFileServlet extends HttpServlet {
 			Part filePart = request.getPart("file");
 			String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
 
-			String requiredRole = getPartValue(request.getPart("requiredRole"));
-			String categoryIdStr = getPartValue(request.getPart("categoryId"));
+			String requiredRole = ServletUtils.getPartValue(request.getPart("requiredRole"));
+			String categoryIdStr = ServletUtils.getPartValue(request.getPart("categoryId"));
 
 			int categoryId = 0;
 			try {
@@ -187,13 +185,4 @@ public class AdminFileServlet extends HttpServlet {
 		response.sendRedirect(request.getContextPath() + "/admin/files");
 	}
 
-	private String getPartValue(Part part) throws IOException {
-		if (part == null) {
-			return null;
-		}
-		try (InputStream inputStream = part.getInputStream();
-				Scanner scanner = new Scanner(inputStream, StandardCharsets.UTF_8.name())) {
-			return scanner.useDelimiter("\\A").hasNext() ? scanner.next() : "";
-		}
-	}
 }

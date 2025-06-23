@@ -32,53 +32,39 @@ no longer editable on this page; editing is handled by a modal on the main user 
 	style="display: inline-block; margin-bottom: 1rem;"> &laquo; Zurück
 	zur Benutzerliste </a>
 
-<c:if test="
-
-        
-notemptysessionScope.successMessage">
-	<pclass="success−message">notemptysessionScope.successMessage"><pclass="success−message">
-
-
-
-	{sessionScope.successMessage}
+<c:if test="${not empty sessionScope.successMessage}">
+	<p class="success-message">
+		<c:out value="${sessionScope.successMessage}" />
 	</p>
 	<c:remove var="successMessage" scope="session" />
 </c:if>
-<c:if test="
-
-        
-notemptysessionScope.infoMessage">
-	<pclass="info−message">notemptysessionScope.infoMessage"><pclass="info−message">
-
-
-
-	{sessionScope.infoMessage}
+<c:if test="${not empty sessionScope.infoMessage}">
+	<p class="info-message">
+		<c:out value="${sessionScope.infoMessage}" />
 	</p>
 	<c:remove var="infoMessage" scope="session" />
 </c:if>
-<c:if test="
-
-        
-notemptysessionScope.errorMessage">
-	<pclass="error−message">notemptysessionScope.errorMessage"><pclass="error−message">
-
-
-
-	{sessionScope.errorMessage}
+<c:if test="${not empty sessionScope.errorMessage}">
+	<p class="error-message">
+		<c:out value="${sessionScope.errorMessage}" />
 	</p>
 	<c:remove var="errorMessage" scope="session" />
 </c:if>
+
 <div class="responsive-dashboard-grid">
 	<%-- Master Data --%>
 	<div class="card">
 		<h2 class="card-title">Stammdaten</h2>
 		<ul class="details-list">
-			<li><strong>Benutzername:</strong> ${userToView.username}</li>
-			<li><strong>Rolle:</strong> ${userToView.role}</li>
-			<li><strong>Jahrgang:</strong> ${userToView.classYear}</li>
-			<li><strong>Klasse:</strong> ${userToView.className}</li>
-			<li><strong>Registriert seit:</strong>
-				${userToView.formattedCreatedAt} Uhr</li>
+			<li><strong>Benutzername:</strong> <c:out
+					value="${userToView.username}" /></li>
+			<li><strong>Rolle:</strong> <c:out value="${userToView.role}" /></li>
+			<li><strong>Jahrgang:</strong> <c:out
+					value="${userToView.classYear}" /></li>
+			<li><strong>Klasse:</strong> <c:out
+					value="${userToView.className}" /></li>
+			<li><strong>Registriert seit:</strong> <c:out
+					value="${userToView.formattedCreatedAt}" /> Uhr</li>
 		</ul>
 	</div>
 	<%-- Event History --%>
@@ -103,9 +89,10 @@ notemptysessionScope.errorMessage">
 					<c:forEach var="event" items="${eventHistory}">
 						<tr>
 							<td><a
-								href="${pageContext.request.contextPath}/eventDetails?id=${event.id}">${event.name}</a></td>
-							<td>${event.formattedEventDateTime}Uhr</td>
-							<td>${event.userAttendanceStatus}</td>
+								href="${pageContext.request.contextPath}/eventDetails?id=${event.id}"><c:out
+										value="${event.name}" /></a></td>
+							<td><c:out value="${event.formattedEventDateTime}" /> Uhr</td>
+							<td><c:out value="${event.userAttendanceStatus}" /></td>
 						</tr>
 					</c:forEach>
 				</tbody>

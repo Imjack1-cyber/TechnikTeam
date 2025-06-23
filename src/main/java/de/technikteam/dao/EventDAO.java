@@ -18,6 +18,7 @@ import de.technikteam.model.Event;
 import de.technikteam.model.EventAttendance;
 import de.technikteam.model.SkillRequirement;
 import de.technikteam.model.User;
+import de.technikteam.util.DaoUtils;
 
 /**
  * A comprehensive DAO for all database operations related to the `events`
@@ -49,6 +50,14 @@ public class EventDAO {
 		}
 		event.setDescription(rs.getString("description"));
 		event.setStatus(rs.getString("status"));
+
+		if (DaoUtils.hasColumn(rs, "leader_user_id")) {
+			event.setLeaderUserId(rs.getInt("leader_user_id"));
+		}
+		if (DaoUtils.hasColumn(rs, "leader_username")) {
+			event.setLeaderUsername(rs.getString("leader_username"));
+		}
+
 		return event;
 	}
 
@@ -74,25 +83,6 @@ public class EventDAO {
 	 */
 	private User mapResultSetToSimpleUser(ResultSet rs) throws SQLException {
 		return new User(rs.getInt("id"), rs.getString("username"), rs.getString("role"));
-	}
-
-	/**
-	 * Checks if a ResultSet contains a column with the given name
-	 * (case-insensitive).
-	 * 
-	 * @param rs         The ResultSet to check.
-	 * @param columnName The name of the column.
-	 * @return true if the column exists, false otherwise.
-	 * @throws SQLException If a database error occurs.
-	 */
-	private boolean hasColumn(ResultSet rs, String columnName) throws SQLException {
-		ResultSetMetaData rsmd = rs.getMetaData();
-		for (int i = 1; i <= rsmd.getColumnCount(); i++) {
-			if (columnName.equalsIgnoreCase(rsmd.getColumnName(i))) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 	// --- Methods for Public and User-Specific Views ---
@@ -191,6 +181,7 @@ public class EventDAO {
 			}
 			pstmt.setString(4, event.getDescription());
 			pstmt.setString(5, "GEPLANT");
+
 			if (pstmt.executeUpdate() > 0) {
 				try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
 					if (generatedKeys.next()) {
@@ -226,6 +217,7 @@ public class EventDAO {
 			pstmt.setString(4, event.getDescription());
 			pstmt.setString(5, event.getStatus());
 			pstmt.setInt(6, event.getId());
+
 			boolean success = pstmt.executeUpdate() > 0;
 			if (success)
 				logger.info("Successfully updated event with ID: {}", event.getId());
@@ -439,14 +431,18 @@ public class EventDAO {
 	 */
 	public void saveSkillRequirements(int eventId, String[] requiredCourseIds, String[] requiredPersons) {
 		String deleteSql = "DELETE FROM event_skill_requirements WHERE event_id = ?";
-		String insertSql = "INSERT INTO event_skill_requirements (event_id, required_course_id, required_persons, skill_name) VALUES (?, ?, ?, ?)";
+		String insertSql = "INSERT INTO event_skill_requirements (event_id, required_course_id, required_persons) VALUES (?, ?, ?)";
 		logger.debug("Saving skill requirements for event ID: {}", eventId);
-		try (Connection conn = DatabaseManager.getConnection()) {
+		Connection conn = null;
+		try {
+			conn = DatabaseManager.getConnection();
 			conn.setAutoCommit(false); // Start transaction
+
 			try (PreparedStatement deletePstmt = conn.prepareStatement(deleteSql)) {
 				deletePstmt.setInt(1, eventId);
 				deletePstmt.executeUpdate();
 			}
+
 			if (requiredCourseIds != null && requiredPersons != null
 					&& requiredCourseIds.length == requiredPersons.length) {
 				try (PreparedStatement insertPstmt = conn.prepareStatement(insertSql)) {
@@ -457,17 +453,33 @@ public class EventDAO {
 						insertPstmt.setInt(1, eventId);
 						insertPstmt.setInt(2, Integer.parseInt(requiredCourseIds[i]));
 						insertPstmt.setInt(3, Integer.parseInt(requiredPersons[i]));
-						insertPstmt.setString(4, "Default");
 						insertPstmt.addBatch();
 					}
 					insertPstmt.executeBatch();
 				}
 			}
+
 			conn.commit(); // Commit transaction
 			logger.info("Successfully saved skill requirements for event ID: {}", eventId);
 		} catch (SQLException | NumberFormatException e) {
-			logger.error("Transaction error during saving skill requirements for event ID: {}.", eventId, e);
-			// In a real app, you would handle transaction rollback here.
+			logger.error("Transaction error during saving skill requirements for event ID: {}. Rolling back.", eventId,
+					e);
+			if (conn != null) {
+				try {
+					conn.rollback();
+				} catch (SQLException ex) {
+					logger.error("Failed to rollback transaction.", ex);
+				}
+			}
+		} finally {
+			if (conn != null) {
+				try {
+					conn.setAutoCommit(true);
+					conn.close();
+				} catch (SQLException ex) {
+					logger.error("Failed to close connection.", ex);
+				}
+			}
 		}
 	}
 
@@ -509,7 +521,9 @@ public class EventDAO {
 		String deleteSql = "DELETE FROM event_assignments WHERE event_id = ?";
 		String insertSql = "INSERT INTO event_assignments (event_id, user_id) VALUES (?, ?)";
 		logger.debug("Assigning users to event ID: {}", eventId);
-		try (Connection conn = DatabaseManager.getConnection()) {
+		Connection conn = null;
+		try {
+			conn = DatabaseManager.getConnection();
 			conn.setAutoCommit(false); // Start transaction
 
 			// 1. Delete all previous assignments for this event
@@ -535,8 +549,23 @@ public class EventDAO {
 					eventId);
 
 		} catch (SQLException | NumberFormatException e) {
-			logger.error("SQL transaction error during user assignment for event ID: {}", eventId, e);
-			// In a real app, you would handle transaction rollback here.
+			logger.error("SQL transaction error during user assignment for event ID: {}. Rolling back.", eventId, e);
+			if (conn != null) {
+				try {
+					conn.rollback();
+				} catch (SQLException ex) {
+					logger.error("Failed to rollback transaction.", ex);
+				}
+			}
+		} finally {
+			if (conn != null) {
+				try {
+					conn.setAutoCommit(true);
+					conn.close();
+				} catch (SQLException ex) {
+					logger.error("Failed to close connection.", ex);
+				}
+			}
 		}
 	}
 
