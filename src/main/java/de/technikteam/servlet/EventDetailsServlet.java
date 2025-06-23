@@ -1,5 +1,6 @@
 package de.technikteam.servlet;
 
+import de.technikteam.dao.EventAttachmentDAO;
 import de.technikteam.dao.EventChatDAO;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.EventTaskDAO;
@@ -32,12 +33,14 @@ public class EventDetailsServlet extends HttpServlet {
 	private EventDAO eventDAO;
 	private EventTaskDAO taskDAO;
 	private EventChatDAO chatDAO;
+	private EventAttachmentDAO attachmentDAO;
 
 	@Override
 	public void init() {
 		eventDAO = new EventDAO();
 		taskDAO = new EventTaskDAO();
 		chatDAO = new EventChatDAO();
+		attachmentDAO = new EventAttachmentDAO();
 	}
 
 	@Override
@@ -57,6 +60,13 @@ public class EventDetailsServlet extends HttpServlet {
 
 			// Fetch base data applicable to all event statuses
 			event.setSkillRequirements(eventDAO.getSkillRequirementsForEvent(eventId));
+			event.setReservedItems(eventDAO.getReservedItemsForEvent(eventId));
+
+			String userRoleForAttachments = (user.getRole().equals("ADMIN") || user.getId() == event.getLeaderUserId())
+					? "ADMIN"
+					: "NUTZER";
+			event.setAttachments(attachmentDAO.getAttachmentsForEvent(eventId, userRoleForAttachments));
+
 			List<User> assignedUsers = eventDAO.getAssignedUsersForEvent(eventId);
 			event.setAssignedAttendees(assignedUsers);
 

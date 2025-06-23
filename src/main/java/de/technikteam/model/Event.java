@@ -16,6 +16,7 @@ public class Event {
 	private LocalDateTime eventDateTime;
 	private LocalDateTime endDateTime;
 	private String description;
+	private String location;
 	private String status;
 	private int leaderUserId;
 	private String userAttendanceStatus; // Specific to the logged-in user (e.g., ANGEMELDET, ZUGEWIESEN)
@@ -26,6 +27,8 @@ public class Event {
 	private List<User> assignedAttendees;
 	private List<EventTask> eventTasks;
 	private List<EventChatMessage> chatMessages;
+	private List<EventAttachment> attachments;
+	private List<StorageItem> reservedItems;
 	private String leaderUsername;
 
 	public Event() {
@@ -71,6 +74,14 @@ public class Event {
 
 	public void setDescription(String description) {
 		this.description = description;
+	}
+
+	public String getLocation() {
+		return location;
+	}
+
+	public void setLocation(String location) {
+		this.location = location;
 	}
 
 	public String getStatus() {
@@ -135,6 +146,22 @@ public class Event {
 
 	public void setChatMessages(List<EventChatMessage> chatMessages) {
 		this.chatMessages = chatMessages;
+	}
+
+	public List<EventAttachment> getAttachments() {
+		return attachments;
+	}
+
+	public void setAttachments(List<EventAttachment> attachments) {
+		this.attachments = attachments;
+	}
+
+	public List<StorageItem> getReservedItems() {
+		return reservedItems;
+	}
+
+	public void setReservedItems(List<StorageItem> reservedItems) {
+		this.reservedItems = reservedItems;
 	}
 
 	// --- Formatted Helpers ---

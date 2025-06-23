@@ -17,6 +17,7 @@ import org.apache.logging.log4j.Logger;
 import de.technikteam.model.Event;
 import de.technikteam.model.EventAttendance;
 import de.technikteam.model.SkillRequirement;
+import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
 import de.technikteam.util.DaoUtils;
 
@@ -49,6 +50,7 @@ public class EventDAO {
 			event.setEndDateTime(rs.getTimestamp("end_datetime").toLocalDateTime());
 		}
 		event.setDescription(rs.getString("description"));
+		event.setLocation(rs.getString("location"));
 		event.setStatus(rs.getString("status"));
 
 		if (DaoUtils.hasColumn(rs, "leader_user_id")) {
@@ -122,7 +124,8 @@ public class EventDAO {
 	 * @return An Event object, or null if not found.
 	 */
 	public Event getEventById(int eventId) {
-		String sql = "SELECT * FROM events WHERE id = ?";
+		String sql = "SELECT e.*, u.username as leader_username " + "FROM events e "
+				+ "LEFT JOIN users u ON e.leader_user_id = u.id " + "WHERE e.id = ?";
 		logger.debug("Fetching event by ID: {}", eventId);
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, eventId);
@@ -146,7 +149,8 @@ public class EventDAO {
 	 */
 	public List<Event> getAllEvents() {
 		List<Event> events = new ArrayList<>();
-		String sql = "SELECT * FROM events ORDER BY event_datetime DESC";
+		String sql = "SELECT e.*, u.username as leader_username " + "FROM events e "
+				+ "LEFT JOIN users u ON e.leader_user_id = u.id " + "ORDER BY e.event_datetime DESC";
 		logger.debug("Fetching all events.");
 		try (Connection conn = DatabaseManager.getConnection();
 				Statement stmt = conn.createStatement();
@@ -168,7 +172,7 @@ public class EventDAO {
 	 * @return The ID of the newly created event, or 0 on failure.
 	 */
 	public int createEvent(Event event) {
-		String sql = "INSERT INTO events (name, event_datetime, end_datetime, description, status) VALUES (?, ?, ?, ?, ?)";
+		String sql = "INSERT INTO events (name, event_datetime, end_datetime, description, location, status, leader_user_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
 		logger.debug("Attempting to create new event: {}", event.getName());
 		try (Connection conn = DatabaseManager.getConnection();
 				PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -180,7 +184,13 @@ public class EventDAO {
 				pstmt.setNull(3, Types.TIMESTAMP);
 			}
 			pstmt.setString(4, event.getDescription());
-			pstmt.setString(5, "GEPLANT");
+			pstmt.setString(5, event.getLocation());
+			pstmt.setString(6, "GEPLANT"); // Default status on creation
+			if (event.getLeaderUserId() > 0) {
+				pstmt.setInt(7, event.getLeaderUserId());
+			} else {
+				pstmt.setNull(7, Types.INTEGER);
+			}
 
 			if (pstmt.executeUpdate() > 0) {
 				try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
@@ -204,7 +214,7 @@ public class EventDAO {
 	 * @return true if the update was successful, false otherwise.
 	 */
 	public boolean updateEvent(Event event) {
-		String sql = "UPDATE events SET name = ?, event_datetime = ?, end_datetime = ?, description = ?, status = ? WHERE id = ?";
+		String sql = "UPDATE events SET name = ?, event_datetime = ?, end_datetime = ?, description = ?, location = ?, status = ?, leader_user_id = ? WHERE id = ?";
 		logger.debug("Attempting to update event with ID: {}", event.getId());
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, event.getName());
@@ -215,8 +225,14 @@ public class EventDAO {
 				pstmt.setNull(3, Types.TIMESTAMP);
 			}
 			pstmt.setString(4, event.getDescription());
-			pstmt.setString(5, event.getStatus());
-			pstmt.setInt(6, event.getId());
+			pstmt.setString(5, event.getLocation());
+			pstmt.setString(6, event.getStatus());
+			if (event.getLeaderUserId() > 0) {
+				pstmt.setInt(7, event.getLeaderUserId());
+			} else {
+				pstmt.setNull(7, Types.INTEGER);
+			}
+			pstmt.setInt(8, event.getId());
 
 			boolean success = pstmt.executeUpdate() > 0;
 			if (success)
@@ -624,5 +640,75 @@ public class EventDAO {
 			logger.error("SQL error fetching qualified upcoming events for user {}", user.getId(), e);
 		}
 		return events;
+	}
+
+	public void saveReservations(int eventId, String[] itemIds, String[] quantities) {
+		String deleteSql = "DELETE FROM event_storage_reservations WHERE event_id = ?";
+		String insertSql = "INSERT INTO event_storage_reservations (event_id, item_id, reserved_quantity) VALUES (?, ?, ?)";
+
+		Connection conn = null;
+		try {
+			conn = DatabaseManager.getConnection();
+			conn.setAutoCommit(false); // Start transaction
+
+			// 1. Clear existing reservations
+			try (PreparedStatement deletePstmt = conn.prepareStatement(deleteSql)) {
+				deletePstmt.setInt(1, eventId);
+				deletePstmt.executeUpdate();
+			}
+
+			// 2. Insert new reservations
+			if (itemIds != null && quantities != null && itemIds.length == quantities.length) {
+				try (PreparedStatement insertPstmt = conn.prepareStatement(insertSql)) {
+					for (int i = 0; i < itemIds.length; i++) {
+						if (itemIds[i] == null || itemIds[i].isEmpty())
+							continue;
+						insertPstmt.setInt(1, eventId);
+						insertPstmt.setInt(2, Integer.parseInt(itemIds[i]));
+						insertPstmt.setInt(3, Integer.parseInt(quantities[i]));
+						insertPstmt.addBatch();
+					}
+					insertPstmt.executeBatch();
+				}
+			}
+			conn.commit();
+			logger.info("Successfully saved storage reservations for event ID: {}", eventId);
+		} catch (SQLException | NumberFormatException e) {
+			logger.error("Error saving storage reservations for event {}. Rolling back.", eventId, e);
+			if (conn != null)
+				try {
+					conn.rollback();
+				} catch (SQLException ex) {
+					logger.error("Failed to rollback transaction.", ex);
+				}
+		} finally {
+			if (conn != null)
+				try {
+					conn.setAutoCommit(true);
+					conn.close();
+				} catch (SQLException ex) {
+					logger.error("Failed to close connection.", ex);
+				}
+		}
+	}
+
+	public List<StorageItem> getReservedItemsForEvent(int eventId) {
+		List<StorageItem> items = new ArrayList<>();
+		String sql = "SELECT si.name, esr.reserved_quantity FROM event_storage_reservations esr "
+				+ "JOIN storage_items si ON esr.item_id = si.id WHERE esr.event_id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, eventId);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					StorageItem item = new StorageItem();
+					item.setName(rs.getString("name"));
+					item.setQuantity(rs.getInt("reserved_quantity")); // Use quantity field to hold reserved amount
+					items.add(item);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("SQL error fetching reserved items for event ID: {}", eventId, e);
+		}
+		return items;
 	}
 }

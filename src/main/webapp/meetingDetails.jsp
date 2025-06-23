@@ -35,6 +35,8 @@
 		<ul class="details-list">
 			<li><strong>Termin:</strong> <c:out
 					value="${meeting.formattedMeetingDateTimeRange}" /></li>
+			<li><strong>Ort:</strong> <c:out
+					value="${not empty meeting.location ? meeting.location : 'N/A'}" /></li>
 			<li><strong>Leitung:</strong> <c:out
 					value="${not empty meeting.leaderUsername ? meeting.leaderUsername : 'N/A'}" /></li>
 		</ul>

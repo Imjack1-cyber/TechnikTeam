@@ -7,8 +7,7 @@
 admin_meeting_list.jsp
 
 This JSP displays a list of meetings for a specific parent course. An admin
-can edit or delete each meeting. Creating meetings is now handled via modals,
-and editing is done on a separate page to accommodate file uploads.
+can edit or delete each meeting. Creating and editing meetings is now handled via modals.
 
     It is served by: AdminMeetingServlet (doGet).
 
@@ -74,9 +73,8 @@ and editing is done on a separate page to accommodate file uploads.
 						value="${empty meeting.leaderUsername ? 'N/A' : meeting.leaderUsername}" /></span>
 			</div>
 			<div class="card-actions">
-				<a
-					href="${pageContext.request.contextPath}/admin/meetings?action=edit&id=${meeting.id}"
-					class="btn btn-small">Bearbeiten</a>
+				<button type="button" class="btn btn-small edit-meeting-btn"
+					data-meeting-id="${meeting.id}">Bearbeiten</button>
 				<form action="${pageContext.request.contextPath}/admin/meetings"
 					method="post" class="inline-form js-confirm-form"
 					data-confirm-message="Meeting '${fn:escapeXml(meeting.name)}' wirklich löschen?">
@@ -109,9 +107,9 @@ and editing is done on a separate page to accommodate file uploads.
 					<td><c:out value="${meeting.formattedMeetingDateTimeRange}" /></td>
 					<td><c:out
 							value="${empty meeting.leaderUsername ? 'N/A' : meeting.leaderUsername}" /></td>
-					<td style="display: flex; gap: 0.5rem;"><a
-						href="${pageContext.request.contextPath}/admin/meetings?action=edit&id=${meeting.id}"
-						class="btn btn-small">Bearbeiten & Anhänge</a>
+					<td style="display: flex; gap: 0.5rem;">
+						<button type="button" class="btn btn-small edit-meeting-btn"
+							data-meeting-id="${meeting.id}">Bearbeiten & Anhänge</button>
 						<form action="${pageContext.request.contextPath}/admin/meetings"
 							method="post" class="inline-form js-confirm-form"
 							data-confirm-message="Meeting '${fn:escapeXml(meeting.name)}' wirklich löschen?">
@@ -119,23 +117,25 @@ and editing is done on a separate page to accommodate file uploads.
 								type="hidden" name="courseId" value="${parentCourse.id}">
 							<input type="hidden" name="meetingId" value="${meeting.id}">
 							<button type="submit" class="btn btn-small btn-danger">Löschen</button>
-						</form></td>
+						</form>
+					</td>
 				</tr>
 			</c:forEach>
 		</tbody>
 	</table>
 </div>
-<!-- MODAL FOR NEW MEETING -->
+<!-- MODAL FOR CREATE/EDIT MEETING -->
 <div class="modal-overlay" id="meeting-modal">
-	<div class="modal-content">
+	<div class="modal-content" style="max-width: 700px;">
 		<button class="modal-close-btn">×</button>
-		<h3 id="meeting-modal-title">Meeting planen</h3>
+		<h3 id="meeting-modal-title">Meeting</h3>
 		<form id="meeting-modal-form"
 			action="${pageContext.request.contextPath}/admin/meetings"
 			method="post" enctype="multipart/form-data">
 
-			<input type="hidden" name="action" value="create"> <input
-				type="hidden" name="courseId" value="${parentCourse.id}">
+			<input type="hidden" name="action" id="meeting-action"> <input
+				type="hidden" name="courseId" value="${parentCourse.id}"> <input
+				type="hidden" name="id" id="meeting-id">
 
 			<div class="form-group">
 				<label for="name-modal">Name des Meetings (z.B. Teil 1)</label> <input
@@ -152,36 +152,49 @@ and editing is done on a separate page to accommodate file uploads.
 						type="datetime-local" id="endDateTime-modal" name="endDateTime">
 				</div>
 			</div>
-			<div class="form-group">
-				<label for="leader-modal">Leitende Person</label> <select
-					name="leaderUserId" id="leader-modal">
-					<option value="">(Keine)</option>
-					<c:forEach var="user" items="${allUsers}">
-						<option value="${user.id}"><c:out
-								value="${user.username}" /></option>
-					</c:forEach>
-				</select>
+			<div class="responsive-form-grid">
+				<div class="form-group">
+					<label for="location-modal">Ort</label> <input type="text"
+						id="location-modal" name="location">
+				</div>
+				<div class="form-group">
+					<label for="leader-modal">Leitende Person</label> <select
+						name="leaderUserId" id="leader-modal">
+						<option value="">(Keine)</option>
+						<c:forEach var="user" items="${allUsers}">
+							<option value="${user.id}"><c:out
+									value="${user.username}" /></option>
+						</c:forEach>
+					</select>
+				</div>
 			</div>
 			<div class="form-group">
 				<label for="description-modal">Beschreibung</label>
 				<textarea id="description-modal" name="description" rows="3"></textarea>
 			</div>
-			<button type="submit" class="btn">Speichern</button>
+
+			<div class="card"
+				style="margin-top: 1rem; padding: 1rem; background-color: var(--bg-color);">
+				<h4 class="card-title" style="border: none; padding: 0;">Anhänge</h4>
+				<ul id="modal-attachments-list" class="details-list"
+					style="margin-bottom: 1rem;"></ul>
+				<div class="form-group">
+					<label for="attachment-modal">Neuen Anhang hochladen</label> <input
+						type="file" name="attachment" id="attachment-modal"
+						class="file-input" data-max-size="20971520"> <small
+						class="file-size-warning" style="color: red; display: none;">Datei
+						ist zu groß! (Max. 20 MB)</small>
+				</div>
+				<div class="form-group">
+					<label for="requiredRole-modal">Sichtbar für</label> <select
+						name="requiredRole" id="requiredRole-modal">
+						<option value="NUTZER" selected>Alle Nutzer</option>
+						<option value="ADMIN">Nur Admins</option>
+					</select>
+				</div>
+			</div>
+			<button type="submit" class="btn" style="margin-top: 1.5rem;">Speichern</button>
 		</form>
-	</div>
-
-</div>
-
-<!-- Confirmation Modal Structure -->
-<div class="modal-overlay" id="confirmation-modal">
-	<div class="modal-content" style="max-width: 450px;">
-		<h3 id="confirmation-title">Bestätigung</h3>
-		<p id="confirmation-message"
-			style="margin: 1.5rem 0; font-size: 1.1rem;"></p>
-		<div style="display: flex; justify-content: flex-end; gap: 1rem;">
-			<button id="confirmation-btn-cancel" class="btn btn-secondary">Abbrechen</button>
-			<button id="confirmation-btn-confirm" class="btn btn-danger">Bestätigen</button>
-		</div>
 	</div>
 </div>
 
@@ -189,33 +202,120 @@ and editing is done on a separate page to accommodate file uploads.
 <c:import url="/WEB-INF/jspf/footer.jspf" />
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-	// Custom confirmation for delete forms
-	document.querySelectorAll('.js-confirm-form').forEach(form => {
-		form.addEventListener('submit', function(e) {
-			e.preventDefault();
-			const message = this.dataset.confirmMessage || 'Sind Sie sicher?';
-			showConfirmationModal(message, () => this.submit());
+	const contextPath = "${pageContext.request.contextPath}";
+    // Custom confirmation for delete forms
+    document.querySelectorAll('.js-confirm-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const message = this.dataset.confirmMessage || 'Sind Sie sicher?';
+            showConfirmationModal(message, () => this.submit());
+        });
+    });
+
+    // Modal Logic
+    const modal = document.getElementById('meeting-modal');
+    if (!modal) return;
+
+    const form = document.getElementById('meeting-modal-form');
+    const modalTitle = document.getElementById('meeting-modal-title');
+    const actionInput = document.getElementById('meeting-action');
+    const idInput = document.getElementById('meeting-id');
+    const attachmentsList = document.getElementById('modal-attachments-list');
+    const closeModalBtn = modal.querySelector('.modal-close-btn');
+
+    const openModal = () => modal.classList.add('active');
+    const closeModal = () => modal.classList.remove('active');
+
+    const resetModal = () => {
+        form.reset();
+        attachmentsList.innerHTML = '';
+    };
+
+    // Open "Create" Modal
+    document.getElementById('new-meeting-btn').addEventListener('click', () => {
+        resetModal();
+        modalTitle.textContent = "Neues Meeting planen";
+        actionInput.value = "create";
+        idInput.value = "";
+        openModal();
+    });
+
+    // Open "Edit" Modal
+    document.querySelectorAll('.edit-meeting-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const meetingId = btn.dataset.meetingId;
+            try {
+                const response = await fetch(`${contextPath}/admin/meetings?action=getMeetingData&id=${meetingId}`);
+                if (!response.ok) throw new Error('Meeting data could not be fetched.');
+                const data = await response.json();
+                const meeting = data.meetingData;
+                const attachments = data.attachmentsData;
+
+                resetModal();
+                modalTitle.textContent = "Meeting bearbeiten";
+                actionInput.value = "update";
+                idInput.value = meeting.id;
+                form.querySelector('#name-modal').value = meeting.name || '';
+                form.querySelector('#location-modal').value = meeting.location || '';
+                form.querySelector('#meetingDateTime-modal').value = meeting.meetingDateTime ? meeting.meetingDateTime.substring(0, 16) : '';
+                form.querySelector('#endDateTime-modal').value = meeting.endDateTime ? meeting.endDateTime.substring(0, 16) : '';
+                form.querySelector('#leader-modal').value = meeting.leaderUserId || '';
+                form.querySelector('#description-modal').value = meeting.description || '';
+
+                if (attachments && attachments.length > 0) {
+                    attachments.forEach(att => {
+                        const li = document.createElement('li');
+                        li.id = `attachment-item-${att.id}`;
+                        li.innerHTML = `<a href="${contextPath}/download?file=${att.filepath}" target="_blank">${att.filename}</a> (Rolle: ${att.requiredRole})`;
+                        const removeBtn = document.createElement('button');
+						removeBtn.type = 'button';
+						removeBtn.className = 'btn btn-small btn-danger-outline';
+						removeBtn.innerHTML = '&times;';
+						removeBtn.onclick = () => {
+							showConfirmationModal(`Anhang '${att.filename}' wirklich löschen?`, () => {
+								const deleteForm = document.createElement('form');
+								deleteForm.method = 'post';
+								deleteForm.action = `${contextPath}/admin/meetings`;
+								deleteForm.innerHTML = `
+									<input type="hidden" name="action" value="deleteAttachment">
+									<input type="hidden" name="attachmentId" value="${att.id}">
+									<input type="hidden" name="courseId" value="${meeting.courseId}">
+								`;
+								document.body.appendChild(deleteForm);
+								deleteForm.submit();
+							});
+						};
+						li.appendChild(removeBtn);
+                        attachmentsList.appendChild(li);
+                    });
+                } else {
+                    attachmentsList.innerHTML = '<li>Keine Anhänge vorhanden.</li>';
+                }
+
+                openModal();
+            } catch (error) {
+                console.error('Error fetching meeting data:', error);
+                alert('Fehler beim Laden der Meeting-Daten.');
+            }
+        });
+    });
+
+    closeModalBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.classList.contains('active')) closeModal(); });
+	
+	document.querySelectorAll('.file-input').forEach(input => {
+		input.addEventListener('change', (e) => {
+			const file = e.target.files[0];
+			const maxSize = parseInt(e.target.dataset.maxSize, 10);
+			const warningElement = e.target.nextElementSibling;
+			if (file && file.size > maxSize) {
+				warningElement.style.display = 'block';
+				e.target.value = '';
+			} else {
+				warningElement.style.display = 'none';
+			}
 		});
 	});
-
-	// Modal Logic for "Create"
-	const modal = document.getElementById('meeting-modal');
-	if (!modal) return;
-
-	const form = document.getElementById('meeting-modal-form');
-	const closeModalBtn = modal.querySelector('.modal-close-btn');
-
-	const closeModal = () => modal.classList.remove('active');
-
-	const openCreateModal = () => {
-		form.reset();
-		modal.classList.add('active');
-	};
-
-	document.getElementById('new-meeting-btn').addEventListener('click', openCreateModal);
-
-	closeModalBtn.addEventListener('click', closeModal);
-	modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-	document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.classList.contains('active')) closeModal(); });
 });
 </script>

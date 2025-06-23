@@ -41,6 +41,10 @@
 	<p class="details-subtitle">
 		<strong>Zeitraum:</strong>
 		<c:out value="${event.formattedEventDateTimeRange}" />
+		<c:if test="${not empty event.location}">
+			<span style="margin-left: 1rem;"><strong>Ort:</strong> <c:out
+					value="${event.location}" /></span>
+		</c:if>
 	</p>
 
 	<%-- Interactive section for running events, visible only to assigned users and admins --%>
@@ -126,24 +130,52 @@
 		</div>
 	</c:if>
 
-	<div class="card">
-		<h2 class="card-title">Beschreibung</h2>
-		<p>
-			<c:out
-				value="${not empty event.description ? event.description : 'Keine Beschreibung für dieses Event vorhanden.'}" />
-		</p>
-	</div>
-	<div class="card">
-		<h2 class="card-title">Benötigter Personalbedarf</h2>
-		<ul class="details-list">
-			<c:if test="${empty event.skillRequirements}">
-				<li>Keine speziellen Qualifikationen benötigt.</li>
-			</c:if>
-			<c:forEach var="req" items="${event.skillRequirements}">
-				<li><strong><c:out value="${req.courseName}" />:</strong> <c:out
-						value="${req.requiredPersons}" /> Person(en) benötigt</li>
-			</c:forEach>
-		</ul>
+	<div class="responsive-dashboard-grid">
+		<div class="card">
+			<h2 class="card-title">Beschreibung</h2>
+			<p>
+				<c:out
+					value="${not empty event.description ? event.description : 'Keine Beschreibung für dieses Event vorhanden.'}" />
+			</p>
+		</div>
+		<div class="card">
+			<h2 class="card-title">Benötigter Personalbedarf</h2>
+			<ul class="details-list">
+				<c:if test="${empty event.skillRequirements}">
+					<li>Keine speziellen Qualifikationen benötigt.</li>
+				</c:if>
+				<c:forEach var="req" items="${event.skillRequirements}">
+					<li><strong><c:out value="${req.courseName}" />:</strong> <c:out
+							value="${req.requiredPersons}" /> Person(en) benötigt</li>
+				</c:forEach>
+			</ul>
+		</div>
+		<div class="card">
+			<h2 class="card-title">Reserviertes Material</h2>
+			<ul class="details-list">
+				<c:if test="${empty event.reservedItems}">
+					<li>Kein Material für dieses Event reserviert.</li>
+				</c:if>
+				<c:forEach var="item" items="${event.reservedItems}">
+					<li><c:out value="${item.name}" /> <span><c:out
+								value="${item.quantity}" />x</span></li>
+				</c:forEach>
+			</ul>
+		</div>
+		<div class="card">
+			<h2 class="card-title">Anhänge</h2>
+			<ul class="details-list">
+				<c:if test="${empty event.attachments}">
+					<li>Keine Anhänge für dieses Event vorhanden.</li>
+				</c:if>
+				<c:forEach var="att" items="${event.attachments}">
+					<li><a
+						href="${pageContext.request.contextPath}/download?file=${att.filepath}"><c:out
+								value="${att.filename}" /></a></li>
+				</c:forEach>
+			</ul>
+		</div>
+
 	</div>
 	<div class="card">
 		<h2 class="card-title">Zugewiesenes Team</h2>
@@ -193,26 +225,6 @@
 	font-size: 1.1rem;
 	color: var(--text-muted-color);
 	margin-bottom: 1.5rem;
-}
-
-.details-list {
-	list-style-type: none;
-	padding-left: 0;
-	margin: 0;
-}
-
-.details-list li {
-	padding: 0.75rem 0;
-	border-bottom: 1px solid var(--border-color);
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: 1rem;
-}
-
-.details-list li:last-child {
-	border-bottom: none;
 }
 </style>
 
@@ -281,8 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fetch(`${contextPath}/api/event-chat?eventId=${eventId}`)
                 .then(res => res.ok ? res.json() : Promise.reject(`HTTP error! status: ${res.status}`))
                 .then(messages => {
-                    // XSS FIX: Build DOM elements instead of using innerHTML
-                    chatBox.innerHTML = '';
+                    chatBox.innerHTML = ''; // Clear previous messages
                     if (messages.length > 0) {
                         messages.forEach(msg => {
                             const p = document.createElement('p');
@@ -298,11 +309,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
 
                             p.appendChild(strong);
-                            p.appendChild(document.createTextNode(msg.messageText));
+                            p.appendChild(document.createTextNode(msg.messageText)); // Securely append text
                             chatBox.appendChild(p);
                         });
                     } else {
-                        chatBox.innerHTML = '<p style="color:var(--text-muted-color); text-align: center; padding-top: 1rem;">Noch keine Nachrichten.</p>';
+                        const p = document.createElement('p');
+                        p.textContent = 'Noch keine Nachrichten.';
+                        p.style.cssText = 'color:var(--text-muted-color); text-align: center; padding-top: 1rem;';
+                        chatBox.appendChild(p);
                     }
                     chatBox.scrollTop = chatBox.scrollHeight;
                 }).catch(error => console.error("Error fetching chat messages:", error));

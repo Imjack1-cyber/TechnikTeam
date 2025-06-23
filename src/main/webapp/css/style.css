@@ -622,7 +622,7 @@ table.mobile-matrix-table th {
 	padding: 1.5rem;
 	border-radius: 12px;
 	width: 100%;
-	max-width: 500px;
+	max-width: 600px;
 	position: relative;
 	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 	transform: scale(0.95);
@@ -646,6 +646,23 @@ table.mobile-matrix-table th {
 	border: none;
 	background: none;
 	line-height: 1;
+}
+
+.details-list {
+	list-style-type: none;
+	padding-left: 0;
+}
+
+.details-list li {
+	padding: 0.75rem 0;
+	border-bottom: 1px solid var(--border-color);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.details-list li:last-child {
+	border-bottom: none;
 }
 
 /* --- 10. FILE MANAGER --- */

@@ -17,6 +17,7 @@ public class Meeting {
 	private LocalDateTime endDateTime;
 	private int leaderUserId;
 	private String description;
+	private String location;
 
 	// Transient fields populated by DAO joins for UI display
 	private String parentCourseName;
@@ -105,6 +106,14 @@ public class Meeting {
 
 	public void setDescription(String description) {
 		this.description = description;
+	}
+
+	public String getLocation() {
+		return location;
+	}
+
+	public void setLocation(String location) {
+		this.location = location;
 	}
 
 	public String getParentCourseName() {

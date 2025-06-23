@@ -1,6 +1,8 @@
 package de.technikteam.servlet.admin;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -13,51 +15,59 @@ import org.apache.logging.log4j.Logger;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import de.technikteam.config.AppConfig;
 import de.technikteam.config.LocalDateAdapter;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.CourseDAO;
+import de.technikteam.dao.EventAttachmentDAO;
 import de.technikteam.dao.EventDAO;
+import de.technikteam.dao.StorageDAO;
+import de.technikteam.dao.UserDAO;
 import de.technikteam.model.Course;
 import de.technikteam.model.Event;
+import de.technikteam.model.EventAttachment;
+import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
+import de.technikteam.util.ServletUtils;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
 
 /**
- * 
  * Mapped to /admin/events, this is a complex servlet that manages all aspects
- * 
  * of events from an administrative perspective. It handles full CRUD operations
- * 
- * (create, read, update, delete) for events, manages skill requirements,
- * 
- * updates event statuses, and provides the interface for assigning users to an
- * 
- * event's final team. All create/edit operations are handled via modals on the
- * 
- * list page.
+ * for events, manages skill requirements, file attachments, storage
+ * reservations, and provides the interface for assigning users to an event's
+ * final team.
  */
 @WebServlet("/admin/events")
+@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 20, maxRequestSize = 1024 * 1024 * 50)
 public class AdminEventServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminEventServlet.class);
 
 	private EventDAO eventDAO;
 	private CourseDAO courseDAO;
+	private StorageDAO storageDAO;
+	private UserDAO userDAO;
+	private EventAttachmentDAO attachmentDAO;
 	private Gson gson;
 
 	@Override
 	public void init() {
 		eventDAO = new EventDAO();
 		courseDAO = new CourseDAO();
-		// Configure Gson to handle LocalDateTime and LocalDate, which it doesn't by
-		// default
+		storageDAO = new StorageDAO();
+		userDAO = new UserDAO();
+		attachmentDAO = new EventAttachmentDAO();
+		// Configure Gson to handle LocalDateTime and LocalDate
 		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
-				.registerTypeAdapter(java.time.LocalDate.class, new LocalDateAdapter()).create();
+				.registerTypeAdapter(java.time.LocalDate.class, new LocalDateAdapter()).setPrettyPrinting().create();
 	}
 
 	@Override
@@ -71,6 +81,9 @@ public class AdminEventServlet extends HttpServlet {
 				break;
 			case "getEventData":
 				getEventDataAsJson(req, resp);
+				break;
+			case "deleteAttachment":
+				handleDeleteAttachment(req, resp);
 				break;
 			default:
 				listEvents(req, resp);
@@ -86,8 +99,15 @@ public class AdminEventServlet extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		req.setCharacterEncoding("UTF-8");
-		String action = req.getParameter("action");
+		String action;
+
+		if (req.getContentType() != null && req.getContentType().toLowerCase().startsWith("multipart/")) {
+			action = ServletUtils.getPartValue(req.getPart("action"));
+		} else {
+			action = req.getParameter("action");
+		}
 		logger.debug("AdminEventServlet received POST request with action: {}", action);
+
 		switch (action) {
 		case "create":
 		case "update":
@@ -113,8 +133,14 @@ public class AdminEventServlet extends HttpServlet {
 		logger.info("Listing all events for admin view.");
 		List<Event> eventList = eventDAO.getAllEvents();
 		List<Course> allCourses = courseDAO.getAllCourses();
+		List<StorageItem> allItems = storageDAO.getAllItemsGroupedByLocation().values().stream().flatMap(List::stream)
+				.collect(Collectors.toList());
+		List<User> allUsers = userDAO.getAllUsers();
+
 		req.setAttribute("eventList", eventList);
 		req.setAttribute("allCourses", allCourses);
+		req.setAttribute("allItems", allItems);
+		req.setAttribute("allUsers", allUsers);
 		req.getRequestDispatcher("/admin/admin_events_list.jsp").forward(req, resp);
 	}
 
@@ -124,6 +150,8 @@ public class AdminEventServlet extends HttpServlet {
 			Event event = eventDAO.getEventById(eventId);
 			if (event != null) {
 				event.setSkillRequirements(eventDAO.getSkillRequirementsForEvent(eventId));
+				event.setReservedItems(eventDAO.getReservedItemsForEvent(eventId));
+				event.setAttachments(attachmentDAO.getAttachmentsForEvent(eventId, "ADMIN"));
 				String eventJson = gson.toJson(event);
 				resp.setContentType("application/json");
 				resp.setCharacterEncoding("UTF-8");
@@ -160,51 +188,62 @@ public class AdminEventServlet extends HttpServlet {
 	private void handleCreateOrUpdate(HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
 		User adminUser = (User) request.getSession().getAttribute("user");
-		String idParam = request.getParameter("id");
+		String idParam = ServletUtils.getPartValue(request.getPart("id"));
 		boolean isUpdate = idParam != null && !idParam.isEmpty();
-		try {
-			Event event = new Event();
-			event.setName(request.getParameter("name"));
-			event.setDescription(request.getParameter("description"));
-			event.setEventDateTime(LocalDateTime.parse(request.getParameter("eventDateTime")));
+		Event event = new Event();
 
-			String endDateTimeParam = request.getParameter("endDateTime");
+		try {
+			event.setName(ServletUtils.getPartValue(request.getPart("name")));
+			event.setDescription(ServletUtils.getPartValue(request.getPart("description")));
+			event.setLocation(ServletUtils.getPartValue(request.getPart("location")));
+			event.setEventDateTime(LocalDateTime.parse(ServletUtils.getPartValue(request.getPart("eventDateTime"))));
+
+			String endDateTimeParam = ServletUtils.getPartValue(request.getPart("endDateTime"));
 			if (endDateTimeParam != null && !endDateTimeParam.isEmpty()) {
 				event.setEndDateTime(LocalDateTime.parse(endDateTimeParam));
 			}
 
-			boolean success = false;
-			String actionType;
-			Event originalEvent = null;
+			String leaderIdStr = ServletUtils.getPartValue(request.getPart("leaderUserId"));
+			if (leaderIdStr != null && !leaderIdStr.isEmpty()) {
+				event.setLeaderUserId(Integer.parseInt(leaderIdStr));
+			}
 
+			int eventId = 0;
 			if (isUpdate) {
-				actionType = "UPDATE_EVENT";
-				int eventId = Integer.parseInt(idParam);
-				originalEvent = eventDAO.getEventById(eventId);
+				eventId = Integer.parseInt(idParam);
+				Event originalEvent = eventDAO.getEventById(eventId);
 				event.setId(eventId);
 				event.setStatus(originalEvent.getStatus()); // Status is updated via its own action
-				logger.info("Attempting to update event ID: {}", eventId);
-				success = eventDAO.updateEvent(event);
-				if (success) {
-					AdminLogService.log(adminUser.getUsername(), actionType,
+				if (eventDAO.updateEvent(event)) {
+					AdminLogService.log(adminUser.getUsername(), "UPDATE_EVENT",
 							"Event '" + event.getName() + "' (ID: " + eventId + ") aktualisiert.");
 				}
 			} else { // CREATE
-				actionType = "CREATE_EVENT";
-				logger.info("Attempting to create new event: {}", event.getName());
-				int newEventId = eventDAO.createEvent(event);
-				if (newEventId > 0) {
-					success = true;
-					event.setId(newEventId);
-					AdminLogService.log(adminUser.getUsername(), actionType,
-							"Event '" + event.getName() + "' (ID: " + newEventId + ") erstellt.");
+				eventId = eventDAO.createEvent(event);
+				if (eventId > 0) {
+					event.setId(eventId);
+					AdminLogService.log(adminUser.getUsername(), "CREATE_EVENT",
+							"Event '" + event.getName() + "' (ID: " + eventId + ") erstellt.");
 				}
 			}
 
-			if (success) {
+			if (eventId > 0) {
+				// Handle requirements
 				String[] requiredCourseIds = request.getParameterValues("requiredCourseId");
 				String[] requiredPersons = request.getParameterValues("requiredPersons");
-				eventDAO.saveSkillRequirements(event.getId(), requiredCourseIds, requiredPersons);
+				eventDAO.saveSkillRequirements(eventId, requiredCourseIds, requiredPersons);
+
+				// Handle reservations
+				String[] itemIds = request.getParameterValues("itemId");
+				String[] quantities = request.getParameterValues("itemQuantity");
+				eventDAO.saveReservations(eventId, itemIds, quantities);
+
+				// Handle file upload
+				Part filePart = request.getPart("attachment");
+				if (filePart != null && filePart.getSize() > 0) {
+					String requiredRole = ServletUtils.getPartValue(request.getPart("requiredRole"));
+					handleAttachmentUpload(filePart, eventId, requiredRole, adminUser, request);
+				}
 				request.getSession().setAttribute("successMessage", "Event erfolgreich gespeichert.");
 			} else {
 				request.getSession().setAttribute("errorMessage", "Event konnte nicht gespeichert werden.");
@@ -221,6 +260,54 @@ public class AdminEventServlet extends HttpServlet {
 		}
 
 		response.sendRedirect(request.getContextPath() + "/admin/events");
+	}
+
+	private void handleAttachmentUpload(Part filePart, int eventId, String requiredRole, User adminUser,
+			HttpServletRequest req) throws IOException {
+		String uploadDir = AppConfig.UPLOAD_DIRECTORY + File.separator + "events";
+		new File(uploadDir).mkdirs();
+
+		String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
+		File targetFile = new File(uploadDir, fileName);
+		filePart.write(targetFile.getAbsolutePath());
+
+		EventAttachment attachment = new EventAttachment();
+		attachment.setEventId(eventId);
+		attachment.setFilename(fileName);
+		attachment.setFilepath("events/" + fileName); // Use forward slashes for URL
+		attachment.setRequiredRole(requiredRole);
+
+		if (attachmentDAO.addAttachment(attachment)) {
+			AdminLogService.log(adminUser.getUsername(), "ADD_EVENT_ATTACHMENT",
+					"Anhang '" + fileName + "' zu Event ID " + eventId + " hinzugefügt.");
+		} else {
+			req.getSession().setAttribute("errorMessage", "Anhang konnte nicht in DB gespeichert werden.");
+		}
+	}
+
+	private void handleDeleteAttachment(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		User adminUser = (User) req.getSession().getAttribute("user");
+		int attachmentId = Integer.parseInt(req.getParameter("id"));
+		logger.warn("Attempting to delete event attachment ID {}", attachmentId);
+
+		EventAttachment attachment = attachmentDAO.getAttachmentById(attachmentId);
+		if (attachment != null) {
+			File physicalFile = new File(AppConfig.UPLOAD_DIRECTORY, attachment.getFilepath());
+			if (physicalFile.exists())
+				physicalFile.delete();
+
+			if (attachmentDAO.deleteAttachment(attachmentId)) {
+				AdminLogService.log(adminUser.getUsername(), "DELETE_EVENT_ATTACHMENT", "Anhang '"
+						+ attachment.getFilename() + "' von Event ID " + attachment.getEventId() + " gelöscht.");
+				resp.setStatus(HttpServletResponse.SC_OK);
+				resp.getWriter().write("{\"message\":\"Anhang gelöscht\"}");
+			} else {
+				resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+						"Anhang konnte nicht aus DB gelöscht werden.");
+			}
+		} else {
+			resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Anhang nicht gefunden.");
+		}
 	}
 
 	private void handleDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {

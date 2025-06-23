@@ -1,10 +1,14 @@
 package de.technikteam.dao;
 
+import de.technikteam.model.StorageLogEntry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Data Access Object for logging storage item transactions (check-ins and
@@ -38,5 +42,37 @@ public class StorageLogDAO {
 			logger.error("Failed to log storage transaction for item {}", itemId, e);
 			return false;
 		}
+	}
+
+	/**
+	 * Fetches the transaction history for a specific storage item.
+	 * 
+	 * @param itemId The ID of the item.
+	 * @return A list of storage log entries.
+	 */
+	public List<StorageLogEntry> getHistoryForItem(int itemId) {
+		List<StorageLogEntry> history = new ArrayList<>();
+		String sql = "SELECT sl.*, u.username FROM storage_log sl " + "JOIN users u ON sl.user_id = u.id "
+				+ "WHERE sl.item_id = ? ORDER BY sl.transaction_timestamp DESC";
+		logger.debug("Fetching storage history for item ID: {}", itemId);
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, itemId);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					StorageLogEntry entry = new StorageLogEntry();
+					entry.setId(rs.getInt("id"));
+					entry.setItemId(rs.getInt("item_id"));
+					entry.setUserId(rs.getInt("user_id"));
+					entry.setUsername(rs.getString("username"));
+					entry.setQuantityChange(rs.getInt("quantity_change"));
+					entry.setNotes(rs.getString("notes"));
+					entry.setTransactionTimestamp(rs.getTimestamp("transaction_timestamp").toLocalDateTime());
+					history.add(entry);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("SQL error fetching storage history for item ID {}", itemId, e);
+		}
+		return history;
 	}
 }

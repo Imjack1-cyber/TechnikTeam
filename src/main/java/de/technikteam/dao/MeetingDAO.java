@@ -32,7 +32,7 @@ public class MeetingDAO {
 	 * @return The ID of the newly created meeting, or 0 on failure.
 	 */
 	public int createMeeting(Meeting meeting) {
-		String sql = "INSERT INTO meetings (course_id, name, meeting_datetime, end_datetime, leader_user_id, description) VALUES (?, ?, ?, ?, ?, ?)";
+		String sql = "INSERT INTO meetings (course_id, name, meeting_datetime, end_datetime, leader_user_id, description, location) VALUES (?, ?, ?, ?, ?, ?, ?)";
 		logger.debug("Attempting to create meeting '{}' for course ID {}", meeting.getName(), meeting.getCourseId());
 		try (Connection conn = DatabaseManager.getConnection();
 				PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -51,6 +51,7 @@ public class MeetingDAO {
 				pstmt.setNull(5, Types.INTEGER);
 			}
 			pstmt.setString(6, meeting.getDescription());
+			pstmt.setString(7, meeting.getLocation());
 
 			int affectedRows = pstmt.executeUpdate();
 			if (affectedRows > 0) {
@@ -169,6 +170,7 @@ public class MeetingDAO {
 		}
 		meeting.setLeaderUserId(rs.getInt("leader_user_id"));
 		meeting.setDescription(rs.getString("description"));
+		meeting.setLocation(rs.getString("location"));
 		meeting.setParentCourseName(rs.getString("parent_course_name"));
 		meeting.setLeaderUsername(rs.getString("leader_username"));
 
@@ -182,7 +184,7 @@ public class MeetingDAO {
 	 * @return true if the update was successful.
 	 */
 	public boolean updateMeeting(Meeting meeting) {
-		String sql = "UPDATE meetings SET name = ?, meeting_datetime = ?, end_datetime = ?, leader_user_id = ?, description = ? WHERE id = ?";
+		String sql = "UPDATE meetings SET name = ?, meeting_datetime = ?, end_datetime = ?, leader_user_id = ?, description = ?, location = ? WHERE id = ?";
 		logger.debug("Attempting to update meeting ID: {}", meeting.getId());
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -199,7 +201,8 @@ public class MeetingDAO {
 				pstmt.setNull(4, Types.INTEGER);
 			}
 			pstmt.setString(5, meeting.getDescription());
-			pstmt.setInt(6, meeting.getId());
+			pstmt.setString(6, meeting.getLocation());
+			pstmt.setInt(7, meeting.getId());
 
 			boolean success = pstmt.executeUpdate() > 0;
 			if (success)
