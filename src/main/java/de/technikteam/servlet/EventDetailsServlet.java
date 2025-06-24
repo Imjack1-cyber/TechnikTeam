@@ -77,9 +77,9 @@ public class EventDetailsServlet extends HttpServlet {
 				event.setChatMessages(chatDAO.getMessagesForEvent(eventId));
 			}
 
-			// For Admins, provide the list of assigned users for the task assignment
+			// For Admins and Users, provide the list of assigned users for the task assignment
 			// dropdown
-			if ("ADMIN".equalsIgnoreCase(user.getRole())) {
+			if ("ADMIN".equalsIgnoreCase(user.getRole()) || "NUTZER".equalsIgnoreCase(user.getRole()) {
 				request.setAttribute("assignedUsers", assignedUsers);
 			}
 
