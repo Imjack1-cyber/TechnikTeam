@@ -20,8 +20,7 @@
 <c:import url="/WEB-INF/jspf/navigation.jspf" />
 
 <h1>Artikeldetails</h1>
-<p>Dies ist die Detailansicht für einen Artikel aus dem Lager, oft
-	aufgerufen über einen QR-Code.</p>
+<p>Dies ist die Detailansicht für einen Artikel aus dem Lager.</p>
 
 <div class="card" style="max-width: 600px; margin: 1rem auto;">
 	<h2 class="card-title">
