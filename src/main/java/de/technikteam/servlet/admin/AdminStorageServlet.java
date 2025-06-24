@@ -1,5 +1,6 @@
 package de.technikteam.servlet.admin;
 
+import com.google.gson.Gson;
 import de.technikteam.config.AppConfig;
 import de.technikteam.dao.StorageDAO;
 import de.technikteam.model.StorageItem;
@@ -40,6 +41,7 @@ public class AdminStorageServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminStorageServlet.class.getName());
 	private StorageDAO storageDAO;
+	private Gson gson = new Gson();
 
 	@Override
 	public void init() {
@@ -49,6 +51,12 @@ public class AdminStorageServlet extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+		String action = request.getParameter("action");
+		if ("getItemData".equals(action)) {
+			getItemDataAsJson(request, response);
+			return;
+		}
+
 		try {
 			logger.info("Listing all storage items for admin view.");
 			Map<String, List<StorageItem>> groupedItems = storageDAO.getAllItemsGroupedByLocation();
@@ -87,6 +95,23 @@ public class AdminStorageServlet extends HttpServlet {
 				logger.warn("Unknown non-multipart action received: {}", action);
 				response.sendRedirect(request.getContextPath() + "/admin/storage");
 			}
+		}
+	}
+
+	private void getItemDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		try {
+			int itemId = Integer.parseInt(req.getParameter("id"));
+			StorageItem item = storageDAO.getItemById(itemId);
+			if (item != null) {
+				String itemJson = gson.toJson(item);
+				resp.setContentType("application/json");
+				resp.setCharacterEncoding("UTF-8");
+				resp.getWriter().write(itemJson);
+			} else {
+				resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Item not found");
+			}
+		} catch (NumberFormatException e) {
+			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid item ID");
 		}
 	}
 

@@ -66,18 +66,7 @@ Creating and editing items are handled via a modal dialog on this page.
 			</div>
 			<div class="card-actions">
 				<button type="button" class="btn btn-small edit-item-btn"
-					data-id="${item.id}" data-name="${fn:replace(item.name, '"
-					', '&quot;')}"
-                    data-location="${fn:replace(item.location, '"
-					', '&quot;')}"
-                    data-cabinet="${fn:replace(item.cabinet, '"
-					', '&quot;')}"
-                    data-shelf="${fn:replace(item.shelf, '"
-					', '&quot;')}"
-                    data-compartment="${fn:replace(item.compartment, '"
-					', '&quot;')}"
-                    data-quantity="${item.quantity}"
-					data-max-quantity="${item.maxQuantity}">Bearbeiten</button>
+					data-id="${item.id}">Bearbeiten</button>
 				<a
 					href="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${pageContext.request.scheme}://${pageContext.request.serverName}:${pageContext.request.serverPort}${pageContext.request.contextPath}/storage-item?id=${item.id}"
 					target="_blank" class="btn btn-small btn-success">QR-Code</a>
@@ -115,18 +104,7 @@ Creating and editing items are handled via a modal dialog on this page.
 					<td><c:out value="${item.quantity}" /></td>
 					<td style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
 						<button type="button" class="btn btn-small edit-item-btn"
-							data-id="${item.id}" data-name="${fn:replace(item.name, '"
-							', '&quot;')}"
-                            data-location="${fn:replace(item.location, '"
-							', '&quot;')}"
-                            data-cabinet="${fn:replace(item.cabinet, '"
-							', '&quot;')}"
-                            data-shelf="${fn:replace(item.shelf, '"
-							', '&quot;')}"
-                            data-compartment="${fn:replace(item.compartment, '"
-							', '&quot;')}"
-                            data-quantity="${item.quantity}"
-							data-max-quantity="${item.maxQuantity}">Bearbeiten</button> <a
+							data-id="${item.id}">Bearbeiten</button> <a
 						href="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${pageContext.request.scheme}://${pageContext.request.serverName}:${pageContext.request.serverPort}${pageContext.request.contextPath}/storage-item?id=${item.id}"
 						target="_blank" class="btn btn-small btn-success">QR-Code</a>
 						<form action="${pageContext.request.contextPath}/admin/storage"
@@ -201,6 +179,7 @@ Creating and editing items are handled via a modal dialog on this page.
 <c:import url="/WEB-INF/jspf/footer.jspf" />
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    const contextPath = "${pageContext.request.contextPath}";
     // Custom confirmation for delete forms
     document.querySelectorAll('.js-confirm-form').forEach(form => {
         form.addEventListener('submit', function(e) {
@@ -230,20 +209,30 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.classList.add('active');
     };
 
-    const openEditModal = (btn) => {
+    const openEditModal = async (btn) => {
         form.reset();
-        const itemData = btn.dataset;
-        title.textContent = 'Lagerartikel bearbeiten';
-        actionInput.value = 'update';
-        idInput.value = itemData.id;
-        form.querySelector('#name-modal').value = itemData.name;
-        form.querySelector('#location-modal').value = itemData.location;
-        form.querySelector('#cabinet-modal').value = itemData.cabinet;
-        form.querySelector('#shelf-modal').value = itemData.shelf;
-        form.querySelector('#compartment-modal').value = itemData.compartment;
-        form.querySelector('#quantity-modal').value = itemData.quantity;
-        form.querySelector('#maxQuantity-modal').value = itemData.maxQuantity;
-        modal.classList.add('active');
+        const itemId = btn.dataset.id;
+        try {
+            const response = await fetch(`${contextPath}/admin/storage?action=getItemData&id=${itemId}`);
+            if (!response.ok) throw new Error('Could not fetch item data.');
+            const itemData = await response.json();
+
+            title.textContent = 'Lagerartikel bearbeiten';
+            actionInput.value = 'update';
+            idInput.value = itemData.id;
+            form.querySelector('#name-modal').value = itemData.name || '';
+            form.querySelector('#location-modal').value = itemData.location || '';
+            form.querySelector('#cabinet-modal').value = itemData.cabinet || '';
+            form.querySelector('#shelf-modal').value = itemData.shelf || '';
+            form.querySelector('#compartment-modal').value = itemData.compartment || '';
+            form.querySelector('#quantity-modal').value = itemData.quantity || 0;
+            form.querySelector('#maxQuantity-modal').value = itemData.maxQuantity || 0;
+            modal.classList.add('active');
+
+        } catch (error) {
+            console.error("Failed to open edit modal:", error);
+            alert("Fehler beim Laden der Artikeldaten.");
+        }
     };
 
     const closeModal = () => modal.classList.remove('active');

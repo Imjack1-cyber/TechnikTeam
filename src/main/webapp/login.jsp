@@ -24,7 +24,7 @@
 		<h1>Willkommen zurück</h1>
 
 		<c:if test="${not empty errorMessage}">
-			<p class="error-message">
+			<p class="error-message" id="error-message">
 				<c:out value="${errorMessage}" />
 			</p>
 		</c:if>
@@ -45,6 +45,12 @@
 			</div>
 			<button type="submit" class="btn" style="width: 100%;">Anmelden</button>
 		</form>
+		<div
+			style="text-align: center; margin: 1rem 0; color: var(--text-muted-color);">ODER</div>
+		<button id="passkey-login-btn" class="btn btn-secondary"
+			style="width: 100%;">
+			<i class="fas fa-fingerprint"></i> Mit Passkey anmelden
+		</button>
 	</div>
 </div>
 <style>
@@ -69,6 +75,8 @@
 <script>
 // Attach event listener to all password toggles on the page
 document.addEventListener('DOMContentLoaded', () => {
+	const contextPath = "${pageContext.request.contextPath}";
+
     document.querySelectorAll('.password-toggle').forEach(toggle => {
         toggle.addEventListener('click', () => {
             const passwordInput = toggle.previousElementSibling;
@@ -79,6 +87,82 @@ document.addEventListener('DOMContentLoaded', () => {
             toggle.classList.toggle('fa-eye-slash');
         });
     });
+
+    // Passkey Login Logic
+    const passkeyLoginBtn = document.getElementById('passkey-login-btn');
+    const errorMessageElement = document.getElementById('error-message');
+
+    if (passkeyLoginBtn) {
+        passkeyLoginBtn.addEventListener('click', async () => {
+            try {
+                // 1. Start authentication
+                const startResp = await fetch(`${contextPath}/api/passkey/login/start`, { method: 'POST' });
+                if (!startResp.ok) throw new Error('Could not start passkey login.');
+                const requestOptions = await startResp.json();
+                
+                // Convert base64url to ArrayBuffer
+                requestOptions.challenge = bufferDecode(requestOptions.challenge);
+                if (requestOptions.allowCredentials) {
+                    for (let cred of requestOptions.allowCredentials) {
+                        cred.id = bufferDecode(cred.id);
+                    }
+                }
+
+                // 2. Prompt user with WebAuthn API
+                const assertion = await navigator.credentials.get({ publicKey: requestOptions });
+
+                // 3. Finish authentication
+                const verificationResp = await fetch(`${contextPath}/api/passkey/login/finish?userHandle=${assertion.response.userHandle}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: assertion.id,
+                        rawId: bufferEncode(assertion.rawId),
+                        response: {
+                            authenticatorData: bufferEncode(assertion.response.authenticatorData),
+                            clientDataJSON: bufferEncode(assertion.response.clientDataJSON),
+                            signature: bufferEncode(assertion.response.signature),
+                            userHandle: assertion.response.userHandle ? bufferEncode(assertion.response.userHandle) : null,
+                        },
+                        type: assertion.type
+                    })
+                });
+
+                if (verificationResp.ok) {
+                    window.location.href = `${contextPath}/home`; // Redirect on success
+                } else {
+                    const errorText = await verificationResp.text();
+                    errorMessageElement.textContent = `Passkey Login fehlgeschlagen: ${errorText}`;
+                    errorMessageElement.style.display = 'block';
+                }
+
+            } catch (err) {
+                console.error('Passkey login error:', err);
+                errorMessageElement.textContent = 'Passkey-Operation fehlgeschlagen oder abgebrochen.';
+                errorMessageElement.style.display = 'block';
+            }
+        });
+    }
+
+    // Helper functions for base64url encoding/decoding
+    function bufferDecode(value) {
+        const str = value.replace(/-/g, '+').replace(/_/g, '/');
+        const
+			decoded = atob(str);
+        const
+			buffer = new Uint8Array(decoded.length);
+        for (let i = 0; i < decoded.length; i++) {
+            buffer[i] = decoded.charCodeAt(i);
+        }
+        return buffer.buffer;
+    }
+
+    function bufferEncode(value) {
+        return btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
+    }
 });
 </script>
 <%-- The footer is omitted on the login page for a cleaner, focused look. --%>

@@ -79,7 +79,7 @@ public class EventDetailsServlet extends HttpServlet {
 
 			// For Admins and Users, provide the list of assigned users for the task assignment
 			// dropdown
-			if ("ADMIN".equalsIgnoreCase(user.getRole()) || "NUTZER".equalsIgnoreCase(user.getRole()) {
+			if ("ADMIN".equalsIgnoreCase(user.getRole()) || "NUTZER".equalsIgnoreCase(user.getRole())) {
 				request.setAttribute("assignedUsers", assignedUsers);
 			}
 

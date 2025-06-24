@@ -1,5 +1,6 @@
 package de.technikteam.servlet.admin;
 
+import com.google.gson.Gson;
 import de.technikteam.dao.CourseDAO;
 import de.technikteam.model.Course;
 import de.technikteam.model.User;
@@ -30,6 +31,7 @@ public class AdminCourseServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminCourseServlet.class);
 	private CourseDAO courseDAO;
+	private Gson gson = new Gson();
 
 	@Override
 	public void init() {
@@ -38,6 +40,12 @@ public class AdminCourseServlet extends HttpServlet {
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		String action = req.getParameter("action");
+		if ("getCourseData".equals(action)) {
+			getCourseDataAsJson(req, resp);
+			return;
+		}
+
 		logger.info("Listing all course templates for admin view.");
 		List<Course> courseList = courseDAO.getAllCourses();
 		req.setAttribute("courseList", courseList);
@@ -56,6 +64,23 @@ public class AdminCourseServlet extends HttpServlet {
 		} else {
 			logger.warn("Unknown POST action received: {}", action);
 			resp.sendRedirect(req.getContextPath() + "/admin/courses");
+		}
+	}
+
+	private void getCourseDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		try {
+			int courseId = Integer.parseInt(req.getParameter("id"));
+			Course course = courseDAO.getCourseById(courseId);
+			if (course != null) {
+				String courseJson = gson.toJson(course);
+				resp.setContentType("application/json");
+				resp.setCharacterEncoding("UTF-8");
+				resp.getWriter().write(courseJson);
+			} else {
+				resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Course not found");
+			}
+		} catch (NumberFormatException e) {
+			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid course ID");
 		}
 	}
 

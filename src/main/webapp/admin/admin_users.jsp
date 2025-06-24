@@ -62,9 +62,7 @@ reset their password. Creating and editing users is handled via modal dialogs.
 			</div>
 			<div class="card-actions">
 				<button type="button" class="btn btn-small edit-user-btn"
-					data-id="${user.id}" data-username="${user.username}"
-					data-role="${user.role}" data-class-year="${user.classYear}"
-					data-class-name="${user.className}">Bearbeiten</button>
+					data-id="${user.id}">Bearbeiten</button>
 				<c:if test="${sessionScope.user.id != user.id}">
 					<form action="${pageContext.request.contextPath}/admin/users"
 						method="post" class="inline-form js-confirm-form"
@@ -107,9 +105,7 @@ reset their password. Creating and editing users is handled via modal dialogs.
 					<td>${user.role}</td>
 					<td style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
 						<button type="button" class="btn btn-small edit-user-btn"
-							data-id="${user.id}" data-username="${user.username}"
-							data-role="${user.role}" data-class-year="${user.classYear}"
-							data-class-name="${user.className}">Bearbeiten</button> <c:if
+							data-id="${user.id}">Bearbeiten</button> <c:if
 							test="${sessionScope.user.id != user.id}">
 							<form action="${pageContext.request.contextPath}/admin/users"
 								method="post" class="inline-form js-confirm-form"
@@ -174,19 +170,6 @@ reset their password. Creating and editing users is handled via modal dialogs.
 	</div>
 </div>
 
-<!-- Confirmation Modal Structure -->
-<div class="modal-overlay" id="confirmation-modal">
-	<div class="modal-content" style="max-width: 450px;">
-		<h3 id="confirmation-title">Bestätigung</h3>
-		<p id="confirmation-message"
-			style="margin: 1.5rem 0; font-size: 1.1rem;"></p>
-		<div style="display: flex; justify-content: flex-end; gap: 1rem;">
-			<button id="confirmation-btn-cancel" class="btn btn-secondary">Abbrechen</button>
-			<button id="confirmation-btn-confirm" class="btn btn-danger">Bestätigen</button>
-		</div>
-	</div>
-</div>
-
 <c:import url="/WEB-INF/jspf/table-helper.jspf" />
 <c:import url="/WEB-INF/jspf/footer.jspf" />
 <style>
@@ -220,6 +203,7 @@ reset their password. Creating and editing users is handled via modal dialogs.
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    const contextPath = "${pageContext.request.contextPath}";
 	// Custom confirmation for forms
 	document.querySelectorAll('.js-confirm-form').forEach(form => {
 		form.addEventListener('submit', function(e) {
@@ -273,22 +257,32 @@ document.addEventListener('DOMContentLoaded', () => {
 		usernameInput.focus();
 	};
 
-	const openEditModal = (btn) => {
+	const openEditModal = async (btn) => {
 		form.reset();
-		const data = btn.dataset;
-		title.textContent = "Benutzer bearbeiten";
-		actionInput.value = "update";
-		idInput.value = data.id;
-		usernameInput.value = data.username;
-		roleInput.value = data.role;
-		classYearInput.value = data.classYear;
-		classNameInput.value = data.className;
+        const userId = btn.dataset.id;
+        try {
+            const response = await fetch(`${contextPath}/admin/users?action=getUserData&id=${userId}`);
+            if (!response.ok) throw new Error('Could not fetch user data');
+            const data = await response.json();
 
-		// Password is not required for updates, so hide the field
-		passwordInput.required = false;
-		passwordGroup.style.display = 'none';
+            title.textContent = "Benutzer bearbeiten";
+            actionInput.value = "update";
+            idInput.value = data.id;
+            usernameInput.value = data.username || '';
+            roleInput.value = data.role || 'NUTZER';
+            classYearInput.value = data.classYear || '';
+            classNameInput.value = data.className || '';
 
-		modal.classList.add('active');
+            // Password is not required for updates, so hide the field
+            passwordInput.required = false;
+            passwordGroup.style.display = 'none';
+
+            modal.classList.add('active');
+
+        } catch (error) {
+            console.error('Failed to open edit modal:', error);
+            alert('Benutzerdaten konnten nicht geladen werden.');
+        }
 	};
 
 	document.getElementById('new-user-btn').addEventListener('click', openCreateModal);

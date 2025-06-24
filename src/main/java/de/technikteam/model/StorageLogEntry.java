@@ -2,79 +2,94 @@ package de.technikteam.model;
 
 import de.technikteam.config.DateFormatter;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
- * A Data Transfer Object (DTO) to represent a single entry from the storage_log table,
- * enriched with the username of the person who performed the transaction.
+ * A Data Transfer Object (DTO) to represent a single entry from the storage_log
+ * table, enriched with the username of the person who performed the
+ * transaction.
  */
 public class StorageLogEntry {
-    private int id;
-    private int itemId;
-    private int userId;
-    private String username;
-    private int quantityChange;
-    private String notes;
-    private LocalDateTime transactionTimestamp;
+	private int id;
+	private int itemId;
+	private int userId;
+	private String username;
+	private int quantityChange;
+	private String notes;
+	private LocalDateTime transactionTimestamp;
 
-    // --- Getters and Setters ---
+	// Define the formatter here
+	private static final DateTimeFormatter GERMAN_LOCALE_FORMATTER = DateTimeFormatter
+			.ofPattern("dd.MM.yyyy, HH:mm:ss");
 
-    public int getId() {
-        return id;
-    }
+	// --- Getters and Setters ---
 
-    public void setId(int id) {
-        this.id = id;
-    }
+	public int getId() {
+		return id;
+	}
 
-    public int getItemId() {
-        return itemId;
-    }
+	public void setId(int id) {
+		this.id = id;
+	}
 
-    public void setItemId(int itemId) {
-        this.itemId = itemId;
-    }
+	public int getItemId() {
+		return itemId;
+	}
 
-    public int getUserId() {
-        return userId;
-    }
+	public void setItemId(int itemId) {
+		this.itemId = itemId;
+	}
 
-    public void setUserId(int userId) {
-        this.userId = userId;
-    }
+	public int getUserId() {
+		return userId;
+	}
 
-    public String getUsername() {
-        return username;
-    }
+	public void setUserId(int userId) {
+		this.userId = userId;
+	}
 
-    public void setUsername(String username) {
-        this.username = username;
-    }
+	public String getUsername() {
+		return username;
+	}
 
-    public int getQuantityChange() {
-        return quantityChange;
-    }
+	public void setUsername(String username) {
+		this.username = username;
+	}
 
-    public void setQuantityChange(int quantityChange) {
-        this.quantityChange = quantityChange;
-    }
+	public int getQuantityChange() {
+		return quantityChange;
+	}
 
-    public String getNotes() {
-        return notes;
-    }
+	public void setQuantityChange(int quantityChange) {
+		this.quantityChange = quantityChange;
+	}
 
-    public void setNotes(String notes) {
-        this.notes = notes;
-    }
+	public String getNotes() {
+		return notes;
+	}
 
-    public LocalDateTime getTransactionTimestamp() {
-        return transactionTimestamp;
-    }
+	public void setNotes(String notes) {
+		this.notes = notes;
+	}
 
-    public void setTransactionTimestamp(LocalDateTime transactionTimestamp) {
-        this.transactionTimestamp = transactionTimestamp;
-    }
+	public LocalDateTime getTransactionTimestamp() {
+		return transactionTimestamp;
+	}
 
-    public String getFormattedTimestamp() {
-        return DateFormatter.formatDateTime(this.transactionTimestamp);
-    }
+	public void setTransactionTimestamp(LocalDateTime transactionTimestamp) {
+		this.transactionTimestamp = transactionTimestamp;
+	}
+
+	// OLD METHOD - uses a different formatter
+	public String getFormattedTimestamp() {
+		return DateFormatter.formatDateTime(this.transactionTimestamp);
+	}
+
+	// NEW GETTER for the specific locale string required by the JSP
+	public String getTransactionTimestampLocaleString() {
+		if (this.transactionTimestamp == null) {
+			return "";
+		}
+		return this.transactionTimestamp.format(GERMAN_LOCALE_FORMATTER);
+	}
 }

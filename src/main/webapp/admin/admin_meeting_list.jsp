@@ -263,31 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 form.querySelector('#description-modal').value = meeting.description || '';
 
                 if (attachments && attachments.length > 0) {
-                    attachments.forEach(att => {
-                        const li = document.createElement('li');
-                        li.id = `attachment-item-${att.id}`;
-                        li.innerHTML = `<a href="${contextPath}/download?file=${att.filepath}" target="_blank">${att.filename}</a> (Rolle: ${att.requiredRole})`;
-                        const removeBtn = document.createElement('button');
-						removeBtn.type = 'button';
-						removeBtn.className = 'btn btn-small btn-danger-outline';
-						removeBtn.innerHTML = '&times;';
-						removeBtn.onclick = () => {
-							showConfirmationModal(`Anhang '${att.filename}' wirklich löschen?`, () => {
-								const deleteForm = document.createElement('form');
-								deleteForm.method = 'post';
-								deleteForm.action = `${contextPath}/admin/meetings`;
-								deleteForm.innerHTML = `
-									<input type="hidden" name="action" value="deleteAttachment">
-									<input type="hidden" name="attachmentId" value="${att.id}">
-									<input type="hidden" name="courseId" value="${meeting.courseId}">
-								`;
-								document.body.appendChild(deleteForm);
-								deleteForm.submit();
-							});
-						};
-						li.appendChild(removeBtn);
-                        attachmentsList.appendChild(li);
-                    });
+                    attachments.forEach(att => addAttachmentRow(att, meeting.courseId));
                 } else {
                     attachmentsList.innerHTML = '<li>Keine Anhänge vorhanden.</li>';
                 }
@@ -299,6 +275,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+	
+	const addAttachmentRow = (attachment, courseId) => {
+		const li = document.createElement('li');
+		li.id = `attachment-item-${attachment.id}`;
+		li.innerHTML = `<a href="${contextPath}/download?file=${attachment.filepath}" target="_blank">${attachment.filename}</a> (Rolle: ${attachment.requiredRole})`;
+		const removeBtn = document.createElement('button');
+		removeBtn.type = 'button';
+		removeBtn.className = 'btn btn-small btn-danger-outline';
+		removeBtn.innerHTML = '&times;';
+		removeBtn.onclick = () => {
+			showConfirmationModal(`Anhang '${attachment.filename}' wirklich löschen?`, () => {
+				const deleteForm = document.createElement('form');
+				deleteForm.method = 'post';
+				deleteForm.action = `${contextPath}/admin/meetings`;
+				deleteForm.innerHTML = `
+					<input type="hidden" name="action" value="deleteAttachment">
+					<input type="hidden" name="attachmentId" value="${attachment.id}">
+					<input type="hidden" name="courseId" value="${courseId}">
+				`;
+				document.body.appendChild(deleteForm);
+				deleteForm.submit();
+			});
+		};
+		li.appendChild(removeBtn);
+		attachmentsList.appendChild(li);
+	};
 
     closeModalBtn.addEventListener('click', closeModal);
     modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });

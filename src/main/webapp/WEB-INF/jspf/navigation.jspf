@@ -1,59 +1,26 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
-	isELIgnored="false"%>
+<%-- Removed the redundant page directive --%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
-
 <%--
   navigation.jspf
-  
-  This is the standard navigation bar for a logged-in user. It provides
-  links to all user-facing sections of the application and includes user
-  actions like changing their password, theme switching, and logging out.
+  This JSP fragment contains the main sidebar navigation for the application.
 --%>
-
-<header class="app-header">
-	<a href="${pageContext.request.contextPath}/home" class="logo"
-		title="Zur Startseite"> <i class="fas fa-home"></i> Technik Team
-	</a>
-
-	<button class="mobile-nav-toggle" aria-label="Toggle Navigation">
-		<div class="line line-1"></div>
-		<div class="line line-2"></div>
-		<div class="line line-3"></div>
-	</button>
-
-	<nav class="main-nav">
-		<ul>
-			<li><a href="${pageContext.request.contextPath}/events"><i
-					class="fas fa-calendar-check"></i> Veranstaltungen</a></li>
-			<li><a href="${pageContext.request.contextPath}/lehrgaenge"><i
-					class="fas fa-book-reader"></i> LehrgÃ¤nge</a></li>
-			<li><a href="${pageContext.request.contextPath}/lager"><i
-					class="fas fa-boxes"></i> Lager</a></li>
-			<li><a href="${pageContext.request.contextPath}/dateien"><i
-					class="fas fa-file-alt"></i> Dateien</a></li>
-			<li><a href="${pageContext.request.contextPath}/passwort"><i
-					class="fas fa-key"></i> Passwort</a></li>
-		</ul>
-		<div class="user-actions">
-			<c:if test="${sessionScope.user.role == 'ADMIN'}">
-				<a href="${pageContext.request.contextPath}/admin/dashboard"
-					class="btn btn-small"
-					style="background-color: var(--warning-color); color: black;"
-					title="Zum Admin-Bereich wechseln"> <i
-					class="fas fa-user-shield"></i> Admin
-				</a>
-			</c:if>
-			<div class="theme-switch-wrapper">
-				<label class="theme-switch" for="theme-checkbox"> <input
-					type="checkbox" id="theme-checkbox" />
-					<div class="slider round"></div>
-				</label>
-			</div>
-			<a href="${pageContext.request.contextPath}/logout" id="logout-link"
-				class="btn btn-small btn-danger-outline" title="Ausloggen"> <i
-				class="fas fa-sign-out-alt"></i>
-			</a>
-		</div>
-	</nav>
-</header>
-<main>
+<nav class="main-nav">
+	<ul>
+		<li><a href="${pageContext.request.contextPath}/home"><i
+				class="fas fa-home"></i> Home</a></li>
+		<li><a href="${pageContext.request.contextPath}/events"><i
+				class="fas fa-calendar-alt"></i> Veranstaltungen</a></li>
+		<li><a href="${pageContext.request.contextPath}/lehrgaenge"><i
+				class="fas fa-chalkboard-teacher"></i> Lehrgänge</a></li>
+		<li><a href="${pageContext.request.contextPath}/lager"><i
+				class="fas fa-boxes"></i> Lager</a></li>
+		<li><a href="${pageContext.request.contextPath}/dateien"><i
+				class="fas fa-file-alt"></i> Dateien</a></li>
+		<c:if test="${sessionScope.user.role == 'ADMIN'}">
+			<hr>
+			<li><a href="${pageContext.request.contextPath}/admin/dashboard"><i
+					class="fas fa-cogs"></i> Admin-Bereich</a></li>
+		</c:if>
+	</ul>
+	<c:import url="/WEB-INF/jspf/user_actions.jspf" />
+</nav>

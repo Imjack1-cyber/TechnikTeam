@@ -275,6 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     history.forEach(entry => {
                         const changeClass = entry.quantityChange > 0 ? 'text-success' : 'text-danger';
                         const changeSign = entry.quantityChange > 0 ? '+' : '';
+                        // **FIXED HERE:** Escaped the dollar sign to prevent JSP EL parsing
                         html += `<li>
                                     <div>
                                         <strong class="${changeClass}">${changeSign}${entry.quantityChange} Stück</strong>
@@ -282,7 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         <br>
                                         <small>${entry.notes || 'Keine Notiz'}</small>
                                     </div>
-                                    <small>${new Date(entry.transactionTimestamp).toLocaleString('de-DE')}</small>
+                                    <small>${entry.transactionTimestampLocaleString}</small> 
                                  </li>`;
                     });
                 } else {

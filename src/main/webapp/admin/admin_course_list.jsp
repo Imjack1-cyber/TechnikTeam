@@ -68,12 +68,7 @@ Creating and editing courses are now handled via modal dialogs on this page.
 					href="${pageContext.request.contextPath}/admin/meetings?courseId=${course.id}"
 					class="btn btn-small btn-success">Meetings verwalten</a>
 				<button type="button" class="btn btn-small edit-course-btn"
-					data-id="${course.id}" data-name="${fn:replace(course.name, '"
-					', '&quot;')}"
-					data-abbreviation="${fn:replace(course.abbreviation, '"
-					', '&quot;')}"
-					data-description="${fn:replace(course.description, '"', '&quot;')}">Vorlage
-					bearbeiten</button>
+					data-id="${course.id}">Vorlage bearbeiten</button>
 				<form action="${pageContext.request.contextPath}/admin/courses"
 					method="post" class="js-confirm-form"
 					data-confirm-message="Vorlage '${fn:escapeXml(course.name)}' wirklich löschen? Alle zugehörigen Meetings und Qualifikationen werden auch gelöscht!">
@@ -105,12 +100,7 @@ Creating and editing courses are now handled via modal dialogs on this page.
 						href="${pageContext.request.contextPath}/admin/meetings?courseId=${course.id}"
 						class="btn btn-small btn-success">Meetings verwalten</a>
 						<button type="button" class="btn btn-small edit-course-btn"
-							data-id="${course.id}" data-name="${fn:replace(course.name, '"
-							', '&quot;')}"
-                            data-abbreviation="${fn:replace(course.abbreviation, '"
-							', '&quot;')}"
-                            data-description="${fn:replace(course.description, '"', '&quot;')}">Vorlage
-							bearbeiten</button>
+							data-id="${course.id}">Vorlage bearbeiten</button>
 						<form action="${pageContext.request.contextPath}/admin/courses"
 							method="post" class="js-confirm-form"
 							data-confirm-message="Vorlage '${fn:escapeXml(course.name)}' wirklich löschen? Alle zugehörigen Meetings und Qualifikationen werden auch gelöscht!">
@@ -156,6 +146,7 @@ Creating and editing courses are now handled via modal dialogs on this page.
 <c:import url="/WEB-INF/jspf/footer.jspf" />
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    const contextPath = "${pageContext.request.contextPath}";
     // Custom confirmation for delete forms
     document.querySelectorAll('.js-confirm-form').forEach(form => {
         form.addEventListener('submit', function(e) {
@@ -187,16 +178,27 @@ document.addEventListener('DOMContentLoaded', () => {
         modalOverlay.classList.add('active');
     };
     
-    const openEditModal = (btn) => {
+    const openEditModal = async (btn) => {
         form.reset();
-        const data = btn.dataset;
         title.textContent = "Lehrgangs-Vorlage bearbeiten";
         actionInput.value = "update";
-        idInput.value = data.id;
-        nameInput.value = data.name;
-        abbrInput.value = data.abbreviation;
-        descInput.value = data.description;
-        modalOverlay.classList.add('active');
+        const courseId = btn.dataset.id;
+        idInput.value = courseId;
+        
+        try {
+            const response = await fetch(`${contextPath}/admin/courses?action=getCourseData&id=${courseId}`);
+            if(!response.ok) throw new Error('Could not fetch course data');
+            const data = await response.json();
+
+            nameInput.value = data.name || '';
+            abbrInput.value = data.abbreviation || '';
+            descInput.value = data.description || '';
+
+            modalOverlay.classList.add('active');
+        } catch(error) {
+            console.error("Failed to open edit modal:", error);
+            alert("Fehler beim Laden der Vorlagen-Daten.");
+        }
     };
     
     document.getElementById('new-course-btn').addEventListener('click', openCreateModal);

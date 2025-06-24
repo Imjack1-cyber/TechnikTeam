@@ -1,5 +1,6 @@
 package de.technikteam.servlet.admin;
 
+import com.google.gson.Gson;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.Event;
@@ -38,6 +39,7 @@ public class AdminUserServlet extends HttpServlet {
 
 	private UserDAO userDAO;
 	private EventDAO eventDAO;
+	private Gson gson = new Gson();
 
 	@Override
 	public void init() {
@@ -55,6 +57,9 @@ public class AdminUserServlet extends HttpServlet {
 			switch (action) {
 			case "details":
 				showUserDetails(request, response);
+				break;
+			case "getUserData":
+				getUserDataAsJson(request, response);
 				break;
 			default:
 				listUsers(request, response);
@@ -111,6 +116,23 @@ public class AdminUserServlet extends HttpServlet {
 		request.getRequestDispatcher("/admin/admin_users.jsp").forward(request, response);
 	}
 
+	private void getUserDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		try {
+			int userId = Integer.parseInt(req.getParameter("id"));
+			User user = userDAO.getUserById(userId);
+			if (user != null) {
+				String userJson = gson.toJson(user);
+				resp.setContentType("application/json");
+				resp.setCharacterEncoding("UTF-8");
+				resp.getWriter().write(userJson);
+			} else {
+				resp.sendError(HttpServletResponse.SC_NOT_FOUND, "User not found");
+			}
+		} catch (NumberFormatException e) {
+			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid User ID");
+		}
+	}
+
 	private void showUserDetails(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		int userId = Integer.parseInt(request.getParameter("id"));
@@ -148,6 +170,7 @@ public class AdminUserServlet extends HttpServlet {
 		}
 		newUser.setClassName(request.getParameter("className"));
 
+		// FIXME: Passwords should be hashed in a production environment.
 		int newUserId = userDAO.createUser(newUser, pass);
 		if (newUserId > 0) {
 			User adminUser = (User) request.getSession().getAttribute("user");

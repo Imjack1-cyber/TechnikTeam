@@ -82,9 +82,6 @@ public class AdminEventServlet extends HttpServlet {
 			case "getEventData":
 				getEventDataAsJson(req, resp);
 				break;
-			case "deleteAttachment":
-				handleDeleteAttachment(req, resp);
-				break;
 			default:
 				listEvents(req, resp);
 				break;
@@ -122,6 +119,9 @@ public class AdminEventServlet extends HttpServlet {
 		case "updateStatus":
 			handleStatusUpdate(req, resp);
 			break;
+		case "deleteAttachment":
+			handleDeleteAttachment(req, resp);
+			break;
 		default:
 			logger.warn("Unknown POST action received: {}", action);
 			resp.sendRedirect(req.getContextPath() + "/admin/events");
@@ -150,6 +150,7 @@ public class AdminEventServlet extends HttpServlet {
 			Event event = eventDAO.getEventById(eventId);
 			if (event != null) {
 				event.setSkillRequirements(eventDAO.getSkillRequirementsForEvent(eventId));
+				// For the modal, we need all reserved items, not just names
 				event.setReservedItems(eventDAO.getReservedItemsForEvent(eventId));
 				event.setAttachments(attachmentDAO.getAttachmentsForEvent(eventId, "ADMIN"));
 				String eventJson = gson.toJson(event);
@@ -299,7 +300,7 @@ public class AdminEventServlet extends HttpServlet {
 			if (attachmentDAO.deleteAttachment(attachmentId)) {
 				AdminLogService.log(adminUser.getUsername(), "DELETE_EVENT_ATTACHMENT", "Anhang '"
 						+ attachment.getFilename() + "' von Event ID " + attachment.getEventId() + " gelöscht.");
-				resp.setStatus(HttpServletResponse.SC_OK);
+				resp.setContentType("application/json");
 				resp.getWriter().write("{\"message\":\"Anhang gelöscht\"}");
 			} else {
 				resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
