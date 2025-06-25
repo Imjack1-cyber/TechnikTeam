@@ -2,24 +2,10 @@
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
-<%--
-  home.jsp
-  
-  This is the main landing page (dashboard) for a logged-in user. It provides
-  a welcome message and a quick overview of their upcoming commitments,
-  displaying the next few events and meetings they are eligible for or
-  signed up for.
-  
-  - It is served by: HomeServlet.
-  - Expected attributes:
-    - 'upcomingEvents' (List<de.technikteam.model.Event>): A list of the next 3 events.
-    - 'upcomingMeetings' (List<de.technikteam.model.Meeting>): A list of the next 3 meetings.
---%>
-
 <c:import url="/WEB-INF/jspf/header.jspf">
-	<c:param name="title" value="Home" />
+	<c:param name="pageTitle" value="Home" />
+	<c:param name="navType" value="user" />
 </c:import>
-<c:import url="/WEB-INF/jspf/navigation.jspf" />
 
 <h1>
 	Willkommen zurück,

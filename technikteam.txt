@@ -2425,6 +2425,138 @@ public class MeetingDAO {
 }
 
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\dao\PasskeyCredentialDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import de.technikteam.model.PasskeyCredential;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Data Access Object for managing Passkey (WebAuthn) credentials in the
+ * `user_passkeys` table.
+ */
+public class PasskeyCredentialDAO {
+	private static final Logger logger = LogManager.getLogger(PasskeyCredentialDAO.class);
+
+	/**
+	 * Adds a new passkey credential to the database for a user.
+	 *
+	 * @param credential The PasskeyCredential object to save.
+	 */
+	public void addCredential(PasskeyCredential credential) {
+		String sql = "INSERT INTO user_passkeys (user_id, name, credential_id, public_key, signature_count, user_handle) VALUES (?, ?, ?, ?, ?, ?)";
+		logger.debug("Adding passkey for user ID {}", credential.getUserId());
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, credential.getUserId());
+			pstmt.setString(2, credential.getName());
+			pstmt.setString(3, credential.getCredentialId());
+			pstmt.setString(4, credential.getPublicKey());
+			pstmt.setLong(5, credential.getSignatureCount());
+			pstmt.setString(6, credential.getUserHandle());
+			pstmt.executeUpdate();
+		} catch (SQLException e) {
+			logger.error("Error adding passkey credential for user ID {}", credential.getUserId(), e);
+		}
+	}
+
+	/**
+	 * Retrieves all passkey credentials registered for a specific user.
+	 *
+	 * @param userId The ID of the user.
+	 * @return A list of PasskeyCredential objects.
+	 */
+	public List<PasskeyCredential> getCredentialsForUser(int userId) {
+		List<PasskeyCredential> credentials = new ArrayList<>();
+		String sql = "SELECT * FROM user_passkeys WHERE user_id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, userId);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					credentials.add(mapResultSetToCredential(rs));
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching passkeys for user ID {}", userId, e);
+		}
+		return credentials;
+	}
+
+	/**
+	 * Retrieves a passkey credential by its unique credential ID.
+	 *
+	 * @param credentialId The base64url-encoded credential ID.
+	 * @return An Optional containing the PasskeyCredential if found.
+	 */
+	public Optional<PasskeyCredential> getCredentialById(String credentialId) {
+		String sql = "SELECT * FROM user_passkeys WHERE credential_id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setString(1, credentialId);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				if (rs.next()) {
+					return Optional.of(mapResultSetToCredential(rs));
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching passkey by credential ID {}", credentialId, e);
+		}
+		return Optional.empty();
+	}
+
+	/**
+	 * Updates the signature count for a given credential after a successful login.
+	 *
+	 * @param credentialId      The ID of the credential to update.
+	 * @param newSignatureCount The new signature count.
+	 */
+	public void updateSignatureCount(String credentialId, long newSignatureCount) {
+		String sql = "UPDATE user_passkeys SET signature_count = ? WHERE credential_id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setLong(1, newSignatureCount);
+			pstmt.setString(2, credentialId);
+			pstmt.executeUpdate();
+		} catch (SQLException e) {
+			logger.error("Error updating signature count for credential ID {}", credentialId, e);
+		}
+	}
+
+	/**
+	 * Deletes a passkey credential from the database.
+	 *
+	 * @param credentialId The ID of the credential to delete.
+	 * @param userId       The ID of the user who owns the credential.
+	 * @return true if the deletion was successful, false otherwise.
+	 */
+	public boolean deleteCredential(int credentialId, int userId) {
+		String sql = "DELETE FROM user_passkeys WHERE id = ? AND user_id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, credentialId);
+			pstmt.setInt(2, userId);
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("Error deleting passkey ID {} for user ID {}", credentialId, userId, e);
+			return false;
+		}
+	}
+
+	private PasskeyCredential mapResultSetToCredential(ResultSet rs) throws SQLException {
+		return new PasskeyCredential(rs.getInt("id"), rs.getInt("user_id"), rs.getString("name"),
+				rs.getString("credential_id"), rs.getString("public_key"), rs.getLong("signature_count"),
+				rs.getString("user_handle"), rs.getTimestamp("created_at").toLocalDateTime());
+	}
+}
+
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\dao\StatisticsDAO.java
 ========================================================================
 
@@ -4558,6 +4690,114 @@ public class ParticipationHistory {
 }
 
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\model\PasskeyCredential.java
+========================================================================
+
+package de.technikteam.model;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+/**
+ * Represents a single Passkey (WebAuthn) credential record from the
+ * `user_passkeys` table.
+ */
+public class PasskeyCredential {
+	private int id;
+	private int userId;
+	private String name;
+	private String credentialId;
+	private String publicKey;
+	private long signatureCount;
+	private String userHandle;
+	private LocalDateTime createdAt;
+
+	public PasskeyCredential(int id, int userId, String name, String credentialId, String publicKey,
+			long signatureCount, String userHandle, LocalDateTime createdAt) {
+		this.id = id;
+		this.userId = userId;
+		this.name = name;
+		this.credentialId = credentialId;
+		this.publicKey = publicKey;
+		this.signatureCount = signatureCount;
+		this.userHandle = userHandle;
+		this.createdAt = createdAt;
+	}
+
+	public PasskeyCredential() {
+	}
+
+	public String getFormattedCreatedAt() {
+		return createdAt != null ? createdAt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")) : "N/A";
+	}
+
+	// --- Getters and Setters ---
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	public int getUserId() {
+		return userId;
+	}
+
+	public void setUserId(int userId) {
+		this.userId = userId;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public String getCredentialId() {
+		return credentialId;
+	}
+
+	public void setCredentialId(String credentialId) {
+		this.credentialId = credentialId;
+	}
+
+	public String getPublicKey() {
+		return publicKey;
+	}
+
+	public void setPublicKey(String publicKey) {
+		this.publicKey = publicKey;
+	}
+
+	public long getSignatureCount() {
+		return signatureCount;
+	}
+
+	public void setSignatureCount(long signatureCount) {
+		this.signatureCount = signatureCount;
+	}
+
+	public String getUserHandle() {
+		return userHandle;
+	}
+
+	public void setUserHandle(String userHandle) {
+		this.userHandle = userHandle;
+	}
+
+	public LocalDateTime getCreatedAt() {
+		return createdAt;
+	}
+
+	public void setCreatedAt(LocalDateTime createdAt) {
+		this.createdAt = createdAt;
+	}
+}
+
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\model\SkillRequirement.java
 ========================================================================
 
@@ -4759,81 +4999,173 @@ package de.technikteam.model;
 
 import de.technikteam.config.DateFormatter;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
- * A Data Transfer Object (DTO) to represent a single entry from the storage_log table,
- * enriched with the username of the person who performed the transaction.
+ * A Data Transfer Object (DTO) to represent a single entry from the storage_log
+ * table, enriched with the username of the person who performed the
+ * transaction.
  */
 public class StorageLogEntry {
-    private int id;
-    private int itemId;
-    private int userId;
-    private String username;
-    private int quantityChange;
-    private String notes;
-    private LocalDateTime transactionTimestamp;
+	private int id;
+	private int itemId;
+	private int userId;
+	private String username;
+	private int quantityChange;
+	private String notes;
+	private LocalDateTime transactionTimestamp;
 
-    // --- Getters and Setters ---
+	// Define the formatter here
+	private static final DateTimeFormatter GERMAN_LOCALE_FORMATTER = DateTimeFormatter
+			.ofPattern("dd.MM.yyyy, HH:mm:ss");
 
-    public int getId() {
-        return id;
-    }
+	// --- Getters and Setters ---
 
-    public void setId(int id) {
-        this.id = id;
-    }
+	public int getId() {
+		return id;
+	}
 
-    public int getItemId() {
-        return itemId;
-    }
+	public void setId(int id) {
+		this.id = id;
+	}
 
-    public void setItemId(int itemId) {
-        this.itemId = itemId;
-    }
+	public int getItemId() {
+		return itemId;
+	}
 
-    public int getUserId() {
-        return userId;
-    }
+	public void setItemId(int itemId) {
+		this.itemId = itemId;
+	}
 
-    public void setUserId(int userId) {
-        this.userId = userId;
-    }
+	public int getUserId() {
+		return userId;
+	}
 
-    public String getUsername() {
-        return username;
-    }
+	public void setUserId(int userId) {
+		this.userId = userId;
+	}
 
-    public void setUsername(String username) {
-        this.username = username;
-    }
+	public String getUsername() {
+		return username;
+	}
 
-    public int getQuantityChange() {
-        return quantityChange;
-    }
+	public void setUsername(String username) {
+		this.username = username;
+	}
 
-    public void setQuantityChange(int quantityChange) {
-        this.quantityChange = quantityChange;
-    }
+	public int getQuantityChange() {
+		return quantityChange;
+	}
 
-    public String getNotes() {
-        return notes;
-    }
+	public void setQuantityChange(int quantityChange) {
+		this.quantityChange = quantityChange;
+	}
 
-    public void setNotes(String notes) {
-        this.notes = notes;
-    }
+	public String getNotes() {
+		return notes;
+	}
 
-    public LocalDateTime getTransactionTimestamp() {
-        return transactionTimestamp;
-    }
+	public void setNotes(String notes) {
+		this.notes = notes;
+	}
 
-    public void setTransactionTimestamp(LocalDateTime transactionTimestamp) {
-        this.transactionTimestamp = transactionTimestamp;
-    }
+	public LocalDateTime getTransactionTimestamp() {
+		return transactionTimestamp;
+	}
 
-    public String getFormattedTimestamp() {
-        return DateFormatter.formatDateTime(this.transactionTimestamp);
-    }
+	public void setTransactionTimestamp(LocalDateTime transactionTimestamp) {
+		this.transactionTimestamp = transactionTimestamp;
+	}
+
+	// OLD METHOD - uses a different formatter
+	public String getFormattedTimestamp() {
+		return DateFormatter.formatDateTime(this.transactionTimestamp);
+	}
+
+	// NEW GETTER for the specific locale string required by the JSP
+	public String getTransactionTimestampLocaleString() {
+		if (this.transactionTimestamp == null) {
+			return "";
+		}
+		return this.transactionTimestamp.format(GERMAN_LOCALE_FORMATTER);
+	}
+}
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\model\SystemStatsDTO.java
+========================================================================
+
+package de.technikteam.model;
+
+/**
+ * A Data Transfer Object (DTO) for holding system statistics.
+ */
+public class SystemStatsDTO {
+	private double cpuLoad;
+	private long totalMemory;
+	private long usedMemory;
+	private long totalDiskSpace;
+	private long usedDiskSpace;
+	private String uptime;
+	private int batteryPercentage;
+
+	// --- Getters and Setters ---
+
+	public double getCpuLoad() {
+		return cpuLoad;
+	}
+
+	public void setCpuLoad(double cpuLoad) {
+		this.cpuLoad = cpuLoad;
+	}
+
+	public long getTotalMemory() {
+		return totalMemory;
+	}
+
+	public void setTotalMemory(long totalMemory) {
+		this.totalMemory = totalMemory;
+	}
+
+	public long getUsedMemory() {
+		return usedMemory;
+	}
+
+	public void setUsedMemory(long usedMemory) {
+		this.usedMemory = usedMemory;
+	}
+
+	public long getTotalDiskSpace() {
+		return totalDiskSpace;
+	}
+
+	public void setTotalDiskSpace(long totalDiskSpace) {
+		this.totalDiskSpace = totalDiskSpace;
+	}
+
+	public long getUsedDiskSpace() {
+		return usedDiskSpace;
+	}
+
+	public void setUsedDiskSpace(long usedDiskSpace) {
+		this.usedDiskSpace = usedDiskSpace;
+	}
+
+	public String getUptime() {
+		return uptime;
+	}
+
+	public void setUptime(String uptime) {
+		this.uptime = uptime;
+	}
+
+	public int getBatteryPercentage() {
+		return batteryPercentage;
+	}
+
+	public void setBatteryPercentage(int batteryPercentage) {
+		this.batteryPercentage = batteryPercentage;
+	}
 }
 
 ========================================================================
@@ -5131,6 +5463,276 @@ public class NotificationService {
 }
 
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\service\PasskeyService.java
+========================================================================
+
+package de.technikteam.service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.yubico.webauthn.*;
+import com.yubico.webauthn.data.*;
+import com.yubico.webauthn.exception.RegistrationFailedException;
+import com.yubico.webauthn.exception.VerificationFailedException;
+import de.technikteam.dao.PasskeyCredentialDAO;
+import de.technikteam.model.PasskeyCredential;
+import de.technikteam.model.User;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * A service to handle the business logic of WebAuthn (Passkey) authentication,
+ * using the Yubico library.
+ */
+public class PasskeyService {
+	private static final Logger logger = LogManager.getLogger(PasskeyService.class);
+	private final RelyingParty relyingParty;
+	private final PasskeyCredentialDAO passkeyDAO = new PasskeyCredentialDAO();
+
+	// --- Singleton Pattern ---
+	private static PasskeyService INSTANCE;
+
+	private PasskeyService() {
+		// This should be configured from a properties file in a real application
+		RelyingPartyIdentity rpIdentity = RelyingPartyIdentity.builder().id("localhost") // The domain where the app is
+																							// running
+				.name("TechnikTeam Web App").build();
+
+		this.relyingParty = RelyingParty.builder().identity(rpIdentity)
+				.credentialRepository(new InMemoryPasskeyRepository(passkeyDAO)).allowOriginPort(true) // Allow
+																										// development
+																										// on
+																										// localhost:8080
+				.allowOriginSubdomain(false).build();
+	}
+
+	public static synchronized PasskeyService getInstance() {
+		if (INSTANCE == null) {
+			INSTANCE = new PasskeyService();
+		}
+		return INSTANCE;
+	}
+
+	// --- Registration Logic ---
+	public String startRegistration(User user) throws JsonProcessingException {
+		List<PasskeyCredential> existingCredentials = passkeyDAO.getCredentialsForUser(user.getId());
+		List<PublicKeyCredentialDescriptor> excludeCredentials = existingCredentials.stream()
+				.map(cred -> PublicKeyCredentialDescriptor.builder().id(ByteArray.fromBase64Url(cred.getCredentialId()))
+						.build())
+				.collect(Collectors.toList());
+
+		StartRegistrationOptions options = StartRegistrationOptions.builder()
+				.user(UserIdentity.builder().name(user.getUsername()).displayName(user.getUsername())
+						.id(new ByteArray(user.getUsername().getBytes())).build())
+				.authenticatorSelection(AuthenticatorSelectionCriteria.builder()
+						.authenticatorAttachment(AuthenticatorAttachment.PLATFORM)
+						.residentKey(ResidentKeyRequirement.PREFERRED)
+						.userVerification(UserVerificationRequirement.PREFERRED).build())
+				.excludeCredentials(excludeCredentials).build();
+
+		PublicKeyCredentialCreationOptions registration = relyingParty.startRegistration(options);
+		logger.info("Started passkey registration for user: {}", user.getUsername());
+		return registration.toJson();
+	}
+
+	public boolean finishRegistration(String credentialJson, String requestJson, User user, String passkeyName) {
+		try {
+			PublicKeyCredential<AuthenticatorAttestationResponse, ClientRegistrationExtensionOutputs> credential = PublicKeyCredential
+					.parseRegistrationResponseJson(credentialJson);
+			FinishRegistrationOptions options = FinishRegistrationOptions.builder()
+					.request(PublicKeyCredentialCreationOptions.fromJson(requestJson)).response(credential).build();
+			RegistrationResult result = relyingParty.finishRegistration(options);
+
+			PasskeyCredential newCredential = new PasskeyCredential();
+			newCredential.setUserId(user.getId());
+			newCredential.setName(passkeyName);
+			newCredential.setCredentialId(result.getKeyId().getId().getBase64Url());
+			newCredential.setPublicKey(result.getPublicKeyCose().getBase64());
+			newCredential.setSignatureCount(result.getSignatureCount());
+			newCredential.setUserHandle(credential.getResponse().getUserHandle().get().getBase64Url());
+			passkeyDAO.addCredential(newCredential);
+
+			logger.info("Successfully finished passkey registration for user: {}", user.getUsername());
+			return true;
+		} catch (RegistrationFailedException | IOException e) {
+			logger.error("Passkey registration failed for user {}", user.getUsername(), e);
+			return false;
+		}
+	}
+
+	// --- Authentication Logic ---
+	public String startAuthentication() throws JsonProcessingException {
+		StartAuthenticationOptions options = StartAuthenticationOptions.builder()
+				.userVerification(UserVerificationRequirement.PREFERRED).build();
+		PublicKeyCredentialRequestOptions requestOptions = relyingParty.startAuthentication(options);
+		logger.info("Started passkey authentication ceremony.");
+		return requestOptions.toJson();
+	}
+
+	public Optional<User> finishAuthentication(String credentialJson, String requestJson, String userHandle) {
+		try {
+			PublicKeyCredential<AuthenticatorAssertionResponse, ClientAuthenticationExtensionOutputs> credential = PublicKeyCredential
+					.parseAssertionResponseJson(credentialJson);
+			FinishAuthenticationOptions options = FinishAuthenticationOptions.builder()
+					.request(PublicKeyCredentialRequestOptions.fromJson(requestJson)).response(credential).build();
+			AuthenticationResult result = relyingParty.finishAuthentication(options);
+
+			if (result.isSuccess()) {
+				passkeyDAO.updateSignatureCount(result.getCredential().getCredentialId().getBase64Url(),
+						result.getSignatureCount());
+				UserDAO userDAO = new UserDAO();
+				User user = userDAO.getUserByUsername(result.getUsername());
+				logger.info("Passkey authentication successful for user: {}", result.getUsername());
+				return Optional.ofNullable(user);
+			}
+		} catch (VerificationFailedException | IOException e) {
+			logger.error("Passkey authentication failed for user handle: {}", userHandle, e);
+		}
+		return Optional.empty();
+	}
+
+	// --- Yubico Library Helper Class ---
+	private static class InMemoryPasskeyRepository implements CredentialRepository {
+		private final PasskeyCredentialDAO passkeyDAO;
+
+		public InMemoryPasskeyRepository(PasskeyCredentialDAO passkeyDAO) {
+			this.passkeyDAO = passkeyDAO;
+		}
+
+		@Override
+		public Set<PublicKeyCredentialDescriptor> getCredentialIdsForUsername(String username) {
+			User user = new UserDAO().getUserByUsername(username);
+			if (user != null) {
+				return passkeyDAO.getCredentialsForUser(user.getId()).stream().map(c -> PublicKeyCredentialDescriptor
+						.builder().id(ByteArray.fromBase64Url(c.getCredentialId())).build())
+						.collect(Collectors.toSet());
+			}
+			return Set.of();
+		}
+
+		@Override
+		public Optional<ByteArray> getUserHandleForUsername(String username) {
+			User user = new UserDAO().getUserByUsername(username);
+			if (user != null) {
+				List<PasskeyCredential> creds = passkeyDAO.getCredentialsForUser(user.getId());
+				if (!creds.isEmpty()) {
+					return Optional.of(ByteArray.fromBase64Url(creds.get(0).getUserHandle()));
+				}
+			}
+			return Optional.empty();
+		}
+
+		@Override
+		public Optional<String> getUsernameForUserHandle(ByteArray userHandle) {
+			return passkeyDAO.getCredentialsForUser(0).stream() // Hacky way to check all
+					.filter(c -> c.getUserHandle().equals(userHandle.getBase64Url()))
+					.map(c -> new UserDAO().getUserById(c.getUserId()).getUsername()).findFirst();
+		}
+
+		@Override
+		public Optional<RegisteredCredential> lookup(ByteArray credentialId, ByteArray userHandle) {
+			return passkeyDAO.getCredentialById(credentialId.getBase64Url())
+					.map(c -> RegisteredCredential.builder().credentialId(ByteArray.fromBase64Url(c.getCredentialId()))
+							.userHandle(ByteArray.fromBase64Url(c.getUserHandle()))
+							.publicKeyCose(ByteArray.fromBase64(c.getPublicKey())).signatureCount(c.getSignatureCount())
+							.build());
+		}
+
+		@Override
+		public Set<RegisteredCredential> lookupAll(ByteArray credentialId) {
+			return passkeyDAO.getCredentialById(credentialId.getBase64Url()).stream()
+					.map(c -> RegisteredCredential.builder().credentialId(ByteArray.fromBase64Url(c.getCredentialId()))
+							.userHandle(ByteArray.fromBase64Url(c.getUserHandle()))
+							.publicKeyCose(ByteArray.fromBase64(c.getPublicKey())).signatureCount(c.getSignatureCount())
+							.build())
+					.collect(Collectors.toSet());
+		}
+	}
+}
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\service\SystemInfoService.java
+========================================================================
+
+package de.technikteam.service;
+
+import com.sun.management.OperatingSystemMXBean;
+import de.technikteam.model.SystemStatsDTO;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.File;
+import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * A service to gather system statistics from the underlying OS.
+ */
+public class SystemInfoService {
+	private static final Logger logger = LogManager.getLogger(SystemInfoService.class);
+	private static final long MEGA_BYTE = 1024L * 1024L;
+
+	public SystemStatsDTO getSystemStats() {
+		SystemStatsDTO stats = new SystemStatsDTO();
+		OperatingSystemMXBean osBean = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean.class);
+		Runtime runtime = Runtime.getRuntime();
+		File root = new File("/");
+
+		// CPU
+		stats.setCpuLoad(osBean.getSystemCpuLoad() * 100.0);
+
+		// Memory
+		stats.setTotalMemory(runtime.totalMemory() / MEGA_BYTE);
+		stats.setUsedMemory((runtime.totalMemory() - runtime.freeMemory()) / MEGA_BYTE);
+
+		// Disk
+		stats.setTotalDiskSpace(root.getTotalSpace() / MEGA_BYTE);
+		stats.setUsedDiskSpace((root.getTotalSpace() - root.getUsableSpace()) / MEGA_BYTE);
+
+		// Uptime (Linux specific)
+		stats.setUptime(getSystemUptime());
+
+		// Battery (Linux specific)
+		stats.setBatteryPercentage(getBatteryPercentage());
+
+		return stats;
+	}
+
+	private String getSystemUptime() {
+		try {
+			String content = new String(Files.readAllBytes(Paths.get("/proc/uptime")));
+			double uptimeSeconds = Double.parseDouble(content.split(" ")[0]);
+			long days = TimeUnit.SECONDS.toDays((long) uptimeSeconds);
+			long hours = TimeUnit.SECONDS.toHours((long) uptimeSeconds) % 24;
+			long minutes = TimeUnit.SECONDS.toMinutes((long) uptimeSeconds) % 60;
+			return String.format("%d Tage, %d Stunden, %d Minuten", days, hours, minutes);
+		} catch (IOException | NumberFormatException e) {
+			logger.warn("Could not read /proc/uptime. Uptime not available. OS might not be Linux.", e);
+			return "Nicht verfügbar";
+		}
+	}
+
+	private int getBatteryPercentage() {
+		try {
+			// Common path for laptop batteries on Linux
+			String content = new String(Files.readAllBytes(Paths.get("/sys/class/power_supply/BAT0/capacity")));
+			return Integer.parseInt(content.trim());
+		} catch (IOException | NumberFormatException e) {
+			logger.trace("Could not read battery status. System might not have a battery or is not Linux.");
+			return -1; // Indicates no battery
+		}
+	}
+}
+
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminAttendanceServlet.java
 ========================================================================
 
@@ -5231,6 +5833,7 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.servlet.admin;
 
+import com.google.gson.Gson;
 import de.technikteam.dao.CourseDAO;
 import de.technikteam.model.Course;
 import de.technikteam.model.User;
@@ -5261,6 +5864,7 @@ public class AdminCourseServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminCourseServlet.class);
 	private CourseDAO courseDAO;
+	private Gson gson = new Gson();
 
 	@Override
 	public void init() {
@@ -5269,6 +5873,12 @@ public class AdminCourseServlet extends HttpServlet {
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		String action = req.getParameter("action");
+		if ("getCourseData".equals(action)) {
+			getCourseDataAsJson(req, resp);
+			return;
+		}
+
 		logger.info("Listing all course templates for admin view.");
 		List<Course> courseList = courseDAO.getAllCourses();
 		req.setAttribute("courseList", courseList);
@@ -5287,6 +5897,23 @@ public class AdminCourseServlet extends HttpServlet {
 		} else {
 			logger.warn("Unknown POST action received: {}", action);
 			resp.sendRedirect(req.getContextPath() + "/admin/courses");
+		}
+	}
+
+	private void getCourseDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		try {
+			int courseId = Integer.parseInt(req.getParameter("id"));
+			Course course = courseDAO.getCourseById(courseId);
+			if (course != null) {
+				String courseJson = gson.toJson(course);
+				resp.setContentType("application/json");
+				resp.setCharacterEncoding("UTF-8");
+				resp.getWriter().write(courseJson);
+			} else {
+				resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Course not found");
+			}
+		} catch (NumberFormatException e) {
+			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid course ID");
 		}
 	}
 
@@ -5499,9 +6126,6 @@ public class AdminEventServlet extends HttpServlet {
 			case "getEventData":
 				getEventDataAsJson(req, resp);
 				break;
-			case "deleteAttachment":
-				handleDeleteAttachment(req, resp);
-				break;
 			default:
 				listEvents(req, resp);
 				break;
@@ -5539,6 +6163,9 @@ public class AdminEventServlet extends HttpServlet {
 		case "updateStatus":
 			handleStatusUpdate(req, resp);
 			break;
+		case "deleteAttachment":
+			handleDeleteAttachment(req, resp);
+			break;
 		default:
 			logger.warn("Unknown POST action received: {}", action);
 			resp.sendRedirect(req.getContextPath() + "/admin/events");
@@ -5567,6 +6194,7 @@ public class AdminEventServlet extends HttpServlet {
 			Event event = eventDAO.getEventById(eventId);
 			if (event != null) {
 				event.setSkillRequirements(eventDAO.getSkillRequirementsForEvent(eventId));
+				// For the modal, we need all reserved items, not just names
 				event.setReservedItems(eventDAO.getReservedItemsForEvent(eventId));
 				event.setAttachments(attachmentDAO.getAttachmentsForEvent(eventId, "ADMIN"));
 				String eventJson = gson.toJson(event);
@@ -5716,7 +6344,7 @@ public class AdminEventServlet extends HttpServlet {
 			if (attachmentDAO.deleteAttachment(attachmentId)) {
 				AdminLogService.log(adminUser.getUsername(), "DELETE_EVENT_ATTACHMENT", "Anhang '"
 						+ attachment.getFilename() + "' von Event ID " + attachment.getEventId() + " gelöscht.");
-				resp.setStatus(HttpServletResponse.SC_OK);
+				resp.setContentType("application/json");
 				resp.getWriter().write("{\"message\":\"Anhang gelöscht\"}");
 			} else {
 				resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
@@ -6412,6 +7040,7 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.servlet.admin;
 
+import com.google.gson.Gson;
 import de.technikteam.config.AppConfig;
 import de.technikteam.dao.StorageDAO;
 import de.technikteam.model.StorageItem;
@@ -6452,6 +7081,7 @@ public class AdminStorageServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminStorageServlet.class.getName());
 	private StorageDAO storageDAO;
+	private Gson gson = new Gson();
 
 	@Override
 	public void init() {
@@ -6461,6 +7091,12 @@ public class AdminStorageServlet extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+		String action = request.getParameter("action");
+		if ("getItemData".equals(action)) {
+			getItemDataAsJson(request, response);
+			return;
+		}
+
 		try {
 			logger.info("Listing all storage items for admin view.");
 			Map<String, List<StorageItem>> groupedItems = storageDAO.getAllItemsGroupedByLocation();
@@ -6499,6 +7135,23 @@ public class AdminStorageServlet extends HttpServlet {
 				logger.warn("Unknown non-multipart action received: {}", action);
 				response.sendRedirect(request.getContextPath() + "/admin/storage");
 			}
+		}
+	}
+
+	private void getItemDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		try {
+			int itemId = Integer.parseInt(req.getParameter("id"));
+			StorageItem item = storageDAO.getItemById(itemId);
+			if (item != null) {
+				String itemJson = gson.toJson(item);
+				resp.setContentType("application/json");
+				resp.setCharacterEncoding("UTF-8");
+				resp.getWriter().write(itemJson);
+			} else {
+				resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Item not found");
+			}
+		} catch (NumberFormatException e) {
+			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid item ID");
 		}
 	}
 
@@ -6613,6 +7266,32 @@ public class AdminStorageServlet extends HttpServlet {
 		response.sendRedirect(request.getContextPath() + "/admin/storage");
 	}
 
+}
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminSystemServlet.java
+========================================================================
+
+package de.technikteam.servlet.admin;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+/**
+ * Forwards to the system status dashboard page.
+ */
+@WebServlet("/admin/system")
+public class AdminSystemServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		request.getRequestDispatcher("/admin/admin_system.jsp").forward(request, response);
+	}
 }
 
 ========================================================================
@@ -6757,6 +7436,7 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.servlet.admin;
 
+import com.google.gson.Gson;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.Event;
@@ -6795,6 +7475,7 @@ public class AdminUserServlet extends HttpServlet {
 
 	private UserDAO userDAO;
 	private EventDAO eventDAO;
+	private Gson gson = new Gson();
 
 	@Override
 	public void init() {
@@ -6812,6 +7493,9 @@ public class AdminUserServlet extends HttpServlet {
 			switch (action) {
 			case "details":
 				showUserDetails(request, response);
+				break;
+			case "getUserData":
+				getUserDataAsJson(request, response);
 				break;
 			default:
 				listUsers(request, response);
@@ -6868,6 +7552,23 @@ public class AdminUserServlet extends HttpServlet {
 		request.getRequestDispatcher("/admin/admin_users.jsp").forward(request, response);
 	}
 
+	private void getUserDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		try {
+			int userId = Integer.parseInt(req.getParameter("id"));
+			User user = userDAO.getUserById(userId);
+			if (user != null) {
+				String userJson = gson.toJson(user);
+				resp.setContentType("application/json");
+				resp.setCharacterEncoding("UTF-8");
+				resp.getWriter().write(userJson);
+			} else {
+				resp.sendError(HttpServletResponse.SC_NOT_FOUND, "User not found");
+			}
+		} catch (NumberFormatException e) {
+			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid User ID");
+		}
+	}
+
 	private void showUserDetails(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		int userId = Integer.parseInt(request.getParameter("id"));
@@ -6905,6 +7606,7 @@ public class AdminUserServlet extends HttpServlet {
 		}
 		newUser.setClassName(request.getParameter("className"));
 
+		// FIXME: Passwords should be hashed in a production environment.
 		int newUserId = userDAO.createUser(newUser, pass);
 		if (newUserId > 0) {
 			User adminUser = (User) request.getSession().getAttribute("user");
@@ -7131,6 +7833,188 @@ public class MatrixServlet extends HttpServlet {
 
 		logger.info("Data generation for matrix complete. Forwarding to admin_matrix.jsp.");
 		request.getRequestDispatcher("/admin/admin_matrix.jsp").forward(request, response);
+	}
+}
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\api\PasskeyApiServlet.java
+========================================================================
+
+package de.technikteam.servlet.api;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import de.technikteam.dao.UserDAO;
+import de.technikteam.model.User;
+import de.technikteam.service.PasskeyService;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+/**
+ * Provides the REST-like API endpoints for WebAuthn (Passkey) registration and
+ * login.
+ */
+@WebServlet("/api/passkey/*")
+public class PasskeyApiServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(PasskeyApiServlet.class);
+	private final PasskeyService passkeyService = PasskeyService.getInstance();
+
+	@Override
+	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		String action = req.getPathInfo();
+		if (action == null) {
+			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "No action specified.");
+			return;
+		}
+
+		switch (action) {
+		case "/register/start":
+			handleStartRegistration(req, resp);
+			break;
+		case "/register/finish":
+			handleFinishRegistration(req, resp);
+			break;
+		case "/login/start":
+			handleStartLogin(req, resp);
+			break;
+		case "/login/finish":
+			handleFinishLogin(req, resp);
+			break;
+		default:
+			resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Unknown passkey action.");
+			break;
+		}
+	}
+
+	private void handleStartRegistration(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		User user = (User) req.getSession().getAttribute("user");
+		if (user == null) {
+			resp.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+			return;
+		}
+		try {
+			String options = passkeyService.startRegistration(user);
+			req.getSession().setAttribute("passkeyRegistrationRequest", options);
+			resp.setContentType("application/json");
+			resp.getWriter().write(options);
+		} catch (JsonProcessingException e) {
+			logger.error("Error starting passkey registration", e);
+			resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	private void handleFinishRegistration(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		User user = (User) req.getSession().getAttribute("user");
+		String registrationRequest = (String) req.getSession().getAttribute("passkeyRegistrationRequest");
+		if (user == null || registrationRequest == null) {
+			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "No registration in progress.");
+			return;
+		}
+
+		String credentialJson = req.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
+		String passkeyName = req.getParameter("name");
+		if (passkeyName == null || passkeyName.isBlank()) {
+			passkeyName = "Unbenannter Schlüssel";
+		}
+
+		boolean success = passkeyService.finishRegistration(credentialJson, registrationRequest, user, passkeyName);
+		if (success) {
+			resp.setStatus(HttpServletResponse.SC_OK);
+		} else {
+			resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Registration failed.");
+		}
+		req.getSession().removeAttribute("passkeyRegistrationRequest");
+	}
+
+	private void handleStartLogin(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		try {
+			String options = passkeyService.startAuthentication();
+			req.getSession().setAttribute("passkeyLoginRequest", options);
+			resp.setContentType("application/json");
+			resp.getWriter().write(options);
+		} catch (JsonProcessingException e) {
+			logger.error("Error starting passkey login", e);
+			resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	private void handleFinishLogin(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		String loginRequest = (String) req.getSession().getAttribute("passkeyLoginRequest");
+		if (loginRequest == null) {
+			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "No login in progress.");
+			return;
+		}
+
+		String credentialJson = req.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
+		String userHandle = req.getParameter("userHandle");
+
+		Optional<User> userOpt = passkeyService.finishAuthentication(credentialJson, loginRequest, userHandle);
+
+		if (userOpt.isPresent()) {
+			User user = userOpt.get();
+			HttpSession session = req.getSession(true);
+			session.setAttribute("user", user);
+			session.setAttribute("username", user.getUsername());
+			session.setAttribute("role", user.getRole());
+			resp.setStatus(HttpServletResponse.SC_OK);
+		} else {
+			resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Passkey authentication failed.");
+		}
+		req.getSession().removeAttribute("passkeyLoginRequest");
+	}
+}
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\api\SystemStatsApiServlet.java
+========================================================================
+
+package de.technikteam.servlet.api;
+
+import com.google.gson.Gson;
+import de.technikteam.model.SystemStatsDTO;
+import de.technikteam.service.SystemInfoService;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+/**
+ * Provides system statistics as a JSON API endpoint. This servlet is protected
+ * by the AdminFilter.
+ */
+@WebServlet("/api/admin/system-stats")
+public class SystemStatsApiServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private SystemInfoService systemInfoService;
+	private Gson gson;
+
+	@Override
+	public void init() throws ServletException {
+		systemInfoService = new SystemInfoService();
+		gson = new Gson();
+	}
+
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		SystemStatsDTO stats = systemInfoService.getSystemStats();
+		String jsonResponse = gson.toJson(stats);
+
+		response.setContentType("application/json");
+		response.setCharacterEncoding("UTF-8");
+		response.getWriter().write(jsonResponse);
 	}
 }
 
@@ -7584,7 +8468,7 @@ public class EventDetailsServlet extends HttpServlet {
 
 			// For Admins and Users, provide the list of assigned users for the task assignment
 			// dropdown
-			if ("ADMIN".equalsIgnoreCase(user.getRole()) || "NUTZER".equalsIgnoreCase(user.getRole()) {
+			if ("ADMIN".equalsIgnoreCase(user.getRole()) || "NUTZER".equalsIgnoreCase(user.getRole())) {
 				request.setAttribute("assignedUsers", assignedUsers);
 			}
 
@@ -8284,6 +9168,76 @@ public class NotificationServlet extends HttpServlet {
 }
 
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\PasskeyManagementServlet.java
+========================================================================
+
+package de.technikteam.servlet;
+
+import de.technikteam.dao.PasskeyCredentialDAO;
+import de.technikteam.model.PasskeyCredential;
+import de.technikteam.model.User;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.List;
+
+/**
+ * Handles the display and management of a user's own passkeys.
+ */
+@WebServlet("/passkeys")
+public class PasskeyManagementServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private PasskeyCredentialDAO passkeyDAO;
+
+	@Override
+	public void init() throws ServletException {
+		passkeyDAO = new PasskeyCredentialDAO();
+	}
+
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		User user = (User) request.getSession().getAttribute("user");
+		if (user == null) {
+			response.sendRedirect(request.getContextPath() + "/login");
+			return;
+		}
+
+		List<PasskeyCredential> passkeys = passkeyDAO.getCredentialsForUser(user.getId());
+		request.setAttribute("passkeys", passkeys);
+		request.getRequestDispatcher("/passkeys.jsp").forward(request, response);
+	}
+
+	@Override
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		User user = (User) request.getSession().getAttribute("user");
+		if (user == null) {
+			response.sendRedirect(request.getContextPath() + "/login");
+			return;
+		}
+
+		String action = request.getParameter("action");
+		if ("delete".equals(action)) {
+			try {
+				int credentialId = Integer.parseInt(request.getParameter("id"));
+				if (passkeyDAO.deleteCredential(credentialId, user.getId())) {
+					request.getSession().setAttribute("successMessage", "Passkey erfolgreich entfernt.");
+				} else {
+					request.getSession().setAttribute("errorMessage", "Passkey konnte nicht entfernt werden.");
+				}
+			} catch (NumberFormatException e) {
+				request.getSession().setAttribute("errorMessage", "Ungültige Passkey-ID.");
+			}
+		}
+		response.sendRedirect(request.getContextPath() + "/passkeys");
+	}
+}
+
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\PasswordServlet.java
 ========================================================================
 
@@ -8929,12 +9883,7 @@ Creating and editing courses are now handled via modal dialogs on this page.
 					href="${pageContext.request.contextPath}/admin/meetings?courseId=${course.id}"
 					class="btn btn-small btn-success">Meetings verwalten</a>
 				<button type="button" class="btn btn-small edit-course-btn"
-					data-id="${course.id}" data-name="${fn:replace(course.name, '"
-					', '&quot;')}"
-					data-abbreviation="${fn:replace(course.abbreviation, '"
-					', '&quot;')}"
-					data-description="${fn:replace(course.description, '"', '&quot;')}">Vorlage
-					bearbeiten</button>
+					data-id="${course.id}">Vorlage bearbeiten</button>
 				<form action="${pageContext.request.contextPath}/admin/courses"
 					method="post" class="js-confirm-form"
 					data-confirm-message="Vorlage '${fn:escapeXml(course.name)}' wirklich löschen? Alle zugehörigen Meetings und Qualifikationen werden auch gelöscht!">
@@ -8966,12 +9915,7 @@ Creating and editing courses are now handled via modal dialogs on this page.
 						href="${pageContext.request.contextPath}/admin/meetings?courseId=${course.id}"
 						class="btn btn-small btn-success">Meetings verwalten</a>
 						<button type="button" class="btn btn-small edit-course-btn"
-							data-id="${course.id}" data-name="${fn:replace(course.name, '"
-							', '&quot;')}"
-                            data-abbreviation="${fn:replace(course.abbreviation, '"
-							', '&quot;')}"
-                            data-description="${fn:replace(course.description, '"', '&quot;')}">Vorlage
-							bearbeiten</button>
+							data-id="${course.id}">Vorlage bearbeiten</button>
 						<form action="${pageContext.request.contextPath}/admin/courses"
 							method="post" class="js-confirm-form"
 							data-confirm-message="Vorlage '${fn:escapeXml(course.name)}' wirklich löschen? Alle zugehörigen Meetings und Qualifikationen werden auch gelöscht!">
@@ -9017,6 +9961,7 @@ Creating and editing courses are now handled via modal dialogs on this page.
 <c:import url="/WEB-INF/jspf/footer.jspf" />
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    const contextPath = "${pageContext.request.contextPath}";
     // Custom confirmation for delete forms
     document.querySelectorAll('.js-confirm-form').forEach(form => {
         form.addEventListener('submit', function(e) {
@@ -9048,16 +9993,27 @@ document.addEventListener('DOMContentLoaded', () => {
         modalOverlay.classList.add('active');
     };
     
-    const openEditModal = (btn) => {
+    const openEditModal = async (btn) => {
         form.reset();
-        const data = btn.dataset;
         title.textContent = "Lehrgangs-Vorlage bearbeiten";
         actionInput.value = "update";
-        idInput.value = data.id;
-        nameInput.value = data.name;
-        abbrInput.value = data.abbreviation;
-        descInput.value = data.description;
-        modalOverlay.classList.add('active');
+        const courseId = btn.dataset.id;
+        idInput.value = courseId;
+        
+        try {
+            const response = await fetch(`${contextPath}/admin/courses?action=getCourseData&id=${courseId}`);
+            if(!response.ok) throw new Error('Could not fetch course data');
+            const data = await response.json();
+
+            nameInput.value = data.name || '';
+            abbrInput.value = data.abbreviation || '';
+            descInput.value = data.description || '';
+
+            modalOverlay.classList.add('active');
+        } catch(error) {
+            console.error("Failed to open edit modal:", error);
+            alert("Fehler beim Laden der Vorlagen-Daten.");
+        }
     };
     
     document.getElementById('new-course-btn').addEventListener('click', openCreateModal);
@@ -10275,160 +11231,6 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 ========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\admin\admin_meeting_edit.jsp
-========================================================================
-
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
-	isELIgnored="false"%>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
-<%--
-admin_meeting_edit.jsp
-
-This JSP provides a multipart form for an administrator to edit
-a specific meeting. It includes fields for meeting details and allows for
-uploading and deleting file attachments.
-
-    It is served by: AdminMeetingServlet (doGet, action=edit).
-    It submits to: AdminMeetingServlet (doPost, action=update).
-    Expected attributes:
-        'meeting' (Meeting): The meeting object to edit.
-        'attachments' (List<MeetingAttachment>): Existing attachments for the meeting.
-        'allUsers' (List<User>): For the leader dropdown.
---%>
-
-<c:import url="/WEB-INF/jspf/header.jspf">
-	<c:param name="title" value="Meeting bearbeiten" />
-</c:import>
-<c:import url="/WEB-INF/jspf/admin_navigation.jspf" />
-<h1>Meeting bearbeiten</h1>
-<a
-	href="${pageContext.request.contextPath}/admin/meetings?courseId=${meeting.courseId}"
-	style="display: inline-block; margin-bottom: 1rem;"> « Zurück zur
-	Meeting-Liste </a>
-
-<c:if test="${not empty sessionScope.successMessage}">
-	<p class="success-message">${sessionScope.successMessage}</p>
-	<c:remove var="successMessage" scope="session" />
-</c:if>
-<c:if test="${not empty sessionScope.errorMessage}">
-	<p class="error-message">${sessionScope.errorMessage}</p>
-	<c:remove var="errorMessage" scope="session" />
-</c:if>
-<div class="card" style="max-width: 700px; margin: 1rem auto;">
-	<form action="${pageContext.request.contextPath}/admin/meetings"
-		method="post" enctype="multipart/form-data">
-
-		<input type="hidden" name="action" value="update"> <input
-			type="hidden" name="courseId" value="${meeting.courseId}"> <input
-			type="hidden" name="meetingId" value="${meeting.id}">
-
-		<div class="form-group">
-			<label for="name">Name des Meetings (z.B. Teil 1, Modul A:
-				Ton)</label> <input type="text" id="name" name="name"
-				value="${meeting.name}" required>
-		</div>
-
-		<div class="responsive-form-grid">
-			<div class="form-group">
-				<label for="meetingDateTime">Beginn</label> <input
-					type="datetime-local" id="meetingDateTime" name="meetingDateTime"
-					value="${meeting.meetingDateTime}" required>
-			</div>
-			<div class="form-group">
-				<label for="endDateTime">Ende (optional)</label> <input
-					type="datetime-local" id="endDateTime" name="endDateTime"
-					value="${meeting.endDateTime}">
-			</div>
-		</div>
-
-		<div class="form-group">
-			<label for="leaderUserId">Leitende Person</label> <select
-				name="leaderUserId" id="leaderUserId">
-				<option value="">(Keine)</option>
-				<c:forEach var="user" items="${allUsers}">
-					<option value="${user.id}"
-						${meeting.leaderUserId == user.id ? 'selected' : ''}>${user.username}</option>
-				</c:forEach>
-			</select>
-		</div>
-
-		<div class="form-group">
-			<label for="description">Beschreibung (spezifisch für dieses
-				Meeting)</label>
-			<textarea id="description" name="description" rows="4">${meeting.description}</textarea>
-		</div>
-
-		<hr style="margin: 2rem 0;">
-
-		<%-- Attachment Section --%>
-		<h3>Anhänge verwalten</h3>
-		<c:if test="${not empty attachments}">
-			<ul class="details-list" style="margin-bottom: 1rem;">
-				<c:forEach var="att" items="${attachments}">
-					<li><span><a
-							href="${pageContext.request.contextPath}/download?file=${att.filepath}">${att.filename}</a>
-							(Rolle: ${att.requiredRole})</span>
-						<form action="${pageContext.request.contextPath}/admin/meetings"
-							method="post" class="js-confirm-form"
-							data-confirm-message="Anhang '${att.filename}' wirklich löschen?">
-							<input type="hidden" name="action" value="deleteAttachment">
-							<input type="hidden" name="attachmentId" value="${att.id}">
-							<button type="submit" class="btn btn-small btn-danger-outline">X</button>
-						</form></li>
-				</c:forEach>
-			</ul>
-		</c:if>
-
-		<h4 style="margin-top: 1rem;">Neuen Anhang hochladen</h4>
-		<div class="form-group">
-			<label for="attachment">Datei auswählen</label> <input type="file"
-				name="attachment" id="attachment" class="file-input"
-				data-max-size="20971520"> <small class="file-size-warning"
-				style="color: red; display: none;">Datei ist zu groß! (Max.
-				20 MB)</small>
-		</div>
-		<div class="form-group">
-			<label for="requiredRole">Sichtbar für</label> <select
-				name="requiredRole" id="requiredRole">
-				<option value="NUTZER" selected>Alle Nutzer</option>
-				<option value="ADMIN">Nur Admins</option>
-			</select>
-		</div>
-
-		<button type="submit" class="btn">Änderungen speichern &
-			Anhang hochladen</button>
-	</form>
-</div>
-
-<script>
-// File size validation script
-document.querySelectorAll('.file-input').forEach(input => {
-	input.addEventListener('change', (e) => {
-		const file = e.target.files[0];
-		const maxSize = parseInt(e.target.dataset.maxSize, 10);
-		const warningElement = e.target.nextElementSibling;
-
-		if (file && file.size > maxSize) {
-			warningElement.style.display = 'block';
-			e.target.value = ''; // Clear the invalid file selection
-		} else {
-			warningElement.style.display = 'none';
-		}
-	});
-});
-// Custom confirmation for delete forms
-document.querySelectorAll('.js-confirm-form').forEach(form => {
-	form.addEventListener('submit', function(e) {
-		e.preventDefault();
-		const message = this.dataset.confirmMessage || 'Sind Sie sicher?';
-		showConfirmationModal(message, () => this.submit());
-	});
-});
-</script>
-
-<c:import url="/WEB-INF/jspf/footer.jspf" />
-
-========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\admin\admin_meeting_list.jsp
 ========================================================================
 
@@ -10697,31 +11499,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 form.querySelector('#description-modal').value = meeting.description || '';
 
                 if (attachments && attachments.length > 0) {
-                    attachments.forEach(att => {
-                        const li = document.createElement('li');
-                        li.id = `attachment-item-${att.id}`;
-                        li.innerHTML = `<a href="${contextPath}/download?file=${att.filepath}" target="_blank">${att.filename}</a> (Rolle: ${att.requiredRole})`;
-                        const removeBtn = document.createElement('button');
-						removeBtn.type = 'button';
-						removeBtn.className = 'btn btn-small btn-danger-outline';
-						removeBtn.innerHTML = '&times;';
-						removeBtn.onclick = () => {
-							showConfirmationModal(`Anhang '${att.filename}' wirklich löschen?`, () => {
-								const deleteForm = document.createElement('form');
-								deleteForm.method = 'post';
-								deleteForm.action = `${contextPath}/admin/meetings`;
-								deleteForm.innerHTML = `
-									<input type="hidden" name="action" value="deleteAttachment">
-									<input type="hidden" name="attachmentId" value="${att.id}">
-									<input type="hidden" name="courseId" value="${meeting.courseId}">
-								`;
-								document.body.appendChild(deleteForm);
-								deleteForm.submit();
-							});
-						};
-						li.appendChild(removeBtn);
-                        attachmentsList.appendChild(li);
-                    });
+                    attachments.forEach(att => addAttachmentRow(att, meeting.courseId));
                 } else {
                     attachmentsList.innerHTML = '<li>Keine Anhänge vorhanden.</li>';
                 }
@@ -10733,6 +11511,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+	
+	const addAttachmentRow = (attachment, courseId) => {
+		const li = document.createElement('li');
+		li.id = `attachment-item-${attachment.id}`;
+		li.innerHTML = `<a href="${contextPath}/download?file=${attachment.filepath}" target="_blank">${attachment.filename}</a> (Rolle: ${attachment.requiredRole})`;
+		const removeBtn = document.createElement('button');
+		removeBtn.type = 'button';
+		removeBtn.className = 'btn btn-small btn-danger-outline';
+		removeBtn.innerHTML = '&times;';
+		removeBtn.onclick = () => {
+			showConfirmationModal(`Anhang '${attachment.filename}' wirklich löschen?`, () => {
+				const deleteForm = document.createElement('form');
+				deleteForm.method = 'post';
+				deleteForm.action = `${contextPath}/admin/meetings`;
+				deleteForm.innerHTML = `
+					<input type="hidden" name="action" value="deleteAttachment">
+					<input type="hidden" name="attachmentId" value="${attachment.id}">
+					<input type="hidden" name="courseId" value="${courseId}">
+				`;
+				document.body.appendChild(deleteForm);
+				deleteForm.submit();
+			});
+		};
+		li.appendChild(removeBtn);
+		attachmentsList.appendChild(li);
+	};
 
     closeModalBtn.addEventListener('click', closeModal);
     modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
@@ -10826,18 +11630,7 @@ Creating and editing items are handled via a modal dialog on this page.
 			</div>
 			<div class="card-actions">
 				<button type="button" class="btn btn-small edit-item-btn"
-					data-id="${item.id}" data-name="${fn:replace(item.name, '"
-					', '&quot;')}"
-                    data-location="${fn:replace(item.location, '"
-					', '&quot;')}"
-                    data-cabinet="${fn:replace(item.cabinet, '"
-					', '&quot;')}"
-                    data-shelf="${fn:replace(item.shelf, '"
-					', '&quot;')}"
-                    data-compartment="${fn:replace(item.compartment, '"
-					', '&quot;')}"
-                    data-quantity="${item.quantity}"
-					data-max-quantity="${item.maxQuantity}">Bearbeiten</button>
+					data-id="${item.id}">Bearbeiten</button>
 				<a
 					href="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${pageContext.request.scheme}://${pageContext.request.serverName}:${pageContext.request.serverPort}${pageContext.request.contextPath}/storage-item?id=${item.id}"
 					target="_blank" class="btn btn-small btn-success">QR-Code</a>
@@ -10875,18 +11668,7 @@ Creating and editing items are handled via a modal dialog on this page.
 					<td><c:out value="${item.quantity}" /></td>
 					<td style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
 						<button type="button" class="btn btn-small edit-item-btn"
-							data-id="${item.id}" data-name="${fn:replace(item.name, '"
-							', '&quot;')}"
-                            data-location="${fn:replace(item.location, '"
-							', '&quot;')}"
-                            data-cabinet="${fn:replace(item.cabinet, '"
-							', '&quot;')}"
-                            data-shelf="${fn:replace(item.shelf, '"
-							', '&quot;')}"
-                            data-compartment="${fn:replace(item.compartment, '"
-							', '&quot;')}"
-                            data-quantity="${item.quantity}"
-							data-max-quantity="${item.maxQuantity}">Bearbeiten</button> <a
+							data-id="${item.id}">Bearbeiten</button> <a
 						href="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${pageContext.request.scheme}://${pageContext.request.serverName}:${pageContext.request.serverPort}${pageContext.request.contextPath}/storage-item?id=${item.id}"
 						target="_blank" class="btn btn-small btn-success">QR-Code</a>
 						<form action="${pageContext.request.contextPath}/admin/storage"
@@ -10961,6 +11743,7 @@ Creating and editing items are handled via a modal dialog on this page.
 <c:import url="/WEB-INF/jspf/footer.jspf" />
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    const contextPath = "${pageContext.request.contextPath}";
     // Custom confirmation for delete forms
     document.querySelectorAll('.js-confirm-form').forEach(form => {
         form.addEventListener('submit', function(e) {
@@ -10990,20 +11773,30 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.classList.add('active');
     };
 
-    const openEditModal = (btn) => {
+    const openEditModal = async (btn) => {
         form.reset();
-        const itemData = btn.dataset;
-        title.textContent = 'Lagerartikel bearbeiten';
-        actionInput.value = 'update';
-        idInput.value = itemData.id;
-        form.querySelector('#name-modal').value = itemData.name;
-        form.querySelector('#location-modal').value = itemData.location;
-        form.querySelector('#cabinet-modal').value = itemData.cabinet;
-        form.querySelector('#shelf-modal').value = itemData.shelf;
-        form.querySelector('#compartment-modal').value = itemData.compartment;
-        form.querySelector('#quantity-modal').value = itemData.quantity;
-        form.querySelector('#maxQuantity-modal').value = itemData.maxQuantity;
-        modal.classList.add('active');
+        const itemId = btn.dataset.id;
+        try {
+            const response = await fetch(`${contextPath}/admin/storage?action=getItemData&id=${itemId}`);
+            if (!response.ok) throw new Error('Could not fetch item data.');
+            const itemData = await response.json();
+
+            title.textContent = 'Lagerartikel bearbeiten';
+            actionInput.value = 'update';
+            idInput.value = itemData.id;
+            form.querySelector('#name-modal').value = itemData.name || '';
+            form.querySelector('#location-modal').value = itemData.location || '';
+            form.querySelector('#cabinet-modal').value = itemData.cabinet || '';
+            form.querySelector('#shelf-modal').value = itemData.shelf || '';
+            form.querySelector('#compartment-modal').value = itemData.compartment || '';
+            form.querySelector('#quantity-modal').value = itemData.quantity || 0;
+            form.querySelector('#maxQuantity-modal').value = itemData.maxQuantity || 0;
+            modal.classList.add('active');
+
+        } catch (error) {
+            console.error("Failed to open edit modal:", error);
+            alert("Fehler beim Laden der Artikeldaten.");
+        }
     };
 
     const closeModal = () => modal.classList.remove('active');
@@ -11020,6 +11813,186 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape' && modal.classList.contains('active')) closeModal();
     });
+});
+</script>
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\admin\admin_system.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<%--
+  admin_system.jsp
+  
+  This is the system status dashboard page for administrators.
+  It displays live statistics about the server's health.
+  
+  - It is served by: AdminSystemServlet.
+  - Expected attributes: None. Data is fetched via JavaScript.
+--%>
+
+<c:import url="/WEB-INF/jspf/header.jspf">
+	<c:param name="title" value="Systemstatus" />
+</c:import>
+<c:import url="/WEB-INF/jspf/admin_navigation.jspf" />
+<h1>
+	<i class="fas fa-server"></i> Systemstatus
+</h1>
+<p>Live-Statistiken des Servers. Die Daten werden alle 5 Sekunden
+	aktualisiert.</p>
+
+<div class="dashboard-grid">
+	<div class="card">
+		<h2 class="card-title">
+			<i class="fas fa-microchip"></i> CPU Auslastung
+		</h2>
+		<div class="progress-bar-container">
+			<div id="cpu-progress" class="progress-bar"></div>
+		</div>
+		<p id="cpu-text" class="progress-text">Lade...</p>
+	</div>
+
+	<div class="card">
+		<h2 class="card-title">
+			<i class="fas fa-memory"></i> Arbeitsspeicher (RAM)
+		</h2>
+		<div class="progress-bar-container">
+			<div id="ram-progress" class="progress-bar"></div>
+		</div>
+		<p id="ram-text" class="progress-text">Lade...</p>
+	</div>
+
+	<div class="card">
+		<h2 class="card-title">
+			<i class="fas fa-hdd"></i> Festplattenspeicher
+		</h2>
+		<div class="progress-bar-container">
+			<div id="disk-progress" class="progress-bar"></div>
+		</div>
+		<p id="disk-text" class="progress-text">Lade...</p>
+	</div>
+
+	<div class="card" id="battery-card" style="display: none;">
+		<h2 class="card-title">
+			<i class="fas fa-battery-half"></i> Akku
+		</h2>
+		<div class="progress-bar-container">
+			<div id="battery-progress" class="progress-bar"></div>
+		</div>
+		<p id="battery-text" class="progress-text">Lade...</p>
+	</div>
+
+	<div class="card">
+		<h2 class="card-title">
+			<i class="fas fa-clock"></i> Server Uptime
+		</h2>
+		<p id="uptime-text"
+			style="font-size: 1.5rem; font-weight: 500; color: var(--primary-color); text-align: center;">Lade...</p>
+	</div>
+</div>
+
+<style>
+.progress-bar-container {
+	width: 100%;
+	background-color: var(--border-color);
+	border-radius: 8px;
+	height: 30px;
+	margin-bottom: 0.5rem;
+	overflow: hidden;
+}
+
+.progress-bar {
+	height: 100%;
+	background-color: var(--primary-color);
+	border-radius: 8px 0 0 8px;
+	transition: width 0.5s ease-in-out;
+	width: 0%;
+}
+
+.progress-text {
+	text-align: center;
+	font-weight: 500;
+	color: var(--text-muted-color);
+}
+</style>
+
+<c:import url="/WEB-INF/jspf/footer.jspf" />
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const apiUrl = "${pageContext.request.contextPath}/api/admin/system-stats";
+
+    const cpuProgress = document.getElementById('cpu-progress');
+    const cpuText = document.getElementById('cpu-text');
+    const ramProgress = document.getElementById('ram-progress');
+    const ramText = document.getElementById('ram-text');
+    const diskProgress = document.getElementById('disk-progress');
+    const diskText = document.getElementById('disk-text');
+    const uptimeText = document.getElementById('uptime-text');
+    const batteryCard = document.getElementById('battery-card');
+    const batteryProgress = document.getElementById('battery-progress');
+    const batteryText = document.getElementById('battery-text');
+
+    const formatBytes = (megabytes) => {
+        if (megabytes === 0) return '0 MB';
+        const gigabytes = megabytes / 1024;
+        return gigabytes >= 1 ? `${gigabytes.toFixed(2)} GB` : `${megabytes.toFixed(0)} MB`;
+    };
+
+    const updateUI = (stats) => {
+        // CPU
+        const cpuPercent = stats.cpuLoad.toFixed(1);
+        cpuProgress.style.width = `${cpuPercent}%`;
+        cpuText.textContent = `${cpuPercent}%`;
+
+        // RAM
+        const ramPercent = (stats.usedMemory / stats.totalMemory) * 100;
+        ramProgress.style.width = `${ramPercent.toFixed(1)}%`;
+        ramText.textContent = `${formatBytes(stats.usedMemory)} / ${formatBytes(stats.totalMemory)}`;
+
+        // Disk
+        const diskPercent = (stats.usedDiskSpace / stats.totalDiskSpace) * 100;
+        diskProgress.style.width = `${diskPercent.toFixed(1)}%`;
+        diskText.textContent = `${formatBytes(stats.usedDiskSpace)} / ${formatBytes(stats.totalDiskSpace)}`;
+
+        // Uptime
+        uptimeText.textContent = stats.uptime;
+        
+        // Battery
+        if (stats.batteryPercentage >= 0) {
+            batteryCard.style.display = 'block';
+            const batteryPercent = stats.batteryPercentage;
+            batteryProgress.style.width = `${batteryPercent}%`;
+            batteryText.textContent = `${batteryPercent}%`;
+        } else {
+            batteryCard.style.display = 'none';
+        }
+    };
+
+    const fetchStats = async () => {
+        try {
+            const response = await fetch(apiUrl);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            updateUI(data);
+        } catch (error) {
+            console.error("Could not fetch system stats:", error);
+            // Display error state in UI
+            cpuText.textContent = "Fehler";
+            ramText.textContent = "Fehler";
+            diskText.textContent = "Fehler";
+            uptimeText.textContent = "Fehler";
+        }
+    };
+
+    // Fetch stats immediately on load, then every 5 seconds
+    fetchStats();
+    setInterval(fetchStats, 5000);
 });
 </script>
 
@@ -11091,9 +12064,7 @@ reset their password. Creating and editing users is handled via modal dialogs.
 			</div>
 			<div class="card-actions">
 				<button type="button" class="btn btn-small edit-user-btn"
-					data-id="${user.id}" data-username="${user.username}"
-					data-role="${user.role}" data-class-year="${user.classYear}"
-					data-class-name="${user.className}">Bearbeiten</button>
+					data-id="${user.id}">Bearbeiten</button>
 				<c:if test="${sessionScope.user.id != user.id}">
 					<form action="${pageContext.request.contextPath}/admin/users"
 						method="post" class="inline-form js-confirm-form"
@@ -11136,9 +12107,7 @@ reset their password. Creating and editing users is handled via modal dialogs.
 					<td>${user.role}</td>
 					<td style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
 						<button type="button" class="btn btn-small edit-user-btn"
-							data-id="${user.id}" data-username="${user.username}"
-							data-role="${user.role}" data-class-year="${user.classYear}"
-							data-class-name="${user.className}">Bearbeiten</button> <c:if
+							data-id="${user.id}">Bearbeiten</button> <c:if
 							test="${sessionScope.user.id != user.id}">
 							<form action="${pageContext.request.contextPath}/admin/users"
 								method="post" class="inline-form js-confirm-form"
@@ -11203,19 +12172,6 @@ reset their password. Creating and editing users is handled via modal dialogs.
 	</div>
 </div>
 
-<!-- Confirmation Modal Structure -->
-<div class="modal-overlay" id="confirmation-modal">
-	<div class="modal-content" style="max-width: 450px;">
-		<h3 id="confirmation-title">Bestätigung</h3>
-		<p id="confirmation-message"
-			style="margin: 1.5rem 0; font-size: 1.1rem;"></p>
-		<div style="display: flex; justify-content: flex-end; gap: 1rem;">
-			<button id="confirmation-btn-cancel" class="btn btn-secondary">Abbrechen</button>
-			<button id="confirmation-btn-confirm" class="btn btn-danger">Bestätigen</button>
-		</div>
-	</div>
-</div>
-
 <c:import url="/WEB-INF/jspf/table-helper.jspf" />
 <c:import url="/WEB-INF/jspf/footer.jspf" />
 <style>
@@ -11249,6 +12205,7 @@ reset their password. Creating and editing users is handled via modal dialogs.
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    const contextPath = "${pageContext.request.contextPath}";
 	// Custom confirmation for forms
 	document.querySelectorAll('.js-confirm-form').forEach(form => {
 		form.addEventListener('submit', function(e) {
@@ -11302,22 +12259,32 @@ document.addEventListener('DOMContentLoaded', () => {
 		usernameInput.focus();
 	};
 
-	const openEditModal = (btn) => {
+	const openEditModal = async (btn) => {
 		form.reset();
-		const data = btn.dataset;
-		title.textContent = "Benutzer bearbeiten";
-		actionInput.value = "update";
-		idInput.value = data.id;
-		usernameInput.value = data.username;
-		roleInput.value = data.role;
-		classYearInput.value = data.classYear;
-		classNameInput.value = data.className;
+        const userId = btn.dataset.id;
+        try {
+            const response = await fetch(`${contextPath}/admin/users?action=getUserData&id=${userId}`);
+            if (!response.ok) throw new Error('Could not fetch user data');
+            const data = await response.json();
 
-		// Password is not required for updates, so hide the field
-		passwordInput.required = false;
-		passwordGroup.style.display = 'none';
+            title.textContent = "Benutzer bearbeiten";
+            actionInput.value = "update";
+            idInput.value = data.id;
+            usernameInput.value = data.username || '';
+            roleInput.value = data.role || 'NUTZER';
+            classYearInput.value = data.classYear || '';
+            classNameInput.value = data.className || '';
 
-		modal.classList.add('active');
+            // Password is not required for updates, so hide the field
+            passwordInput.required = false;
+            passwordGroup.style.display = 'none';
+
+            modal.classList.add('active');
+
+        } catch (error) {
+            console.error('Failed to open edit modal:', error);
+            alert('Benutzerdaten konnten nicht geladen werden.');
+        }
 	};
 
 	document.getElementById('new-user-btn').addEventListener('click', openCreateModal);
@@ -12384,10 +13351,9 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\js\main.js
  * 1. Mobile Navigation: Toggling the slide-in menu (hamburger menu).
  * 2. Active Navigation Link Highlighting: Marks the current page in the nav bar.
  * 3. Theme Switching: Handling light/dark mode persistence via localStorage.
- * 4. User Interaction Confirmations: Adding a confirmation dialog to the logout link.
+ * 4. Custom Confirmation Modal: A stylable replacement for the browser's confirm().
  * 5. Server-Sent Events (SSE): Establishing a connection to receive real-time
  *    push notifications from the server and displaying them as browser notifications.
- * 6. Custom Confirmation Modal: A stylable replacement for the browser's confirm().
  */
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -12423,22 +13389,29 @@ document.addEventListener('DOMContentLoaded', () => {
 	const currentPath = window.location.pathname;
 	const contextPath = document.body.dataset.contextPath || '';
 	const navLinks = document.querySelectorAll('.main-nav a');
+	
+	let bestMatch = null;
+    let maxMatchLength = 0;
 
 	navLinks.forEach(link => {
 		const linkPath = link.getAttribute('href').substring(contextPath.length);
-		if (linkPath && currentPath.startsWith(linkPath) && linkPath !== `${contextPath}/`) {
-			link.classList.add('active-nav-link');
-		}
+		// Ensure we don't match the root path as a prefix for everything
+        if (linkPath && currentPath.startsWith(linkPath)) {
+            if (linkPath.length > maxMatchLength) {
+                maxMatchLength = linkPath.length;
+                bestMatch = link;
+            }
+        }
 	});
-	// Special case for home page
-	const homeLink = document.querySelector('.main-nav a[href$="/home"]');
-	if (homeLink && (currentPath === `${contextPath}/` || currentPath === `${contextPath}/home`)) {
-		homeLink.classList.add('active-nav-link');
-	}
-	// Special case for admin dashboard
-	const adminDashboardLink = document.querySelector('.main-nav a[href$="/admin/dashboard"]');
-	if (adminDashboardLink && (currentPath === `${contextPath}/admin/` || currentPath === `${contextPath}/admin/dashboard`)) {
-		adminDashboardLink.classList.add('active-nav-link');
+	
+	if(bestMatch) {
+		bestMatch.classList.add('active-nav-link');
+	} else {
+		// Fallback for home page if no other match is found
+		const homeLink = document.querySelector('.main-nav a[href$="/home"]');
+		if (homeLink && (currentPath === `${contextPath}/` || currentPath === `${contextPath}/home`)) {
+			homeLink.classList.add('active-nav-link');
+		}
 	}
 
 
@@ -12462,16 +13435,49 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 
-	// --- 4. Logout Confirmation Logic ---
-	const logoutLink = document.getElementById('logout-link');
-	if (logoutLink) {
-		logoutLink.addEventListener('click', (event) => {
-			event.preventDefault();
-			showConfirmationModal(
-				'Bist du sicher, dass du dich ausloggen möchtest?',
-				() => { window.location.href = logoutLink.href; }
-			);
+	// --- 4. Custom Confirmation Modal Logic (made globally accessible) ---
+	const modalElement = document.getElementById('confirmation-modal');
+	if (modalElement) {
+		const messageElement = document.getElementById('confirmation-message');
+		const confirmBtn = document.getElementById('confirmation-btn-confirm');
+		const cancelBtn = document.getElementById('confirmation-btn-cancel');
+
+		let onConfirmCallback = null;
+
+		window.showConfirmationModal = (message, onConfirm) => {
+			messageElement.textContent = message;
+			onConfirmCallback = onConfirm;
+			modalElement.classList.add('active');
+		};
+
+		const closeConfirmModal = () => {
+			modalElement.classList.remove('active');
+			onConfirmCallback = null;
+		};
+
+		confirmBtn.addEventListener('click', () => {
+			if (typeof onConfirmCallback === 'function') {
+				onConfirmCallback();
+			}
+			closeConfirmModal();
 		});
+
+		cancelBtn.addEventListener('click', closeConfirmModal);
+		modalElement.addEventListener('click', (e) => {
+			if (e.target === modalElement) closeConfirmModal();
+		});
+		
+		// Logout Confirmation Logic (uses the global modal)
+		const logoutLink = document.getElementById('logout-link');
+		if (logoutLink) {
+			logoutLink.addEventListener('click', (event) => {
+				event.preventDefault();
+				showConfirmationModal(
+					'Bist du sicher, dass du dich ausloggen möchtest?',
+					() => { window.location.href = logoutLink.href; }
+				);
+			});
+		}
 	}
 
 
@@ -12507,39 +13513,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 		}
 	}
-
-	// --- 6. Custom Confirmation Modal Logic ---
-	const modalElement = document.getElementById('confirmation-modal');
-	if (modalElement) {
-		const messageElement = document.getElementById('confirmation-message');
-		const confirmBtn = document.getElementById('confirmation-btn-confirm');
-		const cancelBtn = document.getElementById('confirmation-btn-cancel');
-
-		let onConfirmCallback = null;
-
-		window.showConfirmationModal = (message, onConfirm) => {
-			messageElement.textContent = message;
-			onConfirmCallback = onConfirm;
-			modalElement.classList.add('active');
-		};
-
-		const closeConfirmModal = () => {
-			modalElement.classList.remove('active');
-			onConfirmCallback = null;
-		};
-
-		confirmBtn.addEventListener('click', () => {
-			if (typeof onConfirmCallback === 'function') {
-				onConfirmCallback();
-			}
-			closeConfirmModal();
-		});
-
-		cancelBtn.addEventListener('click', closeConfirmModal);
-		modalElement.addEventListener('click', (e) => {
-			if (e.target === modalElement) closeConfirmModal();
-		});
-	}
 });
 
 ========================================================================
@@ -12549,8 +13522,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\web.x
 <?xml version="1.0" encoding="UTF-8"?>
 <web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
-	version="6.0">
+	xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd"
+	version="5.0">
 
 	<!-- web.xml: The core deployment descriptor for the web application. This 
 		file configures essential, application-wide settings that cannot be handled 
@@ -13876,6 +14849,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     history.forEach(entry => {
                         const changeClass = entry.quantityChange > 0 ? 'text-success' : 'text-danger';
                         const changeSign = entry.quantityChange > 0 ? '+' : '';
+                        // **FIXED HERE:** Escaped the dollar sign to prevent JSP EL parsing
                         html += `<li>
                                     <div>
                                         <strong class="${changeClass}">${changeSign}${entry.quantityChange} Stück</strong>
@@ -13883,7 +14857,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         <br>
                                         <small>${entry.notes || 'Keine Notiz'}</small>
                                     </div>
-                                    <small>${new Date(entry.transactionTimestamp).toLocaleString('de-DE')}</small>
+                                    <small>${entry.transactionTimestampLocaleString}</small> 
                                  </li>`;
                     });
                 } else {
@@ -14100,7 +15074,7 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\login.jsp
 		<h1>Willkommen zurück</h1>
 
 		<c:if test="${not empty errorMessage}">
-			<p class="error-message">
+			<p class="error-message" id="error-message">
 				<c:out value="${errorMessage}" />
 			</p>
 		</c:if>
@@ -14121,6 +15095,12 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\login.jsp
 			</div>
 			<button type="submit" class="btn" style="width: 100%;">Anmelden</button>
 		</form>
+		<div
+			style="text-align: center; margin: 1rem 0; color: var(--text-muted-color);">ODER</div>
+		<button id="passkey-login-btn" class="btn btn-secondary"
+			style="width: 100%;">
+			<i class="fas fa-fingerprint"></i> Mit Passkey anmelden
+		</button>
 	</div>
 </div>
 <style>
@@ -14145,6 +15125,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\login.jsp
 <script>
 // Attach event listener to all password toggles on the page
 document.addEventListener('DOMContentLoaded', () => {
+	const contextPath = "${pageContext.request.contextPath}";
+
     document.querySelectorAll('.password-toggle').forEach(toggle => {
         toggle.addEventListener('click', () => {
             const passwordInput = toggle.previousElementSibling;
@@ -14155,6 +15137,82 @@ document.addEventListener('DOMContentLoaded', () => {
             toggle.classList.toggle('fa-eye-slash');
         });
     });
+
+    // Passkey Login Logic
+    const passkeyLoginBtn = document.getElementById('passkey-login-btn');
+    const errorMessageElement = document.getElementById('error-message');
+
+    if (passkeyLoginBtn) {
+        passkeyLoginBtn.addEventListener('click', async () => {
+            try {
+                // 1. Start authentication
+                const startResp = await fetch(`${contextPath}/api/passkey/login/start`, { method: 'POST' });
+                if (!startResp.ok) throw new Error('Could not start passkey login.');
+                const requestOptions = await startResp.json();
+                
+                // Convert base64url to ArrayBuffer
+                requestOptions.challenge = bufferDecode(requestOptions.challenge);
+                if (requestOptions.allowCredentials) {
+                    for (let cred of requestOptions.allowCredentials) {
+                        cred.id = bufferDecode(cred.id);
+                    }
+                }
+
+                // 2. Prompt user with WebAuthn API
+                const assertion = await navigator.credentials.get({ publicKey: requestOptions });
+
+                // 3. Finish authentication
+                const verificationResp = await fetch(`${contextPath}/api/passkey/login/finish?userHandle=${assertion.response.userHandle}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: assertion.id,
+                        rawId: bufferEncode(assertion.rawId),
+                        response: {
+                            authenticatorData: bufferEncode(assertion.response.authenticatorData),
+                            clientDataJSON: bufferEncode(assertion.response.clientDataJSON),
+                            signature: bufferEncode(assertion.response.signature),
+                            userHandle: assertion.response.userHandle ? bufferEncode(assertion.response.userHandle) : null,
+                        },
+                        type: assertion.type
+                    })
+                });
+
+                if (verificationResp.ok) {
+                    window.location.href = `${contextPath}/home`; // Redirect on success
+                } else {
+                    const errorText = await verificationResp.text();
+                    errorMessageElement.textContent = `Passkey Login fehlgeschlagen: ${errorText}`;
+                    errorMessageElement.style.display = 'block';
+                }
+
+            } catch (err) {
+                console.error('Passkey login error:', err);
+                errorMessageElement.textContent = 'Passkey-Operation fehlgeschlagen oder abgebrochen.';
+                errorMessageElement.style.display = 'block';
+            }
+        });
+    }
+
+    // Helper functions for base64url encoding/decoding
+    function bufferDecode(value) {
+        const str = value.replace(/-/g, '+').replace(/_/g, '/');
+        const
+			decoded = atob(str);
+        const
+			buffer = new Uint8Array(decoded.length);
+        for (let i = 0; i < decoded.length; i++) {
+            buffer[i] = decoded.charCodeAt(i);
+        }
+        return buffer.buffer;
+    }
+
+    function bufferEncode(value) {
+        return btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
+    }
 });
 </script>
 <%-- The footer is omitted on the login page for a cleaner, focused look. --%>
@@ -14313,6 +15371,184 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\meetingDetail
 </style>
 
 <c:import url="/WEB-INF/jspf/footer.jspf" />
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\passkeys.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+
+<%--
+  passkeys.jsp
+  
+  This page allows a logged-in user to manage their registered Passkeys (WebAuthn credentials).
+  
+  - It is served by: PasskeyManagementServlet (doGet).
+  - Expected attributes:
+    - 'passkeys' (List<PasskeyCredential>): A list of the user's registered passkeys.
+--%>
+
+<c:import url="/WEB-INF/jspf/header.jspf">
+	<c:param name="title" value="Passkeys verwalten" />
+</c:import>
+<c:import url="/WEB-INF/jspf/navigation.jspf" />
+
+<h1>Passkeys verwalten</h1>
+<p>Hier können Sie Passkeys hinzufügen oder entfernen, um sich
+	passwortlos anzumelden.</p>
+
+<c:if test="${not empty sessionScope.successMessage}">
+	<p class="success-message">
+		<c:out value="${sessionScope.successMessage}" />
+	</p>
+	<c:remove var="successMessage" scope="session" />
+</c:if>
+<c:if test="${not empty sessionScope.errorMessage}">
+	<p class="error-message">
+		<c:out value="${sessionScope.errorMessage}" />
+	</p>
+	<c:remove var="errorMessage" scope="session" />
+</c:if>
+
+<div class="card">
+	<div class="table-controls">
+		<h2>Ihre registrierten Passkeys</h2>
+		<button id="add-passkey-btn" class="btn">
+			<i class="fas fa-plus"></i> Neuen Passkey hinzufügen
+		</button>
+	</div>
+
+	<div class="desktop-table-wrapper">
+		<table class="desktop-table">
+			<thead>
+				<tr>
+					<th>Name</th>
+					<th>Registriert am</th>
+					<th>Aktion</th>
+				</tr>
+			</thead>
+			<tbody>
+				<c:if test="${empty passkeys}">
+					<tr>
+						<td colspan="3" style="text-align: center;">Sie haben noch
+							keine Passkeys registriert.</td>
+					</tr>
+				</c:if>
+				<c:forEach var="key" items="${passkeys}">
+					<tr>
+						<td><c:out value="${key.name}" /></td>
+						<td><c:out value="${key.formattedCreatedAt}" /></td>
+						<td>
+							<form action="${pageContext.request.contextPath}/passkeys"
+								method="post" class="js-confirm-form"
+								data-confirm-message="Passkey '${fn:escapeXml(key.name)}' wirklich entfernen?">
+								<input type="hidden" name="action" value="delete"> <input
+									type="hidden" name="id" value="${key.id}">
+								<button type="submit" class="btn btn-small btn-danger">
+									<i class="fas fa-trash"></i> Entfernen
+								</button>
+							</form>
+						</td>
+					</tr>
+				</c:forEach>
+			</tbody>
+		</table>
+	</div>
+</div>
+
+<c:import url="/WEB-INF/jspf/footer.jspf" />
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const contextPath = "${pageContext.request.contextPath}";
+    const addPasskeyBtn = document.getElementById('add-passkey-btn');
+
+    document.querySelectorAll('.js-confirm-form').forEach(form => {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const message = this.dataset.confirmMessage || 'Sind Sie sicher?';
+            showConfirmationModal(message, () => this.submit());
+        });
+    });
+
+    if (addPasskeyBtn) {
+        addPasskeyBtn.addEventListener('click', async () => {
+            const passkeyName = prompt("Bitte geben Sie einen Namen für diesen Passkey ein (z.B. 'Mein Laptop', 'Handy'):", "Neuer Passkey");
+            if (!passkeyName) {
+                alert("Registrierung abgebrochen.");
+                return;
+            }
+
+            try {
+                // 1. Start registration from server
+                const startResp = await fetch(`${contextPath}/api/passkey/register/start`, { method: 'POST' });
+                if (!startResp.ok) throw new Error('Could not start passkey registration.');
+                const creationOptions = await startResp.json();
+                
+                // Convert base64url strings to ArrayBuffers
+                creationOptions.challenge = bufferDecode(creationOptions.challenge);
+                creationOptions.user.id = bufferDecode(creationOptions.user.id);
+                if (creationOptions.excludeCredentials) {
+                     creationOptions.excludeCredentials.forEach(cred => {
+                        cred.id = bufferDecode(cred.id);
+                    });
+                }
+                
+                // 2. Create credential with browser WebAuthn API
+                const newCredential = await navigator.credentials.create({ publicKey: creationOptions });
+
+                // 3. Send new credential to server to finish registration
+                const finishResp = await fetch(`${contextPath}/api/passkey/register/finish?name=${encodeURIComponent(passkeyName)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: newCredential.id,
+                        rawId: bufferEncode(newCredential.rawId),
+                        type: newCredential.type,
+                        response: {
+                            attestationObject: bufferEncode(newCredential.response.attestationObject),
+                            clientDataJSON: bufferEncode(newCredential.response.clientDataJSON),
+                        },
+                    }),
+                });
+
+                if (finishResp.ok) {
+                    alert('Passkey erfolgreich registriert!');
+                    location.reload();
+                } else {
+                    const error = await finishResp.text();
+                    throw new Error('Passkey-Registrierung fehlgeschlagen: ' + error);
+                }
+
+            } catch (err) {
+                console.error("Passkey registration failed:", err);
+                alert("Fehler bei der Passkey-Registrierung: " + err.message);
+            }
+        });
+    }
+
+    // Helper functions for base64url
+    function bufferDecode(value) {
+        const str = value.replace(/-/g, '+').replace(/_/g, '/');
+        const decoded = atob(str);
+        const buffer = new Uint8Array(decoded.length);
+        for (let i = 0; i < decoded.length; i++) {
+            buffer[i] = decoded.charCodeAt(i);
+        }
+        return buffer.buffer;
+    }
+
+    function bufferEncode(value) {
+        return btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
+    }
+});
+</script>
 
 ========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\passwort.jsp

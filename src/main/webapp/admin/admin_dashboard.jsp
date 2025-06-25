@@ -2,23 +2,10 @@
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
-<%--
-  admin_dashboard.jsp
-  
-  This is the main landing page for the administrative area. It greets the
-  admin user and displays quick access links to major management sections,
-  as well as some basic application statistics.
-  
-  - It is served by: AdminDashboardServlet.
-  - Expected attributes:
-    - 'userCount' (int): The total number of registered users.
-    - 'activeEventCount' (int): The number of upcoming events.
---%>
-
 <c:import url="/WEB-INF/jspf/header.jspf">
-	<c:param name="title" value="Admin Dashboard" />
+	<c:param name="pageTitle" value="Admin Dashboard" />
+	<c:param name="navType" value="admin" />
 </c:import>
-<c:import url="/WEB-INF/jspf/admin_navigation.jspf" />
 
 <h1>
 	Willkommen im Admin-Bereich,
@@ -26,7 +13,7 @@
 	!
 </h1>
 <p>Hier können Sie die Anwendung verwalten. Wählen Sie eine Option
-	aus der Navigation oder den Schnellzugriffen.</p>
+	aus der Navigation.</p>
 
 <div class="dashboard-grid">
 	<div class="card">
@@ -37,13 +24,10 @@
 					verwalten</a></li>
 			<li style="padding: 0.5rem 0;"><a
 				href="${pageContext.request.contextPath}/admin/events">Events
-					erstellen &amp; bearbeiten</a></li>
+					erstellen & bearbeiten</a></li>
 			<li style="padding: 0.5rem 0;"><a
 				href="${pageContext.request.contextPath}/admin/courses">Lehrgänge
-					&amp; Meetings verwalten</a></li>
-			<li style="padding: 0.5rem 0;"><a
-				href="${pageContext.request.contextPath}/admin/files">Dateien
-					hochladen</a></li>
+					& Meetings verwalten</a></li>
 			<li style="padding: 0.5rem 0;"><a
 				href="${pageContext.request.contextPath}/admin/storage">Lager
 					verwalten</a></li>

@@ -1,26 +1,14 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
-
-<%--
-  storage_item_details.jsp
-  
-  This is the public-facing detail page for a single inventory item. It is
-  designed to be easily accessible, often via a QR code scan. It displays the
-  item's name, an image if available, and its location details.
-  
-  - It is served by: StorageItemDetailsServlet.
-  - Expected attributes:
-    - 'item' (de.technikteam.model.StorageItem): The inventory item to display.
---%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt"%>
 
 <c:import url="/WEB-INF/jspf/header.jspf">
-	<c:param name="title" value="Artikeldetails" />
+	<c:param name="pageTitle" value="Artikeldetails" />
+	<c:param name="navType" value="user" />
 </c:import>
-<c:import url="/WEB-INF/jspf/navigation.jspf" />
 
 <h1>Artikeldetails</h1>
-<p>Dies ist die Detailansicht für einen Artikel aus dem Lager.</p>
 
 <div class="card" style="max-width: 600px; margin: 1rem auto;">
 	<h2 class="card-title">
@@ -37,16 +25,40 @@
 		</a>
 	</c:if>
 
-	<ul class="details-list">
-		<li><strong>Aktuelle Anzahl:</strong> <c:out
-				value="${item.quantity}" /></li>
-		<li><strong>Ort:</strong> <c:out value="${item.location}" /></li>
-		<li><strong>Schrank:</strong> <c:out
-				value="${not empty item.cabinet ? item.cabinet : 'N/A'}" /></li>
-		<li><strong>Regal:</strong> <c:out
-				value="${not empty item.shelf ? item.shelf : 'N/A'}" /></li>
-		<li><strong>Fach/Kiste:</strong> <c:out
+	<ul style="list-style: none; padding: 0;">
+		<li
+			style="padding: 0.75rem 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;"><strong>Status:</strong>
+			<span class="status-badge ${item.availabilityStatusCssClass}">
+				<c:out value="${item.availabilityStatus}" />
+		</span></li>
+		<li
+			style="padding: 0.75rem 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;"><strong>Aktuelle
+				Anzahl:</strong> <c:out value="${item.quantity}" /></li>
+		<li
+			style="padding: 0.75rem 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;"><strong>Ort:</strong>
+			<c:out value="${item.location}" /></li>
+		<li
+			style="padding: 0.75rem 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;"><strong>Schrank:</strong>
+			<c:out value="${not empty item.cabinet ? item.cabinet : 'N/A'}" /></li>
+		<li
+			style="padding: 0.75rem 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;"><strong>Regal:</strong>
+			<c:out value="${not empty item.shelf ? item.shelf : 'N/A'}" /></li>
+		<li
+			style="padding: 0.75rem 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;"><strong>Fach/Kiste:</strong>
+			<c:out
 				value="${not empty item.compartment ? item.compartment : 'N/A'}" /></li>
+		<li
+			style="padding: 0.75rem 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;"><strong>Gewicht:</strong>
+			<c:if test="${item.weightKg > 0}">
+				<fmt:formatNumber value="${item.weightKg}" type="number"
+					minFractionDigits="2" maxFractionDigits="2" /> kg</c:if> <c:if
+				test="${item.weightKg <= 0}">N/A</c:if></li>
+		<li
+			style="padding: 0.75rem 0; display: flex; justify-content: space-between;"><strong>Preis:</strong>
+			<c:if test="${item.priceEur > 0}">
+				<fmt:formatNumber value="${item.priceEur}" type="currency"
+					currencySymbol="€" />
+			</c:if> <c:if test="${item.priceEur <= 0}">N/A</c:if></li>
 	</ul>
 
 	<div style="margin-top: 2rem;">
@@ -59,24 +71,6 @@
 <div class="lightbox-overlay" id="lightbox">
 	<img src="" alt="Vergrößerte Ansicht">
 </div>
-
-<style>
-.details-list {
-	list-style-type: none;
-	padding-left: 0;
-}
-
-.details-list li {
-	padding: 0.75rem 0;
-	border-bottom: 1px solid var(--border-color);
-	display: flex;
-	justify-content: space-between;
-}
-
-.details-list li:last-child {
-	border-bottom: none;
-}
-</style>
 
 <c:import url="/WEB-INF/jspf/footer.jspf" />
 

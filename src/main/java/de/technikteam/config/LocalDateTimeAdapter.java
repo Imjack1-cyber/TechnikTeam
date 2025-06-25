@@ -1,24 +1,39 @@
 package de.technikteam.config;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSerializationContext;
-import com.google.gson.JsonSerializer;
-
-import java.lang.reflect.Type;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
+import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
- * A custom serializer for the Gson library. It converts java.time.LocalDateTime
- * objects into the standard ISO string format (e.g., "2025-06-20T19:00:00"),
- * which is ideal for JSON data exchange and easily parsed by JavaScript.
+ * A custom TypeAdapter for the Gson library to correctly handle
+ * java.time.LocalDateTime. This handles both serialization (Java to JSON)
+ * and deserialization (JSON to Java), preventing reflection issues with
+ * the Java Module System (JPMS).
  */
-public class LocalDateTimeAdapter implements JsonSerializer<LocalDateTime> {
+public class LocalDateTimeAdapter extends TypeAdapter<LocalDateTime> {
 
-	@Override
-	public JsonElement serialize(LocalDateTime src, Type typeOfSrc, JsonSerializationContext context) {
-		// We convert the LocalDateTime to its standard ISO string format.
-		// This also gracefully handles the case where the date object might be null.
-		return src == null ? null : new JsonPrimitive(src.toString());
-	}
+    // Use the standard ISO format, which is ideal for JSON
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+
+    @Override
+    public void write(JsonWriter out, LocalDateTime value) throws IOException {
+        if (value == null) {
+            out.nullValue();
+        } else {
+            out.value(value.format(FORMATTER));
+        }
+    }
+
+    @Override
+    public LocalDateTime read(JsonReader in) throws IOException {
+        if (in.peek() == com.google.gson.stream.JsonToken.NULL) {
+            in.nextNull();
+            return null;
+        }
+        String value = in.nextString();
+        return LocalDateTime.parse(value, FORMATTER);
+    }
 }

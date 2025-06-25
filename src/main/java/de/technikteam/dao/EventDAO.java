@@ -166,6 +166,27 @@ public class EventDAO {
 	}
 
 	/**
+	 * Fetches all upcoming/active events.
+	 * 
+	 * @return A list of all active Event objects.
+	 */
+	public List<Event> getActiveEvents() {
+		List<Event> events = new ArrayList<>();
+		String sql = "SELECT * FROM events WHERE status IN ('GEPLANT', 'KOMPLETT', 'LAUFEND') ORDER BY event_datetime ASC";
+		logger.debug("Fetching active events.");
+		try (Connection conn = DatabaseManager.getConnection();
+				Statement stmt = conn.createStatement();
+				ResultSet rs = stmt.executeQuery(sql)) {
+			while (rs.next()) {
+				events.add(mapResultSetToEvent(rs));
+			}
+		} catch (SQLException e) {
+			logger.error("SQL error fetching active events.", e);
+		}
+		return events;
+	}
+
+	/**
 	 * Creates a new event in the database.
 	 * 
 	 * @param event The Event object to persist.
@@ -694,13 +715,14 @@ public class EventDAO {
 
 	public List<StorageItem> getReservedItemsForEvent(int eventId) {
 		List<StorageItem> items = new ArrayList<>();
-		String sql = "SELECT si.name, esr.reserved_quantity FROM event_storage_reservations esr "
+		String sql = "SELECT si.id, si.name, esr.reserved_quantity FROM event_storage_reservations esr "
 				+ "JOIN storage_items si ON esr.item_id = si.id WHERE esr.event_id = ?";
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, eventId);
 			try (ResultSet rs = pstmt.executeQuery()) {
 				while (rs.next()) {
 					StorageItem item = new StorageItem();
+					item.setId(rs.getInt("id"));
 					item.setName(rs.getString("name"));
 					item.setQuantity(rs.getInt("reserved_quantity")); // Use quantity field to hold reserved amount
 					items.add(item);

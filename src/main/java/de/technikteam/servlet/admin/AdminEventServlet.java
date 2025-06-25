@@ -5,7 +5,9 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -76,11 +78,11 @@ public class AdminEventServlet extends HttpServlet {
 		logger.debug("AdminEventServlet received GET request with action: {}", action);
 		try {
 			switch (action) {
-			case "assign":
-				showAssignForm(req, resp);
-				break;
 			case "getEventData":
 				getEventDataAsJson(req, resp);
+				break;
+			case "getAssignmentData":
+				getAssignmentDataAsJson(req, resp);
 				break;
 			default:
 				listEvents(req, resp);
@@ -150,7 +152,6 @@ public class AdminEventServlet extends HttpServlet {
 			Event event = eventDAO.getEventById(eventId);
 			if (event != null) {
 				event.setSkillRequirements(eventDAO.getSkillRequirementsForEvent(eventId));
-				// For the modal, we need all reserved items, not just names
 				event.setReservedItems(eventDAO.getReservedItemsForEvent(eventId));
 				event.setAttachments(attachmentDAO.getAttachmentsForEvent(eventId, "ADMIN"));
 				String eventJson = gson.toJson(event);
@@ -165,24 +166,24 @@ public class AdminEventServlet extends HttpServlet {
 		}
 	}
 
-	private void showAssignForm(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+	private void getAssignmentDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		try {
 			int eventId = Integer.parseInt(req.getParameter("id"));
-			logger.info("Showing user assignment form for event ID: {}", eventId);
-			Event event = eventDAO.getEventById(eventId);
 			List<User> signedUpUsers = eventDAO.getSignedUpUsersForEvent(eventId);
-			List<User> assignedUsers = eventDAO.getAssignedUsersForEvent(eventId);
-			Set<Integer> assignedUserIds = assignedUsers.stream().map(User::getId).collect(Collectors.toSet());
+			Set<Integer> assignedUserIds = eventDAO.getAssignedUsersForEvent(eventId).stream().map(User::getId)
+					.collect(Collectors.toSet());
 
-			req.setAttribute("event", event);
-			req.setAttribute("signedUpUsers", signedUpUsers);
-			req.setAttribute("assignedUserIds", assignedUserIds);
+			Map<String, Object> responseData = new HashMap<>();
+			responseData.put("signedUpUsers", signedUpUsers);
+			responseData.put("assignedUserIds", assignedUserIds);
 
-			req.getRequestDispatcher("/admin/admin_event_assign.jsp").forward(req, resp);
+			resp.setContentType("application/json");
+			resp.setCharacterEncoding("UTF-8");
+			resp.getWriter().write(gson.toJson(responseData));
+
 		} catch (NumberFormatException e) {
-			logger.error("Invalid event ID for assignment form.", e);
-			req.getSession().setAttribute("errorMessage", "Ungültige Event-ID.");
-			resp.sendRedirect(req.getContextPath() + "/admin/events");
+			logger.error("Invalid event ID for assignment data.", e);
+			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Ungültige Event-ID.");
 		}
 	}
 

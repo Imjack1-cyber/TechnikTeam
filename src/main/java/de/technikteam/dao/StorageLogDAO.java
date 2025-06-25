@@ -7,6 +7,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,16 +28,23 @@ public class StorageLogDAO {
 	 *                       negative for check-out).
 	 * @param notes          Optional notes for the transaction (e.g., purpose,
 	 *                       event).
+	 * @param eventId        Optional ID of the event this transaction is for.
 	 * @return true if the log entry was created successfully.
 	 */
-	public boolean logTransaction(int itemId, int userId, int quantityChange, String notes) {
-		String sql = "INSERT INTO storage_log (item_id, user_id, quantity_change, notes) VALUES (?, ?, ?, ?)";
-		logger.debug("Logging storage transaction for item {}, user {}, change {}", itemId, userId, quantityChange);
+	public boolean logTransaction(int itemId, int userId, int quantityChange, String notes, int eventId) {
+		String sql = "INSERT INTO storage_log (item_id, user_id, quantity_change, notes, event_id) VALUES (?, ?, ?, ?, ?)";
+		logger.debug("Logging storage transaction for item {}, user {}, change {}, event {}", itemId, userId,
+				quantityChange, eventId);
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, itemId);
 			pstmt.setInt(2, userId);
 			pstmt.setInt(3, quantityChange);
 			pstmt.setString(4, notes);
+			if (eventId > 0) {
+				pstmt.setInt(5, eventId);
+			} else {
+				pstmt.setNull(5, Types.INTEGER);
+			}
 			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
 			logger.error("Failed to log storage transaction for item {}", itemId, e);
@@ -66,6 +74,7 @@ public class StorageLogDAO {
 					entry.setUsername(rs.getString("username"));
 					entry.setQuantityChange(rs.getInt("quantity_change"));
 					entry.setNotes(rs.getString("notes"));
+					entry.setEventId(rs.getInt("event_id"));
 					entry.setTransactionTimestamp(rs.getTimestamp("transaction_timestamp").toLocalDateTime());
 					history.add(entry);
 				}

@@ -3,24 +3,11 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
-<%--
-admin_course_list.jsp
-
-This JSP displays a list of all parent course templates for administrators.
-It provides actions to manage meetings, edit the template, or delete it.
-Creating and editing courses are now handled via modal dialogs on this page.
-
-    It is served by: AdminCourseServlet (doGet).
-
-    Expected attributes:
-
-        'courseList' (List<de.technikteam.model.Course>): A list of all course templates.
-        --%>
-
 <c:import url="/WEB-INF/jspf/header.jspf">
-	<c:param name="title" value="Lehrgangs-Vorlagen" />
+	<c:param name="pageTitle" value="Lehrgangs-Vorlagen" />
+	<c:param name="navType" value="admin" />
 </c:import>
-<c:import url="/WEB-INF/jspf/admin_navigation.jspf" />
+
 <h1>Lehrgangs-Vorlagen verwalten</h1>
 <p>Dies sind die übergeordneten Lehrgänge. Einzelne Termine
 	(Meetings) werden für jede Vorlage separat verwaltet.</p>
@@ -51,38 +38,9 @@ Creating and editing courses are now handled via modal dialogs on this page.
 		<p>Es wurden noch keine Lehrgangs-Vorlagen erstellt.</p>
 	</div>
 </c:if>
-<!-- MOBILE LAYOUT: A list of cards, one for each course template -->
-<div class="mobile-card-list searchable-list">
-	<c:forEach var="course" items="${courseList}">
-		<div class="list-item-card"
-			data-searchable-content="<c:out value='${course.name}'/> <c:out value='${course.abbreviation}'/>">
-			<h3 class="card-title">
-				<c:out value="${course.name}" />
-			</h3>
-			<div class="card-row">
-				<span>Abkürzung:</span> <span><c:out
-						value="${course.abbreviation}" /></span>
-			</div>
-			<div class="card-actions">
-				<a
-					href="${pageContext.request.contextPath}/admin/meetings?courseId=${course.id}"
-					class="btn btn-small btn-success">Meetings verwalten</a>
-				<button type="button" class="btn btn-small edit-course-btn"
-					data-id="${course.id}">Vorlage bearbeiten</button>
-				<form action="${pageContext.request.contextPath}/admin/courses"
-					method="post" class="js-confirm-form"
-					data-confirm-message="Vorlage '${fn:escapeXml(course.name)}' wirklich löschen? Alle zugehörigen Meetings und Qualifikationen werden auch gelöscht!">
-					<input type="hidden" name="action" value="delete"> <input
-						type="hidden" name="id" value="${course.id}">
-					<button type="submit" class="btn btn-small btn-danger">Löschen</button>
-				</form>
-			</div>
-		</div>
-	</c:forEach>
-</div>
-<!-- DESKTOP LAYOUT: A bordered table -->
-<div class="desktop-table-wrapper">
-	<table class="desktop-table sortable-table searchable-table">
+
+<div class="table-wrapper">
+	<table class="data-table sortable-table searchable-table">
 		<thead>
 			<tr>
 				<th class="sortable" data-sort-type="string">Name der Vorlage</th>
@@ -113,6 +71,7 @@ Creating and editing courses are now handled via modal dialogs on this page.
 		</tbody>
 	</table>
 </div>
+
 <!-- MODAL FOR CREATE/EDIT COURSE -->
 <div class="modal-overlay" id="course-modal">
 	<div class="modal-content">
@@ -146,8 +105,7 @@ Creating and editing courses are now handled via modal dialogs on this page.
 <c:import url="/WEB-INF/jspf/footer.jspf" />
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const contextPath = "${pageContext.request.contextPath}";
-    // Custom confirmation for delete forms
+    const contextPath = "${'${pageContext.request.contextPath}'}";
     document.querySelectorAll('.js-confirm-form').forEach(form => {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
@@ -156,7 +114,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Modal Logic
     const modalOverlay = document.getElementById('course-modal');
     const form = document.getElementById('course-modal-form');
     const title = document.getElementById('course-modal-title');
@@ -165,7 +122,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const nameInput = document.getElementById('name-modal');
     const abbrInput = document.getElementById('abbreviation-modal');
     const descInput = document.getElementById('description-modal');
-    
     const closeModalBtn = modalOverlay.querySelector('.modal-close-btn');
     
     const closeModal = () => modalOverlay.classList.remove('active');

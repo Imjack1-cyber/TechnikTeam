@@ -3,25 +3,10 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
-<%--
-  eventDetails.jsp
-  
-  This JSP displays the detailed view of a single event. It shows general info
-  (description, requirements, assigned team) for all users. For events with a
-  status of 'LAUFEND', it reveals an interactive section with a task list and
-  a real-time chat, available only to assigned team members and admins.
-  
-  - It is served by: EventDetailsServlet.
-  - Expected attributes:
-    - 'event' (de.technikteam.model.Event): The event object, populated with all necessary details.
-    - 'assignedUsers' (List<User>): For admins, the list of users assigned to the event.
-    - 'isUserAssigned' (boolean): For regular users, indicates if they are on the team.
---%>
-
 <c:import url="/WEB-INF/jspf/header.jspf">
-	<c:param name="title" value="Event Details" />
+	<c:param name="pageTitle" value="Event Details" />
+	<c:param name="navType" value="user" />
 </c:import>
-<c:import url="/WEB-INF/jspf/navigation.jspf" />
 
 <div class="details-container" data-event-id="${event.id}">
 
@@ -47,21 +32,20 @@
 		</c:if>
 	</p>
 
-	<%-- Interactive section for running events, visible only to assigned users and admins --%>
 	<c:if
 		test="${event.status == 'LAUFEND' and (isUserAssigned or sessionScope.user.role == 'ADMIN')}">
-		<div class="responsive-dashboard-grid">
+		<div class="dashboard-grid">
 			<div class="card">
 				<h2 class="card-title">Aufgaben</h2>
-				<%-- Admin view for tasks: manage all tasks --%>
 				<c:if test="${sessionScope.user.role == 'ADMIN'}">
 					<div id="admin-task-manager">
-						<ul id="task-list-admin" class="details-list">
+						<ul id="task-list-admin" style="list-style: none; padding: 0;">
 							<c:if test="${empty event.eventTasks}">
 								<li>Noch keine Aufgaben erstellt.</li>
 							</c:if>
 							<c:forEach var="task" items="${event.eventTasks}">
-								<li id="task-item-${task.id}">
+								<li id="task-item-${task.id}"
+									style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
 									<div style="flex-grow: 1;">
 										<strong><c:out value="${task.description}" /></strong><br>
 										<small>Zugewiesen: <c:out
@@ -95,9 +79,8 @@
 						</form>
 					</div>
 				</c:if>
-				<%-- User view for tasks: see and complete only their own tasks --%>
 				<c:if test="${sessionScope.user.role != 'ADMIN'}">
-					<ul id="task-list-user" class="details-list">
+					<ul id="task-list-user" style="list-style: none; padding: 0;">
 						<c:if test="${empty event.eventTasks}">
 							<li>Keine Aufgaben vorhanden.</li>
 						</c:if>
@@ -130,7 +113,7 @@
 		</div>
 	</c:if>
 
-	<div class="responsive-dashboard-grid">
+	<div class="dashboard-grid">
 		<div class="card">
 			<h2 class="card-title">Beschreibung</h2>
 			<p>
@@ -140,7 +123,7 @@
 		</div>
 		<div class="card">
 			<h2 class="card-title">Benötigter Personalbedarf</h2>
-			<ul class="details-list">
+			<ul style="list-style: none; padding: 0;">
 				<c:if test="${empty event.skillRequirements}">
 					<li>Keine speziellen Qualifikationen benötigt.</li>
 				</c:if>
@@ -152,7 +135,7 @@
 		</div>
 		<div class="card">
 			<h2 class="card-title">Reserviertes Material</h2>
-			<ul class="details-list">
+			<ul style="list-style: none; padding: 0;">
 				<c:if test="${empty event.reservedItems}">
 					<li>Kein Material für dieses Event reserviert.</li>
 				</c:if>
@@ -164,7 +147,7 @@
 		</div>
 		<div class="card">
 			<h2 class="card-title">Anhänge</h2>
-			<ul class="details-list">
+			<ul style="list-style: none; padding: 0;">
 				<c:if test="${empty event.attachments}">
 					<li>Keine Anhänge für dieses Event vorhanden.</li>
 				</c:if>
@@ -175,11 +158,11 @@
 				</c:forEach>
 			</ul>
 		</div>
-
 	</div>
+
 	<div class="card">
 		<h2 class="card-title">Zugewiesenes Team</h2>
-		<ul class="details-list">
+		<ul style="list-style: none; padding: 0;">
 			<c:if test="${empty event.assignedAttendees}">
 				<li>Noch kein Team zugewiesen.</li>
 			</c:if>
@@ -190,6 +173,7 @@
 			</c:forEach>
 		</ul>
 	</div>
+
 	<div style="margin-top: 2rem;">
 		<a href="${pageContext.request.contextPath}/events" class="btn">Zurück
 			zur Event-Übersicht</a>
@@ -225,6 +209,18 @@
 	font-size: 1.1rem;
 	color: var(--text-muted-color);
 	margin-bottom: 1.5rem;
+}
+
+.details-list li {
+	padding: 0.75rem 0;
+	border-bottom: 1px solid var(--border-color);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.details-list li:last-child {
+	border-bottom: none;
 }
 </style>
 

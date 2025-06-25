@@ -50,6 +50,12 @@ public class StorageTransactionServlet extends HttpServlet {
 			int quantity = Integer.parseInt(request.getParameter("quantity"));
 			String type = request.getParameter("type"); // "checkout" or "checkin"
 			String notes = request.getParameter("notes");
+			int eventId = 0;
+			try {
+				eventId = Integer.parseInt(request.getParameter("eventId"));
+			} catch (NumberFormatException e) {
+				// Ignore if not provided or invalid
+			}
 
 			int quantityChange = "checkin".equals(type) ? quantity : -quantity;
 			logger.info("Processing storage transaction by user '{}': item ID {}, quantity change {}",
@@ -60,7 +66,7 @@ public class StorageTransactionServlet extends HttpServlet {
 
 			if (success) {
 				// Log the transaction in the specific storage log and the general admin log.
-				storageLogDAO.logTransaction(itemId, user.getId(), quantityChange, notes);
+				storageLogDAO.logTransaction(itemId, user.getId(), quantityChange, notes, eventId);
 
 				StorageItem item = storageDAO.getItemById(itemId);
 				String itemName = (item != null) ? item.getName() : "N/A";

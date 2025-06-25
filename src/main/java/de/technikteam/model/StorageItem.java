@@ -1,11 +1,7 @@
 package de.technikteam.model;
 
 /**
- * Represents a single item from the `storage_items` (inventory) table. It holds
- * all data related to an inventory item, including its name, location,
- * quantity, and an optional image path. It also contains helper methods to
- * 
- * determine its availability status for UI display.
+ * Represents a single item from the `storage_items` (inventory) table.
  */
 public class StorageItem {
 	private int id;
@@ -16,67 +12,43 @@ public class StorageItem {
 	private String compartment;
 	private int quantity;
 	private int maxQuantity;
+	private int defectiveQuantity;
+	private String defectReason;
+	private double weightKg;
+	private double priceEur;
 	private String imagePath;
 
 	public StorageItem() {
 	}
 
-	/**
-	 * Determines a human-readable availability status based on the current quantity
-	 * relative to the maximum quantity.
-	 * 
-	 * @return A string representing the status (e.g., "Vollständig", "Niedriger
-	 *         Bestand").
-	 */
+	public int getAvailableQuantity() {
+		return this.quantity - this.defectiveQuantity;
+	}
+
 	public String getAvailabilityStatus() {
-		if (this.maxQuantity <= 0) {
-			return "Unbegrenzt";
-		}
-		if (this.quantity <= 0) {
+		if (this.getAvailableQuantity() <= 0) {
 			return "Vergriffen";
 		}
-		if (this.quantity >= this.maxQuantity) {
+		if (this.maxQuantity > 0 && this.getAvailableQuantity() >= this.maxQuantity) {
 			return "Vollständig";
 		}
-		double percentage = (double) this.quantity / this.maxQuantity;
-		if (percentage <= 0.25) {
+		if (this.maxQuantity > 0 && (double) this.getAvailableQuantity() / this.maxQuantity <= 0.25) {
 			return "Niedriger Bestand";
 		}
 		return "Auf Lager";
 	}
 
-	/**
-	 * Gets a corresponding CSS class based on the availability status, allowing for
-	 * easy color-coding in the user interface.
-	 * 
-	 * @return A CSS class name (e.g., "status-ok", "status-danger").
-	 */
 	public String getAvailabilityStatusCssClass() {
-		if (this.maxQuantity <= 0) {
-			return "status-info"; // Unlimited
+		if (this.getAvailableQuantity() <= 0) {
+			return "status-danger";
 		}
-		if (this.quantity <= 0) {
-			return "status-danger"; // Out of Stock
+		if (this.maxQuantity > 0 && (double) this.getAvailableQuantity() / this.maxQuantity <= 0.25) {
+			return "status-warn";
 		}
-		if (this.quantity >= this.maxQuantity) {
-			return "status-ok"; // Full
-		}
-		double percentage = (double) this.quantity / this.maxQuantity;
-		if (percentage <= 0.25) {
-			return "status-warn"; // Low Stock
-		}
-		return "status-ok"; // In Stock
+		return "status-ok";
 	}
 
 	// --- Getters and Setters ---
-
-	public int getMaxQuantity() {
-		return maxQuantity;
-	}
-
-	public void setMaxQuantity(int maxQuantity) {
-		this.maxQuantity = maxQuantity;
-	}
 
 	public int getId() {
 		return id;
@@ -132,6 +104,46 @@ public class StorageItem {
 
 	public void setQuantity(int quantity) {
 		this.quantity = quantity;
+	}
+
+	public int getMaxQuantity() {
+		return maxQuantity;
+	}
+
+	public void setMaxQuantity(int maxQuantity) {
+		this.maxQuantity = maxQuantity;
+	}
+
+	public int getDefectiveQuantity() {
+		return defectiveQuantity;
+	}
+
+	public void setDefectiveQuantity(int defectiveQuantity) {
+		this.defectiveQuantity = defectiveQuantity;
+	}
+
+	public String getDefectReason() {
+		return defectReason;
+	}
+
+	public void setDefectReason(String defectReason) {
+		this.defectReason = defectReason;
+	}
+
+	public double getWeightKg() {
+		return weightKg;
+	}
+
+	public void setWeightKg(double weightKg) {
+		this.weightKg = weightKg;
+	}
+
+	public double getPriceEur() {
+		return priceEur;
+	}
+
+	public void setPriceEur(double priceEur) {
+		this.priceEur = priceEur;
 	}
 
 	public String getImagePath() {

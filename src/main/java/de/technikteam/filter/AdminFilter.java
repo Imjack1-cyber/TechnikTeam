@@ -1,6 +1,9 @@
 package de.technikteam.filter;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import de.technikteam.model.User;
@@ -18,14 +21,14 @@ import jakarta.servlet.http.HttpSession;
 /**
  * A security filter that protects all URLs under the `/admin/*` path. It
  * intercepts requests to these protected endpoints and checks if the user
- * object in the current session has the "ADMIN" role. If the user is not an
- * admin or is not logged in at all, it denies access and redirects them to an
- * appropriate page (login or home).
+ * object in the current session has the "ADMIN" role. It provides special
+ * access for the 'LAGERWART' role to specific pages.
  */
 @WebFilter(urlPatterns = "/admin/*", asyncSupported = true)
 public class AdminFilter implements Filter {
 
 	private static final Logger logger = LogManager.getLogger(AdminFilter.class);
+	private static final List<String> LAGERWART_PATHS = Arrays.asList("/admin/storage", "/admin/defects");
 
 	@Override
 	public void init(FilterConfig filterConfig) throws ServletException {
@@ -52,18 +55,34 @@ public class AdminFilter implements Filter {
 		}
 
 		User user = (User) session.getAttribute("user");
+		String userRole = user.getRole();
 
-		if ("ADMIN".equalsIgnoreCase(user.getRole())) {
+		// Admins can access everything.
+		if ("ADMIN".equalsIgnoreCase(userRole)) {
 			logger.debug("ADMIN access GRANTED for user '{}' to path '{}'. Passing to next filter/servlet.",
 					user.getUsername(), path);
 			chain.doFilter(request, response);
-		} else {
-			logger.warn("ADMIN access DENIED for user '{}' (Role: '{}') to path '{}'. Redirecting to user home.",
-					user.getUsername(), user.getRole(), path);
-			request.getSession().setAttribute("accessErrorMessage",
-					"Sie haben keine Berechtigung, auf diese Seite zuzugreifen.");
-			response.sendRedirect(request.getContextPath() + "/home");
+			return;
 		}
+
+		// Check for Lagerwart specific access.
+		if ("LAGERWART".equalsIgnoreCase(userRole)) {
+			for (String allowedPath : LAGERWART_PATHS) {
+				if (path.startsWith(allowedPath)) {
+					logger.debug("LAGERWART access GRANTED for user '{}' to path '{}'.", user.getUsername(), path);
+					chain.doFilter(request, response);
+					return;
+				}
+			}
+		}
+
+		// If we reach here, the user is neither an Admin nor a Lagerwart with access to
+		// a permitted page.
+		logger.warn("ADMIN access DENIED for user '{}' (Role: '{}') to path '{}'. Redirecting to user home.",
+				user.getUsername(), user.getRole(), path);
+		request.getSession().setAttribute("accessErrorMessage",
+				"Sie haben keine Berechtigung, auf diese Seite zuzugreifen.");
+		response.sendRedirect(request.getContextPath() + "/home");
 	}
 
 	@Override

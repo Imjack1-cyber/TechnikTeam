@@ -4,24 +4,19 @@
 
 <%--
   login.jsp
-  
-  This is the main login page for the application. It provides a simple form
-  for users to enter their username and password, with a toggle to show/hide
-  the password. The form is submitted to the LoginServlet for authentication.
-  
-  - It is served by: LoginServlet (doGet).
-  - It can also be the welcome-file defined in web.xml.
-  - Expected attributes:
-    - 'errorMessage' (String): An error message to display if login fails (optional).
+  This is the main login page for the application, redesigned to fit the new layout.
 --%>
 
 <c:import url="/WEB-INF/jspf/header.jspf">
-	<c:param name="title" value="Anmeldung" />
+	<c:param name="pageTitle" value="Anmeldung" />
 </c:import>
 
-<div class="login-wrapper">
+<div class="login-page-container">
 	<div class="login-box">
-		<h1>Willkommen zurück</h1>
+		<h1>
+			<i class="fas fa-bolt" style="color: var(--primary-color);"></i>
+			TechnikTeam
+		</h1>
 
 		<c:if test="${not empty errorMessage}">
 			<p class="error-message" id="error-message">
@@ -36,57 +31,24 @@
 					autofocus>
 			</div>
 			<div class="form-group">
-				<label for="password">Passwort</label>
-				<div class="password-wrapper">
-					<input type="password" id="password" name="password" required
-						autocomplete="current-password"> <i
-						class="fas fa-eye password-toggle"></i>
-				</div>
+				<label for="password">Passwort</label> <input type="password"
+					id="password" name="password" required
+					autocomplete="current-password">
 			</div>
 			<button type="submit" class="btn" style="width: 100%;">Anmelden</button>
 		</form>
 		<div
 			style="text-align: center; margin: 1rem 0; color: var(--text-muted-color);">ODER</div>
-		<button id="passkey-login-btn" class="btn btn-secondary"
-			style="width: 100%;">
+		<button id="passkey-login-btn" class="btn"
+			style="width: 100%; background-color: var(--text-muted-color); border-color: var(--text-muted-color);">
 			<i class="fas fa-fingerprint"></i> Mit Passkey anmelden
 		</button>
 	</div>
 </div>
-<style>
-/* Scoped styles for password visibility toggle */
-.password-wrapper {
-	position: relative;
-}
 
-.password-wrapper input {
-	padding-right: 2.5rem; /* Make space for the icon */
-}
-
-.password-toggle {
-	position: absolute;
-	right: 1rem;
-	top: 50%;
-	transform: translateY(-50%);
-	cursor: pointer;
-	color: var(--text-muted-color);
-}
-</style>
 <script>
-// Attach event listener to all password toggles on the page
 document.addEventListener('DOMContentLoaded', () => {
-	const contextPath = "${pageContext.request.contextPath}";
-
-    document.querySelectorAll('.password-toggle').forEach(toggle => {
-        toggle.addEventListener('click', () => {
-            const passwordInput = toggle.previousElementSibling;
-            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordInput.setAttribute('type', type);
-            // Toggle the icon
-            toggle.classList.toggle('fa-eye');
-            toggle.classList.toggle('fa-eye-slash');
-        });
-    });
+    const contextPath = "${'${pageContext.request.contextPath}'}";
 
     // Passkey Login Logic
     const passkeyLoginBtn = document.getElementById('passkey-login-btn');
@@ -100,7 +62,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!startResp.ok) throw new Error('Could not start passkey login.');
                 const requestOptions = await startResp.json();
                 
-                // Convert base64url to ArrayBuffer
                 requestOptions.challenge = bufferDecode(requestOptions.challenge);
                 if (requestOptions.allowCredentials) {
                     for (let cred of requestOptions.allowCredentials) {
@@ -129,17 +90,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (verificationResp.ok) {
-                    window.location.href = `${contextPath}/home`; // Redirect on success
+                    window.location.href = `${contextPath}/home`;
                 } else {
                     const errorText = await verificationResp.text();
-                    errorMessageElement.textContent = `Passkey Login fehlgeschlagen: ${errorText}`;
-                    errorMessageElement.style.display = 'block';
+                    if(errorMessageElement) errorMessageElement.textContent = `Passkey Login fehlgeschlagen: ${errorText}`;
                 }
 
             } catch (err) {
                 console.error('Passkey login error:', err);
-                errorMessageElement.textContent = 'Passkey-Operation fehlgeschlagen oder abgebrochen.';
-                errorMessageElement.style.display = 'block';
+                if(errorMessageElement) errorMessageElement.textContent = 'Passkey-Operation fehlgeschlagen oder abgebrochen.';
             }
         });
     }
@@ -147,10 +106,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Helper functions for base64url encoding/decoding
     function bufferDecode(value) {
         const str = value.replace(/-/g, '+').replace(/_/g, '/');
-        const
-			decoded = atob(str);
-        const
-			buffer = new Uint8Array(decoded.length);
+        const decoded = atob(str);
+        const buffer = new Uint8Array(decoded.length);
         for (let i = 0; i < decoded.length; i++) {
             buffer[i] = decoded.charCodeAt(i);
         }
@@ -165,6 +122,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 </script>
-<%-- The footer is omitted on the login page for a cleaner, focused look. --%>
-</body>
-</html>
+
+<c:import url="/WEB-INF/jspf/footer.jspf" />

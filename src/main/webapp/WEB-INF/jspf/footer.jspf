@@ -1,17 +1,10 @@
-<%--
-  footer.jspf
-  
-  This JSP fragment contains the bottom part of every HTML page. It closes
-  the <main> tag, adds the application footer, includes the main JavaScript
-  file, and closes the <body> and <html> tags.
---%>
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
-	isELIgnored="false"%>
+
 </main>
-<footer class="app-footer">
-	<p>© ${java.time.Year.now()} Technik Team</p>
-</footer>
+</div>
+</div>
+<%-- Closes app-container --%>
 
 <script src="${pageContext.request.contextPath}/js/main.js"></script>
+
 </body>
 </html>

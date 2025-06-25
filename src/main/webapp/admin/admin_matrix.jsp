@@ -2,27 +2,10 @@
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
-<%--
-  admin_matrix.jsp
-  
-  This JSP displays the main qualification and attendance matrix. It's a complex
-  view that cross-references users with all scheduled meetings for every course.
-  Each cell indicates if a user attended a specific meeting. The cells are
-  interactive; clicking one opens a modal window to edit that specific attendance
-  record. The modal's form is submitted to the AdminAttendanceServlet.
-  
-  - It is served by: MatrixServlet.
-  - Expected attributes:
-    - 'allUsers' (List<de.technikteam.model.User>): All users for the rows.
-    - 'allCourses' (List<de.technikteam.model.Course>): All courses for the main columns.
-    - 'meetingsByCourse' (Map<Integer, List<Meeting>>): Meetings for each course for the sub-columns.
-    - 'attendanceMap' (Map<String, MeetingAttendance>): A map for quick lookup of attendance records.
---%>
-
 <c:import url="/WEB-INF/jspf/header.jspf">
-	<c:param name="title" value="Qualifikations-Matrix" />
+	<c:param name="pageTitle" value="Qualifikations-Matrix" />
+	<c:param name="navType" value="admin" />
 </c:import>
-<c:import url="/WEB-INF/jspf/admin_navigation.jspf" />
 
 <h1>
 	<i class="fas fa-th-list"></i> Qualifikations-Matrix (Modular)
@@ -44,52 +27,12 @@
 	<c:remove var="errorMessage" scope="session" />
 </c:if>
 
-<!-- This wrapper ensures mobile-only display -->
-<div class="mobile-matrix-wrapper card">
-	<table class="mobile-matrix-table">
-		<thead>
-			<tr>
-				<th>Nutzer</th>
-				<c:forEach var="course" items="${allCourses}">
-					<c:forEach var="meeting" items="${meetingsByCourse[course.id]}">
-						<th>${course.abbreviation}<br />${meeting.name}</th>
-					</c:forEach>
-				</c:forEach>
-			</tr>
-		</thead>
-		<tbody>
-			<c:forEach var="user" items="${allUsers}">
-				<tr>
-					<td>${user.username}</td>
-					<c:forEach var="course" items="${allCourses}">
-						<c:forEach var="meeting" items="${meetingsByCourse[course.id]}">
-							<c:set var="attendanceKey" value="${user.id}-${meeting.id}" />
-							<c:set var="attendance" value="${attendanceMap[attendanceKey]}" />
-							<td class="qual-cell" data-user-id="${user.id}"
-								data-user-name="${user.username}"
-								data-meeting-id="${meeting.id}"
-								data-meeting-name="${course.name} - ${meeting.name}"
-								data-attended="${not empty attendance && attendance.attended}"
-								data-remarks="${not empty attendance ? attendance.remarks : ''}">
-								<c:if test="${not empty attendance && attendance.attended}">
-									<span class="text-success" style="font-weight: bold;">✔</span>
-								</c:if> <c:if test="${empty attendance || !attendance.attended}">-</c:if>
-							</td>
-						</c:forEach>
-					</c:forEach>
-				</tr>
-			</c:forEach>
-		</tbody>
-	</table>
-</div>
-
-<!-- This wrapper ensures desktop-only display -->
-<div class="desktop-table-wrapper">
-	<table class="desktop-table matrix-table">
+<div class="table-wrapper">
+	<table class="data-table">
 		<thead>
 			<tr>
 				<th rowspan="2"
-					style="vertical-align: middle; position: sticky; left: 0; z-index: 10;">Nutzer
+					style="vertical-align: middle; position: sticky; left: 0; z-index: 10; background-color: var(--surface-color);">Nutzer
 					/ Lehrgang ↓</th>
 				<c:forEach var="course" items="${allCourses}">
 					<th colspan="${meetingsByCourse[course.id].size()}"
@@ -131,7 +74,7 @@
 								style="text-align: center; font-weight: bold; cursor: pointer;"
 								title="Klicken zum Bearbeiten"><c:if
 									test="${not empty attendance && attendance.attended}">
-									<span class="text-success">✔</span>
+									<span style="color: var(--success-color);">✔</span>
 								</c:if> <c:if test="${empty attendance || !attendance.attended}">-</c:if>
 							</td>
 						</c:forEach>

@@ -2,25 +2,10 @@
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
-<%--
-  lehrgaenge.jsp
-  
-  This is the main page for users to view and interact with upcoming course
-  meetings. It displays a list of all scheduled meetings, showing the user's
-  current attendance status for each. It provides buttons for the user to
-  sign up for or sign off from each meeting. Now includes client-side
-  filtering and sorting.
-  
-  - It is served by: MeetingServlet.
-  - It submits to: MeetingActionServlet.
-  - Expected attributes:
-    - 'meetings' (List<de.technikteam.model.Meeting>): A list of all upcoming meetings.
---%>
-
 <c:import url="/WEB-INF/jspf/header.jspf">
-	<c:param name="title" value="Lehrgänge" />
+	<c:param name="pageTitle" value="Lehrgänge" />
+	<c:param name="navType" value="user" />
 </c:import>
-<c:import url="/WEB-INF/jspf/navigation.jspf" />
 
 <h1>Anstehende Lehrgänge & Meetings</h1>
 
@@ -51,53 +36,8 @@
 	</div>
 </c:if>
 
-<!-- MOBILE LAYOUT -->
-<div class="mobile-card-list searchable-list">
-	<c:forEach var="meeting" items="${meetings}">
-		<div class="list-item-card"
-			data-searchable-content="<c:out value='${meeting.name}'/> <c:out value='${meeting.parentCourseName}'/> <c:out value='${meeting.userAttendanceStatus}'/>">
-			<h3 class="card-title">
-				<a
-					href="${pageContext.request.contextPath}/meetingDetails?id=${meeting.id}"><c:out
-						value="${meeting.name}" /></a>
-			</h3>
-			<div class="card-row">
-				<span>Gehört zu:</span> <span><c:out
-						value="${meeting.parentCourseName}" /></span>
-			</div>
-			<div class="card-row">
-				<span>Dein Status:</span> <span> <c:choose>
-						<c:when test="${meeting.userAttendanceStatus == 'ANGEMELDET'}">
-							<span class="text-success">Angemeldet</span>
-						</c:when>
-						<c:when test="${meeting.userAttendanceStatus == 'ABGEMELDET'}">
-							<span class="text-danger">Abgemeldet</span>
-						</c:when>
-						<c:otherwise>Offen</c:otherwise>
-					</c:choose>
-				</span>
-			</div>
-			<div class="card-actions">
-				<form action="${pageContext.request.contextPath}/meeting-action"
-					method="post" style="display: flex; gap: 0.5rem;">
-					<input type="hidden" name="meetingId" value="${meeting.id}">
-					<c:if test="${meeting.userAttendanceStatus != 'ANGEMELDET'}">
-						<button type="submit" name="action" value="signup"
-							class="btn btn-small btn-success">Anmelden</button>
-					</c:if>
-					<c:if test="${meeting.userAttendanceStatus == 'ANGEMELDET'}">
-						<button type="submit" name="action" value="signoff"
-							class="btn btn-small btn-danger">Abmelden</button>
-					</c:if>
-				</form>
-			</div>
-		</div>
-	</c:forEach>
-</div>
-
-<!-- DESKTOP LAYOUT -->
-<div class="desktop-table-wrapper">
-	<table class="desktop-table sortable-table searchable-table">
+<div class="table-wrapper">
+	<table class="data-table sortable-table searchable-table">
 		<thead>
 			<tr>
 				<th class="sortable" data-sort-type="string">Meeting</th>
@@ -118,10 +58,10 @@
 							value="${meeting.formattedMeetingDateTimeRange}" /></td>
 					<td><c:choose>
 							<c:when test="${meeting.userAttendanceStatus == 'ANGEMELDET'}">
-								<span class="text-success">Angemeldet</span>
+								<span style="color: var(--success-color);">Angemeldet</span>
 							</c:when>
 							<c:when test="${meeting.userAttendanceStatus == 'ABGEMELDET'}">
-								<span class="text-danger">Abgemeldet</span>
+								<span style="color: var(--danger-color);">Abgemeldet</span>
 							</c:when>
 							<c:otherwise>Offen</c:otherwise>
 						</c:choose></td>

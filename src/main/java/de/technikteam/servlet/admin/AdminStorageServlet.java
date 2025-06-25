@@ -20,21 +20,11 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- *
- * 
- * Mapped to /admin/storage, this servlet provides full administrative control
- * 
- * over the inventory (storage_items table). It handles listing all items,
- * 
- * and processing the create, update, and delete actions (now via modals),
- * 
- * including associated image file uploads and deletions.
- */
 @WebServlet("/admin/storage")
 @MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 5, maxRequestSize = 1024 * 1024 * 10)
 public class AdminStorageServlet extends HttpServlet {
@@ -76,24 +66,18 @@ public class AdminStorageServlet extends HttpServlet {
 			throws IOException, ServletException {
 		request.setCharacterEncoding("UTF-8");
 		String contentType = request.getContentType();
-		// Differentiate between multipart and standard forms
+
 		if (contentType != null && contentType.toLowerCase().startsWith("multipart/")) {
 			String action = ServletUtils.getPartValue(request.getPart("action"));
-			if ("create".equals(action)) {
-				handleCreateOrUpdate(request, response, true);
-			} else if ("update".equals(action)) {
-				handleCreateOrUpdate(request, response, false);
-			} else {
-				logger.warn("Unknown multipart action received: {}", action);
-				response.sendRedirect(request.getContextPath() + "/admin/storage");
+			if ("create".equals(action) || "update".equals(action)) {
+				handleCreateOrUpdate(request, response);
 			}
 		} else {
 			String action = request.getParameter("action");
 			if ("delete".equals(action)) {
 				handleDelete(request, response);
-			} else {
-				logger.warn("Unknown non-multipart action received: {}", action);
-				response.sendRedirect(request.getContextPath() + "/admin/storage");
+			} else if ("updateDefect".equals(action)) {
+				handleDefectUpdate(request, response);
 			}
 		}
 	}
@@ -103,10 +87,9 @@ public class AdminStorageServlet extends HttpServlet {
 			int itemId = Integer.parseInt(req.getParameter("id"));
 			StorageItem item = storageDAO.getItemById(itemId);
 			if (item != null) {
-				String itemJson = gson.toJson(item);
 				resp.setContentType("application/json");
 				resp.setCharacterEncoding("UTF-8");
-				resp.getWriter().write(itemJson);
+				resp.getWriter().write(gson.toJson(item));
 			} else {
 				resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Item not found");
 			}
@@ -115,9 +98,11 @@ public class AdminStorageServlet extends HttpServlet {
 		}
 	}
 
-	private void handleCreateOrUpdate(HttpServletRequest request, HttpServletResponse response, boolean isCreate)
+	private void handleCreateOrUpdate(HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
 		User adminUser = (User) request.getSession().getAttribute("user");
+		boolean isCreate = "create".equals(ServletUtils.getPartValue(request.getPart("action")));
+
 		try {
 			StorageItem item = new StorageItem();
 			item.setName(ServletUtils.getPartValue(request.getPart("name")));
@@ -127,16 +112,25 @@ public class AdminStorageServlet extends HttpServlet {
 			item.setCompartment(ServletUtils.getPartValue(request.getPart("compartment")));
 			item.setQuantity(Integer.parseInt(ServletUtils.getPartValue(request.getPart("quantity"))));
 			item.setMaxQuantity(Integer.parseInt(ServletUtils.getPartValue(request.getPart("maxQuantity"))));
-			logger.debug("SERVLET: Read from form -> Name: '{}', Quantity: {}, MaxQuantity: {}", item.getName(),
-					item.getQuantity(), item.getMaxQuantity());
+
+			String weightStr = ServletUtils.getPartValue(request.getPart("weight_kg"));
+			item.setWeightKg(
+					weightStr == null || weightStr.isEmpty() ? 0.0 : Double.parseDouble(weightStr.replace(',', '.')));
+			String priceStr = ServletUtils.getPartValue(request.getPart("price_eur"));
+			item.setPriceEur(
+					priceStr == null || priceStr.isEmpty() ? 0.0 : Double.parseDouble(priceStr.replace(',', '.')));
+
 			Part filePart = request.getPart("imageFile");
 			String imagePath = null;
+
 			if (!isCreate) {
 				int itemId = Integer.parseInt(ServletUtils.getPartValue(request.getPart("id")));
 				item.setId(itemId);
 				StorageItem originalItem = storageDAO.getItemById(itemId);
 				if (originalItem != null) {
 					imagePath = originalItem.getImagePath();
+					item.setDefectiveQuantity(originalItem.getDefectiveQuantity());
+					item.setDefectReason(originalItem.getDefectReason());
 				}
 			}
 
@@ -153,43 +147,51 @@ public class AdminStorageServlet extends HttpServlet {
 			}
 			item.setImagePath(imagePath);
 
-			boolean success;
-			if (isCreate) {
-				success = storageDAO.createItem(item);
-				if (success) {
-					String logDetails = String.format(
-							"Lagerartikel '%s' erstellt. Ort: %s, Schrank: %s, Anzahl: %d/%d.", item.getName(),
-							item.getLocation(), item.getCabinet(), item.getQuantity(), item.getMaxQuantity());
-					AdminLogService.log(adminUser.getUsername(), "CREATE_STORAGE_ITEM", logDetails);
-					request.getSession().setAttribute("successMessage",
-							"Artikel '" + item.getName() + "' erfolgreich erstellt.");
-				}
-			} else { // UPDATE
-				StorageItem originalItem = storageDAO.getItemById(item.getId());
-				success = storageDAO.updateItem(item);
-				if (success) {
-					String logDetails = String.format(
-							"Lagerartikel '%s' (ID: %d) aktualisiert. Anzahl: %d -> %d, Ort: '%s' -> '%s'.",
-							originalItem.getName(), item.getId(), originalItem.getQuantity(), item.getQuantity(),
-							originalItem.getLocation(), item.getLocation());
-					AdminLogService.log(adminUser.getUsername(), "UPDATE_STORAGE_ITEM", logDetails);
-					request.getSession().setAttribute("successMessage",
-							"Artikel '" + item.getName() + "' erfolgreich aktualisiert.");
-				}
-			}
+			boolean success = isCreate ? storageDAO.createItem(item) : storageDAO.updateItem(item);
 
-			if (!success) {
-				request.getSession().setAttribute("errorMessage",
-						"Operation am Artikel fehlgeschlagen. Möglicherweise gab es keine Änderungen.");
+			if (success) {
+				String logDetails = String.format("Lagerartikel '%s' %s.", item.getName(),
+						isCreate ? "erstellt" : "aktualisiert");
+				AdminLogService.log(adminUser.getUsername(), isCreate ? "CREATE_STORAGE_ITEM" : "UPDATE_STORAGE_ITEM",
+						logDetails);
+				request.getSession().setAttribute("successMessage",
+						"Artikel '" + item.getName() + "' erfolgreich gespeichert.");
+			} else {
+				request.getSession().setAttribute("errorMessage", "Operation am Artikel fehlgeschlagen.");
 			}
-		} catch (NumberFormatException e) {
-			logger.error("Invalid number format for quantity or ID.", e);
-			request.getSession().setAttribute("errorMessage", "Ungültiges Zahlenformat für Anzahl oder ID.");
 		} catch (Exception e) {
 			logger.error("Error creating/updating storage item.", e);
 			request.getSession().setAttribute("errorMessage", "Fehler: " + e.getMessage());
 		}
 		response.sendRedirect(request.getContextPath() + "/admin/storage");
+	}
+
+	private void handleDefectUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		User adminUser = (User) request.getSession().getAttribute("user");
+		String returnTo = request.getParameter("returnTo");
+		try {
+			int itemId = Integer.parseInt(request.getParameter("id"));
+			int defectiveQty = Integer.parseInt(request.getParameter("defective_quantity"));
+			String reason = request.getParameter("defect_reason");
+
+			if (storageDAO.updateDefectiveStatus(itemId, defectiveQty, reason)) {
+				AdminLogService.log(adminUser.getUsername(), "UPDATE_DEFECT_STATUS",
+						String.format("Defekt-Status für Artikel-ID %d aktualisiert: %d defekt. Grund: %s", itemId,
+								defectiveQty, reason));
+				request.getSession().setAttribute("successMessage", "Defekt-Status aktualisiert.");
+			} else {
+				request.getSession().setAttribute("errorMessage",
+						"Defekt-Status konnte nicht aktualisiert werden (vielleicht nicht genug Bestand?).");
+			}
+		} catch (NumberFormatException e) {
+			request.getSession().setAttribute("errorMessage", "Ungültige Artikel-ID oder Anzahl.");
+		} catch (SQLException e) {
+			request.getSession().setAttribute("errorMessage", "Datenbankfehler: " + e.getMessage());
+		}
+
+		String redirectUrl = request.getContextPath()
+				+ ("/defects".equals(returnTo) ? "/admin/defects" : "/admin/storage");
+		response.sendRedirect(redirectUrl);
 	}
 
 	private void handleDelete(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -198,32 +200,22 @@ public class AdminStorageServlet extends HttpServlet {
 			int itemId = Integer.parseInt(request.getParameter("id"));
 			StorageItem item = storageDAO.getItemById(itemId);
 			if (item != null && item.getImagePath() != null && !item.getImagePath().isEmpty()) {
-				// Correctly construct the path to the image directory
 				File imageDir = new File(AppConfig.UPLOAD_DIRECTORY, "images");
 				File imageFile = new File(imageDir, item.getImagePath());
-				if (imageFile.exists()) {
-					if (imageFile.delete()) {
-						logger.info("Deleted physical image file: {}", imageFile.getAbsolutePath());
-					} else {
-						logger.warn("Could not delete physical image file: {}", imageFile.getAbsolutePath());
-					}
+				if (imageFile.exists() && !imageFile.delete()) {
+					logger.warn("Could not delete physical image file: {}", imageFile.getAbsolutePath());
 				}
 			}
 			if (storageDAO.deleteItem(itemId)) {
-				String itemName = (item != null) ? item.getName() : "N/A";
-				String itemLocation = (item != null) ? item.getLocation() : "N/A";
-				String logDetails = String.format("Lagerartikel '%s' (ID: %d) von Ort '%s' gelöscht.", itemName, itemId,
-						itemLocation);
-				AdminLogService.log(adminUser.getUsername(), "DELETE_STORAGE_ITEM", logDetails);
+				AdminLogService.log(adminUser.getUsername(), "DELETE_STORAGE_ITEM", String.format(
+						"Lagerartikel '%s' (ID: %d) gelöscht.", (item != null ? item.getName() : "N/A"), itemId));
 				request.getSession().setAttribute("successMessage", "Artikel erfolgreich gelöscht.");
 			} else {
-				request.getSession().setAttribute("errorMessage",
-						"Artikel konnte nicht aus der Datenbank gelöscht werden.");
+				request.getSession().setAttribute("errorMessage", "Artikel konnte nicht gelöscht werden.");
 			}
 		} catch (NumberFormatException e) {
 			request.getSession().setAttribute("errorMessage", "Ungültige Artikel-ID.");
 		}
 		response.sendRedirect(request.getContextPath() + "/admin/storage");
 	}
-
 }

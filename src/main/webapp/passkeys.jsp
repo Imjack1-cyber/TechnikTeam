@@ -3,20 +3,10 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
-<%--
-  passkeys.jsp
-  
-  This page allows a logged-in user to manage their registered Passkeys (WebAuthn credentials).
-  
-  - It is served by: PasskeyManagementServlet (doGet).
-  - Expected attributes:
-    - 'passkeys' (List<PasskeyCredential>): A list of the user's registered passkeys.
---%>
-
 <c:import url="/WEB-INF/jspf/header.jspf">
-	<c:param name="title" value="Passkeys verwalten" />
+	<c:param name="pageTitle" value="Passkeys verwalten" />
+	<c:param name="navType" value="user" />
 </c:import>
-<c:import url="/WEB-INF/jspf/navigation.jspf" />
 
 <h1>Passkeys verwalten</h1>
 <p>Hier können Sie Passkeys hinzufügen oder entfernen, um sich
@@ -85,7 +75,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const contextPath = "${pageContext.request.contextPath}";
+    const contextPath = "${'${pageContext.request.contextPath}'}"; // Escaped for JS
     const addPasskeyBtn = document.getElementById('add-passkey-btn');
 
     document.querySelectorAll('.js-confirm-form').forEach(form => {
@@ -106,11 +96,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 // 1. Start registration from server
-                const startResp = await fetch(`${contextPath}/api/passkey/register/start`, { method: 'POST' });
+                const startResp = await fetch(contextPath + '/api/passkey/register/start', { method: 'POST' });
                 if (!startResp.ok) throw new Error('Could not start passkey registration.');
                 const creationOptions = await startResp.json();
                 
-                // Convert base64url strings to ArrayBuffers
                 creationOptions.challenge = bufferDecode(creationOptions.challenge);
                 creationOptions.user.id = bufferDecode(creationOptions.user.id);
                 if (creationOptions.excludeCredentials) {
@@ -123,7 +112,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const newCredential = await navigator.credentials.create({ publicKey: creationOptions });
 
                 // 3. Send new credential to server to finish registration
-                const finishResp = await fetch(`${contextPath}/api/passkey/register/finish?name=${encodeURIComponent(passkeyName)}`, {
+                const finishUrl = contextPath + '/api/passkey/register/finish?name=' + encodeURIComponent(passkeyName);
+                const finishResp = await fetch(finishUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -152,7 +142,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Helper functions for base64url
     function bufferDecode(value) {
         const str = value.replace(/-/g, '+').replace(/_/g, '/');
         const decoded = atob(str);

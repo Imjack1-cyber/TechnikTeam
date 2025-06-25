@@ -1,32 +1,54 @@
-<%-- Removed the redundant page directive --%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
-<%--
-  admin_navigation.jspf
-  This JSP fragment contains the sidebar navigation links specific to the admin area.
---%>
-<nav class="main-nav">
-	<ul>
+<%-- Admin Sidebar --%>
+<aside class="sidebar">
+	<div class="sidebar-header">
+		<a href="${pageContext.request.contextPath}/home" class="logo"> <i
+			class="fas fa-bolt"></i> TechnikTeam
+		</a>
+	</div>
+	<ul class="sidebar-nav">
 		<li><a href="${pageContext.request.contextPath}/home"><i
-				class="fas fa-home"></i> Zur User-Ansicht</a></li>
+				class="fas fa-arrow-left"></i> Zur User-Ansicht</a></li>
 		<hr>
 		<li><a href="${pageContext.request.contextPath}/admin/dashboard"><i
 				class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-		<li><a href="${pageContext.request.contextPath}/admin/users"><i
-				class="fas fa-users"></i> Benutzer</a></li>
-		<li><a href="${pageContext.request.contextPath}/admin/events"><i
-				class="fas fa-calendar-check"></i> Events</a></li>
-		<li><a href="${pageContext.request.contextPath}/admin/courses"><i
-				class="fas fa-graduation-cap"></i> Lehrgänge</a></li>
-		<li><a href="${pageContext.request.contextPath}/admin/matrix"><i
-				class="fas fa-th-list"></i> Matrix</a></li>
-		<li><a href="${pageContext.request.contextPath}/admin/storage"><i
-				class="fas fa-warehouse"></i> Lager</a></li>
-		<li><a href="${pageContext.request.contextPath}/admin/files"><i
-				class="fas fa-folder-open"></i> Dateien</a></li>
-		<li><a href="${pageContext.request.contextPath}/admin/log"><i
-				class="fas fa-clipboard-list"></i> Admin Log</a></li>
-		<li><a href="${pageContext.request.contextPath}/admin/system"><i
-				class="fas fa-server"></i> Systemstatus</a></li>
+
+		<c:if test="${sessionScope.user.role == 'ADMIN'}">
+			<li><a href="${pageContext.request.contextPath}/admin/users"><i
+					class="fas fa-users"></i> Benutzer</a></li>
+			<li><a href="${pageContext.request.contextPath}/admin/events"><i
+					class="fas fa-calendar-check"></i> Events</a></li>
+			<li><a href="${pageContext.request.contextPath}/admin/courses"><i
+					class="fas fa-graduation-cap"></i> Lehrgänge</a></li>
+			<li><a href="${pageContext.request.contextPath}/admin/matrix"><i
+					class="fas fa-th-list"></i> Matrix</a></li>
+		</c:if>
+
+		<c:if
+			test="${sessionScope.user.role == 'ADMIN' or sessionScope.user.role == 'LAGERWART'}">
+			<li><a href="${pageContext.request.contextPath}/admin/storage"><i
+					class="fas fa-warehouse"></i> Lagerverwaltung</a></li>
+			<li><a href="${pageContext.request.contextPath}/admin/defects"><i
+					class="fas fa-wrench"></i> Defekte Artikel</a></li>
+		</c:if>
+
+		<c:if test="${sessionScope.user.role == 'ADMIN'}">
+			<li><a href="${pageContext.request.contextPath}/admin/files"><i
+					class="fas fa-folder-open"></i> Dateien</a></li>
+			<li><a href="${pageContext.request.contextPath}/admin/log"><i
+					class="fas fa-clipboard-list"></i> Admin Log</a></li>
+			<li><a href="${pageContext.request.contextPath}/admin/system"><i
+					class="fas fa-server"></i> Systemstatus</a></li>
+		</c:if>
 	</ul>
-	<c:import url="/WEB-INF/jspf/user_actions.jspf" />
-</nav>
+	<div class="user-actions">
+		<div class="user-info">
+			Eingeloggt als: <strong><c:out
+					value="${sessionScope.user.username}" /></strong>
+		</div>
+		<a href="${pageContext.request.contextPath}/passwort"
+			class="btn btn-small">Passwort ändern</a> <a
+			href="${pageContext.request.contextPath}/logout"
+			class="btn btn-small btn-danger" id="logout-link">Logout</a>
+	</div>
+</aside>

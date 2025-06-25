@@ -1,6 +1,8 @@
 package de.technikteam.servlet.admin;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder; // Import GsonBuilder
+import de.technikteam.config.LocalDateTimeAdapter; // Import the adapter
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.Event;
@@ -16,22 +18,11 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.security.SecureRandom;
+import java.time.LocalDateTime; // Import LocalDateTime
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * 
- * Mapped to /admin/users, this servlet is the central controller for user
- * 
- * management by administrators. It handles listing all users, showing a
- * 
- * detailed view for a single user (including their event history), and
- * 
- * processing POST requests for creating, updating, deleting, and resetting
- * 
- * passwords for user accounts via modal dialogs.
- */
 @WebServlet("/admin/users")
 public class AdminUserServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
@@ -39,12 +30,14 @@ public class AdminUserServlet extends HttpServlet {
 
 	private UserDAO userDAO;
 	private EventDAO eventDAO;
-	private Gson gson = new Gson();
+	private Gson gson; // Keep Gson instance
 
 	@Override
 	public void init() {
 		userDAO = new UserDAO();
 		eventDAO = new EventDAO();
+		// **FIXED:** Initialize Gson with the custom adapter
+		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 		logger.info("AdminUserServlet initialized.");
 	}
 
@@ -150,7 +143,9 @@ public class AdminUserServlet extends HttpServlet {
 		request.getRequestDispatcher("/admin/admin_user_details.jsp").forward(request, response);
 	}
 
+	// --- Other POST handlers remain unchanged ---
 	private void handleCreateUser(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		// Unchanged
 		String username = request.getParameter("username");
 		String pass = request.getParameter("password");
 		String role = request.getParameter("role");
@@ -188,6 +183,7 @@ public class AdminUserServlet extends HttpServlet {
 	}
 
 	private void handleUpdateUser(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		// Unchanged
 		int userId = Integer.parseInt(request.getParameter("userId"));
 		User adminUser = (User) request.getSession().getAttribute("user");
 		User originalUser = userDAO.getUserById(userId);
@@ -237,6 +233,7 @@ public class AdminUserServlet extends HttpServlet {
 	}
 
 	private void handleDeleteUser(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		// Unchanged
 		int userIdToDelete = Integer.parseInt(request.getParameter("userId"));
 		User loggedInAdmin = (User) request.getSession().getAttribute("user");
 		if (loggedInAdmin.getId() == userIdToDelete) {
@@ -264,6 +261,7 @@ public class AdminUserServlet extends HttpServlet {
 	}
 
 	private void handleResetPassword(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		// Unchanged
 		User adminUser = (User) request.getSession().getAttribute("user");
 		try {
 			int userId = Integer.parseInt(request.getParameter("userId"));
@@ -278,8 +276,6 @@ public class AdminUserServlet extends HttpServlet {
 							userToReset.getUsername(), userId);
 					AdminLogService.log(adminUser.getUsername(), "RESET_PASSWORD", logDetails);
 
-					// This message will be displayed on the JSP and JS will handle the clipboard
-					// copy
 					String successMessage = String.format(
 							"Passwort für '%s' wurde zurückgesetzt auf: <strong class=\"copyable-password\">%s</strong> (wurde in die Zwischenablage kopiert).",
 							userToReset.getUsername(), newPassword);
@@ -296,6 +292,7 @@ public class AdminUserServlet extends HttpServlet {
 	}
 
 	private String generateRandomPassword(int length) {
+		// Unchanged
 		final String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 		SecureRandom random = new SecureRandom();
 		StringBuilder sb = new StringBuilder(length);

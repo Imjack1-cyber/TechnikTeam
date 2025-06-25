@@ -16,6 +16,7 @@ public class StorageLogEntry {
 	private String username;
 	private int quantityChange;
 	private String notes;
+	private int eventId; // Can be 0 if not linked
 	private LocalDateTime transactionTimestamp;
 
 	// Define the formatter here
@@ -70,6 +71,14 @@ public class StorageLogEntry {
 
 	public void setNotes(String notes) {
 		this.notes = notes;
+	}
+
+	public int getEventId() {
+		return eventId;
+	}
+
+	public void setEventId(int eventId) {
+		this.eventId = eventId;
 	}
 
 	public LocalDateTime getTransactionTimestamp() {

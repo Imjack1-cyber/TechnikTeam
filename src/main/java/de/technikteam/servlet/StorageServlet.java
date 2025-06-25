@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.StorageDAO;
+import de.technikteam.model.Event;
 import de.technikteam.model.StorageItem;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -25,9 +27,11 @@ public class StorageServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(StorageServlet.class);
 	private StorageDAO storageDAO;
+	private EventDAO eventDAO;
 
 	public void init() {
 		storageDAO = new StorageDAO();
+		eventDAO = new EventDAO();
 	}
 
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -37,8 +41,10 @@ public class StorageServlet extends HttpServlet {
 		// Fetch all items, grouped by their location (e.g., "Erdgeschoss",
 		// "Lagercontainer").
 		Map<String, List<StorageItem>> storageData = storageDAO.getAllItemsGroupedByLocation();
+		List<Event> activeEvents = eventDAO.getActiveEvents();
 
 		request.setAttribute("storageData", storageData);
+		request.setAttribute("activeEvents", activeEvents);
 		logger.debug("Forwarding {} location groups to lager.jsp.", storageData.size());
 		request.getRequestDispatcher("lager.jsp").forward(request, response);
 	}

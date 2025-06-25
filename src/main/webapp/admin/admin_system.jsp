@@ -2,20 +2,11 @@
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
-<%--
-  admin_system.jsp
-  
-  This is the system status dashboard page for administrators.
-  It displays live statistics about the server's health.
-  
-  - It is served by: AdminSystemServlet.
-  - Expected attributes: None. Data is fetched via JavaScript.
---%>
-
 <c:import url="/WEB-INF/jspf/header.jspf">
-	<c:param name="title" value="Systemstatus" />
+	<c:param name="pageTitle" value="Systemstatus" />
+	<c:param name="navType" value="admin" />
 </c:import>
-<c:import url="/WEB-INF/jspf/admin_navigation.jspf" />
+
 <h1>
 	<i class="fas fa-server"></i> Systemstatus
 </h1>
@@ -101,7 +92,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const apiUrl = "${pageContext.request.contextPath}/api/admin/system-stats";
+    const apiUrl = "${'${pageContext.request.contextPath}'}/api/admin/system-stats";
 
     const cpuProgress = document.getElementById('cpu-progress');
     const cpuText = document.getElementById('cpu-text');
@@ -121,30 +112,25 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const updateUI = (stats) => {
-        // CPU
         const cpuPercent = stats.cpuLoad.toFixed(1);
-        cpuProgress.style.width = `${cpuPercent}%`;
-        cpuText.textContent = `${cpuPercent}%`;
+        cpuProgress.style.width = cpuPercent + '%';
+        cpuText.textContent = cpuPercent + '%';
 
-        // RAM
         const ramPercent = (stats.usedMemory / stats.totalMemory) * 100;
-        ramProgress.style.width = `${ramPercent.toFixed(1)}%`;
-        ramText.textContent = `${formatBytes(stats.usedMemory)} / ${formatBytes(stats.totalMemory)}`;
+        ramProgress.style.width = ramPercent.toFixed(1) + '%';
+        ramText.textContent = formatBytes(stats.usedMemory) + ' / ' + formatBytes(stats.totalMemory);
 
-        // Disk
         const diskPercent = (stats.usedDiskSpace / stats.totalDiskSpace) * 100;
-        diskProgress.style.width = `${diskPercent.toFixed(1)}%`;
-        diskText.textContent = `${formatBytes(stats.usedDiskSpace)} / ${formatBytes(stats.totalDiskSpace)}`;
+        diskProgress.style.width = diskPercent.toFixed(1) + '%';
+        diskText.textContent = formatBytes(stats.usedDiskSpace) + ' / ' + formatBytes(stats.totalDiskSpace);
 
-        // Uptime
         uptimeText.textContent = stats.uptime;
         
-        // Battery
         if (stats.batteryPercentage >= 0) {
             batteryCard.style.display = 'block';
             const batteryPercent = stats.batteryPercentage;
-            batteryProgress.style.width = `${batteryPercent}%`;
-            batteryText.textContent = `${batteryPercent}%`;
+            batteryProgress.style.width = batteryPercent + '%';
+            batteryText.textContent = batteryPercent + '%';
         } else {
             batteryCard.style.display = 'none';
         }
@@ -160,7 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
             updateUI(data);
         } catch (error) {
             console.error("Could not fetch system stats:", error);
-            // Display error state in UI
             cpuText.textContent = "Fehler";
             ramText.textContent = "Fehler";
             diskText.textContent = "Fehler";
@@ -168,7 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Fetch stats immediately on load, then every 5 seconds
     fetchStats();
     setInterval(fetchStats, 5000);
 });
