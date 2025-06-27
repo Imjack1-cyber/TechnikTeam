@@ -84,6 +84,27 @@ public class PasskeyCredentialDAO {
 	}
 
 	/**
+	 * Retrieves a passkey credential by its user handle.
+	 *
+	 * @param userHandle The base64url-encoded user handle.
+	 * @return An Optional containing the PasskeyCredential if found.
+	 */
+	public Optional<PasskeyCredential> getCredentialByUserHandle(String userHandle) {
+		String sql = "SELECT * FROM user_passkeys WHERE user_handle = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setString(1, userHandle);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				if (rs.next()) {
+					return Optional.of(mapResultSetToCredential(rs));
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching passkey by user handle {}", userHandle, e);
+		}
+		return Optional.empty();
+	}
+
+	/**
 	 * Updates the signature count for a given credential after a successful login.
 	 *
 	 * @param credentialId      The ID of the credential to update.
@@ -103,7 +124,7 @@ public class PasskeyCredentialDAO {
 	/**
 	 * Deletes a passkey credential from the database.
 	 *
-	 * @param credentialId The ID of the credential to delete.
+	 * @param credentialId The ID of the credential record to delete.
 	 * @param userId       The ID of the user who owns the credential.
 	 * @return true if the deletion was successful, false otherwise.
 	 */

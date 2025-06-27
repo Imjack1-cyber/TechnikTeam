@@ -1,0 +1,14 @@
+<%@ page pageEncoding="UTF-8"%>
+<ul class="sidebar-nav">
+	<li><a href="<c:url value='/home'/>" class="active-nav-link"><i
+			class="fas fa-home fa-fw"></i> Home</a></li>
+	<li><a href="<c:url value='/events'/>"><i
+			class="fas fa-calendar-check fa-fw"></i> Veranstaltungen</a></li>
+	<li><a href="<c:url value='/lehrgaenge'/>"><i
+			class="fas fa-graduation-cap fa-fw"></i> Lehrgänge</a></li>
+	<li><a href="<c:url value='/lager'/>"><i
+			class="fas fa-boxes fa-fw"></i> Lager</a></li>
+	<li><a href="<c:url value='/dateien'/>"><i
+			class="fas fa-folder fa-fw"></i> Dateien</a></li>
+</ul>
+<c:import url="/WEB-INF/jspf/user_actions.jspf" />

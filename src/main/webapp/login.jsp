@@ -2,53 +2,58 @@
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
-<%--
-  login.jsp
-  This is the main login page for the application, redesigned to fit the new layout.
---%>
+<%-- FIX: This page no longer imports the standard header/nav to be a clean, standalone page. --%>
+<!DOCTYPE html>
+<html lang="de" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anmeldung - TechnikTeam</title>
+<link rel="stylesheet"
+	href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<link rel="stylesheet"
+	href="${pageContext.request.contextPath}/css/style.css">
+</head>
+<body data-context-path="${pageContext.request.contextPath}">
 
-<c:import url="/WEB-INF/jspf/header.jspf">
-	<c:param name="pageTitle" value="Anmeldung" />
-</c:import>
+	<div class="login-page-container">
+		<div class="login-box">
+			<h1>
+				<i class="fas fa-bolt"></i> TechnikTeam
+			</h1>
 
-<div class="login-page-container">
-	<div class="login-box">
-		<h1>
-			<i class="fas fa-bolt" style="color: var(--primary-color);"></i>
-			TechnikTeam
-		</h1>
+			<c:if test="${not empty errorMessage}">
+				<p class="error-message" id="error-message">
+					<c:out value="${errorMessage}" />
+				</p>
+			</c:if>
 
-		<c:if test="${not empty errorMessage}">
-			<p class="error-message" id="error-message">
-				<c:out value="${errorMessage}" />
-			</p>
-		</c:if>
-
-		<form action="${pageContext.request.contextPath}/login" method="post">
-			<div class="form-group">
-				<label for="username">Benutzername</label> <input type="text"
-					id="username" name="username" required autocomplete="username"
-					autofocus>
-			</div>
-			<div class="form-group">
-				<label for="password">Passwort</label> <input type="password"
-					id="password" name="password" required
-					autocomplete="current-password">
-			</div>
-			<button type="submit" class="btn" style="width: 100%;">Anmelden</button>
-		</form>
-		<div
-			style="text-align: center; margin: 1rem 0; color: var(--text-muted-color);">ODER</div>
-		<button id="passkey-login-btn" class="btn"
-			style="width: 100%; background-color: var(--text-muted-color); border-color: var(--text-muted-color);">
-			<i class="fas fa-fingerprint"></i> Mit Passkey anmelden
-		</button>
+			<form action="<c:url value='/login'/>" method="post">
+				<div class="form-group">
+					<label for="username">Benutzername</label> <input type="text"
+						id="username" name="username" required autocomplete="username"
+						autofocus>
+				</div>
+				<div class="form-group">
+					<label for="password">Passwort</label> <input type="password"
+						id="password" name="password" required
+						autocomplete="current-password">
+				</div>
+				<button type="submit" class="btn" style="width: 100%;">Anmelden</button>
+			</form>
+			<div
+				style="text-align: center; margin: 1rem 0; color: var(--text-muted-color);">ODER</div>
+			<button id="passkey-login-btn" class="btn"
+				style="width: 100%; background-color: var(--text-muted-color); border-color: var(--text-muted-color);">
+				<i class="fas fa-fingerprint"></i> Mit Passkey anmelden
+			</button>
+		</div>
 	</div>
-</div>
 
-<script>
+	<script>
+// This script is self-contained as main.js is not included on this page.
 document.addEventListener('DOMContentLoaded', () => {
-    const contextPath = "${'${pageContext.request.contextPath}'}";
+    const contextPath = document.body.dataset.contextPath || '';
 
     // Passkey Login Logic
     const passkeyLoginBtn = document.getElementById('passkey-login-btn');
@@ -57,23 +62,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (passkeyLoginBtn) {
         passkeyLoginBtn.addEventListener('click', async () => {
             try {
-                // 1. Start authentication
                 const startResp = await fetch(`${contextPath}/api/passkey/login/start`, { method: 'POST' });
                 if (!startResp.ok) throw new Error('Could not start passkey login.');
-                const requestOptions = await startResp.json();
+                const requestOptionsJson = await startResp.json();
                 
-                requestOptions.challenge = bufferDecode(requestOptions.challenge);
-                if (requestOptions.allowCredentials) {
-                    for (let cred of requestOptions.allowCredentials) {
+                // Decode from server's Base64URL to ArrayBuffer for the browser API
+                requestOptionsJson.challenge = bufferDecode(requestOptionsJson.challenge);
+                if (requestOptionsJson.allowCredentials) {
+                    for (let cred of requestOptionsJson.allowCredentials) {
                         cred.id = bufferDecode(cred.id);
                     }
                 }
 
-                // 2. Prompt user with WebAuthn API
-                const assertion = await navigator.credentials.get({ publicKey: requestOptions });
+                const assertion = await navigator.credentials.get({ publicKey: requestOptionsJson });
 
-                // 3. Finish authentication
-                const verificationResp = await fetch(`${contextPath}/api/passkey/login/finish?userHandle=${assertion.response.userHandle}`, {
+                const verificationResp = await fetch(`${contextPath}/api/passkey/login/finish`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -122,5 +125,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 </script>
-
-<c:import url="/WEB-INF/jspf/footer.jspf" />
+</body>
+</html>

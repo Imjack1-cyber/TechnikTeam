@@ -6,45 +6,26 @@
 	<c:param name="pageTitle" value="Lager"/>
 </c:import>
 
-<h1>Lagerübersicht</h1>
-<p>Hier finden Sie eine Übersicht aller erfassten Artikel im Lager.
-	Klicken Sie auf einen Artikelnamen für Details und Historie.</p>
+<h1><i class="fas fa-boxes"></i> Lagerübersicht</h1>
+<p>Hier finden Sie eine Übersicht aller erfassten Artikel im Lager.</p>
 
-<c:if test="${not empty sessionScope.successMessage}">
-	<p class="success-message">
-		<i class="fas fa-check-circle"></i>
-		<c:out value="${sessionScope.successMessage}" />
-	</p>
-	<c:remove var="successMessage" scope="session" />
-</c:if>
-<c:if test="${not empty sessionScope.errorMessage}">
-	<p class="error-message">
-		<i class="fas fa-exclamation-triangle"></i>
-		<c:out value="${sessionScope.errorMessage}" />
-	</p>
-	<c:remove var="errorMessage" scope="session" />
-</c:if>
+<%-- Session Messages --%>
+<c:if test="${not empty sessionScope.successMessage}"><p class="success-message"><c:out value="${sessionScope.successMessage}"/></p><c:remove var="successMessage" scope="session"/></c:if>
+<c:if test="${not empty sessionScope.errorMessage}"><p class="error-message"><c:out value="${sessionScope.errorMessage}"/></p><c:remove var="errorMessage" scope="session"/></c:if>
 
 <div class="table-controls">
 	<div class="form-group" style="margin-bottom: 0; flex-grow: 1;">
-		<input type="search" id="table-filter"
-			placeholder="Alle Artikel filtern..." style="width: 100%;"
-			aria-label="Lager filtern">
+		<input type="search" id="table-filter" placeholder="Alle Artikel filtern..." aria-label="Lager filtern">
 	</div>
 </div>
 
 <c:if test="${empty storageData}">
-	<div class="card">
-		<p>Derzeit sind keine Artikel im Lager erfasst.</p>
-	</div>
+	<div class="card"><p>Derzeit sind keine Artikel im Lager erfasst.</p></div>
 </c:if>
 
 <c:forEach var="locationEntry" items="${storageData}">
 	<div class="card">
-		<h2>
-			<i class="fas fa-map-marker-alt"></i>
-			<c:out value="${locationEntry.key}" />
-		</h2>
+		<h2><i class="fas fa-map-marker-alt"></i> <c:out value="${locationEntry.key}" /></h2>
         <div class="table-wrapper">
             <table class="data-table searchable-table">
                 <thead>
@@ -78,59 +59,6 @@
         </div>
 	</div>
 </c:forEach>
-
-<!-- MODALS -->
-<div class="modal-overlay" id="transaction-modal">
-	<div class="modal-content" style="max-width: 450px;">
-		<button class="modal-close-btn">×</button>
-		<h3 id="transaction-modal-title">Artikel bewegen</h3>
-		<form action="${pageContext.request.contextPath}/storage-transaction"
-			method="post">
-			<input type="hidden" name="itemId" id="transaction-item-id">
-			<input type="hidden" name="redirectUrl" value="${pageContext.request.contextPath}/lager">
-			<div class="form-group">
-                <label>Aktionstyp</label>
-                <div style="display:flex; gap: 1rem;">
-                    <label><input type="radio" name="type" value="checkout" checked> Entnehmen</label>
-                    <label><input type="radio" name="type" value="checkin"> Einräumen</label>
-                </div>
-            </div>
-			<div class="form-group">
-				<label for="transaction-quantity">Anzahl</label> <input
-					type="number" name="quantity" id="transaction-quantity" required
-					min="1" value="1">
-			</div>
-			<div class="form-group">
-				<label for="transaction-notes">Notiz (Grund)</label>
-				<input type="text" name="notes" id="transaction-notes"
-					placeholder="z.B. für Reparatur, privat...">
-			</div>
-			<div class="form-group">
-				<label for="transaction-event">Für Event (optional)</label>
-				<select name="eventId" id="transaction-event">
-					<option value="0">-- Kein Event --</option>
-					<c:forEach var="event" items="${activeEvents}">
-						<option value="${event.id}"><c:out value="${event.name}" /></option>
-					</c:forEach>
-				</select>
-			</div>
-			<button type="submit" class="btn">Bestätigen</button>
-		</form>
-	</div>
-</div>
-
-<div class="modal-overlay" id="item-details-modal">
-    <div class="modal-content">
-        <button class="modal-close-btn">×</button>
-        <h3 id="details-modal-title">Artikeldetails</h3>
-        <div id="item-history-container" style="max-height: 300px; overflow-y: auto;">
-            <p>Lade Verlauf...</p>
-        </div>
-    </div>
-</div>
-
-<c:import url="/WEB-INF/jspf/table-helper.jspf" />
-<c:import url="/WEB-INF/jspf/footer.jspf" />
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const contextPath = "${'${pageContext.request.contextPath}'}"; // Escaped for JS
@@ -236,3 +164,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 </script>
+<c:import url="/WEB-INF/jspf/footer.jspf" />

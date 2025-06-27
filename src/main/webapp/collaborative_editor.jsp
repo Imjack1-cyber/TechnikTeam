@@ -3,23 +3,18 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
 <%--
-  collaborative_editor.jsp
-  
-  This page provides a real-time collaborative text editor. The core
-  functionality is handled by client-side JavaScript which communicates
-  with the DocumentApiServlet. It periodically fetches the latest content
-  and saves changes back to the server after the user stops typing.
-  
-  - It is served by: CollaborativeEditorServlet.
-  - Expected attributes: None.
+  FIX: This page now imports the standard header and footer to be
+  fully integrated into the application's UI.
 --%>
 
 <c:import url="/WEB-INF/jspf/header.jspf">
-	<c:param name="title" value="Gemeinsamer Editor" />
+	<c:param name="pageTitle" value="Gemeinsamer Editor" />
+	<c:param name="navType" value="user" />
 </c:import>
-<c:import url="/WEB-INF/jspf/navigation.jspf" />
 
-<h1>Gemeinsamer Notizblock</h1>
+<h1>
+	<i class="fas fa-edit"></i> Gemeinsamer Notizblock
+</h1>
 <p>Änderungen werden automatisch für alle Benutzer gespeichert und
 	angezeigt.</p>
 
@@ -38,8 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const apiUrl = "${pageContext.request.contextPath}/api/document";
     let debounceTimer;
 
-    // --- Function to SAVE content to the server ---
-    // Uses a "debouncer" to avoid spamming the server with requests on every keystroke.
     const saveContent = () => {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
@@ -60,10 +53,9 @@ document.addEventListener('DOMContentLoaded', () => {
                  statusIndicator.textContent = 'Netzwerkfehler!';
                  statusIndicator.style.color = 'var(--danger-color)';
             });
-        }, 500); // Wait 500ms after last keystroke
+        }, 500);
     };
 
-    // --- Function to FETCH content from the server ---
     const fetchContent = () => {
         fetch(apiUrl)
             .then(response => {
@@ -71,12 +63,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 return response.text();
             })
             .then(newContent => {
-                // IMPORTANT: Only update the editor if the content has actually changed
-                // and the user is not currently typing in it. This prevents the cursor from jumping.
                 if (document.activeElement !== editor && editor.value !== newContent) {
-                    const cursorPos = editor.selectionStart; // Save cursor position
+                    const cursorPos = editor.selectionStart;
                     editor.value = newContent;
-                    editor.selectionStart = editor.selectionEnd = cursorPos; // Restore cursor position
+                    editor.selectionStart = editor.selectionEnd = cursorPos;
                 }
             }).catch(err => {
                 console.error("Error fetching document content:", err);
@@ -85,14 +75,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     };
     
-    // Attach the event listener to save content when the user types
     editor.addEventListener('input', saveContent);
 
-    // Start polling: Fetch the content every 3 seconds
-    setInterval(fetchContent, 3000);
-
-    // Initial load of the document
-    fetchContent();
+    const pollInterval = setInterval(fetchContent, 3000);
+    fetchContent(); 
+    
+    window.addEventListener('beforeunload', () => {
+        clearInterval(pollInterval);
+    });
 });
 </script>
 

@@ -1,17 +1,11 @@
-<%-- Removed the redundant page directive --%>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
-<%--
-  user_actions.jspf
-  This JSP fragment contains the user-specific actions at the bottom of the
-  navigation sidebar, like changing password and logging out.
---%>
+<%@ page pageEncoding="UTF-8"%>
 <div class="user-actions">
-	<span style="font-weight: 500;">Angemeldet als: <c:out
-			value="${sessionScope.user.username}" /></span> <a
-		href="${pageContext.request.contextPath}/passwort"
-		class="btn btn-small btn-secondary">Passwort ändern</a> <a
-		href="${pageContext.request.contextPath}/passkeys"
-		class="btn btn-small btn-secondary">Passkeys verwalten</a> <a
-		href="${pageContext.request.contextPath}/logout" class="btn btn-small"
-		id="logout-link">Logout</a>
+	<div class="user-info">
+		Angemeldet als:<br> <strong><c:out
+				value="${sessionScope.user.username}" /></strong>
+	</div>
+	<a href="<c:url value='/passwort'/>" class="btn btn-small"
+		style="width: 100%; margin-bottom: 0.5rem;">Passwort Ã¤ndern</a> <a
+		href="<c:url value='/logout'/>" id="logout-link"
+		class="btn btn-small btn-danger-outline" style="width: 100%;">Ausloggen</a>
 </div>

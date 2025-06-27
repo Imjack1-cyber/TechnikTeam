@@ -1,10 +1,9 @@
 
 </main>
 </div>
+<%-- End .main-content-wrapper --%>
 </div>
-<%-- Closes app-container --%>
-
+<%-- End .app-container --%>
 <script src="${pageContext.request.contextPath}/js/main.js"></script>
-
 </body>
 </html>

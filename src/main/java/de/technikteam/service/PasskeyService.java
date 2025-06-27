@@ -1,46 +1,35 @@
 package de.technikteam.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.yubico.webauthn.*;
 import com.yubico.webauthn.data.*;
+import com.yubico.webauthn.exception.AssertionFailedException;
 import com.yubico.webauthn.exception.RegistrationFailedException;
-import com.yubico.webauthn.exception.VerificationFailedException;
 import de.technikteam.dao.PasskeyCredentialDAO;
+import de.technikteam.dao.UserDAO;
 import de.technikteam.model.PasskeyCredential;
 import de.technikteam.model.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.util.List;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * A service to handle the business logic of WebAuthn (Passkey) authentication,
- * using the Yubico library.
- */
 public class PasskeyService {
 	private static final Logger logger = LogManager.getLogger(PasskeyService.class);
-	private final RelyingParty relyingParty;
 	private final PasskeyCredentialDAO passkeyDAO = new PasskeyCredentialDAO();
 
 	// --- Singleton Pattern ---
 	private static PasskeyService INSTANCE;
 
-	private PasskeyService() {
-		// This should be configured from a properties file in a real application
-		RelyingPartyIdentity rpIdentity = RelyingPartyIdentity.builder().id("localhost") // The domain where the app is
-																							// running
-				.name("TechnikTeam Web App").build();
+	// --- Lazy Initialization for RelyingParty ---
+	private volatile RelyingParty relyingParty = null;
+	private final Object rpInitLock = new Object();
 
-		this.relyingParty = RelyingParty.builder().identity(rpIdentity)
-				.credentialRepository(new InMemoryPasskeyRepository(passkeyDAO)).allowOriginPort(true) // Allow
-																										// development
-																										// on
-																										// localhost:8080
-				.allowOriginSubdomain(false).build();
+	private PasskeyService() {
+		// Constructor is empty. Initialization is deferred.
 	}
 
 	public static synchronized PasskeyService getInstance() {
@@ -50,35 +39,51 @@ public class PasskeyService {
 		return INSTANCE;
 	}
 
+	private RelyingParty getRelyingParty() {
+		if (relyingParty == null) {
+			synchronized (rpInitLock) {
+				if (relyingParty == null) {
+					logger.info("First use of PasskeyService, initializing RelyingParty...");
+					final String rpId = "5a1f-2a02-8108-9801-9c00-395e-fd2c-a9d1-abfc.ngrok-free.app";
+
+					RelyingPartyIdentity rpIdentity = RelyingPartyIdentity.builder().id(rpId)
+							.name("TechnikTeam Web App").build();
+
+					// FINAL FIX: Remove the .origins() call entirely.
+					// This is the most likely source of the library version conflict.
+					// The primary security check against the RP ID remains.
+					this.relyingParty = RelyingParty.builder().identity(rpIdentity)
+							.credentialRepository(new DatabaseCredentialRepository(passkeyDAO)).build();
+					logger.info("RelyingParty initialized successfully for RP ID '{}'.", rpId);
+				}
+			}
+		}
+		return relyingParty;
+	}
+
 	// --- Registration Logic ---
-	public String startRegistration(User user) throws JsonProcessingException {
-		List<PasskeyCredential> existingCredentials = passkeyDAO.getCredentialsForUser(user.getId());
-		List<PublicKeyCredentialDescriptor> excludeCredentials = existingCredentials.stream()
-				.map(cred -> PublicKeyCredentialDescriptor.builder().id(ByteArray.fromBase64Url(cred.getCredentialId()))
-						.build())
-				.collect(Collectors.toList());
+	public PublicKeyCredentialCreationOptions startRegistration(User user) {
+		ByteArray userHandle = new ByteArray(Integer.toString(user.getId()).getBytes(StandardCharsets.UTF_8));
 
-		StartRegistrationOptions options = StartRegistrationOptions.builder()
-				.user(UserIdentity.builder().name(user.getUsername()).displayName(user.getUsername())
-						.id(new ByteArray(user.getUsername().getBytes())).build())
-				.authenticatorSelection(AuthenticatorSelectionCriteria.builder()
-						.authenticatorAttachment(AuthenticatorAttachment.PLATFORM)
-						.residentKey(ResidentKeyRequirement.PREFERRED)
-						.userVerification(UserVerificationRequirement.PREFERRED).build())
-				.excludeCredentials(excludeCredentials).build();
+		StartRegistrationOptions options = StartRegistrationOptions.builder().user(
+				UserIdentity.builder().name(user.getUsername()).displayName(user.getUsername()).id(userHandle).build())
+				.build();
 
-		PublicKeyCredentialCreationOptions registration = relyingParty.startRegistration(options);
+		PublicKeyCredentialCreationOptions registration = getRelyingParty().startRegistration(options);
 		logger.info("Started passkey registration for user: {}", user.getUsername());
-		return registration.toJson();
+		return registration;
 	}
 
 	public boolean finishRegistration(String credentialJson, String requestJson, User user, String passkeyName) {
 		try {
 			PublicKeyCredential<AuthenticatorAttestationResponse, ClientRegistrationExtensionOutputs> credential = PublicKeyCredential
 					.parseRegistrationResponseJson(credentialJson);
-			FinishRegistrationOptions options = FinishRegistrationOptions.builder()
-					.request(PublicKeyCredentialCreationOptions.fromJson(requestJson)).response(credential).build();
-			RegistrationResult result = relyingParty.finishRegistration(options);
+			PublicKeyCredentialCreationOptions request = PublicKeyCredentialCreationOptions.fromJson(requestJson);
+
+			RegistrationResult result = getRelyingParty().finishRegistration(
+					FinishRegistrationOptions.builder().request(request).response(credential).build());
+
+			ByteArray userHandle = new ByteArray(Integer.toString(user.getId()).getBytes(StandardCharsets.UTF_8));
 
 			PasskeyCredential newCredential = new PasskeyCredential();
 			newCredential.setUserId(user.getId());
@@ -86,7 +91,7 @@ public class PasskeyService {
 			newCredential.setCredentialId(result.getKeyId().getId().getBase64Url());
 			newCredential.setPublicKey(result.getPublicKeyCose().getBase64());
 			newCredential.setSignatureCount(result.getSignatureCount());
-			newCredential.setUserHandle(credential.getResponse().getUserHandle().get().getBase64Url());
+			newCredential.setUserHandle(userHandle.getBase64Url());
 			passkeyDAO.addCredential(newCredential);
 
 			logger.info("Successfully finished passkey registration for user: {}", user.getUsername());
@@ -97,22 +102,23 @@ public class PasskeyService {
 		}
 	}
 
-	// --- Authentication Logic ---
-	public String startAuthentication() throws JsonProcessingException {
-		StartAuthenticationOptions options = StartAuthenticationOptions.builder()
+	// --- Authentication Logic (now called Assertion) ---
+	public AssertionRequest startAssertion() {
+		StartAssertionOptions options = StartAssertionOptions.builder()
 				.userVerification(UserVerificationRequirement.PREFERRED).build();
-		PublicKeyCredentialRequestOptions requestOptions = relyingParty.startAuthentication(options);
-		logger.info("Started passkey authentication ceremony.");
-		return requestOptions.toJson();
+		AssertionRequest request = getRelyingParty().startAssertion(options);
+		logger.info("Started passkey assertion (authentication) ceremony.");
+		return request;
 	}
 
-	public Optional<User> finishAuthentication(String credentialJson, String requestJson, String userHandle) {
+	public Optional<User> finishAssertion(String credentialJson, String requestJson) {
 		try {
-			PublicKeyCredential<AuthenticatorAssertionResponse, ClientAuthenticationExtensionOutputs> credential = PublicKeyCredential
+			PublicKeyCredential<AuthenticatorAssertionResponse, ClientAssertionExtensionOutputs> credential = PublicKeyCredential
 					.parseAssertionResponseJson(credentialJson);
-			FinishAuthenticationOptions options = FinishAuthenticationOptions.builder()
-					.request(PublicKeyCredentialRequestOptions.fromJson(requestJson)).response(credential).build();
-			AuthenticationResult result = relyingParty.finishAuthentication(options);
+			AssertionRequest request = AssertionRequest.fromJson(requestJson);
+
+			AssertionResult result = getRelyingParty()
+					.finishAssertion(FinishAssertionOptions.builder().request(request).response(credential).build());
 
 			if (result.isSuccess()) {
 				passkeyDAO.updateSignatureCount(result.getCredential().getCredentialId().getBase64Url(),
@@ -122,67 +128,87 @@ public class PasskeyService {
 				logger.info("Passkey authentication successful for user: {}", result.getUsername());
 				return Optional.ofNullable(user);
 			}
-		} catch (VerificationFailedException | IOException e) {
-			logger.error("Passkey authentication failed for user handle: {}", userHandle, e);
+		} catch (AssertionFailedException | IOException e) {
+			logger.error("Passkey assertion failed.", e);
 		}
 		return Optional.empty();
 	}
 
-	// --- Yubico Library Helper Class ---
-	private static class InMemoryPasskeyRepository implements CredentialRepository {
+	private static class DatabaseCredentialRepository implements CredentialRepository {
 		private final PasskeyCredentialDAO passkeyDAO;
+		private final UserDAO userDAO = new UserDAO();
 
-		public InMemoryPasskeyRepository(PasskeyCredentialDAO passkeyDAO) {
+		public DatabaseCredentialRepository(PasskeyCredentialDAO passkeyDAO) {
 			this.passkeyDAO = passkeyDAO;
 		}
 
 		@Override
+		public Optional<RegisteredCredential> lookup(ByteArray credentialId, ByteArray userHandle) {
+			return passkeyDAO.getCredentialById(credentialId.getBase64Url()).filter(cred -> {
+				try {
+					return userHandle.equals(ByteArray.fromBase64Url(cred.getUserHandle()));
+				} catch (Exception e) {
+					logger.error("Failed to decode user handle from DB", e);
+					return false;
+				}
+			}).map(this::toRegisteredCredential);
+		}
+
+		@Override
+		public Set<RegisteredCredential> lookupAll(ByteArray credentialId) {
+			return passkeyDAO.getCredentialById(credentialId.getBase64Url()).stream().map(this::toRegisteredCredential)
+					.collect(Collectors.toSet());
+		}
+
+		@Override
 		public Set<PublicKeyCredentialDescriptor> getCredentialIdsForUsername(String username) {
-			User user = new UserDAO().getUserByUsername(username);
+			User user = userDAO.getUserByUsername(username);
 			if (user != null) {
-				return passkeyDAO.getCredentialsForUser(user.getId()).stream().map(c -> PublicKeyCredentialDescriptor
-						.builder().id(ByteArray.fromBase64Url(c.getCredentialId())).build())
-						.collect(Collectors.toSet());
+				return passkeyDAO.getCredentialsForUser(user.getId()).stream().map(c -> {
+					try {
+						return PublicKeyCredentialDescriptor.builder().id(ByteArray.fromBase64Url(c.getCredentialId()))
+								.build();
+					} catch (Exception e) {
+						logger.error("Failed to decode credential ID from Base64Url", e);
+						return null;
+					}
+				}).filter(d -> d != null).collect(Collectors.toSet());
 			}
 			return Set.of();
 		}
 
 		@Override
 		public Optional<ByteArray> getUserHandleForUsername(String username) {
-			User user = new UserDAO().getUserByUsername(username);
+			User user = userDAO.getUserByUsername(username);
 			if (user != null) {
-				List<PasskeyCredential> creds = passkeyDAO.getCredentialsForUser(user.getId());
-				if (!creds.isEmpty()) {
-					return Optional.of(ByteArray.fromBase64Url(creds.get(0).getUserHandle()));
-				}
+				return Optional.of(new ByteArray(Integer.toString(user.getId()).getBytes(StandardCharsets.UTF_8)));
 			}
 			return Optional.empty();
 		}
 
 		@Override
 		public Optional<String> getUsernameForUserHandle(ByteArray userHandle) {
-			return passkeyDAO.getCredentialsForUser(0).stream() // Hacky way to check all
-					.filter(c -> c.getUserHandle().equals(userHandle.getBase64Url()))
-					.map(c -> new UserDAO().getUserById(c.getUserId()).getUsername()).findFirst();
+			try {
+				String userIdStr = new String(userHandle.getBytes(), StandardCharsets.UTF_8);
+				int userId = Integer.parseInt(userIdStr);
+				User user = userDAO.getUserById(userId);
+				return Optional.ofNullable(user).map(User::getUsername);
+			} catch (NumberFormatException e) {
+				logger.error("Could not parse user ID from user handle: {}", userHandle.getBase64Url(), e);
+				return Optional.empty();
+			}
 		}
 
-		@Override
-		public Optional<RegisteredCredential> lookup(ByteArray credentialId, ByteArray userHandle) {
-			return passkeyDAO.getCredentialById(credentialId.getBase64Url())
-					.map(c -> RegisteredCredential.builder().credentialId(ByteArray.fromBase64Url(c.getCredentialId()))
-							.userHandle(ByteArray.fromBase64Url(c.getUserHandle()))
-							.publicKeyCose(ByteArray.fromBase64(c.getPublicKey())).signatureCount(c.getSignatureCount())
-							.build());
-		}
-
-		@Override
-		public Set<RegisteredCredential> lookupAll(ByteArray credentialId) {
-			return passkeyDAO.getCredentialById(credentialId.getBase64Url()).stream()
-					.map(c -> RegisteredCredential.builder().credentialId(ByteArray.fromBase64Url(c.getCredentialId()))
-							.userHandle(ByteArray.fromBase64Url(c.getUserHandle()))
-							.publicKeyCose(ByteArray.fromBase64(c.getPublicKey())).signatureCount(c.getSignatureCount())
-							.build())
-					.collect(Collectors.toSet());
+		private RegisteredCredential toRegisteredCredential(PasskeyCredential cred) {
+			try {
+				return RegisteredCredential.builder().credentialId(ByteArray.fromBase64Url(cred.getCredentialId()))
+						.userHandle(ByteArray.fromBase64Url(cred.getUserHandle()))
+						.publicKeyCose(ByteArray.fromBase64(cred.getPublicKey()))
+						.signatureCount(cred.getSignatureCount()).build();
+			} catch (Exception e) {
+				logger.error("Could not convert PasskeyCredential to RegisteredCredential", e);
+				throw new RuntimeException(e);
+			}
 		}
 	}
 }

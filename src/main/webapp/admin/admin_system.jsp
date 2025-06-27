@@ -4,7 +4,6 @@
 
 <c:import url="/WEB-INF/jspf/header.jspf">
 	<c:param name="pageTitle" value="Systemstatus" />
-	<c:param name="navType" value="admin" />
 </c:import>
 
 <h1>
@@ -67,7 +66,7 @@
 .progress-bar-container {
 	width: 100%;
 	background-color: var(--border-color);
-	border-radius: 8px;
+	border-radius: var(--border-radius);
 	height: 30px;
 	margin-bottom: 0.5rem;
 	overflow: hidden;
@@ -76,7 +75,7 @@
 .progress-bar {
 	height: 100%;
 	background-color: var(--primary-color);
-	border-radius: 8px 0 0 8px;
+	border-radius: var(--border-radius);
 	transition: width 0.5s ease-in-out;
 	width: 0%;
 }
@@ -92,7 +91,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const apiUrl = "${'${pageContext.request.contextPath}'}/api/admin/system-stats";
+    const apiUrl = "${pageContext.request.contextPath}/api/admin/system-stats";
 
     const cpuProgress = document.getElementById('cpu-progress');
     const cpuText = document.getElementById('cpu-text');
@@ -104,11 +103,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const batteryCard = document.getElementById('battery-card');
     const batteryProgress = document.getElementById('battery-progress');
     const batteryText = document.getElementById('battery-text');
-
-    const formatBytes = (megabytes) => {
-        if (megabytes === 0) return '0 MB';
-        const gigabytes = megabytes / 1024;
-        return gigabytes >= 1 ? `${gigabytes.toFixed(2)} GB` : `${megabytes.toFixed(0)} MB`;
+    
+    const formatGigaBytes = (gb) => {
+        if (gb === 0) return '0 GB';
+        if (gb < 1) return `${(gb * 1024).toFixed(0)} MB`;
+        return `${gb.toFixed(2)} GB`;
     };
 
     const updateUI = (stats) => {
@@ -116,14 +115,18 @@ document.addEventListener('DOMContentLoaded', () => {
         cpuProgress.style.width = cpuPercent + '%';
         cpuText.textContent = cpuPercent + '%';
 
-        const ramPercent = (stats.usedMemory / stats.totalMemory) * 100;
-        ramProgress.style.width = ramPercent.toFixed(1) + '%';
-        ramText.textContent = formatBytes(stats.usedMemory) + ' / ' + formatBytes(stats.totalMemory);
+        if (stats.totalMemory > 0) {
+            const ramPercent = (stats.usedMemory / stats.totalMemory) * 100;
+            ramProgress.style.width = ramPercent.toFixed(1) + '%';
+            ramText.textContent = `${formatGigaBytes(stats.usedMemory)} / ${formatGigaBytes(stats.totalMemory)}`;
+        }
 
-        const diskPercent = (stats.usedDiskSpace / stats.totalDiskSpace) * 100;
-        diskProgress.style.width = diskPercent.toFixed(1) + '%';
-        diskText.textContent = formatBytes(stats.usedDiskSpace) + ' / ' + formatBytes(stats.totalDiskSpace);
-
+        if (stats.totalDiskSpace > 0) {
+            const diskPercent = (stats.usedDiskSpace / stats.totalDiskSpace) * 100;
+            diskProgress.style.width = diskPercent.toFixed(1) + '%';
+            diskText.textContent = `${formatGigaBytes(stats.usedDiskSpace)} / ${formatGigaBytes(stats.totalDiskSpace)}`;
+        }
+        
         uptimeText.textContent = stats.uptime;
         
         if (stats.batteryPercentage >= 0) {
@@ -139,9 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fetchStats = async () => {
         try {
             const response = await fetch(apiUrl);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
             updateUI(data);
         } catch (error) {
@@ -154,6 +155,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     fetchStats();
-    setInterval(fetchStats, 5000);
+    let intervalId = setInterval(fetchStats, 5000);
+    
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+            clearInterval(intervalId);
+        } else {
+            fetchStats();
+            intervalId = setInterval(fetchStats, 5000);
+        }
+    });
 });
 </script>

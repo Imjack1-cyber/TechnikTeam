@@ -5,10 +5,9 @@
 
 <c:import url="/WEB-INF/jspf/header.jspf">
 	<c:param name="pageTitle" value="Event Details" />
-	<c:param name="navType" value="user" />
 </c:import>
 
-<div class="details-container" data-event-id="${event.id}">
+<div class="details-container">
 
 	<div
 		style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
@@ -59,7 +58,8 @@
 										<button class="btn btn-small assign-task-btn"
 											data-task-id="${task.id}">Zuweisen</button>
 										<button class="btn btn-small btn-danger delete-task-btn"
-											data-task-id="${task.id}">×</button>
+											data-task-id="${task.id}"
+											data-task-desc="${fn:escapeXml(task.description)}">×</button>
 									</div>
 								</li>
 							</c:forEach>
@@ -226,16 +226,13 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const mainContainer = document.querySelector('.details-container');
-    if (!mainContainer) return;
-    
     const contextPath = "${pageContext.request.contextPath}";
-    const eventId = mainContainer.dataset.eventId;
+    const eventId = "${event.id}";
     const currentUserId = "${sessionScope.user.id}";
     const isAdmin = "${sessionScope.user.role}" === "ADMIN";
 
     if (!eventId) {
-        console.error("Event ID is missing. Real-time features disabled.");
+        console.error("Event ID is missing from the page model. Real-time features disabled.");
         return;
     }
     
@@ -246,31 +243,50 @@ document.addEventListener('DOMContentLoaded', () => {
             const modalTaskIdInput = document.getElementById('modal-task-id');
             const modalCloseBtn = assignModal.querySelector('.modal-close-btn');
             
-            document.querySelectorAll('.assign-task-btn').forEach(btn => btn.addEventListener('click', () => {
-                modalTaskIdInput.value = btn.dataset.taskId;
-                assignModal.classList.add('active');
-            }));
+            document.querySelectorAll('.assign-task-btn').forEach(btn => {
+				btn.addEventListener('click', (e) => {
+					const taskId = e.currentTarget.dataset.taskId;
+					if(taskId) {
+						modalTaskIdInput.value = taskId;
+						assignModal.classList.add('active');
+					}
+				});
+			});
             
             if(modalCloseBtn) modalCloseBtn.addEventListener('click', () => assignModal.classList.remove('active'));
             assignModal.addEventListener('click', e => { if (e.target === assignModal) assignModal.classList.remove('active'); });
         }
         
-        document.querySelectorAll('.delete-task-btn').forEach(btn => btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const taskItem = e.target.closest('li');
-            const taskDescription = taskItem.querySelector('strong').textContent;
-            showConfirmationModal(`Aufgabe "${taskDescription}" wirklich löschen?`, () => {
-                 fetch(`${contextPath}/admin/tasks?taskId=${btn.dataset.taskId}`, { method: 'DELETE' })
-                    .then(res => res.ok ? taskItem.remove() : alert('Löschen fehlgeschlagen!'));
-            });
-        }));
+        document.querySelectorAll('.delete-task-btn').forEach(btn => {
+			btn.addEventListener('click', (e) => {
+				e.preventDefault();
+				const button = e.currentTarget;
+				const taskId = button.dataset.taskId;
+				const taskDesc = button.dataset.taskDesc;
+				const taskItem = document.getElementById(`task-item-${taskId}`);
+
+				if (taskId) {
+					showConfirmationModal(`Aufgabe "${taskDesc}" wirklich löschen?`, () => {
+						fetch(contextPath + '/admin/tasks?taskId=' + taskId, { method: 'DELETE' })
+							.then(res => {
+								if (res.ok) {
+									taskItem.remove();
+								} else {
+									alert('Löschen fehlgeschlagen!');
+								}
+							});
+					});
+				}
+			});
+		});
     }
 
     // --- User-specific JS for completing tasks ---
     document.querySelectorAll('.task-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => {
-            const params = new URLSearchParams({ taskId: e.target.dataset.taskId, status: e.target.checked ? 'ERLEDIGT' : 'OFFEN' });
-            fetch(`${contextPath}/task-action`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
+			const taskId = e.target.dataset.taskId;
+            const params = new URLSearchParams({ taskId: taskId, status: e.target.checked ? 'ERLEDIGT' : 'OFFEN' });
+            fetch(contextPath + '/task-action', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
                 .then(res => {
                     if (res.ok) {
                         if (e.target.checked) e.target.closest('li').style.display = 'none';
@@ -286,26 +302,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const chatInput = document.getElementById('chat-message-input');
         
         const fetchMessages = () => {
-            fetch(`${contextPath}/api/event-chat?eventId=${eventId}`)
-                .then(res => res.ok ? res.json() : Promise.reject(`HTTP error! status: ${res.status}`))
+            fetch(contextPath + '/api/event-chat?eventId=' + eventId)
+                .then(res => {
+					if (!res.ok) { throw new Error(`HTTP error! status: ${res.status}`); }
+					return res.json();
+				})
                 .then(messages => {
-                    chatBox.innerHTML = ''; // Clear previous messages
-                    if (messages.length > 0) {
+                    chatBox.innerHTML = ''; 
+                    if (messages && messages.length > 0) {
                         messages.forEach(msg => {
                             const p = document.createElement('p');
                             p.style.marginBottom = '0.25rem';
-                            if (msg.userId == currentUserId) {
-                                p.style.textAlign = 'right';
-                            }
+                            if (msg.userId == currentUserId) p.style.textAlign = 'right';
                             
                             const strong = document.createElement('strong');
                             strong.textContent = msg.username + ': ';
-                             if (msg.userId == currentUserId) {
-                                strong.style.color = 'var(--primary-color)';
-                            }
+                            if (msg.userId == currentUserId) strong.style.color = 'var(--primary-color)';
 
                             p.appendChild(strong);
-                            p.appendChild(document.createTextNode(msg.messageText)); // Securely append text
+                            p.appendChild(document.createTextNode(msg.messageText));
                             chatBox.appendChild(p);
                         });
                     } else {
@@ -323,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const message = chatInput.value.trim();
             if (message) {
                 const formData = new URLSearchParams({ eventId: eventId, messageText: message });
-                fetch(`${contextPath}/api/event-chat`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData })
+                fetch(contextPath + '/api/event-chat', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData })
                     .then(res => { 
                         if (res.ok) { 
                             chatInput.value = ''; 

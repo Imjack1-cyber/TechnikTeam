@@ -122,6 +122,30 @@ public class UserDAO {
 	}
 
 	/**
+	 * Fetches a single user by their unique username.
+	 *
+	 * @param username The username of the user to fetch.
+	 * @return A User object, or null if not found.
+	 */
+	public User getUserByUsername(String username) {
+		String sql = "SELECT * FROM users WHERE username = ?";
+		logger.debug("Fetching user by username: {}", username);
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setString(1, username);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				if (rs.next()) {
+					logger.info("Found user with username: {}", username);
+					return mapResultSetToUser(rs);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("SQL error fetching user by username: {}", username, e);
+		}
+		logger.warn("No user found with username: {}", username);
+		return null;
+	}
+
+	/**
 	 * Creates a new user in the database.
 	 * 
 	 * @param user     The User object containing the data to be inserted.

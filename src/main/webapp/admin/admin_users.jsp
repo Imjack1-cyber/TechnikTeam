@@ -7,7 +7,9 @@
 	<c:param name="pageTitle" value="Benutzerverwaltung" />
 </c:import>
 
-<h1>Benutzerverwaltung</h1>
+<h1>
+	<i class="fas fa-users-cog"></i> Benutzerverwaltung
+</h1>
 
 <%-- Session Messages --%>
 <c:if test="${not empty sessionScope.successMessage}">
@@ -28,17 +30,54 @@
 	</p>
 	<c:remove var="errorMessage" scope="session" />
 </c:if>
+<c:if test="${not empty sessionScope.infoMessage}">
+	<p class="info-message">
+		<i class="fas fa-info-circle"></i>
+		<c:out value="${sessionScope.infoMessage}" />
+	</p>
+	<c:remove var="infoMessage" scope="session" />
+</c:if>
 
 <div class="table-controls">
-	<button type="button" class="btn" id="new-user-btn">Neuen
-		Benutzer anlegen</button>
+	<button type="button" class="btn" id="new-user-btn">
+		<i class="fas fa-user-plus"></i> Neuen Benutzer anlegen
+	</button>
 	<div class="form-group" style="margin-bottom: 0;">
 		<input type="search" id="table-filter"
-			placeholder="Tabelle filtern..." aria-label="Tabelle filtern">
+			placeholder="Benutzer filtern..." aria-label="Benutzer filtern">
 	</div>
 </div>
 
-<div class="table-wrapper">
+<!-- Mobile Card View -->
+<div class="mobile-card-list searchable-list">
+	<c:forEach var="user" items="${userList}">
+		<div class="list-item-card"
+			data-searchable-content="${user.username} ${user.role}">
+			<h3 class="card-title">${user.username}</h3>
+			<div class="card-row">
+				<span>Rolle:</span> <span>${user.role}</span>
+			</div>
+			<div class="card-actions">
+				<button type="button" class="btn btn-small edit-user-btn"
+					data-fetch-url="<c:url value='/admin/users?action=getUserData&id=${user.id}'/>">Bearbeiten</button>
+				<a href="<c:url value='/admin/users?action=details&id=${user.id}'/>"
+					class="btn btn-small">Details</a>
+				<c:if test="${sessionScope.user.id != user.id}">
+					<form action="<c:url value='/admin/users'/>" method="post"
+						class="js-confirm-form"
+						data-confirm-message="Benutzer '${fn:escapeXml(user.username)}' wirklich löschen?">
+						<input type="hidden" name="action" value="delete"><input
+							type="hidden" name="userId" value="${user.id}">
+						<button type="submit" class="btn btn-small btn-danger">Löschen</button>
+					</form>
+				</c:if>
+			</div>
+		</div>
+	</c:forEach>
+</div>
+
+<!-- Desktop Table View -->
+<div class="desktop-table-wrapper">
 	<table class="data-table sortable-table searchable-table">
 		<thead>
 			<tr>
@@ -52,27 +91,27 @@
 			<c:forEach var="user" items="${userList}">
 				<tr>
 					<td>${user.id}</td>
-					<td><a
-						href="<c:url value='/admin/users?action=details&id=${user.id}'/>"
-						title="Detailansicht für ${user.username}">${user.username}</a></td>
+					<td>${user.username}</td>
 					<td>${user.role}</td>
 					<td style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-						<%-- **FIXED:** data-fetch-url now uses c:url to create the complete, correct URL server-side --%>
 						<button type="button" class="btn btn-small edit-user-btn"
 							data-fetch-url="<c:url value='/admin/users?action=getUserData&id=${user.id}'/>">Bearbeiten</button>
-						<c:if test="${sessionScope.user.id != user.id}">
+						<a
+						href="<c:url value='/admin/users?action=details&id=${user.id}'/>"
+						class="btn btn-small">Details</a> <c:if
+							test="${sessionScope.user.id != user.id}">
 							<form action="<c:url value='/admin/users'/>" method="post"
 								class="js-confirm-form"
 								data-confirm-message="Benutzer '${fn:escapeXml(user.username)}' wirklich löschen?">
-								<input type="hidden" name="action" value="delete"> <input
+								<input type="hidden" name="action" value="delete"><input
 									type="hidden" name="userId" value="${user.id}">
 								<button type="submit" class="btn btn-small btn-danger">Löschen</button>
 							</form>
 							<form action="<c:url value='/admin/users'/>" method="post"
 								class="js-confirm-form"
 								data-confirm-message="Passwort für '${fn:escapeXml(user.username)}' zurücksetzen? Das neue Passwort wird angezeigt.">
-								<input type="hidden" name="action" value="resetPassword">
-								<input type="hidden" name="userId" value="${user.id}">
+								<input type="hidden" name="action" value="resetPassword"><input
+									type="hidden" name="userId" value="${user.id}">
 								<button type="submit" class="btn btn-small btn-warning">Passwort
 									Reset</button>
 							</form>
@@ -84,11 +123,11 @@
 	</table>
 </div>
 
-<%-- **FIXED:** Use static include directive for the modals --%>
 <%@ include file="/WEB-INF/jspf/user_modals.jspf"%>
 
 <c:import url="/WEB-INF/jspf/table-helper.jspf" />
 <c:import url="/WEB-INF/jspf/footer.jspf" />
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 	document.querySelectorAll('.js-confirm-form').forEach(form => {
@@ -101,9 +140,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	const passwordAlert = document.getElementById('password-reset-alert');
 	if (passwordAlert) {
-		const passwordElement = passwordAlert.querySelector('strong');
+		const passwordElement = passwordAlert.querySelector('strong.copyable-password');
 		if(passwordElement) {
-			navigator.clipboard.writeText(passwordElement.textContent).catch(err => console.error('Failed to copy password:', err));
+			navigator.clipboard.writeText(passwordElement.textContent)
+                .then(() => console.log('Password copied to clipboard'))
+                .catch(err => console.error('Failed to copy password:', err));
 		}
 	}
 
@@ -126,6 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		form.reset();
 		title.textContent = "Neuen Benutzer anlegen";
 		actionInput.value = "create";
+		idInput.value = "";
 		passwordInput.required = true;
 		passwordGroup.style.display = 'block';
 		modal.classList.add('active');
@@ -135,14 +177,13 @@ document.addEventListener('DOMContentLoaded', () => {
 	document.querySelectorAll('.edit-user-btn').forEach(btn => {
 		btn.addEventListener('click', async () => {
 			form.reset();
-			// **FIXED:** Read the complete URL directly from the button's data attribute
 			const fetchUrl = btn.dataset.fetchUrl;
 			try {
 				const response = await fetch(fetchUrl);
 				if (!response.ok) throw new Error('Could not fetch user data');
 				const data = await response.json();
 
-				title.textContent = "Benutzer bearbeiten";
+				title.textContent = `Benutzer bearbeiten: ${data.username}`;
 				actionInput.value = "update";
 				idInput.value = data.id;
 				usernameInput.value = data.username || '';
@@ -160,11 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	});
 
 	closeModalBtn.addEventListener('click', closeModal);
-	modal.addEventListener('click', (e) => {
-		if (e.target === modal) closeModal();
-	});
-	document.addEventListener('keydown', (e) => {
-		if (e.key === 'Escape' && modal.classList.contains('active')) closeModal();
-	});
+	modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+	document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.classList.contains('active')) closeModal(); });
 });
 </script>

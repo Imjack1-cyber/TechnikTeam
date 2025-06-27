@@ -5,10 +5,11 @@
 
 <c:import url="/WEB-INF/jspf/header.jspf">
 	<c:param name="pageTitle" value="Passkeys verwalten" />
-	<c:param name="navType" value="user" />
 </c:import>
 
-<h1>Passkeys verwalten</h1>
+<h1>
+	<i class="fas fa-fingerprint"></i> Passkeys verwalten
+</h1>
 <p>Hier können Sie Passkeys hinzufügen oder entfernen, um sich
 	passwortlos anzumelden.</p>
 
@@ -75,7 +76,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const contextPath = "${'${pageContext.request.contextPath}'}"; // Escaped for JS
+    const contextPath = document.body.dataset.contextPath || '';
     const addPasskeyBtn = document.getElementById('add-passkey-btn');
 
     document.querySelectorAll('.js-confirm-form').forEach(form => {
@@ -95,8 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                // 1. Start registration from server
-                const startResp = await fetch(contextPath + '/api/passkey/register/start', { method: 'POST' });
+                const startResp = await fetch(`${contextPath}/api/passkey/register/start`, { method: 'POST' });
                 if (!startResp.ok) throw new Error('Could not start passkey registration.');
                 const creationOptions = await startResp.json();
                 
@@ -108,10 +108,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
                 
-                // 2. Create credential with browser WebAuthn API
                 const newCredential = await navigator.credentials.create({ publicKey: creationOptions });
 
-                // 3. Send new credential to server to finish registration
+                // CORRECTED LINE: Use standard string concatenation to avoid EL evaluation conflicts.
                 const finishUrl = contextPath + '/api/passkey/register/finish?name=' + encodeURIComponent(passkeyName);
                 const finishResp = await fetch(finishUrl, {
                     method: 'POST',

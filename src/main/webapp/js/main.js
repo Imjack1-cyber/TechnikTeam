@@ -4,12 +4,20 @@
  */
 document.addEventListener('DOMContentLoaded', () => {
 
+	const contextPath = document.body.dataset.contextPath || '';
+
 	// --- 1. Mobile Navigation Toggle Logic ---
 	const navToggle = document.querySelector('.mobile-nav-toggle');
+	const pageOverlay = document.querySelector('.page-overlay');
 	if (navToggle) {
 		navToggle.addEventListener('click', (e) => {
 			e.stopPropagation();
 			document.body.classList.toggle('nav-open');
+		});
+	}
+	if (pageOverlay) {
+		pageOverlay.addEventListener('click', () => {
+			document.body.classList.remove('nav-open');
 		});
 	}
 
@@ -22,7 +30,11 @@ document.addEventListener('DOMContentLoaded', () => {
 	navLinks.forEach(link => {
 		const linkPath = new URL(link.href).pathname;
 		if (linkPath && currentPath.startsWith(linkPath)) {
-			if (linkPath.length > maxMatchLength) {
+			// Give preference to exact matches
+			if (currentPath === linkPath) {
+				maxMatchLength = linkPath.length + 100; // Prioritize exact match
+				bestMatch = link;
+			} else if (linkPath.length > maxMatchLength) {
 				maxMatchLength = linkPath.length;
 				bestMatch = link;
 			}
@@ -34,15 +46,76 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	// --- 3. Theme Switcher Logic ---
-	// ... (This section is unchanged and correct) ...
+	const themeSwitch = document.getElementById('theme-toggle');
+	const currentTheme = localStorage.getItem('theme') || 'light';
+	document.documentElement.setAttribute('data-theme', currentTheme);
+	if (themeSwitch) {
+		if (currentTheme === 'dark') {
+			themeSwitch.checked = true;
+		}
+		themeSwitch.addEventListener('change', (e) => {
+			const newTheme = e.target.checked ? 'dark' : 'light';
+			document.documentElement.setAttribute('data-theme', newTheme);
+			localStorage.setItem('theme', newTheme);
+		});
+	}
 
-	// --- 4. Custom Confirmation Modal Logic ---
-	// ... (This section is unchanged and correct) ...
-	// NOTE: The implementation from the previous response is correct.
-	// It creates a global function `showConfirmationModal`.
+	// --- 4. Global Confirmation Modal Logic ---
+	const confirmationModalElement = document.createElement('div');
+	confirmationModalElement.className = 'modal-overlay';
+	confirmationModalElement.id = 'confirmation-modal';
+	confirmationModalElement.innerHTML = `
+        <div class="modal-content" style="max-width: 450px;">
+            <h3 id="confirmation-title">Bestätigung erforderlich</h3>
+            <p id="confirmation-message" style="margin: 1.5rem 0; font-size: 1.1rem;"></p>
+            <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                <button id="confirmation-btn-cancel" class="btn" style="background-color: var(--text-muted-color);">Abbrechen</button>
+                <button id="confirmation-btn-confirm" class="btn btn-danger">Bestätigen</button>
+            </div>
+        </div>`;
+	document.body.appendChild(confirmationModalElement);
+
+	const messageElement = document.getElementById('confirmation-message');
+	const confirmBtn = document.getElementById('confirmation-btn-confirm');
+	const cancelBtn = document.getElementById('confirmation-btn-cancel');
+
+	let onConfirmCallback = null;
+
+	window.showConfirmationModal = (message, onConfirm) => {
+		messageElement.textContent = message;
+		onConfirmCallback = onConfirm;
+		confirmationModalElement.classList.add('active');
+	};
+
+	const closeConfirmModal = () => {
+		confirmationModalElement.classList.remove('active');
+		onConfirmCallback = null;
+	};
+
+	confirmBtn.addEventListener('click', () => {
+		if (typeof onConfirmCallback === 'function') onConfirmCallback();
+		closeConfirmModal();
+	});
+
+	cancelBtn.addEventListener('click', closeConfirmModal);
+	confirmationModalElement.addEventListener('click', (e) => {
+		if (e.target === confirmationModalElement) closeConfirmModal();
+	});
+
+	// Attach confirmation to logout link
+	// main.js
+	const logoutLink = document.getElementById('logout-link');
+	if (logoutLink) {
+		logoutLink.addEventListener('click', (event) => {
+			event.preventDefault();
+			showConfirmationModal(
+				'Möchten Sie sich wirklich ausloggen?',
+				() => { window.location.href = logoutLink.href; }
+			);
+		});
+	}
 
 	// --- 5. Server-Sent Events (SSE) Notification Logic ---
-	const contextPath = document.body.dataset.contextPath || ''; // Use data attribute
 	if (document.body.dataset.isLoggedIn === 'true' && window.EventSource) {
 		const eventSource = new EventSource(`${contextPath}/notifications`);
 		eventSource.onopen = () => console.log("SSE connection established.");
@@ -70,60 +143,5 @@ document.addEventListener('DOMContentLoaded', () => {
 				}
 			});
 		}
-	}
-
-	// Ensure confirmation modal is set up
-	if (typeof showConfirmationModal === 'undefined') {
-		const modalElement = document.createElement('div');
-		modalElement.className = 'modal-overlay';
-		modalElement.id = 'confirmation-modal';
-		modalElement.innerHTML = `
-            <div class="modal-content" style="max-width: 450px;">
-                <h3 id="confirmation-title">Bestätigung</h3>
-                <p id="confirmation-message" style="margin: 1.5rem 0; font-size: 1.1rem;"></p>
-                <div style="display: flex; justify-content: flex-end; gap: 1rem;">
-                    <button id="confirmation-btn-cancel" class="btn btn-secondary">Abbrechen</button>
-                    <button id="confirmation-btn-confirm" class="btn btn-danger">Bestätigen</button>
-                </div>
-            </div>`;
-		document.body.appendChild(modalElement);
-
-		const messageElement = document.getElementById('confirmation-message');
-		const confirmBtn = document.getElementById('confirmation-btn-confirm');
-		const cancelBtn = document.getElementById('confirmation-btn-cancel');
-
-		let onConfirmCallback = null;
-
-		window.showConfirmationModal = (message, onConfirm) => {
-			messageElement.textContent = message;
-			onConfirmCallback = onConfirm;
-			modalElement.classList.add('active');
-		};
-
-		const closeConfirmModal = () => {
-			modalElement.classList.remove('active');
-			onConfirmCallback = null;
-		};
-
-		confirmBtn.addEventListener('click', () => {
-			if (typeof onConfirmCallback === 'function') onConfirmCallback();
-			closeConfirmModal();
-		});
-
-		cancelBtn.addEventListener('click', closeConfirmModal);
-		modalElement.addEventListener('click', (e) => {
-			if (e.target === modalElement) closeConfirmModal();
-		});
-	}
-
-	const logoutLink = document.getElementById('logout-link');
-	if (logoutLink) {
-		logoutLink.addEventListener('click', (event) => {
-			event.preventDefault();
-			showConfirmationModal(
-				'Bist du sicher, dass du dich ausloggen möchtest?',
-				() => { window.location.href = logoutLink.href; }
-			);
-		});
 	}
 });

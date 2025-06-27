@@ -1,21 +1,38 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" isELIgnored="false"%>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
 <c:import url="/WEB-INF/jspf/header.jspf">
-	<c:param name="pageTitle" value="Lagerverwaltung"/>
+	<c:param name="pageTitle" value="Lagerverwaltung" />
 </c:import>
 
-<h1>Lagerverwaltung</h1>
+<h1>
+	<i class="fas fa-warehouse"></i> Lagerverwaltung
+</h1>
 
 <%-- Session Messages --%>
-<c:if test="${not empty sessionScope.successMessage}"><p class="success-message"><i class="fas fa-check-circle"></i> <c:out value="${sessionScope.successMessage}"/></p><c:remove var="successMessage" scope="session"/></c:if>
-<c:if test="${not empty sessionScope.errorMessage}"><p class="error-message"><i class="fas fa-exclamation-triangle"></i> <c:out value="${sessionScope.errorMessage}"/></p><c:remove var="errorMessage" scope="session"/></c:if>
+<c:if test="${not empty sessionScope.successMessage}">
+	<p class="success-message">
+		<i class="fas fa-check-circle"></i>
+		<c:out value="${sessionScope.successMessage}" />
+	</p>
+	<c:remove var="successMessage" scope="session" />
+</c:if>
+<c:if test="${not empty sessionScope.errorMessage}">
+	<p class="error-message">
+		<i class="fas fa-exclamation-triangle"></i>
+		<c:out value="${sessionScope.errorMessage}" />
+	</p>
+	<c:remove var="errorMessage" scope="session" />
+</c:if>
 
 <div class="table-controls">
-	<button type="button" class="btn" id="new-item-btn">Neuen Artikel anlegen</button>
+	<button type="button" class="btn" id="new-item-btn">Neuen
+		Artikel anlegen</button>
 	<div class="form-group" style="margin-bottom: 0;">
-		<input type="search" id="table-filter" placeholder="Tabelle filtern..." aria-label="Tabelle filtern">
+		<input type="search" id="table-filter"
+			placeholder="Tabelle filtern..." aria-label="Tabelle filtern">
 	</div>
 </div>
 
@@ -26,30 +43,39 @@
 				<th class="sortable" data-sort-type="string">Name</th>
 				<th class="sortable" data-sort-type="string">Ort</th>
 				<th class="sortable" data-sort-type="number">Verfügbar</th>
-                <th class="sortable" data-sort-type="number">Defekt</th>
+				<th class="sortable" data-sort-type="number">Defekt</th>
 				<th>Aktionen</th>
 			</tr>
 		</thead>
 		<tbody>
 			<c:forEach var="item" items="${storageList}">
-				<tr class="${item.defectiveQuantity > 0 ? 'item-status-defect' : ''}">
-					<td><a href="<c:url value='/storage-item?id=${item.id}'/>"><c:out value="${item.name}" /></a></td>
+				<tr
+					class="${item.defectiveQuantity > 0 ? 'item-status-defect' : ''}">
+					<td><a href="<c:url value='/storage-item?id=${item.id}'/>"><c:out
+								value="${item.name}" /></a></td>
 					<td><c:out value="${item.location}" /></td>
 					<td><c:out value="${item.availableQuantity}" /></td>
 					<td><c:out value="${item.defectiveQuantity}" /></td>
 					<td style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-						<button type="button" class="btn btn-small edit-item-btn" data-fetch-url="<c:url value='/admin/storage?action=getItemData&id=${item.id}'/>">Bearbeiten</button>
-						<c:set var="qrData"><c:url value="/storage-item?id=${item.id}"/></c:set>
-						<a href="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${fn:escapeXml(qrData)}"
-						   target="_blank" class="btn btn-small btn-success">QR-Code</a>
-						<button class="btn btn-small btn-warning defect-modal-btn" data-item-id="${item.id}"
-							data-item-name="${fn:escapeXml(item.name)}" data-max-qty="${item.quantity}" 
-							data-current-defect-qty="${item.defectiveQuantity}" data-current-reason="${fn:escapeXml(item.defectReason)}">
-							Defekt verwalten
-						</button>
-						<form action="<c:url value='/admin/storage'/>" method="post" class="js-confirm-form" data-confirm-message="Artikel '${fn:escapeXml(item.name)}' wirklich löschen?">
-							<input type="hidden" name="action" value="delete">
-							<input type="hidden" name="id" value="${item.id}">
+						<button type="button" class="btn btn-small edit-item-btn"
+							data-fetch-url="<c:url value='/admin/storage?action=getItemData&id=${item.id}'/>">Bearbeiten</button>
+						<c:set var="qrData">
+							<c:url value="/storage-item?id=${item.id}" />
+						</c:set> <a
+						href="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${fn:escapeXml(qrData)}"
+						target="_blank" class="btn btn-small btn-success">QR-Code</a>
+						<button class="btn btn-small btn-warning defect-modal-btn"
+							data-item-id="${item.id}"
+							data-item-name="${fn:escapeXml(item.name)}"
+							data-max-qty="${item.quantity}"
+							data-current-defect-qty="${item.defectiveQuantity}"
+							data-current-reason="${fn:escapeXml(item.defectReason)}">
+							Defekt verwalten</button>
+						<form action="<c:url value='/admin/storage'/>" method="post"
+							class="js-confirm-form"
+							data-confirm-message="Artikel '${fn:escapeXml(item.name)}' wirklich löschen?">
+							<input type="hidden" name="action" value="delete"> <input
+								type="hidden" name="id" value="${item.id}">
 							<button type="submit" class="btn btn-small btn-danger">Löschen</button>
 						</form>
 					</td>
@@ -59,8 +85,7 @@
 	</table>
 </div>
 
-<%@ include file="/WEB-INF/jspf/storage_modals.jspf" %>
-
+<%@ include file="/WEB-INF/jspf/storage_modals.jspf"%>
 <c:import url="/WEB-INF/jspf/table-helper.jspf" />
 <c:import url="/WEB-INF/jspf/footer.jspf" />
 
