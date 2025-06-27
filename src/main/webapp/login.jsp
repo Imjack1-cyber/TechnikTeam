@@ -41,12 +41,6 @@
 				</div>
 				<button type="submit" class="btn" style="width: 100%;">Anmelden</button>
 			</form>
-			<div
-				style="text-align: center; margin: 1rem 0; color: var(--text-muted-color);">ODER</div>
-			<button id="passkey-login-btn" class="btn"
-				style="width: 100%; background-color: var(--text-muted-color); border-color: var(--text-muted-color);">
-				<i class="fas fa-fingerprint"></i> Mit Passkey anmelden
-			</button>
 		</div>
 	</div>
 
@@ -54,57 +48,6 @@
 // This script is self-contained as main.js is not included on this page.
 document.addEventListener('DOMContentLoaded', () => {
     const contextPath = document.body.dataset.contextPath || '';
-
-    // Passkey Login Logic
-    const passkeyLoginBtn = document.getElementById('passkey-login-btn');
-    const errorMessageElement = document.getElementById('error-message');
-
-    if (passkeyLoginBtn) {
-        passkeyLoginBtn.addEventListener('click', async () => {
-            try {
-                const startResp = await fetch(`${contextPath}/api/passkey/login/start`, { method: 'POST' });
-                if (!startResp.ok) throw new Error('Could not start passkey login.');
-                const requestOptionsJson = await startResp.json();
-                
-                // Decode from server's Base64URL to ArrayBuffer for the browser API
-                requestOptionsJson.challenge = bufferDecode(requestOptionsJson.challenge);
-                if (requestOptionsJson.allowCredentials) {
-                    for (let cred of requestOptionsJson.allowCredentials) {
-                        cred.id = bufferDecode(cred.id);
-                    }
-                }
-
-                const assertion = await navigator.credentials.get({ publicKey: requestOptionsJson });
-
-                const verificationResp = await fetch(`${contextPath}/api/passkey/login/finish`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        id: assertion.id,
-                        rawId: bufferEncode(assertion.rawId),
-                        response: {
-                            authenticatorData: bufferEncode(assertion.response.authenticatorData),
-                            clientDataJSON: bufferEncode(assertion.response.clientDataJSON),
-                            signature: bufferEncode(assertion.response.signature),
-                            userHandle: assertion.response.userHandle ? bufferEncode(assertion.response.userHandle) : null,
-                        },
-                        type: assertion.type
-                    })
-                });
-
-                if (verificationResp.ok) {
-                    window.location.href = `${contextPath}/home`;
-                } else {
-                    const errorText = await verificationResp.text();
-                    if(errorMessageElement) errorMessageElement.textContent = `Passkey Login fehlgeschlagen: ${errorText}`;
-                }
-
-            } catch (err) {
-                console.error('Passkey login error:', err);
-                if(errorMessageElement) errorMessageElement.textContent = 'Passkey-Operation fehlgeschlagen oder abgebrochen.';
-            }
-        });
-    }
 
     // Helper functions for base64url encoding/decoding
     function bufferDecode(value) {

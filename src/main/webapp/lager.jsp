@@ -1,79 +1,128 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" isELIgnored="false" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
 <c:import url="/WEB-INF/jspf/header.jspf">
-	<c:param name="pageTitle" value="Lager"/>
+	<c:param name="pageTitle" value="Lager" />
 </c:import>
 
-<h1><i class="fas fa-boxes"></i> Lagerübersicht</h1>
-<p>Hier finden Sie eine Übersicht aller erfassten Artikel im Lager.</p>
+<h1>
+	<i class="fas fa-boxes"></i> Lagerübersicht
+</h1>
+<p>Hier finden Sie eine Übersicht aller erfassten Artikel im Lager.
+	Klicken Sie auf einen Artikelnamen für Details und Verlauf.</p>
 
-<%-- Session Messages --%>
-<c:if test="${not empty sessionScope.successMessage}"><p class="success-message"><c:out value="${sessionScope.successMessage}"/></p><c:remove var="successMessage" scope="session"/></c:if>
-<c:if test="${not empty sessionScope.errorMessage}"><p class="error-message"><c:out value="${sessionScope.errorMessage}"/></p><c:remove var="errorMessage" scope="session"/></c:if>
+<c:if test="${not empty sessionScope.successMessage}">
+	<p class="success-message">${sessionScope.successMessage}</p>
+	<c:remove var="successMessage" scope="session" />
+</c:if>
+<c:if test="${not empty sessionScope.errorMessage}">
+	<p class="error-message">${sessionScope.errorMessage}</p>
+	<c:remove var="errorMessage" scope="session" />
+</c:if>
 
 <div class="table-controls">
 	<div class="form-group" style="margin-bottom: 0; flex-grow: 1;">
-		<input type="search" id="table-filter" placeholder="Alle Artikel filtern..." aria-label="Lager filtern">
+		<input type="search" id="table-filter"
+			placeholder="Alle Artikel filtern..." aria-label="Lager filtern">
 	</div>
 </div>
 
 <c:if test="${empty storageData}">
-	<div class="card"><p>Derzeit sind keine Artikel im Lager erfasst.</p></div>
+	<div class="card">
+		<p>Derzeit sind keine Artikel im Lager erfasst.</p>
+	</div>
 </c:if>
 
 <c:forEach var="locationEntry" items="${storageData}">
 	<div class="card">
-		<h2><i class="fas fa-map-marker-alt"></i> <c:out value="${locationEntry.key}" /></h2>
-        <div class="table-wrapper">
-            <table class="data-table searchable-table">
-                <thead>
-                    <tr>
-                        <th>Gerät</th>
-                        <th>Verfügbar</th>
-                        <th>Defekt</th>
-                        <th>Status</th>
-                        <th>Aktion</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <c:forEach var="item" items="${locationEntry.value}">
-                        <tr class="${item.defectiveQuantity > 0 ? 'item-status-defect' : ''}">
-                            <td><a href="#" class="item-details-trigger" data-item-id="${item.id}"><c:out value="${item.name}" /></a></td>
-                            <td>${item.availableQuantity} / ${item.quantity}</td>
-                            <td>${item.defectiveQuantity}</td>
-                            <td><span class="status-badge ${item.availabilityStatusCssClass}"><c:out value="${item.availabilityStatus}" /></span></td>
-                            <td>
-                                <button class="btn btn-small transaction-btn"
-                                    data-item-id="${item.id}"
-                                    data-item-name="${fn:escapeXml(item.name)}"
-                                    data-max-qty="${item.availableQuantity}" ${item.availableQuantity <= 0 ? 'disabled' : ''}>
-                                    Entnehmen/Einräumen
-                                </button>
-                            </td>
-                        </tr>
-                    </c:forEach>
-                </tbody>
-            </table>
-        </div>
+		<h2>
+			<i class="fas fa-map-marker-alt"></i>
+			<c:out value="${locationEntry.key}" />
+		</h2>
+		<div class="table-wrapper">
+			<table class="data-table searchable-table">
+				<thead>
+					<tr>
+						<th>Gerät</th>
+						<th>Bild</th>
+						<th>Verfügbar</th>
+						<th>Defekt</th>
+						<th>Status</th>
+						<th>Aktion</th>
+					</tr>
+				</thead>
+				<tbody>
+					<c:forEach var="item" items="${locationEntry.value}">
+						<tr
+							class="${item.defectiveQuantity > 0 ? 'item-status-defect' : ''}">
+							<td><a href="<c:url value='/storage-item?id=${item.id}'/>"
+								title="Details für ${item.name} ansehen"><c:out
+										value="${item.name}" /></a></td>
+							<td style="text-align: center;"><c:if
+									test="${not empty item.imagePath}">
+									<button class="btn btn-small btn-info lightbox-trigger"
+										data-src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
+										title="Bild anzeigen">
+										<i class="fas fa-image"></i>
+									</button>
+								</c:if></td>
+							<td>${item.availableQuantity}/ ${item.quantity}</td>
+							<td>${item.defectiveQuantity}</td>
+							<td><span
+								class="status-badge ${item.availabilityStatusCssClass}"><c:out
+										value="${item.availabilityStatus}" /></span></td>
+							<td>
+								<button class="btn btn-small transaction-btn btn-primary"
+									data-item-id="${item.id}"
+									data-item-name="${fn:escapeXml(item.name)}"
+									data-max-qty="${item.availableQuantity}"
+									${item.availableQuantity <= 0 ? 'disabled' : ''}>
+									Entnehmen/Einräumen</button>
+							</td>
+						</tr>
+					</c:forEach>
+				</tbody>
+			</table>
+		</div>
 	</div>
 </c:forEach>
+
+<!-- Lightbox structure for image viewing -->
+<div id="lightbox" class="lightbox-overlay">
+	<span class="lightbox-close">×</span> <img class="lightbox-content"
+		id="lightbox-image">
+</div>
+
+<%@ include file="/WEB-INF/jspf/storage_modals.jspf"%>
+<c:import url="/WEB-INF/jspf/table-helper.jspf" />
+<c:import url="/WEB-INF/jspf/footer.jspf" />
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const contextPath = "${'${pageContext.request.contextPath}'}"; // Escaped for JS
     // Lightbox Logic
     const lightbox = document.getElementById('lightbox');
     if (lightbox) {
         const lightboxImage = lightbox.querySelector('img');
+        const closeBtn = lightbox.querySelector('.lightbox-close');
+
         document.querySelectorAll('.lightbox-trigger').forEach(trigger => {
             trigger.addEventListener('click', (e) => {
                 e.preventDefault();
-                lightboxImage.setAttribute('src', trigger.dataset.src);
-                lightbox.classList.add('active');
+                lightbox.style.display = 'block';
+                lightboxImage.src = trigger.dataset.src;
             });
         });
-        lightbox.addEventListener('click', () => lightbox.classList.remove('active'));
+
+        const closeLightbox = () => { lightbox.style.display = 'none'; };
+        if (closeBtn) closeBtn.addEventListener('click', closeLightbox);
+        lightbox.addEventListener('click', (e) => { 
+            if(e.target === lightbox) { closeLightbox(); }
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && lightbox.style.display === 'block') closeLightbox();
+        });
     }
 
     // Transaction Modal Logic
@@ -81,15 +130,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (transactionModal) {
         const modalTitle = document.getElementById('transaction-modal-title');
         const modalItemId = document.getElementById('transaction-item-id');
-        const modalType = document.getElementById('transaction-type');
         const closeModalBtn = transactionModal.querySelector('.modal-close-btn');
 
         const openModal = (btn) => {
-            const type = btn.dataset.type;
-            const actionText = type === 'checkin' ? 'Einräumen' : 'Entnehmen';
-            modalTitle.textContent = `${btn.dataset.itemName} ${actionText}`;
+            modalTitle.textContent = `${btn.dataset.itemName}: Entnehmen / Einräumen`;
             modalItemId.value = btn.dataset.itemId;
-            modalType.value = type;
             transactionModal.classList.add('active');
         };
 
@@ -104,64 +149,5 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.target === transactionModal) closeModal();
         });
     }
-
-    // Item Details & History Modal Logic
-    const detailsModal = document.getElementById('item-details-modal');
-    if(detailsModal) {
-        const detailsTitle = document.getElementById('details-modal-title');
-        const historyContainer = document.getElementById('item-history-container');
-        const closeDetailsBtn = detailsModal.querySelector('.modal-close-btn');
-
-        const fetchAndShowHistory = async (itemId, itemName) => {
-            detailsTitle.textContent = `Verlauf für: ${itemName}`;
-            historyContainer.innerHTML = '<p>Lade Verlauf...</p>';
-            detailsModal.classList.add('active');
-            try {
-                const response = await fetch(`${contextPath}/api/storage-history?itemId=${itemId}`);
-                if (!response.ok) throw new Error('Network response was not ok');
-                const history = await response.json();
-                
-                let html = '<ul class="details-list">';
-                if (history.length > 0) {
-                    history.forEach(entry => {
-                        const changeClass = entry.quantityChange > 0 ? 'text-success' : 'text-danger';
-                        const changeSign = entry.quantityChange > 0 ? '+' : '';
-                        html += `<li>
-                                    <div>
-                                        <strong class="${changeClass}">${changeSign}${entry.quantityChange} Stück</strong>
-                                        von <strong>${entry.username}</strong>
-                                        <br>
-                                        <small>${entry.notes || 'Keine Notiz'}</small>
-                                    </div>
-                                    <small>${entry.transactionTimestampLocaleString}</small> 
-                                 </li>`;
-                    });
-                } else {
-                    html += '<li>Kein Verlauf für diesen Artikel vorhanden.</li>';
-                }
-                html += '</ul>';
-                historyContainer.innerHTML = html;
-
-            } catch (error) {
-                historyContainer.innerHTML = '<p class="error-message">Verlauf konnte nicht geladen werden.</p>';
-                console.error('Fetch error:', error);
-            }
-        };
-        
-        document.querySelectorAll('.item-details-trigger').forEach(trigger => {
-            trigger.addEventListener('click', (e) => {
-                e.preventDefault();
-                const itemId = trigger.dataset.itemId;
-                const itemName = trigger.textContent;
-                fetchAndShowHistory(itemId, itemName);
-            });
-        });
-
-        closeDetailsBtn.addEventListener('click', () => detailsModal.classList.remove('active'));
-        detailsModal.addEventListener('click', e => {
-            if (e.target === detailsModal) detailsModal.classList.remove('active');
-        });
-    }
 });
 </script>
-<c:import url="/WEB-INF/jspf/footer.jspf" />

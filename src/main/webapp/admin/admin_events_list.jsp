@@ -5,90 +5,41 @@
 
 <c:import url="/WEB-INF/jspf/header.jspf">
 	<c:param name="pageTitle" value="Eventverwaltung" />
-	<c:param name="navType" value="admin" />
 </c:import>
 
-<h1>Eventverwaltung</h1>
+<h1>
+	<i class="fas fa-calendar-check"></i> Eventverwaltung
+</h1>
+<p>Hier können Sie Events erstellen, bearbeiten, Personal zuweisen
+	und den Status verwalten.</p>
 
 <c:if test="${not empty sessionScope.successMessage}">
-	<p class="success-message">${sessionScope.successMessage}</p>
+	<p class="success-message">
+		<i class="fas fa-check-circle"></i> ${sessionScope.successMessage}
+	</p>
 	<c:remove var="successMessage" scope="session" />
 </c:if>
 <c:if test="${not empty sessionScope.errorMessage}">
-	<p class="error-message">${sessionScope.errorMessage}</p>
+	<p class="error-message">
+		<i class="fas fa-exclamation-triangle"></i>
+		${sessionScope.errorMessage}
+	</p>
 	<c:remove var="errorMessage" scope="session" />
 </c:if>
+
 <div class="table-controls">
-	<button type="button" class="btn" id="new-event-btn">Neues
-		Event anlegen</button>
+	<button type="button" class="btn" id="new-event-btn">
+		<i class="fas fa-plus"></i> Neues Event anlegen
+	</button>
 	<div class="form-group" style="margin-bottom: 0;">
 		<input type="search" id="table-filter"
 			placeholder="Tabelle filtern..." aria-label="Tabelle filtern">
 	</div>
 </div>
 
-<c:if test="${empty eventList}">
-	<div class="card">
-		<p>Es wurden noch keine Events erstellt.</p>
-	</div>
-</c:if>
-<!-- MOBILE LAYOUT: CARD LIST -->
-<div class="mobile-card-list searchable-list">
-	<c:forEach var="event" items="${eventList}">
-		<div class="list-item-card"
-			data-searchable-content="${event.name} ${event.status}">
-			<h3 class="card-title">${event.name}</h3>
-			<div class="card-row">
-				<span>Zeitraum:</span> <span>${event.formattedEventDateTimeRange}</span>
-			</div>
-			<div class="card-row">
-				<span>Status:</span> <span>${event.status}</span>
-			</div>
-			<div class="card-actions">
-				<button type="button" class="btn btn-small edit-event-btn"
-					data-event-id="${event.id}">Bearbeiten</button>
-				<c:if test="${event.status != 'ABGESCHLOSSEN'}">
-					<button type="button"
-						class="btn btn-small btn-success assign-users-btn"
-						data-event-id="${event.id}"
-						data-event-name="${fn:escapeXml(event.name)}">Zuweisen</button>
-					<c:if
-						test="${event.status == 'GEPLANT' || event.status == 'KOMPLETT'}">
-						<form action="${pageContext.request.contextPath}/admin/events"
-							method="post" style="display: inline;">
-							<input type="hidden" name="action" value="updateStatus">
-							<input type="hidden" name="id" value="${event.id}"> <input
-								type="hidden" name="newStatus" value="LAUFEND">
-							<button type="submit" class="btn btn-small"
-								style="background-color: orange;">Starten</button>
-						</form>
-					</c:if>
-					<c:if test="${event.status == 'LAUFEND'}">
-						<form action="${pageContext.request.contextPath}/admin/events"
-							method="post" style="display: inline;">
-							<input type="hidden" name="action" value="updateStatus">
-							<input type="hidden" name="id" value="${event.id}"> <input
-								type="hidden" name="newStatus" value="ABGESCHLOSSEN">
-							<button type="submit" class="btn btn-small"
-								style="background-color: var(--text-muted-color);">Abschließen</button>
-						</form>
-					</c:if>
-				</c:if>
-
-				<form action="${pageContext.request.contextPath}/admin/events"
-					method="post" class="inline-form js-confirm-form"
-					data-confirm-message="Soll das Event '${fn:escapeXml(event.name)}' wirklich endgültig gelöscht werden?">
-					<input type="hidden" name="action" value="delete"> <input
-						type="hidden" name="id" value="${event.id}">
-					<button type="submit" class="btn btn-small btn-danger">Löschen</button>
-				</form>
-			</div>
-		</div>
-	</c:forEach>
-</div>
-<!-- DESKTOP LAYOUT: TABLE -->
-<div class="desktop-table-wrapper">
-	<table class="desktop-table sortable-table searchable-table">
+<!-- Unified view for Mobile and Desktop, handled by CSS -->
+<div class="table-wrapper">
+	<table class="data-table sortable-table searchable-table">
 		<thead>
 			<tr>
 				<th class="sortable" data-sort-type="string">Name</th>
@@ -98,12 +49,19 @@
 			</tr>
 		</thead>
 		<tbody>
+			<c:if test="${empty eventList}">
+				<tr>
+					<td colspan="4" style="text-align: center;">Keine Events
+						gefunden.</td>
+				</tr>
+			</c:if>
 			<c:forEach var="event" items="${eventList}">
 				<tr>
 					<td><a
 						href="${pageContext.request.contextPath}/eventDetails?id=${event.id}">${event.name}</a></td>
 					<td>${event.formattedEventDateTimeRange}</td>
-					<td>${event.status}</td>
+					<td><span
+						class="status-badge ${event.status == 'KOMPLETT' or event.status == 'ZUGEWIESEN' ? 'status-ok' : event.status == 'LAUFEND' ? 'status-warn' : event.status == 'ABGESCHLOSSEN' ? 'status-info' : 'status-info'}">${event.status}</span></td>
 					<td style="display: flex; gap: 5px; flex-wrap: wrap;">
 						<button type="button" class="btn btn-small edit-event-btn"
 							data-event-id="${event.id}">Bearbeiten</button> <c:if
@@ -115,17 +73,18 @@
 							<c:if
 								test="${event.status == 'GEPLANT' || event.status == 'KOMPLETT'}">
 								<form action="${pageContext.request.contextPath}/admin/events"
-									method="post" style="display: inline;">
+									method="post" style="display: inline;" class="js-confirm-form"
+									data-confirm-message="Event '${fn:escapeXml(event.name)}' wirklich starten? Der Chat wird aktiviert.">
 									<input type="hidden" name="action" value="updateStatus">
 									<input type="hidden" name="id" value="${event.id}"> <input
 										type="hidden" name="newStatus" value="LAUFEND">
-									<button type="submit" class="btn btn-small"
-										style="background-color: orange;">Starten</button>
+									<button type="submit" class="btn btn-small btn-warning">Starten</button>
 								</form>
 							</c:if>
 							<c:if test="${event.status == 'LAUFEND'}">
 								<form action="${pageContext.request.contextPath}/admin/events"
-									method="post" style="display: inline;">
+									method="post" style="display: inline;" class="js-confirm-form"
+									data-confirm-message="Event '${fn:escapeXml(event.name)}' wirklich abschließen?">
 									<input type="hidden" name="action" value="updateStatus">
 									<input type="hidden" name="id" value="${event.id}"> <input
 										type="hidden" name="newStatus" value="ABGESCHLOSSEN">
@@ -191,6 +150,11 @@
 	font-size: 1.1rem;
 	cursor: pointer;
 }
+
+.checkbox-label input {
+	width: auto;
+	height: 1.2rem;
+}
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -216,19 +180,17 @@ document.addEventListener('DOMContentLoaded', () => {
 		assignEventIdInput.value = eventId;
 		assignCheckboxes.innerHTML = '<p>Lade Benutzer...</p>';
 		assignModal.classList.add('active');
-
 		try {
 			const response = await fetch(`${contextPath}/admin/events?action=getAssignmentData&id=${eventId}`);
 			if (!response.ok) throw new Error('Could not fetch assignment data.');
 			const data = await response.json();
-			
 			assignCheckboxes.innerHTML = '';
 			if(data.signedUpUsers && data.signedUpUsers.length > 0) {
 				data.signedUpUsers.forEach(user => {
 					const isChecked = data.assignedUserIds.includes(user.id) ? 'checked' : '';
 					assignCheckboxes.innerHTML += `
 						<label class="checkbox-label">
-							<input type="checkbox" name="userIds" value="${user.id}" ${isChecked} style="width: auto; height: 1.2rem;">
+							<input type="checkbox" name="userIds" value="${user.id}" ${isChecked}>
 							${user.username}
 						</label>`;
 				});
@@ -255,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	const attachmentsList = document.getElementById('modal-attachments-list');
 
 	const allCourses = [<c:forEach var="c" items="${allCourses}">{id: ${c.id}, name: "${fn:escapeXml(c.name)}"},</c:forEach>];
-	const allItems = [<c:forEach var="i" items="${allItems}">{id: ${i.id}, name: "${fn:escapeXml(i.name)} (verfügbar: ${i.quantity})"},</c:forEach>];
+	const allItems = [<c:forEach var="i" items="${allItems}">{id: ${i.id}, name: "${fn:escapeXml(i.name)} (verfügbar: ${i.availableQuantity})"},</c:forEach>];
 
 	const openEventModal = () => eventModal.classList.add('active');
 	const closeEventModal = () => eventModal.classList.remove('active');
@@ -306,6 +268,19 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	});
 	
+	// --- Tab Logic ---
+    const tabButtons = eventModal.querySelectorAll('.modal-tab-button');
+    const tabContents = eventModal.querySelectorAll('.modal-tab-content');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            tabContents.forEach(content => {
+                content.classList.toggle('active', content.id === button.dataset.tab);
+            });
+        });
+    });
+
 	const createRow = (container) => {
 		const newRow = document.createElement('div'); newRow.className = 'dynamic-row';
 		const removeBtn = document.createElement('button'); removeBtn.type = 'button'; removeBtn.className = 'btn-small btn-danger';
@@ -341,12 +316,13 @@ document.addEventListener('DOMContentLoaded', () => {
         removeBtn.innerHTML = '×';
         removeBtn.onclick = () => {
             showConfirmationModal(`Anhang '${filename}' wirklich löschen?`, async () => {
-                const formData = new FormData();
-                formData.append('action', 'deleteAttachment');
-                formData.append('id', id);
-                const response = await fetch(`${contextPath}/admin/events`, { method: 'POST', body: formData });
-                if (response.ok) li.remove();
-                else alert('Fehler beim Löschen des Anhangs.');
+                try {
+                    const response = await fetch(`${contextPath}/admin/events`, { method: 'POST', body: new URLSearchParams({ action: 'deleteAttachment', id: id}) });
+                    if (response.ok) li.remove();
+                    else alert('Fehler beim Löschen des Anhangs.');
+                } catch(e) {
+                     alert('Netzwerkfehler beim Löschen des Anhangs.');
+                }
             });
         };
         li.appendChild(removeBtn); attachmentsList.appendChild(li);

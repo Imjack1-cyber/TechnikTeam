@@ -1,17 +1,18 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
 <c:import url="/WEB-INF/jspf/header.jspf">
 	<c:param name="pageTitle" value="Qualifikations-Matrix" />
-	<c:param name="navType" value="admin" />
 </c:import>
 
 <h1>
-	<i class="fas fa-th-list"></i> Qualifikations-Matrix (Modular)
+	<i class="fas fa-th-list"></i> Qualifikations-Matrix
 </h1>
 <p>Klicken Sie auf eine Zelle, um die Teilnahme an einem Meeting zu
-	bearbeiten.</p>
+	bearbeiten. Die Kopfzeile und die Benutzerleiste bleiben beim Scrollen
+	fixiert.</p>
 
 <c:if test="${not empty sessionScope.successMessage}">
 	<p class="success-message">
@@ -31,23 +32,23 @@
 	<table class="data-table">
 		<thead>
 			<tr>
-				<th rowspan="2"
-					style="vertical-align: middle; position: sticky; left: 0; z-index: 10; background-color: var(--surface-color);">Nutzer
-					/ Lehrgang ↓</th>
+				<th rowspan="2" class="sticky-header sticky-col"
+					style="vertical-align: middle; left: 0; z-index: 15;">Nutzer /
+					Lehrgang ↓</th>
 				<c:forEach var="course" items="${allCourses}">
-					<th colspan="${meetingsByCourse[course.id].size()}"
-						style="text-align: center;"><a
-						href="${pageContext.request.contextPath}/admin/courses?action=edit&id=${course.id}"
-						title="Vorlage '${course.name}' bearbeiten">${course.abbreviation}</a>
-					</th>
+					<th colspan="${fn:length(meetingsByCourse[course.id])}"
+						class="sticky-header" style="text-align: center;"><a
+						href="${pageContext.request.contextPath}/admin/courses"
+						title="Vorlagen verwalten">${course.abbreviation}</a></th>
 				</c:forEach>
 			</tr>
 			<tr>
 				<c:forEach var="course" items="${allCourses}">
 					<c:forEach var="meeting" items="${meetingsByCourse[course.id]}">
-						<th style="text-align: center;"><a
-							href="${pageContext.request.contextPath}/admin/meetings?action=edit&courseId=${course.id}&meetingId=${meeting.id}"
-							title="Meeting '${meeting.name}' bearbeiten">${meeting.name}</a>
+						<th class="sticky-header"
+							style="text-align: center; min-width: 120px;"><a
+							href="${pageContext.request.contextPath}/admin/meetings?courseId=${course.id}"
+							title="Meetings für '${course.name}' verwalten">${meeting.name}</a>
 						</th>
 					</c:forEach>
 				</c:forEach>
@@ -56,9 +57,7 @@
 		<tbody>
 			<c:forEach var="user" items="${allUsers}">
 				<tr>
-					<td
-						style="font-weight: 500; position: sticky; left: 0; background-color: var(--surface-color); z-index: 5;">
-						<a
+					<td class="sticky-col" style="font-weight: 500; left: 0;"><a
 						href="${pageContext.request.contextPath}/admin/users?action=details&id=${user.id}">${user.username}</a>
 					</td>
 					<c:forEach var="course" items="${allCourses}">
@@ -72,11 +71,14 @@
 								data-attended="${not empty attendance && attendance.attended}"
 								data-remarks="${not empty attendance ? attendance.remarks : ''}"
 								style="text-align: center; font-weight: bold; cursor: pointer;"
-								title="Klicken zum Bearbeiten"><c:if
-									test="${not empty attendance && attendance.attended}">
-									<span style="color: var(--success-color);">✔</span>
-								</c:if> <c:if test="${empty attendance || !attendance.attended}">-</c:if>
-							</td>
+								title="Klicken zum Bearbeiten"><c:choose>
+									<c:when test="${not empty attendance && attendance.attended}">
+										<span class="text-success" style="font-size: 1.2rem;">✔</span>
+									</c:when>
+									<c:otherwise>
+										<span class="text-muted">-</span>
+									</c:otherwise>
+								</c:choose></td>
 						</c:forEach>
 					</c:forEach>
 				</tr>

@@ -8,7 +8,6 @@ public class StorageItem {
 	private String name;
 	private String location;
 	private String cabinet;
-	private String shelf;
 	private String compartment;
 	private int quantity;
 	private int maxQuantity;
@@ -82,13 +81,12 @@ public class StorageItem {
 		this.cabinet = cabinet;
 	}
 
-	public String getShelf() {
-		return shelf;
-	}
-
-	public void setShelf(String shelf) {
-		this.shelf = shelf;
-	}
+	/*
+	 * REDESIGN: Getter/Setter for shelf removed. public String getShelf() { return
+	 * shelf; }
+	 * 
+	 * public void setShelf(String shelf) { this.shelf = shelf; }
+	 */
 
 	public String getCompartment() {
 		return compartment;

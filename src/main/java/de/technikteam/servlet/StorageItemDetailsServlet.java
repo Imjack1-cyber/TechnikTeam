@@ -1,7 +1,9 @@
 package de.technikteam.servlet;
 
 import de.technikteam.dao.StorageDAO;
+import de.technikteam.dao.StorageLogDAO;
 import de.technikteam.model.StorageItem;
+import de.technikteam.model.StorageLogEntry;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -11,22 +13,25 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
- * Mapped to `/storage-item`, this servlet displays a public-facing detail page
- * for a single inventory item. It is typically accessed by scanning a QR code
- * that contains the URL with the item's ID. It fetches the item's data using
- * `StorageDAO` and forwards it to `storage_item_details.jsp` for rendering.
+ * REDESIGN: Mapped to `/storage-item`, this servlet now displays a
+ * comprehensive, public-facing detail page for a single inventory item. It
+ * fetches the item's core data AND its full transaction history ("chronic"),
+ * forwarding both to `storage_item_details.jsp` for rendering a unified view.
  */
 @WebServlet("/storage-item")
 public class StorageItemDetailsServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(StorageItemDetailsServlet.class);
 	private StorageDAO storageDAO;
+	private StorageLogDAO storageLogDAO; // Added for fetching history
 
 	@Override
 	public void init() {
 		storageDAO = new StorageDAO();
+		storageLogDAO = new StorageLogDAO(); // Initialize the log DAO
 	}
 
 	@Override
@@ -34,7 +39,7 @@ public class StorageItemDetailsServlet extends HttpServlet {
 			throws ServletException, IOException {
 		try {
 			int itemId = Integer.parseInt(request.getParameter("id"));
-			logger.info("Storage item details requested for ID: {}", itemId);
+			logger.info("Comprehensive storage item details requested for ID: {}", itemId);
 
 			StorageItem item = storageDAO.getItemById(itemId);
 
@@ -44,8 +49,14 @@ public class StorageItemDetailsServlet extends HttpServlet {
 				return;
 			}
 
+			// Fetch the transaction history for the item
+			List<StorageLogEntry> history = storageLogDAO.getHistoryForItem(itemId);
+
 			request.setAttribute("item", item);
-			logger.debug("Forwarding to storage_item_details.jsp for item '{}'", item.getName());
+			request.setAttribute("history", history); // Pass history to the JSP
+
+			logger.debug("Forwarding to storage_item_details.jsp for item '{}' with {} history entries.",
+					item.getName(), history.size());
 			request.getRequestDispatcher("/storage_item_details.jsp").forward(request, response);
 
 		} catch (NumberFormatException e) {

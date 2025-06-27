@@ -108,7 +108,6 @@ public class AdminStorageServlet extends HttpServlet {
 			item.setName(ServletUtils.getPartValue(request.getPart("name")));
 			item.setLocation(ServletUtils.getPartValue(request.getPart("location")));
 			item.setCabinet(ServletUtils.getPartValue(request.getPart("cabinet")));
-			item.setShelf(ServletUtils.getPartValue(request.getPart("shelf")));
 			item.setCompartment(ServletUtils.getPartValue(request.getPart("compartment")));
 			item.setQuantity(Integer.parseInt(ServletUtils.getPartValue(request.getPart("quantity"))));
 			item.setMaxQuantity(Integer.parseInt(ServletUtils.getPartValue(request.getPart("maxQuantity"))));

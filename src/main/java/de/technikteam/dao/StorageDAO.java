@@ -18,7 +18,7 @@ public class StorageDAO {
 
 	public Map<String, List<StorageItem>> getAllItemsGroupedByLocation() {
 		List<StorageItem> items = new ArrayList<>();
-		String sql = "SELECT * FROM storage_items ORDER BY location, cabinet, shelf, name";
+		String sql = "SELECT * FROM storage_items ORDER BY location, cabinet, name";
 		try (Connection conn = DatabaseManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
@@ -28,7 +28,9 @@ public class StorageDAO {
 		} catch (SQLException e) {
 			logger.error("SQL error while fetching storage items.", e);
 		}
-		return items.stream().collect(Collectors.groupingBy(StorageItem::getLocation));
+		// REDESIGN FIX: Trim the location string to normalize data like "Erdgeschoss"
+		// vs "Erdgeschoss ".
+		return items.stream().collect(Collectors.groupingBy(item -> item.getLocation().trim()));
 	}
 
 	public List<StorageItem> getDefectiveItems() {
@@ -52,7 +54,8 @@ public class StorageDAO {
 		item.setName(rs.getString("name"));
 		item.setLocation(rs.getString("location"));
 		item.setCabinet(rs.getString("cabinet"));
-		item.setShelf(rs.getString("shelf"));
+		// REDESIGN REMOVAL: The "shelf" column is no longer used.
+		// item.setShelf(rs.getString("shelf"));
 		item.setCompartment(rs.getString("compartment"));
 		item.setQuantity(rs.getInt("quantity"));
 		item.setMaxQuantity(rs.getInt("max_quantity"));
@@ -79,18 +82,18 @@ public class StorageDAO {
 	}
 
 	public boolean createItem(StorageItem item) {
-		String sql = "INSERT INTO storage_items (name, location, cabinet, shelf, compartment, quantity, max_quantity, weight_kg, price_eur, image_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+		// REDESIGN REMOVAL: Removed "shelf" from the INSERT statement.
+		String sql = "INSERT INTO storage_items (name, location, cabinet, compartment, quantity, max_quantity, weight_kg, price_eur, image_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, item.getName());
 			pstmt.setString(2, item.getLocation());
 			pstmt.setString(3, item.getCabinet());
-			pstmt.setString(4, item.getShelf());
-			pstmt.setString(5, item.getCompartment());
-			pstmt.setInt(6, item.getQuantity());
-			pstmt.setInt(7, item.getMaxQuantity());
-			pstmt.setDouble(8, item.getWeightKg());
-			pstmt.setDouble(9, item.getPriceEur());
-			pstmt.setString(10, item.getImagePath());
+			pstmt.setString(4, item.getCompartment());
+			pstmt.setInt(5, item.getQuantity());
+			pstmt.setInt(6, item.getMaxQuantity());
+			pstmt.setDouble(7, item.getWeightKg());
+			pstmt.setDouble(8, item.getPriceEur());
+			pstmt.setString(9, item.getImagePath());
 			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
 			logger.error("SQL error creating storage item: {}", item.getName(), e);
@@ -99,21 +102,21 @@ public class StorageDAO {
 	}
 
 	public boolean updateItem(StorageItem item) {
-		String sql = "UPDATE storage_items SET name=?, location=?, cabinet=?, shelf=?, compartment=?, quantity=?, max_quantity=?, defective_quantity=?, defect_reason=?, weight_kg=?, price_eur=?, image_path=? WHERE id=?";
+		// REDESIGN REMOVAL: Removed "shelf" from the UPDATE statement.
+		String sql = "UPDATE storage_items SET name=?, location=?, cabinet=?, compartment=?, quantity=?, max_quantity=?, defective_quantity=?, defect_reason=?, weight_kg=?, price_eur=?, image_path=? WHERE id=?";
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, item.getName());
 			pstmt.setString(2, item.getLocation());
 			pstmt.setString(3, item.getCabinet());
-			pstmt.setString(4, item.getShelf());
-			pstmt.setString(5, item.getCompartment());
-			pstmt.setInt(6, item.getQuantity());
-			pstmt.setInt(7, item.getMaxQuantity());
-			pstmt.setInt(8, item.getDefectiveQuantity());
-			pstmt.setString(9, item.getDefectReason());
-			pstmt.setDouble(10, item.getWeightKg());
-			pstmt.setDouble(11, item.getPriceEur());
-			pstmt.setString(12, item.getImagePath());
-			pstmt.setInt(13, item.getId());
+			pstmt.setString(4, item.getCompartment());
+			pstmt.setInt(5, item.getQuantity());
+			pstmt.setInt(6, item.getMaxQuantity());
+			pstmt.setInt(7, item.getDefectiveQuantity());
+			pstmt.setString(8, item.getDefectReason());
+			pstmt.setDouble(9, item.getWeightKg());
+			pstmt.setDouble(10, item.getPriceEur());
+			pstmt.setString(11, item.getImagePath());
+			pstmt.setInt(12, item.getId());
 			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
 			logger.error("SQL error updating storage item with ID: {}", item.getId(), e);

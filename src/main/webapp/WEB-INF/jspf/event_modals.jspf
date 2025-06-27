@@ -1,84 +1,99 @@
-<%@ page pageEncoding="UTF-8"%>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
-
-<!-- MODAL FOR NEW/EDIT EVENT -->
+<!-- MODAL FOR CREATE/EDIT EVENT -->
 <div class="modal-overlay" id="event-modal">
 	<div class="modal-content" style="max-width: 800px;">
-		<button class="modal-close-btn">Ã—</button>
+		<button class="modal-close-btn">×</button>
 		<h3 id="event-modal-title">Event</h3>
+
+		<!-- Tab Navigation -->
+		<div class="modal-tabs">
+			<button class="modal-tab-button active" data-tab="tab-general">Allgemein</button>
+			<button class="modal-tab-button" data-tab="tab-requirements">Personalbedarf</button>
+			<button class="modal-tab-button" data-tab="tab-reservations">Material</button>
+			<button class="modal-tab-button" data-tab="tab-attachments">Anhänge</button>
+		</div>
+
 		<form id="event-modal-form"
 			action="${pageContext.request.contextPath}/admin/events"
 			method="post" enctype="multipart/form-data">
 			<input type="hidden" name="action" id="event-modal-action"> <input
 				type="hidden" name="id" id="event-modal-id">
 
-			<div class="form-group">
-				<label for="name-modal">Name des Events</label> <input type="text"
-					id="name-modal" name="name" required>
-			</div>
-			<div class="responsive-form-grid">
+			<!-- Tab 1: General Info -->
+			<div id="tab-general" class="modal-tab-content active">
 				<div class="form-group">
-					<label for="eventDateTime-modal">Beginn</label> <input
-						type="datetime-local" id="eventDateTime-modal"
-						name="eventDateTime" required>
+					<label for="name-modal">Name des Events</label> <input type="text"
+						id="name-modal" name="name" required>
+				</div>
+				<div class="responsive-form-grid">
+					<div class="form-group">
+						<label for="eventDateTime-modal">Beginn</label> <input
+							type="datetime-local" id="eventDateTime-modal"
+							name="eventDateTime" required>
+					</div>
+					<div class="form-group">
+						<label for="endDateTime-modal">Ende (optional)</label> <input
+							type="datetime-local" id="endDateTime-modal" name="endDateTime">
+					</div>
+				</div>
+				<div class="responsive-form-grid">
+					<div class="form-group">
+						<label for="location-modal">Ort</label> <input type="text"
+							id="location-modal" name="location">
+					</div>
+					<div class="form-group">
+						<label for="leaderUserId-modal">Event-Leitung</label> <select
+							name="leaderUserId" id="leaderUserId-modal">
+							<option value="">(Keine)</option>
+							<c:forEach var="user" items="${allUsers}">
+								<option value="${user.id}">${user.username}</option>
+							</c:forEach>
+						</select>
+					</div>
 				</div>
 				<div class="form-group">
-					<label for="endDateTime-modal">Ende (optional)</label> <input
-						type="datetime-local" id="endDateTime-modal" name="endDateTime">
-				</div>
-			</div>
-			<div class="responsive-form-grid">
-				<div class="form-group">
-					<label for="location-modal">Ort</label> <input type="text"
-						id="location-modal" name="location">
-				</div>
-				<div class="form-group">
-					<label for="leaderUserId-modal">Leitende Person</label> <select
-						name="leaderUserId" id="leaderUserId-modal">
-						<option value="">(Keine)</option>
-						<c:forEach var="user" items="${allUsers}">
-							<option value="${user.id}">${user.username}</option>
-						</c:forEach>
-					</select>
-				</div>
-			</div>
-			<div class="form-group">
-				<label for="description-modal">Beschreibung</label>
-				<textarea id="description-modal" name="description" rows="3"></textarea>
-			</div>
-
-			<div class="responsive-dashboard-grid"
-				style="align-items: flex-start;">
-				<div class="card"
-					style="margin-top: 1rem; padding: 1rem; background-color: var(--bg-color);">
-					<h4 class="card-title" style="border: none; padding: 0;">BenÃ¶tigte
-						Qualifikationen</h4>
-					<div id="modal-requirements-container"></div>
-					<button type="button" id="modal-add-requirement-btn"
-						class="btn btn-small" style="margin-top: 1rem;">Anforderung
-						hinzufÃ¼gen</button>
-				</div>
-				<div class="card"
-					style="margin-top: 1rem; padding: 1rem; background-color: var(--bg-color);">
-					<h4 class="card-title" style="border: none; padding: 0;">Material-Reservierung</h4>
-					<div id="modal-reservations-container"></div>
-					<button type="button" id="modal-add-reservation-btn"
-						class="btn btn-small" style="margin-top: 1rem;">Material
-						hinzufÃ¼gen</button>
+					<label for="description-modal">Beschreibung</label>
+					<textarea id="description-modal" name="description" rows="4"></textarea>
 				</div>
 			</div>
 
-			<div class="card"
-				style="margin-top: 1rem; padding: 1rem; background-color: var(--bg-color);">
-				<h4 class="card-title" style="border: none; padding: 0;">AnhÃ¤nge</h4>
-				<ul id="modal-attachments-list" class="details-list"
-					style="margin-bottom: 1rem;"></ul>
+			<!-- Tab 2: Skill Requirements -->
+			<div id="tab-requirements" class="modal-tab-content">
+				<p>Legen Sie fest, welche Qualifikationen und wie viele Personen
+					dafür benötigt werden.</p>
+				<div id="modal-requirements-container"></div>
+				<button type="button" class="btn btn-small"
+					id="modal-add-requirement-btn" style="margin-top: 1rem;">
+					<i class="fas fa-plus"></i> Bedarf hinzufügen
+				</button>
+			</div>
+
+			<!-- Tab 3: Storage Reservations -->
+			<div id="tab-reservations" class="modal-tab-content">
+				<p>Reservieren Sie hier Material aus dem Lager für das Event.</p>
+				<div id="modal-reservations-container"></div>
+				<button type="button" class="btn btn-small"
+					id="modal-add-reservation-btn" style="margin-top: 1rem;">
+					<i class="fas fa-plus"></i> Reservierung hinzufügen
+				</button>
+			</div>
+
+			<!-- Tab 4: Attachments -->
+			<div id="tab-attachments" class="modal-tab-content">
+				<div class="card"
+					style="padding: 1rem; background-color: var(--bg-color);">
+					<h4>Vorhandene Anhänge</h4>
+					<ul id="modal-attachments-list" class="details-list"
+						style="margin-bottom: 1rem;"></ul>
+				</div>
 				<div class="form-group">
 					<label for="attachment-modal">Neuen Anhang hochladen</label> <input
-						type="file" name="attachment" id="attachment-modal">
+						type="file" name="attachment" id="attachment-modal"
+						class="file-input" data-max-size="20971520"> <small
+						class="file-size-warning" style="color: red; display: none;">Datei
+						ist zu groß! (Max. 20 MB)</small>
 				</div>
 				<div class="form-group">
-					<label for="requiredRole-modal">Sichtbar fÃ¼r</label> <select
+					<label for="requiredRole-modal">Sichtbar für</label> <select
 						name="requiredRole" id="requiredRole-modal">
 						<option value="NUTZER" selected>Alle Nutzer</option>
 						<option value="ADMIN">Nur Admins</option>
@@ -86,8 +101,11 @@
 				</div>
 			</div>
 
-			<div style="display: flex; gap: 1rem; margin-top: 2rem;">
-				<button type="submit" class="btn">Event Speichern</button>
+			<div
+				style="border-top: 1px solid var(--border-color); margin-top: 2rem; padding-top: 1.5rem; text-align: right;">
+				<button type="submit" class="btn">
+					<i class="fas fa-save"></i> Event Speichern
+				</button>
 			</div>
 		</form>
 	</div>
@@ -96,25 +114,23 @@
 <!-- MODAL FOR ASSIGNING USERS -->
 <div class="modal-overlay" id="assign-users-modal">
 	<div class="modal-content">
-		<button class="modal-close-btn">Ã—</button>
-		<h3 id="assign-users-modal-title">Teilnehmer zuweisen</h3>
-		<p>WÃ¤hlen Sie die Benutzer aus, die dem finalen Team fÃ¼r dieses
-			Event angehÃ¶ren sollen.</p>
+		<button class="modal-close-btn">×</button>
+		<h3 id="assign-users-modal-title">Team zuweisen</h3>
+		<p>Wählen Sie die Benutzer aus, die dem finalen Team für dieses
+			Event zugewiesen werden sollen.</p>
 		<form id="assign-users-form"
 			action="${pageContext.request.contextPath}/admin/events"
 			method="post">
 			<input type="hidden" name="action" value="assignUsers"> <input
-				type="hidden" name="eventId" value="">
+				type="hidden" name="eventId">
 			<div class="form-group">
-				<label>Angemeldete Benutzer</label>
 				<div id="user-checkboxes-container" class="user-checkbox-list">
 					<!-- Checkboxes will be dynamically inserted here -->
 				</div>
 			</div>
-			<div style="margin-top: 2rem; display: flex; gap: 1rem;">
-				<button type="submit" class="btn">Team finalisieren &
-					Speichern</button>
-			</div>
+			<button type="submit" class="btn">
+				<i class="fas fa-check-double"></i> Team finalisieren
+			</button>
 		</form>
 	</div>
 </div>

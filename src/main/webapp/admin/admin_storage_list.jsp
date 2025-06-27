@@ -11,7 +11,6 @@
 	<i class="fas fa-warehouse"></i> Lagerverwaltung
 </h1>
 
-<%-- Session Messages --%>
 <c:if test="${not empty sessionScope.successMessage}">
 	<p class="success-message">
 		<i class="fas fa-check-circle"></i>
@@ -28,8 +27,9 @@
 </c:if>
 
 <div class="table-controls">
-	<button type="button" class="btn" id="new-item-btn">Neuen
-		Artikel anlegen</button>
+	<button type="button" class="btn btn-success" id="new-item-btn">
+		<i class="fas fa-plus"></i> Neuen Artikel anlegen
+	</button>
 	<div class="form-group" style="margin-bottom: 0;">
 		<input type="search" id="table-filter"
 			placeholder="Tabelle filtern..." aria-label="Tabelle filtern">
@@ -41,6 +41,7 @@
 		<thead>
 			<tr>
 				<th class="sortable" data-sort-type="string">Name</th>
+				<th>Bild</th>
 				<th class="sortable" data-sort-type="string">Ort</th>
 				<th class="sortable" data-sort-type="number">Verfügbar</th>
 				<th class="sortable" data-sort-type="number">Defekt</th>
@@ -53,24 +54,32 @@
 					class="${item.defectiveQuantity > 0 ? 'item-status-defect' : ''}">
 					<td><a href="<c:url value='/storage-item?id=${item.id}'/>"><c:out
 								value="${item.name}" /></a></td>
+					<td style="text-align: center;"><c:if
+							test="${not empty item.imagePath}">
+							<button class="btn btn-small btn-info lightbox-trigger"
+								data-src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
+								title="Bild anzeigen">
+								<i class="fas fa-image"></i>
+							</button>
+						</c:if></td>
 					<td><c:out value="${item.location}" /></td>
 					<td><c:out value="${item.availableQuantity}" /></td>
 					<td><c:out value="${item.defectiveQuantity}" /></td>
 					<td style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-						<button type="button" class="btn btn-small edit-item-btn"
+						<button type="button"
+							class="btn btn-small btn-warning edit-item-btn"
 							data-fetch-url="<c:url value='/admin/storage?action=getItemData&id=${item.id}'/>">Bearbeiten</button>
 						<c:set var="qrData">
 							<c:url value="/storage-item?id=${item.id}" />
 						</c:set> <a
 						href="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${fn:escapeXml(qrData)}"
-						target="_blank" class="btn btn-small btn-success">QR-Code</a>
-						<button class="btn btn-small btn-warning defect-modal-btn"
+						target="_blank" class="btn btn-small btn-secondary">QR-Code</a>
+						<button class="btn btn-small defect-modal-btn"
 							data-item-id="${item.id}"
 							data-item-name="${fn:escapeXml(item.name)}"
 							data-max-qty="${item.quantity}"
 							data-current-defect-qty="${item.defectiveQuantity}"
-							data-current-reason="${fn:escapeXml(item.defectReason)}">
-							Defekt verwalten</button>
+							data-current-reason="${fn:escapeXml(item.defectReason)}">Defekt</button>
 						<form action="<c:url value='/admin/storage'/>" method="post"
 							class="js-confirm-form"
 							data-confirm-message="Artikel '${fn:escapeXml(item.name)}' wirklich löschen?">
@@ -83,6 +92,12 @@
 			</c:forEach>
 		</tbody>
 	</table>
+</div>
+
+<!-- Lightbox structure for image viewing -->
+<div id="lightbox" class="lightbox-overlay">
+	<span class="lightbox-close">×</span> <img class="lightbox-content"
+		id="lightbox-image">
 </div>
 
 <%@ include file="/WEB-INF/jspf/storage_modals.jspf"%>
@@ -98,6 +113,26 @@ document.addEventListener('DOMContentLoaded', () => {
             showConfirmationModal(message, () => this.submit());
         });
     });
+
+    // --- Lightbox Logic ---
+    const lightbox = document.getElementById('lightbox');
+    if (lightbox) {
+        const lightboxImage = lightbox.querySelector('img');
+        const closeBtn = lightbox.querySelector('.lightbox-close');
+
+        document.querySelectorAll('.lightbox-trigger').forEach(trigger => {
+            trigger.addEventListener('click', (e) => {
+                e.preventDefault();
+                lightbox.style.display = 'block';
+                lightboxImage.src = trigger.dataset.src;
+            });
+        });
+
+        const closeLightbox = () => { lightbox.style.display = 'none'; };
+        if (closeBtn) closeBtn.addEventListener('click', closeLightbox);
+        lightbox.addEventListener('click', (e) => { if(e.target === lightbox) { closeLightbox(); } });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && lightbox.style.display === 'block') closeLightbox(); });
+    }
 
     // --- Edit/Create Modal Logic ---
     const itemModal = document.getElementById('item-modal');
@@ -118,7 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.edit-item-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
                 form.reset();
-                // **FIXED:** Read the complete URL directly from the button's data attribute
                 const fetchUrl = btn.dataset.fetchUrl;
                 try {
                     const response = await fetch(fetchUrl);
@@ -131,7 +165,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     form.querySelector('#name-modal').value = itemData.name || '';
                     form.querySelector('#location-modal').value = itemData.location || '';
                     form.querySelector('#cabinet-modal').value = itemData.cabinet || '';
-                    form.querySelector('#shelf-modal').value = itemData.shelf || '';
                     form.querySelector('#compartment-modal').value = itemData.compartment || '';
                     form.querySelector('#quantity-modal').value = itemData.quantity;
                     form.querySelector('#maxQuantity-modal').value = itemData.maxQuantity;
