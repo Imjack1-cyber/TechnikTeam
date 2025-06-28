@@ -1,6 +1,9 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+<%-- CORRECTION: Added JSTL functions library --%>
+
 
 <c:import url="/WEB-INF/jspf/header.jspf">
 	<c:param name="pageTitle" value="Admin Dashboard" />
@@ -55,8 +58,10 @@
 			Artikel
 		</h2>
 		<p>
-			Es sind aktuell <strong><c:out value="${length(defectiveItems)}"/></strong> Artikel
-			als defekt gemeldet.
+			<%-- CORRECTION: Changed "length" to "fn:length" --%>
+			Es sind aktuell <strong><c:out
+					value="${fn:length(defectiveItems)}" /></strong> Artikel als defekt
+			gemeldet.
 		</p>
 		<a href="${pageContext.request.contextPath}/admin/defects"
 			class="btn btn-small" style="margin-top: 1rem;">Defekte anzeigen</a>

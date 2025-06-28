@@ -1,28 +1,30 @@
 <%@ page pageEncoding="UTF-8"%>
-<ul class="sidebar-nav">
-	<li><a href="<c:url value='/home'/>"><i
-			class="fas fa-arrow-left fa-fw"></i> Zur User-Ansicht</a></li>
-	<li class="nav-section-title">Verwaltung</li>
-	<li><a href="<c:url value='/admin/dashboard'/>"><i
-			class="fas fa-tachometer-alt fa-fw"></i> Dashboard</a></li>
-	<li><a href="<c:url value='/admin/users'/>"><i
-			class="fas fa-users-cog fa-fw"></i> Benutzer</a></li>
-	<li><a href="<c:url value='/admin/events'/>"><i
-			class="fas fa-calendar-alt fa-fw"></i> Events</a></li>
-	<li><a href="<c:url value='/admin/courses'/>"><i
-			class="fas fa-book fa-fw"></i> Lehrgänge</a></li>
-	<li><a href="<c:url value='/admin/matrix'/>"><i
-			class="fas fa-th-list fa-fw"></i> Quali-Matrix</a></li>
-	<li><a href="<c:url value='/admin/storage'/>"><i
-			class="fas fa-warehouse fa-fw"></i> Lager</a></li>
-	<li><a href="<c:url value='/admin/defects'/>"><i
-			class="fas fa-wrench fa-fw"></i> Defekte Artikel</a></li>
-	<li><a href="<c:url value='/admin/files'/>"><i
-			class="fas fa-folder-open fa-fw"></i> Dateien</a></li>
-	<li class="nav-section-title">System</li>
-	<li><a href="<c:url value='/admin/system'/>"><i
-			class="fas fa-server fa-fw"></i> Systemstatus</a></li>
-	<li><a href="<c:url value='/admin/log'/>"><i
-			class="fas fa-clipboard-list fa-fw"></i> Action Log</a></li>
-</ul>
-<c:import url="/WEB-INF/jspf/user_actions.jspf" />
+<li class="nav-section-title">Verwaltung</li>
+<li><a href="${pageContext.request.contextPath}/admin/dashboard"
+	class="sidebar-link"><i class="fas fa-tachometer-alt fa-fw"></i>
+		Dashboard</a></li>
+<li><a href="${pageContext.request.contextPath}/admin/users"
+	class="sidebar-link"><i class="fas fa-users fa-fw"></i> Benutzer</a></li>
+<li><a href="${pageContext.request.contextPath}/admin/events"
+	class="sidebar-link"><i class="fas fa-calendar-alt fa-fw"></i>
+		Events</a></li>
+<li><a href="${pageContext.request.contextPath}/admin/courses"
+	class="sidebar-link"><i class="fas fa-graduation-cap fa-fw"></i>
+		Lehrgänge</a></li>
+<li><a href="${pageContext.request.contextPath}/admin/matrix"
+	class="sidebar-link"><i class="fas fa-th-list fa-fw"></i>
+		Quali-Matrix</a></li>
+<li><a href="${pageContext.request.contextPath}/admin/storage"
+	class="sidebar-link"><i class="fas fa-warehouse fa-fw"></i> Lager</a></li>
+<li><a href="${pageContext.request.contextPath}/admin/defects"
+	class="sidebar-link"><i class="fas fa-wrench fa-fw"></i> Defekte</a></li>
+<li><a href="${pageContext.request.contextPath}/admin/files"
+	class="sidebar-link"><i class="fas fa-folder-open fa-fw"></i>
+		Dateien</a></li>
+<li><a href="${pageContext.request.contextPath}/admin/reports"
+	class="sidebar-link"><i class="fas fa-chart-pie fa-fw"></i>
+		Reporting</a></li>
+<li><a href="${pageContext.request.contextPath}/admin/log"
+	class="sidebar-link"><i class="fas fa-history fa-fw"></i> Log</a></li>
+<li><a href="${pageContext.request.contextPath}/admin/system"
+	class="sidebar-link"><i class="fas fa-server fa-fw"></i> System</a></li>

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,12 +23,14 @@ import de.technikteam.config.LocalDateAdapter;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.CourseDAO;
 import de.technikteam.dao.EventAttachmentDAO;
+import de.technikteam.dao.EventCustomFieldDAO;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.StorageDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.Course;
 import de.technikteam.model.Event;
 import de.technikteam.model.EventAttachment;
+import de.technikteam.model.EventCustomField;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
@@ -40,13 +43,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
 
-/**
- * Mapped to /admin/events, this is a complex servlet that manages all aspects
- * of events from an administrative perspective. It handles full CRUD operations
- * for events, manages skill requirements, file attachments, storage
- * reservations, and provides the interface for assigning users to an event's
- * final team.
- */
 @WebServlet("/admin/events")
 @MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 20, maxRequestSize = 1024 * 1024 * 50)
 public class AdminEventServlet extends HttpServlet {
@@ -58,6 +54,7 @@ public class AdminEventServlet extends HttpServlet {
 	private StorageDAO storageDAO;
 	private UserDAO userDAO;
 	private EventAttachmentDAO attachmentDAO;
+	private EventCustomFieldDAO customFieldDAO;
 	private Gson gson;
 
 	@Override
@@ -67,7 +64,7 @@ public class AdminEventServlet extends HttpServlet {
 		storageDAO = new StorageDAO();
 		userDAO = new UserDAO();
 		attachmentDAO = new EventAttachmentDAO();
-		// Configure Gson to handle LocalDateTime and LocalDate
+		customFieldDAO = new EventCustomFieldDAO();
 		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
 				.registerTypeAdapter(java.time.LocalDate.class, new LocalDateAdapter()).setPrettyPrinting().create();
 	}
@@ -154,6 +151,7 @@ public class AdminEventServlet extends HttpServlet {
 				event.setSkillRequirements(eventDAO.getSkillRequirementsForEvent(eventId));
 				event.setReservedItems(eventDAO.getReservedItemsForEvent(eventId));
 				event.setAttachments(attachmentDAO.getAttachmentsForEvent(eventId, "ADMIN"));
+				event.setCustomFields(customFieldDAO.getCustomFieldsForEvent(eventId));
 				String eventJson = gson.toJson(event);
 				resp.setContentType("application/json");
 				resp.setCharacterEncoding("UTF-8");
@@ -230,15 +228,32 @@ public class AdminEventServlet extends HttpServlet {
 			}
 
 			if (eventId > 0) {
-				// Handle requirements
+				// Handle skill requirements
 				String[] requiredCourseIds = request.getParameterValues("requiredCourseId");
 				String[] requiredPersons = request.getParameterValues("requiredPersons");
 				eventDAO.saveSkillRequirements(eventId, requiredCourseIds, requiredPersons);
 
-				// Handle reservations
+				// Handle storage reservations
 				String[] itemIds = request.getParameterValues("itemId");
 				String[] quantities = request.getParameterValues("itemQuantity");
 				eventDAO.saveReservations(eventId, itemIds, quantities);
+
+				// Handle custom sign-up fields
+				String[] customFieldNames = request.getParameterValues("customFieldName");
+				String[] customFieldTypes = request.getParameterValues("customFieldType");
+				if (customFieldNames != null) {
+					List<EventCustomField> customFields = new ArrayList<>();
+					for (int i = 0; i < customFieldNames.length; i++) {
+						if (customFieldNames[i] != null && !customFieldNames[i].trim().isEmpty()) {
+							EventCustomField cf = new EventCustomField();
+							cf.setFieldName(customFieldNames[i]);
+							cf.setFieldType(customFieldTypes[i]);
+							cf.setRequired(true); // Simplified for this implementation
+							customFields.add(cf);
+						}
+					}
+					customFieldDAO.saveCustomFieldsForEvent(eventId, customFields);
+				}
 
 				// Handle file upload
 				Part filePart = request.getPart("attachment");
@@ -375,5 +390,4 @@ public class AdminEventServlet extends HttpServlet {
 		}
 		resp.sendRedirect(req.getContextPath() + "/admin/events");
 	}
-
 }

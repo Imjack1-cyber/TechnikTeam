@@ -663,6 +663,28 @@ public class EventDAO {
 		return events;
 	}
 
+	/**
+	 * Fetches all events that are active or upcoming. This is a simplified query
+	 * for use in the calendar/iCal feeds.
+	 * 
+	 * @return A list of all relevant Event objects.
+	 */
+	public List<Event> getAllActiveAndUpcomingEvents() {
+		List<Event> events = new ArrayList<>();
+		String sql = "SELECT * FROM events WHERE status != 'ABGESCHLOSSEN' AND status != 'ABGESAGT' AND event_datetime >= NOW() - INTERVAL 1 DAY ORDER BY event_datetime ASC";
+		logger.debug("Fetching all active and upcoming events for calendar feed.");
+		try (Connection conn = DatabaseManager.getConnection();
+				Statement stmt = conn.createStatement();
+				ResultSet rs = stmt.executeQuery(sql)) {
+			while (rs.next()) {
+				events.add(mapResultSetToEvent(rs));
+			}
+		} catch (SQLException e) {
+			logger.error("SQL error fetching active/upcoming events for calendar.", e);
+		}
+		return events;
+	}
+
 	public void saveReservations(int eventId, String[] itemIds, String[] quantities) {
 		String deleteSql = "DELETE FROM event_storage_reservations WHERE event_id = ?";
 		String insertSql = "INSERT INTO event_storage_reservations (event_id, item_id, reserved_quantity) VALUES (?, ?, ?)";

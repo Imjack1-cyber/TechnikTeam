@@ -17,6 +17,14 @@ public class StorageItem {
 	private double priceEur;
 	private String imagePath;
 
+	// NEW FIELDS for enhanced tracking
+	private String status; // ENUM: 'IN_STORAGE', 'CHECKED_OUT', 'ASSIGNED_TO_EVENT', 'MAINTENANCE'
+	private int currentHolderUserId;
+	private int assignedEventId;
+
+	// TRANSIENT FIELD for displaying the holder's name
+	private String currentHolderUsername;
+
 	public StorageItem() {
 	}
 
@@ -81,13 +89,6 @@ public class StorageItem {
 		this.cabinet = cabinet;
 	}
 
-	/*
-	 * REDESIGN: Getter/Setter for shelf removed. public String getShelf() { return
-	 * shelf; }
-	 * 
-	 * public void setShelf(String shelf) { this.shelf = shelf; }
-	 */
-
 	public String getCompartment() {
 		return compartment;
 	}
@@ -150,5 +151,38 @@ public class StorageItem {
 
 	public void setImagePath(String imagePath) {
 		this.imagePath = imagePath;
+	}
+
+	// --- Getters and Setters for NEW fields ---
+	public String getStatus() {
+		return status;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
+	}
+
+	public int getCurrentHolderUserId() {
+		return currentHolderUserId;
+	}
+
+	public void setCurrentHolderUserId(int currentHolderUserId) {
+		this.currentHolderUserId = currentHolderUserId;
+	}
+
+	public int getAssignedEventId() {
+		return assignedEventId;
+	}
+
+	public void setAssignedEventId(int assignedEventId) {
+		this.assignedEventId = assignedEventId;
+	}
+
+	public String getCurrentHolderUsername() {
+		return currentHolderUsername;
+	}
+
+	public void setCurrentHolderUsername(String currentHolderUsername) {
+		this.currentHolderUsername = currentHolderUsername;
 	}
 }

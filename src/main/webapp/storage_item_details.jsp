@@ -14,22 +14,35 @@
 <div class="dashboard-grid"
 	style="grid-template-columns: 1fr 2fr; align-items: flex-start;">
 
-	<!-- Left Column: Image and Main Data -->
 	<div class="card">
 		<h2 class="card-title">${item.name}</h2>
 		<c:if test="${not empty item.imagePath}">
-			<a href="#" class="lightbox-trigger"> <img
+			<a href="#" class="lightbox-trigger"><img
 				src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
 				alt="${item.name}"
-				style="width: 100%; border-radius: var(--border-radius); margin-bottom: 1rem; cursor: zoom-in;">
-			</a>
+				style="width: 100%; border-radius: var(--border-radius); margin-bottom: 1rem; cursor: zoom-in;"></a>
 		</c:if>
 		<ul class="details-list">
-			<li><strong>Status:</strong> <span
+			<li><strong>Allg. Status:</strong> <span
 				class="status-badge ${item.availabilityStatusCssClass}">${item.availabilityStatus}</span></li>
 			<li><strong>Verfügbar:</strong> ${item.availableQuantity} /
 				${item.quantity}</li>
 			<li><strong>Defekt:</strong> ${item.defectiveQuantity}</li>
+			<li><strong>Tracking-Status:</strong> <c:choose>
+					<c:when test="${item.status == 'CHECKED_OUT'}">
+						<span class="status-badge status-warn">Entnommen</span>
+					</c:when>
+					<c:when test="${item.status == 'MAINTENANCE'}">
+						<span class="status-badge status-info">Wartung</span>
+					</c:when>
+					<c:otherwise>
+						<span class="status-badge status-ok">Im Lager</span>
+					</c:otherwise>
+				</c:choose></li>
+			<c:if test="${not empty item.currentHolderUsername}">
+				<li><strong>Aktueller Inhaber:</strong>
+					${item.currentHolderUsername}</li>
+			</c:if>
 			<li><strong>Ort:</strong> ${item.location}</li>
 			<li><strong>Schrank:</strong> ${not empty item.cabinet ? item.cabinet : 'N/A'}</li>
 			<li><strong>Fach:</strong> ${not empty item.compartment ? item.compartment : 'N/A'}</li>
@@ -40,7 +53,6 @@
 		</div>
 	</div>
 
-	<!-- Right Column: Transaction History -->
 	<div class="card">
 		<h2 class="card-title">
 			<i class="fas fa-history"></i> Verlauf / Chronik
@@ -66,9 +78,7 @@
 						<tr>
 							<td>${entry.transactionTimestampLocaleString}</td>
 							<td><span
-								class="status-badge ${entry.quantityChange > 0 ? 'status-ok' : 'status-danger'}">
-									${entry.quantityChange > 0 ? '+' : ''}${entry.quantityChange} </span>
-							</td>
+								class="status-badge ${entry.quantityChange > 0 ? 'status-ok' : 'status-danger'}">${entry.quantityChange > 0 ? '+' : ''}${entry.quantityChange}</span></td>
 							<td>${entry.username}</td>
 							<td>${not empty entry.notes ? entry.notes : '-'}</td>
 						</tr>
@@ -79,44 +89,10 @@
 	</div>
 </div>
 
-<!-- Lightbox structure -->
 <div id="lightbox" class="lightbox-overlay">
-	<span class="lightbox-close">×</span> <img class="lightbox-content"
+	<span class="lightbox-close">×</span><img class="lightbox-content"
 		id="lightbox-image">
 </div>
-
-<style>
-.lightbox-overlay {
-	display: none;
-	position: fixed;
-	z-index: 3000;
-	padding-top: 100px;
-	left: 0;
-	top: 0;
-	width: 100%;
-	height: 100%;
-	overflow: auto;
-	background-color: rgba(0, 0, 0, 0.9);
-}
-
-.lightbox-content {
-	margin: auto;
-	display: block;
-	width: 80%;
-	max-width: 900px;
-}
-
-.lightbox-close {
-	position: absolute;
-	top: 15px;
-	right: 35px;
-	color: #f1f1f1;
-	font-size: 40px;
-	font-weight: bold;
-	transition: 0.3s;
-	cursor: pointer;
-}
-</style>
 
 <c:import url="/WEB-INF/jspf/footer.jspf" />
 
@@ -134,10 +110,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-            lightbox.style.display = 'none';
-        });
-    }
+    if (closeBtn) closeBtn.addEventListener('click', () => { lightbox.style.display = 'none'; });
 });
 </script>

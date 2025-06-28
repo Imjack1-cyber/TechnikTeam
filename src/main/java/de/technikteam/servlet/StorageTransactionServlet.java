@@ -16,13 +16,6 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.sql.SQLException;
 
-/**
- * Mapped to `/storage-transaction`, this servlet handles the business logic for
- * checking items in and out of the inventory. It processes POST requests from
- * the modal on the main storage page. It atomically updates the item quantity
- * in the `storage_items` table and creates a record of the transaction in both
- * the `storage_log` table and the main administrative audit log.
- */
 @WebServlet("/storage-transaction")
 public class StorageTransactionServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
@@ -50,9 +43,11 @@ public class StorageTransactionServlet extends HttpServlet {
 			int quantity = Integer.parseInt(request.getParameter("quantity"));
 			String type = request.getParameter("type"); // "checkout" or "checkin"
 			String notes = request.getParameter("notes");
-			int eventId = 0;
+			Integer eventId = null;
 			try {
 				eventId = Integer.parseInt(request.getParameter("eventId"));
+				if (eventId == 0)
+					eventId = null; // Treat 0 as null
 			} catch (NumberFormatException e) {
 				// Ignore if not provided or invalid
 			}
@@ -61,15 +56,37 @@ public class StorageTransactionServlet extends HttpServlet {
 			logger.info("Processing storage transaction by user '{}': item ID {}, quantity change {}",
 					user.getUsername(), itemId, quantityChange);
 
-			// Atomically update the quantity. This can fail if there's not enough stock.
-			boolean success = storageDAO.updateItemQuantity(itemId, quantityChange);
+			boolean success = false;
+			StorageItem item = storageDAO.getItemById(itemId);
+
+			if (item == null) {
+				throw new ServletException("Item with ID " + itemId + " not found.");
+			}
+
+			if ("checkout".equals(type)) {
+				if (item.getAvailableQuantity() >= quantity) {
+					success = storageDAO.updateItemQuantity(itemId, quantityChange);
+					if (success) {
+						storageDAO.updateItemHolderAndStatus(itemId, "CHECKED_OUT", user.getId(), eventId);
+					}
+				}
+			} else if ("checkin".equals(type)) {
+				// Allow check-in even if it exceeds max quantity, but ensure it's not a holder
+				// anymore
+				success = storageDAO.updateItemQuantity(itemId, quantityChange);
+				if (success) {
+					// Only change status if the current user is the holder
+					if (item.getCurrentHolderUserId() == user.getId()) {
+						storageDAO.updateItemHolderAndStatus(itemId, "IN_STORAGE", null, null);
+					}
+				}
+			}
 
 			if (success) {
-				// Log the transaction in the specific storage log and the general admin log.
-				storageLogDAO.logTransaction(itemId, user.getId(), quantityChange, notes, eventId);
+				storageLogDAO.logTransaction(itemId, user.getId(), quantityChange, notes,
+						eventId != null ? eventId : 0);
 
-				StorageItem item = storageDAO.getItemById(itemId);
-				String itemName = (item != null) ? item.getName() : "N/A";
+				String itemName = item.getName();
 				String action = "checkin".equals(type) ? "eingeräumt" : "entnommen";
 				String logDetails = String.format("%d x '%s' (ID: %d) %s. Notiz: %s", quantity, itemName, itemId,
 						action, notes);
@@ -78,7 +95,7 @@ public class StorageTransactionServlet extends HttpServlet {
 				request.getSession().setAttribute("successMessage",
 						"Erfolgreich " + quantity + " Stück " + action + ".");
 			} else {
-				logger.warn("Storage transaction failed for item ID {}. Not enough stock.", itemId);
+				logger.warn("Storage transaction failed for item ID {}. Not enough stock or other issue.", itemId);
 				request.getSession().setAttribute("errorMessage",
 						"Transaktion fehlgeschlagen. Nicht genügend Artikel auf Lager?");
 			}

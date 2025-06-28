@@ -111,6 +111,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const updateUI = (stats) => {
+        // CORRECTION: All formatting is done here in JavaScript, using the raw numbers from the JSON response.
+        // The .toFixed() method is a JavaScript Number method, not a Java method for EL.
+        
         const cpuPercent = stats.cpuLoad.toFixed(1);
         cpuProgress.style.width = cpuPercent + '%';
         cpuText.textContent = cpuPercent + '%';
@@ -157,11 +160,12 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchStats();
     let intervalId = setInterval(fetchStats, 5000);
     
+    // Pauses updates when the tab is not visible to save resources.
     document.addEventListener("visibilitychange", () => {
         if (document.hidden) {
             clearInterval(intervalId);
         } else {
-            fetchStats();
+            fetchStats(); // Fetch immediately on becoming visible again
             intervalId = setInterval(fetchStats, 5000);
         }
     });

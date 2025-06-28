@@ -46,10 +46,10 @@
 				<thead>
 					<tr>
 						<th>Gerät</th>
-						<th>Bild</th>
+						<th>Status</th>
+						<th>Inhaber</th>
 						<th>Verfügbar</th>
 						<th>Defekt</th>
-						<th>Status</th>
 						<th>Aktion</th>
 					</tr>
 				</thead>
@@ -60,26 +60,28 @@
 							<td><a href="<c:url value='/storage-item?id=${item.id}'/>"
 								title="Details für ${item.name} ansehen"><c:out
 										value="${item.name}" /></a></td>
-							<td style="text-align: center;"><c:if
-									test="${not empty item.imagePath}">
-									<button class="btn btn-small btn-info lightbox-trigger"
-										data-src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
-										title="Bild anzeigen">
-										<i class="fas fa-image"></i>
-									</button>
-								</c:if></td>
+							<td><c:choose>
+									<c:when test="${item.status == 'CHECKED_OUT'}">
+										<span class="status-badge status-warn">Entnommen</span>
+									</c:when>
+									<c:when test="${item.status == 'MAINTENANCE'}">
+										<span class="status-badge status-info">Wartung</span>
+									</c:when>
+									<c:otherwise>
+										<span class="status-badge status-ok">Im Lager</span>
+									</c:otherwise>
+								</c:choose></td>
+							<td><c:out
+									value="${not empty item.currentHolderUsername ? item.currentHolderUsername : '-'}" /></td>
 							<td>${item.availableQuantity}/ ${item.quantity}</td>
 							<td>${item.defectiveQuantity}</td>
-							<td><span
-								class="status-badge ${item.availabilityStatusCssClass}"><c:out
-										value="${item.availabilityStatus}" /></span></td>
 							<td>
 								<button class="btn btn-small transaction-btn btn-primary"
 									data-item-id="${item.id}"
 									data-item-name="${fn:escapeXml(item.name)}"
 									data-max-qty="${item.availableQuantity}"
-									${item.availableQuantity <= 0 ? 'disabled' : ''}>
-									Entnehmen/Einräumen</button>
+									${item.availableQuantity <= 0 && item.status != 'CHECKED_OUT' ? 'disabled' : ''}>
+									Aktion</button>
 							</td>
 						</tr>
 					</c:forEach>
@@ -89,43 +91,12 @@
 	</div>
 </c:forEach>
 
-<!-- Lightbox structure for image viewing -->
-<div id="lightbox" class="lightbox-overlay">
-	<span class="lightbox-close">×</span> <img class="lightbox-content"
-		id="lightbox-image">
-</div>
-
 <%@ include file="/WEB-INF/jspf/storage_modals.jspf"%>
 <c:import url="/WEB-INF/jspf/table-helper.jspf" />
 <c:import url="/WEB-INF/jspf/footer.jspf" />
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // Lightbox Logic
-    const lightbox = document.getElementById('lightbox');
-    if (lightbox) {
-        const lightboxImage = lightbox.querySelector('img');
-        const closeBtn = lightbox.querySelector('.lightbox-close');
-
-        document.querySelectorAll('.lightbox-trigger').forEach(trigger => {
-            trigger.addEventListener('click', (e) => {
-                e.preventDefault();
-                lightbox.style.display = 'block';
-                lightboxImage.src = trigger.dataset.src;
-            });
-        });
-
-        const closeLightbox = () => { lightbox.style.display = 'none'; };
-        if (closeBtn) closeBtn.addEventListener('click', closeLightbox);
-        lightbox.addEventListener('click', (e) => { 
-            if(e.target === lightbox) { closeLightbox(); }
-        });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && lightbox.style.display === 'block') closeLightbox();
-        });
-    }
-
-    // Transaction Modal Logic
     const transactionModal = document.getElementById('transaction-modal');
     if (transactionModal) {
         const modalTitle = document.getElementById('transaction-modal-title');
@@ -139,15 +110,9 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const closeModal = () => transactionModal.classList.remove('active');
-
-        document.querySelectorAll('.transaction-btn').forEach(btn => {
-            btn.addEventListener('click', () => openModal(btn));
-        });
-
+        document.querySelectorAll('.transaction-btn').forEach(btn => btn.addEventListener('click', () => openModal(btn)));
         closeModalBtn.addEventListener('click', closeModal);
-        transactionModal.addEventListener('click', e => {
-            if (e.target === transactionModal) closeModal();
-        });
+        transactionModal.addEventListener('click', e => { if (e.target === transactionModal) closeModal(); });
     }
 });
 </script>

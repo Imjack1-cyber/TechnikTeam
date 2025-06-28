@@ -1,11 +1,15 @@
 package de.technikteam.servlet;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import de.technikteam.dao.EventCustomFieldDAO;
 import de.technikteam.dao.EventDAO;
+import de.technikteam.model.EventCustomField;
+import de.technikteam.model.EventCustomFieldResponse;
 import de.technikteam.model.User;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -13,21 +17,17 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-/**
- * Mapped to `/event-action`, this servlet processes POST requests from the main
- * event listing page (`events.jsp`). It allows a logged-in user to either sign
- * up for (`signup`) or sign off from (`signoff`) an event by updating the
- * `event_attendance` table via the `EventDAO`.
- */
 @WebServlet("/event-action")
 public class EventActionServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(EventActionServlet.class);
 	private EventDAO eventDAO;
+	private EventCustomFieldDAO customFieldDAO;
 
 	@Override
 	public void init() {
 		eventDAO = new EventDAO();
+		customFieldDAO = new EventCustomFieldDAO();
 	}
 
 	@Override
@@ -51,6 +51,24 @@ public class EventActionServlet extends HttpServlet {
 
 			if ("signup".equals(action)) {
 				eventDAO.signUpForEvent(user.getId(), eventId);
+
+				// Handle custom field responses
+				List<EventCustomField> fields = customFieldDAO.getCustomFieldsForEvent(eventId);
+				for (EventCustomField field : fields) {
+					String paramName = "customfield_" + field.getId();
+					String paramValue = request.getParameter(paramName);
+
+					if (paramValue != null) {
+						EventCustomFieldResponse customResponse = new EventCustomFieldResponse();
+						customResponse.setFieldId(field.getId());
+						customResponse.setUserId(user.getId());
+						customResponse.setResponseValue(paramValue);
+						customFieldDAO.saveResponse(customResponse);
+						logger.debug("Saved custom response for field ID {} and user ID {}.", field.getId(),
+								user.getId());
+					}
+				}
+
 				request.getSession().setAttribute("successMessage", "Erfolgreich zum Event angemeldet.");
 			} else if ("signoff".equals(action)) {
 				eventDAO.signOffFromEvent(user.getId(), eventId);
@@ -64,7 +82,6 @@ public class EventActionServlet extends HttpServlet {
 			request.getSession().setAttribute("errorMessage", "Ungültige Event-ID.");
 		}
 
-		// Redirect back to the event list page to show the updated status
 		response.sendRedirect(request.getContextPath() + "/events");
 	}
 }

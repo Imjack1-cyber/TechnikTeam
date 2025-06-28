@@ -30,6 +30,7 @@ public class Event {
 	private List<EventAttachment> attachments;
 	private List<StorageItem> reservedItems;
 	private String leaderUsername;
+	private List<EventCustomField> customFields; // NEW: For advanced sign-up forms
 
 	public Event() {
 	}
@@ -162,6 +163,14 @@ public class Event {
 
 	public void setReservedItems(List<StorageItem> reservedItems) {
 		this.reservedItems = reservedItems;
+	}
+
+	public List<EventCustomField> getCustomFields() {
+		return customFields;
+	}
+
+	public void setCustomFields(List<EventCustomField> customFields) {
+		this.customFields = customFields;
 	}
 
 	// --- Formatted Helpers ---

@@ -1,6 +1,7 @@
 package de.technikteam.dao;
 
 import de.technikteam.model.StorageItem;
+import de.technikteam.util.DaoUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -18,7 +19,9 @@ public class StorageDAO {
 
 	public Map<String, List<StorageItem>> getAllItemsGroupedByLocation() {
 		List<StorageItem> items = new ArrayList<>();
-		String sql = "SELECT * FROM storage_items ORDER BY location, cabinet, name";
+		String sql = "SELECT si.*, u.username as holder_username " + "FROM storage_items si "
+				+ "LEFT JOIN users u ON si.current_holder_user_id = u.id "
+				+ "ORDER BY si.location, si.cabinet, si.name";
 		try (Connection conn = DatabaseManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
@@ -28,8 +31,6 @@ public class StorageDAO {
 		} catch (SQLException e) {
 			logger.error("SQL error while fetching storage items.", e);
 		}
-		// REDESIGN FIX: Trim the location string to normalize data like "Erdgeschoss"
-		// vs "Erdgeschoss ".
 		return items.stream().collect(Collectors.groupingBy(item -> item.getLocation().trim()));
 	}
 
@@ -54,8 +55,6 @@ public class StorageDAO {
 		item.setName(rs.getString("name"));
 		item.setLocation(rs.getString("location"));
 		item.setCabinet(rs.getString("cabinet"));
-		// REDESIGN REMOVAL: The "shelf" column is no longer used.
-		// item.setShelf(rs.getString("shelf"));
 		item.setCompartment(rs.getString("compartment"));
 		item.setQuantity(rs.getInt("quantity"));
 		item.setMaxQuantity(rs.getInt("max_quantity"));
@@ -64,11 +63,18 @@ public class StorageDAO {
 		item.setWeightKg(rs.getDouble("weight_kg"));
 		item.setPriceEur(rs.getDouble("price_eur"));
 		item.setImagePath(rs.getString("image_path"));
+		item.setStatus(rs.getString("status"));
+		item.setCurrentHolderUserId(rs.getInt("current_holder_user_id"));
+		item.setAssignedEventId(rs.getInt("assigned_event_id"));
+		if (DaoUtils.hasColumn(rs, "holder_username")) {
+			item.setCurrentHolderUsername(rs.getString("holder_username"));
+		}
 		return item;
 	}
 
 	public StorageItem getItemById(int itemId) {
-		String sql = "SELECT * FROM storage_items WHERE id = ?";
+		String sql = "SELECT si.*, u.username as holder_username " + "FROM storage_items si "
+				+ "LEFT JOIN users u ON si.current_holder_user_id = u.id " + "WHERE si.id = ?";
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, itemId);
 			ResultSet rs = pstmt.executeQuery();
@@ -82,8 +88,7 @@ public class StorageDAO {
 	}
 
 	public boolean createItem(StorageItem item) {
-		// REDESIGN REMOVAL: Removed "shelf" from the INSERT statement.
-		String sql = "INSERT INTO storage_items (name, location, cabinet, compartment, quantity, max_quantity, weight_kg, price_eur, image_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+		String sql = "INSERT INTO storage_items (name, location, cabinet, compartment, quantity, max_quantity, weight_kg, price_eur, image_path, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'IN_STORAGE')";
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, item.getName());
 			pstmt.setString(2, item.getLocation());
@@ -102,8 +107,7 @@ public class StorageDAO {
 	}
 
 	public boolean updateItem(StorageItem item) {
-		// REDESIGN REMOVAL: Removed "shelf" from the UPDATE statement.
-		String sql = "UPDATE storage_items SET name=?, location=?, cabinet=?, compartment=?, quantity=?, max_quantity=?, defective_quantity=?, defect_reason=?, weight_kg=?, price_eur=?, image_path=? WHERE id=?";
+		String sql = "UPDATE storage_items SET name=?, location=?, cabinet=?, compartment=?, quantity=?, max_quantity=?, defective_quantity=?, defect_reason=?, weight_kg=?, price_eur=?, image_path=?, status=?, current_holder_user_id=?, assigned_event_id=? WHERE id=?";
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, item.getName());
 			pstmt.setString(2, item.getLocation());
@@ -116,11 +120,38 @@ public class StorageDAO {
 			pstmt.setDouble(9, item.getWeightKg());
 			pstmt.setDouble(10, item.getPriceEur());
 			pstmt.setString(11, item.getImagePath());
-			pstmt.setInt(12, item.getId());
+			pstmt.setString(12, item.getStatus());
+			if (item.getCurrentHolderUserId() > 0)
+				pstmt.setInt(13, item.getCurrentHolderUserId());
+			else
+				pstmt.setNull(13, Types.INTEGER);
+			if (item.getAssignedEventId() > 0)
+				pstmt.setInt(14, item.getAssignedEventId());
+			else
+				pstmt.setNull(14, Types.INTEGER);
+			pstmt.setInt(15, item.getId());
 			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
 			logger.error("SQL error updating storage item with ID: {}", item.getId(), e);
 			return false;
+		}
+	}
+
+	public boolean updateItemHolderAndStatus(int itemId, String status, Integer userId, Integer eventId)
+			throws SQLException {
+		String sql = "UPDATE storage_items SET status = ?, current_holder_user_id = ?, assigned_event_id = ? WHERE id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setString(1, status);
+			if (userId != null)
+				pstmt.setInt(2, userId);
+			else
+				pstmt.setNull(2, Types.INTEGER);
+			if (eventId != null)
+				pstmt.setInt(3, eventId);
+			else
+				pstmt.setNull(3, Types.INTEGER);
+			pstmt.setInt(4, itemId);
+			return pstmt.executeUpdate() > 0;
 		}
 	}
 
