@@ -131,5 +131,3 @@ The project follows a standard Maven web application structure:
     *   `WEB-INF/`: Deployment descriptor (`web.xml`) and reusable JSP fragments (`.jspf`).
     *   `*.jsp`: Public-facing JSP view files.
 *   `src/main/resources/`: Resource files like the `log4j2.xml` configuration.
-
-https://github-readme-stats.hackclub.dev/api/wakatime?username=4801&api_domain=hackatime.hackclub.com&theme=darcula&custom_title=Hackatime+Stats&layout=compact&cache_seconds=0&langs_count=8
