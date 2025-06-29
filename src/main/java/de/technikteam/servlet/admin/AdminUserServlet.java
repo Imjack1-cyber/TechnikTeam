@@ -1,11 +1,13 @@
 package de.technikteam.servlet.admin;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder; // Import GsonBuilder
-import de.technikteam.config.LocalDateTimeAdapter; // Import the adapter
+import com.google.gson.GsonBuilder;
+import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.EventDAO;
+import de.technikteam.dao.RoleDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.Event;
+import de.technikteam.model.Role;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import jakarta.servlet.ServletException;
@@ -13,32 +15,34 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.security.SecureRandom;
-import java.time.LocalDateTime; // Import LocalDateTime
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
-@WebServlet("/admin/users")
+@WebServlet("/admin/mitglieder")
 public class AdminUserServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminUserServlet.class);
 
 	private UserDAO userDAO;
 	private EventDAO eventDAO;
-	private Gson gson; // Keep Gson instance
+	private RoleDAO roleDAO;
+	private Gson gson;
 
 	@Override
 	public void init() {
 		userDAO = new UserDAO();
 		eventDAO = new EventDAO();
-		// **FIXED:** Initialize Gson with the custom adapter
+		roleDAO = new RoleDAO();
 		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
-		logger.info("AdminUserServlet initialized.");
 	}
 
 	@Override
@@ -61,7 +65,7 @@ public class AdminUserServlet extends HttpServlet {
 		} catch (Exception e) {
 			logger.error("Error in AdminUserServlet doGet", e);
 			request.getSession().setAttribute("errorMessage", "Ein Fehler ist aufgetreten: " + e.getMessage());
-			response.sendRedirect(request.getContextPath() + "/admin/users");
+			response.sendRedirect(request.getContextPath() + "/admin/dashboard");
 		}
 	}
 
@@ -69,9 +73,8 @@ public class AdminUserServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		request.setCharacterEncoding("UTF-8");
 		String action = request.getParameter("action");
-		logger.debug("AdminUserServlet received POST with action: {}", action);
 		if (action == null) {
-			response.sendRedirect(request.getContextPath() + "/admin/users");
+			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
 			return;
 		}
 		try {
@@ -90,23 +93,26 @@ public class AdminUserServlet extends HttpServlet {
 				break;
 			default:
 				logger.warn("Unknown POST action received: {}", action);
-				response.sendRedirect(request.getContextPath() + "/admin/users");
+				response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
 				break;
 			}
 		} catch (Exception e) {
 			logger.error("Error in AdminUserServlet doPost", e);
 			request.getSession().setAttribute("errorMessage",
 					"Ein schwerwiegender Fehler ist aufgetreten: " + e.getMessage());
-			response.sendRedirect(request.getContextPath() + "/admin/users");
+			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
 		}
 	}
 
 	private void listUsers(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		logger.info("Listing all users for admin view.");
+		logger.info("Executing listUsers method.");
 		List<User> userList = userDAO.getAllUsers();
+		List<Role> allRoles = roleDAO.getAllRoles();
+		logger.debug("Fetched {} users and {} roles from DAOs.", userList.size(), allRoles.size());
 		request.setAttribute("userList", userList);
-		request.getRequestDispatcher("/admin/admin_users.jsp").forward(request, response);
+		request.setAttribute("allRoles", allRoles);
+		request.getRequestDispatcher("/admin/mitglieder").forward(request, response);
 	}
 
 	private void getUserDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -129,77 +135,75 @@ public class AdminUserServlet extends HttpServlet {
 	private void showUserDetails(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		int userId = Integer.parseInt(request.getParameter("id"));
-		logger.info("Showing details for user ID: {}", userId);
 		User user = userDAO.getUserById(userId);
 		if (user == null) {
 			request.getSession().setAttribute("errorMessage", "Benutzer nicht gefunden.");
-			response.sendRedirect(request.getContextPath() + "/admin/users");
+			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
 			return;
 		}
 		List<Event> eventHistory = eventDAO.getEventHistoryForUser(userId);
 		request.setAttribute("userToView", user);
 		request.setAttribute("eventHistory", eventHistory);
-		logger.debug("Forwarding to user details page for user '{}'", user.getUsername());
-		request.getRequestDispatcher("/admin/admin_user_details.jsp").forward(request, response);
+		request.getRequestDispatcher("/admin/mitglieder/details").forward(request, response);
 	}
 
-	// --- Other POST handlers remain unchanged ---
 	private void handleCreateUser(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		// Unchanged
 		String username = request.getParameter("username");
 		String pass = request.getParameter("password");
-		String role = request.getParameter("role");
 		if (username == null || username.trim().isEmpty() || pass == null || pass.trim().isEmpty()) {
 			request.getSession().setAttribute("errorMessage", "Benutzername und Passwort dürfen nicht leer sein.");
-			response.sendRedirect(request.getContextPath() + "/admin/users");
+			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
 			return;
 		}
-		logger.info("Attempting to create new user '{}' with role '{}'", username, role);
+		int roleId = Integer.parseInt(request.getParameter("roleId"));
+
 		User newUser = new User();
 		newUser.setUsername(username.trim());
-		newUser.setRole(role);
+		newUser.setRoleId(roleId);
 		try {
 			newUser.setClassYear(Integer.parseInt(request.getParameter("classYear")));
 		} catch (NumberFormatException e) {
-			newUser.setClassYear(0); // Default value
+			newUser.setClassYear(0);
 		}
 		newUser.setClassName(request.getParameter("className"));
+		newUser.setEmail(request.getParameter("email"));
 
-		// FIXME: Passwords should be hashed in a production environment.
 		int newUserId = userDAO.createUser(newUser, pass);
 		if (newUserId > 0) {
 			User adminUser = (User) request.getSession().getAttribute("user");
-			String logDetails = String.format("Benutzer '%s' (ID: %d, Rolle: %s, Klasse: %d %s) erstellt.",
-					newUser.getUsername(), newUserId, newUser.getRole(), newUser.getClassYear(),
+			String logDetails = String.format("Benutzer '%s' (ID: %d, Rolle-ID: %d, Klasse: %d %s) erstellt.",
+					newUser.getUsername(), newUserId, newUser.getRoleId(), newUser.getClassYear(),
 					newUser.getClassName());
 			AdminLogService.log(adminUser.getUsername(), "CREATE_USER", logDetails);
 			request.getSession().setAttribute("successMessage",
 					"Benutzer '" + newUser.getUsername() + "' erfolgreich erstellt.");
 		} else {
 			request.getSession().setAttribute("errorMessage",
-					"Benutzer konnte nicht erstellt werden (ggf. existiert der Name bereits).");
+					"Benutzer konnte nicht erstellt werden (ggf. existiert der Name oder die E-Mail bereits).");
 		}
-		response.sendRedirect(request.getContextPath() + "/admin/users");
+		response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
 	}
 
 	private void handleUpdateUser(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		// Unchanged
 		int userId = Integer.parseInt(request.getParameter("userId"));
-		User adminUser = (User) request.getSession().getAttribute("user");
+		HttpSession session = request.getSession();
+		User adminUser = (User) session.getAttribute("user");
 		User originalUser = userDAO.getUserById(userId);
+
 		if (originalUser == null) {
 			logger.error("Attempted to update non-existent user with ID: {}", userId);
 			request.getSession().setAttribute("errorMessage", "Fehler: Benutzer mit ID " + userId + " nicht gefunden.");
-			response.sendRedirect(request.getContextPath() + "/admin/users");
+			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
 			return;
 		}
-		logger.info("Attempting to update user '{}' (ID: {})", originalUser.getUsername(), userId);
+		int roleId = Integer.parseInt(request.getParameter("roleId"));
 
 		User updatedUser = new User();
 		updatedUser.setId(userId);
 		updatedUser.setUsername(request.getParameter("username").trim());
-		updatedUser.setRole(request.getParameter("role"));
+		updatedUser.setRoleId(roleId);
 		updatedUser.setClassName(request.getParameter("className"));
+		updatedUser.setEmail(request.getParameter("email"));
 		try {
 			updatedUser.setClassYear(Integer.parseInt(request.getParameter("classYear")));
 		} catch (NumberFormatException e) {
@@ -209,15 +213,23 @@ public class AdminUserServlet extends HttpServlet {
 		List<String> changes = new ArrayList<>();
 		if (!Objects.equals(originalUser.getUsername(), updatedUser.getUsername()))
 			changes.add("Benutzername von '" + originalUser.getUsername() + "' zu '" + updatedUser.getUsername() + "'");
-		if (!Objects.equals(originalUser.getRole(), updatedUser.getRole()))
-			changes.add("Rolle von '" + originalUser.getRole() + "' zu '" + updatedUser.getRole() + "'");
+		if (originalUser.getRoleId() != updatedUser.getRoleId())
+			changes.add("Rolle-ID von '" + originalUser.getRoleId() + "' zu '" + updatedUser.getRoleId() + "'");
 		if (originalUser.getClassYear() != updatedUser.getClassYear())
 			changes.add("Jahrgang von '" + originalUser.getClassYear() + "' zu '" + updatedUser.getClassYear() + "'");
 		if (!Objects.equals(originalUser.getClassName(), updatedUser.getClassName()))
 			changes.add("Klasse von '" + originalUser.getClassName() + "' zu '" + updatedUser.getClassName() + "'");
+		if (!Objects.equals(originalUser.getEmail(), updatedUser.getEmail()))
+			changes.add("E-Mail geändert");
 
 		if (!changes.isEmpty()) {
 			if (userDAO.updateUser(updatedUser)) {
+				if (adminUser.getId() == userId) {
+					User refreshedUserInSession = userDAO.getUserById(userId);
+					Set<String> newPermissions = userDAO.getPermissionsForRole(refreshedUserInSession.getRoleId());
+					refreshedUserInSession.setPermissions(newPermissions);
+					session.setAttribute("user", refreshedUserInSession);
+				}
 				String logDetails = String.format("Benutzer '%s' (ID: %d) aktualisiert. Änderungen: %s.",
 						originalUser.getUsername(), userId, String.join(", ", changes));
 				AdminLogService.log(adminUser.getUsername(), "UPDATE_USER", logDetails);
@@ -229,39 +241,31 @@ public class AdminUserServlet extends HttpServlet {
 		} else {
 			request.getSession().setAttribute("infoMessage", "Keine Änderungen an den Benutzerdaten vorgenommen.");
 		}
-		response.sendRedirect(request.getContextPath() + "/admin/users");
+		response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
 	}
 
 	private void handleDeleteUser(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		// Unchanged
 		int userIdToDelete = Integer.parseInt(request.getParameter("userId"));
 		User loggedInAdmin = (User) request.getSession().getAttribute("user");
 		if (loggedInAdmin.getId() == userIdToDelete) {
-			logger.warn("Admin '{}' (ID: {}) attempted to delete themselves. Operation denied.",
-					loggedInAdmin.getUsername(), loggedInAdmin.getId());
 			request.getSession().setAttribute("errorMessage", "Sie können sich nicht selbst löschen.");
-			response.sendRedirect(request.getContextPath() + "/admin/users");
+			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
 			return;
 		}
-
 		User userToDelete = userDAO.getUserById(userIdToDelete);
-		logger.warn("Admin '{}' is attempting to delete user '{}' (ID: {})", loggedInAdmin.getUsername(),
-				userToDelete != null ? userToDelete.getUsername() : "N/A", userIdToDelete);
-
 		if (userDAO.deleteUser(userIdToDelete)) {
 			String logDetails = String.format("Benutzer '%s' (ID: %d, Rolle: %s) wurde gelöscht.",
 					(userToDelete != null ? userToDelete.getUsername() : "N/A"), userIdToDelete,
-					(userToDelete != null ? userToDelete.getRole() : "N/A"));
+					(userToDelete != null ? userToDelete.getRoleName() : "N/A"));
 			AdminLogService.log(loggedInAdmin.getUsername(), "DELETE_USER", logDetails);
 			request.getSession().setAttribute("successMessage", "Benutzer erfolgreich gelöscht.");
 		} else {
 			request.getSession().setAttribute("errorMessage", "Benutzer konnte nicht gelöscht werden.");
 		}
-		response.sendRedirect(request.getContextPath() + "/admin/users");
+		response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
 	}
 
 	private void handleResetPassword(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		// Unchanged
 		User adminUser = (User) request.getSession().getAttribute("user");
 		try {
 			int userId = Integer.parseInt(request.getParameter("userId"));
@@ -275,7 +279,6 @@ public class AdminUserServlet extends HttpServlet {
 					String logDetails = String.format("Passwort für Benutzer '%s' (ID: %d) zurückgesetzt.",
 							userToReset.getUsername(), userId);
 					AdminLogService.log(adminUser.getUsername(), "RESET_PASSWORD", logDetails);
-
 					String successMessage = String.format(
 							"Passwort für '%s' wurde zurückgesetzt auf: <strong class=\"copyable-password\">%s</strong> (wurde in die Zwischenablage kopiert).",
 							userToReset.getUsername(), newPassword);
@@ -288,11 +291,10 @@ public class AdminUserServlet extends HttpServlet {
 			logger.error("Invalid user ID for password reset.", e);
 			request.getSession().setAttribute("errorMessage", "Ungültige Benutzer-ID.");
 		}
-		response.sendRedirect(request.getContextPath() + "/admin/users");
+		response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
 	}
 
 	private String generateRandomPassword(int length) {
-		// Unchanged
 		final String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 		SecureRandom random = new SecureRandom();
 		StringBuilder sb = new StringBuilder(length);

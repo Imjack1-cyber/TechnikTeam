@@ -1,37 +1,76 @@
 package de.technikteam.model;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
-/**
- * The core model for an application user, representing a record from the
- * `users` table. It contains the user's ID, username, role ("ADMIN" or
- * "NUTZER"), and other profile information like class year and creation date.
- */
 public class User {
 	private int id;
 	private String username;
-	private String role;
+	private int roleId;
+	private String roleName; // For display
+	private Set<String> permissions; // Transient, loaded at login
 	private LocalDateTime createdAt;
 	private int classYear;
 	private String className;
+	private String email;
 
 	public User() {
 	}
 
-	public User(int id, String username, String role) {
-		this(id, username, role, null, 0, null);
-	}
-
-	public User(int id, String username, String role, LocalDateTime createdAt, int classYear, String className) {
+	public User(int id, String username, String roleName) {
 		this.id = id;
 		this.username = username;
-		this.role = role;
-		this.createdAt = createdAt;
-		this.classYear = classYear;
-		this.className = className;
+		this.roleName = roleName;
 	}
 
-	// --- Getters and Setters ---
+	// Getters and Setters
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	public String getUsername() {
+		return username;
+	}
+
+	public void setUsername(String username) {
+		this.username = username;
+	}
+
+	public int getRoleId() {
+		return roleId;
+	}
+
+	public void setRoleId(int roleId) {
+		this.roleId = roleId;
+	}
+
+	public String getRoleName() {
+		return roleName;
+	}
+
+	public void setRoleIdName(String roleName) {
+		this.roleName = roleName;
+	}
+
+	public Set<String> getPermissions() {
+		return permissions;
+	}
+
+	public void setPermissions(Set<String> permissions) {
+		this.permissions = permissions;
+	}
+
+	public LocalDateTime getCreatedAt() {
+		return createdAt;
+	}
+
+	public void setCreatedAt(LocalDateTime createdAt) {
+		this.createdAt = createdAt;
+	}
 
 	public int getClassYear() {
 		return classYear;
@@ -49,44 +88,14 @@ public class User {
 		this.className = className;
 	}
 
-	public int getId() {
-		return id;
+	public String getEmail() {
+		return email;
 	}
 
-	public void setId(int id) {
-		this.id = id;
+	public void setEmail(String email) {
+		this.email = email;
 	}
 
-	public String getUsername() {
-		return username;
-	}
-
-	public void setUsername(String username) {
-		this.username = username;
-	}
-
-	public String getRole() {
-		return role;
-	}
-
-	public void setRole(String role) {
-		this.role = role;
-	}
-
-	public LocalDateTime getCreatedAt() {
-		return createdAt;
-	}
-
-	public void setCreatedAt(LocalDateTime createdAt) {
-		this.createdAt = createdAt;
-	}
-
-	/**
-	 * A convenience method to get the creation timestamp as a formatted string,
-	 * suitable for display in the user interface.
-	 * 
-	 * @return A German-style date-time string (e.g., "10.06.2025 17:45").
-	 */
 	public String getFormattedCreatedAt() {
 		return de.technikteam.config.DateFormatter.formatDateTime(this.createdAt);
 	}

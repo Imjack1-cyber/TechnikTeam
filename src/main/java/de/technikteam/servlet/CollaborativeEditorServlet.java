@@ -14,12 +14,12 @@ import jakarta.servlet.http.HttpServletResponse;
  * functionality for the editor is handled client-side by JavaScript and the
  * `DocumentApiServlet`.
  */
-@WebServlet("/editor-page")
+@WebServlet("/dateien/texte")
 public class CollaborativeEditorServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		request.getRequestDispatcher("/collaborative_editor.jsp").forward(request, response);
+		request.getRequestDispatcher("/dateien/texte").forward(request, response);
 	}
 }

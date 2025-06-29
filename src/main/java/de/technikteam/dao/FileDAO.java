@@ -58,13 +58,13 @@ public class FileDAO {
 	 * @return A Map where keys are category names and values are lists of files.
 	 */
 	public Map<String, List<File>> getAllFilesGroupedByCategory(User user) {
-		logger.debug("Fetching all files grouped by category for user role: {}", user.getRole());
+		logger.debug("Fetching all files grouped by category for user role: {}", user.getRoleName());
 		List<File> files = new ArrayList<>();
 
 		String sql = "SELECT f.*, fc.name as category_name FROM files f "
 				+ "LEFT JOIN file_categories fc ON f.category_id = fc.id ";
 
-		if (!"ADMIN".equalsIgnoreCase(user.getRole())) {
+		if (!"ADMIN".equalsIgnoreCase(user.getRoleName())) {
 			sql += "WHERE f.required_role = 'NUTZER' ";
 			logger.debug("Applying 'NUTZER' role filter for file query.");
 		}
@@ -77,7 +77,7 @@ public class FileDAO {
 			while (rs.next()) {
 				files.add(mapResultSetToFile(rs));
 			}
-			logger.info("Fetched {} files visible to user role '{}'.", files.size(), user.getRole());
+			logger.info("Fetched {} files visible to user role '{}'.", files.size(), user.getRoleName());
 		} catch (SQLException e) {
 			logger.error("SQL error while fetching files.", e);
 		}

@@ -23,9 +23,8 @@ import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
-@WebServlet("/admin/storage")
+@WebServlet("/admin/lager")
 @MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 5, maxRequestSize = 1024 * 1024 * 10)
 public class AdminStorageServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
@@ -50,10 +49,8 @@ public class AdminStorageServlet extends HttpServlet {
 		try {
 			logger.info("Listing all storage items for admin view.");
 			Map<String, List<StorageItem>> groupedItems = storageDAO.getAllItemsGroupedByLocation();
-			List<StorageItem> flatList = groupedItems.values().stream().flatMap(List::stream)
-					.collect(Collectors.toList());
-			request.setAttribute("storageList", flatList);
-			request.getRequestDispatcher("/admin/admin_storage_list.jsp").forward(request, response);
+			request.setAttribute("groupedItems", groupedItems);
+			request.getRequestDispatcher("/WEB-INF/views/admin/admin_storage_list.jsp").forward(request, response);
 		} catch (Exception e) {
 			logger.error("Error in doGet of AdminStorageServlet", e);
 			request.getSession().setAttribute("errorMessage", "Ein Fehler ist aufgetreten: " + e.getMessage());
@@ -66,19 +63,28 @@ public class AdminStorageServlet extends HttpServlet {
 			throws IOException, ServletException {
 		request.setCharacterEncoding("UTF-8");
 		String contentType = request.getContentType();
+		String action;
 
 		if (contentType != null && contentType.toLowerCase().startsWith("multipart/")) {
-			String action = ServletUtils.getPartValue(request.getPart("action"));
-			if ("create".equals(action) || "update".equals(action)) {
-				handleCreateOrUpdate(request, response);
-			}
+			action = ServletUtils.getPartValue(request.getPart("action"));
 		} else {
-			String action = request.getParameter("action");
-			if ("delete".equals(action)) {
-				handleDelete(request, response);
-			} else if ("updateDefect".equals(action)) {
-				handleDefectUpdate(request, response);
-			}
+			action = request.getParameter("action");
+		}
+
+		switch (action) {
+		case "create":
+		case "update":
+			handleCreateOrUpdate(request, response);
+			break;
+		case "delete":
+			handleDelete(request, response);
+			break;
+		case "updateDefect":
+			handleDefectUpdate(request, response);
+			break;
+		default:
+			response.sendRedirect(request.getContextPath() + "/admin/lager");
+			break;
 		}
 	}
 
@@ -130,6 +136,7 @@ public class AdminStorageServlet extends HttpServlet {
 					imagePath = originalItem.getImagePath();
 					item.setDefectiveQuantity(originalItem.getDefectiveQuantity());
 					item.setDefectReason(originalItem.getDefectReason());
+					item.setStatus(originalItem.getStatus());
 				}
 			}
 
@@ -162,7 +169,7 @@ public class AdminStorageServlet extends HttpServlet {
 			logger.error("Error creating/updating storage item.", e);
 			request.getSession().setAttribute("errorMessage", "Fehler: " + e.getMessage());
 		}
-		response.sendRedirect(request.getContextPath() + "/admin/storage");
+		response.sendRedirect(request.getContextPath() + "/admin/lager");
 	}
 
 	private void handleDefectUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -189,7 +196,7 @@ public class AdminStorageServlet extends HttpServlet {
 		}
 
 		String redirectUrl = request.getContextPath()
-				+ ("/defects".equals(returnTo) ? "/admin/defects" : "/admin/storage");
+				+ ("/defekte".equals(returnTo) ? "/admin/defekte" : "/admin/lager");
 		response.sendRedirect(redirectUrl);
 	}
 
@@ -215,6 +222,6 @@ public class AdminStorageServlet extends HttpServlet {
 		} catch (NumberFormatException e) {
 			request.getSession().setAttribute("errorMessage", "Ungültige Artikel-ID.");
 		}
-		response.sendRedirect(request.getContextPath() + "/admin/storage");
+		response.sendRedirect(request.getContextPath() + "/admin/lager");
 	}
 }

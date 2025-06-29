@@ -21,7 +21,7 @@ import java.io.IOException;
  * the attachments. The collected data is then forwarded to
  * `meetingDetails.jsp`.
  */
-@WebServlet("/meetingDetails")
+@WebServlet("/meeting/details")
 public class MeetingDetailsServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(MeetingDetailsServlet.class);
@@ -59,7 +59,7 @@ public class MeetingDetailsServlet extends HttpServlet {
 			}
 
 			// If current user is the leader, they act as an ADMIN for viewing attachments
-			String attachmentUserRole = user.getRole();
+			String attachmentUserRole = user.getRoleName();
 			if (user.getId() == meeting.getLeaderUserId()) {
 				attachmentUserRole = "ADMIN";
 				logger.debug("User {} is leader of meeting {}. Granting admin view for attachments.",
@@ -72,7 +72,7 @@ public class MeetingDetailsServlet extends HttpServlet {
 			request.setAttribute("meeting", meeting);
 
 			logger.debug("Forwarding to meetingDetails.jsp for meeting '{}'", meeting.getName());
-			request.getRequestDispatcher("/meetingDetails.jsp").forward(request, response);
+			request.getRequestDispatcher("/meeting/details").forward(request, response);
 
 		} catch (NumberFormatException e) {
 			logger.error("Invalid meeting ID format: {}", meetingIdParam, e);

@@ -39,7 +39,7 @@ public class FileServlet extends HttpServlet {
 			throws ServletException, IOException {
 
 		User user = (User) request.getSession().getAttribute("user");
-		logger.info("File page requested by user '{}' (Role: {})", user.getUsername(), user.getRole());
+		logger.info("File page requested by user '{}' (Role: {})", user.getUsername(), user.getRoleName());
 
 		// 1. Fetch files from the database, already filtered by the user's role in the
 		// DAO.
@@ -60,6 +60,6 @@ public class FileServlet extends HttpServlet {
 		// 4. Send the modified map to the JSP.
 		request.setAttribute("fileData", fileData);
 		logger.debug("Forwarding file data (including virtual editor link) to dateien.jsp.");
-		request.getRequestDispatcher("/dateien.jsp").forward(request, response);
+		request.getRequestDispatcher("/dateien").forward(request, response);
 	}
 }

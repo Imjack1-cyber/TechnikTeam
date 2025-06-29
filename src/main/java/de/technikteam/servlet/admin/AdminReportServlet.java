@@ -1,7 +1,6 @@
 package de.technikteam.servlet.admin;
 
 import de.technikteam.dao.ReportDAO;
-import de.technikteam.model.User;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -15,9 +14,8 @@ import java.io.PrintWriter;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-@WebServlet("/admin/reports")
+@WebServlet("/admin/berichte")
 public class AdminReportServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminReportServlet.class);
@@ -37,29 +35,26 @@ public class AdminReportServlet extends HttpServlet {
 		if (reportType == null) {
 			logger.debug("Serving main reports menu.");
 			request.setAttribute("totalInventoryValue", reportDAO.getTotalInventoryValue());
-			request.getRequestDispatcher("/admin/admin_reports.jsp").forward(request, response);
+			request.getRequestDispatcher("/admin/berichte").forward(request, response);
 			return;
 		}
 
 		List<Map<String, Object>> reportData = null;
 		String reportTitle = "";
-		String jspPath = "";
+		String jspPath = "/admin/berichte";
 
 		switch (reportType) {
 		case "user_activity":
 			reportData = reportDAO.getUserActivityStats();
 			reportTitle = "Benutzeraktivitäts-Bericht";
-			jspPath = "/admin/report_display.jsp";
 			break;
 		case "event_participation":
 			reportData = reportDAO.getEventParticipationSummary();
 			reportTitle = "Event-Teilnahme-Bericht";
-			jspPath = "/admin/report_display.jsp";
 			break;
 		case "inventory_usage":
 			reportData = reportDAO.getInventoryUsageFrequency();
 			reportTitle = "Lagernutzungs-Bericht";
-			jspPath = "/admin/report_display.jsp";
 			break;
 		default:
 			logger.warn("Unknown report type requested: {}", reportType);

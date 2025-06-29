@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
  * trail. It's designed to be called via forms or AJAX from the event details
  * page.
  */
-@WebServlet("/admin/tasks")
+@WebServlet("/admin/veranstaltungen/aufgaben")
 public class AdminTaskServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminTaskServlet.class);
@@ -75,7 +75,7 @@ public class AdminTaskServlet extends HttpServlet {
 			AdminLogService.log(adminUser.getUsername(), "CREATE_TASK",
 					"Aufgabe '" + description + "' (ID: " + newTaskId + ") für Event-ID " + eventId + " erstellt.");
 		}
-		response.sendRedirect(request.getContextPath() + "/eventDetails?id=" + eventId);
+		response.sendRedirect(request.getContextPath() + "/veranstaltungen/details?id=" + eventId);
 	}
 
 	private void handleAssignTask(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -108,7 +108,7 @@ public class AdminTaskServlet extends HttpServlet {
 		AdminLogService.log(adminUser.getUsername(), "ASSIGN_TASK",
 				"Aufgabe (ID: " + taskId + ") für Event-ID " + eventId + " an " + assignedUsersString + " zugewiesen.");
 
-		response.sendRedirect(request.getContextPath() + "/eventDetails?id=" + eventId);
+		response.sendRedirect(request.getContextPath() + "/veranstaltungen/details?id=" + eventId);
 	}
 
 	@Override

@@ -12,7 +12,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 
-@WebServlet("/storage-item-action")
+@WebServlet("/lager/aktionen")
 public class StorageItemActionServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private StorageDAO storageDAO;
@@ -38,7 +38,7 @@ public class StorageItemActionServlet extends HttpServlet {
 			}
 			request.setAttribute("item", item);
 			request.setAttribute("activeEvents", activeEvents);
-			request.getRequestDispatcher("/qr_action.jsp").forward(request, response);
+			request.getRequestDispatcher("/qr_action").forward(request, response);
 		} catch (NumberFormatException e) {
 			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Ungültige Artikel-ID.");
 		}

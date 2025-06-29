@@ -18,10 +18,13 @@ public class StorageDAO {
 	private static final Logger logger = LogManager.getLogger(StorageDAO.class.getName());
 
 	public Map<String, List<StorageItem>> getAllItemsGroupedByLocation() {
+		return getAllItems().stream().collect(Collectors.groupingBy(item -> item.getLocation().trim()));
+	}
+
+	public List<StorageItem> getAllItems() {
 		List<StorageItem> items = new ArrayList<>();
 		String sql = "SELECT si.*, u.username as holder_username " + "FROM storage_items si "
-				+ "LEFT JOIN users u ON si.current_holder_user_id = u.id "
-				+ "ORDER BY si.location, si.cabinet, si.name";
+				+ "LEFT JOIN users u ON si.current_holder_user_id = u.id " + "ORDER BY si.name";
 		try (Connection conn = DatabaseManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
@@ -29,9 +32,9 @@ public class StorageDAO {
 				items.add(mapResultSetToStorageItem(rs));
 			}
 		} catch (SQLException e) {
-			logger.error("SQL error while fetching storage items.", e);
+			logger.error("SQL error while fetching all storage items.", e);
 		}
-		return items.stream().collect(Collectors.groupingBy(item -> item.getLocation().trim()));
+		return items;
 	}
 
 	public List<StorageItem> getDefectiveItems() {

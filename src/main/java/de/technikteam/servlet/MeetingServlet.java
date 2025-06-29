@@ -21,7 +21,7 @@ import java.util.List;
  * status (e.g., ANGEMELDET, ABGEMELDET, OFFEN). This data is then passed to
  * `lehrgaenge.jsp` for rendering.
  */
-@WebServlet("/lehrgaenge")
+@WebServlet("/meeting")
 public class MeetingServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(MeetingServlet.class);
@@ -42,6 +42,6 @@ public class MeetingServlet extends HttpServlet {
 
 		request.setAttribute("meetings", meetings);
 		logger.debug("Found {} upcoming meetings. Forwarding to lehrgaenge.jsp.", meetings.size());
-		request.getRequestDispatcher("/lehrgaenge.jsp").forward(request, response);
+		request.getRequestDispatcher("/meeting").forward(request, response);
 	}
 }

@@ -21,7 +21,7 @@ import java.util.List;
  * fetches the item's core data AND its full transaction history ("chronic"),
  * forwarding both to `storage_item_details.jsp` for rendering a unified view.
  */
-@WebServlet("/storage-item")
+@WebServlet("/lager/details")
 public class StorageItemDetailsServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(StorageItemDetailsServlet.class);
@@ -57,7 +57,7 @@ public class StorageItemDetailsServlet extends HttpServlet {
 
 			logger.debug("Forwarding to storage_item_details.jsp for item '{}' with {} history entries.",
 					item.getName(), history.size());
-			request.getRequestDispatcher("/storage_item_details.jsp").forward(request, response);
+			request.getRequestDispatcher("/lager/details").forward(request, response);
 
 		} catch (NumberFormatException e) {
 			logger.error("Invalid storage item ID format in request.", e);

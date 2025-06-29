@@ -21,7 +21,7 @@ import org.apache.logging.log4j.Logger;
  * event (e.g., ZUGEWIESEN, ANGEMELDET, OFFEN). It then passes this data to
  * `events.jsp`.
  */
-@WebServlet("/events")
+@WebServlet("/veranstaltungen")
 public class EventServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(EventServlet.class);
@@ -44,6 +44,6 @@ public class EventServlet extends HttpServlet {
 		request.setAttribute("events", events);
 		logger.debug("Found {} upcoming events for user '{}'. Forwarding to events.jsp.", events.size(),
 				user.getUsername());
-		request.getRequestDispatcher("/events.jsp").forward(request, response);
+		request.getRequestDispatcher("/veranstaltungen").forward(request, response);
 	}
 }

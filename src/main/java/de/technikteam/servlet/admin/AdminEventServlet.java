@@ -43,8 +43,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
 
-@WebServlet("/admin/events")
-@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 20, maxRequestSize = 1024 * 1024 * 50)
+@WebServlet("/admin/veranstaltungen")
+@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 40, maxRequestSize = 1024 * 1024 * 80)
 public class AdminEventServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminEventServlet.class);
@@ -64,7 +64,7 @@ public class AdminEventServlet extends HttpServlet {
 		storageDAO = new StorageDAO();
 		userDAO = new UserDAO();
 		attachmentDAO = new EventAttachmentDAO();
-		customFieldDAO = new EventCustomFieldDAO();
+		customFieldDAO = new EventCustomFieldDAO(); // Correct initialization
 		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
 				.registerTypeAdapter(java.time.LocalDate.class, new LocalDateAdapter()).setPrettyPrinting().create();
 	}
@@ -88,7 +88,7 @@ public class AdminEventServlet extends HttpServlet {
 		} catch (Exception e) {
 			logger.error("Error in AdminEventServlet doGet", e);
 			req.getSession().setAttribute("errorMessage", "Ein Fehler ist aufgetreten: " + e.getMessage());
-			resp.sendRedirect(req.getContextPath() + "/admin/events");
+			resp.sendRedirect(req.getContextPath() + "/admin/veranstaltungen");
 		}
 	}
 
@@ -123,7 +123,7 @@ public class AdminEventServlet extends HttpServlet {
 			break;
 		default:
 			logger.warn("Unknown POST action received: {}", action);
-			resp.sendRedirect(req.getContextPath() + "/admin/events");
+			resp.sendRedirect(req.getContextPath() + "/admin/veranstaltungen");
 			break;
 		}
 	}
@@ -132,15 +132,14 @@ public class AdminEventServlet extends HttpServlet {
 		logger.info("Listing all events for admin view.");
 		List<Event> eventList = eventDAO.getAllEvents();
 		List<Course> allCourses = courseDAO.getAllCourses();
-		List<StorageItem> allItems = storageDAO.getAllItemsGroupedByLocation().values().stream().flatMap(List::stream)
-				.collect(Collectors.toList());
+		List<StorageItem> allItems = storageDAO.getAllItems(); // CORRECTION: Use the simpler DAO method
 		List<User> allUsers = userDAO.getAllUsers();
 
 		req.setAttribute("eventList", eventList);
 		req.setAttribute("allCourses", allCourses);
 		req.setAttribute("allItems", allItems);
 		req.setAttribute("allUsers", allUsers);
-		req.getRequestDispatcher("/admin/admin_events_list.jsp").forward(req, resp);
+		req.getRequestDispatcher("/admin/veranstaltungen").forward(req, resp);
 	}
 
 	private void getEventDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -276,7 +275,7 @@ public class AdminEventServlet extends HttpServlet {
 					"Ein unerwarteter Fehler ist aufgetreten: " + e.getMessage());
 		}
 
-		response.sendRedirect(request.getContextPath() + "/admin/events");
+		response.sendRedirect(request.getContextPath() + "/admin/veranstaltungen");
 	}
 
 	private void handleAttachmentUpload(Part filePart, int eventId, String requiredRole, User adminUser,
@@ -344,7 +343,7 @@ public class AdminEventServlet extends HttpServlet {
 			logger.error("Invalid event ID format for deletion.", e);
 			req.getSession().setAttribute("errorMessage", "Ungültige Event-ID.");
 		}
-		resp.sendRedirect(req.getContextPath() + "/admin/events");
+		resp.sendRedirect(req.getContextPath() + "/admin/veranstaltungen");
 	}
 
 	private void handleAssignUsers(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -366,7 +365,7 @@ public class AdminEventServlet extends HttpServlet {
 			logger.error("Invalid event ID format for user assignment.", e);
 			req.getSession().setAttribute("errorMessage", "Ungültige Event-ID.");
 		}
-		resp.sendRedirect(req.getContextPath() + "/admin/events");
+		resp.sendRedirect(req.getContextPath() + "/admin/veranstaltungen");
 	}
 
 	private void handleStatusUpdate(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -388,6 +387,6 @@ public class AdminEventServlet extends HttpServlet {
 			logger.error("Invalid event ID format for status update.", e);
 			req.getSession().setAttribute("errorMessage", "Ungültige Event-ID.");
 		}
-		resp.sendRedirect(req.getContextPath() + "/admin/events");
+		resp.sendRedirect(req.getContextPath() + "/admin/veranstaltungen");
 	}
 }

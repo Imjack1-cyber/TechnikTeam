@@ -26,7 +26,7 @@ import org.apache.logging.log4j.Logger;
  * event is currently 'LAUFEND' (running), it also fetches associated tasks and
  * chat history. It forwards all this data to `eventDetails.jsp`.
  */
-@WebServlet("/eventDetails")
+@WebServlet("/veranstaltungen/details")
 public class EventDetailsServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(EventDetailsServlet.class);
@@ -62,7 +62,7 @@ public class EventDetailsServlet extends HttpServlet {
 			event.setSkillRequirements(eventDAO.getSkillRequirementsForEvent(eventId));
 			event.setReservedItems(eventDAO.getReservedItemsForEvent(eventId));
 
-			String userRoleForAttachments = (user.getRole().equals("ADMIN") || user.getId() == event.getLeaderUserId())
+			String userRoleForAttachments = (user.getRoleName().equals("ADMIN") || user.getId() == event.getLeaderUserId())
 					? "ADMIN"
 					: "NUTZER";
 			event.setAttachments(attachmentDAO.getAttachmentsForEvent(eventId, userRoleForAttachments));
@@ -79,7 +79,7 @@ public class EventDetailsServlet extends HttpServlet {
 
 			// For Admins and Users, provide the list of assigned users for the task assignment
 			// dropdown
-			if ("ADMIN".equalsIgnoreCase(user.getRole()) || "NUTZER".equalsIgnoreCase(user.getRole())) {
+			if ("ADMIN".equalsIgnoreCase(user.getRoleName()) || "NUTZER".equalsIgnoreCase(user.getRoleName())) {
 				request.setAttribute("assignedUsers", assignedUsers);
 			}
 
@@ -91,14 +91,14 @@ public class EventDetailsServlet extends HttpServlet {
 
 			request.setAttribute("event", event);
 			logger.debug("Forwarding to eventDetails.jsp for event '{}'", event.getName());
-			request.getRequestDispatcher("/eventDetails.jsp").forward(request, response);
+			request.getRequestDispatcher("/veranstaltungen/details").forward(request, response);
 
 		} catch (NumberFormatException e) {
 			logger.error("Invalid event ID format in request.", e);
 			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Ungültige Event-ID.");
 		} catch (Exception e) {
 			logger.error("An unexpected error occurred while fetching event details.", e);
-			response.sendRedirect(request.getContextPath() + "/error500.jsp");
+			response.sendRedirect(request.getContextPath() + "/error500");
 		}
 	}
 }

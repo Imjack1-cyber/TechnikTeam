@@ -17,12 +17,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Mapped to `/home`, this servlet serves the main landing page for a logged-in
- * user. It provides a quick overview by fetching a limited number of upcoming
- * events and meetings that are relevant to the user. The fetched data is then
- * forwarded to `home.jsp` for display.
- */
 @WebServlet("/home")
 public class HomeServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
@@ -30,6 +24,7 @@ public class HomeServlet extends HttpServlet {
 	private EventDAO eventDAO;
 	private MeetingDAO meetingDAO;
 
+	@Override
 	public void init() {
 		eventDAO = new EventDAO();
 		meetingDAO = new MeetingDAO();
@@ -41,11 +36,9 @@ public class HomeServlet extends HttpServlet {
 		User user = (User) request.getSession().getAttribute("user");
 		logger.info("Home page requested by user '{}'. Fetching dashboard data.", user.getUsername());
 
-		// Fetch up to 3 upcoming events the user is qualified for
 		List<Event> upcomingEvents = eventDAO.getUpcomingEventsForUser(user, 3);
 		logger.debug("Fetched {} upcoming events for home page.", upcomingEvents.size());
 
-		// Fetch all upcoming meetings and then limit to the first 3
 		List<Meeting> upcomingMeetings = meetingDAO.getUpcomingMeetingsForUser(user).stream().limit(3)
 				.collect(Collectors.toList());
 		logger.debug("Fetched {} upcoming meetings for home page.", upcomingMeetings.size());
@@ -53,7 +46,8 @@ public class HomeServlet extends HttpServlet {
 		request.setAttribute("upcomingEvents", upcomingEvents);
 		request.setAttribute("upcomingMeetings", upcomingMeetings);
 
-		logger.debug("Forwarding to home.jsp.");
-		request.getRequestDispatcher("/home.jsp").forward(request, response);
+		logger.debug("Forwarding to the correct home.jsp path.");
+		// CORRECTION: The path must point to the new location inside /WEB-INF/views/
+		request.getRequestDispatcher("/home").forward(request, response);
 	}
 }

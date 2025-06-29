@@ -14,47 +14,46 @@ public class EventCustomFieldDAO {
 
 	public void saveCustomFieldsForEvent(int eventId, List<EventCustomField> fields) {
 		String deleteSql = "DELETE FROM event_custom_fields WHERE event_id = ?";
-		String insertSql = "INSERT INTO event_custom_fields (event_id, field_name, field_type, is_required) VALUES (?, ?, ?, ?)";
-		Connection conn = null;
+		String insertSql = "INSERT INTO event_custom_fields (event_id, field_name, field_type, is_required, field_options) VALUES (?, ?, ?, ?, ?)";
+		Connection connection = null;
 		try {
-			conn = DatabaseManager.getConnection();
-			conn.setAutoCommit(false);
+			connection = DatabaseManager.getConnection();
+			connection.setAutoCommit(false);
 
-			// Clear old fields first
-			try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
-				deleteStmt.setInt(1, eventId);
-				deleteStmt.executeUpdate();
+			try (PreparedStatement deleteStatement = connection.prepareStatement(deleteSql)) {
+				deleteStatement.setInt(1, eventId);
+				deleteStatement.executeUpdate();
 			}
 
-			// Insert new fields
 			if (fields != null && !fields.isEmpty()) {
-				try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
+				try (PreparedStatement insertStatement = connection.prepareStatement(insertSql)) {
 					for (EventCustomField field : fields) {
-						insertStmt.setInt(1, eventId);
-						insertStmt.setString(2, field.getFieldName());
-						insertStmt.setString(3, field.getFieldType());
-						insertStmt.setBoolean(4, field.isRequired());
-						insertStmt.addBatch();
+						insertStatement.setInt(1, eventId);
+						insertStatement.setString(2, field.getFieldName());
+						insertStatement.setString(3, field.getFieldType());
+						insertStatement.setBoolean(4, field.isRequired());
+						insertStatement.setString(5, field.getFieldOptions());
+						insertStatement.addBatch();
 					}
-					insertStmt.executeBatch();
+					insertStatement.executeBatch();
 				}
 			}
-			conn.commit();
+			connection.commit();
 			logger.info("Successfully saved {} custom fields for event ID {}", fields != null ? fields.size() : 0,
 					eventId);
 		} catch (SQLException e) {
 			logger.error("Error saving custom fields for event ID {}. Rolling back.", eventId, e);
-			if (conn != null)
+			if (connection != null)
 				try {
-					conn.rollback();
+					connection.rollback();
 				} catch (SQLException ex) {
 					logger.error("Rollback failed.", ex);
 				}
 		} finally {
-			if (conn != null)
+			if (connection != null)
 				try {
-					conn.setAutoCommit(true);
-					conn.close();
+					connection.setAutoCommit(true);
+					connection.close();
 				} catch (SQLException ex) {
 					logger.error("Failed to close connection.", ex);
 				}
@@ -64,16 +63,18 @@ public class EventCustomFieldDAO {
 	public List<EventCustomField> getCustomFieldsForEvent(int eventId) {
 		List<EventCustomField> fields = new ArrayList<>();
 		String sql = "SELECT * FROM event_custom_fields WHERE event_id = ? ORDER BY id";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, eventId);
-			try (ResultSet rs = pstmt.executeQuery()) {
-				while (rs.next()) {
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, eventId);
+			try (ResultSet resultSet = preparedStatement.executeQuery()) {
+				while (resultSet.next()) {
 					EventCustomField field = new EventCustomField();
-					field.setId(rs.getInt("id"));
-					field.setEventId(rs.getInt("event_id"));
-					field.setFieldName(rs.getString("field_name"));
-					field.setFieldType(rs.getString("field_type"));
-					field.setRequired(rs.getBoolean("is_required"));
+					field.setId(resultSet.getInt("id"));
+					field.setEventId(resultSet.getInt("event_id"));
+					field.setFieldName(resultSet.getString("field_name"));
+					field.setFieldType(resultSet.getString("field_type"));
+					field.setRequired(resultSet.getBoolean("is_required"));
+					field.setFieldOptions(resultSet.getString("field_options"));
 					fields.add(field);
 				}
 			}
@@ -86,11 +87,12 @@ public class EventCustomFieldDAO {
 	public void saveResponse(EventCustomFieldResponse response) {
 		String sql = "INSERT INTO event_custom_field_responses (field_id, user_id, response_value) VALUES (?, ?, ?) "
 				+ "ON DUPLICATE KEY UPDATE response_value = VALUES(response_value)";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, response.getFieldId());
-			pstmt.setInt(2, response.getUserId());
-			pstmt.setString(3, response.getResponseValue());
-			pstmt.executeUpdate();
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, response.getFieldId());
+			preparedStatement.setInt(2, response.getUserId());
+			preparedStatement.setString(3, response.getResponseValue());
+			preparedStatement.executeUpdate();
 		} catch (SQLException e) {
 			logger.error("Error saving custom field response for field {} and user {}", response.getFieldId(),
 					response.getUserId(), e);

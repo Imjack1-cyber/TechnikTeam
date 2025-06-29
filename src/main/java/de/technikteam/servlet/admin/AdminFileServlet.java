@@ -24,7 +24,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
 
 /**
- * Mapped to `/admin/files`, this servlet manages file uploads and deletions for
+ * Mapped to `/WEB-INF/views/WEB-INF/views/admin/admin_files.jsp`, this servlet manages file uploads and deletions for
  * administrators. A GET request displays the management page
  * (`admin_files.jsp`) with a list of all files grouped by category. A POST
  * request handles either uploading a new file or deleting an existing one. It
@@ -32,7 +32,7 @@ import jakarta.servlet.http.Part;
  * file.
  */
 @MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 20, maxRequestSize = 1024 * 1024 * 50)
-@WebServlet("/admin/files")
+@WebServlet("/admin/dateien")
 public class AdminFileServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminFileServlet.class);
@@ -58,7 +58,7 @@ public class AdminFileServlet extends HttpServlet {
 
 		logger.debug("Forwarding to admin_files.jsp with {} file groups and {} categories.", groupedFiles.size(),
 				allCategories.size());
-		request.getRequestDispatcher("/admin/admin_files.jsp").forward(request, response);
+		request.getRequestDispatcher("/admin/dateien").forward(request, response);
 	}
 
 	@Override
@@ -77,7 +77,7 @@ public class AdminFileServlet extends HttpServlet {
 			} else {
 				logger.warn("Received non-multipart POST with unknown or missing action: '{}'", action);
 				request.getSession().setAttribute("errorMessage", "Unbekannte Aktion empfangen.");
-				response.sendRedirect(request.getContextPath() + "/admin/files");
+				response.sendRedirect(request.getContextPath() + "/admin/dateien");
 			}
 		}
 	}
@@ -118,7 +118,7 @@ public class AdminFileServlet extends HttpServlet {
 
 				File newDbFile = new File();
 				newDbFile.setFilename(fileName);
-				newDbFile.setFilepath(fileName); // Filepath is just the filename for top-level uploads
+				newDbFile.setFilepath(fileName); 
 				newDbFile.setCategoryId(categoryId);
 				newDbFile.setRequiredRole(requiredRole);
 
@@ -139,7 +139,7 @@ public class AdminFileServlet extends HttpServlet {
 			logger.error("File upload failed.", e);
 			request.getSession().setAttribute("errorMessage", "Fehler beim Upload: " + e.getMessage());
 		}
-		response.sendRedirect(request.getContextPath() + "/admin/files");
+		response.sendRedirect(request.getContextPath() + "/admin/dateien");
 	}
 
 	private void handleDelete(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -182,7 +182,7 @@ public class AdminFileServlet extends HttpServlet {
 		} catch (NumberFormatException e) {
 			request.getSession().setAttribute("errorMessage", "Ungültige Datei-ID.");
 		}
-		response.sendRedirect(request.getContextPath() + "/admin/files");
+		response.sendRedirect(request.getContextPath() + "/admin/dateien");
 	}
 
 }

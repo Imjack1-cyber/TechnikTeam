@@ -755,4 +755,23 @@ public class EventDAO {
 		}
 		return items;
 	}
+	
+	public List<Event> getCompletedEventsForUser(int userId) {
+        List<Event> history = new ArrayList<>();
+        String sql = "SELECT e.* FROM events e " +
+                     "JOIN event_assignments ea ON e.id = ea.event_id " +
+                     "WHERE ea.user_id = ? AND e.status = 'ABGESCHLOSSEN' " +
+                     "ORDER BY e.event_datetime DESC";
+        logger.debug("Fetching completed event history for user ID: {}", userId);
+        try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, userId);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                history.add(mapResultSetToEvent(rs));
+            }
+        } catch (SQLException e) {
+            logger.error("SQL error fetching completed event history for user {}", userId, e);
+        }
+        return history;
+    }
 }

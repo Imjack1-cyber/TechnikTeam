@@ -16,7 +16,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.sql.SQLException;
 
-@WebServlet("/storage-transaction")
+@WebServlet("/lager/transaktion")
 public class StorageTransactionServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(StorageTransactionServlet.class);

@@ -15,7 +15,7 @@
 		</div>
 
 		<form id="event-modal-form"
-			action="${pageContext.request.contextPath}/admin/events"
+			action="${pageContext.request.contextPath}/WEB-INF/views/WEB-INF/views/admin/admin_events_list.jsp"
 			method="post" enctype="multipart/form-data">
 			<input type="hidden" name="action" id="event-modal-action"> <input
 				type="hidden" name="id" id="event-modal-id">
@@ -118,7 +118,7 @@
 		<button class="modal-close-btn">×</button>
 		<h3 id="assign-users-modal-title">Team zuweisen</h3>
 		<form id="assign-users-form"
-			action="${pageContext.request.contextPath}/admin/events"
+			action="${pageContext.request.contextPath}/WEB-INF/views/WEB-INF/views/admin/admin_events_list.jsp"
 			method="post">
 			<input type="hidden" name="action" value="assignUsers"> <input
 				type="hidden" name="eventId">

@@ -16,7 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Mapped to `/admin/dashboard`, this servlet serves as the entry point for the
+ * Mapped to `/WEB-INF/views/WEB-INF/views/admin/admin_dashboard.jsp`, this servlet serves as the entry point for the
  * main administrative dashboard. It uses the `StatisticsDAO` to fetch key
  * metrics like the total user count and the number of active events. It then
  * forwards this data to `admin_dashboard.jsp` for display.
@@ -48,6 +48,6 @@ public class AdminDashboardServlet extends HttpServlet {
 
 		logger.debug("Forwarding to admin_dashboard.jsp with userCount={}, activeEventCount={}, defectiveItems={}",
 				userCount, activeEventCount, defectiveItems.size());
-		request.getRequestDispatcher("/admin/admin_dashboard.jsp").forward(request, response);
+		request.getRequestDispatcher("/admin/dashboard").forward(request, response);
 	}
 }

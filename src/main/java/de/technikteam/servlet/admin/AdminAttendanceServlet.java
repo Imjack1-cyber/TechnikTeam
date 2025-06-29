@@ -20,7 +20,7 @@ import java.io.IOException;
  * updating meeting attendance records, primarily called from the modal window
  * on the administrative qualifications matrix (`admin_matrix.jsp`).
  */
-@WebServlet("/admin/attendance")
+@WebServlet("/admin/teilnahme")
 public class AdminAttendanceServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminAttendanceServlet.class);

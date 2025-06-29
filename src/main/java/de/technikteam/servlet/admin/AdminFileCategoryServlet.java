@@ -20,7 +20,7 @@ import org.apache.logging.log4j.Logger;
  * the servlet path, logs the action, and then redirects back to the main admin
  * file management page.
  */
-@WebServlet({ "/admin/categories/create", "/admin/categories/update", "/admin/categories/delete" })
+@WebServlet({ "/admin/dateien/kategorien/erstellen", "/admin/dateien/kategorien/aktualisieren", "/admin/dateien/kategorien/loeschen" })
 public class AdminFileCategoryServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminFileCategoryServlet.class);
@@ -39,7 +39,7 @@ public class AdminFileCategoryServlet extends HttpServlet {
 		logger.debug("AdminFileCategoryServlet processing POST for action path: {}", action);
 
 		try {
-			if (action.endsWith("/create")) {
+			if (action.endsWith("/erstellen")) {
 				String categoryName = req.getParameter("categoryName");
 				if (fileDAO.createCategory(categoryName)) {
 					AdminLogService.log(adminUser.getUsername(), "CREATE_FILE_CATEGORY",
@@ -47,7 +47,7 @@ public class AdminFileCategoryServlet extends HttpServlet {
 					req.getSession().setAttribute("successMessage",
 							"Kategorie '" + categoryName + "' erfolgreich erstellt.");
 				}
-			} else if (action.endsWith("/update")) {
+			} else if (action.endsWith("/aktualisieren")) {
 				int categoryId = Integer.parseInt(req.getParameter("categoryId"));
 				String newName = req.getParameter("categoryName");
 				String oldName = fileDAO.getCategoryNameById(categoryId); // Get old name for logging
@@ -56,7 +56,7 @@ public class AdminFileCategoryServlet extends HttpServlet {
 							+ "' (ID: " + categoryId + ") umbenannt in '" + newName + "'.");
 					req.getSession().setAttribute("successMessage", "Kategorie erfolgreich umbenannt.");
 				}
-			} else if (action.endsWith("/delete")) {
+			} else if (action.endsWith("/löschen")) {
 				int categoryId = Integer.parseInt(req.getParameter("categoryId"));
 				String categoryName = fileDAO.getCategoryNameById(categoryId); // Get name for logging
 				if (fileDAO.deleteCategory(categoryId)) {
@@ -70,6 +70,6 @@ public class AdminFileCategoryServlet extends HttpServlet {
 			req.getSession().setAttribute("errorMessage", "Ungültige ID für Kategorie-Aktion.");
 		}
 
-		resp.sendRedirect(req.getContextPath() + "/admin/files");
+		resp.sendRedirect(req.getContextPath() + "/admin/dateien");
 	}
 }

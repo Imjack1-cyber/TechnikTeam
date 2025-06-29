@@ -90,7 +90,7 @@ public class AdminMeetingServlet extends HttpServlet {
 			break;
 		default:
 			logger.warn("Unknown action received in doPost: {}", action);
-			resp.sendRedirect(req.getContextPath() + "/admin/courses");
+			resp.sendRedirect(req.getContextPath() + "/admin/meetings");
 			break;
 		}
 	}
@@ -106,7 +106,7 @@ public class AdminMeetingServlet extends HttpServlet {
 		req.setAttribute("meetings", meetings);
 		req.setAttribute("allUsers", allUsers);
 
-		req.getRequestDispatcher("/admin/admin_meeting_list.jsp").forward(req, resp);
+		req.getRequestDispatcher("/admin/meetings").forward(req, resp);
 	}
 
 	private void getMeetingDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
