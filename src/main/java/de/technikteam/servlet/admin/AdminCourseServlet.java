@@ -18,7 +18,8 @@ import java.util.Objects;
 
 /**
  * 
- * Mapped to /WEB-INF/views/admin/admin_course_list.jsp, this servlet manages the parent course templates.
+ * Mapped to /admin/lehrgaenge, this servlet manages the parent course
+ * templates.
  * 
  * It handles listing all course templates, and processing the creation, update,
  * 
@@ -49,7 +50,7 @@ public class AdminCourseServlet extends HttpServlet {
 		logger.info("Listing all course templates for admin view.");
 		List<Course> courseList = courseDAO.getAllCourses();
 		req.setAttribute("courseList", courseList);
-		req.getRequestDispatcher("/admin/lehrgaenge").forward(req, resp);
+		req.getRequestDispatcher("/views/admin/admin_course_list.jsp").forward(req, resp);
 	}
 
 	@Override
@@ -63,7 +64,7 @@ public class AdminCourseServlet extends HttpServlet {
 			handleCreateOrUpdate(req, resp);
 		} else {
 			logger.warn("Unknown POST action received: {}", action);
-			resp.sendRedirect(req.getContextPath() + "/admin/lehrgaenge");
+			resp.sendRedirect(req.getContextPath() + "/views/admin/admin_course_list.jsp");
 		}
 	}
 
@@ -126,7 +127,7 @@ public class AdminCourseServlet extends HttpServlet {
 				request.getSession().setAttribute("errorMessage", "Fehler beim Erstellen der Vorlage.");
 			}
 		}
-		response.sendRedirect(request.getContextPath() + "/admin/lehrgaenge");
+		response.sendRedirect(request.getContextPath() + "/views/admin/admin_course_list.jsp");
 	}
 
 	private void handleDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -150,6 +151,6 @@ public class AdminCourseServlet extends HttpServlet {
 			logger.error("Invalid course ID format for deletion.", e);
 			req.getSession().setAttribute("errorMessage", "Ungültige ID für Löschvorgang.");
 		}
-		resp.sendRedirect(req.getContextPath() + "/admin/lehrgaenge");
+		resp.sendRedirect(req.getContextPath() + "/views/admin/admin_course_list.jsp");
 	}
 }

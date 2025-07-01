@@ -16,7 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Mapped to `/WEB-INF/views/WEB-INF/views/admin/admin_log.jsp`, this servlet retrieves all entries from the
+ * Mapped to `/admin/log`, this servlet retrieves all entries from the
  * administrative action log using the `AdminLogDAO`. It then passes the
  * complete list of logs to `admin_log.jsp` for display and filtering on the
  * client side.
@@ -42,7 +42,8 @@ public class AdminLogServlet extends HttpServlet {
 			List<AdminLog> logs = adminLogDAO.getAllLogs();
 			request.setAttribute("logs", logs);
 			logger.info("Fetched {} log entries. Forwarding to JSP.", logs.size());
-			request.getRequestDispatcher("/admin/log").forward(request, response);
+			// CORRECTED: Forward to the actual JSP file path.
+			request.getRequestDispatcher("/views/admin/admin_log.jsp").forward(request, response);
 		} catch (Exception e) {
 			logger.error("A critical error occurred in AdminLogServlet doGet()", e);
 			// Redirect to a generic error page to avoid exposing stack traces to the user

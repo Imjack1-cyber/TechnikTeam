@@ -62,9 +62,8 @@ public class EventDetailsServlet extends HttpServlet {
 			event.setSkillRequirements(eventDAO.getSkillRequirementsForEvent(eventId));
 			event.setReservedItems(eventDAO.getReservedItemsForEvent(eventId));
 
-			String userRoleForAttachments = (user.getRoleName().equals("ADMIN") || user.getId() == event.getLeaderUserId())
-					? "ADMIN"
-					: "NUTZER";
+			String userRoleForAttachments = (user.getRoleName().equals("ADMIN")
+					|| user.getId() == event.getLeaderUserId()) ? "ADMIN" : "NUTZER";
 			event.setAttachments(attachmentDAO.getAttachmentsForEvent(eventId, userRoleForAttachments));
 
 			List<User> assignedUsers = eventDAO.getAssignedUsersForEvent(eventId);
@@ -77,7 +76,8 @@ public class EventDetailsServlet extends HttpServlet {
 				event.setChatMessages(chatDAO.getMessagesForEvent(eventId));
 			}
 
-			// For Admins and Users, provide the list of assigned users for the task assignment
+			// For Admins and Users, provide the list of assigned users for the task
+			// assignment
 			// dropdown
 			if ("ADMIN".equalsIgnoreCase(user.getRoleName()) || "NUTZER".equalsIgnoreCase(user.getRoleName())) {
 				request.setAttribute("assignedUsers", assignedUsers);
@@ -91,7 +91,8 @@ public class EventDetailsServlet extends HttpServlet {
 
 			request.setAttribute("event", event);
 			logger.debug("Forwarding to eventDetails.jsp for event '{}'", event.getName());
-			request.getRequestDispatcher("/veranstaltungen/details").forward(request, response);
+			// CORRECTED: Forward to the actual JSP file path.
+			request.getRequestDispatcher("/views/public/eventDetails.jsp").forward(request, response);
 
 		} catch (NumberFormatException e) {
 			logger.error("Invalid event ID format in request.", e);

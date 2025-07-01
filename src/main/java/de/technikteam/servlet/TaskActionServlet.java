@@ -19,7 +19,7 @@ import java.io.IOException;
  * "ERLEDIGT") when a user checks a checkbox corresponding to their assigned
  * task.
  */
-@WebServlet("/aufgaben/aktionen")
+@WebServlet("/task-action")
 public class TaskActionServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(TaskActionServlet.class);

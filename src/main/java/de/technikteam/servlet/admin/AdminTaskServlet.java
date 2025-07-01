@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
  * trail. It's designed to be called via forms or AJAX from the event details
  * page.
  */
-@WebServlet("/admin/veranstaltungen/aufgaben")
+@WebServlet("/admin/tasks")
 public class AdminTaskServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminTaskServlet.class);

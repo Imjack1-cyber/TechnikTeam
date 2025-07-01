@@ -139,7 +139,8 @@ public class AdminEventServlet extends HttpServlet {
 		req.setAttribute("allCourses", allCourses);
 		req.setAttribute("allItems", allItems);
 		req.setAttribute("allUsers", allUsers);
-		req.getRequestDispatcher("/admin/veranstaltungen").forward(req, resp);
+		// CORRECTED: Forward to the actual JSP file path.
+		req.getRequestDispatcher("/views/admin/admin_events_list.jsp").forward(req, resp);
 	}
 
 	private void getEventDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {

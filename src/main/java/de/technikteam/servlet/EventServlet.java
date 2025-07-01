@@ -15,12 +15,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * Mapped to `/events`, this servlet is responsible for the main event listing
- * page for a logged-in user. It fetches a list of all upcoming events for which
- * the user is qualified, along with their specific attendance status for each
- * event (e.g., ZUGEWIESEN, ANGEMELDET, OFFEN). It then passes this data to
- * `events.jsp`.
+ * Mapped to `/veranstaltungen`, this servlet is responsible for the main event
+ * listing page for a logged-in user. It fetches a list of all upcoming events
+ * for which the user is qualified, along with their specific attendance status
+ * for each event (e.g., ZUGEWIESEN, ANGEMELDET, OFFEN). It then passes this
+ * data to `events.jsp`.
  */
+// CORRECTED: The servlet mapping is changed to /veranstaltungen to match all links and user expectations.
 @WebServlet("/veranstaltungen")
 public class EventServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
@@ -44,6 +45,7 @@ public class EventServlet extends HttpServlet {
 		request.setAttribute("events", events);
 		logger.debug("Found {} upcoming events for user '{}'. Forwarding to events.jsp.", events.size(),
 				user.getUsername());
-		request.getRequestDispatcher("/veranstaltungen").forward(request, response);
+		// CORRECTED: Forward to the actual JSP file path.
+		request.getRequestDispatcher("/views/public/events.jsp").forward(request, response);
 	}
 }

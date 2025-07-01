@@ -16,33 +16,35 @@ import java.util.List;
 // CORRECTION: Add the WebServlet annotation to map this servlet to the "/profile" URL.
 @WebServlet("/profil")
 public class ProfileServlet extends HttpServlet {
-    private static final long serialVersionUID = 1L;
-    private EventDAO eventDAO;
-    private UserQualificationsDAO qualificationsDAO;
+	private static final long serialVersionUID = 1L;
+	private EventDAO eventDAO;
+	private UserQualificationsDAO qualificationsDAO;
 
-    @Override
-    public void init() {
-        eventDAO = new EventDAO();
-        qualificationsDAO = new UserQualificationsDAO();
-    }
+	@Override
+	public void init() {
+		eventDAO = new EventDAO();
+		qualificationsDAO = new UserQualificationsDAO();
+	}
 
-    @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        User user = (User) request.getSession().getAttribute("user");
-        if (user == null) {
-            response.sendRedirect(request.getContextPath() + "/WEB-INF/views/auth/login.jsp");
-            return;
-        }
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		User user = (User) request.getSession().getAttribute("user");
+		if (user == null) {
+			response.sendRedirect(request.getContextPath() + "/login");
+			return;
+		}
 
-        // Fetch all data needed for the profile page
-        List<Event> eventHistory = eventDAO.getEventHistoryForUser(user.getId());
-        List<UserQualification> qualifications = qualificationsDAO.getQualificationsForUser(user.getId());
+		// Fetch all data needed for the profile page
+		List<Event> eventHistory = eventDAO.getEventHistoryForUser(user.getId());
+		List<UserQualification> qualifications = qualificationsDAO.getQualificationsForUser(user.getId());
 
-        // Set the data as request attributes for the JSP
-        request.setAttribute("eventHistory", eventHistory);
-        request.setAttribute("qualifications", qualifications);
-        
-        // Forward the request to the JSP for rendering
-        request.getRequestDispatcher("/profile").forward(request, response);
-    }
+		// Set the data as request attributes for the JSP
+		request.setAttribute("eventHistory", eventHistory);
+		request.setAttribute("qualifications", qualifications);
+
+		// Forward the request to the JSP for rendering
+		// CORRECTED: Forward to the actual JSP file path.
+		request.getRequestDispatcher("/views/public/profile.jsp").forward(request, response);
+	}
 }

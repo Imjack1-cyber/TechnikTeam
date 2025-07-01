@@ -20,7 +20,7 @@ import org.apache.logging.log4j.Logger;
  * This servlet, mapped to `/lager`, is responsible for displaying the main
  * inventory/storage page for users. On a GET request, it fetches all storage
  * items from the database, grouped by their physical location, and forwards
- * this structured data to `/WEB-INF/views/public/lager.jsp` for rendering.
+ * this structured data to `/views/public/lager.jsp` for rendering.
  */
 @WebServlet("/lager")
 public class StorageServlet extends HttpServlet {
@@ -45,7 +45,8 @@ public class StorageServlet extends HttpServlet {
 
 		request.setAttribute("storageData", storageData);
 		request.setAttribute("activeEvents", activeEvents);
-		logger.debug("Forwarding {} location groups to /WEB-INF/views/public/lager.jsp.", storageData.size());
-		request.getRequestDispatcher("/lager").forward(request, response);
+		logger.debug("Forwarding {} location groups to /views/public/lager.jsp.", storageData.size());
+		// CORRECTED: Forward to the actual JSP file path.
+		request.getRequestDispatcher("/views/public/lager.jsp").forward(request, response);
 	}
 }

@@ -35,13 +35,15 @@ public class AdminReportServlet extends HttpServlet {
 		if (reportType == null) {
 			logger.debug("Serving main reports menu.");
 			request.setAttribute("totalInventoryValue", reportDAO.getTotalInventoryValue());
-			request.getRequestDispatcher("/admin/berichte").forward(request, response);
+			// CORRECTED: Forward to the report menu JSP.
+			request.getRequestDispatcher("/views/admin/admin_reports.jsp").forward(request, response);
 			return;
 		}
 
 		List<Map<String, Object>> reportData = null;
 		String reportTitle = "";
-		String jspPath = "/admin/berichte";
+		// CORRECTED: The JSP path for displaying a single report.
+		String jspPath = "/views/admin/report_display.jsp";
 
 		switch (reportType) {
 		case "user_activity":

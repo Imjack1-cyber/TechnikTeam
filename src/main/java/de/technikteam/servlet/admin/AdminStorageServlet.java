@@ -48,9 +48,13 @@ public class AdminStorageServlet extends HttpServlet {
 
 		try {
 			logger.info("Listing all storage items for admin view.");
-			Map<String, List<StorageItem>> groupedItems = storageDAO.getAllItemsGroupedByLocation();
-			request.setAttribute("groupedItems", groupedItems);
-			request.getRequestDispatcher("/WEB-INF/views/admin/admin_storage_list.jsp").forward(request, response);
+			// CORRECTED: Fetch a flat List of all items, which is what the
+			// admin_storage_list.jsp expects.
+			List<StorageItem> storageList = storageDAO.getAllItems();
+			// CORRECTED: Set the attribute with the name "storageList" to match the JSP's
+			// <c:forEach> tag.
+			request.setAttribute("storageList", storageList);
+			request.getRequestDispatcher("/views/admin/admin_storage_list.jsp").forward(request, response);
 		} catch (Exception e) {
 			logger.error("Error in doGet of AdminStorageServlet", e);
 			request.getSession().setAttribute("errorMessage", "Ein Fehler ist aufgetreten: " + e.getMessage());

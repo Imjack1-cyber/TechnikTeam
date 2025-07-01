@@ -21,7 +21,8 @@ import java.util.List;
  * status (e.g., ANGEMELDET, ABGEMELDET, OFFEN). This data is then passed to
  * `lehrgaenge.jsp` for rendering.
  */
-@WebServlet("/meeting")
+// CORRECTED: The servlet mapping was /meeting, but all links and context point to /lehrgaenge.
+@WebServlet("/lehrgaenge")
 public class MeetingServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(MeetingServlet.class);
@@ -42,6 +43,7 @@ public class MeetingServlet extends HttpServlet {
 
 		request.setAttribute("meetings", meetings);
 		logger.debug("Found {} upcoming meetings. Forwarding to lehrgaenge.jsp.", meetings.size());
-		request.getRequestDispatcher("/meeting").forward(request, response);
+		// CORRECTED: Forward to the actual JSP file path.
+		request.getRequestDispatcher("/views/public/lehrgaenge.jsp").forward(request, response);
 	}
 }

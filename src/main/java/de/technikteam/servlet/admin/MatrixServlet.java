@@ -24,7 +24,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Mapped to `/WEB-INF/views/WEB-INF/views/admin/admin_matrix.jsp`, this servlet constructs the data for the
+ * Mapped to `/admin/matrix`, this servlet constructs the data for the
  * comprehensive qualification and attendance matrix. It fetches all users, all
  * course templates, all meetings for each course, and all attendance records.
  * It then organizes this data and forwards it to `admin_matrix.jsp` for
@@ -84,6 +84,7 @@ public class MatrixServlet extends HttpServlet {
 		request.setAttribute("attendanceMap", attendanceMap);
 
 		logger.info("Data generation for matrix complete. Forwarding to admin_matrix.jsp.");
-		request.getRequestDispatcher("/admin/matrix").forward(request, response);
+		// CORRECTED: Forward to the actual JSP file path.
+		request.getRequestDispatcher("/views/admin/admin_matrix.jsp").forward(request, response);
 	}
 }

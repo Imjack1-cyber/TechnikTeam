@@ -34,14 +34,14 @@ public class PasswordServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		logger.debug("GET request received, showing password change form.");
-		request.getRequestDispatcher("/WEB-INF/views/auth/passwort.jsp").forward(request, response);
+		request.getRequestDispatcher("/views/public/passwort.jsp").forward(request, response);
 	}
 
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		User user = (User) request.getSession().getAttribute("user");
 		if (user == null) {
-			response.sendRedirect(request.getContextPath() + "/WEB-INF/views/auth/login.jsp");
+			response.sendRedirect(request.getContextPath() + "/login");
 			return;
 		}
 
@@ -56,21 +56,21 @@ public class PasswordServlet extends HttpServlet {
 		if (authenticatedUser == null) {
 			logger.warn("Password change failed for {}: incorrect current password.", user.getUsername());
 			request.setAttribute("errorMessage", "Das aktuelle Passwort ist nicht korrekt.");
-			request.getRequestDispatcher("/WEB-INF/views/auth/passwort.jsp").forward(request, response);
+			request.getRequestDispatcher("/views/public/passwort.jsp").forward(request, response);
 			return;
 		}
 
 		if (!newPassword.equals(confirmPassword)) {
 			logger.warn("Password change failed for {}: new passwords do not match.", user.getUsername());
 			request.setAttribute("errorMessage", "Die neuen Passwörter stimmen nicht überein.");
-			request.getRequestDispatcher("/WEB-INF/views/auth/passwort.jsp").forward(request, response);
+			request.getRequestDispatcher("/views/public/passwort.jsp").forward(request, response);
 			return;
 		}
 
 		if (newPassword.trim().isEmpty()) {
 			logger.warn("Password change failed for {}: new password is empty.", user.getUsername());
 			request.setAttribute("errorMessage", "Das neue Passwort darf nicht leer sein.");
-			request.getRequestDispatcher("/WEB-INF/views/auth/passwort.jsp").forward(request, response);
+			request.getRequestDispatcher("/views/public/passwort.jsp").forward(request, response);
 			return;
 		}
 
@@ -82,6 +82,7 @@ public class PasswordServlet extends HttpServlet {
 			logger.error("Password change failed for {} due to a DAO error.", user.getUsername());
 			request.setAttribute("errorMessage", "Ein interner Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
 		}
-		request.getRequestDispatcher("/passwort").forward(request, response);
+		// CORRECTED: Forward to the actual JSP file path.
+		request.getRequestDispatcher("/views/public/passwort.jsp").forward(request, response);
 	}
 }

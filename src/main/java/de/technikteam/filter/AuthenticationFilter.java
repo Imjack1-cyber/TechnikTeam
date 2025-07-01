@@ -28,8 +28,9 @@ public class AuthenticationFilter implements Filter {
 	private static final Set<String> PUBLIC_PATHS = new HashSet<>(Arrays.asList("/login", "/logout"));
 
 	// CORRECTION: The /error directory prefix is correct for allowing error pages.
+	// ADDED: /public to allow access to public APIs like the iCal feed.
 	private static final Set<String> PUBLIC_RESOURCE_PREFIXES = new HashSet<>(
-			Arrays.asList("/css", "/js", "/images", "/error"));
+			Arrays.asList("/css", "/js", "/images", "/error", "/public"));
 
 	@Override
 	public void init(FilterConfig filterConfig) throws ServletException {

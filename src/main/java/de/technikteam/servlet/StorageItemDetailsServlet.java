@@ -16,10 +16,10 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * REDESIGN: Mapped to `/storage-item`, this servlet now displays a
- * comprehensive, public-facing detail page for a single inventory item. It
- * fetches the item's core data AND its full transaction history ("chronic"),
- * forwarding both to `storage_item_details.jsp` for rendering a unified view.
+ * Mapped to `/lager/details`, this servlet now displays a comprehensive,
+ * public-facing detail page for a single inventory item. It fetches the item's
+ * core data AND its full transaction history ("chronic"), forwarding both to
+ * `storage_item_details.jsp` for rendering a unified view.
  */
 @WebServlet("/lager/details")
 public class StorageItemDetailsServlet extends HttpServlet {
@@ -57,7 +57,8 @@ public class StorageItemDetailsServlet extends HttpServlet {
 
 			logger.debug("Forwarding to storage_item_details.jsp for item '{}' with {} history entries.",
 					item.getName(), history.size());
-			request.getRequestDispatcher("/lager/details").forward(request, response);
+			// CORRECTED: Forward to the actual JSP file path.
+			request.getRequestDispatcher("/views/public/storage_item_details.jsp").forward(request, response);
 
 		} catch (NumberFormatException e) {
 			logger.error("Invalid storage item ID format in request.", e);

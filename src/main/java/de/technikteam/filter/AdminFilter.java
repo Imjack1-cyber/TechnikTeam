@@ -27,15 +27,18 @@ public class AdminFilter implements Filter {
 		String path = request.getRequestURI().substring(request.getContextPath().length());
 		logger.trace("AdminFilter is processing request for path: '{}'", path);
 
+		// 1. Check if user is logged in at all.
 		if (session == null || session.getAttribute("user") == null) {
 			logger.warn("Admin access DENIED to path '{}'. No active session found. Redirecting to login.", path);
-			response.sendRedirect(request.getContextPath() + "/WEB-INF/views/auth/login.jsp");
+			// Redirect to the /login servlet, not a direct JSP.
+			response.sendRedirect(request.getContextPath() + "/login");
 			return;
 		}
 
 		User user = (User) session.getAttribute("user");
 		Set<String> permissions = user.getPermissions();
 
+		// 2. Check if the user's permissions were loaded correctly.
 		if (permissions == null) {
 			logger.error("Permissions set is NULL on user object in session for user '{}'. Denying access.",
 					user.getUsername());
@@ -43,22 +46,25 @@ public class AdminFilter implements Filter {
 			return;
 		}
 
-		// CORRECTION: This is the main logical fix.
-		// If the user has the master permission, let them access ANY /admin/* page.
+		// 3. Check for the master "ACCESS_ADMIN_PANEL" permission. This grants access
+		// to everything under /admin/*.
 		if (permissions.contains("ACCESS_ADMIN_PANEL")) {
 			logger.debug("ADMIN access GRANTED for user '{}' to path '{}' via master permission.", user.getUsername(),
 					path);
 			chain.doFilter(request, response);
-			return; // <<<<< IMPORTANT: Return here to stop further checks.
+			return;
 		}
 
-		// This block is now ONLY for users who are NOT full admins, like LAGERWART.
+		// 4. If the user is NOT a full admin, check for specific, limited permissions.
 		boolean hasSpecificPermission = false;
-		if (path.startsWith("/admin/storage") && permissions.contains("STORAGE_MANAGE")) {
+		// CORRECTED: The path for the storage servlet is /admin/lager, not
+		// /admin/storage.
+		if (path.startsWith("/admin/lager") && permissions.contains("STORAGE_MANAGE")) {
 			hasSpecificPermission = true;
-		} else if (path.startsWith("/WEB-INF/views/admin/admin_defect_list.jsp") && permissions.contains("DEFECTS_MANAGE")) {
+		} else if (path.startsWith("/admin/defekte") && permissions.contains("DEFECTS_MANAGE")) {
 			hasSpecificPermission = true;
 		}
+		// Add other 'else if' blocks here for any other specific, limited admin roles.
 
 		if (hasSpecificPermission) {
 			logger.debug("Specific admin access GRANTED for user '{}' (Role: '{}') to path '{}'.", user.getUsername(),
@@ -67,8 +73,8 @@ public class AdminFilter implements Filter {
 			return;
 		}
 
-		// If the user is not a full admin and does not have specific permission for the
-		// page, deny access.
+		// 5. If the user is not a full admin and has no specific permissions for the
+		// requested page, deny access.
 		logger.warn("ADMIN access DENIED for user '{}' (Role: '{}') to path '{}'. Redirecting to user home.",
 				user.getUsername(), user.getRoleName(), path);
 		request.getSession().setAttribute("accessErrorMessage",

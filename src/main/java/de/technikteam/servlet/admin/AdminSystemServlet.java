@@ -10,12 +10,13 @@ import java.io.IOException;
 /**
  * Forwards to the system status dashboard page.
  */
-@WebServlet("/admin/system/dashboard")
+@WebServlet("/admin/system")
 public class AdminSystemServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		request.getRequestDispatcher("/admin/system/dashboard").forward(request, response);
+		// CORRECTED: Forward to the actual JSP file path.
+		request.getRequestDispatcher("/views/admin/admin_system.jsp").forward(request, response);
 	}
 }

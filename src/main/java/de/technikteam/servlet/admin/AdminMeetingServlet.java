@@ -106,7 +106,8 @@ public class AdminMeetingServlet extends HttpServlet {
 		req.setAttribute("meetings", meetings);
 		req.setAttribute("allUsers", allUsers);
 
-		req.getRequestDispatcher("/admin/meetings").forward(req, resp);
+		// CORRECTED: Forward to the actual JSP file path.
+		req.getRequestDispatcher("/views/admin/admin_meeting_list.jsp").forward(req, resp);
 	}
 
 	private void getMeetingDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {

@@ -33,6 +33,7 @@ public class LogoutServlet extends HttpServlet {
 		}
 
 		request.setAttribute("username", username);
-		request.getRequestDispatcher("/logout").forward(request, response);
+		// CORRECTED: Forward to the actual JSP file path.
+		request.getRequestDispatcher("/views/auth/logout.jsp").forward(request, response);
 	}
 }

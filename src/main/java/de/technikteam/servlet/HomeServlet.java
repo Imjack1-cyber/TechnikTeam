@@ -47,7 +47,7 @@ public class HomeServlet extends HttpServlet {
 		request.setAttribute("upcomingMeetings", upcomingMeetings);
 
 		logger.debug("Forwarding to the correct home.jsp path.");
-		// CORRECTION: The path must point to the new location inside /WEB-INF/views/
-		request.getRequestDispatcher("/home").forward(request, response);
+		// CORRECTED: The path must point to the new location inside /views/
+		request.getRequestDispatcher("/views/public/home.jsp").forward(request, response);
 	}
 }

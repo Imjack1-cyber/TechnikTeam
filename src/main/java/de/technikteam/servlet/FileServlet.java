@@ -60,6 +60,7 @@ public class FileServlet extends HttpServlet {
 		// 4. Send the modified map to the JSP.
 		request.setAttribute("fileData", fileData);
 		logger.debug("Forwarding file data (including virtual editor link) to dateien.jsp.");
-		request.getRequestDispatcher("/dateien").forward(request, response);
+		// CORRECTED: Forward to the actual JSP file path.
+		request.getRequestDispatcher("/views/public/dateien.jsp").forward(request, response);
 	}
 }

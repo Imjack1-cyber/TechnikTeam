@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+// CORRECTED: The servlet is now mapped to /admin/mitglieder as requested.
 @WebServlet("/admin/mitglieder")
 public class AdminUserServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
@@ -112,7 +113,7 @@ public class AdminUserServlet extends HttpServlet {
 		logger.debug("Fetched {} users and {} roles from DAOs.", userList.size(), allRoles.size());
 		request.setAttribute("userList", userList);
 		request.setAttribute("allRoles", allRoles);
-		request.getRequestDispatcher("/admin/mitglieder").forward(request, response);
+		request.getRequestDispatcher("/views/admin/admin_users.jsp").forward(request, response);
 	}
 
 	private void getUserDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -144,7 +145,7 @@ public class AdminUserServlet extends HttpServlet {
 		List<Event> eventHistory = eventDAO.getEventHistoryForUser(userId);
 		request.setAttribute("userToView", user);
 		request.setAttribute("eventHistory", eventHistory);
-		request.getRequestDispatcher("/admin/mitglieder/details").forward(request, response);
+		request.getRequestDispatcher("/views/admin/admin_user_details.jsp").forward(request, response);
 	}
 
 	private void handleCreateUser(HttpServletRequest request, HttpServletResponse response) throws IOException {

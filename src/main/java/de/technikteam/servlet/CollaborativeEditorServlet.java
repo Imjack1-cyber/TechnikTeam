@@ -14,12 +14,15 @@ import jakarta.servlet.http.HttpServletResponse;
  * functionality for the editor is handled client-side by JavaScript and the
  * `DocumentApiServlet`.
  */
-@WebServlet("/dateien/texte")
+@WebServlet("/editor-page")
 public class CollaborativeEditorServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		request.getRequestDispatcher("/dateien/texte").forward(request, response);
+		// CORRECTED: Forward to the actual JSP file path. Note the original servlet
+		// mapping was `/dateien/texte` but the JSP link uses `/editor-page`. I'll map
+		// this to the JSP link.
+		request.getRequestDispatcher("views/public/collaborative_editor.jsp").forward(request, response);
 	}
 }

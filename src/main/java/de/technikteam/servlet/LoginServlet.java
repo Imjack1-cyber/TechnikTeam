@@ -50,7 +50,8 @@ public class LoginServlet extends HttpServlet {
 		} else {
 			logger.warn("Login failed for username: {}. Invalid credentials.", username);
 			request.setAttribute("errorMessage", "Benutzername oder Passwort ungültig.");
-			request.getRequestDispatcher("/login").forward(request, response);
+			// CORRECTED: Forward to the actual JSP file path.
+			request.getRequestDispatcher("/views/auth/login.jsp").forward(request, response);
 		}
 	}
 
@@ -58,6 +59,7 @@ public class LoginServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		logger.debug("GET request received for /login. Forwarding to login JSP.");
-		request.getRequestDispatcher("/login").forward(request, response);
+		// CORRECTED: Forward to the actual JSP file path.
+		request.getRequestDispatcher("/views/auth/login.jsp").forward(request, response);
 	}
 }

@@ -72,7 +72,8 @@ public class MeetingDetailsServlet extends HttpServlet {
 			request.setAttribute("meeting", meeting);
 
 			logger.debug("Forwarding to meetingDetails.jsp for meeting '{}'", meeting.getName());
-			request.getRequestDispatcher("/meeting/details").forward(request, response);
+			// CORRECTED: Forward to the actual JSP file path.
+			request.getRequestDispatcher("/views/public/meetingDetails.jsp").forward(request, response);
 
 		} catch (NumberFormatException e) {
 			logger.error("Invalid meeting ID format: {}", meetingIdParam, e);
