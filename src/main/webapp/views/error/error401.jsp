@@ -29,7 +29,6 @@
 
 	<div id="redirect-container"
 		style="margin-top: 1.5rem; opacity: 0; transition: opacity 0.5s;">
-		<%-- CORRECTED: Link must point to the /login servlet URL --%>
 		<a href="${pageContext.request.contextPath}/login"
 			class="btn btn-success"> <i class="fas fa-sign-in-alt"></i> Zur
 			Anmeldeseite
@@ -37,40 +36,5 @@
 	</div>
 </div>
 
-<style>
-/* Add these styles to your main CSS or keep them here */
-.card-scanner {
-	width: 100%;
-	max-width: 350px;
-	background: #343a40;
-	padding: 1.5rem;
-	border-radius: 10px;
-	box-shadow: inset 0 0 15px #000;
-}
-
-.scanner-light {
-	height: 10px;
-	background: #28a745;
-	border-radius: 5px;
-	margin-bottom: 1.5rem;
-	box-shadow: 0 0 10px #28a745;
-}
-
-.card-slot {
-	background: #161b22;
-	border: 2px solid #495057;
-	border-radius: 8px;
-	padding: 1.5rem;
-	color: #fff;
-}
-
-#scanner-status {
-	color: #ffc107;
-	font-size: 2rem;
-	letter-spacing: 2px;
-	margin: 0;
-}
-</style>
-
 <c:import url="/WEB-INF/jspf/error_footer.jspf" />
-<script type="text/javascript" src="/js/error/error401.js"></script>
+<script src="${pageContext.request.contextPath}/js/error/error401.js"></script>

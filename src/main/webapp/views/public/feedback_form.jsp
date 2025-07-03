@@ -2,7 +2,7 @@
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
-<c:import url="/WEB-INF/jspf/header.jspf">
+<c:import url="/WEB-INF/jspf/main_header.jspf">
 	<c:param name="pageTitle" value="Feedback geben" />
 </c:import>
 
@@ -44,32 +44,4 @@
 	</div>
 </div>
 
-<style>
-.star-rating {
-	display: flex;
-	flex-direction: row-reverse;
-	justify-content: flex-end;
-	font-size: 2em;
-}
-
-.star-rating input {
-	display: none;
-}
-
-.star-rating label {
-	color: #ccc;
-	cursor: pointer;
-	transition: color 0.2s;
-}
-
-.star-rating label:before {
-	content: '★';
-}
-
-.star-rating input:checked ~ label, .star-rating:not(:checked)>label:hover,
-	.star-rating:not(:checked)>label:hover ~ label {
-	color: #ffc107;
-}
-</style>
-
-<c:import url="/WEB-INF/jspf/footer.jspf" />
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />

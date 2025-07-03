@@ -24,7 +24,7 @@
 			</div>
 			<span>bash -- technik-team</span>
 		</div>
-		<div id="terminal-body"></div>
+		<div id="terminal-body" class="terminal-body"></div>
 	</div>
 
 	<div id="home-link-container"
@@ -36,91 +36,5 @@
 	</div>
 </div>
 
-<style>
-.terminal-window {
-	width: 100%;
-	max-width: 650px;
-	background: #000;
-	border-radius: 8px;
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-	font-family: monospace, monospace;
-}
-
-.terminal-header {
-	background: #333;
-	padding: 8px;
-	border-top-left-radius: 8px;
-	border-top-right-radius: 8px;
-	display: flex;
-	align-items: center;
-	color: #ccc;
-	font-size: 0.9em;
-}
-
-.terminal-buttons {
-	display: flex;
-	gap: 6px;
-	margin-right: 12px;
-}
-
-.term-btn {
-	display: block;
-	width: 12px;
-	height: 12px;
-	border-radius: 50%;
-}
-
-.term-btn.close {
-	background: #ff5f56;
-}
-
-.term-btn.min {
-	background: #ffbd2e;
-}
-
-.term-btn.max {
-	background: #27c93f;
-}
-
-#terminal-body {
-	padding: 1rem;
-	height: 200px;
-	overflow-y: auto;
-	text-align: left;
-}
-
-#terminal-body p {
-	margin: 0;
-	white-space: pre-wrap;
-	word-break: break-all;
-}
-
-#terminal-body .prompt {
-	color: var(--success-color);
-}
-
-#terminal-body .command {
-	color: #fff;
-}
-
-#terminal-body .error {
-	color: var(--danger-color);
-}
-
-#terminal-body .info {
-	color: var(--info-color);
-}
-
-#terminal-body .link {
-	color: var(--success-color);
-	text-decoration: underline;
-	cursor: pointer;
-}
-
-#terminal-body .cursor {
-	background-color: #fff;
-}
-</style>
-
 <c:import url="/WEB-INF/jspf/error_footer.jspf" />
-<script type="text/javascript" src="/js/error/error404.js"></script>
+<script src="${pageContext.request.contextPath}/js/error/error404.js"></script>

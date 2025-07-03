@@ -27,69 +27,12 @@
 	</div>
 </div>
 
-<style>
-/* Add these styles to your main CSS or keep them here */
-.protocol-droid-console {
-	width: 100%;
-	max-width: 600px;
-	background: #e9ecef;
-	color: #343a40;
-	border: 3px solid #adb5bd;
-	border-radius: 8px;
-	font-family: 'Courier New', Courier, monospace;
-	position: relative;
-	padding-top: 50px;
-}
-
-[data-theme="dark"] .protocol-droid-console {
-	background: #212529;
-	color: #ced4da;
-	border-color: #495057;
-}
-
-.droid-eye {
-	position: absolute;
-	top: 15px;
-	left: 50%;
-	transform: translateX(-50%);
-	width: 20px;
-	height: 20px;
-	background: #dc3545;
-	border-radius: 50%;
-	box-shadow: 0 0 10px #f87171;
-	animation: eye-scan 4s linear infinite;
-}
-
-@
-keyframes eye-scan { 0%, 100% {
-	background: #dc3545;
-}
-
-50
-%
-{
-background
-:
-#ffc107;
-}
-}
-#droid-output {
-	padding: 1rem;
-	height: 200px;
-	overflow-y: auto;
-	text-align: left;
-	white-space: pre-wrap;
-	word-break: break-all;
-}
-</style>
-
 <c:import url="/WEB-INF/jspf/error_footer.jspf" />
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const output = document.getElementById('droid-output');
     const redirectContainer = document.getElementById('redirect-container');
 
-    // CORRECTION: Removed the line that accessed the non-existent 'method' property.
     const lines = [
         'INITIATING DATASTREAM ANALYSIS...',
         'PACKET RECEIVED. SIZE: ${pageContext.request.contentLength > 0 ? pageContext.request.contentLength : "UNKNOWN"} BYTES.',

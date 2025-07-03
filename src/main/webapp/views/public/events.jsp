@@ -3,7 +3,6 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
-<%-- CORRECTED: Import uses absolute path and correct filename --%>
 <c:import url="/WEB-INF/jspf/main_header.jspf">
 	<c:param name="pageTitle" value="Veranstaltungen" />
 </c:import>
@@ -85,7 +84,7 @@
 <!-- Signup Modal -->
 <div class="modal-overlay" id="signup-modal">
 	<div class="modal-content">
-		<button class="modal-close-btn">×</button>
+		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
 		<h3 id="signup-modal-title">Anmeldung</h3>
 		<form id="signup-form"
 			action="${pageContext.request.contextPath}/event-action"
@@ -100,6 +99,5 @@
 </div>
 
 <c:import url="/WEB-INF/jspf/table_scripts.jspf" />
-<%-- CORRECTED: Import uses absolute path and correct filename --%>
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
-<script type="text/javascript" src="/js/public/events.js"></script>
+<script src="${pageContext.request.contextPath}/js/public/events.js"></script>

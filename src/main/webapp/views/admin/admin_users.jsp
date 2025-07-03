@@ -16,14 +16,8 @@
 <c:import url="/WEB-INF/jspf/message_banner.jspf" />
 
 <div class="table-controls">
-	<c:set var="hasPermission" value="false" />
-	<c:forEach var="p" items="${userPermissions}">
-		<c:if test="${p == 'USER_CREATE'}">
-			<c:set var="hasPermission" value="${true}" />
-		</c:if>
-	</c:forEach>
-	<c:if test="${hasPermission}">
-		<button type="button" class="btn" id="new-user-btn">
+	<c:if test="${userPermissions.contains('USER_CREATE')}">
+		<button type="button" class="btn btn-success" id="new-user-btn">
 			<i class="fas fa-user-plus"></i> Neuen Benutzer anlegen
 		</button>
 	</c:if>
@@ -43,36 +37,22 @@
 				<span>Rolle:</span> <span>${user.roleName}</span>
 			</div>
 			<div class="card-actions">
-				<c:set var="hasPermission" value="false" />
-				<c:forEach var="p" items="${userPermissions}">
-					<c:if test="${p == 'USER_UPDATE'}">
-						<c:set var="hasPermission" value="${true}" />
-					</c:if>
-				</c:forEach>
-				<c:if test="${hasPermission}">
-					<%-- CORRECTED: The data-fetch-url must point to the correct servlet URL --%>
+				<c:if test="${userPermissions.contains('USER_UPDATE')}">
 					<button type="button" class="btn btn-small edit-user-btn"
 						data-fetch-url="<c:url value='/admin/mitglieder?action=getUserData&id=${user.id}'/>">Bearbeiten</button>
 				</c:if>
 				<a
 					href="<c:url value='/admin/mitglieder?action=details&id=${user.id}'/>"
 					class="btn btn-small">Details</a>
-				<c:if test="${sessionScope.user.id != user.id}">
-					<c:set var="hasPermission" value="false" />
-					<c:forEach var="p" items="${userPermissions}">
-						<c:if test="${p == 'USER_DELETE'}">
-							<c:set var="hasPermission" value="${true}" />
-						</c:if>
-					</c:forEach>
-					<c:if test="${hasPermission}">
-						<form action="<c:url value='/admin/mitglieder'/>" method="post"
-							class="js-confirm-form"
-							data-confirm-message="Benutzer '${fn:escapeXml(user.username)}' wirklich löschen?">
-							<input type="hidden" name="action" value="delete"><input
-								type="hidden" name="userId" value="${user.id}">
-							<button type="submit" class="btn btn-small btn-danger">Löschen</button>
-						</form>
-					</c:if>
+				<c:if
+					test="${sessionScope.user.id != user.id and userPermissions.contains('USER_DELETE')}">
+					<form action="<c:url value='/admin/mitglieder'/>" method="post"
+						class="js-confirm-form"
+						data-confirm-message="Benutzer '${fn:escapeXml(user.username)}' wirklich löschen?">
+						<input type="hidden" name="action" value="delete"><input
+							type="hidden" name="userId" value="${user.id}">
+						<button type="submit" class="btn btn-small btn-danger">Löschen</button>
+					</form>
 				</c:if>
 			</div>
 		</div>
@@ -96,42 +76,15 @@
 					<td>${user.id}</td>
 					<td>${user.username}</td>
 					<td>${user.roleName}</td>
-					<td style="display: flex; gap: 0.5rem; flex-wrap: wrap;"><c:set
-							var="hasPermission" value="false" /> <c:forEach var="p"
-							items="${userPermissions}">
-							<c:if test="${p == 'USER_UPDATE'}">
-								<c:set var="hasPermission" value="${true}" />
-							</c:if>
-						</c:forEach> <c:if test="${hasPermission}">
-							<%-- CORRECTED: The data-fetch-url must point to the correct servlet URL --%>
+					<td style="display: flex; gap: 0.5rem; flex-wrap: wrap;"><c:if
+							test="${userPermissions.contains('USER_UPDATE')}">
 							<button type="button" class="btn btn-small edit-user-btn"
 								data-fetch-url="<c:url value='/admin/mitglieder?action=getUserData&id=${user.id}'/>">Bearbeiten</button>
 						</c:if> <a
 						href="<c:url value='/admin/mitglieder?action=details&id=${user.id}'/>"
 						class="btn btn-small">Details</a> <c:if
 							test="${sessionScope.user.id != user.id}">
-							<c:set var="hasPermission" value="false" />
-							<c:forEach var="p" items="${userPermissions}">
-								<c:if test="${p == 'USER_DELETE'}">
-									<c:set var="hasPermission" value="${true}" />
-								</c:if>
-							</c:forEach>
-							<c:if test="${hasPermission}">
-								<form action="<c:url value='/admin/mitglieder'/>" method="post"
-									class="js-confirm-form"
-									data-confirm-message="Benutzer '${fn:escapeXml(user.username)}' wirklich löschen?">
-									<input type="hidden" name="action" value="delete"><input
-										type="hidden" name="userId" value="${user.id}">
-									<button type="submit" class="btn btn-small btn-danger">Löschen</button>
-								</form>
-							</c:if>
-							<c:set var="hasPermission" value="false" />
-							<c:forEach var="p" items="${userPermissions}">
-								<c:if test="${p == 'USER_PASSWORD_RESET'}">
-									<c:set var="hasPermission" value="${true}" />
-								</c:if>
-							</c:forEach>
-							<c:if test="${hasPermission}">
+							<c:if test="${userPermissions.contains('USER_PASSWORD_RESET')}">
 								<form action="<c:url value='/admin/mitglieder'/>" method="post"
 									class="js-confirm-form"
 									data-confirm-message="Passwort für '${fn:escapeXml(user.username)}' zurücksetzen? Das neue Passwort wird angezeigt.">
@@ -139,6 +92,15 @@
 										type="hidden" name="userId" value="${user.id}">
 									<button type="submit" class="btn btn-small btn-warning">Passwort
 										Reset</button>
+								</form>
+							</c:if>
+							<c:if test="${userPermissions.contains('USER_DELETE')}">
+								<form action="<c:url value='/admin/mitglieder'/>" method="post"
+									class="js-confirm-form"
+									data-confirm-message="Benutzer '${fn:escapeXml(user.username)}' wirklich löschen?">
+									<input type="hidden" name="action" value="delete"><input
+										type="hidden" name="userId" value="${user.id}">
+									<button type="submit" class="btn btn-small btn-danger">Löschen</button>
 								</form>
 							</c:if>
 						</c:if></td>
@@ -151,4 +113,4 @@
 <%@ include file="/WEB-INF/jspf/user_modals.jspf"%>
 <c:import url="/WEB-INF/jspf/table_scripts.jspf" />
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
-<script type="text/javascript" src="/js/admin/admin_users.js"></script>
+<script src="${pageContext.request.contextPath}/js/admin/admin_users.js"></script>

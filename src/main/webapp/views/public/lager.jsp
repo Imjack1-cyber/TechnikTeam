@@ -3,7 +3,6 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
-<%-- CORRECTED: Import uses absolute path and correct filename --%>
 <c:import url="/WEB-INF/jspf/main_header.jspf">
 	<c:param name="pageTitle" value="Lager" />
 </c:import>
@@ -70,7 +69,7 @@
 							<td>${item.availableQuantity}/${item.quantity}</td>
 							<td>${item.defectiveQuantity}</td>
 							<td>
-								<button class="btn btn-small transaction-btn btn-primary"
+								<button class="btn btn-small transaction-btn"
 									data-item-id="${item.id}"
 									data-item-name="${fn:escapeXml(item.name)}"
 									data-max-qty="${item.availableQuantity}"
@@ -88,4 +87,4 @@
 <%@ include file="/WEB-INF/jspf/storage_modals.jspf"%>
 <c:import url="/WEB-INF/jspf/table_scripts.jspf" />
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
-<script type="text/javascript" src="/js/public/lager.js"></script>
+<script src="${pageContext.request.contextPath}/js/public/lager.js"></script>

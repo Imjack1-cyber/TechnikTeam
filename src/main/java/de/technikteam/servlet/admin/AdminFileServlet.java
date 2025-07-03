@@ -10,7 +10,7 @@ import org.apache.logging.log4j.Logger;
 
 import de.technikteam.config.AppConfig;
 import de.technikteam.dao.FileDAO;
-import de.technikteam.model.File; // Our own model: de.technikteam.model.File
+import de.technikteam.model.File;
 import de.technikteam.model.FileCategory;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
@@ -23,14 +23,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
 
-/**
- * Mapped to `/admin/dateien`, this servlet manages file uploads and deletions
- * for administrators. A GET request displays the management page
- * (`admin_files.jsp`) with a list of all files grouped by category. A POST
- * request handles either uploading a new file or deleting an existing one. It
- * correctly handles `multipart/form-data` to read form fields and the uploaded
- * file.
- */
 @MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 20, maxRequestSize = 1024 * 1024 * 50)
 @WebServlet("/admin/dateien")
 public class AdminFileServlet extends HttpServlet {
@@ -58,7 +50,6 @@ public class AdminFileServlet extends HttpServlet {
 
 		logger.debug("Forwarding to admin_files.jsp with {} file groups and {} categories.", groupedFiles.size(),
 				allCategories.size());
-		// CORRECTED: Forward to the actual JSP file path.
 		request.getRequestDispatcher("/views/admin/admin_files.jsp").forward(request, response);
 	}
 
@@ -68,7 +59,6 @@ public class AdminFileServlet extends HttpServlet {
 		request.setCharacterEncoding("UTF-8");
 		String contentType = request.getContentType();
 
-		// Differentiate between multipart (upload) and standard (delete) forms
 		if (contentType != null && contentType.toLowerCase().startsWith("multipart/")) {
 			handleUpload(request, response);
 		} else {
@@ -185,5 +175,4 @@ public class AdminFileServlet extends HttpServlet {
 		}
 		response.sendRedirect(request.getContextPath() + "/admin/dateien");
 	}
-
 }

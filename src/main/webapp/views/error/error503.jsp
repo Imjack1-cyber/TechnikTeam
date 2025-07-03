@@ -23,24 +23,5 @@
 	</div>
 </div>
 
-<style>
-.reboot-console {
-	width: 100%;
-	max-width: 700px;
-	background: #000;
-	color: #0f0;
-	border-radius: 6px;
-	font-family: monospace;
-	padding: 1rem;
-}
-
-#reboot-output {
-	height: 250px;
-	overflow-y: hidden;
-	text-align: left;
-	white-space: pre-wrap;
-}
-</style>
-
 <c:import url="/WEB-INF/jspf/error_footer.jspf" />
-<script type="text/javascript" src="/js/error/error503.js"></script>
+<script src="${pageContext.request.contextPath}/js/error/error503.js"></script>

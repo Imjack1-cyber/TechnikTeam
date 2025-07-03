@@ -2,12 +2,6 @@
 	isErrorPage="true" isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
-<%--
-  error500.jsp - REDESIGNED & INTERACTIVE
-  
-  A creative "Internal Server Error" page featuring a simulated diagnostic tool with a realistic typing effect.
---%>
-
 <c:import url="/WEB-INF/jspf/error_header.jspf">
 	<c:param name="pageTitle" value="500 - Interner Fehler" />
 </c:import>
@@ -19,7 +13,6 @@
 		aufgetreten und unser System ist ins Stolpern geraten. Starten Sie die
 		automatische Systemdiagnose, um den Fehler zu analysieren.</p>
 
-	<!-- Interactive Diagnostic Tool -->
 	<div class="diagnostic-container">
 		<button id="diagnostic-btn" class="btn btn-warning">
 			<i class="fas fa-tasks"></i> Diagnose starten
@@ -35,99 +28,9 @@
 	</a>
 </div>
 
-<%-- Hidden Debug Info --%>
 <!--
     Exception Details: Request URI: ${pageContext.errorData.requestURI}, Servlet: ${pageContext.errorData.servletName}, Exception: ${pageContext.exception.message}
 -->
 
-<style>
-.error-page-container {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	text-align: center;
-	min-height: 70vh;
-	padding: 2rem;
-}
-
-.error-code {
-	font-size: 5rem;
-	font-weight: 800;
-	line-height: 1;
-	margin: 0;
-}
-
-.error-page-container h2 {
-	font-size: 1.75rem;
-	border: none;
-	margin-top: 0;
-	margin-bottom: 1.5rem;
-}
-
-.error-message-text {
-	max-width: 600px;
-	font-size: 1.1rem;
-	line-height: 1.6;
-}
-
-.diagnostic-container {
-	width: 100%;
-	max-width: 600px;
-	margin-top: 2rem;
-	border: 1px solid var(--border-color);
-	border-radius: var(--border-radius);
-	padding: 1rem;
-	background: var(--bg-color);
-}
-
-.diagnostic-console {
-	font-family: monospace;
-	text-align: left;
-	height: 220px;
-	overflow-y: auto;
-	background-color: #000;
-	color: #0f0;
-	padding: 1rem;
-	margin-top: 1rem;
-	border-radius: 4px;
-	border: 1px solid #333;
-}
-
-.diagnostic-console p {
-	margin: 0;
-	white-space: pre-wrap;
-}
-
-.diagnostic-console .fail {
-	color: #ff4d4d;
-}
-
-.diagnostic-console .warn {
-	color: #f0b72f;
-}
-
-.diagnostic-console .ok {
-	color: #56d364;
-}
-
-.diagnostic-console .info {
-	color: #79c0ff;
-}
-
-.cursor {
-	display: inline-block;
-	width: 0.6em;
-	background-color: #0f0;
-	animation: blink 1s step-end infinite;
-}
-
-@
-keyframes blink { 50% {
-	background-color: transparent;
-}
-}
-</style>
-
 <c:import url="/WEB-INF/jspf/error_footer.jspf" />
-<script type="text/javascript" src="/js/error/error500.js"></script>
+<script src="${pageContext.request.contextPath}/js/error/error500.js"></script>

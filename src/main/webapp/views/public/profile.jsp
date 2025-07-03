@@ -17,16 +17,16 @@
 	<div class="card">
 		<h2 class="card-title">Stammdaten</h2>
 		<ul class="details-list">
-			<li><strong>Benutzername:</strong> <c:out
-					value="${sessionScope.user.username}" /></li>
-			<li><strong>Rolle:</strong> <c:out
-					value="${sessionScope.user.roleName}" /></li>
-			<li><strong>Jahrgang:</strong> <c:out
-					value="${sessionScope.user.classYear}" /></li>
-			<li><strong>Klasse:</strong> <c:out
-					value="${sessionScope.user.className}" /></li>
-			<li><strong>E-Mail:</strong> <c:out
-					value="${not empty sessionScope.user.email ? sessionScope.user.email : 'Nicht hinterlegt'}" /></li>
+			<li><strong>Benutzername:</strong> <span><c:out
+						value="${sessionScope.user.username}" /></span></li>
+			<li><strong>Rolle:</strong> <span><c:out
+						value="${sessionScope.user.roleName}" /></span></li>
+			<li><strong>Jahrgang:</strong> <span><c:out
+						value="${sessionScope.user.classYear}" /></span></li>
+			<li><strong>Klasse:</strong> <span><c:out
+						value="${sessionScope.user.className}" /></span></li>
+			<li><strong>E-Mail:</strong> <span><c:out
+						value="${not empty sessionScope.user.email ? sessionScope.user.email : 'Nicht hinterlegt'}" /></span></li>
 		</ul>
 	</div>
 
@@ -79,11 +79,9 @@
 				</c:if>
 				<c:forEach var="event" items="${eventHistory}">
 					<tr>
-						<td>
-							<a
+						<td><a
 							href="${pageContext.request.contextPath}/veranstaltungen/details?id=${event.id}"><c:out
-									value="${event.name}" /></a>
-						</td>
+									value="${event.name}" /></a></td>
 						<td><c:out value="${event.formattedEventDateTime}" /> Uhr</td>
 						<td><c:out value="${event.userAttendanceStatus}" /></td>
 						<td><c:if

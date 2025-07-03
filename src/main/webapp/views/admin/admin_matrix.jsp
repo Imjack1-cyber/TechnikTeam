@@ -3,7 +3,7 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
-<c:import url="../../jspf/main_header.jspf">
+<c:import url="/WEB-INF/jspf/main_header.jspf">
 	<c:param name="pageTitle" value="Qualifikations-Matrix" />
 </c:import>
 
@@ -45,9 +45,7 @@
 		<tbody>
 			<c:forEach var="user" items="${allUsers}">
 				<tr>
-					<td class="sticky-col" style="font-weight: 500; left: 0;">
-						<%-- CORRECTED: The link must point to the correct servlet URL for user details. --%>
-						<a
+					<td class="sticky-col" style="font-weight: 500; left: 0;"><a
 						href="${pageContext.request.contextPath}/admin/mitglieder?action=details&id=${user.id}">${user.username}</a>
 					</td>
 					<c:forEach var="course" items="${allCourses}">
@@ -63,7 +61,7 @@
 								style="text-align: center; font-weight: bold; cursor: pointer;"
 								title="Klicken zum Bearbeiten"><c:choose>
 									<c:when test="${not empty attendance && attendance.attended}">
-										<span class="text-success" style="font-size: 1.2rem;">✔</span>
+										<span style="font-size: 1.2rem;">✔</span>
 									</c:when>
 									<c:otherwise>
 										<span class="text-muted">-</span>
@@ -80,7 +78,7 @@
 <!-- Attendance Modal -->
 <div class="modal-overlay" id="attendance-modal">
 	<div class="modal-content">
-		<button class="modal-close-btn">×</button>
+		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
 		<h3>Teilnahme bearbeiten</h3>
 		<p id="modal-title" style="font-weight: bold; margin-bottom: 1rem;"></p>
 		<form action="${pageContext.request.contextPath}/admin/teilnahme"
@@ -106,4 +104,5 @@
 </div>
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
-<script type="text/javascript" src="/js/admin/admin_matrix.js"></script>
+<script
+	src="${pageContext.request.contextPath}/js/admin/admin_matrix.js"></script>

@@ -12,3 +12,5 @@
 /resources/uploads/
 src/main/java/de/technikteam/dao/DatabaseManager.java
 src/main/java/de/technikteam/dao/DatabaseManager.java
+target/m2e-wtp/web-resources/META-INF/maven/de.technikteam/TechnikTeam/pom.properties
+target/classes/de/technikteam/dao/DatabaseManager.class

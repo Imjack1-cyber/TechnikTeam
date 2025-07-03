@@ -46,10 +46,10 @@
 							value="${meeting.formattedMeetingDateTimeRange}" /></td>
 					<td><c:choose>
 							<c:when test="${meeting.userAttendanceStatus == 'ANGEMELDET'}">
-								<span style="color: var(--success-color);">Angemeldet</span>
+								<span class="text-success">Angemeldet</span>
 							</c:when>
 							<c:when test="${meeting.userAttendanceStatus == 'ABGEMELDET'}">
-								<span style="color: var(--danger-color);">Abgemeldet</span>
+								<span class="text-danger">Abgemeldet</span>
 							</c:when>
 							<c:otherwise>Offen</c:otherwise>
 						</c:choose></td>

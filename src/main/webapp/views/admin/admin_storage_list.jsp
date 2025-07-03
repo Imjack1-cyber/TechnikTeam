@@ -19,7 +19,7 @@
 	</button>
 	<div class="form-group" style="margin-bottom: 0;">
 		<input type="search" id="table-filter"
-			placeholder="Tabelle filtern..." aria-label="Tabelle filtern">
+			placeholder="Artikel filtern..." aria-label="Tabelle filtern">
 	</div>
 </div>
 
@@ -43,25 +43,31 @@
 								value="${item.name}" /></a></td>
 					<td style="text-align: center;"><c:if
 							test="${not empty item.imagePath}">
-							<button class="btn btn-small btn-info lightbox-trigger"
-								data-src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
-								title="Bild anzeigen">
-								<i class="fas fa-image"></i>
-							</button>
+							<a
+								href="${pageContext.request.contextPath}/image?file=${item.imagePath}"
+								class="lightbox-trigger" title="Bild anzeigen"> <img
+								src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
+								alt="Vorschaubild"
+								style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">
+							</a>
 						</c:if></td>
 					<td><c:out value="${item.location}" /></td>
 					<td><c:out value="${item.availableQuantity}" /></td>
 					<td><c:out value="${item.defectiveQuantity}" /></td>
 					<td style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-						<button type="button"
-							class="btn btn-small btn-warning edit-item-btn"
+						<button type="button" class="btn btn-small edit-item-btn"
 							data-fetch-url="<c:url value='/admin/lager?action=getItemData&id=${item.id}'/>">Bearbeiten</button>
-						<c:set var="qrData">
-							<c:url value="/lager/actions?id=${item.id}" />
-						</c:set> <a
-						href="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${fn:escapeXml(qrData)}"
-						target="_blank" class="btn btn-small btn-secondary">QR-Code</a>
-						<button class="btn btn-small defect-modal-btn"
+
+						<c:url var="actionUrl" value="/lager/aktionen">
+							<c:param name="id" value="${item.id}" />
+						</c:url> <c:url var="qrApiUrl"
+							value="https://api.qrserver.com/v1/create-qr-code/">
+							<c:param name="size" value="200x200" />
+							<c:param name="data" value="${actionUrl}" />
+						</c:url> <a href="${qrApiUrl}" target="_blank"
+						class="btn btn-small btn-secondary">QR-Code</a>
+
+						<button class="btn btn-small btn-warning defect-modal-btn"
 							data-item-id="${item.id}"
 							data-item-name="${fn:escapeXml(item.name)}"
 							data-max-qty="${item.quantity}"
@@ -82,11 +88,12 @@
 </div>
 
 <div id="lightbox" class="lightbox-overlay">
-	<span class="lightbox-close">×</span><img class="lightbox-content"
-		id="lightbox-image">
+	<span class="lightbox-close" title="Schließen">×</span> <img
+		class="lightbox-content" id="lightbox-image" alt="Großansicht">
 </div>
 
 <%@ include file="/WEB-INF/jspf/storage_modals.jspf"%>
 <c:import url="/WEB-INF/jspf/table_scripts.jspf" />
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
-<script type="text/javascript" src="/js/admin/admin_storage_list.js"></script>
+<script
+	src="${pageContext.request.contextPath}/js/admin/admin_storage_list.js"></script>

@@ -2,7 +2,6 @@
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
-<%-- CORRECTED: The import path is now absolute from the context root. --%>
 <c:import url="/WEB-INF/jspf/main_header.jspf">
 	<c:param name="pageTitle" value="Kalender" />
 </c:import>
@@ -30,27 +29,5 @@
 <script
 	src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/locales/de.js'></script>
 
-<%-- CORRECTED: The import path is now absolute from the context root. --%>
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-	var calendarEl = document.getElementById('calendar');
-	var calendar = new FullCalendar.Calendar(calendarEl, {
-		initialView: 'dayGridMonth',
-		locale: 'de',
-		headerToolbar: {
-			left: 'prev,next today',
-			center: 'title',
-			right: 'dayGridMonth,timeGridWeek,listWeek'
-		},
-		events: '${pageContext.request.contextPath}/api/calendar/entries',
-		eventClick: function(info) {
-			info.jsEvent.preventDefault(); // don't let the browser navigate
-			if (info.event.url) {
-				window.open(info.event.url, "_self");
-			}
-		}
-	});
-	calendar.render();
-});
-</script>
+<script src="${pageContext.request.contextPath}/js/public/calendar.js"></script>

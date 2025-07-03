@@ -13,7 +13,6 @@
 <p>Hier sind alle Artikel gelistet, von denen mindestens ein
 	Exemplar als defekt markiert wurde.</p>
 
-<%-- CORRECTED: The path is now absolute from the context root. --%>
 <c:import url="/WEB-INF/jspf/message_banner.jspf" />
 
 <div class="table-wrapper">
@@ -35,14 +34,16 @@
 			</c:if>
 			<c:forEach var="item" items="${defectiveItems}">
 				<tr>
-					<td><c:out value="${item.name}" /></td>
+					<td><a href="<c:url value='/lager/details?id=${item.id}'/>"><c:out
+								value="${item.name}" /></a></td>
 					<td><c:out value="${item.defectiveQuantity}" /> / <c:out
 							value="${item.quantity}" /></td>
 					<td><c:out value="${item.defectReason}" /></td>
 					<td>
-						<button class="btn btn-small btn-success defect-modal-btn"
+						<button class="btn btn-small btn-warning defect-modal-btn"
 							data-item-id="${item.id}"
 							data-item-name="${fn:escapeXml(item.name)}"
+							data-max-qty="${item.quantity}"
 							data-current-defect-qty="${item.defectiveQuantity}"
 							data-current-reason="${fn:escapeXml(item.defectReason)}">Status
 							bearbeiten</button>
@@ -56,7 +57,7 @@
 <!-- Modal for updating defect status -->
 <div class="modal-overlay" id="defect-modal">
 	<div class="modal-content">
-		<button class="modal-close-btn">×</button>
+		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
 		<h3 id="defect-modal-title">Defekt-Status bearbeiten</h3>
 		<form action="${pageContext.request.contextPath}/admin/lager"
 			method="post">
@@ -64,7 +65,7 @@
 				type="hidden" name="id" id="defect-item-id"> <input
 				type="hidden" name="returnTo" value="defekte">
 			<div class="form-group">
-				<label for="defective_quantity">Anzahl defekter Artikel</label><input
+				<label for="defective_quantity">Anzahl defekter Artikel</label> <input
 					type="number" name="defective_quantity" id="defective_quantity"
 					min="0" required>
 			</div>
@@ -72,10 +73,13 @@
 				<label for="defect_reason">Grund (optional)</label>
 				<textarea name="defect_reason" id="defect_reason" rows="3"></textarea>
 			</div>
-			<button type="submit" class="btn">Speichern</button>
+			<button type="submit" class="btn">
+				<i class="fas fa-save"></i> Speichern
+			</button>
 		</form>
 	</div>
 </div>
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
-<script type="text/javascript" src="/js/admin/admin_defect_list.js"></script>
+<script
+	src="${pageContext.request.contextPath}/js/admin/admin_defect_list.js"></script>

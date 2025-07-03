@@ -1,9 +1,10 @@
+
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
-<c:import url="/WEB-INF/jspf/header.jspf">
+<c:import url="/WEB-INF/jspf/main_header.jspf">
 	<c:param name="pageTitle" value="Artikeldetails: ${item.name}" />
 </c:import>
 
@@ -17,38 +18,40 @@
 	<div class="card">
 		<h2 class="card-title">${item.name}</h2>
 		<c:if test="${not empty item.imagePath}">
-			<a href="#" class="lightbox-trigger"><img
+			<a
+				href="${pageContext.request.contextPath}/image?file=${item.imagePath}"
+				class="lightbox-trigger"> <img
 				src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
 				alt="${item.name}"
-				style="width: 100%; border-radius: var(--border-radius); margin-bottom: 1rem; cursor: zoom-in;"></a>
+				style="width: 100%; border-radius: var(--border-radius); margin-bottom: 1rem; cursor: zoom-in;">
+			</a>
 		</c:if>
 		<ul class="details-list">
 			<li><strong>Allg. Status:</strong> <span
 				class="status-badge ${item.availabilityStatusCssClass}">${item.availabilityStatus}</span></li>
-			<li><strong>Verfügbar:</strong> ${item.availableQuantity} /
-				${item.quantity}</li>
-			<li><strong>Defekt:</strong> ${item.defectiveQuantity}</li>
-			<li><strong>Tracking-Status:</strong> <c:choose>
-					<c:when test="${item.status == 'CHECKED_OUT'}">
-						<span class="status-badge status-warn">Entnommen</span>
-					</c:when>
-					<c:when test="${item.status == 'MAINTENANCE'}">
-						<span class="status-badge status-info">Wartung</span>
-					</c:when>
-					<c:otherwise>
-						<span class="status-badge status-ok">Im Lager</span>
-					</c:otherwise>
-				</c:choose></li>
+			<li><strong>Verfügbar:</strong> <span>${item.availableQuantity}
+					/ ${item.quantity}</span></li>
+			<li><strong>Defekt:</strong> <span>${item.defectiveQuantity}</span></li>
+			<li><strong>Tracking-Status:</strong> <span> <c:choose>
+						<c:when test="${item.status == 'CHECKED_OUT'}">
+							<span class="status-badge status-warn">Entnommen</span>
+						</c:when>
+						<c:when test="${item.status == 'MAINTENANCE'}">
+							<span class="status-badge status-info">Wartung</span>
+						</c:when>
+						<c:otherwise>
+							<span class="status-badge status-ok">Im Lager</span>
+						</c:otherwise>
+					</c:choose>
+			</span></li>
 			<c:if test="${not empty item.currentHolderUsername}">
-				<li><strong>Aktueller Inhaber:</strong>
-					${item.currentHolderUsername}</li>
+				<li><strong>Aktueller Inhaber:</strong> <span>${item.currentHolderUsername}</span></li>
 			</c:if>
-			<li><strong>Ort:</strong> ${item.location}</li>
-			<li><strong>Schrank:</strong> ${not empty item.cabinet ? item.cabinet : 'N/A'}</li>
-			<li><strong>Fach:</strong> ${not empty item.compartment ? item.compartment : 'N/A'}</li>
+			<li><strong>Ort:</strong> <span>${item.location}</span></li>
+			<li><strong>Schrank:</strong> <span>${not empty item.cabinet ? item.cabinet : 'N/A'}</span></li>
+			<li><strong>Fach:</strong> <span>${not empty item.compartment ? item.compartment : 'N/A'}</span></li>
 		</ul>
 		<div style="margin-top: 2rem;">
-			<%-- CORRECTED: The link should go to /lager as per the servlet mapping --%>
 			<a href="<c:url value='/lager'/>" class="btn btn-small"><i
 				class="fas fa-arrow-left"></i> Zur Lagerübersicht</a>
 		</div>
@@ -91,9 +94,10 @@
 </div>
 
 <div id="lightbox" class="lightbox-overlay">
-	<span class="lightbox-close">×</span><img class="lightbox-content"
-		id="lightbox-image">
+	<span class="lightbox-close" title="Schließen">×</span> <img
+		class="lightbox-content" id="lightbox-image" alt="Großansicht">
 </div>
 
-<c:import url="/WEB-INF/jspf/footer.jspf" />
-<script type="text/javascript" src="/js/public/storage_item_details.js"></script>
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script
+	src="${pageContext.request.contextPath}/js/public/storage_item_details.js"></script>

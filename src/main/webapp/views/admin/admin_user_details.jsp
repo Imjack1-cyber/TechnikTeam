@@ -12,10 +12,10 @@
 	Benutzerdetails:
 	<c:out value="${userToView.username}" />
 </h1>
-<%-- CORRECTED: The link must point back to the main user management servlet URL. --%>
 <a href="${pageContext.request.contextPath}/admin/mitglieder"
-	style="display: inline-block; margin-bottom: 1rem;"> « Zurück zur
-	Benutzerliste </a>
+	style="display: inline-block; margin-bottom: 1rem;"> <i
+	class="fas fa-arrow-left"></i> Zurück zur Benutzerliste
+</a>
 
 <c:import url="/WEB-INF/jspf/message_banner.jspf" />
 
@@ -71,23 +71,5 @@
 		</div>
 	</div>
 </div>
-
-<style>
-.details-list {
-	list-style-type: none;
-	padding-left: 0;
-}
-
-.details-list li {
-	padding: 0.75rem 0;
-	border-bottom: 1px solid var(--border-color);
-	display: flex;
-	justify-content: space-between;
-}
-
-.details-list li:last-child {
-	border-bottom: none;
-}
-</style>
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
