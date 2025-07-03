@@ -2,14 +2,13 @@
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
-<%-- CORRECTED: Import uses absolute path and correct filename --%>
 <c:import url="/WEB-INF/jspf/main_header.jspf">
 	<c:param name="pageTitle" value="Lehrgänge" />
 </c:import>
 
 <h1>Anstehende Lehrgänge & Meetings</h1>
 
-<c:import url="../../jspf/message_banner.jspf" />
+<c:import url="/WEB-INF/jspf/message_banner.jspf" />
 
 <div class="table-controls">
 	<div class="form-group" style="margin-bottom: 0; flex-grow: 1;">
@@ -75,5 +74,4 @@
 </div>
 
 <c:import url="/WEB-INF/jspf/table_scripts.jspf" />
-<%-- CORRECTED: Import uses absolute path and correct filename --%>
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />

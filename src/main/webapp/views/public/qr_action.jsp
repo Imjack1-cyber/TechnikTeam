@@ -50,7 +50,7 @@ body {
 		<h1 class="item-name">
 			<c:out value="${item.name}" />
 		</h1>
-		<form action="${pageContext.request.contextPath}/storage-transaction"
+		<form action="${pageContext.request.contextPath}/lager/transaktion"
 			method="post">
 			<input type="hidden" name="itemId" value="${item.id}"> <input
 				type="hidden" name="quantity" value="1"> <input

@@ -48,7 +48,7 @@ public class CalendarApiServlet extends HttpServlet {
 			if (event.getEndDateTime() != null) {
 				entry.put("end", event.getEndDateTime().toString());
 			}
-			entry.put("url", request.getContextPath() + "/eventDetails?id=" + event.getId());
+			entry.put("url", request.getContextPath() + "/veranstaltungen/details?id=" + event.getId());
 			entry.put("backgroundColor", "#dc3545"); // Danger color for events
 			entry.put("borderColor", "#c82333");
 			calendarEntries.add(entry);

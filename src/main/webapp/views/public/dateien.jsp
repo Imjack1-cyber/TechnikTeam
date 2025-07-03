@@ -2,14 +2,14 @@
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
-<%-- CORRECTED: Import uses absolute path and correct filename --%>
 <c:import url="/WEB-INF/jspf/main_header.jspf">
 	<c:param name="pageTitle" value="Dateien" />
 </c:import>
 
 <h1>Dateien & Dokumente</h1>
 
-<c:import url="../../jspf/message_banner.jspf" />
+<%-- CORRECTED: The path is now absolute from the context root. --%>
+<c:import url="/WEB-INF/jspf/message_banner.jspf" />
 
 <c:if test="${empty fileData}">
 	<div class="card">
@@ -28,7 +28,6 @@
 					style="padding: 0.75rem 0; ${!loop.last ? 'border-bottom: 1px solid var(--border-color);' : ''}">
 					<c:choose>
 						<c:when test="${file.id == -1}">
-							<%-- CORRECTED: The link points to the servlet URL for the editor page --%>
 							<a href="${pageContext.request.contextPath}/editor-page"
 								style="font-weight: 600;"><c:out value="${file.filename}" /></a>
 						</c:when>
@@ -44,5 +43,4 @@
 	</div>
 </c:forEach>
 
-<%-- CORRECTED: Import uses absolute path and correct filename --%>
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />

@@ -2,7 +2,7 @@
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
-<c:import url="../../jspf/header.jspf">
+<c:import url="/WEB-INF/jspf/header.jspf">
 	<c:param name="pageTitle" value="Passwort ändern" />
 	<c:param name="navType" value="user" />
 </c:import>

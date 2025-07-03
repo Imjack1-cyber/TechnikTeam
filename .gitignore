@@ -10,3 +10,4 @@
 *.iml
 
 /resources/uploads/
+src/main/java/de/technikteam/dao/DatabaseManager.java

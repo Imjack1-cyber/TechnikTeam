@@ -32,26 +32,25 @@
 
 <%-- CORRECTED: The import path is now absolute from the context root. --%>
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
-
 <script>
-	document.addEventListener('DOMContentLoaded', function() {
-		var calendarEl = document.getElementById('calendar');
-		var calendar = new FullCalendar.Calendar(calendarEl, {
-			initialView : 'dayGridMonth',
-			locale : 'de',
-			headerToolbar : {
-				left : 'prev,next today',
-				center : 'title',
-				right : 'dayGridMonth,timeGridWeek,listWeek'
-			},
-			events : '${pageContext.request.contextPath}/api/calendar/entries',
-			eventClick : function(info) {
-				info.jsEvent.preventDefault(); // don't let the browser navigate
-				if (info.event.url) {
-					window.open(info.event.url, "_self");
-				}
+document.addEventListener('DOMContentLoaded', function() {
+	var calendarEl = document.getElementById('calendar');
+	var calendar = new FullCalendar.Calendar(calendarEl, {
+		initialView: 'dayGridMonth',
+		locale: 'de',
+		headerToolbar: {
+			left: 'prev,next today',
+			center: 'title',
+			right: 'dayGridMonth,timeGridWeek,listWeek'
+		},
+		events: '${pageContext.request.contextPath}/api/calendar/entries',
+		eventClick: function(info) {
+			info.jsEvent.preventDefault(); // don't let the browser navigate
+			if (info.event.url) {
+				window.open(info.event.url, "_self");
 			}
-		});
-		calendar.render();
+		}
 	});
+	calendar.render();
+});
 </script>

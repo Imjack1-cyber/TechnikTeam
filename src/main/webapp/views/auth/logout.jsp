@@ -15,17 +15,10 @@
 	<p>Du wirst in 5 Sekunden automatisch zur Login-Seite
 		weitergeleitet.</p>
 	<p>
-		<%-- CORRECTED: The link must point to the /login servlet URL --%>
 		<a href="${pageContext.request.contextPath}/login">Jetzt zur
 			Login-Seite</a>
 	</p>
 </div>
 
-<script>
-	setTimeout(function() {
-		// CORRECTED: The redirect must point to the /login servlet URL
-		window.location.href = "${pageContext.request.contextPath}/login";
-	}, 5000); // 5 seconds
-</script>
-
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script type="text/javascript" src="/js/auth/logout.js"></script>

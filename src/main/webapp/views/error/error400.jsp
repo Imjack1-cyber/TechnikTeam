@@ -84,7 +84,6 @@ background
 </style>
 
 <c:import url="/WEB-INF/jspf/error_footer.jspf" />
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const output = document.getElementById('droid-output');

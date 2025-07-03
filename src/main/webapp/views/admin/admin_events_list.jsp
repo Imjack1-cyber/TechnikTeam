@@ -3,7 +3,7 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
-<c:import url="../../jspf/main_header.jspf">
+<c:import url="/WEB-INF/jspf/main_header.jspf">
 	<c:param name="pageTitle" value="Eventverwaltung" />
 </c:import>
 
@@ -13,7 +13,7 @@
 <p>Hier können Sie Events erstellen, bearbeiten, Personal zuweisen
 	und den Status verwalten.</p>
 
-<c:import url="../../jspf/message_banner.jspf" />
+<c:import url="/WEB-INF/jspf/message_banner.jspf" />
 
 <div class="table-controls">
 	<button type="button" class="btn" id="new-event-btn">

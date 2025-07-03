@@ -80,7 +80,7 @@
 				<c:forEach var="event" items="${eventHistory}">
 					<tr>
 						<td>
-							<%-- CORRECTED: Link points to /veranstaltungen/details --%> <a
+							<a
 							href="${pageContext.request.contextPath}/veranstaltungen/details?id=${event.id}"><c:out
 									value="${event.name}" /></a>
 						</td>
@@ -88,7 +88,6 @@
 						<td><c:out value="${event.userAttendanceStatus}" /></td>
 						<td><c:if
 								test="${event.status == 'ABGESCHLOSSEN' && event.userAttendanceStatus == 'ZUGEWIESEN'}">
-								<%-- CORRECTED: Link points to /feedback servlet --%>
 								<a
 									href="${pageContext.request.contextPath}/feedback?action=submit&eventId=${event.id}"
 									class="btn btn-small">Feedback geben</a>
@@ -100,4 +99,4 @@
 	</div>
 </div>
 
-<c:import url="/WEB-INFjspf/main_footer.jspf" />
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />

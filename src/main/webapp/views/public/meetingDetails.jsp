@@ -71,5 +71,4 @@
 		style="margin-top: 1rem;"> « Zurück zur Übersicht </a>
 </div>
 
-<%-- CORRECTED: Import uses absolute path and correct filename --%>
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />

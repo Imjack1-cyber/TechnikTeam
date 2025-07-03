@@ -52,7 +52,7 @@ public class User {
 		return roleName;
 	}
 
-	public void setRoleIdName(String roleName) {
+	public void setRoleName(String roleName) {
 		this.roleName = roleName;
 	}
 

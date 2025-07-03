@@ -6,10 +6,8 @@
 	<c:param name="pageTitle" value="Fehler" />
 </c:import>
 
-<%-- Store the status code in a variable for easier access --%>
 <c:set var="statusCode" value="${pageContext.errorData.statusCode}" />
 
-<%-- Set a default message and then override for known codes --%>
 <c:set var="errorMessage"
 	value="Ein unerwarteter Fehler ist aufgetreten." />
 <c:choose>

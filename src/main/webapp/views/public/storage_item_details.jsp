@@ -3,7 +3,7 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
-<c:import url="../../jspf/header.jspf">
+<c:import url="/WEB-INF/jspf/header.jspf">
 	<c:param name="pageTitle" value="Artikeldetails: ${item.name}" />
 </c:import>
 
@@ -96,21 +96,4 @@
 </div>
 
 <c:import url="/WEB-INF/jspf/footer.jspf" />
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const lightbox = document.getElementById('lightbox');
-    const lightboxImage = document.getElementById('lightbox-image');
-    const closeBtn = document.querySelector('.lightbox-close');
-
-    document.querySelectorAll('.lightbox-trigger').forEach(trigger => {
-        trigger.addEventListener('click', (e) => {
-            e.preventDefault();
-            lightbox.style.display = 'block';
-            lightboxImage.src = trigger.querySelector('img').src;
-        });
-    });
-
-    if (closeBtn) closeBtn.addEventListener('click', () => { lightbox.style.display = 'none'; });
-});
-</script>
+<script type="text/javascript" src="/js/public/storage_item_details.js"></script>

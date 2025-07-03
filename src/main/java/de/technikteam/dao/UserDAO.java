@@ -25,7 +25,7 @@ public class UserDAO {
 		user.setUsername(rs.getString("username"));
 		user.setRoleId(rs.getInt("role_id"));
 		if (DaoUtils.hasColumn(rs, "role_name")) {
-			user.setRoleIdName(rs.getString("role_name"));
+			user.setRoleName(rs.getString("role_name"));
 		}
 		if (DaoUtils.hasColumn(rs, "created_at") && rs.getTimestamp("created_at") != null) {
 			user.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());

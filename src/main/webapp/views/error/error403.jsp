@@ -122,7 +122,6 @@ keyframes blink { 50% {
 </style>
 
 <c:import url="/WEB-INF/jspf/error_footer.jspf" />
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const consoleBody = document.getElementById('console-body');
@@ -139,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
             consoleBody.scrollTop = consoleBody.scrollHeight;
             await new Promise(resolve => setTimeout(resolve, delay));
         }
-        currentLine.innerHTML = currentLine.innerHTML.replace('<span class="cursor"></span>', ''); // Remove cursor when line is done
+        currentLine.innerHTML = currentLine.innerHTML.replace('<span class="cursor"></span>', ''); 
         consoleBody.innerHTML += '\n'; // New line
     }
     

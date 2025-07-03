@@ -39,7 +39,7 @@
 			<c:forEach var="item" items="${storageList}">
 				<tr
 					class="${item.defectiveQuantity > 0 ? 'item-status-defect' : ''}">
-					<td><a href="<c:url value='/storage/details?id=${item.id}'/>"><c:out
+					<td><a href="<c:url value='/lager/details?id=${item.id}'/>"><c:out
 								value="${item.name}" /></a></td>
 					<td style="text-align: center;"><c:if
 							test="${not empty item.imagePath}">
@@ -55,9 +55,9 @@
 					<td style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
 						<button type="button"
 							class="btn btn-small btn-warning edit-item-btn"
-							data-fetch-url="<c:url value='/admin/storage?action=getItemData&id=${item.id}'/>">Bearbeiten</button>
+							data-fetch-url="<c:url value='/admin/lager?action=getItemData&id=${item.id}'/>">Bearbeiten</button>
 						<c:set var="qrData">
-							<c:url value="/storage/actions?id=${item.id}" />
+							<c:url value="/lager/actions?id=${item.id}" />
 						</c:set> <a
 						href="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${fn:escapeXml(qrData)}"
 						target="_blank" class="btn btn-small btn-secondary">QR-Code</a>
@@ -67,7 +67,7 @@
 							data-max-qty="${item.quantity}"
 							data-current-defect-qty="${item.defectiveQuantity}"
 							data-current-reason="${fn:escapeXml(item.defectReason)}">Defekt</button>
-						<form action="<c:url value='/admin/storage'/>" method="post"
+						<form action="<c:url value='/admin/lager'/>" method="post"
 							class="js-confirm-form"
 							data-confirm-message="Artikel '${fn:escapeXml(item.name)}' wirklich löschen?">
 							<input type="hidden" name="action" value="delete"> <input

@@ -10,7 +10,7 @@
 
 <h1>Anstehende Veranstaltungen</h1>
 
-<c:import url="../../jspf/message_banner.jspf" />
+<c:import url="/WEB-INF/jspf/message_banner.jspf" />
 
 <div class="table-controls">
 	<div class="form-group" style="margin-bottom: 0; flex-grow: 1;">
@@ -102,64 +102,4 @@
 <c:import url="/WEB-INF/jspf/table_scripts.jspf" />
 <%-- CORRECTED: Import uses absolute path and correct filename --%>
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.js-confirm-form').forEach(form => {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            showConfirmationModal(this.dataset.confirmMessage || 'Sind Sie sicher?', () => this.submit());
-        });
-    });
-
-    const signupModal = document.getElementById('signup-modal');
-    const signupModalTitle = document.getElementById('signup-modal-title');
-    const signupEventIdInput = document.getElementById('signup-event-id');
-    const customFieldsContainer = document.getElementById('custom-fields-container');
-    const closeModalBtn = signupModal.querySelector('.modal-close-btn');
-	const contextPath = "${pageContext.request.contextPath}";
-
-    const openSignupModal = async (btn) => {
-        const eventId = btn.dataset.eventId;
-        const eventName = btn.dataset.eventName;
-
-        signupModalTitle.textContent = `Anmeldung für: ${eventName}`;
-        signupEventIdInput.value = eventId;
-        customFieldsContainer.innerHTML = '<p>Lade Anmelde-Optionen...</p>';
-        signupModal.classList.add('active');
-
-        try {
-            const response = await fetch(`${contextPath}/admin/veranstaltungen?action=getEventData&id=${eventId}`);
-            if (!response.ok) throw new Error('Could not fetch event data');
-            const event = await response.json();
-            
-            customFieldsContainer.innerHTML = '';
-            if (event.customFields && event.customFields.length > 0) {
-                event.customFields.forEach(field => {
-                    const fieldGroup = document.createElement('div');
-                    fieldGroup.className = 'form-group';
-                    let fieldHtml = `<label for="customfield_${field.id}">${field.fieldName}</label>`;
-                    if (field.fieldType === 'BOOLEAN') {
-                        fieldHtml += `<select name="customfield_${field.id}" id="customfield_${field.id}" class="form-group"><option value="true">Ja</option><option value="false">Nein</option></select>`;
-                    } else { // TEXT
-                        fieldHtml += `<input type="text" name="customfield_${field.id}" id="customfield_${field.id}" class="form-group">`;
-                    }
-                    fieldGroup.innerHTML = fieldHtml;
-                    customFieldsContainer.appendChild(fieldGroup);
-                });
-            } else {
-                 customFieldsContainer.innerHTML = '<p>Für dieses Event sind keine weiteren Angaben nötig.</p>';
-            }
-        } catch (error) {
-            console.error('Failed to load custom fields:', error);
-            customFieldsContainer.innerHTML = '<p class="error-message">Fehler beim Laden der Anmelde-Optionen.</p>';
-        }
-    };
-    
-    document.querySelectorAll('.signup-btn').forEach(btn => btn.addEventListener('click', () => openSignupModal(btn)));
-    closeModalBtn.addEventListener('click', () => signupModal.classList.remove('active'));
-    signupModal.addEventListener('click', (e) => {
-        if (e.target === signupModal) signupModal.classList.remove('active');
-    });
-});
-</script>
+<script type="text/javascript" src="/js/public/events.js"></script>

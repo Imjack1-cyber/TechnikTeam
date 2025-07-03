@@ -14,7 +14,7 @@
 <p>Hier finden Sie eine Übersicht aller erfassten Artikel im Lager.
 	Klicken Sie auf einen Artikelnamen für Details und Verlauf.</p>
 
-<c:import url="../../jspf/message_banner.jspf" />
+<c:import url="/WEB-INF/jspf/message_banner.jspf" />
 
 <div class="table-controls">
 	<div class="form-group" style="margin-bottom: 0; flex-grow: 1;">
@@ -87,27 +87,5 @@
 
 <%@ include file="/WEB-INF/jspf/storage_modals.jspf"%>
 <c:import url="/WEB-INF/jspf/table_scripts.jspf" />
-<%-- CORRECTED: Import uses absolute path and correct filename --%>
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const transactionModal = document.getElementById('transaction-modal');
-    if (transactionModal) {
-        const modalTitle = document.getElementById('transaction-modal-title');
-        const modalItemId = document.getElementById('transaction-item-id');
-        const closeModalBtn = transactionModal.querySelector('.modal-close-btn');
-
-        const openModal = (btn) => {
-            modalTitle.textContent = `${btn.dataset.itemName}: Entnehmen / Einräumen`;
-            modalItemId.value = btn.dataset.itemId;
-            transactionModal.classList.add('active');
-        };
-
-        const closeModal = () => transactionModal.classList.remove('active');
-        document.querySelectorAll('.transaction-btn').forEach(btn => btn.addEventListener('click', () => openModal(btn)));
-        closeModalBtn.addEventListener('click', closeModal);
-        transactionModal.addEventListener('click', e => { if (e.target === transactionModal) closeModal(); });
-    }
-});
-</script>
+<script type="text/javascript" src="/js/public/lager.js"></script>

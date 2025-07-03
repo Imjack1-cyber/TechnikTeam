@@ -13,7 +13,8 @@
 <p>Hier sind alle Artikel gelistet, von denen mindestens ein
 	Exemplar als defekt markiert wurde.</p>
 
-<c:import url="../../jspf/message_banner.jspf" />
+<%-- CORRECTED: The path is now absolute from the context root. --%>
+<c:import url="/WEB-INF/jspf/message_banner.jspf" />
 
 <div class="table-wrapper">
 	<table class="data-table">
@@ -57,11 +58,11 @@
 	<div class="modal-content">
 		<button class="modal-close-btn">×</button>
 		<h3 id="defect-modal-title">Defekt-Status bearbeiten</h3>
-		<form action="${pageContext.request.contextPath}/admin/storage"
+		<form action="${pageContext.request.contextPath}/admin/lager"
 			method="post">
 			<input type="hidden" name="action" value="updateDefect"> <input
 				type="hidden" name="id" id="defect-item-id"> <input
-				type="hidden" name="returnTo" value="defects">
+				type="hidden" name="returnTo" value="defekte">
 			<div class="form-group">
 				<label for="defective_quantity">Anzahl defekter Artikel</label><input
 					type="number" name="defective_quantity" id="defective_quantity"
@@ -77,31 +78,4 @@
 </div>
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const defectModal = document.getElementById('defect-modal');
-    if (!defectModal) return;
-
-    const modalTitle = document.getElementById('defect-modal-title');
-    const itemIdInput = document.getElementById('defect-item-id');
-    const defectQtyInput = document.getElementById('defective_quantity');
-    const reasonInput = document.getElementById('defect_reason');
-    const closeModalBtn = defectModal.querySelector('.modal-close-btn');
-
-    document.querySelectorAll('.defect-modal-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            modalTitle.textContent = `Defekt-Status für "${btn.dataset.itemName}" bearbeiten`;
-            itemIdInput.value = btn.dataset.itemId;
-            defectQtyInput.value = btn.dataset.currentDefectQty;
-            defectQtyInput.max = btn.dataset.maxQty; // Set max based on total quantity
-            reasonInput.value = btn.dataset.currentReason;
-            defectModal.classList.add('active');
-        });
-    });
-
-    closeModalBtn.addEventListener('click', () => defectModal.classList.remove('active'));
-    defectModal.addEventListener('click', (e) => {
-        if (e.target === defectModal) defectModal.classList.remove('active');
-    });
-});
-</script>
+<script type="text/javascript" src="/js/admin/admin_defect_list.js"></script>
