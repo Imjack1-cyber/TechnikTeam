@@ -28,8 +28,8 @@ public class DatabaseManager {
 			// Ensure the JDBC URL uses UTF-8 and a modern timezone for compatibility.
 			config.setJdbcUrl(
 					"jdbc:mysql://localhost:3306/technik_team_db?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=UTC");
-			config.setUsername("technik"); // <-- SET YOUR DB USERNAME
-			config.setPassword("X32MYaaD"); // <-- SET YOUR DB PASSWORD
+			config.setUsername("your_username"); // <-- SET YOUR DB USERNAME
+			config.setPassword("your_password"); // <-- SET YOUR DB PASSWORD
 
 			// --- Pool Configuration (Good Defaults) ---
 			config.setMaximumPoolSize(10); // Max number of active connections
