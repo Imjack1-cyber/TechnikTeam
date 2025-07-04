@@ -93,4 +93,46 @@ public class ReportDAO {
 		}
 		return 0.0;
 	}
+
+	public List<Map<String, Object>> getEventCountByMonth(int months) {
+		List<Map<String, Object>> data = new ArrayList<>();
+		String sql = "SELECT CONCAT(YEAR(event_datetime), '-', LPAD(MONTH(event_datetime), 2, '0')) AS month, COUNT(*) AS count "
+				+ "FROM events " + "WHERE event_datetime >= DATE_SUB(NOW(), INTERVAL ? MONTH) "
+				+ "GROUP BY YEAR(event_datetime), MONTH(event_datetime) " + "ORDER BY month ASC";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, months);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					Map<String, Object> row = new HashMap<>();
+					row.put("month", rs.getString("month"));
+					row.put("count", rs.getInt("count"));
+					data.add(row);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error generating event count by month report.", e);
+		}
+		return data;
+	}
+
+	public List<Map<String, Object>> getUserParticipationStats(int limit) {
+		List<Map<String, Object>> data = new ArrayList<>();
+		String sql = "SELECT u.username, COUNT(ea.user_id) as participation_count " + "FROM event_assignments ea "
+				+ "JOIN users u ON ea.user_id = u.id " + "GROUP BY u.id, u.username "
+				+ "ORDER BY participation_count DESC " + "LIMIT ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, limit);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					Map<String, Object> row = new HashMap<>();
+					row.put("username", rs.getString("username"));
+					row.put("participation_count", rs.getInt("participation_count"));
+					data.add(row);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error generating user participation stats.", e);
+		}
+		return data;
+	}
 }

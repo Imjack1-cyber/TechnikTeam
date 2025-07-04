@@ -43,7 +43,7 @@ public class EventServlet extends HttpServlet {
 		List<Event> events = eventDAO.getUpcomingEventsForUser(user, 0); // 0 means no limit
 
 		request.setAttribute("events", events);
-		logger.debug("Found {} upcoming events for user '{}'. Forwarding to events.jsp.", events.size(),
+		logger.debug("Found {} upcoming events for user '{}'. Forwarding to veranstaltungen.jsp.", events.size(),
 				user.getUsername());
 		// CORRECTED: Forward to the actual JSP file path.
 		request.getRequestDispatcher("/views/public/events.jsp").forward(request, response);

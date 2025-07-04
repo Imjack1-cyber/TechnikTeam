@@ -1,98 +1,146 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" isELIgnored="false"%>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+
+<c:set var="pageTitle"
+	value="${not empty param.pageTitle ? param.pageTitle : 'TechnikTeam'}" />
+<c:set var="showNav"
+	value="${not empty param.showNav ? param.showNav : 'true'}" />
+<c:set var="userPermissions" value="${sessionScope.user.permissions}" />
 
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${pageTitle} - TechnikTeam</title>
-    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
-    <link rel="icon" href="${pageContext.request.contextPath}/images/favicon.ico" type="image/x-icon">
-    
-    <!-- This script prevents the "Flash of Unstyled Content" (FOUC) for the dark/light theme -->
-    <script>
-        (function() {
-            try {
-                var theme = localStorage.getItem('theme') || 'light';
-                document.documentElement.setAttribute('data-theme', theme);
-            } catch (e) {
-                console.error("Could not set theme from localStorage", e);
-            }
-        })();
-    </script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><c:out value="${pageTitle}" /> | TechnikTeam</title>
+<link rel="stylesheet"
+	href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<link rel="stylesheet"
+	href="${pageContext.request.contextPath}/css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body data-context-path="${pageContext.request.contextPath}" data-is-logged-in="${not empty sessionScope.user}">
+<body data-context-path="${pageContext.request.contextPath}"
+	data-is-logged-in="${not empty sessionScope.user}">
 
-    <c:if test="${empty param.showNav or param.showNav == 'true'}">
-        <header class="mobile-header">
-            <a href="${pageContext.request.contextPath}/home" class="mobile-logo">
-                <i class="fas fa-bolt" style="color: var(--primary-color);"></i> TechnikTeam
-            </a>
-            <button class="mobile-nav-toggle" aria-label="Navigation umschalten">
-                <div class="line line-1"></div>
-                <div class="line line-2"></div>
-                <div class="line line-3"></div>
-            </button>
-        </header>
+	<c:if test="${showNav == 'true'}">
+		<aside class="sidebar">
+			<header class="sidebar-header">
+				<a href="${pageContext.request.contextPath}/home" class="logo">
+					<i class="fas fa-bolt"></i> TechnikTeam
+				</a>
+			</header>
 
-        <nav class="sidebar">
-            <div class="sidebar-header">
-                <a href="${pageContext.request.contextPath}/home" class="logo">
-                    <i class="fas fa-bolt"></i> TechnikTeam
-                </a>
-            </div>
+			<nav>
+				<ul class="sidebar-nav">
+					<li><a href="${pageContext.request.contextPath}/home"
+						class="nav-link"><i class="fas fa-home fa-fw"></i> Home</a></li>
+					<li><a href="${pageContext.request.contextPath}/lehrgaenge"
+						class="nav-link"><i class="fas fa-chalkboard-teacher fa-fw"></i>
+							Lehrgänge</a></li>
+					<li><a
+						href="${pageContext.request.contextPath}/veranstaltungen"
+						class="nav-link"><i class="fas fa-calendar-alt fa-fw"></i>
+							Veranstaltungen</a></li>
+					<li><a href="${pageContext.request.contextPath}/lager"
+						class="nav-link"><i class="fas fa-boxes fa-fw"></i> Lager</a></li>
+					<li><a href="${pageContext.request.contextPath}/dateien"
+						class="nav-link"><i class="fas fa-file-alt fa-fw"></i> Dateien</a></li>
+					<li><a href="${pageContext.request.contextPath}/kalender"
+						class="nav-link"><i class="fas fa-calendar-alt fa-fw"></i>
+							Kalender</a></li>
 
-            <ul class="sidebar-nav">
-                <li><a href="${pageContext.request.contextPath}/home"><i class="fas fa-home fa-fw"></i> Home</a></li>
-                <li><a href="${pageContext.request.contextPath}/veranstaltungen"><i class="fas fa-calendar-check fa-fw"></i> Veranstaltungen</a></li>
-                <li><a href="${pageContext.request.contextPath}/lehrgaenge"><i class="fas fa-chalkboard-teacher fa-fw"></i> Lehrgänge</a></li>
-                <li><a href="${pageContext.request.contextPath}/lager"><i class="fas fa-boxes fa-fw"></i> Lager</a></li>
-                <li><a href="${pageContext.request.contextPath}/dateien"><i class="fas fa-folder-open fa-fw"></i> Dateien</a></li>
-                <li><a href="${pageContext.request.contextPath}/kalender"><i class="fas fa-calendar-alt fa-fw"></i> Kalender</a></li>
+					<c:if
+						test="${userPermissions.contains('ACCESS_ADMIN_PANEL') or userPermissions.contains('STORAGE_MANAGE') or userPermissions.contains('DEFECTS_MANAGE')}">
+						<li class="nav-section-title">Admin</li>
+					</c:if>
 
-                <c:if test="${sessionScope.user.permissions.contains('ACCESS_ADMIN_PANEL')}">
-                    <li class="nav-section-title">Administration</li>
-                    <li><a href="${pageContext.request.contextPath}/admin/dashboard"><i class="fas fa-tachometer-alt fa-fw"></i> Dashboard</a></li>
-                    <li><a href="${pageContext.request.contextPath}/admin/mitglieder"><i class="fas fa-users-cog fa-fw"></i> Mitglieder</a></li>
-                    <li><a href="${pageContext.request.contextPath}/admin/veranstaltungen"><i class="fas fa-calendar-plus fa-fw"></i> Events</a></li>
-                    <li><a href="${pageContext.request.contextPath}/admin/lehrgaenge"><i class="fas fa-book fa-fw"></i> Lehrgangsvorlagen</a></li>
-                    <li><a href="${pageContext.request.contextPath}/admin/matrix"><i class="fas fa-th-list fa-fw"></i> Matrix</a></li>
-                    <li><a href="${pageContext.request.contextPath}/admin/lager"><i class="fas fa-warehouse fa-fw"></i> Lagerverwaltung</a></li>
-                    <li><a href="${pageContext.request.contextPath}/admin/defekte"><i class="fas fa-wrench fa-fw"></i> Defekte</a></li>
-                    <li><a href="${pageContext.request.contextPath}/admin/dateien"><i class="fas fa-file-upload fa-fw"></i> Dateiverwaltung</a></li>
-                    <li><a href="${pageContext.request.contextPath}/admin/berichte"><i class="fas fa-chart-pie fa-fw"></i> Berichte</a></li>
-                    <li><a href="${pageContext.request.contextPath}/admin/log"><i class="fas fa-clipboard-list fa-fw"></i> System-Log</a></li>
-                    <li><a href="${pageContext.request.contextPath}/admin/system"><i class="fas fa-server fa-fw"></i> Systemstatus</a></li>
-                </c:if>
-            </ul>
+					<c:if test="${userPermissions.contains('ACCESS_ADMIN_PANEL')}">
+						<li><a
+							href="${pageContext.request.contextPath}/admin/dashboard"
+							class="nav-link"><i class="fas fa-tachometer-alt fa-fw"></i>
+								Dashboard</a></li>
+						<li><a
+							href="${pageContext.request.contextPath}/admin/mitglieder"
+							class="nav-link"><i class="fas fa-users-cog fa-fw"></i>
+								Benutzer</a></li>
+						<li><a
+							href="${pageContext.request.contextPath}/admin/veranstaltungen"
+							class="nav-link"><i class="fas fa-calendar-check fa-fw"></i>
+								Events</a></li>
+						<li><a
+							href="${pageContext.request.contextPath}/admin/lehrgaenge"
+							class="nav-link"><i class="fas fa-graduation-cap fa-fw"></i>
+								Lehrgänge</a></li>
+						<li><a href="${pageContext.request.contextPath}/admin/kits"
+							class="nav-link"><i class="fas fa-box-open fa-fw"></i> Kits</a></li>
+					</c:if>
 
-            <div class="user-actions">
-                <div class="user-info">
-                    Angemeldet als: <strong><c:out value="${sessionScope.user.username}" /></strong>
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                     <a href="${pageContext.request.contextPath}/profil" class="btn btn-small">
-                        <i class="fas fa-user-circle"></i> Mein Profil
-                    </a>
-                    <a href="${pageContext.request.contextPath}/passwort" class="btn btn-small">
-                        <i class="fas fa-key"></i> Passwort ändern
-                    </a>
-                    <a id="logout-link" href="${pageContext.request.contextPath}/logout" class="btn btn-small btn-danger">
-                        <i class="fas fa-sign-out-alt"></i> Ausloggen
-                    </a>
-                </div>
-                <div class="form-group" style="margin-top: 1rem; display: flex; align-items: center; justify-content: space-between;">
-                    <label for="theme-toggle" style="margin: 0;">Dark Mode</label>
-                    <input type="checkbox" id="theme-toggle" class="theme-switch">
-                </div>
-            </div>
-        </nav>
-        <div class="page-overlay"></div>
-    </c:if>
+					<c:if test="${userPermissions.contains('STORAGE_MANAGE')}">
+						<li><a href="${pageContext.request.contextPath}/admin/lager"
+							class="nav-link"><i class="fas fa-warehouse fa-fw"></i> Lager
+								(Admin)</a></li>
+					</c:if>
 
-    <main class="main-content-wrapper ${(empty param.showNav or param.showNav == 'true') ? '' : 'no-sidebar'}">
-        <div class="main-content">
+					<c:if test="${userPermissions.contains('DEFECTS_MANAGE')}">
+						<li><a
+							href="${pageContext.request.contextPath}/admin/defekte"
+							class="nav-link"><i class="fas fa-wrench fa-fw"></i> Defekte</a></li>
+					</c:if>
+
+					<c:if test="${userPermissions.contains('ACCESS_ADMIN_PANEL')}">
+						<li><a href="${pageContext.request.contextPath}/admin/matrix"
+							class="nav-link"><i class="fas fa-th-list fa-fw"></i> Matrix</a></li>
+						<li><a
+							href="${pageContext.request.contextPath}/admin/dateien"
+							class="nav-link"><i class="fas fa-folder-open fa-fw"></i>
+								Dateien (Admin)</a></li>
+						<li><a
+							href="${pageContext.request.contextPath}/admin/berichte"
+							class="nav-link"><i class="fas fa-chart-pie fa-fw"></i>
+								Berichte</a></li>
+						<li><a
+							href="${pageContext.request.contextPath}/admin/resource-calendar"
+							class="nav-link"><i class="fas fa-calendar-alt fa-fw"></i>
+								Ressourcen</a></li>
+						<li><a href="${pageContext.request.contextPath}/admin/system"
+							class="nav-link"><i class="fas fa-server fa-fw"></i> System</a></li>
+						<li><a href="${pageContext.request.contextPath}/admin/log"
+							class="nav-link"><i class="fas fa-history fa-fw"></i> Admin
+								Log</a></li>
+					</c:if>
+				</ul>
+			</nav>
+
+			<div class="user-actions">
+				<div class="user-info">
+					Eingeloggt als: <strong><c:out
+							value="${sessionScope.user.username}" /></strong>
+				</div>
+				<a href="${pageContext.request.contextPath}/profil"
+					class="btn btn-small">Mein Profil</a> <a
+					href="${pageContext.request.contextPath}/passwort"
+					class="btn btn-small btn-secondary">Passwort ändern</a> <a
+					href="${pageContext.request.contextPath}/logout"
+					class="btn btn-small btn-danger-outline" id="logout-link">Logout</a>
+				<div style="margin-top: 1rem; text-align: center;">
+					<label class="switch"> <input type="checkbox"
+						id="theme-toggle"> <span class="slider round"></span>
+					</label>
+				</div>
+			</div>
+		</aside>
+
+		<header class="mobile-header">
+			<button class="mobile-nav-toggle" aria-label="Navigation umschalten">
+				<div class="line line-1"></div>
+				<div class="line line-2"></div>
+				<div class="line line-3"></div>
+			</button>
+			<a href="${pageContext.request.contextPath}/home" class="mobile-logo">TechnikTeam</a>
+		</header>
+		<div class="page-overlay"></div>
+	</c:if>
+
+	<main class="main-content-wrapper">
+		<div class="main-content">

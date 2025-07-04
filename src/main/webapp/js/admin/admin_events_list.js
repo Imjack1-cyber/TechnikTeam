@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-	const contextPath = "${pageContext.request.contextPath}";
+	const contextPath = document.body.dataset.contextPath || '';
 	document.querySelectorAll('.js-confirm-form').forEach(form => {
 		form.addEventListener('submit', function(e) {
 			e.preventDefault();
@@ -14,10 +14,11 @@ document.addEventListener('DOMContentLoaded', () => {
 	const resContainer = document.getElementById('modal-reservations-container');
 	const cfContainer = document.getElementById('modal-custom-fields-container');
 	const attachmentsList = document.getElementById('modal-attachments-list');
+	const kitSelect = document.getElementById('kit-selection-modal');
 
 	// --- Data from JSP for dynamic fields ---
-	const allCourses = [<c:forEach var="c" items="${allCourses}">{id: ${c.id}, name: "${fn:escapeXml(c.name)}"},</c:forEach>];
-	const allItems = [<c:forEach var="i" items="${allItems}">{id: ${i.id}, name: "${fn:escapeXml(i.name)} (verfügbar: ${i.availableQuantity})"},</c:forEach>];
+	const allCourses = JSON.parse(document.getElementById('allCoursesData').textContent);
+	const allItems = JSON.parse(document.getElementById('allItemsData').textContent);
 
 	// --- Assign Users Modal Logic ---
 	const assignForm = document.getElementById('assign-users-form');
@@ -33,12 +34,11 @@ document.addEventListener('DOMContentLoaded', () => {
 		assignCheckboxes.innerHTML = '<p>Lade Benutzer...</p>';
 		assignModal.classList.add('active');
 		try {
-			// CORRECTED: Fetch from the correct servlet URL.
 			const response = await fetch(`${contextPath}/admin/veranstaltungen?action=getAssignmentData&id=${eventId}`);
 			if (!response.ok) throw new Error('Could not fetch assignment data.');
 			const data = await response.json();
 			assignCheckboxes.innerHTML = '';
-			if(data.signedUpUsers && data.signedUpUsers.length > 0) {
+			if (data.signedUpUsers && data.signedUpUsers.length > 0) {
 				data.signedUpUsers.forEach(user => {
 					const isChecked = data.assignedUserIds.includes(user.id) ? 'checked' : '';
 					assignCheckboxes.innerHTML += `
@@ -85,44 +85,63 @@ document.addEventListener('DOMContentLoaded', () => {
 		row.prepend(select, input);
 	};
 
-    const addCustomFieldRow = (fieldName = '', fieldType = 'TEXT') => {
-        const row = createRow(cfContainer);
-        const nameInput = document.createElement('input');
-        nameInput.type = 'text';
-        nameInput.name = 'customFieldName';
-        nameInput.placeholder = 'Frage eingeben (z.B. T-Shirt Größe)';
-        nameInput.className = 'form-group';
-        nameInput.style.flexGrow = '2';
-        nameInput.value = fieldName;
+	const addCustomFieldRow = (fieldName = '', fieldType = 'TEXT') => {
+		const row = createRow(cfContainer);
+		const nameInput = document.createElement('input');
+		nameInput.type = 'text';
+		nameInput.name = 'customFieldName';
+		nameInput.placeholder = 'Frage eingeben (z.B. T-Shirt Größe)';
+		nameInput.className = 'form-group';
+		nameInput.style.flexGrow = '2';
+		nameInput.value = fieldName;
 
-        const typeSelect = document.createElement('select');
-        typeSelect.name = 'customFieldType';
-        typeSelect.className = 'form-group';
-        typeSelect.innerHTML = `<option value="TEXT">Text</option><option value="BOOLEAN">Ja/Nein</option>`;
-        typeSelect.value = fieldType;
+		const typeSelect = document.createElement('select');
+		typeSelect.name = 'customFieldType';
+		typeSelect.className = 'form-group';
+		typeSelect.innerHTML = `<option value="TEXT">Text</option><option value="BOOLEAN">Ja/Nein</option>`;
+		typeSelect.value = fieldType;
 
-        row.prepend(nameInput, typeSelect);
-    };
+		row.prepend(nameInput, typeSelect);
+	};
 
 	const addAttachmentRow = (id, filename, filepath) => {
-        const li = document.createElement('li'); li.id = `attachment-item-${id}`;
-        li.innerHTML = `<a href="${contextPath}/download?file=${filepath}" target="_blank">${filename}</a>`;
-        const removeBtn = document.createElement('button'); removeBtn.type = 'button'; removeBtn.className = 'btn btn-small btn-danger-outline';
-        removeBtn.innerHTML = '×';
-        removeBtn.onclick = () => {
-            showConfirmationModal(`Anhang '${filename}' wirklich löschen?`, async () => {
-                try {
-                    // CORRECTED: Post to the correct servlet URL.
-                    const response = await fetch(`${contextPath}/admin/veranstaltungen`, { method: 'POST', body: new URLSearchParams({ action: 'deleteAttachment', id: id}) });
-                    if (response.ok) li.remove();
-                    else alert('Fehler beim Löschen des Anhangs.');
-                } catch(e) {
-                     alert('Netzwerkfehler beim Löschen des Anhangs.');
-                }
-            });
-        };
-        li.appendChild(removeBtn); attachmentsList.appendChild(li);
-    };
+		const li = document.createElement('li'); li.id = `attachment-item-${id}`;
+		li.innerHTML = `<a href="${contextPath}/download?file=${filepath}" target="_blank">${filename}</a>`;
+		const removeBtn = document.createElement('button'); removeBtn.type = 'button'; removeBtn.className = 'btn btn-small btn-danger-outline';
+		removeBtn.innerHTML = '×';
+		removeBtn.onclick = () => {
+			showConfirmationModal(`Anhang '${filename}' wirklich löschen?`, async () => {
+				try {
+					const response = await fetch(`${contextPath}/admin/veranstaltungen`, { method: 'POST', body: new URLSearchParams({ action: 'deleteAttachment', id: id }) });
+					if (response.ok) li.remove();
+					else alert('Fehler beim Löschen des Anhangs.');
+				} catch (e) {
+					alert('Netzwerkfehler beim Löschen des Anhangs.');
+				}
+			});
+		};
+		li.appendChild(removeBtn); attachmentsList.appendChild(li);
+	};
+
+	// --- Kit Selection Logic ---
+	if (kitSelect) {
+		kitSelect.addEventListener('change', async () => {
+			const kitId = kitSelect.value;
+			if (!kitId) return;
+
+			try {
+				const response = await fetch(`${contextPath}/admin/kits?action=getKitItems&id=${kitId}`);
+				if (!response.ok) throw new Error('Could not fetch kit items');
+				const items = await response.json();
+				items.forEach(item => addReservationRow(item.itemId, item.quantity));
+			} catch (e) {
+				console.error("Error fetching kit items:", e);
+				alert("Fehler beim Laden der Kit-Inhalte.");
+			}
+			// Reset selection to allow re-adding the same kit
+			kitSelect.value = '';
+		});
+	}
 
 	// --- Edit/Create Event Modal Logic ---
 	document.getElementById('modal-add-requirement-btn').addEventListener('click', () => addRequirementRow());
@@ -136,9 +155,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	const resetEventModal = () => {
 		eventForm.reset();
-		reqContainer.innerHTML = ''; 
+		reqContainer.innerHTML = '';
 		resContainer.innerHTML = '';
-        cfContainer.innerHTML = '';
+		cfContainer.innerHTML = '';
 		attachmentsList.innerHTML = '';
 	};
 
@@ -159,7 +178,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		btn.addEventListener('click', async () => {
 			const eventId = btn.dataset.eventId;
 			try {
-                // CORRECTED: Fetch from the correct servlet URL.
 				const response = await fetch(`${contextPath}/admin/veranstaltungen?action=getEventData&id=${eventId}`);
 				if (!response.ok) throw new Error('Event data could not be fetched.');
 				const event = await response.json();
@@ -173,12 +191,12 @@ document.addEventListener('DOMContentLoaded', () => {
 				eventForm.querySelector('#eventDateTime-modal').value = event.eventDateTime ? event.eventDateTime.substring(0, 16) : '';
 				eventForm.querySelector('#endDateTime-modal').value = event.endDateTime ? event.endDateTime.substring(0, 16) : '';
 				eventForm.querySelector('#description-modal').value = event.description || '';
-				
+
 				event.skillRequirements?.forEach(req => addRequirementRow(req.requiredCourseId, req.requiredPersons));
 				event.reservedItems?.forEach(res => addReservationRow(res.id, res.quantity));
-                event.customFields?.forEach(cf => addCustomFieldRow(cf.fieldName, cf.fieldType));
+				event.customFields?.forEach(cf => addCustomFieldRow(cf.fieldName, cf.fieldType));
 				event.attachments?.forEach(att => addAttachmentRow(att.id, att.filename, att.filepath));
-				
+
 				openEventModal();
 			} catch (error) {
 				console.error('Error opening edit modal:', error);
@@ -186,17 +204,17 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 		});
 	});
-	
+
 	// --- Tab Logic ---
-    const tabButtons = eventModal.querySelectorAll('.modal-tab-button');
-    const tabContents = eventModal.querySelectorAll('.modal-tab-content');
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            tabContents.forEach(content => {
-                content.classList.toggle('active', content.id === button.dataset.tab);
-            });
-        });
-    });
+	const tabButtons = eventModal.querySelectorAll('.modal-tab-button');
+	const tabContents = eventModal.querySelectorAll('.modal-tab-content');
+	tabButtons.forEach(button => {
+		button.addEventListener('click', () => {
+			tabButtons.forEach(btn => btn.classList.remove('active'));
+			button.classList.add('active');
+			tabContents.forEach(content => {
+				content.classList.toggle('active', content.id === button.dataset.tab);
+			});
+		});
+	});
 });

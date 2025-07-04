@@ -120,8 +120,23 @@ document.addEventListener('DOMContentLoaded', () => {
 		const eventSource = new EventSource(`${contextPath}/notifications`);
 		eventSource.onopen = () => console.log("SSE connection established.");
 		eventSource.onmessage = (event) => {
-			console.log("SSE message received:", event.data);
-			showBrowserNotification(event.data);
+			try {
+				const data = JSON.parse(event.data);
+				console.log("SSE data received:", data);
+
+				if (data.type === 'chat_update') {
+					// Fire a custom event that the eventDetails.js can listen for
+					const chatUpdateEvent = new CustomEvent('sse_chat_update', { detail: data });
+					document.dispatchEvent(chatUpdateEvent);
+				} else {
+					// Fallback for other potential JSON messages
+					showBrowserNotification(data.message || JSON.stringify(data));
+				}
+			} catch (e) {
+				// If it's not JSON, treat it as a plain text notification
+				console.log("SSE (plain text) message received:", event.data);
+				showBrowserNotification(event.data);
+			}
 		};
 		eventSource.onerror = (err) => {
 			console.error("SSE connection error.", err);

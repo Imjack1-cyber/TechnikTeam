@@ -1,8 +1,10 @@
 package de.technikteam.servlet;
 
 import de.technikteam.dao.EventDAO;
+import de.technikteam.dao.EventTaskDAO;
 import de.technikteam.dao.MeetingDAO;
 import de.technikteam.model.Event;
+import de.technikteam.model.EventTask;
 import de.technikteam.model.Meeting;
 import de.technikteam.model.User;
 import jakarta.servlet.ServletException;
@@ -22,11 +24,13 @@ public class HomeServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(HomeServlet.class);
 	private EventDAO eventDAO;
+	private EventTaskDAO eventTaskDAO;
 	private MeetingDAO meetingDAO;
 
 	@Override
 	public void init() {
 		eventDAO = new EventDAO();
+		eventTaskDAO = new EventTaskDAO();
 		meetingDAO = new MeetingDAO();
 	}
 
@@ -36,18 +40,18 @@ public class HomeServlet extends HttpServlet {
 		User user = (User) request.getSession().getAttribute("user");
 		logger.info("Home page requested by user '{}'. Fetching dashboard data.", user.getUsername());
 
-		List<Event> upcomingEvents = eventDAO.getUpcomingEventsForUser(user, 3);
-		logger.debug("Fetched {} upcoming events for home page.", upcomingEvents.size());
+		List<Event> assignedEvents = eventDAO.getAssignedEventsForUser(user.getId(), 5);
+		List<EventTask> openTasks = eventTaskDAO.getOpenTasksForUser(user.getId());
+		List<Event> upcomingEvents = eventDAO.getUpcomingEventsForUser(user, 5);
 
-		List<Meeting> upcomingMeetings = meetingDAO.getUpcomingMeetingsForUser(user).stream().limit(3)
-				.collect(Collectors.toList());
-		logger.debug("Fetched {} upcoming meetings for home page.", upcomingMeetings.size());
+		logger.debug("Fetched {} assigned events, {} open tasks, and {} general upcoming events.",
+				assignedEvents.size(), openTasks.size(), upcomingEvents.size());
 
+		request.setAttribute("assignedEvents", assignedEvents);
+		request.setAttribute("openTasks", openTasks);
 		request.setAttribute("upcomingEvents", upcomingEvents);
-		request.setAttribute("upcomingMeetings", upcomingMeetings);
 
 		logger.debug("Forwarding to the correct home.jsp path.");
-		// CORRECTED: The path must point to the new location inside /views/
 		request.getRequestDispatcher("/views/public/home.jsp").forward(request, response);
 	}
 }

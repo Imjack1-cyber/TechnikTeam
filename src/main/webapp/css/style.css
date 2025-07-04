@@ -1297,3 +1297,152 @@ body.nav-open .page-overlay {
 @keyframes blink {
     50% { background-color: transparent; }
 }
+
+/* =================================================================== */
+/*  10. CHAT INTERFACE                                                 */
+/* =================================================================== */
+
+/*
+ * The main container for a single message (bubble + options menu).
+ * It uses flexbox to align the bubble to the left or right.
+*/
+.chat-message-container {
+    display: flex;
+    margin-bottom: 0.75rem;
+    justify-content: flex-start; /* Default for other users' messages */
+    position: relative; /* Needed for positioning the options menu */
+    padding-left: 3rem; /* Creates space on the left for the options menu */
+    padding-right: 0.5rem;
+}
+
+/* Modifier class for messages sent by the person viewing the chat */
+.chat-message-container.current-user {
+    justify-content: flex-end; /* Aligns the bubble to the right */
+    padding-left: 0.5rem;
+    padding-right: 3rem; /* Creates space on the right for the options menu */
+}
+
+/* The chat bubble containing the message text */
+.chat-bubble {
+    max-width: 80%;
+    padding: 0.6rem 0.9rem;
+    border-radius: 18px;
+    background-color: var(--bg-color); /* Light gray for others' messages */
+    border: 1px solid var(--border-color);
+    word-wrap: break-word; /* Prevents long words from overflowing */
+}
+
+/* Modifier class for the current user's chat bubble */
+.chat-bubble.current-user-bubble {
+    background-color: var(--primary-color); /* Primary blue color */
+    color: #fff;
+    border-color: var(--primary-color);
+}
+
+/* The sender's name, shown on others' messages */
+.chat-username {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+    color: var(--primary-color);
+}
+
+/* The actual text content of the message */
+.chat-text {
+    display: block;
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+/* The timestamp displayed below the message text */
+.chat-timestamp {
+    display: block;
+    font-size: 0.75rem;
+    margin-top: 0.3rem;
+    text-align: right;
+    color: var(--text-muted-color);
+}
+
+/* Make the timestamp lighter on the dark blue user bubble */
+.chat-bubble.current-user-bubble .chat-timestamp {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* The "(edited)" marker next to the timestamp */
+.chat-edited-marker {
+    font-size: 0.7em;
+    font-style: italic;
+    color: inherit; /* Inherits color from the timestamp for consistency */
+}
+
+/*
+ * The container for the Edit/Delete buttons.
+ * It's hidden by default and appears on hover.
+*/
+.chat-options {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%) scale(0.9);
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    display: flex;
+    gap: 0.25rem;
+    background-color: var(--surface-color);
+    padding: 0.25rem;
+    border-radius: 20px;
+    box-shadow: var(--shadow-md);
+}
+
+/* Position the options menu on the left for incoming messages */
+.chat-message-container .chat-options {
+    left: 0;
+}
+
+/* Position the options menu on the right for the current user's messages */
+.chat-message-container.current-user .chat-options {
+    left: auto;
+    right: 0;
+}
+
+/* Reveal the options menu when hovering over the message container */
+.chat-message-container:hover .chat-options {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+}
+
+/* The individual Edit or Delete icon buttons */
+.chat-option-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted-color);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-option-btn:hover {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+/* The temporary input field that appears when editing a message */
+.chat-edit-input {
+    width: 100%;
+    padding: 0.2rem 0.4rem;
+    border: 1px solid var(--primary-color);
+    border-radius: 4px;
+    background: var(--surface-color);
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 1rem;
+}
+
+.deleted-message .chat-text {
+    font-style: italic;
+    color: var(--text-muted-color);
+}

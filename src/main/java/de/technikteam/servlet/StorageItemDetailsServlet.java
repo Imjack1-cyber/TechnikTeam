@@ -1,7 +1,9 @@
 package de.technikteam.servlet;
 
+import de.technikteam.dao.MaintenanceLogDAO;
 import de.technikteam.dao.StorageDAO;
 import de.technikteam.dao.StorageLogDAO;
+import de.technikteam.model.MaintenanceLogEntry;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.StorageLogEntry;
 import jakarta.servlet.ServletException;
@@ -26,12 +28,14 @@ public class StorageItemDetailsServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(StorageItemDetailsServlet.class);
 	private StorageDAO storageDAO;
-	private StorageLogDAO storageLogDAO; // Added for fetching history
+	private StorageLogDAO storageLogDAO;
+	private MaintenanceLogDAO maintenanceLogDAO;
 
 	@Override
 	public void init() {
 		storageDAO = new StorageDAO();
-		storageLogDAO = new StorageLogDAO(); // Initialize the log DAO
+		storageLogDAO = new StorageLogDAO();
+		maintenanceLogDAO = new MaintenanceLogDAO();
 	}
 
 	@Override
@@ -51,13 +55,14 @@ public class StorageItemDetailsServlet extends HttpServlet {
 
 			// Fetch the transaction history for the item
 			List<StorageLogEntry> history = storageLogDAO.getHistoryForItem(itemId);
+			List<MaintenanceLogEntry> maintenanceHistory = maintenanceLogDAO.getHistoryForItem(itemId);
 
 			request.setAttribute("item", item);
-			request.setAttribute("history", history); // Pass history to the JSP
+			request.setAttribute("history", history);
+			request.setAttribute("maintenanceHistory", maintenanceHistory);
 
 			logger.debug("Forwarding to storage_item_details.jsp for item '{}' with {} history entries.",
 					item.getName(), history.size());
-			// CORRECTED: Forward to the actual JSP file path.
 			request.getRequestDispatcher("/views/public/storage_item_details.jsp").forward(request, response);
 
 		} catch (NumberFormatException e) {

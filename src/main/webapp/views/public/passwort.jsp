@@ -2,9 +2,8 @@
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
-<c:import url="/WEB-INF/jspf/header.jspf">
+<c:import url="/WEB-INF/jspf/main_header.jspf">
 	<c:param name="pageTitle" value="Passwort ändern" />
-	<c:param name="navType" value="user" />
 </c:import>
 
 <div style="max-width: 600px; margin: auto;">
@@ -44,4 +43,4 @@
 	</div>
 </div>
 
-<c:import url="/WEB-INF/jspf/footer.jspf" />
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />

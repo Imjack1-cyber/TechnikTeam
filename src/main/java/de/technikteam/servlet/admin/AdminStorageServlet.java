@@ -2,7 +2,9 @@ package de.technikteam.servlet.admin;
 
 import com.google.gson.Gson;
 import de.technikteam.config.AppConfig;
+import de.technikteam.dao.MaintenanceLogDAO;
 import de.technikteam.dao.StorageDAO;
+import de.technikteam.model.MaintenanceLogEntry;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
@@ -30,11 +32,13 @@ public class AdminStorageServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminStorageServlet.class.getName());
 	private StorageDAO storageDAO;
+	private MaintenanceLogDAO maintenanceLogDAO;
 	private Gson gson = new Gson();
 
 	@Override
 	public void init() {
 		storageDAO = new StorageDAO();
+		maintenanceLogDAO = new MaintenanceLogDAO();
 	}
 
 	@Override
@@ -48,11 +52,7 @@ public class AdminStorageServlet extends HttpServlet {
 
 		try {
 			logger.info("Listing all storage items for admin view.");
-			// CORRECTED: Fetch a flat List of all items, which is what the
-			// admin_storage_list.jsp expects.
 			List<StorageItem> storageList = storageDAO.getAllItems();
-			// CORRECTED: Set the attribute with the name "storageList" to match the JSP's
-			// <c:forEach> tag.
 			request.setAttribute("storageList", storageList);
 			request.getRequestDispatcher("/views/admin/admin_storage_list.jsp").forward(request, response);
 		} catch (Exception e) {
@@ -86,10 +86,46 @@ public class AdminStorageServlet extends HttpServlet {
 		case "updateDefect":
 			handleDefectUpdate(request, response);
 			break;
+		case "updateStatus":
+			handleStatusUpdate(request, response);
+			break;
 		default:
 			response.sendRedirect(request.getContextPath() + "/admin/lager");
 			break;
 		}
+	}
+
+	private void handleStatusUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		User adminUser = (User) request.getSession().getAttribute("user");
+		try {
+			int itemId = Integer.parseInt(request.getParameter("id"));
+			String newStatus = request.getParameter("status");
+			String notes = request.getParameter("notes");
+
+			storageDAO.updateItemStatus(itemId, newStatus);
+
+			MaintenanceLogEntry log = new MaintenanceLogEntry();
+			log.setItemId(itemId);
+			log.setUserId(adminUser.getId());
+			log.setNotes(notes);
+
+			String logAction;
+			if ("MAINTENANCE".equals(newStatus)) {
+				logAction = "Marked for Maintenance";
+			} else {
+				logAction = "Returned to Service";
+			}
+			log.setAction(logAction);
+
+			maintenanceLogDAO.createLog(log);
+			AdminLogService.log(adminUser.getUsername(), "UPDATE_ITEM_STATUS",
+					"Status für Artikel-ID " + itemId + " auf '" + newStatus + "' gesetzt. Notiz: " + notes);
+			request.getSession().setAttribute("successMessage", "Artikelstatus erfolgreich aktualisiert.");
+		} catch (Exception e) {
+			logger.error("Error updating item status", e);
+			request.getSession().setAttribute("errorMessage", "Fehler beim Aktualisieren des Status.");
+		}
+		response.sendRedirect(request.getContextPath() + "/admin/lager");
 	}
 
 	private void getItemDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {

@@ -22,7 +22,7 @@ $fileTypes = @("*.java", "*.jsp", "*.css", "*.js", "*.xml")
 $sourceDirectory = "src" 
 
 # New: Maximum file size for each output file in Kilobytes (KB)
-$maxFileSizeKB = 300
+$maxFileSizeKB = 350
 # Convert KB to Bytes for comparison
 $maxFileSizeInBytes = $maxFileSizeKB * 1024
 

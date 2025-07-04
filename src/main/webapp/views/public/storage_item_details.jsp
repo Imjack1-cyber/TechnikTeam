@@ -1,4 +1,3 @@
-
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
@@ -58,40 +57,81 @@
 	</div>
 
 	<div class="card">
-		<h2 class="card-title">
-			<i class="fas fa-history"></i> Verlauf / Chronik
-		</h2>
-		<div class="table-wrapper" style="max-height: 60vh; overflow-y: auto;">
-			<table class="data-table">
-				<thead>
-					<tr>
-						<th>Wann</th>
-						<th>Aktion</th>
-						<th>Wer</th>
-						<th>Notiz</th>
-					</tr>
-				</thead>
-				<tbody>
-					<c:if test="${empty history}">
+		<div class="modal-tabs">
+			<button class="modal-tab-button active" data-tab="history-tab">Verlauf</button>
+			<button class="modal-tab-button" data-tab="maintenance-tab">Wartungshistorie</button>
+		</div>
+
+		<div id="history-tab" class="modal-tab-content active">
+			<h2 class="card-title" style="border: none; padding: 0;">Verlauf
+				/ Chronik</h2>
+			<div class="table-wrapper"
+				style="max-height: 60vh; overflow-y: auto;">
+				<table class="data-table">
+					<thead>
 						<tr>
-							<td colspan="4" style="text-align: center;">Kein Verlauf für
-								diesen Artikel vorhanden.</td>
+							<th>Wann</th>
+							<th>Aktion</th>
+							<th>Wer</th>
+							<th>Notiz</th>
 						</tr>
-					</c:if>
-					<c:forEach var="entry" items="${history}">
+					</thead>
+					<tbody>
+						<c:if test="${empty history}">
+							<tr>
+								<td colspan="4" style="text-align: center;">Kein Verlauf
+									für diesen Artikel vorhanden.</td>
+							</tr>
+						</c:if>
+						<c:forEach var="entry" items="${history}">
+							<tr>
+								<td>${entry.transactionTimestampLocaleString}</td>
+								<td><span
+									class="status-badge ${entry.quantityChange > 0 ? 'status-ok' : 'status-danger'}">${entry.quantityChange > 0 ? '+' : ''}${entry.quantityChange}</span></td>
+								<td>${entry.username}</td>
+								<td>${not empty entry.notes ? entry.notes : '-'}</td>
+							</tr>
+						</c:forEach>
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		<div id="maintenance-tab" class="modal-tab-content">
+			<h2 class="card-title" style="border: none; padding: 0;">Wartungshistorie</h2>
+			<div class="table-wrapper"
+				style="max-height: 60vh; overflow-y: auto;">
+				<table class="data-table">
+					<thead>
 						<tr>
-							<td>${entry.transactionTimestampLocaleString}</td>
-							<td><span
-								class="status-badge ${entry.quantityChange > 0 ? 'status-ok' : 'status-danger'}">${entry.quantityChange > 0 ? '+' : ''}${entry.quantityChange}</span></td>
-							<td>${entry.username}</td>
-							<td>${not empty entry.notes ? entry.notes : '-'}</td>
+							<th>Datum</th>
+							<th>Aktion</th>
+							<th>Bearbeiter</th>
+							<th>Notiz</th>
 						</tr>
-					</c:forEach>
-				</tbody>
-			</table>
+					</thead>
+					<tbody>
+						<c:if test="${empty maintenanceHistory}">
+							<tr>
+								<td colspan="4" style="text-align: center;">Keine
+									Wartungseinträge für diesen Artikel vorhanden.</td>
+							</tr>
+						</c:if>
+						<c:forEach var="entry" items="${maintenanceHistory}">
+							<tr>
+								<td>${entry.formattedLogDate}</td>
+								<td><c:out value="${entry.action}" /></td>
+								<td><c:out value="${entry.username}" /></td>
+								<td><c:out value="${entry.notes}" /></td>
+							</tr>
+						</c:forEach>
+					</tbody>
+				</table>
+			</div>
 		</div>
 	</div>
 </div>
+
 
 <div id="lightbox" class="lightbox-overlay">
 	<span class="lightbox-close" title="Schließen">×</span> <img
@@ -99,5 +139,21 @@
 </div>
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+		// Tab switching logic
+		const tabButtons = document.querySelectorAll('.modal-tab-button');
+		const tabContents = document.querySelectorAll('.modal-tab-content');
+		tabButtons.forEach(button => {
+			button.addEventListener('click', () => {
+				tabButtons.forEach(btn => btn.classList.remove('active'));
+				button.classList.add('active');
+				tabContents.forEach(content => {
+					content.classList.toggle('active', content.id === button.dataset.tab);
+				});
+			});
+		});
+    });
+</script>
 <script
 	src="${pageContext.request.contextPath}/js/public/storage_item_details.js"></script>

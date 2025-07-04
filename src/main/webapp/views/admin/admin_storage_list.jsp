@@ -32,6 +32,7 @@
 				<th class="sortable" data-sort-type="string">Ort</th>
 				<th class="sortable" data-sort-type="number">Verfügbar</th>
 				<th class="sortable" data-sort-type="number">Defekt</th>
+				<th>Status</th>
 				<th>Aktionen</th>
 			</tr>
 		</thead>
@@ -43,9 +44,9 @@
 								value="${item.name}" /></a></td>
 					<td style="text-align: center;"><c:if
 							test="${not empty item.imagePath}">
-							<a
-								href="${pageContext.request.contextPath}/image?file=${item.imagePath}"
-								class="lightbox-trigger" title="Bild anzeigen"> <img
+							<a href="#" class="lightbox-trigger"
+								data-src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
+								title="Bild anzeigen"> <img
 								src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
 								alt="Vorschaubild"
 								style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">
@@ -54,6 +55,9 @@
 					<td><c:out value="${item.location}" /></td>
 					<td><c:out value="${item.availableQuantity}" /></td>
 					<td><c:out value="${item.defectiveQuantity}" /></td>
+					<td><span
+						class="status-badge ${item.status == 'IN_STORAGE' ? 'status-ok' : (item.status == 'CHECKED_OUT' ? 'status-danger' : 'status-warn')}"><c:out
+								value="${item.status}" /></span></td>
 					<td style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
 						<button type="button" class="btn btn-small edit-item-btn"
 							data-fetch-url="<c:url value='/admin/lager?action=getItemData&id=${item.id}'/>">Bearbeiten</button>
@@ -63,7 +67,8 @@
 						</c:url> <c:url var="qrApiUrl"
 							value="https://api.qrserver.com/v1/create-qr-code/">
 							<c:param name="size" value="200x200" />
-							<c:param name="data" value="${actionUrl}" />
+							<c:param name="data"
+								value="${pageContext.request.scheme}://${pageContext.request.serverName}:${pageContext.request.serverPort}${actionUrl}" />
 						</c:url> <a href="${qrApiUrl}" target="_blank"
 						class="btn btn-small btn-secondary">QR-Code</a>
 
@@ -73,6 +78,12 @@
 							data-max-qty="${item.quantity}"
 							data-current-defect-qty="${item.defectiveQuantity}"
 							data-current-reason="${fn:escapeXml(item.defectReason)}">Defekt</button>
+
+						<button class="btn btn-small btn-info maintenance-modal-btn"
+							data-item-id="${item.id}"
+							data-item-name="${fn:escapeXml(item.name)}"
+							data-current-status="${item.status}">Wartung</button>
+
 						<form action="<c:url value='/admin/lager'/>" method="post"
 							class="js-confirm-form"
 							data-confirm-message="Artikel '${fn:escapeXml(item.name)}' wirklich löschen?">
@@ -87,12 +98,9 @@
 	</table>
 </div>
 
-<div id="lightbox" class="lightbox-overlay">
-	<span class="lightbox-close" title="Schließen">×</span> <img
-		class="lightbox-content" id="lightbox-image" alt="Großansicht">
-</div>
+<%-- Lightbox is now created globally via main.js --%>
 
-<%@ include file="/WEB-INF/jspf/storage_modals.jspf"%>
+<jsp:include page="/WEB-INF/jspf/storage_modals.jspf" />
 <c:import url="/WEB-INF/jspf/table_scripts.jspf" />
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
 <script

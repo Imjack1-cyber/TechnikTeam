@@ -1,107 +1,77 @@
-<%@ page pageEncoding="UTF-8" isELIgnored="false"%>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
-
-<!-- Modal for Create/Edit Storage Item -->
+<!-- Modal for Create/Edit Item -->
 <div class="modal-overlay" id="item-modal">
-	<div class="modal-content">
-		<button class="modal-close-btn">×</button>
-		<h3>Lagerartikel</h3>
-		<form action="<c:url value='/admin/storage'/>" method="post"
+	<div class="modal-content" style="max-width: 800px;">
+		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
+		<h3>Lagerartikel verwalten</h3>
+		<form action="<c:url value='/admin/lager'/>" method="post"
 			enctype="multipart/form-data">
-			<input type="hidden" name="action" id="item-action"> <input
-				type="hidden" name="id" id="item-id">
-			<div class="form-group">
-				<label for="name-modal">Name</label><input type="text"
-					id="name-modal" name="name" required>
+			<input type="hidden" name="action" value=""> <input
+				type="hidden" name="id" value="">
+			<div class="responsive-dashboard-grid">
+				<div class="form-group">
+					<label for="name-modal">Name des Artikels</label> <input
+						type="text" id="name-modal" name="name" required>
+				</div>
+				<div class="form-group">
+					<label for="location-modal">Lagerort</label> <input type="text"
+						id="location-modal" name="location">
+				</div>
+			</div>
+			<div class="responsive-dashboard-grid">
+				<div class="form-group">
+					<label for="cabinet-modal">Schrank</label> <input type="text"
+						id="cabinet-modal" name="cabinet">
+				</div>
+				<div class="form-group">
+					<label for="compartment-modal">Fach</label> <input type="text"
+						id="compartment-modal" name="compartment">
+				</div>
+			</div>
+			<div class="responsive-dashboard-grid">
+				<div class="form-group">
+					<label for="quantity-modal">Menge (Gesamt)</label> <input
+						type="number" id="quantity-modal" name="quantity" min="0" required>
+				</div>
+				<div class="form-group">
+					<label for="maxQuantity-modal">Max. Menge (für Status)</label> <input
+						type="number" id="maxQuantity-modal" name="maxQuantity" min="0"
+						required>
+				</div>
+			</div>
+			<div class="responsive-dashboard-grid">
+				<div class="form-group">
+					<label for="weight_kg-modal">Gewicht (kg)</label> <input
+						type="text" id="weight_kg-modal" name="weight_kg"
+						placeholder="z.B. 1.25">
+				</div>
+				<div class="form-group">
+					<label for="price_eur-modal">Preis (€)</label> <input type="text"
+						id="price_eur-modal" name="price_eur" placeholder="z.B. 19.99">
+				</div>
 			</div>
 			<div class="form-group">
-				<label for="location-modal">Ort</label><input type="text"
-					id="location-modal" name="location" required>
+				<label for="imageFile-modal">Bilddatei (optional,
+					überschreibt altes Bild)</label> <input type="file" id="imageFile-modal"
+					name="imageFile" accept="image/*">
 			</div>
-			<div class="form-group">
-				<label for="cabinet-modal">Schrank/Regal</label><input type="text"
-					id="cabinet-modal" name="cabinet">
-			</div>
-			<div class="form-group">
-				<label for="compartment-modal">Fach</label><input type="text"
-					id="compartment-modal" name="compartment">
-			</div>
-			<div class="form-group">
-				<label for="quantity-modal">Anzahl Gesamt</label><input
-					type="number" id="quantity-modal" name="quantity" required min="0">
-			</div>
-			<div class="form-group">
-				<label for="maxQuantity-modal">Max. Anzahl (0=unbegrenzt)</label><input
-					type="number" id="maxQuantity-modal" name="maxQuantity" required
-					min="0">
-			</div>
-			<div class="form-group">
-				<label for="weight_kg-modal">Gewicht (kg)</label><input type="text"
-					id="weight_kg-modal" name="weight_kg" placeholder="z.B. 2.5">
-			</div>
-			<div class="form-group">
-				<label for="price_eur-modal">Preis (€)</label><input type="text"
-					id="price_eur-modal" name="price_eur" placeholder="z.B. 99.50">
-			</div>
-			<div class="form-group">
-				<label for="imageFile-modal">Bild</label><input type="file"
-					id="imageFile-modal" name="imageFile" accept="image/*">
-			</div>
-			<button type="submit" class="btn">Artikel Speichern</button>
+			<button type="submit" class="btn">
+				<i class="fas fa-save"></i> Speichern
+			</button>
 		</form>
 	</div>
 </div>
 
-<!-- Modal for Check-in/Check-out Transactions -->
-<div class="modal-overlay" id="transaction-modal">
-	<div class="modal-content">
-		<button class="modal-close-btn">×</button>
-		<h3 id="transaction-modal-title">Transaktion</h3>
-		<form action="<c:url value='/storage-transaction'/>" method="post">
-			<input type="hidden" name="itemId" id="transaction-item-id">
-			<input type="hidden" name="redirectUrl"
-				value="${pageContext.request.contextPath}/lager">
-			<div class="form-group">
-				<label for="type">Aktion</label> <select name="type" id="type"
-					class="form-group">
-					<option value="checkout">Entnehmen</option>
-					<option value="checkin">Einräumen</option>
-				</select>
-			</div>
-			<div class="form-group">
-				<label for="quantity">Anzahl</label><input type="number"
-					name="quantity" id="quantity" required min="1" value="1">
-			</div>
-			<div class="form-group">
-				<label for="notes">Notiz (optional)</label><input type="text"
-					name="notes" id="notes" placeholder="z.B. für Event XYZ">
-			</div>
-			<div class="form-group">
-				<label for="eventId">Zuweisen zu Event (optional)</label> <select
-					name="eventId" id="eventId">
-					<option value="">Kein Event</option>
-					<c:forEach var="event" items="${activeEvents}">
-						<option value="${event.id}">${event.name}</option>
-					</c:forEach>
-				</select>
-			</div>
-			<button type="submit" class="btn">Transaktion Buchen</button>
-		</form>
-	</div>
-</div>
-
-<!-- Modal for updating defect status -->
+<!-- Modal for Defect Status -->
 <div class="modal-overlay" id="defect-modal">
 	<div class="modal-content">
-		<button class="modal-close-btn">×</button>
-		<h3 id="defect-modal-title">Defekt-Status bearbeiten</h3>
-		<form action="${pageContext.request.contextPath}/admin/storage"
+		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
+		<h3>Defekt-Status bearbeiten</h3>
+		<form action="${pageContext.request.contextPath}/admin/lager"
 			method="post">
 			<input type="hidden" name="action" value="updateDefect"> <input
-				type="hidden" name="id" id="defect-item-id"> <input
-				type="hidden" name="returnTo" value="storage">
+				type="hidden" name="id" id="defect-item-id">
 			<div class="form-group">
-				<label for="defective_quantity">Anzahl defekter Artikel</label><input
+				<label for="defective_quantity">Anzahl defekter Artikel</label> <input
 					type="number" name="defective_quantity" id="defective_quantity"
 					min="0" required>
 			</div>
@@ -109,7 +79,79 @@
 				<label for="defect_reason">Grund (optional)</label>
 				<textarea name="defect_reason" id="defect_reason" rows="3"></textarea>
 			</div>
-			<button type="submit" class="btn">Speichern</button>
+			<button type="submit" class="btn">
+				<i class="fas fa-save"></i> Speichern
+			</button>
+		</form>
+	</div>
+</div>
+
+<!-- Modal for Maintenance Status -->
+<div class="modal-overlay" id="maintenance-modal">
+	<div class="modal-content">
+		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
+		<h3>Wartungs-Status setzen</h3>
+		<form action="${pageContext.request.contextPath}/admin/lager"
+			method="post">
+			<input type="hidden" name="action" value="updateStatus"> <input
+				type="hidden" name="id" id="maintenance-item-id">
+			<div class="form-group">
+				<label for="maintenance-status">Neuer Status</label> <select
+					name="status" id="maintenance-status" required>
+					<option value="IN_STORAGE">Zurück in den Dienst</option>
+					<option value="MAINTENANCE">Zur Wartung markieren</option>
+				</select>
+			</div>
+			<div class="form-group">
+				<label for="maintenance-notes">Notiz</label>
+				<textarea name="notes" id="maintenance-notes" rows="3" required
+					placeholder="z.B. 'Zur Reparatur eingeschickt' oder 'Reparatur abgeschlossen'"></textarea>
+			</div>
+			<button type="submit" class="btn">
+				<i class="fas fa-save"></i> Speichern
+			</button>
+		</form>
+	</div>
+</div>
+
+<!-- Modal for User Transactions -->
+<div class="modal-overlay" id="transaction-modal">
+	<div class="modal-content">
+		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
+		<h3 id="transaction-modal-title">Aktion ausführen</h3>
+		<form action="${pageContext.request.contextPath}/lager/transaktion"
+			method="post">
+			<input type="hidden" name="itemId" id="transaction-item-id">
+			<input type="hidden" name="redirectUrl"
+				value="${pageContext.request.contextPath}${requestScope['jakarta.servlet.forward.request_uri']}">
+
+			<div class="form-group">
+				<label for="quantity">Anzahl</label> <input type="number"
+					name="quantity" id="quantity" value="1" min="1" required>
+			</div>
+			<div class="form-group">
+				<label for="notes">Notiz (z.B. Event-Name)</label> <input
+					type="text" name="notes" id="notes">
+			</div>
+			<div class="form-group">
+				<label for="eventId">Zuweisen zu Event (optional)</label> <select
+					name="eventId" id="eventId">
+					<option value="0">Kein Event</option>
+					<c:forEach var="event" items="${activeEvents}">
+						<option value="${event.id}"><c:out value="${event.name}" /></option>
+					</c:forEach>
+				</select>
+			</div>
+			<div style="display: flex; gap: 1rem; margin-top: 1rem;">
+				<button type="submit" name="type" value="checkout"
+					class="btn btn-danger" style="flex: 1;">
+					<i class="fas fa-sign-out-alt"></i> Entnehmen
+				</button>
+				<button type="submit" name="type" value="checkin"
+					class="btn btn-success" style="flex: 1;">
+					<i class="fas fa-sign-in-alt"></i> Einräumen
+				</button>
+			</div>
 		</form>
 	</div>
 </div>

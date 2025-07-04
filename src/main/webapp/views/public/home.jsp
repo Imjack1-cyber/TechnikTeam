@@ -15,55 +15,67 @@
 
 <div class="dashboard-grid">
 	<div class="card">
-		<h2 class="card-title">Deine nächsten 3 Veranstaltungen</h2>
+		<h2 class="card-title">Meine nächsten Einsätze</h2>
 		<c:choose>
-			<c:when test="${not empty upcomingEvents}">
-				<ul style="list-style: none; padding-left: 0;">
-					<c:forEach var="event" items="${upcomingEvents}" varStatus="loop">
-						<li
-							style="padding: 0.5rem 0; ${!loop.last ? 'border-bottom: 1px solid var(--border-color);' : ''}">
-							<a
+			<c:when test="${not empty assignedEvents}">
+				<ul class="details-list">
+					<c:forEach var="event" items="${assignedEvents}">
+						<li><a
 							href="${pageContext.request.contextPath}/veranstaltungen/details?id=${event.id}"><c:out
-									value="${event.name}" /></a> <br> <small><c:out
-									value="${event.formattedEventDateTimeRange}" /></small>
-						</li>
+									value="${event.name}" /></a> <small><c:out
+									value="${event.formattedEventDateTimeRange}" /></small></li>
 					</c:forEach>
 				</ul>
 			</c:when>
 			<c:otherwise>
-				<p>Keine anstehenden Veranstaltungen.</p>
+				<p>Du bist derzeit für keine kommenden Events fest eingeteilt.</p>
 			</c:otherwise>
 		</c:choose>
-		<%-- CORRECTED: Link points to /veranstaltungen as per servlet mapping. --%>
 		<a href="${pageContext.request.contextPath}/veranstaltungen"
 			class="btn btn-small" style="margin-top: 1rem;">Alle
 			Veranstaltungen anzeigen</a>
 	</div>
+
 	<div class="card">
-		<h2 class="card-title">Deine nächsten 3 Lehrgänge/Meetings</h2>
+		<h2 class="card-title">Meine offenen Aufgaben</h2>
 		<c:choose>
-			<c:when test="${not empty upcomingMeetings}">
-				<ul style="list-style: none; padding-left: 0;">
-					<c:forEach var="meeting" items="${upcomingMeetings}"
-						varStatus="loop">
-						<li
-							style="padding: 0.5rem 0; ${!loop.last ? 'border-bottom: 1px solid var(--border-color);' : ''}">
-							<a
-							href="${pageContext.request.contextPath}/meeting/details?id=${meeting.id}"><c:out
-									value="${meeting.name}" /></a> <br> <small><c:out
-									value="${meeting.formattedMeetingDateTimeRange}" /></small>
-						</li>
+			<c:when test="${not empty openTasks}">
+				<ul class="details-list">
+					<c:forEach var="task" items="${openTasks}">
+						<li><a
+							href="${pageContext.request.contextPath}/veranstaltungen/details?id=${task.eventId}">
+								<c:out value="${task.description}" /> <small
+								style="display: block; color: var(--text-muted-color);">Für
+									Event: <c:out value="${task.eventName}" />
+							</small>
+						</a></li>
 					</c:forEach>
 				</ul>
 			</c:when>
 			<c:otherwise>
-				<p>Keine anstehenden Lehrgänge.</p>
+				<p>Super! Du hast aktuell keine offenen Aufgaben.</p>
 			</c:otherwise>
 		</c:choose>
-		<a href="${pageContext.request.contextPath}/lehrgaenge"
-			class="btn btn-small" style="margin-top: 1rem;">Alle Lehrgänge
-			anzeigen</a>
+	</div>
+
+	<div class="card">
+		<h2 class="card-title">Weitere anstehende Veranstaltungen</h2>
+		<c:choose>
+			<c:when test="${not empty upcomingEvents}">
+				<ul class="details-list">
+					<c:forEach var="event" items="${upcomingEvents}">
+						<li><a
+							href="${pageContext.request.contextPath}/veranstaltungen/details?id=${event.id}"><c:out
+									value="${event.name}" /></a> <small><c:out
+									value="${event.formattedEventDateTimeRange}" /></small></li>
+					</c:forEach>
+				</ul>
+			</c:when>
+			<c:otherwise>
+				<p>Keine weiteren anstehenden Veranstaltungen.</p>
+			</c:otherwise>
+		</c:choose>
 	</div>
 </div>
 
-<c:import url="/WEB-INF/jspf/main_footer.jspf" />F
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />

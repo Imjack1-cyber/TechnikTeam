@@ -189,4 +189,16 @@ public class StorageDAO {
 			return false;
 		}
 	}
+
+	public boolean updateItemStatus(int itemId, String status) {
+		String sql = "UPDATE storage_items SET status = ? WHERE id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setString(1, status);
+			pstmt.setInt(2, itemId);
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("SQL error updating status for item ID: {}", itemId, e);
+			return false;
+		}
+	}
 }

@@ -177,4 +177,29 @@ public class EventTaskDAO {
 		}
 		return tasks;
 	}
+
+	public List<EventTask> getOpenTasksForUser(int userId) {
+		List<EventTask> tasks = new ArrayList<>();
+		String sql = "SELECT t.*, e.name as event_name " + "FROM event_tasks t "
+				+ "JOIN event_task_assignments ta ON t.id = ta.task_id " + "JOIN events e ON t.event_id = e.id "
+				+ "WHERE ta.user_id = ? AND t.status = 'OFFEN' " + "ORDER BY e.event_datetime ASC";
+		logger.debug("Fetching open tasks for user ID {}", userId);
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, userId);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					EventTask task = new EventTask();
+					task.setId(rs.getInt("id"));
+					task.setEventId(rs.getInt("event_id"));
+					task.setDescription(rs.getString("description"));
+					task.setStatus(rs.getString("status"));
+					task.setEventName(rs.getString("event_name"));
+					tasks.add(task);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching open tasks for user {}", userId, e);
+		}
+		return tasks;
+	}
 }

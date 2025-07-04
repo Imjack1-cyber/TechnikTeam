@@ -40,7 +40,7 @@ public class EventActionServlet extends HttpServlet {
 
 		if (user == null || action == null || eventIdParam == null) {
 			logger.warn("Invalid request to EventActionServlet. Missing user, action, or eventId parameter.");
-			response.sendRedirect(request.getContextPath() + "/events");
+			response.sendRedirect(request.getContextPath() + "/veranstaltungen");
 			return;
 		}
 
@@ -82,6 +82,6 @@ public class EventActionServlet extends HttpServlet {
 			request.getSession().setAttribute("errorMessage", "Ungültige Event-ID.");
 		}
 
-		response.sendRedirect(request.getContextPath() + "/events");
+		response.sendRedirect(request.getContextPath() + "/veranstaltungen");
 	}
 }

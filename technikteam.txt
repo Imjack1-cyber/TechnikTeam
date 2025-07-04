@@ -816,8 +816,11 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -1563,25 +1566,81 @@ public class EventDAO {
 		}
 		return items;
 	}
-	
+
 	public List<Event> getCompletedEventsForUser(int userId) {
-        List<Event> history = new ArrayList<>();
-        String sql = "SELECT e.* FROM events e " +
-                     "JOIN event_assignments ea ON e.id = ea.event_id " +
-                     "WHERE ea.user_id = ? AND e.status = 'ABGESCHLOSSEN' " +
-                     "ORDER BY e.event_datetime DESC";
-        logger.debug("Fetching completed event history for user ID: {}", userId);
-        try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, userId);
-            ResultSet rs = pstmt.executeQuery();
-            while (rs.next()) {
-                history.add(mapResultSetToEvent(rs));
-            }
-        } catch (SQLException e) {
-            logger.error("SQL error fetching completed event history for user {}", userId, e);
-        }
-        return history;
-    }
+		List<Event> history = new ArrayList<>();
+		String sql = "SELECT e.* FROM events e " + "JOIN event_assignments ea ON e.id = ea.event_id "
+				+ "WHERE ea.user_id = ? AND e.status = 'ABGESCHLOSSEN' " + "ORDER BY e.event_datetime DESC";
+		logger.debug("Fetching completed event history for user ID: {}", userId);
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, userId);
+			ResultSet rs = pstmt.executeQuery();
+			while (rs.next()) {
+				history.add(mapResultSetToEvent(rs));
+			}
+		} catch (SQLException e) {
+			logger.error("SQL error fetching completed event history for user {}", userId, e);
+		}
+		return history;
+	}
+
+	public List<Event> getAssignedEventsForUser(int userId, int limit) {
+		List<Event> events = new ArrayList<>();
+		String sql = "SELECT e.* FROM events e " + "JOIN event_assignments ea ON e.id = ea.event_id "
+				+ "WHERE ea.user_id = ? AND e.event_datetime >= NOW() " + "ORDER BY e.event_datetime ASC";
+		if (limit > 0) {
+			sql += " LIMIT ?";
+		}
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, userId);
+			if (limit > 0) {
+				pstmt.setInt(2, limit);
+			}
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					events.add(mapResultSetToEvent(rs));
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching assigned events for user {}", userId, e);
+		}
+		return events;
+	}
+
+	public List<Map<String, Object>> getReservationsForCalendar(LocalDate start, LocalDate end) {
+		List<Map<String, Object>> reservations = new ArrayList<>();
+		String sql = "SELECT si.id as item_id, si.name as item_name, e.id as event_id, e.name as event_name, e.event_datetime, e.end_datetime "
+				+ "FROM event_storage_reservations esr " + "JOIN storage_items si ON esr.item_id = si.id "
+				+ "JOIN events e ON esr.event_id = e.id "
+				+ "WHERE e.event_datetime <= ? AND (e.end_datetime IS NULL OR e.end_datetime >= ?)";
+
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setTimestamp(1, Timestamp.valueOf(end.atStartOfDay()));
+			pstmt.setTimestamp(2, Timestamp.valueOf(start.atStartOfDay()));
+
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					Map<String, Object> row = new HashMap<>();
+					row.put("item_id", rs.getInt("item_id"));
+					row.put("item_name", rs.getString("item_name"));
+					row.put("event_id", rs.getInt("event_id"));
+					row.put("event_name", rs.getString("event_name"));
+					row.put("event_datetime", rs.getTimestamp("event_datetime").toLocalDateTime());
+					Timestamp endTs = rs.getTimestamp("end_datetime");
+					if (endTs != null) {
+						row.put("end_datetime", endTs.toLocalDateTime());
+					} else {
+						// If no end date, make it a 2-hour event for calendar visualization
+						row.put("end_datetime", rs.getTimestamp("event_datetime").toLocalDateTime().plusHours(2));
+					}
+					reservations.add(row);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching reservations for resource calendar.", e);
+		}
+		return reservations;
+	}
 }
 
 ========================================================================
@@ -1764,6 +1823,31 @@ public class EventTaskDAO {
 			}
 		} catch (SQLException e) {
 			logger.error("Error fetching tasks for event {}", eventId, e);
+		}
+		return tasks;
+	}
+
+	public List<EventTask> getOpenTasksForUser(int userId) {
+		List<EventTask> tasks = new ArrayList<>();
+		String sql = "SELECT t.*, e.name as event_name " + "FROM event_tasks t "
+				+ "JOIN event_task_assignments ta ON t.id = ta.task_id " + "JOIN events e ON t.event_id = e.id "
+				+ "WHERE ta.user_id = ? AND t.status = 'OFFEN' " + "ORDER BY e.event_datetime ASC";
+		logger.debug("Fetching open tasks for user ID {}", userId);
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, userId);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					EventTask task = new EventTask();
+					task.setId(rs.getInt("id"));
+					task.setEventId(rs.getInt("event_id"));
+					task.setDescription(rs.getString("description"));
+					task.setStatus(rs.getString("status"));
+					task.setEventName(rs.getString("event_name"));
+					tasks.add(task);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching open tasks for user {}", userId, e);
 		}
 		return tasks;
 	}
@@ -2201,6 +2285,220 @@ public class FileDAO {
 			logger.error("Error updating document content for name: {}", documentName, e);
 			return false;
 		}
+	}
+}
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\dao\InventoryKitDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import de.technikteam.model.InventoryKit;
+import de.technikteam.model.InventoryKitItem;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * DAO for managing inventory kits and their contents.
+ */
+public class InventoryKitDAO {
+	private static final Logger logger = LogManager.getLogger(InventoryKitDAO.class);
+
+	public int createKit(InventoryKit kit) {
+		String sql = "INSERT INTO inventory_kits (name, description) VALUES (?, ?)";
+		try (Connection conn = DatabaseManager.getConnection();
+				PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+			pstmt.setString(1, kit.getName());
+			pstmt.setString(2, kit.getDescription());
+			int affectedRows = pstmt.executeUpdate();
+			if (affectedRows > 0) {
+				try (ResultSet rs = pstmt.getGeneratedKeys()) {
+					if (rs.next()) {
+						return rs.getInt(1);
+					}
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error creating inventory kit '{}'", kit.getName(), e);
+		}
+		return 0;
+	}
+
+	public boolean updateKit(InventoryKit kit) {
+		String sql = "UPDATE inventory_kits SET name = ?, description = ? WHERE id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setString(1, kit.getName());
+			pstmt.setString(2, kit.getDescription());
+			pstmt.setInt(3, kit.getId());
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("Error updating inventory kit ID {}", kit.getId(), e);
+			return false;
+		}
+	}
+
+	public InventoryKit getKitById(int kitId) {
+		String sql = "SELECT * FROM inventory_kits WHERE id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, kitId);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				if (rs.next()) {
+					InventoryKit kit = new InventoryKit();
+					kit.setId(rs.getInt("id"));
+					kit.setName(rs.getString("name"));
+					kit.setDescription(rs.getString("description"));
+					return kit;
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching kit by ID {}", kitId, e);
+		}
+		return null;
+	}
+
+	public boolean deleteKit(int kitId) {
+		String sql = "DELETE FROM inventory_kits WHERE id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, kitId);
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("Error deleting inventory kit ID {}", kitId, e);
+			return false;
+		}
+	}
+
+	public List<InventoryKit> getAllKits() {
+		List<InventoryKit> kits = new ArrayList<>();
+		String sql = "SELECT * FROM inventory_kits ORDER BY name";
+		try (Connection conn = DatabaseManager.getConnection();
+				Statement stmt = conn.createStatement();
+				ResultSet rs = stmt.executeQuery(sql)) {
+			while (rs.next()) {
+				InventoryKit kit = new InventoryKit();
+				kit.setId(rs.getInt("id"));
+				kit.setName(rs.getString("name"));
+				kit.setDescription(rs.getString("description"));
+				kits.add(kit);
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching all inventory kits", e);
+		}
+		return kits;
+	}
+
+	public List<InventoryKitItem> getItemsForKit(int kitId) {
+		List<InventoryKitItem> items = new ArrayList<>();
+		String sql = "SELECT iki.*, si.name as item_name FROM inventory_kit_items iki "
+				+ "JOIN storage_items si ON iki.item_id = si.id " + "WHERE iki.kit_id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, kitId);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					InventoryKitItem item = new InventoryKitItem();
+					item.setKitId(rs.getInt("kit_id"));
+					item.setItemId(rs.getInt("item_id"));
+					item.setQuantity(rs.getInt("quantity"));
+					item.setItemName(rs.getString("item_name"));
+					items.add(item);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching items for kit ID {}", kitId, e);
+		}
+		return items;
+	}
+
+	public boolean addItemToKit(int kitId, int itemId, int quantity) {
+		String sql = "INSERT INTO inventory_kit_items (kit_id, item_id, quantity) VALUES (?, ?, ?) "
+				+ "ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, kitId);
+			pstmt.setInt(2, itemId);
+			pstmt.setInt(3, quantity);
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("Error adding item {} to kit {}", itemId, kitId, e);
+			return false;
+		}
+	}
+
+	public boolean removeItemFromKit(int kitId, int itemId) {
+		String sql = "DELETE FROM inventory_kit_items WHERE kit_id = ? AND item_id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, kitId);
+			pstmt.setInt(2, itemId);
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("Error removing item {} from kit {}", itemId, kitId, e);
+			return false;
+		}
+	}
+}
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\dao\MaintenanceLogDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import de.technikteam.model.MaintenanceLogEntry;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * DAO for managing maintenance log entries in the `maintenance_log` table.
+ */
+public class MaintenanceLogDAO {
+	private static final Logger logger = LogManager.getLogger(MaintenanceLogDAO.class);
+
+	public boolean createLog(MaintenanceLogEntry log) {
+		String sql = "INSERT INTO maintenance_log (item_id, user_id, action, notes, cost) VALUES (?, ?, ?, ?, ?)";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, log.getItemId());
+			pstmt.setInt(2, log.getUserId());
+			pstmt.setString(3, log.getAction());
+			pstmt.setString(4, log.getNotes());
+			pstmt.setDouble(5, log.getCost());
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("Error creating maintenance log for item {}", log.getItemId(), e);
+			return false;
+		}
+	}
+
+	public List<MaintenanceLogEntry> getHistoryForItem(int itemId) {
+		List<MaintenanceLogEntry> history = new ArrayList<>();
+		String sql = "SELECT ml.*, u.username FROM maintenance_log ml " + "JOIN users u ON ml.user_id = u.id "
+				+ "WHERE ml.item_id = ? ORDER BY ml.log_date DESC";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, itemId);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					MaintenanceLogEntry entry = new MaintenanceLogEntry();
+					entry.setId(rs.getInt("id"));
+					entry.setItemId(rs.getInt("item_id"));
+					entry.setUserId(rs.getInt("user_id"));
+					entry.setUsername(rs.getString("username"));
+					entry.setLogDate(rs.getTimestamp("log_date").toLocalDateTime());
+					entry.setAction(rs.getString("action"));
+					entry.setNotes(rs.getString("notes"));
+					entry.setCost(rs.getDouble("cost"));
+					history.add(entry);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching maintenance history for item {}", itemId, e);
+		}
+		return history;
 	}
 }
 
@@ -2847,6 +3145,48 @@ public class ReportDAO {
 		}
 		return 0.0;
 	}
+
+	public List<Map<String, Object>> getEventCountByMonth(int months) {
+		List<Map<String, Object>> data = new ArrayList<>();
+		String sql = "SELECT CONCAT(YEAR(event_datetime), '-', LPAD(MONTH(event_datetime), 2, '0')) AS month, COUNT(*) AS count "
+				+ "FROM events " + "WHERE event_datetime >= DATE_SUB(NOW(), INTERVAL ? MONTH) "
+				+ "GROUP BY YEAR(event_datetime), MONTH(event_datetime) " + "ORDER BY month ASC";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, months);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					Map<String, Object> row = new HashMap<>();
+					row.put("month", rs.getString("month"));
+					row.put("count", rs.getInt("count"));
+					data.add(row);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error generating event count by month report.", e);
+		}
+		return data;
+	}
+
+	public List<Map<String, Object>> getUserParticipationStats(int limit) {
+		List<Map<String, Object>> data = new ArrayList<>();
+		String sql = "SELECT u.username, COUNT(ea.user_id) as participation_count " + "FROM event_assignments ea "
+				+ "JOIN users u ON ea.user_id = u.id " + "GROUP BY u.id, u.username "
+				+ "ORDER BY participation_count DESC " + "LIMIT ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, limit);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					Map<String, Object> row = new HashMap<>();
+					row.put("username", rs.getString("username"));
+					row.put("participation_count", rs.getInt("participation_count"));
+					data.add(row);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error generating user participation stats.", e);
+		}
+		return data;
+	}
 }
 
 ========================================================================
@@ -3145,6 +3485,18 @@ public class StorageDAO {
 			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
 			logger.error("SQL error deleting storage item with ID: {}", itemId, e);
+			return false;
+		}
+	}
+
+	public boolean updateItemStatus(int itemId, String status) {
+		String sql = "UPDATE storage_items SET status = ? WHERE id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setString(1, status);
+			pstmt.setInt(2, itemId);
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("SQL error updating status for item ID: {}", itemId, e);
 			return false;
 		}
 	}
@@ -4668,6 +5020,7 @@ public class EventTask {
 	private String description;
 	private String status; // e.g., "OFFEN" or "ERLEDIGT"
 	private String assignedUsernames; // Comma-separated list for display, not a direct table column
+	private String eventName; // For dashboard display
 
 	// --- Getters and Setters ---
 
@@ -4709,6 +5062,14 @@ public class EventTask {
 
 	public void setAssignedUsernames(String assignedUsernames) {
 		this.assignedUsernames = assignedUsernames;
+	}
+
+	public String getEventName() {
+		return eventName;
+	}
+
+	public void setEventName(String eventName) {
+		this.eventName = eventName;
 	}
 }
 
@@ -4947,6 +5308,206 @@ public class FileCategory {
 
 	public void setName(String name) {
 		this.name = name;
+	}
+}
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\model\InventoryKit.java
+========================================================================
+
+package de.technikteam.model;
+
+import java.util.List;
+
+/**
+ * Represents a "kit" or "case" from the `inventory_kits` table. A kit is a
+ * container for a predefined collection of StorageItems.
+ */
+public class InventoryKit {
+	private int id;
+	private String name;
+	private String description;
+
+	// Transient field for holding items when needed
+	private List<InventoryKitItem> items;
+
+	// --- Getters and Setters ---
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public String getDescription() {
+		return description;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	public List<InventoryKitItem> getItems() {
+		return items;
+	}
+
+	public void setItems(List<InventoryKitItem> items) {
+		this.items = items;
+	}
+}
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\model\InventoryKitItem.java
+========================================================================
+
+package de.technikteam.model;
+
+/**
+ * Represents the junction table record from `inventory_kit_items`, linking a
+ * StorageItem to an InventoryKit with a specific quantity.
+ */
+public class InventoryKitItem {
+	private int kitId;
+	private int itemId;
+	private int quantity;
+
+	// Transient field for display
+	private String itemName;
+
+	// --- Getters and Setters ---
+	public int getKitId() {
+		return kitId;
+	}
+
+	public void setKitId(int kitId) {
+		this.kitId = kitId;
+	}
+
+	public int getItemId() {
+		return itemId;
+	}
+
+	public void setItemId(int itemId) {
+		this.itemId = itemId;
+	}
+
+	public int getQuantity() {
+		return quantity;
+	}
+
+	public void setQuantity(int quantity) {
+		this.quantity = quantity;
+	}
+
+	public String getItemName() {
+		return itemName;
+	}
+
+	public void setItemName(String itemName) {
+		this.itemName = itemName;
+	}
+}
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\model\MaintenanceLogEntry.java
+========================================================================
+
+package de.technikteam.model;
+
+import java.time.LocalDateTime;
+
+/**
+ * Represents a single entry from the `maintenance_log` table, tracking the
+ * maintenance history of a storage item.
+ */
+public class MaintenanceLogEntry {
+	private int id;
+	private int itemId;
+	private int userId;
+	private LocalDateTime logDate;
+	private String action;
+	private String notes;
+	private double cost;
+
+	// Transient field for display
+	private String username;
+
+	// --- Getters and Setters ---
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	public int getItemId() {
+		return itemId;
+	}
+
+	public void setItemId(int itemId) {
+		this.itemId = itemId;
+	}
+
+	public int getUserId() {
+		return userId;
+	}
+
+	public void setUserId(int userId) {
+		this.userId = userId;
+	}
+
+	public LocalDateTime getLogDate() {
+		return logDate;
+	}
+
+	public void setLogDate(LocalDateTime logDate) {
+		this.logDate = logDate;
+	}
+
+	public String getAction() {
+		return action;
+	}
+
+	public void setAction(String action) {
+		this.action = action;
+	}
+
+	public String getNotes() {
+		return notes;
+	}
+
+	public void setNotes(String notes) {
+		this.notes = notes;
+	}
+
+	public double getCost() {
+		return cost;
+	}
+
+	public void setCost(double cost) {
+		this.cost = cost;
+	}
+
+	public String getUsername() {
+		return username;
+	}
+
+	public void setUsername(String username) {
+		this.username = username;
+	}
+
+	public String getFormattedLogDate() {
+		return de.technikteam.config.DateFormatter.formatDateTime(this.logDate);
 	}
 }
 
@@ -6272,7 +6833,7 @@ public class AdminCourseServlet extends HttpServlet {
 			handleCreateOrUpdate(req, resp);
 		} else {
 			logger.warn("Unknown POST action received: {}", action);
-			resp.sendRedirect(req.getContextPath() + "/views/admin/admin_course_list.jsp");
+			resp.sendRedirect(req.getContextPath() + "/admin/lehrgaenge");
 		}
 	}
 
@@ -6307,7 +6868,7 @@ public class AdminCourseServlet extends HttpServlet {
 			logger.info("Attempting to update course: {}", course.getName());
 			Course originalCourse = courseDAO.getCourseById(course.getId());
 			success = courseDAO.updateCourse(course);
-			if (success) {
+			if (success && originalCourse != null) {
 				StringBuilder changes = new StringBuilder();
 				if (!Objects.equals(originalCourse.getName(), course.getName())) {
 					changes.append(String.format("Name: '%s' -> '%s'. ", originalCourse.getName(), course.getName()));
@@ -6319,6 +6880,10 @@ public class AdminCourseServlet extends HttpServlet {
 				String logDetails = String.format("Lehrgangs-Vorlage '%s' (ID: %d) aktualisiert. %s",
 						originalCourse.getName(), course.getId(), changes.toString());
 				AdminLogService.log(adminUser.getUsername(), "UPDATE_COURSE", logDetails);
+				request.getSession().setAttribute("successMessage", "Lehrgangs-Vorlage erfolgreich aktualisiert.");
+			} else if (success) {
+				AdminLogService.log(adminUser.getUsername(), "UPDATE_COURSE",
+						"Lehrgangs-Vorlage (ID: " + course.getId() + ") aktualisiert.");
 				request.getSession().setAttribute("successMessage", "Lehrgangs-Vorlage erfolgreich aktualisiert.");
 			} else {
 				request.getSession().setAttribute("errorMessage", "Fehler beim Aktualisieren der Vorlage.");
@@ -6335,7 +6900,7 @@ public class AdminCourseServlet extends HttpServlet {
 				request.getSession().setAttribute("errorMessage", "Fehler beim Erstellen der Vorlage.");
 			}
 		}
-		response.sendRedirect(request.getContextPath() + "/views/admin/admin_course_list.jsp");
+		response.sendRedirect(request.getContextPath() + "/admin/lehrgaenge");
 	}
 
 	private void handleDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -6359,7 +6924,7 @@ public class AdminCourseServlet extends HttpServlet {
 			logger.error("Invalid course ID format for deletion.", e);
 			req.getSession().setAttribute("errorMessage", "Ungültige ID für Löschvorgang.");
 		}
-		resp.sendRedirect(req.getContextPath() + "/views/admin/admin_course_list.jsp");
+		resp.sendRedirect(req.getContextPath() + "/admin/lehrgaenge");
 	}
 }
 
@@ -6955,7 +7520,7 @@ import org.apache.logging.log4j.Logger;
 
 import de.technikteam.config.AppConfig;
 import de.technikteam.dao.FileDAO;
-import de.technikteam.model.File; // Our own model: de.technikteam.model.File
+import de.technikteam.model.File;
 import de.technikteam.model.FileCategory;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
@@ -6968,14 +7533,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
 
-/**
- * Mapped to `/admin/dateien`, this servlet manages file uploads and deletions
- * for administrators. A GET request displays the management page
- * (`admin_files.jsp`) with a list of all files grouped by category. A POST
- * request handles either uploading a new file or deleting an existing one. It
- * correctly handles `multipart/form-data` to read form fields and the uploaded
- * file.
- */
 @MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 20, maxRequestSize = 1024 * 1024 * 50)
 @WebServlet("/admin/dateien")
 public class AdminFileServlet extends HttpServlet {
@@ -7003,7 +7560,6 @@ public class AdminFileServlet extends HttpServlet {
 
 		logger.debug("Forwarding to admin_files.jsp with {} file groups and {} categories.", groupedFiles.size(),
 				allCategories.size());
-		// CORRECTED: Forward to the actual JSP file path.
 		request.getRequestDispatcher("/views/admin/admin_files.jsp").forward(request, response);
 	}
 
@@ -7013,7 +7569,6 @@ public class AdminFileServlet extends HttpServlet {
 		request.setCharacterEncoding("UTF-8");
 		String contentType = request.getContentType();
 
-		// Differentiate between multipart (upload) and standard (delete) forms
 		if (contentType != null && contentType.toLowerCase().startsWith("multipart/")) {
 			handleUpload(request, response);
 		} else {
@@ -7130,7 +7685,176 @@ public class AdminFileServlet extends HttpServlet {
 		}
 		response.sendRedirect(request.getContextPath() + "/admin/dateien");
 	}
+}
 
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminKitServlet.java
+========================================================================
+
+package de.technikteam.servlet.admin;
+
+import com.google.gson.Gson;
+import de.technikteam.dao.InventoryKitDAO;
+import de.technikteam.dao.StorageDAO;
+import de.technikteam.model.InventoryKit;
+import de.technikteam.model.InventoryKitItem;
+import de.technikteam.model.StorageItem;
+import de.technikteam.model.User;
+import de.technikteam.service.AdminLogService;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+import java.util.List;
+
+@WebServlet("/admin/kits")
+public class AdminKitServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(AdminKitServlet.class);
+	private InventoryKitDAO kitDAO;
+	private StorageDAO storageDAO;
+	private Gson gson = new Gson();
+
+	@Override
+	public void init() {
+		kitDAO = new InventoryKitDAO();
+		storageDAO = new StorageDAO();
+	}
+
+	@Override
+	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		String action = req.getParameter("action");
+
+		if ("getKitItems".equals(action)) {
+			getKitItemsAsJson(req, resp);
+			return;
+		}
+
+		List<InventoryKit> kits = kitDAO.getAllKits();
+		List<StorageItem> allItems = storageDAO.getAllItems();
+		req.setAttribute("kits", kits);
+		req.setAttribute("allItems", allItems);
+		req.getRequestDispatcher("/views/admin/admin_kits.jsp").forward(req, resp);
+	}
+
+	private void getKitItemsAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		try {
+			int kitId = Integer.parseInt(req.getParameter("id"));
+			List<InventoryKitItem> items = kitDAO.getItemsForKit(kitId);
+			String jsonResponse = gson.toJson(items);
+			resp.setContentType("application/json");
+			resp.setCharacterEncoding("UTF-8");
+			resp.getWriter().write(jsonResponse);
+		} catch (NumberFormatException e) {
+			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid kit ID.");
+		}
+	}
+
+	@Override
+	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		req.setCharacterEncoding("UTF-8");
+		User adminUser = (User) req.getSession().getAttribute("user");
+		String action = req.getParameter("action");
+		logger.debug("AdminKitServlet received POST with action: {}", action);
+
+		try {
+			switch (action) {
+			case "create":
+				handleCreateKit(req, adminUser);
+				break;
+			case "update":
+				handleUpdateKit(req, adminUser);
+				break;
+			case "delete":
+				handleDeleteKit(req, adminUser);
+				break;
+			case "addItem":
+				handleAddItemToKit(req, adminUser);
+				break;
+			case "removeItem":
+				handleRemoveItemFromKit(req, adminUser);
+				break;
+			default:
+				logger.warn("Unknown kit action: {}", action);
+				break;
+			}
+		} catch (Exception e) {
+			logger.error("Error processing kit action '{}'", action, e);
+			req.getSession().setAttribute("errorMessage", "Ein Fehler ist aufgetreten: " + e.getMessage());
+		}
+
+		resp.sendRedirect(req.getContextPath() + "/admin/kits");
+	}
+
+	private void handleCreateKit(HttpServletRequest req, User adminUser) {
+		InventoryKit kit = new InventoryKit();
+		kit.setName(req.getParameter("name"));
+		kit.setDescription(req.getParameter("description"));
+		int newId = kitDAO.createKit(kit);
+		if (newId > 0) {
+			AdminLogService.log(adminUser.getUsername(), "CREATE_KIT",
+					"Kit '" + kit.getName() + "' (ID: " + newId + ") erstellt.");
+			req.getSession().setAttribute("successMessage", "Kit erfolgreich erstellt.");
+		} else {
+			req.getSession().setAttribute("errorMessage", "Kit konnte nicht erstellt werden.");
+		}
+	}
+
+	private void handleUpdateKit(HttpServletRequest req, User adminUser) {
+		InventoryKit kit = new InventoryKit();
+		kit.setId(Integer.parseInt(req.getParameter("id")));
+		kit.setName(req.getParameter("name"));
+		kit.setDescription(req.getParameter("description"));
+		if (kitDAO.updateKit(kit)) {
+			AdminLogService.log(adminUser.getUsername(), "UPDATE_KIT",
+					"Kit '" + kit.getName() + "' (ID: " + kit.getId() + ") aktualisiert.");
+			req.getSession().setAttribute("successMessage", "Kit erfolgreich aktualisiert.");
+		} else {
+			req.getSession().setAttribute("errorMessage", "Kit konnte nicht aktualisiert werden.");
+		}
+	}
+
+	private void handleDeleteKit(HttpServletRequest req, User adminUser) {
+		int kitId = Integer.parseInt(req.getParameter("id"));
+		InventoryKit kit = kitDAO.getKitById(kitId);
+		if (kitDAO.deleteKit(kitId)) {
+			AdminLogService.log(adminUser.getUsername(), "DELETE_KIT",
+					"Kit '" + (kit != null ? kit.getName() : "N/A") + "' (ID: " + kitId + ") gelöscht.");
+			req.getSession().setAttribute("successMessage", "Kit erfolgreich gelöscht.");
+		} else {
+			req.getSession().setAttribute("errorMessage", "Kit konnte nicht gelöscht werden.");
+		}
+	}
+
+	private void handleAddItemToKit(HttpServletRequest req, User adminUser) {
+		int kitId = Integer.parseInt(req.getParameter("kitId"));
+		int itemId = Integer.parseInt(req.getParameter("itemId"));
+		int quantity = Integer.parseInt(req.getParameter("quantity"));
+		if (kitDAO.addItemToKit(kitId, itemId, quantity)) {
+			AdminLogService.log(adminUser.getUsername(), "ADD_ITEM_TO_KIT",
+					quantity + "x Item ID " + itemId + " zu Kit ID " + kitId + " hinzugefügt.");
+			req.getSession().setAttribute("successMessage", "Artikel zum Kit hinzugefügt.");
+		} else {
+			req.getSession().setAttribute("errorMessage", "Artikel konnte nicht zum Kit hinzugefügt werden.");
+		}
+	}
+
+	private void handleRemoveItemFromKit(HttpServletRequest req, User adminUser) {
+		int kitId = Integer.parseInt(req.getParameter("kitId"));
+		int itemId = Integer.parseInt(req.getParameter("itemId"));
+		if (kitDAO.removeItemFromKit(kitId, itemId)) {
+			AdminLogService.log(adminUser.getUsername(), "REMOVE_ITEM_FROM_KIT",
+					"Item ID " + itemId + " aus Kit ID " + kitId + " entfernt.");
+			req.getSession().setAttribute("successMessage", "Artikel aus Kit entfernt.");
+		} else {
+			req.getSession().setAttribute("errorMessage", "Artikel konnte nicht aus Kit entfernt werden.");
+		}
+	}
 }
 
 ========================================================================
@@ -7481,6 +8205,7 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.servlet.admin;
 
+import com.google.gson.Gson;
 import de.technikteam.dao.ReportDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -7501,6 +8226,7 @@ public class AdminReportServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminReportServlet.class);
 	private ReportDAO reportDAO;
+	private Gson gson = new Gson();
 
 	@Override
 	public void init() {
@@ -7513,17 +8239,28 @@ public class AdminReportServlet extends HttpServlet {
 		String reportType = request.getParameter("report");
 		String exportType = request.getParameter("export");
 
-		if (reportType == null) {
-			logger.debug("Serving main reports menu.");
-			request.setAttribute("totalInventoryValue", reportDAO.getTotalInventoryValue());
-			// CORRECTED: Forward to the report menu JSP.
-			request.getRequestDispatcher("/views/admin/admin_reports.jsp").forward(request, response);
+		if (reportType != null && !reportType.isEmpty()) {
+			handleSpecificReport(request, response, reportType, exportType);
 			return;
 		}
 
+		logger.debug("Serving main reports dashboard.");
+
+		// Fetch data for dashboard charts
+		List<Map<String, Object>> eventTrendData = reportDAO.getEventCountByMonth(12);
+		List<Map<String, Object>> userActivityData = reportDAO.getUserParticipationStats(10);
+
+		request.setAttribute("eventTrendDataJson", gson.toJson(eventTrendData));
+		request.setAttribute("userActivityDataJson", gson.toJson(userActivityData));
+
+		request.setAttribute("totalInventoryValue", reportDAO.getTotalInventoryValue());
+		request.getRequestDispatcher("/views/admin/admin_reports.jsp").forward(request, response);
+	}
+
+	private void handleSpecificReport(HttpServletRequest request, HttpServletResponse response, String reportType,
+			String exportType) throws IOException, ServletException {
 		List<Map<String, Object>> reportData = null;
 		String reportTitle = "";
-		// CORRECTED: The JSP path for displaying a single report.
 		String jspPath = "/views/admin/report_display.jsp";
 
 		switch (reportType) {
@@ -7600,7 +8337,9 @@ package de.technikteam.servlet.admin;
 
 import com.google.gson.Gson;
 import de.technikteam.config.AppConfig;
+import de.technikteam.dao.MaintenanceLogDAO;
 import de.technikteam.dao.StorageDAO;
+import de.technikteam.model.MaintenanceLogEntry;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
@@ -7628,11 +8367,13 @@ public class AdminStorageServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminStorageServlet.class.getName());
 	private StorageDAO storageDAO;
+	private MaintenanceLogDAO maintenanceLogDAO;
 	private Gson gson = new Gson();
 
 	@Override
 	public void init() {
 		storageDAO = new StorageDAO();
+		maintenanceLogDAO = new MaintenanceLogDAO();
 	}
 
 	@Override
@@ -7646,11 +8387,7 @@ public class AdminStorageServlet extends HttpServlet {
 
 		try {
 			logger.info("Listing all storage items for admin view.");
-			// CORRECTED: Fetch a flat List of all items, which is what the
-			// admin_storage_list.jsp expects.
 			List<StorageItem> storageList = storageDAO.getAllItems();
-			// CORRECTED: Set the attribute with the name "storageList" to match the JSP's
-			// <c:forEach> tag.
 			request.setAttribute("storageList", storageList);
 			request.getRequestDispatcher("/views/admin/admin_storage_list.jsp").forward(request, response);
 		} catch (Exception e) {
@@ -7684,10 +8421,46 @@ public class AdminStorageServlet extends HttpServlet {
 		case "updateDefect":
 			handleDefectUpdate(request, response);
 			break;
+		case "updateStatus":
+			handleStatusUpdate(request, response);
+			break;
 		default:
 			response.sendRedirect(request.getContextPath() + "/admin/lager");
 			break;
 		}
+	}
+
+	private void handleStatusUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		User adminUser = (User) request.getSession().getAttribute("user");
+		try {
+			int itemId = Integer.parseInt(request.getParameter("id"));
+			String newStatus = request.getParameter("status");
+			String notes = request.getParameter("notes");
+
+			storageDAO.updateItemStatus(itemId, newStatus);
+
+			MaintenanceLogEntry log = new MaintenanceLogEntry();
+			log.setItemId(itemId);
+			log.setUserId(adminUser.getId());
+			log.setNotes(notes);
+
+			String logAction;
+			if ("MAINTENANCE".equals(newStatus)) {
+				logAction = "Marked for Maintenance";
+			} else {
+				logAction = "Returned to Service";
+			}
+			log.setAction(logAction);
+
+			maintenanceLogDAO.createLog(log);
+			AdminLogService.log(adminUser.getUsername(), "UPDATE_ITEM_STATUS",
+					"Status für Artikel-ID " + itemId + " auf '" + newStatus + "' gesetzt. Notiz: " + notes);
+			request.getSession().setAttribute("successMessage", "Artikelstatus erfolgreich aktualisiert.");
+		} catch (Exception e) {
+			logger.error("Error updating item status", e);
+			request.getSession().setAttribute("errorMessage", "Fehler beim Aktualisieren des Status.");
+		}
+		response.sendRedirect(request.getContextPath() + "/admin/lager");
 	}
 
 	private void getItemDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -8399,6 +9172,117 @@ public class MatrixServlet extends HttpServlet {
 }
 
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\ResourceCalendarServlet.java
+========================================================================
+
+package de.technikteam.servlet.admin;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+/**
+ * Mapped to /admin/resource-calendar, this servlet's sole purpose is to forward
+ * the request to the JSP page that will render the resource timeline view. The
+ * actual event data is fetched by the calendar's JavaScript from the
+ * ResourceCalendarApiServlet.
+ */
+@WebServlet("/admin/resource-calendar")
+public class ResourceCalendarServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		request.getRequestDispatcher("/views/admin/resource_calendar.jsp").forward(request, response);
+	}
+}
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\api\ResourceCalendarApiServlet.java
+========================================================================
+
+package de.technikteam.servlet.api;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import de.technikteam.config.LocalDateTimeAdapter;
+import de.technikteam.dao.EventDAO;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+@WebServlet("/api/admin/resource-calendar")
+public class ResourceCalendarApiServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private EventDAO eventDAO;
+	private Gson gson;
+
+	@Override
+	public void init() {
+		eventDAO = new EventDAO();
+		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+				.setPrettyPrinting().create();
+	}
+
+	@Override
+	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		// FullCalendar sends start and end parameters
+		String startParam = req.getParameter("start");
+		String endParam = req.getParameter("end");
+
+		// We can parse them to optimize the DB query
+		LocalDate start = LocalDate.parse(startParam.substring(0, 10));
+		LocalDate end = LocalDate.parse(endParam.substring(0, 10));
+
+		List<Map<String, Object>> reservations = eventDAO.getReservationsForCalendar(start, end);
+
+		Set<Map<String, Object>> resources = new HashSet<>();
+		List<Map<String, Object>> events = new ArrayList<>();
+
+		for (Map<String, Object> res : reservations) {
+			// Add unique items to the resources set
+			Map<String, Object> resource = new HashMap<>();
+			resource.put("id", res.get("item_id").toString());
+			resource.put("title", res.get("item_name").toString());
+			resources.add(resource);
+
+			// Create the calendar event
+			Map<String, Object> event = new HashMap<>();
+			event.put("resourceId", res.get("item_id").toString());
+			event.put("title", res.get("event_name").toString());
+			event.put("start", res.get("event_datetime").toString());
+			event.put("end", res.get("end_datetime").toString());
+			event.put("url", req.getContextPath() + "/veranstaltungen/details?id=" + res.get("event_id"));
+			events.add(event);
+		}
+
+		Map<String, Object> responseData = new HashMap<>();
+		responseData.put("resources", new ArrayList<>(resources));
+		responseData.put("events", events);
+
+		resp.setContentType("application/json");
+		resp.setCharacterEncoding("UTF-8");
+		resp.getWriter().write(gson.toJson(responseData));
+	}
+}
+
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\api\SystemStatsApiServlet.java
 ========================================================================
 
@@ -8521,4 +9405,492 @@ public class CalendarApiServlet extends HttpServlet {
 		response.setCharacterEncoding("UTF-8");
 		response.getWriter().write(gson.toJson(calendarEntries));
 	}
+}
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\CalendarServlet.java
+========================================================================
+
+package de.technikteam.servlet;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+/**
+ * This servlet handles the request for the main calendar page. Its sole purpose
+ * is to forward the user to the calendar.jsp page, which then uses JavaScript
+ * to fetch data from the CalendarApiServlet.
+ */
+@WebServlet("/kalender")
+public class CalendarServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+
+	/**
+	 * Forwards the request to the calendar display page.
+	 */
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		// CORRECTED: Forward to the actual JSP file path.
+		request.getRequestDispatcher("/views/public/calendar.jsp").forward(request, response);
+	}
+}
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\CollaborativeEditorServlet.java
+========================================================================
+
+package de.technikteam.servlet;
+
+import java.io.IOException;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+/**
+ * Mapped to `/editor-page`, this is a very simple servlet whose only purpose is
+ * to forward the user to the `collaborative_editor.jsp` page. All the dynamic
+ * functionality for the editor is handled client-side by JavaScript and the
+ * `DocumentApiServlet`.
+ */
+@WebServlet("/editor-page")
+public class CollaborativeEditorServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		// CORRECTED: Forward to the actual JSP file path. Note the original servlet
+		// mapping was `/dateien/texte` but the JSP link uses `/editor-page`. I'll map
+		// this to the JSP link.
+		request.getRequestDispatcher("/views/public/collaborative_editor.jsp").forward(request, response);
+	}
+}
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\DocumentApiServlet.java
+========================================================================
+
+package de.technikteam.servlet;
+
+import java.io.IOException;
+import java.util.stream.Collectors;
+
+import de.technikteam.dao.FileDAO;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+/**
+ * Mapped to `/api/document`, this servlet provides a simple REST-like API for
+ * the collaborative text editor. A GET request fetches the latest document
+ * content, while a POST request (with the new content in its raw body) updates
+ * the document in the database. It interacts with `FileDAO` to persist the
+ * content.
+ */
+@WebServlet("/api/document")
+public class DocumentApiServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(DocumentApiServlet.class);
+	private FileDAO fileDAO;
+	private static final String DOCUMENT_NAME = "realtime_notes";
+
+	@Override
+	public void init() {
+		fileDAO = new FileDAO();
+	}
+
+	/**
+	 * Handles GET requests to fetch the latest content of the shared document.
+	 */
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		logger.trace("GET request for document content '{}'", DOCUMENT_NAME);
+		String content = fileDAO.getDocumentContent(DOCUMENT_NAME);
+
+		response.setContentType("text/plain");
+		response.setCharacterEncoding("UTF-8");
+		response.getWriter().write(content);
+	}
+
+	/**
+	 * Handles POST requests to update the document content. It reads the raw text
+	 * from the request body.
+	 */
+	@Override
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		request.setCharacterEncoding("UTF-8");
+		String content = request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
+		logger.trace("POST request to update document content for '{}'. Content length: {}", DOCUMENT_NAME,
+				content.length());
+
+		boolean success = fileDAO.updateDocumentContent(DOCUMENT_NAME, content);
+
+		if (success) {
+			response.setStatus(HttpServletResponse.SC_OK);
+		} else {
+			logger.error("Failed to update document content for '{}'", DOCUMENT_NAME);
+			response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+		}
+	}
+}
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\DownloadServlet.java
+========================================================================
+
+package de.technikteam.servlet;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import de.technikteam.config.AppConfig;
+import de.technikteam.model.User;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+/**
+ * Mapped to `/download`, this servlet handles file download requests for both
+ * general files and meeting attachments. It takes a `file` parameter which
+ * corresponds to a path relative to the application's upload directory. It
+ * performs basic security checks, constructs the full file path, and streams
+ * the file from the server's filesystem to the user's browser, setting the
+ * correct headers to trigger a download dialog.
+ */
+@WebServlet("/download")
+public class DownloadServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(DownloadServlet.class);
+
+	@Override
+	public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		String relativePath = request.getParameter("file");
+		if (relativePath == null || relativePath.isEmpty()) {
+			logger.warn("Download request rejected: missing 'file' parameter.");
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Fehlender 'file' Parameter.");
+			return;
+		}
+
+		User user = (User) request.getSession().getAttribute("user");
+
+		// Basic security measure to prevent path traversal attacks (e.g., ../../)
+		if (relativePath.contains("..")) {
+			logger.warn("Potential path traversal attack from user '{}' for file '{}'. Access denied.",
+					(user != null ? user.getUsername() : "GUEST"), relativePath);
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Zugriff verweigert.");
+			return;
+		}
+
+		// Normalize path separators to be OS-independent, crucial for deployment
+		String sanitizedPath = relativePath.replace("/", File.separator).replace("\\", File.separator);
+
+		File file = new File(AppConfig.UPLOAD_DIRECTORY, sanitizedPath);
+		if (!file.exists() || !file.isFile()) {
+			logger.error("Download failed: File not found at resolved path {}", file.getAbsolutePath());
+			response.sendError(HttpServletResponse.SC_NOT_FOUND, "Datei nicht gefunden.");
+			return;
+		}
+
+		response.setContentType("application/octet-stream");
+		response.setContentLengthLong(file.length());
+
+		String headerKey = "Content-Disposition";
+		// URL-encode the filename to handle special characters and spaces correctly.
+		String headerValue = String.format("attachment; filename=\"%s\"",
+				URLEncoder.encode(file.getName(), StandardCharsets.UTF_8.toString()));
+		response.setHeader(headerKey, headerValue);
+
+		logger.info("User '{}' is downloading file: {}. Size: {} bytes.", (user != null ? user.getUsername() : "GUEST"),
+				file.getAbsolutePath(), file.length());
+
+		try (FileInputStream inStream = new FileInputStream(file);
+				OutputStream outStream = response.getOutputStream()) {
+
+			byte[] buffer = new byte[4096];
+			int bytesRead;
+			while ((bytesRead = inStream.read(buffer)) != -1) {
+				outStream.write(buffer, 0, bytesRead);
+			}
+		}
+	}
+}
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\EventActionServlet.java
+========================================================================
+
+package de.technikteam.servlet;
+
+import java.io.IOException;
+import java.util.List;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import de.technikteam.dao.EventCustomFieldDAO;
+import de.technikteam.dao.EventDAO;
+import de.technikteam.model.EventCustomField;
+import de.technikteam.model.EventCustomFieldResponse;
+import de.technikteam.model.User;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+@WebServlet("/event-action")
+public class EventActionServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(EventActionServlet.class);
+	private EventDAO eventDAO;
+	private EventCustomFieldDAO customFieldDAO;
+
+	@Override
+	public void init() {
+		eventDAO = new EventDAO();
+		customFieldDAO = new EventCustomFieldDAO();
+	}
+
+	@Override
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+
+		User user = (User) request.getSession().getAttribute("user");
+		String action = request.getParameter("action");
+		String eventIdParam = request.getParameter("eventId");
+
+		if (user == null || action == null || eventIdParam == null) {
+			logger.warn("Invalid request to EventActionServlet. Missing user, action, or eventId parameter.");
+			response.sendRedirect(request.getContextPath() + "/events");
+			return;
+		}
+
+		try {
+			int eventId = Integer.parseInt(eventIdParam);
+			logger.info("User '{}' (ID: {}) is performing action '{}' on event ID {}", user.getUsername(), user.getId(),
+					action, eventId);
+
+			if ("signup".equals(action)) {
+				eventDAO.signUpForEvent(user.getId(), eventId);
+
+				// Handle custom field responses
+				List<EventCustomField> fields = customFieldDAO.getCustomFieldsForEvent(eventId);
+				for (EventCustomField field : fields) {
+					String paramName = "customfield_" + field.getId();
+					String paramValue = request.getParameter(paramName);
+
+					if (paramValue != null) {
+						EventCustomFieldResponse customResponse = new EventCustomFieldResponse();
+						customResponse.setFieldId(field.getId());
+						customResponse.setUserId(user.getId());
+						customResponse.setResponseValue(paramValue);
+						customFieldDAO.saveResponse(customResponse);
+						logger.debug("Saved custom response for field ID {} and user ID {}.", field.getId(),
+								user.getId());
+					}
+				}
+
+				request.getSession().setAttribute("successMessage", "Erfolgreich zum Event angemeldet.");
+			} else if ("signoff".equals(action)) {
+				eventDAO.signOffFromEvent(user.getId(), eventId);
+				request.getSession().setAttribute("successMessage", "Erfolgreich vom Event abgemeldet.");
+			} else {
+				logger.warn("Unknown action received in EventActionServlet: {}", action);
+			}
+
+		} catch (NumberFormatException e) {
+			logger.error("Invalid event ID format in EventActionServlet.", e);
+			request.getSession().setAttribute("errorMessage", "Ungültige Event-ID.");
+		}
+
+		response.sendRedirect(request.getContextPath() + "/events");
+	}
+}
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\EventChatApiServlet.java
+========================================================================
+
+package de.technikteam.servlet;
+
+import com.google.gson.Gson;
+import de.technikteam.dao.EventChatDAO;
+import de.technikteam.model.EventChatMessage;
+import de.technikteam.model.User;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+import java.util.List;
+
+/**
+ * Mapped to `/api/event-chat`, this servlet provides a JSON API for the
+ * real-time event chat feature. A GET request fetches all messages for a given
+ * event ID. A POST request allows a logged-in user to submit a new message for
+ * an event. It uses the Gson library for JSON serialization.
+ */
+@WebServlet("/api/event-chat")
+public class EventChatApiServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(EventChatApiServlet.class);
+	private EventChatDAO chatDAO;
+	private Gson gson;
+
+	@Override
+	public void init() {
+		chatDAO = new EventChatDAO();
+		gson = new Gson();
+	}
+
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		try {
+			int eventId = Integer.parseInt(request.getParameter("eventId"));
+			logger.trace("GET request for chat messages for event ID: {}", eventId);
+			List<EventChatMessage> messages = chatDAO.getMessagesForEvent(eventId);
+			String jsonResponse = gson.toJson(messages);
+
+			response.setContentType("application/json");
+			response.setCharacterEncoding("UTF-8");
+			response.getWriter().write(jsonResponse);
+		} catch (NumberFormatException e) {
+			logger.warn("Bad request to event chat API: Invalid or missing eventId.");
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid or missing eventId.");
+		}
+	}
+
+	@Override
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		request.setCharacterEncoding("UTF-8");
+		try {
+			int eventId = Integer.parseInt(request.getParameter("eventId"));
+			String messageText = request.getParameter("messageText");
+			User user = (User) request.getSession().getAttribute("user");
+
+			if (user == null || messageText == null || messageText.trim().isEmpty()) {
+				logger.warn("Bad POST request to event chat API: Missing user session or message text for event ID {}",
+						eventId);
+				response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing user or message text.");
+				return;
+			}
+
+			logger.info("User '{}' posting message to event chat for event ID {}: '{}'", user.getUsername(), eventId,
+					messageText);
+
+			EventChatMessage newMessage = new EventChatMessage();
+			newMessage.setEventId(eventId);
+			newMessage.setUserId(user.getId());
+			newMessage.setUsername(user.getUsername());
+			newMessage.setMessageText(messageText);
+
+			if (chatDAO.postMessage(newMessage)) {
+				response.setStatus(HttpServletResponse.SC_OK);
+			} else {
+				logger.error("Failed to post chat message for user '{}' to event ID {}", user.getUsername(), eventId);
+				response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+			}
+		} catch (NumberFormatException e) {
+			logger.warn("Bad request to event chat API: Invalid eventId in POST.");
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid event ID.");
+		}
+	}
+}
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\EventCustomFieldsApiServlet.java
+========================================================================
+
+package de.technikteam.servlet;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import de.technikteam.config.LocalDateTimeAdapter;
+import de.technikteam.dao.EventCustomFieldDAO;
+import de.technikteam.model.EventCustomField;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * A public API endpoint that securely provides the list of custom sign-up
+ * fields for a specific event. This is called by the JavaScript on the main
+ * events page to populate the sign-up modal window.
+ */
+@WebServlet("/api/public/event-custom-fields")
+public class EventCustomFieldsApiServlet extends HttpServlet {
+    private static final long serialVersionUID = 1L;
+    private static final Logger logger = LogManager.getLogger(EventCustomFieldsApiServlet.class);
+    private EventCustomFieldDAO customFieldDAO;
+    private Gson gson;
+
+    @Override
+    public void init() {
+        customFieldDAO = new EventCustomFieldDAO();
+        gson = new GsonBuilder()
+                .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+                .create();
+    }
+
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String eventIdParam = request.getParameter("eventId");
+        if (eventIdParam == null || eventIdParam.trim().isEmpty()) {
+            logger.warn("API call rejected: eventId parameter is missing.");
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing required 'eventId' parameter.");
+            return;
+        }
+
+        try {
+            int eventId = Integer.parseInt(eventIdParam);
+            logger.debug("API request for custom fields for event ID: {}", eventId);
+
+            List<EventCustomField> fields = customFieldDAO.getCustomFieldsForEvent(eventId);
+            String jsonResponse = gson.toJson(fields);
+
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+            response.getWriter().write(jsonResponse);
+
+        } catch (NumberFormatException e) {
+            logger.warn("API call rejected: Invalid eventId format '{}'.", eventIdParam);
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid 'eventId' format. It must be a number.");
+        }
+    }
 }

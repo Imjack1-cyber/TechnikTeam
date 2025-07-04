@@ -11,6 +11,7 @@ public class EventTask {
 	private String description;
 	private String status; // e.g., "OFFEN" or "ERLEDIGT"
 	private String assignedUsernames; // Comma-separated list for display, not a direct table column
+	private String eventName; // For dashboard display
 
 	// --- Getters and Setters ---
 
@@ -52,5 +53,13 @@ public class EventTask {
 
 	public void setAssignedUsernames(String assignedUsernames) {
 		this.assignedUsernames = assignedUsernames;
+	}
+
+	public String getEventName() {
+		return eventName;
+	}
+
+	public void setEventName(String eventName) {
+		this.eventName = eventName;
 	}
 }

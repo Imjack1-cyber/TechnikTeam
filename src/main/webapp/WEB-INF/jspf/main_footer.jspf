@@ -1,6 +1,10 @@
 <%@ page pageEncoding="UTF-8"%>
-</div>
 </main>
+</div>
+<div id="lightbox" class="lightbox-overlay">
+	<span class="lightbox-close" title="Schließen">×</span> <img
+		class="lightbox-content" id="lightbox-image" alt="Großansicht">
+</div>
 <script src="${pageContext.request.contextPath}/js/main.js"></script>
 </body>
 </html>

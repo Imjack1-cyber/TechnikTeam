@@ -8,8 +8,11 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -45,8 +48,10 @@ public class EventDAO {
 		Event event = new Event();
 		event.setId(rs.getInt("id"));
 		event.setName(rs.getString("name"));
+		// REVERTED: Use the original, compatible method
 		event.setEventDateTime(rs.getTimestamp("event_datetime").toLocalDateTime());
 		if (rs.getTimestamp("end_datetime") != null) {
+			// REVERTED: Use the original, compatible method
 			event.setEndDateTime(rs.getTimestamp("end_datetime").toLocalDateTime());
 		}
 		event.setDescription(rs.getString("description"));
@@ -59,7 +64,6 @@ public class EventDAO {
 		if (DaoUtils.hasColumn(rs, "leader_username")) {
 			event.setLeaderUsername(rs.getString("leader_username"));
 		}
-
 		return event;
 	}
 
@@ -84,6 +88,8 @@ public class EventDAO {
 	 * @throws SQLException If a database error occurs.
 	 */
 	private User mapResultSetToSimpleUser(ResultSet rs) throws SQLException {
+		// CORRECTED: It expects 'role_name' which is now aliased as 'role' in the
+		// queries
 		return new User(rs.getInt("id"), rs.getString("username"), rs.getString("role"));
 	}
 
@@ -360,7 +366,10 @@ public class EventDAO {
 	 */
 	public List<User> getSignedUpUsersForEvent(int eventId) {
 		List<User> users = new ArrayList<>();
-		String sql = "SELECT u.id, u.username, u.role FROM users u JOIN event_attendance ea ON u.id = ea.user_id WHERE ea.event_id = ? AND ea.signup_status = 'ANGEMELDET'";
+		// CORRECTED: Join with roles table to get role_name, aliased as 'role'
+		String sql = "SELECT u.id, u.username, r.role_name as role FROM users u "
+				+ "JOIN event_attendance ea ON u.id = ea.user_id " + "LEFT JOIN roles r on u.role_id = r.id "
+				+ "WHERE ea.event_id = ? AND ea.signup_status = 'ANGEMELDET'";
 		logger.debug("Fetching signed up users for event ID: {}", eventId);
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, eventId);
@@ -529,8 +538,10 @@ public class EventDAO {
 	 */
 	public List<User> getAssignedUsersForEvent(int eventId) {
 		List<User> users = new ArrayList<>();
-		String sql = "SELECT u.id, u.username, u.role FROM users u "
-				+ "JOIN event_assignments ea ON u.id = ea.user_id WHERE ea.event_id = ?";
+		// CORRECTED: Joined with roles table and aliased r.role_name as role
+		String sql = "SELECT u.id, u.username, r.role_name AS role FROM users u "
+				+ "JOIN event_assignments ea ON u.id = ea.user_id " + "LEFT JOIN roles r ON u.role_id = r.id "
+				+ "WHERE ea.event_id = ?";
 		logger.debug("Fetching assigned users for event ID: {}", eventId);
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, eventId);
@@ -755,23 +766,79 @@ public class EventDAO {
 		}
 		return items;
 	}
-	
+
 	public List<Event> getCompletedEventsForUser(int userId) {
-        List<Event> history = new ArrayList<>();
-        String sql = "SELECT e.* FROM events e " +
-                     "JOIN event_assignments ea ON e.id = ea.event_id " +
-                     "WHERE ea.user_id = ? AND e.status = 'ABGESCHLOSSEN' " +
-                     "ORDER BY e.event_datetime DESC";
-        logger.debug("Fetching completed event history for user ID: {}", userId);
-        try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, userId);
-            ResultSet rs = pstmt.executeQuery();
-            while (rs.next()) {
-                history.add(mapResultSetToEvent(rs));
-            }
-        } catch (SQLException e) {
-            logger.error("SQL error fetching completed event history for user {}", userId, e);
-        }
-        return history;
-    }
+		List<Event> history = new ArrayList<>();
+		String sql = "SELECT e.* FROM events e " + "JOIN event_assignments ea ON e.id = ea.event_id "
+				+ "WHERE ea.user_id = ? AND e.status = 'ABGESCHLOSSEN' " + "ORDER BY e.event_datetime DESC";
+		logger.debug("Fetching completed event history for user ID: {}", userId);
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, userId);
+			ResultSet rs = pstmt.executeQuery();
+			while (rs.next()) {
+				history.add(mapResultSetToEvent(rs));
+			}
+		} catch (SQLException e) {
+			logger.error("SQL error fetching completed event history for user {}", userId, e);
+		}
+		return history;
+	}
+
+	public List<Event> getAssignedEventsForUser(int userId, int limit) {
+		List<Event> events = new ArrayList<>();
+		String sql = "SELECT e.* FROM events e " + "JOIN event_assignments ea ON e.id = ea.event_id "
+				+ "WHERE ea.user_id = ? AND e.event_datetime >= NOW() " + "ORDER BY e.event_datetime ASC";
+		if (limit > 0) {
+			sql += " LIMIT ?";
+		}
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, userId);
+			if (limit > 0) {
+				pstmt.setInt(2, limit);
+			}
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					events.add(mapResultSetToEvent(rs));
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching assigned events for user {}", userId, e);
+		}
+		return events;
+	}
+
+	public List<Map<String, Object>> getReservationsForCalendar(LocalDate start, LocalDate end) {
+		List<Map<String, Object>> reservations = new ArrayList<>();
+		String sql = "SELECT si.id as item_id, si.name as item_name, e.id as event_id, e.name as event_name, e.event_datetime, e.end_datetime "
+				+ "FROM event_storage_reservations esr " + "JOIN storage_items si ON esr.item_id = si.id "
+				+ "JOIN events e ON esr.event_id = e.id "
+				+ "WHERE e.event_datetime <= ? AND (e.end_datetime IS NULL OR e.end_datetime >= ?)";
+
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setTimestamp(1, Timestamp.valueOf(end.atStartOfDay()));
+			pstmt.setTimestamp(2, Timestamp.valueOf(start.atStartOfDay()));
+
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					Map<String, Object> row = new HashMap<>();
+					row.put("item_id", rs.getInt("item_id"));
+					row.put("item_name", rs.getString("item_name"));
+					row.put("event_id", rs.getInt("event_id"));
+					row.put("event_name", rs.getString("event_name"));
+					row.put("event_datetime", rs.getTimestamp("event_datetime").toLocalDateTime());
+					Timestamp endTs = rs.getTimestamp("end_datetime");
+					if (endTs != null) {
+						row.put("end_datetime", endTs.toLocalDateTime());
+					} else {
+						// If no end date, make it a 2-hour event for calendar visualization
+						row.put("end_datetime", rs.getTimestamp("event_datetime").toLocalDateTime().plusHours(2));
+					}
+					reservations.add(row);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching reservations for resource calendar.", e);
+		}
+		return reservations;
+	}
 }

@@ -143,7 +143,11 @@
 	</table>
 </div>
 
-<%@ include file="/WEB-INF/jspf/event_modals.jspf"%>
+<jsp:include page="/WEB-INF/jspf/event_modals.jspf" />
+
+<script id="allCoursesData" type="application/json">[<c:forEach var="c" items="${allCourses}" varStatus="loop">{"id":${c.id},"name":"<c:out value="${c.name}"/>"}<c:if test="${not loop.last}">,</c:if></c:forEach>]</script>
+<script id="allItemsData" type="application/json">[<c:forEach var="i" items="${allItems}" varStatus="loop">{"id":${i.id},"name":"<c:out value="${i.name} (verfügbar: ${i.availableQuantity})"/>"}<c:if test="${not loop.last}">,</c:if></c:forEach>]</script>
+
 <c:import url="/WEB-INF/jspf/table_scripts.jspf" />
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
 <script

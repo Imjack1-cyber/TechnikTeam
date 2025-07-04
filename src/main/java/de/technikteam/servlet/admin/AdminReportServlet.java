@@ -1,5 +1,6 @@
 package de.technikteam.servlet.admin;
 
+import com.google.gson.Gson;
 import de.technikteam.dao.ReportDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -20,6 +21,7 @@ public class AdminReportServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminReportServlet.class);
 	private ReportDAO reportDAO;
+	private Gson gson = new Gson();
 
 	@Override
 	public void init() {
@@ -32,17 +34,28 @@ public class AdminReportServlet extends HttpServlet {
 		String reportType = request.getParameter("report");
 		String exportType = request.getParameter("export");
 
-		if (reportType == null) {
-			logger.debug("Serving main reports menu.");
-			request.setAttribute("totalInventoryValue", reportDAO.getTotalInventoryValue());
-			// CORRECTED: Forward to the report menu JSP.
-			request.getRequestDispatcher("/views/admin/admin_reports.jsp").forward(request, response);
+		if (reportType != null && !reportType.isEmpty()) {
+			handleSpecificReport(request, response, reportType, exportType);
 			return;
 		}
 
+		logger.debug("Serving main reports dashboard.");
+
+		// Fetch data for dashboard charts
+		List<Map<String, Object>> eventTrendData = reportDAO.getEventCountByMonth(12);
+		List<Map<String, Object>> userActivityData = reportDAO.getUserParticipationStats(10);
+
+		request.setAttribute("eventTrendDataJson", gson.toJson(eventTrendData));
+		request.setAttribute("userActivityDataJson", gson.toJson(userActivityData));
+
+		request.setAttribute("totalInventoryValue", reportDAO.getTotalInventoryValue());
+		request.getRequestDispatcher("/views/admin/admin_reports.jsp").forward(request, response);
+	}
+
+	private void handleSpecificReport(HttpServletRequest request, HttpServletResponse response, String reportType,
+			String exportType) throws IOException, ServletException {
 		List<Map<String, Object>> reportData = null;
 		String reportTitle = "";
-		// CORRECTED: The JSP path for displaying a single report.
 		String jspPath = "/views/admin/report_display.jsp";
 
 		switch (reportType) {

@@ -64,7 +64,7 @@ public class AdminCourseServlet extends HttpServlet {
 			handleCreateOrUpdate(req, resp);
 		} else {
 			logger.warn("Unknown POST action received: {}", action);
-			resp.sendRedirect(req.getContextPath() + "/views/admin/admin_course_list.jsp");
+			resp.sendRedirect(req.getContextPath() + "/admin/lehrgaenge");
 		}
 	}
 
@@ -99,7 +99,7 @@ public class AdminCourseServlet extends HttpServlet {
 			logger.info("Attempting to update course: {}", course.getName());
 			Course originalCourse = courseDAO.getCourseById(course.getId());
 			success = courseDAO.updateCourse(course);
-			if (success) {
+			if (success && originalCourse != null) {
 				StringBuilder changes = new StringBuilder();
 				if (!Objects.equals(originalCourse.getName(), course.getName())) {
 					changes.append(String.format("Name: '%s' -> '%s'. ", originalCourse.getName(), course.getName()));
@@ -111,6 +111,10 @@ public class AdminCourseServlet extends HttpServlet {
 				String logDetails = String.format("Lehrgangs-Vorlage '%s' (ID: %d) aktualisiert. %s",
 						originalCourse.getName(), course.getId(), changes.toString());
 				AdminLogService.log(adminUser.getUsername(), "UPDATE_COURSE", logDetails);
+				request.getSession().setAttribute("successMessage", "Lehrgangs-Vorlage erfolgreich aktualisiert.");
+			} else if (success) {
+				AdminLogService.log(adminUser.getUsername(), "UPDATE_COURSE",
+						"Lehrgangs-Vorlage (ID: " + course.getId() + ") aktualisiert.");
 				request.getSession().setAttribute("successMessage", "Lehrgangs-Vorlage erfolgreich aktualisiert.");
 			} else {
 				request.getSession().setAttribute("errorMessage", "Fehler beim Aktualisieren der Vorlage.");
@@ -127,7 +131,7 @@ public class AdminCourseServlet extends HttpServlet {
 				request.getSession().setAttribute("errorMessage", "Fehler beim Erstellen der Vorlage.");
 			}
 		}
-		response.sendRedirect(request.getContextPath() + "/views/admin/admin_course_list.jsp");
+		response.sendRedirect(request.getContextPath() + "/admin/lehrgaenge");
 	}
 
 	private void handleDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -151,6 +155,6 @@ public class AdminCourseServlet extends HttpServlet {
 			logger.error("Invalid course ID format for deletion.", e);
 			req.getSession().setAttribute("errorMessage", "Ungültige ID für Löschvorgang.");
 		}
-		resp.sendRedirect(req.getContextPath() + "/views/admin/admin_course_list.jsp");
+		resp.sendRedirect(req.getContextPath() + "/admin/lehrgaenge");
 	}
 }

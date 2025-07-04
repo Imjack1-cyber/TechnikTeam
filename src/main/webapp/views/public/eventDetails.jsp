@@ -30,8 +30,9 @@
 	</c:if>
 </p>
 
+<%-- CORRECTED: Replaced the complex contains() check with a simple and robust roleName comparison --%>
 <c:if
-	test="${event.status == 'LAUFEND' and (isUserAssigned or sessionScope.user.permissions.contains('ACCESS_ADMIN_PANEL'))}">
+	test="${event.status == 'LAUFEND' and (isUserAssigned or sessionScope.user.roleName == 'ADMIN')}">
 	<div class="dashboard-grid">
 		<div class="card">
 			<h2 class="card-title">Aufgaben</h2>
@@ -203,5 +204,12 @@
 </div>
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script>
+	// Provide data for the main eventDetails.js script
+	document.body.dataset.eventId = "${event.id}";
+	document.body.dataset.userId = "${sessionScope.user.id}";
+	// CORRECTED: Use the simpler, more robust roleName check
+	document.body.dataset.isAdmin = "${sessionScope.user.roleName == 'ADMIN'}";
+</script>
 <script
 	src="${pageContext.request.contextPath}/js/public/eventDetails.js"></script>

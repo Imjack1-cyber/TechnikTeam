@@ -164,8 +164,10 @@ public class MeetingDAO {
 		meeting.setId(rs.getInt("id"));
 		meeting.setCourseId(rs.getInt("course_id"));
 		meeting.setName(rs.getString("name"));
+		// REVERTED: Use the original, compatible method
 		meeting.setMeetingDateTime(rs.getTimestamp("meeting_datetime").toLocalDateTime());
 		if (rs.getTimestamp("end_datetime") != null) {
+			// REVERTED: Use the original, compatible method
 			meeting.setEndDateTime(rs.getTimestamp("end_datetime").toLocalDateTime());
 		}
 		meeting.setLeaderUserId(rs.getInt("leader_user_id"));
