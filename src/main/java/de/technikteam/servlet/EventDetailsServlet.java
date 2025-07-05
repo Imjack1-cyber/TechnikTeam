@@ -1,9 +1,14 @@
 package de.technikteam.servlet;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.EventAttachmentDAO;
 import de.technikteam.dao.EventChatDAO;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.EventTaskDAO;
+import de.technikteam.dao.InventoryKitDAO;
+import de.technikteam.dao.StorageDAO;
 import de.technikteam.model.Event;
 import de.technikteam.model.User;
 import jakarta.servlet.ServletException;
@@ -11,21 +16,16 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
-import java.util.stream.Collectors;
-import java.io.IOException;
-import java.util.List;
-import java.util.Set;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-/**
- * Mapped to `/eventDetails`, this servlet is responsible for displaying the
- * detailed view of a single event. It fetches all relevant data for the event,
- * including its description, skill requirements, and assigned team. If the
- * event is currently 'LAUFEND' (running), it also fetches associated tasks and
- * chat history. It forwards all this data to `eventDetails.jsp`.
- */
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 @WebServlet("/veranstaltungen/details")
 public class EventDetailsServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
@@ -34,6 +34,9 @@ public class EventDetailsServlet extends HttpServlet {
 	private EventTaskDAO taskDAO;
 	private EventChatDAO chatDAO;
 	private EventAttachmentDAO attachmentDAO;
+	private StorageDAO storageDAO;
+	private InventoryKitDAO kitDAO;
+	private Gson gson;
 
 	@Override
 	public void init() {
@@ -41,6 +44,9 @@ public class EventDetailsServlet extends HttpServlet {
 		taskDAO = new EventTaskDAO();
 		chatDAO = new EventChatDAO();
 		attachmentDAO = new EventAttachmentDAO();
+		storageDAO = new StorageDAO();
+		kitDAO = new InventoryKitDAO();
+		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
 	@Override
@@ -58,40 +64,43 @@ public class EventDetailsServlet extends HttpServlet {
 				return;
 			}
 
-			// Fetch base data applicable to all event statuses
+			boolean isGlobalAdmin = user.getPermissions().contains("TASK_MANAGE");
+			boolean isEventLeader = user.getId() == event.getLeaderUserId();
+			boolean hasTaskManagementPermission = isGlobalAdmin || isEventLeader;
+			request.setAttribute("hasTaskManagementPermission", hasTaskManagementPermission);
+
+			String userRoleForAttachments = (hasTaskManagementPermission) ? "ADMIN" : "NUTZER";
+
+			event.setAttachments(attachmentDAO.getAttachmentsForEvent(eventId, userRoleForAttachments));
 			event.setSkillRequirements(eventDAO.getSkillRequirementsForEvent(eventId));
 			event.setReservedItems(eventDAO.getReservedItemsForEvent(eventId));
-
-			String userRoleForAttachments = (user.getRoleName().equals("ADMIN")
-					|| user.getId() == event.getLeaderUserId()) ? "ADMIN" : "NUTZER";
-			event.setAttachments(attachmentDAO.getAttachmentsForEvent(eventId, userRoleForAttachments));
 
 			List<User> assignedUsers = eventDAO.getAssignedUsersForEvent(eventId);
 			event.setAssignedAttendees(assignedUsers);
 
-			// Fetch data specific to running events (tasks, chat)
+			event.setEventTasks(taskDAO.getTasksForEvent(eventId));
 			if ("LAUFEND".equalsIgnoreCase(event.getStatus())) {
-				logger.debug("Event {} is running. Fetching tasks and chat messages.", eventId);
-				event.setEventTasks(taskDAO.getTasksForEvent(eventId));
 				event.setChatMessages(chatDAO.getMessagesForEvent(eventId));
+			} else {
+				event.setChatMessages(new ArrayList<>());
 			}
 
-			// For Admins and Users, provide the list of assigned users for the task
-			// assignment
-			// dropdown
-			if ("ADMIN".equalsIgnoreCase(user.getRoleName()) || "NUTZER".equalsIgnoreCase(user.getRoleName())) {
-				request.setAttribute("assignedUsers", assignedUsers);
-			}
-
-			// For regular users, determine if they are part of the assigned team to show
-			// relevant UI
 			Set<Integer> assignedUserIds = assignedUsers.stream().map(User::getId).collect(Collectors.toSet());
 			boolean isUserAssigned = assignedUserIds.contains(user.getId());
 			request.setAttribute("isUserAssigned", isUserAssigned);
 
 			request.setAttribute("event", event);
+
+			if (hasTaskManagementPermission) {
+				request.setAttribute("assignedUsers", assignedUsers);
+				request.setAttribute("allItems", storageDAO.getAllItems());
+				request.setAttribute("allKits", kitDAO.getAllKits()); // FIX: Ensure kits are loaded
+				request.setAttribute("tasksJson", gson.toJson(event.getEventTasks()));
+			} else {
+				request.setAttribute("tasksJson", "[]");
+			}
+
 			logger.debug("Forwarding to eventDetails.jsp for event '{}'", event.getName());
-			// CORRECTED: Forward to the actual JSP file path.
 			request.getRequestDispatcher("/views/public/eventDetails.jsp").forward(request, response);
 
 		} catch (NumberFormatException e) {

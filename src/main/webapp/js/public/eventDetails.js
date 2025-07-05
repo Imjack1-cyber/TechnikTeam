@@ -4,25 +4,185 @@ document.addEventListener('DOMContentLoaded', () => {
 	const currentUserId = document.body.dataset.userId || '';
 	const isAdmin = document.body.dataset.isAdmin === 'true';
 
-	if (!eventId) {
-		console.error("Event ID is missing from the page. Real-time features disabled.");
-		return;
+	// --- Task Management ---
+	const taskModal = document.getElementById('task-modal');
+	if (taskModal) {
+		// --- DATA ---
+		const allUsers = JSON.parse(document.getElementById('allUsersData')?.textContent || '[]');
+		const allItems = JSON.parse(document.getElementById('allItemsData')?.textContent || '[]');
+		const allKits = JSON.parse(document.getElementById('allKitsData')?.textContent || '[]');
+		const allTasks = JSON.parse(document.getElementById('allTasksData')?.textContent || '[]');
+
+		// --- MODAL ELEMENTS ---
+		const form = document.getElementById('task-modal-form');
+		const title = document.getElementById('task-modal-title');
+		const taskIdInput = document.getElementById('task-id-modal');
+		const descInput = document.getElementById('task-description-modal');
+		const orderInput = document.getElementById('task-display-order-modal');
+		const statusGroup = document.getElementById('task-status-group');
+		const statusInput = document.getElementById('task-status-modal');
+		const deleteBtn = document.getElementById('delete-task-btn');
+
+		const assignmentTypeRadios = form.querySelectorAll('input[name="assignmentType"]');
+		const directFields = document.getElementById('direct-assignment-fields');
+		const poolFields = document.getElementById('pool-assignment-fields');
+		const requiredPersonsInput = document.getElementById('task-required-persons-modal');
+		const userCheckboxesContainer = document.getElementById('task-user-checkboxes');
+
+		const itemsContainer = document.getElementById('task-items-container');
+		const kitsContainer = document.getElementById('task-kits-container');
+
+		// --- DYNAMIC ROW CREATION ---
+		const createRow = (container, onRemove) => {
+			const row = document.createElement('div');
+			row.className = 'dynamic-row';
+			const removeBtn = document.createElement('button');
+			removeBtn.type = 'button';
+			removeBtn.className = 'btn-small btn-danger';
+			removeBtn.innerHTML = '×';
+			removeBtn.onclick = () => onRemove(row);
+			row.appendChild(removeBtn);
+			container.appendChild(row);
+			return row;
+		};
+
+		const addItemRow = (item = { id: '', quantity: 1 }) => {
+			const row = createRow(itemsContainer, r => r.remove());
+			const select = document.createElement('select');
+			select.name = 'itemIds';
+			select.className = 'form-group';
+			select.innerHTML = '<option value="">-- Material --</option>' + allItems.map(i => `<option value="${i.id}" data-max-qty="${i.availableQuantity}">${i.name}</option>`).join('');
+			select.value = item.id;
+
+			const input = document.createElement('input');
+			input.type = 'number';
+			input.name = 'itemQuantities';
+			input.value = item.quantity;
+			input.min = '1';
+			input.className = 'form-group';
+			input.style.maxWidth = '100px';
+
+			select.addEventListener('change', () => {
+				const selectedOption = select.options[select.selectedIndex];
+				const maxQty = selectedOption.dataset.maxQty;
+				input.max = maxQty || '';
+				if (maxQty) input.title = `Maximal verfügbar: ${maxQty}`;
+			});
+
+			row.prepend(select, input);
+		};
+
+		const addKitRow = (kit = { id: '' }) => {
+			const row = createRow(kitsContainer, r => r.remove());
+			const select = document.createElement('select');
+			select.name = 'kitIds';
+			select.className = 'form-group';
+			select.innerHTML = '<option value="">-- Kit --</option>' + allKits.map(k => `<option value="${k.id}">${k.name}</option>`).join('');
+			select.value = kit.id;
+			row.prepend(select);
+		};
+
+		// --- MODAL LOGIC ---
+		const openModal = () => taskModal.classList.add('active');
+		const closeModal = () => taskModal.classList.remove('active');
+
+		const resetModal = () => {
+			form.reset();
+			taskIdInput.value = '';
+			itemsContainer.innerHTML = '';
+			kitsContainer.innerHTML = '';
+			userCheckboxesContainer.innerHTML = '';
+			statusGroup.style.display = 'none';
+			deleteBtn.style.display = 'none';
+			directFields.style.display = 'block';
+			poolFields.style.display = 'none';
+			form.querySelector('input[name="assignmentType"][value="direct"]').checked = true;
+		};
+
+		document.getElementById('new-task-btn')?.addEventListener('click', () => {
+			resetModal();
+			title.textContent = 'Neue Aufgabe erstellen';
+			allUsers.forEach(user => {
+				userCheckboxesContainer.innerHTML += `<label><input type="checkbox" name="userIds" value="${user.id}"> ${user.username}</label>`;
+			});
+			openModal();
+		});
+
+		document.querySelectorAll('.edit-task-btn').forEach(btn => {
+			btn.addEventListener('click', () => {
+				const taskId = parseInt(btn.dataset.taskId, 10);
+				const task = allTasks.find(t => t.id === taskId);
+				if (!task) return;
+
+				resetModal();
+				title.textContent = 'Aufgabe bearbeiten';
+				statusGroup.style.display = 'block';
+				deleteBtn.style.display = 'inline-block';
+
+				taskIdInput.value = task.id;
+				descInput.value = task.description;
+				orderInput.value = task.displayOrder;
+				statusInput.value = task.status;
+
+				if (task.requiredPersons > 0) {
+					form.querySelector('input[name="assignmentType"][value="pool"]').checked = true;
+					poolFields.style.display = 'block';
+					directFields.style.display = 'none';
+					requiredPersonsInput.value = task.requiredPersons;
+				} else {
+					const assignedIds = new Set(task.assignedUsers.map(u => u.id));
+					allUsers.forEach(user => {
+						const isChecked = assignedIds.has(user.id) ? 'checked' : '';
+						userCheckboxesContainer.innerHTML += `<label><input type="checkbox" name="userIds" value="${user.id}" ${isChecked}> ${user.username}</label>`;
+					});
+				}
+
+				task.requiredItems.forEach(item => addItemRow({ id: item.id, quantity: item.quantity }));
+				task.requiredKits.forEach(kit => addKitRow({ id: kit.id }));
+				openModal();
+			});
+		});
+
+		assignmentTypeRadios.forEach(radio => {
+			radio.addEventListener('change', () => {
+				directFields.style.display = radio.value === 'direct' ? 'block' : 'none';
+				poolFields.style.display = radio.value === 'pool' ? 'block' : 'none';
+			});
+		});
+
+		deleteBtn.addEventListener('click', () => {
+			showConfirmationModal('Diese Aufgabe wirklich löschen?', () => {
+				const deleteForm = document.createElement('form');
+				deleteForm.method = 'post';
+				deleteForm.action = `${contextPath}/admin/tasks`;
+				deleteForm.innerHTML = `<input type="hidden" name="action" value="delete"><input type="hidden" name="taskId" value="${taskIdInput.value}"><input type="hidden" name="eventId" value="${eventId}">`;
+				document.body.appendChild(deleteForm);
+				deleteForm.submit();
+			});
+		});
+
+		document.getElementById('add-task-item-btn').addEventListener('click', () => addItemRow());
+		document.getElementById('add-task-kit-btn').addEventListener('click', () => addKitRow());
+		taskModal.querySelector('.modal-close-btn').addEventListener('click', closeModal);
+
+		// --- USER ACTIONS ---
+		document.querySelectorAll('.mark-task-done-btn').forEach(btn => {
+			btn.addEventListener('click', () => {
+				const taskId = btn.dataset.taskId;
+				const form = new FormData();
+				form.append('action', 'updateStatus');
+				form.append('taskId', taskId);
+				form.append('status', 'ERLEDIGT');
+				fetch(`${contextPath}/task-action`, { method: 'POST', body: form })
+					.then(response => {
+						if (response.ok) window.location.reload();
+						else alert('Fehler beim Aktualisieren der Aufgabe.');
+					});
+			});
+		});
 	}
 
-	const getTextColorForBackground = (hexColor) => {
-		if (!hexColor || hexColor.length < 7) return '#000000';
-		const r = parseInt(hexColor.slice(1, 3), 16);
-		const g = parseInt(hexColor.slice(3, 5), 16);
-		const b = parseInt(hexColor.slice(5, 7), 16);
-		const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-		return luminance > 0.5 ? '#000000' : '#FFFFFF';
-	};
-
-	const formatAsLocaleTime = (dateString) => {
-		if (!dateString) return '';
-		return new Date(dateString).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-	};
-
+	// --- Chat Management ---
 	const chatBox = document.getElementById('chat-box');
 	if (chatBox) {
 		const chatForm = document.getElementById('chat-form');
@@ -53,6 +213,20 @@ document.addEventListener('DOMContentLoaded', () => {
 			};
 			socket.onclose = (event) => console.warn('WebSocket connection closed.', event);
 			socket.onerror = (error) => console.error('WebSocket error:', error);
+		};
+
+		const getTextColorForBackground = (hexColor) => {
+			if (!hexColor || hexColor.length < 7) return '#000000';
+			const r = parseInt(hexColor.slice(1, 3), 16);
+			const g = parseInt(hexColor.slice(3, 5), 16);
+			const b = parseInt(hexColor.slice(5, 7), 16);
+			const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+			return luminance > 0.5 ? '#000000' : '#FFFFFF';
+		};
+
+		const formatAsLocaleTime = (dateString) => {
+			if (!dateString) return '';
+			return new Date(dateString).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 		};
 
 		const appendMessage = (message) => {
@@ -156,7 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			const bubbleElement = document.getElementById(`chat-bubble-${payload.messageId}`);
 			const containerElement = document.getElementById(`message-container-${payload.messageId}`);
 			if (bubbleElement && containerElement) {
-				containerElement.querySelector('.chat-options')?.remove(); // Remove edit/delete buttons
+				containerElement.querySelector('.chat-options')?.remove();
 
 				let deletedText;
 				if (payload.originalUsername === payload.deletedByUsername) {

@@ -30,77 +30,112 @@
 	</c:if>
 </p>
 
-<%-- CORRECTED: Replaced the complex contains() check with a simple and robust roleName comparison --%>
-<c:if
-	test="${event.status == 'LAUFEND' and (isUserAssigned or sessionScope.user.roleName == 'ADMIN')}">
-	<div class="dashboard-grid">
-		<div class="card">
-			<h2 class="card-title">Aufgaben</h2>
-			<c:if test="${sessionScope.user.permissions.contains('TASK_MANAGE')}">
-				<div id="admin-task-manager">
-					<ul id="task-list-admin" class="details-list">
-						<c:if test="${empty event.eventTasks}">
-							<li>Noch keine Aufgaben erstellt.</li>
-						</c:if>
-						<c:forEach var="task" items="${event.eventTasks}">
-							<li id="task-item-${task.id}">
-								<div style="flex-grow: 1;">
-									<strong><c:out value="${task.description}" /></strong><br>
-									<small>Zugewiesen: <c:out
-											value="${not empty task.assignedUsernames ? task.assignedUsernames : 'Niemand'}" /></small>
-								</div>
-								<div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-									<span
-										class="status-badge ${task.status == 'ERLEDIGT' ? 'status-ok' : 'status-warn'}"><c:out
-											value="${task.status}" /></span>
-									<button class="btn btn-small assign-task-btn"
-										data-task-id="${task.id}">Zuweisen</button>
-									<button class="btn btn-small btn-danger delete-task-btn"
-										data-task-id="${task.id}"
-										data-task-desc="${fn:escapeXml(task.description)}">×</button>
-								</div>
-							</li>
-						</c:forEach>
-					</ul>
-					<form action="${pageContext.request.contextPath}/admin/tasks"
-						method="post"
-						style="margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
-						<input type="hidden" name="action" value="create"><input
-							type="hidden" name="eventId" value="${event.id}">
-						<div class="form-group">
-							<label for="task-description">Neue Aufgabe</label> <input
-								type="text" name="description" id="task-description" required
-								placeholder="z.B. Mischpult aufbauen">
+<div class="responsive-dashboard-grid">
+	<div class="card" style="grid-column: 1/-1;">
+		<h2 class="card-title">Aufgaben</h2>
+		<div id="task-list-container">
+			<c:if test="${empty event.eventTasks}">
+				<p>Für dieses Event wurden noch keine Aufgaben erstellt.</p>
+			</c:if>
+			<c:forEach var="task" items="${event.eventTasks}">
+				<div class="card" style="margin-bottom: 1rem;">
+					<div
+						style="display: flex; justify-content: space-between; align-items: start;">
+						<div>
+							<span
+								class="status-badge ${task.status == 'ERLEDIGT' ? 'status-ok' : 'status-warn'}">${task.status}</span>
+							<h4 style="margin-top: 0.5rem;">${task.displayOrder}.
+								${task.description}</h4>
 						</div>
-						<button type="submit" class="btn btn-small">Aufgabe
-							erstellen</button>
-					</form>
-				</div>
-			</c:if>
-			<c:if
-				test="${!sessionScope.user.permissions.contains('TASK_MANAGE')}">
-				<ul id="task-list-user" class="details-list">
-					<c:set var="userHasTasks" value="false" />
-					<c:forEach var="task" items="${event.eventTasks}">
-						<c:if
-							test="${fn:contains(task.assignedUsernames, sessionScope.user.username) and task.status == 'OFFEN'}">
-							<c:set var="userHasTasks" value="true" />
-							<li id="task-item-user-${task.id}"><label
-								style="display: flex; align-items: center; gap: 0.5rem; width: 100%; cursor: pointer;">
-									<input type="checkbox" class="task-checkbox"
-									data-task-id="${task.id}"
-									style="width: auto; height: 1.2rem; flex-shrink: 0;"> <span><c:out
-											value="${task.description}" /></span>
-							</label></li>
+						<c:if test="${hasTaskManagementPermission}">
+							<div>
+								<button class="btn btn-small edit-task-btn"
+									data-task-id="${task.id}">Bearbeiten</button>
+							</div>
 						</c:if>
-					</c:forEach>
-					<c:if test="${!userHasTasks}">
-						<li>Keine offenen Aufgaben für dich.</li>
+					</div>
+
+					<p style="margin-top: 1rem;">
+						<strong>Zugewiesen an:</strong>
+						<c:if test="${task.requiredPersons > 0}">
+							<span class="text-muted">Offener Pool
+								(${fn:length(task.assignedUsers)} / ${task.requiredPersons}
+								Plätze)</span>
+						</c:if>
+						<c:out value="${task.getAssignedUsernames()}" />
+					</p>
+
+					<c:if
+						test="${not empty task.requiredItems || not empty task.requiredKits}">
+						<p style="margin-top: 1rem;">
+							<strong>Benötigtes Material:</strong>
+						</p>
+						<ul style="padding-left: 1.5rem;">
+							<c:forEach var="item" items="${task.requiredItems}">
+								<li>${item.quantity}x${item.name}</li>
+							</c:forEach>
+							<c:forEach var="kit" items="${task.requiredKits}">
+								<li>1x Kit: ${kit.name}</li>
+							</c:forEach>
+						</ul>
 					</c:if>
-				</ul>
-			</c:if>
+
+					<c:if test="${event.status == 'LAUFEND'}">
+						<div
+							style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+							<c:set var="isTaskAssignedToCurrentUser" value="false" />
+							<c:forEach var="assigned" items="${task.assignedUsers}">
+								<c:if test="${assigned.id == sessionScope.user.id}">
+									<c:set var="isTaskAssignedToCurrentUser" value="true" />
+								</c:if>
+							</c:forEach>
+
+							<c:if test="${task.requiredPersons > 0}">
+								<c:choose>
+									<c:when test="${isTaskAssignedToCurrentUser}">
+										<form action="${pageContext.request.contextPath}/task-action"
+											method="post">
+											<input type="hidden" name="action" value="unclaim"> <input
+												type="hidden" name="taskId" value="${task.id}">
+											<button type="submit"
+												class="btn btn-danger-outline btn-small">Aufgabe
+												zurückgeben</button>
+										</form>
+									</c:when>
+									<c:when
+										test="${fn:length(task.assignedUsers) < task.requiredPersons}">
+										<form action="${pageContext.request.contextPath}/task-action"
+											method="post">
+											<input type="hidden" name="action" value="claim"> <input
+												type="hidden" name="taskId" value="${task.id}">
+											<button type="submit" class="btn btn-success btn-small">Aufgabe
+												übernehmen</button>
+										</form>
+									</c:when>
+								</c:choose>
+							</c:if>
+
+							<c:if
+								test="${isTaskAssignedToCurrentUser and task.status == 'OFFEN'}">
+								<button class="btn btn-primary btn-small mark-task-done-btn"
+									data-task-id="${task.id}">Als erledigt markieren</button>
+							</c:if>
+						</div>
+					</c:if>
+				</div>
+			</c:forEach>
 		</div>
-		<div class="card">
+		<c:if test="${hasTaskManagementPermission}">
+			<button class="btn btn-success" id="new-task-btn"
+				style="margin-top: 1rem;">
+				<i class="fas fa-plus"></i> Neue Aufgabe
+			</button>
+		</c:if>
+	</div>
+
+	<c:if
+		test="${event.status == 'LAUFEND' and (isUserAssigned or hasTaskManagementPermission)}">
+		<div class="card" style="grid-column: 1/-1;">
 			<h2 class="card-title">Event-Chat</h2>
 			<div id="chat-box"
 				style="height: 300px; overflow-y: auto; border: 1px solid var(--border-color); padding: 0.5rem; margin-bottom: 1rem; background: var(--bg-color);"></div>
@@ -111,8 +146,8 @@
 				<button type="submit" class="btn">Senden</button>
 			</form>
 		</div>
-	</div>
-</c:if>
+	</c:if>
+</div>
 
 <div class="dashboard-grid">
 	<div class="card">
@@ -179,36 +214,40 @@
 		Event-Übersicht</a>
 </div>
 
-<div class="modal-overlay" id="assign-task-modal">
-	<div class="modal-content">
-		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
-		<h3>Aufgabe zuweisen</h3>
-		<form action="${pageContext.request.contextPath}/admin/tasks"
-			method="post">
-			<input type="hidden" name="action" value="assign"><input
-				type="hidden" name="eventId" value="${event.id}"><input
-				type="hidden" name="taskId" id="modal-task-id">
-			<div class="form-group">
-				<label>Verfügbare Teammitglieder</label>
-				<div id="modal-user-checkboxes"
-					style="display: flex; flex-direction: column; gap: 0.5rem;">
-					<c:forEach var="user" items="${assignedUsers}">
-						<label><input type="checkbox" name="userIds"
-							value="${user.id}"> <c:out value="${user.username}" /></label>
-					</c:forEach>
-				</div>
-			</div>
-			<button type="submit" class="btn">Zuweisung speichern</button>
-		</form>
-	</div>
+<c:if test="${hasTaskManagementPermission}">
+	<jsp:include page="/WEB-INF/jspf/task_modal.jspf" />
+</c:if>
+
+<%-- Embed data for JavaScript. This is the safest way to pass data. --%>
+<div id="allUsersData" style="display: none;">
+	[
+	<c:forEach var="u" items="${assignedUsers}" varStatus="loop">{"id":${u.id},"username":"<c:out
+			value="${u.username}" />"}<c:if test="${not loop.last}">,</c:if>
+	</c:forEach>
+	]
 </div>
+<div id="allItemsData" style="display: none;">
+	[
+	<c:forEach var="i" items="${allItems}" varStatus="loop">{"id":${i.id},"name":"<c:out
+			value="${fn:escapeXml(i.name)}" />", "availableQuantity": ${i.availableQuantity}}<c:if
+			test="${not loop.last}">,</c:if>
+	</c:forEach>
+	]
+</div>
+<div id="allKitsData" style="display: none;">
+	[
+	<c:forEach var="k" items="${allKits}" varStatus="loop">{"id":${k.id},"name":"<c:out
+			value="${fn:escapeXml(k.name)}" />"}<c:if test="${not loop.last}">,</c:if>
+	</c:forEach>
+	]
+</div>
+<div id="allTasksData" style="display: none;">${tasksJson}</div>
+
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
 <script>
-	// Provide data for the main eventDetails.js script
 	document.body.dataset.eventId = "${event.id}";
 	document.body.dataset.userId = "${sessionScope.user.id}";
-	// CORRECTED: Use the simpler, more robust roleName check
 	document.body.dataset.isAdmin = "${sessionScope.user.roleName == 'ADMIN'}";
 </script>
 <script
