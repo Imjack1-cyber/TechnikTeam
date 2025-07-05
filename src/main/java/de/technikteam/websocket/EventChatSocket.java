@@ -16,7 +16,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.Map;
 
 @ServerEndpoint(value = "/ws/chat/{eventId}", configurator = GetHttpSessionConfigurator.class)
@@ -73,17 +73,37 @@ public class EventChatSocket {
 
 	private void handleNewMessage(User user, String eventId, Map<String, Object> payload) {
 		String messageText = (String) payload.get("messageText");
-		EventChatMessage chatMessage = new EventChatMessage();
-		chatMessage.setEventId(Integer.parseInt(eventId));
-		chatMessage.setUserId(user.getId());
-		chatMessage.setUsername(user.getUsername());
-		chatMessage.setMessageText(messageText);
-		chatDAO.postMessage(chatMessage);
+		EventChatMessage newMessage = new EventChatMessage();
+		newMessage.setEventId(Integer.parseInt(eventId));
+		newMessage.setUserId(user.getId());
+		newMessage.setUsername(user.getUsername());
+		newMessage.setMessageText(messageText);
 
-		chatMessage.setSentAt(LocalDateTime.now());
+		EventChatMessage savedMessage = chatDAO.postMessage(newMessage);
 
-		Map<String, Object> broadcastPayload = Map.of("type", "new_message", "payload", chatMessage);
-		ChatSessionManager.getInstance().broadcast(eventId, gson.toJson(broadcastPayload));
+		if (savedMessage != null) {
+			savedMessage.setChatColor(user.getChatColor()); // Add user's color to broadcast
+			Map<String, Object> broadcastPayload = Map.of("type", "new_message", "payload", savedMessage);
+			ChatSessionManager.getInstance().broadcast(eventId, gson.toJson(broadcastPayload));
+		}
+	}
+
+	private void handleDeleteMessage(User user, String eventId, Map<String, Object> payload) {
+		int messageId = ((Double) payload.get("messageId")).intValue();
+		boolean isAdmin = user.getPermissions().contains("ACCESS_ADMIN_PANEL");
+
+		if (chatDAO.deleteMessage(messageId, user.getId(), isAdmin)) {
+			if (isAdmin && user.getId() != ((Double) payload.get("originalUserId")).intValue()) {
+				String logDetails = String.format("Admin '%s' deleted a chat message (ID: %d) in event chat (ID: %s).",
+						user.getUsername(), messageId, eventId);
+				AdminLogService.log(user.getUsername(), "DELETE_CHAT_MESSAGE", logDetails);
+			}
+
+			Map<String, Object> broadcastPayload = Map.of("type", "message_soft_deleted", "payload",
+					Map.of("messageId", messageId, "originalUsername", payload.get("originalUsername"),
+							"deletedByUsername", user.getUsername()));
+			ChatSessionManager.getInstance().broadcast(eventId, gson.toJson(broadcastPayload));
+		}
 	}
 
 	private void handleUpdateMessage(User user, String eventId, Map<String, Object> payload) {
@@ -97,29 +117,10 @@ public class EventChatSocket {
 		}
 	}
 
-	private void handleDeleteMessage(User user, String eventId, Map<String, Object> payload) {
-		int messageId = ((Double) payload.get("messageId")).intValue();
-		boolean isAdmin = user.getPermissions().contains("ACCESS_ADMIN_PANEL");
-
-		if (chatDAO.deleteMessage(messageId, user.getId(), user.getUsername(), isAdmin)) {
-			// Log the deletion if performed by an admin on another's message
-			if (isAdmin) {
-				String logDetails = String.format("Admin '%s' deleted chat message (ID: %d) in event chat (ID: %s).",
-						user.getUsername(), messageId, eventId);
-				AdminLogService.log(user.getUsername(), "DELETE_CHAT_MESSAGE", logDetails);
-			}
-
-			LocalDateTime deletionTime = LocalDateTime.now();
-			Map<String, Object> broadcastPayload = Map.of("type", "message_soft_deleted", "payload",
-					Map.of("messageId", messageId, "deletedByUsername", user.getUsername(), "deletedAt",
-							deletionTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) // Send as standard string
-					));
-			ChatSessionManager.getInstance().broadcast(eventId, gson.toJson(broadcastPayload));
-		}
-	}
-
 	@OnClose
 	public void onClose(Session session, CloseReason reason, @PathParam("eventId") String eventId) {
+		User user = (User) session.getUserProperties().get("user");
+		String username = (user != null) ? user.getUsername() : "[unauthenticated]";
 		ChatSessionManager.getInstance().removeSession(eventId, session);
 	}
 

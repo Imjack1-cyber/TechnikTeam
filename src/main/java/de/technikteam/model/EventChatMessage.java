@@ -11,18 +11,19 @@ public class EventChatMessage {
 	private String messageText;
 	private boolean edited;
 	private boolean isDeleted;
-	private LocalDateTime deletedAt; // NEW: To store the deletion timestamp
-	private String deletedByUsername; // NEW: To store who deleted the message
+	private int deletedByUserId;
+	private String deletedByUsername;
+	private LocalDateTime deletedAt;
 	private LocalDateTime sentAt;
+	private String chatColor; // To carry the user's color preference
 
 	private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
-	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy, HH:mm");
+	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yy, HH:mm");
 
 	public String getFormattedSentAt() {
 		return sentAt != null ? sentAt.format(TIME_FORMATTER) : "";
 	}
 
-	// NEW: Formatter for the deletion timestamp
 	public String getFormattedDeletedAt() {
 		return deletedAt != null ? deletedAt.format(DATE_TIME_FORMATTER) : "";
 	}
@@ -85,12 +86,12 @@ public class EventChatMessage {
 		this.isDeleted = isDeleted;
 	}
 
-	public LocalDateTime getDeletedAt() {
-		return deletedAt;
+	public int getDeletedByUserId() {
+		return deletedByUserId;
 	}
 
-	public void setDeletedAt(LocalDateTime deletedAt) {
-		this.deletedAt = deletedAt;
+	public void setDeletedByUserId(int deletedByUserId) {
+		this.deletedByUserId = deletedByUserId;
 	}
 
 	public String getDeletedByUsername() {
@@ -101,11 +102,27 @@ public class EventChatMessage {
 		this.deletedByUsername = deletedByUsername;
 	}
 
+	public LocalDateTime getDeletedAt() {
+		return deletedAt;
+	}
+
+	public void setDeletedAt(LocalDateTime deletedAt) {
+		this.deletedAt = deletedAt;
+	}
+
 	public LocalDateTime getSentAt() {
 		return sentAt;
 	}
 
 	public void setSentAt(LocalDateTime sentAt) {
 		this.sentAt = sentAt;
+	}
+
+	public String getChatColor() {
+		return chatColor;
+	}
+
+	public void setChatColor(String chatColor) {
+		this.chatColor = chatColor;
 	}
 }

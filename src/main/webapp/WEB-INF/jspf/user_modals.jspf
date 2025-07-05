@@ -6,7 +6,7 @@
 	<div class="modal-content">
 		<button class="modal-close-btn">×</button>
 		<h3 id="user-modal-title">Benutzer</h3>
-		<form id="user-modal-form" action="<c:url value='/admin/users'/>"
+		<form id="user-modal-form" action="<c:url value='/admin/mitglieder'/>"
 			method="post">
 			<input type="hidden" name="action" id="user-modal-action"> <input
 				type="hidden" name="userId" id="user-modal-id">

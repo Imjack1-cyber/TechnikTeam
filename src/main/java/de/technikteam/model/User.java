@@ -7,12 +7,13 @@ public class User {
 	private int id;
 	private String username;
 	private int roleId;
-	private String roleName; // For display
-	private Set<String> permissions; // Transient, loaded at login
+	private String roleName;
+	private Set<String> permissions;
 	private LocalDateTime createdAt;
 	private int classYear;
 	private String className;
 	private String email;
+	private String chatColor; // NEW: To store the user's preferred chat bubble color
 
 	public User() {
 	}
@@ -95,6 +96,14 @@ public class User {
 	public void setEmail(String email) {
 		this.email = email;
 	}
+
+	public String getChatColor() {
+		return chatColor;
+	} // NEW
+
+	public void setChatColor(String chatColor) {
+		this.chatColor = chatColor;
+	} // NEW
 
 	public String getFormattedCreatedAt() {
 		return de.technikteam.config.DateFormatter.formatDateTime(this.createdAt);

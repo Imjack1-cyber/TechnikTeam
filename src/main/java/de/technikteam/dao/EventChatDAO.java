@@ -12,47 +12,84 @@ import java.util.List;
 public class EventChatDAO {
 	private static final Logger logger = LogManager.getLogger(EventChatDAO.class);
 
-	public boolean postMessage(EventChatMessage message) {
+	public EventChatMessage postMessage(EventChatMessage message) {
 		String sql = "INSERT INTO event_chat_messages (event_id, user_id, username, message_text) VALUES (?, ?, ?, ?)";
 		try (Connection connection = DatabaseManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+				PreparedStatement preparedStatement = connection.prepareStatement(sql,
+						Statement.RETURN_GENERATED_KEYS)) {
+
 			preparedStatement.setInt(1, message.getEventId());
 			preparedStatement.setInt(2, message.getUserId());
 			preparedStatement.setString(3, message.getUsername());
 			preparedStatement.setString(4, message.getMessageText());
-			return preparedStatement.executeUpdate() > 0;
+
+			if (preparedStatement.executeUpdate() > 0) {
+				try (ResultSet generatedKeys = preparedStatement.getGeneratedKeys()) {
+					if (generatedKeys.next()) {
+						int newId = generatedKeys.getInt(1);
+						return getMessageById(newId, connection);
+					}
+				}
+			}
 		} catch (SQLException exception) {
 			logger.error("Error posting chat message for event {}", message.getEventId(), exception);
-			return false;
 		}
+		return null;
 	}
 
 	public List<EventChatMessage> getMessagesForEvent(int eventId) {
 		List<EventChatMessage> messages = new ArrayList<>();
-		String sql = "SELECT * FROM event_chat_messages WHERE event_id = ? ORDER BY sent_at ASC";
+		String sql = "SELECT m.*, u_del.username as deleted_by_username, u_orig.chat_color "
+				+ "FROM event_chat_messages m " + "LEFT JOIN users u_del ON m.deleted_by_user_id = u_del.id "
+				+ "JOIN users u_orig ON m.user_id = u_orig.id " + // Join to get original sender's color
+				"WHERE m.event_id = ? ORDER BY m.sent_at ASC";
 		try (Connection connection = DatabaseManager.getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 			preparedStatement.setInt(1, eventId);
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				while (resultSet.next()) {
-					EventChatMessage message = new EventChatMessage();
-					message.setId(resultSet.getInt("id"));
-					message.setEventId(resultSet.getInt("event_id"));
-					message.setUserId(resultSet.getInt("user_id"));
-					message.setUsername(resultSet.getString("username"));
-					message.setMessageText(resultSet.getString("message_text"));
-					message.setEdited(resultSet.getBoolean("edited"));
-					message.setDeleted(resultSet.getBoolean("is_deleted"));
-					message.setDeletedAt(resultSet.getObject("deleted_at", LocalDateTime.class));
-					message.setDeletedByUsername(resultSet.getString("deleted_by_username"));
-					message.setSentAt(resultSet.getTimestamp("sent_at").toLocalDateTime());
-					messages.add(message);
+					messages.add(mapRowToMessage(resultSet));
 				}
 			}
 		} catch (SQLException exception) {
 			logger.error("Error fetching chat messages for event {}", eventId, exception);
 		}
 		return messages;
+	}
+
+	private EventChatMessage getMessageById(int messageId, Connection connection) throws SQLException {
+		String sql = "SELECT m.*, u_del.username as deleted_by_username, u_orig.chat_color "
+				+ "FROM event_chat_messages m " + "LEFT JOIN users u_del ON m.deleted_by_user_id = u_del.id "
+				+ "JOIN users u_orig ON m.user_id = u_orig.id " + "WHERE m.id = ?";
+		try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, messageId);
+			try (ResultSet resultSet = preparedStatement.executeQuery()) {
+				if (resultSet.next()) {
+					return mapRowToMessage(resultSet);
+				}
+			}
+		}
+		return null;
+	}
+
+	private EventChatMessage mapRowToMessage(ResultSet resultSet) throws SQLException {
+		EventChatMessage message = new EventChatMessage();
+		message.setId(resultSet.getInt("id"));
+		message.setEventId(resultSet.getInt("event_id"));
+		message.setUserId(resultSet.getInt("user_id"));
+		message.setUsername(resultSet.getString("username"));
+		message.setMessageText(resultSet.getString("message_text"));
+		message.setEdited(resultSet.getBoolean("edited"));
+		message.setDeleted(resultSet.getBoolean("is_deleted"));
+		message.setDeletedByUserId(resultSet.getInt("deleted_by_user_id"));
+		message.setDeletedByUsername(resultSet.getString("deleted_by_username"));
+		message.setChatColor(resultSet.getString("chat_color")); // Get sender's color
+
+		if (resultSet.getTimestamp("deleted_at") != null) {
+			message.setDeletedAt(resultSet.getTimestamp("deleted_at").toLocalDateTime());
+		}
+		message.setSentAt(resultSet.getTimestamp("sent_at").toLocalDateTime());
+		return message;
 	}
 
 	public boolean updateMessage(int messageId, int userId, String newText) {
@@ -69,20 +106,20 @@ public class EventChatDAO {
 		}
 	}
 
-	public boolean deleteMessage(int messageId, int userId, String deleterUsername, boolean isAdmin) {
+	public boolean deleteMessage(int messageId, int deletersUserId, boolean isAdmin) {
 		String sql;
 		if (isAdmin) {
-			sql = "UPDATE event_chat_messages SET is_deleted = TRUE, deleted_at = NOW(), deleted_by_username = ? WHERE id = ?";
+			sql = "UPDATE event_chat_messages SET is_deleted = TRUE, deleted_by_user_id = ? WHERE id = ?";
 		} else {
-			sql = "UPDATE event_chat_messages SET is_deleted = TRUE, deleted_at = NOW(), deleted_by_username = ? WHERE id = ? AND user_id = ?";
+			sql = "UPDATE event_chat_messages SET is_deleted = TRUE, deleted_by_user_id = ? WHERE id = ? AND user_id = ?";
 		}
 
 		try (Connection connection = DatabaseManager.getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-			preparedStatement.setString(1, deleterUsername);
+			preparedStatement.setInt(1, deletersUserId);
 			preparedStatement.setInt(2, messageId);
 			if (!isAdmin) {
-				preparedStatement.setInt(3, userId);
+				preparedStatement.setInt(3, deletersUserId);
 			}
 			return preparedStatement.executeUpdate() > 0;
 		} catch (SQLException exception) {

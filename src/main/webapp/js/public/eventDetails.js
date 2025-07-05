@@ -9,16 +9,30 @@ document.addEventListener('DOMContentLoaded', () => {
 		return;
 	}
 
+	const getTextColorForBackground = (hexColor) => {
+		if (!hexColor || hexColor.length < 7) return '#000000';
+		const r = parseInt(hexColor.slice(1, 3), 16);
+		const g = parseInt(hexColor.slice(3, 5), 16);
+		const b = parseInt(hexColor.slice(5, 7), 16);
+		const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+		return luminance > 0.5 ? '#000000' : '#FFFFFF';
+	};
+
+	const formatAsLocaleTime = (dateString) => {
+		if (!dateString) return '';
+		return new Date(dateString).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+	};
+
 	const chatBox = document.getElementById('chat-box');
 	if (chatBox) {
 		const chatForm = document.getElementById('chat-form');
 		const chatInput = document.getElementById('chat-message-input');
-		const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-		const wsUrl = `${wsProtocol}//${window.location.host}${contextPath}/ws/chat/${eventId}`;
+		const websocketProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+		const websocketUrl = `${websocketProtocol}//${window.location.host}${contextPath}/ws/chat/${eventId}`;
 		let socket;
 
 		const connect = () => {
-			socket = new WebSocket(wsUrl);
+			socket = new WebSocket(websocketUrl);
 			socket.onopen = () => fetchMessages();
 			socket.onmessage = (event) => {
 				const data = JSON.parse(event.data);
@@ -30,9 +44,9 @@ document.addEventListener('DOMContentLoaded', () => {
 						handleSoftDelete(data.payload);
 						break;
 					case 'message_updated':
-						const messageElement = document.getElementById(`message-text-${data.payload.messageId}`);
+						const messageTextElement = document.getElementById(`message-text-${data.payload.messageId}`);
 						const editedMarkerElement = document.getElementById(`message-edited-marker-${data.payload.messageId}`);
-						if (messageElement) messageElement.textContent = data.payload.newText;
+						if (messageTextElement) messageTextElement.textContent = data.payload.newText;
 						if (editedMarkerElement) editedMarkerElement.style.display = 'inline';
 						break;
 				}
@@ -48,87 +62,110 @@ document.addEventListener('DOMContentLoaded', () => {
 			container.className = 'chat-message-container';
 			container.id = `message-container-${message.id}`;
 			if (isCurrentUser) container.classList.add('current-user');
-			if (message.isDeleted) container.classList.add('deleted-message');
 
-			const bubble = document.createElement('div');
-			bubble.className = 'chat-bubble';
+			const bubbleElement = document.createElement('div');
+			bubbleElement.className = 'chat-bubble';
+			bubbleElement.id = `chat-bubble-${message.id}`;
 
-			const textElement = document.createElement('span');
-			textElement.className = 'chat-text';
-			textElement.id = `message-text-${message.id}`;
+			const bubbleBackgroundColor = isCurrentUser ? 'var(--primary-color)' : (message.chatColor || '#E9ECEF');
+			bubbleElement.style.backgroundColor = bubbleBackgroundColor;
+			bubbleElement.style.borderColor = bubbleBackgroundColor;
+			bubbleElement.style.color = getTextColorForBackground(bubbleBackgroundColor);
 
 			if (message.isDeleted) {
-				textElement.innerHTML = `<i>Nachricht von <b>${message.username}</b> gelöscht von <b>${message.deletedByUsername}</b> um ${new Date(message.deletedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr</i>`;
+				renderDeletedState(bubbleElement, message);
 			} else {
-				textElement.textContent = message.messageText;
-
-				if (!isCurrentUser) {
-					const usernameElement = document.createElement('strong');
-					usernameElement.className = 'chat-username';
-					usernameElement.textContent = message.username;
-					bubble.appendChild(usernameElement);
-				}
-
-				const timeElement = document.createElement('span');
-				timeElement.className = 'chat-timestamp';
-				timeElement.textContent = message.formattedSentAt || new Date(message.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-
-				const editedMarker = document.createElement('span');
-				editedMarker.className = 'chat-edited-marker';
-				editedMarker.id = `message-edited-marker-${message.id}`;
-				editedMarker.textContent = ' (bearbeitet)';
-				editedMarker.style.display = message.edited ? 'inline' : 'none';
-
-				timeElement.prepend(editedMarker);
-				bubble.appendChild(textElement);
-				bubble.appendChild(timeElement);
-			}
-
-			if (message.isDeleted) {
-				bubble.appendChild(textElement);
-			}
-
-			container.appendChild(bubble);
-
-			if (!message.isDeleted && (isAdmin || isCurrentUser)) {
-				const optionsMenu = document.createElement('div');
-				optionsMenu.className = 'chat-options';
-
-				if (isCurrentUser) {
-					const editButton = document.createElement('button');
-					editButton.className = 'chat-option-btn';
-					editButton.innerHTML = '<i class="fas fa-pencil-alt"></i>';
-					editButton.onclick = () => handleEdit(message.id);
-					optionsMenu.appendChild(editButton);
-				}
-
-				const deleteButton = document.createElement('button');
-				deleteButton.className = 'chat-option-btn';
-				deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>';
-				deleteButton.onclick = () => handleDelete(message.id);
-				optionsMenu.appendChild(deleteButton);
+				renderNormalState(bubbleElement, message, isCurrentUser);
+				const optionsMenu = createOptionsMenu(message, isCurrentUser);
 				container.appendChild(optionsMenu);
 			}
 
-			const placeholder = chatBox.querySelector('.chat-placeholder');
-			if (placeholder) placeholder.remove();
+			container.prepend(bubbleElement);
 			chatBox.appendChild(container);
 			chatBox.scrollTop = chatBox.scrollHeight;
 		};
 
-		const handleDelete = (messageId) => {
+		const renderNormalState = (bubbleElement, message, isCurrentUser) => {
+			if (!isCurrentUser) {
+				const usernameElement = document.createElement('strong');
+				usernameElement.className = 'chat-username';
+				usernameElement.style.color = 'black';
+				usernameElement.textContent = message.username;
+				bubbleElement.appendChild(usernameElement);
+			}
+
+			const textElement = document.createElement('span');
+			textElement.className = 'chat-text';
+			textElement.id = `message-text-${message.id}`;
+			textElement.textContent = message.messageText;
+
+			const timeElement = document.createElement('span');
+			timeElement.className = 'chat-timestamp';
+			timeElement.textContent = formatAsLocaleTime(message.sentAt);
+			timeElement.style.color = bubbleElement.style.color === '#FFFFFF' ? 'rgba(255,255,255,0.7)' : 'var(--text-muted-color)';
+
+			const editedMarker = document.createElement('span');
+			editedMarker.className = 'chat-edited-marker';
+			editedMarker.id = `message-edited-marker-${message.id}`;
+			editedMarker.textContent = ' (bearbeitet)';
+			editedMarker.style.display = message.edited ? 'inline' : 'none';
+
+			timeElement.prepend(editedMarker);
+			bubbleElement.appendChild(textElement);
+			bubbleElement.appendChild(timeElement);
+		};
+
+		const renderDeletedState = (bubbleElement, message) => {
+			let deletedText;
+			if (message.username === message.deletedByUsername) {
+				deletedText = `Nachricht wurde von ${message.username} gelöscht`;
+			} else {
+				deletedText = `Nachricht von ${message.username} wurde von ${message.deletedByUsername} gelöscht`;
+			}
+			bubbleElement.innerHTML = `<span class="chat-deleted-info">${deletedText}</span>`;
+			bubbleElement.classList.add('deleted');
+		};
+
+		const createOptionsMenu = (message, isCurrentUser) => {
+			const optionsMenu = document.createElement('div');
+			optionsMenu.className = 'chat-options';
+			if (isCurrentUser) {
+				const editButton = document.createElement('button');
+				editButton.className = 'chat-option-btn';
+				editButton.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+				editButton.onclick = () => handleEdit(message.id);
+				optionsMenu.appendChild(editButton);
+			}
+			if (isAdmin || isCurrentUser) {
+				const deleteButton = document.createElement('button');
+				deleteButton.className = 'chat-option-btn';
+				deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>';
+				deleteButton.onclick = () => handleDelete(message.id, message.userId, message.username);
+				optionsMenu.appendChild(deleteButton);
+			}
+			return optionsMenu;
+		};
+
+		const handleDelete = (messageId, originalUserId, originalUsername) => {
 			showConfirmationModal("Nachricht wirklich löschen?", () => {
-				socket.send(JSON.stringify({ type: 'delete_message', payload: { messageId } }));
+				socket.send(JSON.stringify({ type: 'delete_message', payload: { messageId, originalUserId, originalUsername } }));
 			});
 		};
 
 		const handleSoftDelete = (payload) => {
-			const container = document.getElementById(`message-container-${payload.messageId}`);
-			if (container) {
-				container.classList.add('deleted-message');
-				container.querySelector('.chat-options')?.remove();
-				const bubble = container.querySelector('.chat-bubble');
-				bubble.innerHTML = `<span class="chat-text"><i>Nachricht gelöscht von <b>${payload.deletedByUsername}</b> um ${new Date(payload.deletedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr</i></span>`;
+			const bubbleElement = document.getElementById(`chat-bubble-${payload.messageId}`);
+			const containerElement = document.getElementById(`message-container-${payload.messageId}`);
+			if (bubbleElement && containerElement) {
+				containerElement.querySelector('.chat-options')?.remove(); // Remove edit/delete buttons
+
+				let deletedText;
+				if (payload.originalUsername === payload.deletedByUsername) {
+					deletedText = `Nachricht von ${payload.originalUsername} gelöscht`;
+				} else {
+					deletedText = `Nachricht von ${payload.originalUsername} wurde von ${payload.deletedByUsername} gelöscht`;
+				}
+				bubbleElement.innerHTML = `<span class="chat-deleted-info">${deletedText}</span>`;
+				bubbleElement.classList.add('deleted');
 			}
 		};
 
@@ -140,17 +177,21 @@ document.addEventListener('DOMContentLoaded', () => {
 			editInput.value = currentText;
 			editInput.className = 'chat-edit-input';
 
-			editInput.onkeydown = (event) => {
-				if (event.key === 'Enter') {
+			editInput.onkeydown = (keyboardEvent) => {
+				if (keyboardEvent.key === 'Enter') {
 					if (editInput.value.trim() && editInput.value !== currentText) {
 						socket.send(JSON.stringify({ type: 'update_message', payload: { messageId, newText: editInput.value } }));
 					}
+					textElement.style.display = 'block';
 					editInput.replaceWith(textElement);
-				} else if (event.key === 'Escape') {
+				} else if (keyboardEvent.key === 'Escape') {
+					textElement.style.display = 'block';
 					editInput.replaceWith(textElement);
 				}
 			};
-			textElement.replaceWith(editInput);
+
+			textElement.style.display = 'none';
+			textElement.parentElement.insertBefore(editInput, textElement);
 			editInput.focus();
 		};
 
@@ -160,13 +201,6 @@ document.addEventListener('DOMContentLoaded', () => {
 				.then(messages => {
 					chatBox.innerHTML = '';
 					if (messages && messages.length > 0) messages.forEach(appendMessage);
-					else {
-						const placeholder = document.createElement('p');
-						placeholder.textContent = 'Noch keine Nachrichten.';
-						placeholder.className = 'chat-placeholder';
-						placeholder.style.cssText = 'color:var(--text-muted-color); text-align: center; padding-top: 1rem;';
-						chatBox.appendChild(placeholder);
-					}
 				}).catch(error => console.error("Error fetching initial chat messages:", error));
 		};
 

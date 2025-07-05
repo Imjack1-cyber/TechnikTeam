@@ -27,6 +27,15 @@
 						value="${sessionScope.user.className}" /></span></li>
 			<li><strong>E-Mail:</strong> <span><c:out
 						value="${not empty sessionScope.user.email ? sessionScope.user.email : 'Nicht hinterlegt'}" /></span></li>
+			<li style="align-items: center; gap: 1rem;"><strong>Chat-Farbe:</strong>
+				<form action="${pageContext.request.contextPath}/profil"
+					method="post"
+					style="display: flex; align-items: center; gap: 0.5rem;">
+					<input type="color" name="chatColor"
+						value="${not empty sessionScope.user.chatColor ? sessionScope.user.chatColor : '#E9ECEF'}"
+						title="Wähle deine Chat-Farbe">
+					<button type="submit" class="btn btn-small">Speichern</button>
+				</form></li>
 		</ul>
 	</div>
 

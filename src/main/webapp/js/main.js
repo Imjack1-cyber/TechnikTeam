@@ -10,8 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
 	const navToggle = document.querySelector('.mobile-nav-toggle');
 	const pageOverlay = document.querySelector('.page-overlay');
 	if (navToggle) {
-		navToggle.addEventListener('click', (e) => {
-			e.stopPropagation();
+		navToggle.addEventListener('click', (event) => {
+			event.stopPropagation();
 			document.body.classList.toggle('nav-open');
 		});
 	}
@@ -22,39 +22,30 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	// --- 2. Active Navigation Link Highlighting ---
+	// This logic is now part of the main_header.jspf and can be simplified or removed
+	// if the JSP handles it completely. We keep it as a fallback.
 	const currentPath = window.location.pathname;
-	const navLinks = document.querySelectorAll('.sidebar-nav a');
-	let bestMatch = null;
-	let maxMatchLength = 0;
-
-	navLinks.forEach(link => {
-		const linkPath = new URL(link.href).pathname;
-		if (linkPath && currentPath.startsWith(linkPath)) {
-			// Give preference to exact matches
-			if (currentPath === linkPath) {
-				maxMatchLength = linkPath.length + 100; // Prioritize exact match
-				bestMatch = link;
-			} else if (linkPath.length > maxMatchLength) {
-				maxMatchLength = linkPath.length;
-				bestMatch = link;
-			}
+	document.querySelectorAll('.sidebar-nav a').forEach(link => {
+		if (link.getAttribute('href') === currentPath) {
+			link.classList.add('active-nav-link');
 		}
 	});
 
-	if (bestMatch) {
-		bestMatch.classList.add('active-nav-link');
-	}
 
 	// --- 3. Theme Switcher Logic ---
 	const themeSwitch = document.getElementById('theme-toggle');
+	// Check for saved theme in localStorage, default to 'light'
 	const currentTheme = localStorage.getItem('theme') || 'light';
 	document.documentElement.setAttribute('data-theme', currentTheme);
+
 	if (themeSwitch) {
+		// Set the toggle to the correct initial state
 		if (currentTheme === 'dark') {
 			themeSwitch.checked = true;
 		}
-		themeSwitch.addEventListener('change', (e) => {
-			const newTheme = e.target.checked ? 'dark' : 'light';
+		// Add event listener to handle changes
+		themeSwitch.addEventListener('change', (event) => {
+			const newTheme = event.target.checked ? 'dark' : 'light';
 			document.documentElement.setAttribute('data-theme', newTheme);
 			localStorage.setItem('theme', newTheme);
 		});

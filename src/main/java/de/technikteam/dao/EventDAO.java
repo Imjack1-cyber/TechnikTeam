@@ -1,68 +1,49 @@
 package de.technikteam.dao;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Timestamp;
-import java.sql.Types;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import de.technikteam.model.Event;
 import de.technikteam.model.EventAttendance;
 import de.technikteam.model.SkillRequirement;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
 import de.technikteam.util.DaoUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-/**
- * A comprehensive DAO for all database operations related to the `events`
- * table. It handles creating, reading, updating, and deleting events.
- * Additionally, it manages user sign-ups/sign-offs, event skill requirements,
- * and the final assignment of users to an event. It contains methods to supply
- * data for both regular user views (like upcoming events) and administrative
- * back-end pages.
- */
+import java.sql.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 public class EventDAO {
 	private static final Logger logger = LogManager.getLogger(EventDAO.class);
 
-	// --- Private Helper Methods ---
-
-	/**
-	 * Maps a row from a ResultSet to an Event object.
-	 * 
-	 * @param rs The ResultSet to map.
-	 * @return A populated Event object.
-	 * @throws SQLException If a database error occurs.
-	 */
-	private Event mapResultSetToEvent(ResultSet rs) throws SQLException {
+	private Event mapResultSetToEvent(ResultSet resultSet) throws SQLException {
 		Event event = new Event();
-		event.setId(rs.getInt("id"));
-		event.setName(rs.getString("name"));
-		// REVERTED: Use the original, compatible method
-		event.setEventDateTime(rs.getTimestamp("event_datetime").toLocalDateTime());
-		if (rs.getTimestamp("end_datetime") != null) {
-			// REVERTED: Use the original, compatible method
-			event.setEndDateTime(rs.getTimestamp("end_datetime").toLocalDateTime());
-		}
-		event.setDescription(rs.getString("description"));
-		event.setLocation(rs.getString("location"));
-		event.setStatus(rs.getString("status"));
+		event.setId(resultSet.getInt("id"));
+		event.setName(resultSet.getString("name"));
 
-		if (DaoUtils.hasColumn(rs, "leader_user_id")) {
-			event.setLeaderUserId(rs.getInt("leader_user_id"));
+		// DEFINITIVE FIX: Read the timestamp without conversion
+		Timestamp eventTimestamp = resultSet.getTimestamp("event_datetime");
+		if (eventTimestamp != null) {
+			event.setEventDateTime(eventTimestamp.toLocalDateTime());
 		}
-		if (DaoUtils.hasColumn(rs, "leader_username")) {
-			event.setLeaderUsername(rs.getString("leader_username"));
+		Timestamp endTimestamp = resultSet.getTimestamp("end_datetime");
+		if (endTimestamp != null) {
+			event.setEndDateTime(endTimestamp.toLocalDateTime());
+		}
+
+		event.setDescription(resultSet.getString("description"));
+		event.setLocation(resultSet.getString("location"));
+		event.setStatus(resultSet.getString("status"));
+
+		if (DaoUtils.hasColumn(resultSet, "leader_user_id")) {
+			event.setLeaderUserId(resultSet.getInt("leader_user_id"));
+		}
+		if (DaoUtils.hasColumn(resultSet, "leader_username")) {
+			event.setLeaderUsername(resultSet.getString("leader_username"));
 		}
 		return event;
 	}
@@ -70,157 +51,120 @@ public class EventDAO {
 	public void setAttendanceCommitment(int eventId, int userId, String commitment) {
 		String sql = "UPDATE event_attendance SET commitment_status = ? WHERE event_id = ? AND user_id = ?";
 		logger.debug("Setting attendance commitment for user {} event {} to '{}'", userId, eventId, commitment);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setString(1, commitment);
-			pstmt.setInt(2, eventId);
-			pstmt.setInt(3, userId);
-			pstmt.executeUpdate();
-		} catch (SQLException e) {
-			logger.error("SQL error setting attendance commitment for user {} event {}", userId, eventId, e);
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setString(1, commitment);
+			preparedStatement.setInt(2, eventId);
+			preparedStatement.setInt(3, userId);
+			preparedStatement.executeUpdate();
+		} catch (SQLException exception) {
+			logger.error("SQL error setting attendance commitment for user {} event {}", userId, eventId, exception);
 		}
 	}
 
-	/**
-	 * Maps a row from a ResultSet to a simplified User object (ID, username, role).
-	 * 
-	 * @param rs The ResultSet to map.
-	 * @return A populated User object.
-	 * @throws SQLException If a database error occurs.
-	 */
-	private User mapResultSetToSimpleUser(ResultSet rs) throws SQLException {
-		// CORRECTED: It expects 'role_name' which is now aliased as 'role' in the
-		// queries
-		return new User(rs.getInt("id"), rs.getString("username"), rs.getString("role"));
+	private User mapResultSetToSimpleUser(ResultSet resultSet) throws SQLException {
+		return new User(resultSet.getInt("id"), resultSet.getString("username"), resultSet.getString("role"));
 	}
 
-	// --- Methods for Public and User-Specific Views ---
-
-	/**
-	 * Fetches the event participation history for a specific user.
-	 * 
-	 * @param userId The ID of the user.
-	 * @return A list of all past and present events the user has interacted with.
-	 */
 	public List<Event> getEventHistoryForUser(int userId) {
 		List<Event> history = new ArrayList<>();
 		String sql = "SELECT e.*, ea.signup_status FROM events e "
 				+ "JOIN event_attendance ea ON e.id = ea.event_id WHERE ea.user_id = ? ORDER BY e.event_datetime DESC";
 		logger.debug("Fetching event history for user ID: {}", userId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, userId);
-			ResultSet rs = pstmt.executeQuery();
-			while (rs.next()) {
-				Event event = mapResultSetToEvent(rs);
-				event.setUserAttendanceStatus(rs.getString("signup_status"));
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, userId);
+			ResultSet resultSet = preparedStatement.executeQuery();
+			while (resultSet.next()) {
+				Event event = mapResultSetToEvent(resultSet);
+				event.setUserAttendanceStatus(resultSet.getString("signup_status"));
 				history.add(event);
 			}
 			logger.info("Found {} events in history for user ID: {}", history.size(), userId);
-		} catch (SQLException e) {
-			logger.error("SQL error fetching event history for user {}", userId, e);
+		} catch (SQLException exception) {
+			logger.error("SQL error fetching event history for user {}", userId, exception);
 		}
 		return history;
 	}
 
-	// --- Methods for Admin Views & CRUD ---
-
-	/**
-	 * Fetches a single event by its ID.
-	 * 
-	 * @param eventId The ID of the event.
-	 * @return An Event object, or null if not found.
-	 */
 	public Event getEventById(int eventId) {
 		String sql = "SELECT e.*, u.username as leader_username " + "FROM events e "
 				+ "LEFT JOIN users u ON e.leader_user_id = u.id " + "WHERE e.id = ?";
 		logger.debug("Fetching event by ID: {}", eventId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, eventId);
-			try (ResultSet rs = pstmt.executeQuery()) {
-				if (rs.next()) {
-					logger.info("Found event '{}' with ID: {}", rs.getString("name"), eventId);
-					return mapResultSetToEvent(rs);
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, eventId);
+			try (ResultSet resultSet = preparedStatement.executeQuery()) {
+				if (resultSet.next()) {
+					logger.info("Found event '{}' with ID: {}", resultSet.getString("name"), eventId);
+					return mapResultSetToEvent(resultSet);
 				}
 			}
-		} catch (SQLException e) {
-			logger.error("SQL error fetching event by ID: {}", eventId, e);
+		} catch (SQLException exception) {
+			logger.error("SQL error fetching event by ID: {}", eventId, exception);
 		}
 		logger.warn("No event found with ID: {}", eventId);
 		return null;
 	}
 
-	/**
-	 * Fetches all events from the database, newest first.
-	 * 
-	 * @return A list of all Event objects.
-	 */
 	public List<Event> getAllEvents() {
 		List<Event> events = new ArrayList<>();
 		String sql = "SELECT e.*, u.username as leader_username " + "FROM events e "
 				+ "LEFT JOIN users u ON e.leader_user_id = u.id " + "ORDER BY e.event_datetime DESC";
 		logger.debug("Fetching all events.");
-		try (Connection conn = DatabaseManager.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
-			while (rs.next()) {
-				events.add(mapResultSetToEvent(rs));
+		try (Connection connection = DatabaseManager.getConnection();
+				Statement statement = connection.createStatement();
+				ResultSet resultSet = statement.executeQuery(sql)) {
+			while (resultSet.next()) {
+				events.add(mapResultSetToEvent(resultSet));
 			}
 			logger.info("Fetched a total of {} events.", events.size());
-		} catch (SQLException e) {
-			logger.error("SQL error fetching all events.", e);
+		} catch (SQLException exception) {
+			logger.error("SQL error fetching all events.", exception);
 		}
 		return events;
 	}
 
-	/**
-	 * Fetches all upcoming/active events.
-	 * 
-	 * @return A list of all active Event objects.
-	 */
 	public List<Event> getActiveEvents() {
 		List<Event> events = new ArrayList<>();
 		String sql = "SELECT * FROM events WHERE status IN ('GEPLANT', 'KOMPLETT', 'LAUFEND') ORDER BY event_datetime ASC";
 		logger.debug("Fetching active events.");
-		try (Connection conn = DatabaseManager.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
-			while (rs.next()) {
-				events.add(mapResultSetToEvent(rs));
+		try (Connection connection = DatabaseManager.getConnection();
+				Statement statement = connection.createStatement();
+				ResultSet resultSet = statement.executeQuery(sql)) {
+			while (resultSet.next()) {
+				events.add(mapResultSetToEvent(resultSet));
 			}
-		} catch (SQLException e) {
-			logger.error("SQL error fetching active events.", e);
+		} catch (SQLException exception) {
+			logger.error("SQL error fetching active events.", exception);
 		}
 		return events;
 	}
 
-	/**
-	 * Creates a new event in the database.
-	 * 
-	 * @param event The Event object to persist.
-	 * @return The ID of the newly created event, or 0 on failure.
-	 */
 	public int createEvent(Event event) {
 		String sql = "INSERT INTO events (name, event_datetime, end_datetime, description, location, status, leader_user_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
 		logger.debug("Attempting to create new event: {}", event.getName());
-		try (Connection conn = DatabaseManager.getConnection();
-				PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-			pstmt.setString(1, event.getName());
-			pstmt.setTimestamp(2, Timestamp.valueOf(event.getEventDateTime()));
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql,
+						Statement.RETURN_GENERATED_KEYS)) {
+			preparedStatement.setString(1, event.getName());
+			preparedStatement.setTimestamp(2, Timestamp.valueOf(event.getEventDateTime()));
 			if (event.getEndDateTime() != null) {
-				pstmt.setTimestamp(3, Timestamp.valueOf(event.getEndDateTime()));
+				preparedStatement.setTimestamp(3, Timestamp.valueOf(event.getEndDateTime()));
 			} else {
-				pstmt.setNull(3, Types.TIMESTAMP);
+				preparedStatement.setNull(3, Types.TIMESTAMP);
 			}
-			pstmt.setString(4, event.getDescription());
-			pstmt.setString(5, event.getLocation());
-			pstmt.setString(6, "GEPLANT"); // Default status on creation
+			preparedStatement.setString(4, event.getDescription());
+			preparedStatement.setString(5, event.getLocation());
+			preparedStatement.setString(6, "GEPLANT");
 			if (event.getLeaderUserId() > 0) {
-				pstmt.setInt(7, event.getLeaderUserId());
+				preparedStatement.setInt(7, event.getLeaderUserId());
 			} else {
-				pstmt.setNull(7, Types.INTEGER);
+				preparedStatement.setNull(7, Types.INTEGER);
 			}
 
-			if (pstmt.executeUpdate() > 0) {
-				try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
+			if (preparedStatement.executeUpdate() > 0) {
+				try (ResultSet generatedKeys = preparedStatement.getGeneratedKeys()) {
 					if (generatedKeys.next()) {
 						int newId = generatedKeys.getInt(1);
 						logger.info("Successfully created event '{}' with ID {}", event.getName(), newId);
@@ -228,470 +172,366 @@ public class EventDAO {
 					}
 				}
 			}
-		} catch (SQLException e) {
-			logger.error("SQL error creating event '{}'.", event.getName(), e);
+		} catch (SQLException exception) {
+			logger.error("SQL error creating event '{}'.", event.getName(), exception);
 		}
 		return 0;
 	}
 
-	/**
-	 * Updates an existing event in the database.
-	 * 
-	 * @param event The Event object with updated data.
-	 * @return true if the update was successful, false otherwise.
-	 */
 	public boolean updateEvent(Event event) {
 		String sql = "UPDATE events SET name = ?, event_datetime = ?, end_datetime = ?, description = ?, location = ?, status = ?, leader_user_id = ? WHERE id = ?";
 		logger.debug("Attempting to update event with ID: {}", event.getId());
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setString(1, event.getName());
-			pstmt.setTimestamp(2, Timestamp.valueOf(event.getEventDateTime()));
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setString(1, event.getName());
+			preparedStatement.setTimestamp(2, Timestamp.valueOf(event.getEventDateTime()));
 			if (event.getEndDateTime() != null) {
-				pstmt.setTimestamp(3, Timestamp.valueOf(event.getEndDateTime()));
+				preparedStatement.setTimestamp(3, Timestamp.valueOf(event.getEndDateTime()));
 			} else {
-				pstmt.setNull(3, Types.TIMESTAMP);
+				preparedStatement.setNull(3, Types.TIMESTAMP);
 			}
-			pstmt.setString(4, event.getDescription());
-			pstmt.setString(5, event.getLocation());
-			pstmt.setString(6, event.getStatus());
+			preparedStatement.setString(4, event.getDescription());
+			preparedStatement.setString(5, event.getLocation());
+			preparedStatement.setString(6, event.getStatus());
 			if (event.getLeaderUserId() > 0) {
-				pstmt.setInt(7, event.getLeaderUserId());
+				preparedStatement.setInt(7, event.getLeaderUserId());
 			} else {
-				pstmt.setNull(7, Types.INTEGER);
+				preparedStatement.setNull(7, Types.INTEGER);
 			}
-			pstmt.setInt(8, event.getId());
+			preparedStatement.setInt(8, event.getId());
 
-			boolean success = pstmt.executeUpdate() > 0;
+			boolean success = preparedStatement.executeUpdate() > 0;
 			if (success)
 				logger.info("Successfully updated event with ID: {}", event.getId());
 			return success;
-		} catch (SQLException e) {
-			logger.error("SQL error updating event with ID: {}", event.getId(), e);
+		} catch (SQLException exception) {
+			logger.error("SQL error updating event with ID: {}", event.getId(), exception);
 		}
 		return false;
 	}
 
-	/**
-	 * Deletes an event from the database.
-	 * 
-	 * @param eventId The ID of the event to delete.
-	 * @return true if deletion was successful, false otherwise.
-	 */
 	public boolean deleteEvent(int eventId) {
 		String sql = "DELETE FROM events WHERE id = ?";
 		logger.debug("Attempting to delete event with ID: {}", eventId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, eventId);
-			boolean success = pstmt.executeUpdate() > 0;
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, eventId);
+			boolean success = preparedStatement.executeUpdate() > 0;
 			if (success)
 				logger.warn("Successfully deleted event with ID: {}", eventId);
 			return success;
-		} catch (SQLException e) {
-			logger.error("SQL error deleting event with ID: {}", eventId, e);
+		} catch (SQLException exception) {
+			logger.error("SQL error deleting event with ID: {}", eventId, exception);
 		}
 		return false;
 	}
 
-	/**
-	 * Updates only the status of a specific event.
-	 * 
-	 * @param eventId   The ID of the event to update.
-	 * @param newStatus The new status string (e.g., 'LAUFEND', 'ABGESCHLOSSEN').
-	 * @return true if the update was successful, false otherwise.
-	 */
 	public boolean updateEventStatus(int eventId, String newStatus) {
 		String sql = "UPDATE events SET status = ? WHERE id = ?";
 		logger.debug("Attempting to update status for event {} to '{}'", eventId, newStatus);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setString(1, newStatus);
-			pstmt.setInt(2, eventId);
-			boolean success = pstmt.executeUpdate() > 0;
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setString(1, newStatus);
+			preparedStatement.setInt(2, eventId);
+			boolean success = preparedStatement.executeUpdate() > 0;
 			if (success)
 				logger.info("Updating status for event {} to '{}' was successful.", eventId, newStatus);
 			else
 				logger.warn("Updating status for event {} to '{}' failed (0 rows affected).", eventId, newStatus);
 			return success;
-		} catch (SQLException e) {
-			logger.error("SQL error updating status for event ID: {}", eventId, e);
+		} catch (SQLException exception) {
+			logger.error("SQL error updating status for event ID: {}", eventId, exception);
 			return false;
 		}
 	}
 
-	// --- Methods for User Actions & Admin Management ---
-
-	/**
-	 * Signs a user up for an event, or updates their status if they previously
-	 * signed off.
-	 * 
-	 * @param userId  The ID of the user.
-	 * @param eventId The ID of the event.
-	 */
 	public void signUpForEvent(int userId, int eventId) {
 		String sql = "INSERT INTO event_attendance (user_id, event_id, signup_status, commitment_status) VALUES (?, ?, 'ANGEMELDET', 'OFFEN') ON DUPLICATE KEY UPDATE signup_status = 'ANGEMELDET'";
 		logger.debug("Signing up user {} for event {}", userId, eventId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, userId);
-			pstmt.setInt(2, eventId);
-			pstmt.executeUpdate();
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, userId);
+			preparedStatement.setInt(2, eventId);
+			preparedStatement.executeUpdate();
 			logger.info("User {} successfully signed up for event {}", userId, eventId);
-		} catch (SQLException e) {
-			logger.error("SQL error during event sign-up for user {} and event {}", userId, eventId, e);
+		} catch (SQLException exception) {
+			logger.error("SQL error during event sign-up for user {} and event {}", userId, eventId, exception);
 		}
 	}
 
-	/**
-	 * Signs a user off from an event.
-	 * 
-	 * @param userId  The ID of the user.
-	 * @param eventId The ID of the event.
-	 */
 	public void signOffFromEvent(int userId, int eventId) {
 		String sql = "UPDATE event_attendance SET signup_status = 'ABGEMELDET', commitment_status = 'OFFEN' WHERE user_id = ? AND event_id = ?";
 		logger.debug("Signing off user {} from event {}", userId, eventId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, userId);
-			pstmt.setInt(2, eventId);
-			pstmt.executeUpdate();
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, userId);
+			preparedStatement.setInt(2, eventId);
+			preparedStatement.executeUpdate();
 			logger.info("User {} successfully signed off from event {}", userId, eventId);
-		} catch (SQLException e) {
-			logger.error("SQL error during event sign-off for user {} and event {}", userId, eventId, e);
+		} catch (SQLException exception) {
+			logger.error("SQL error during event sign-off for user {} and event {}", userId, eventId, exception);
 		}
 	}
 
-	/**
-	 * Fetches a list of all users who have signed up for a specific event.
-	 * 
-	 * @param eventId The ID of the event.
-	 * @return A list of User objects.
-	 */
 	public List<User> getSignedUpUsersForEvent(int eventId) {
 		List<User> users = new ArrayList<>();
-		// CORRECTED: Join with roles table to get role_name, aliased as 'role'
 		String sql = "SELECT u.id, u.username, r.role_name as role FROM users u "
 				+ "JOIN event_attendance ea ON u.id = ea.user_id " + "LEFT JOIN roles r on u.role_id = r.id "
 				+ "WHERE ea.event_id = ? AND ea.signup_status = 'ANGEMELDET'";
 		logger.debug("Fetching signed up users for event ID: {}", eventId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, eventId);
-			try (ResultSet rs = pstmt.executeQuery()) {
-				while (rs.next())
-					users.add(mapResultSetToSimpleUser(rs));
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, eventId);
+			try (ResultSet resultSet = preparedStatement.executeQuery()) {
+				while (resultSet.next())
+					users.add(mapResultSetToSimpleUser(resultSet));
 			}
 			logger.info("Found {} signed-up users for event ID: {}", users.size(), eventId);
-		} catch (SQLException e) {
-			logger.error("SQL error fetching signed-up users for event ID: {}", eventId, e);
+		} catch (SQLException exception) {
+			logger.error("SQL error fetching signed-up users for event ID: {}", eventId, exception);
 		}
 		return users;
 	}
 
-	/**
-	 * Fetches detailed attendance information for an event, including signup and
-	 * commitment status.
-	 * 
-	 * @param eventId The ID of the event.
-	 * @return A list of EventAttendance objects.
-	 */
 	public List<EventAttendance> getAttendanceDetailsForEvent(int eventId) {
 		List<EventAttendance> attendances = new ArrayList<>();
 		String sql = "SELECT u.id, u.username, ea.signup_status, ea.commitment_status FROM event_attendance ea JOIN users u ON ea.user_id = u.id WHERE ea.event_id = ? AND ea.signup_status = 'ANGEMELDET'";
 		logger.debug("Fetching attendance details for event ID: {}", eventId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, eventId);
-			try (ResultSet rs = pstmt.executeQuery()) {
-				while (rs.next()) {
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, eventId);
+			try (ResultSet resultSet = preparedStatement.executeQuery()) {
+				while (resultSet.next()) {
 					EventAttendance attendance = new EventAttendance();
-					attendance.setUserId(rs.getInt("id"));
-					attendance.setUsername(rs.getString("username"));
-					attendance.setSignupStatus(rs.getString("signup_status"));
-					attendance.setCommitmentStatus(rs.getString("commitment_status"));
+					attendance.setUserId(resultSet.getInt("id"));
+					attendance.setUsername(resultSet.getString("username"));
+					attendance.setSignupStatus(resultSet.getString("signup_status"));
+					attendance.setCommitmentStatus(resultSet.getString("commitment_status"));
 					attendances.add(attendance);
 				}
 			}
 			logger.info("Found {} attendance detail records for event ID: {}", attendances.size(), eventId);
-		} catch (SQLException e) {
-			logger.error("SQL error fetching attendance details for event ID: {}", eventId, e);
+		} catch (SQLException exception) {
+			logger.error("SQL error fetching attendance details for event ID: {}", eventId, exception);
 		}
 		return attendances;
 	}
 
-	/**
-	 * Updates the commitment status (e.g., 'BESTÄTIGT') for a user's attendance at
-	 * an event.
-	 * 
-	 * @param eventId The ID of the event.
-	 * @param userId  The ID of the user.
-	 * @param status  The new commitment status.
-	 * @return true if the update was successful.
-	 */
 	public boolean updateCommitmentStatus(int eventId, int userId, String status) {
 		String sql = "UPDATE event_attendance SET commitment_status = ? WHERE event_id = ? AND user_id = ?";
 		logger.debug("Updating commitment status for event {}, user {} to '{}'", eventId, userId, status);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setString(1, status);
-			pstmt.setInt(2, eventId);
-			pstmt.setInt(3, userId);
-			return pstmt.executeUpdate() > 0;
-		} catch (SQLException e) {
-			logger.error("SQL error while updating commitment status for event {}, user {}", eventId, userId, e);
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setString(1, status);
+			preparedStatement.setInt(2, eventId);
+			preparedStatement.setInt(3, userId);
+			return preparedStatement.executeUpdate() > 0;
+		} catch (SQLException exception) {
+			logger.error("SQL error while updating commitment status for event {}, user {}", eventId, userId,
+					exception);
 		}
 		return false;
 	}
 
-	/**
-	 * Fetches all skill requirements (required courses and number of people) for an
-	 * event.
-	 * 
-	 * @param eventId The ID of the event.
-	 * @return A list of SkillRequirement objects.
-	 */
 	public List<SkillRequirement> getSkillRequirementsForEvent(int eventId) {
 		List<SkillRequirement> requirements = new ArrayList<>();
 		String sql = "SELECT esr.required_course_id, c.name as course_name, esr.required_persons FROM event_skill_requirements esr JOIN courses c ON esr.required_course_id = c.id WHERE esr.event_id = ?";
 		logger.debug("Fetching skill requirements for event ID: {}", eventId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, eventId);
-			try (ResultSet rs = pstmt.executeQuery()) {
-				while (rs.next()) {
-					SkillRequirement req = new SkillRequirement();
-					req.setRequiredCourseId(rs.getInt("required_course_id"));
-					req.setCourseName(rs.getString("course_name"));
-					req.setRequiredPersons(rs.getInt("required_persons"));
-					requirements.add(req);
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, eventId);
+			try (ResultSet resultSet = preparedStatement.executeQuery()) {
+				while (resultSet.next()) {
+					SkillRequirement requirement = new SkillRequirement();
+					requirement.setRequiredCourseId(resultSet.getInt("required_course_id"));
+					requirement.setCourseName(resultSet.getString("course_name"));
+					requirement.setRequiredPersons(resultSet.getInt("required_persons"));
+					requirements.add(requirement);
 				}
 			}
 			logger.info("Found {} skill requirements for event ID: {}", requirements.size(), eventId);
-		} catch (SQLException e) {
-			logger.error("SQL error fetching skill requirements for event ID: {}", eventId, e);
+		} catch (SQLException exception) {
+			logger.error("SQL error fetching skill requirements for event ID: {}", eventId, exception);
 		}
 		return requirements;
 	}
 
-	/**
-	 * Saves the skill requirements for an event in a single transaction. It first
-	 * deletes all existing requirements for the event, then inserts the new ones.
-	 * 
-	 * @param eventId           The ID of the event.
-	 * @param requiredCourseIds An array of course IDs.
-	 * @param requiredPersons   An array of the number of people required for each
-	 *                          course.
-	 */
 	public void saveSkillRequirements(int eventId, String[] requiredCourseIds, String[] requiredPersons) {
 		String deleteSql = "DELETE FROM event_skill_requirements WHERE event_id = ?";
 		String insertSql = "INSERT INTO event_skill_requirements (event_id, required_course_id, required_persons) VALUES (?, ?, ?)";
 		logger.debug("Saving skill requirements for event ID: {}", eventId);
-		Connection conn = null;
+		Connection connection = null;
 		try {
-			conn = DatabaseManager.getConnection();
-			conn.setAutoCommit(false); // Start transaction
+			connection = DatabaseManager.getConnection();
+			connection.setAutoCommit(false);
 
-			try (PreparedStatement deletePstmt = conn.prepareStatement(deleteSql)) {
-				deletePstmt.setInt(1, eventId);
-				deletePstmt.executeUpdate();
+			try (PreparedStatement deleteStatement = connection.prepareStatement(deleteSql)) {
+				deleteStatement.setInt(1, eventId);
+				deleteStatement.executeUpdate();
 			}
 
 			if (requiredCourseIds != null && requiredPersons != null
 					&& requiredCourseIds.length == requiredPersons.length) {
-				try (PreparedStatement insertPstmt = conn.prepareStatement(insertSql)) {
+				try (PreparedStatement insertStatement = connection.prepareStatement(insertSql)) {
 					for (int i = 0; i < requiredCourseIds.length; i++) {
 						if (requiredCourseIds[i] == null || requiredCourseIds[i].isEmpty()
 								|| "0".equals(requiredPersons[i]))
 							continue;
-						insertPstmt.setInt(1, eventId);
-						insertPstmt.setInt(2, Integer.parseInt(requiredCourseIds[i]));
-						insertPstmt.setInt(3, Integer.parseInt(requiredPersons[i]));
-						insertPstmt.addBatch();
+						insertStatement.setInt(1, eventId);
+						insertStatement.setInt(2, Integer.parseInt(requiredCourseIds[i]));
+						insertStatement.setInt(3, Integer.parseInt(requiredPersons[i]));
+						insertStatement.addBatch();
 					}
-					insertPstmt.executeBatch();
+					insertStatement.executeBatch();
 				}
 			}
 
-			conn.commit(); // Commit transaction
+			connection.commit();
 			logger.info("Successfully saved skill requirements for event ID: {}", eventId);
-		} catch (SQLException | NumberFormatException e) {
+		} catch (SQLException | NumberFormatException exception) {
 			logger.error("Transaction error during saving skill requirements for event ID: {}. Rolling back.", eventId,
-					e);
-			if (conn != null) {
+					exception);
+			if (connection != null) {
 				try {
-					conn.rollback();
-				} catch (SQLException ex) {
-					logger.error("Failed to rollback transaction.", ex);
+					connection.rollback();
+				} catch (SQLException rollbackException) {
+					logger.error("Failed to rollback transaction.", rollbackException);
 				}
 			}
 		} finally {
-			if (conn != null) {
+			if (connection != null) {
 				try {
-					conn.setAutoCommit(true);
-					conn.close();
-				} catch (SQLException ex) {
-					logger.error("Failed to close connection.", ex);
+					connection.setAutoCommit(true);
+					connection.close();
+				} catch (SQLException closeException) {
+					logger.error("Failed to close connection.", closeException);
 				}
 			}
 		}
 	}
 
-	/**
-	 * Fetches a list of users who have been definitively assigned to an event's
-	 * final team.
-	 * 
-	 * @param eventId The ID of the event.
-	 * @return A list of assigned User objects.
-	 */
 	public List<User> getAssignedUsersForEvent(int eventId) {
 		List<User> users = new ArrayList<>();
-		// CORRECTED: Joined with roles table and aliased r.role_name as role
 		String sql = "SELECT u.id, u.username, r.role_name AS role FROM users u "
 				+ "JOIN event_assignments ea ON u.id = ea.user_id " + "LEFT JOIN roles r ON u.role_id = r.id "
 				+ "WHERE ea.event_id = ?";
 		logger.debug("Fetching assigned users for event ID: {}", eventId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, eventId);
-			try (ResultSet rs = pstmt.executeQuery()) {
-				while (rs.next()) {
-					users.add(mapResultSetToSimpleUser(rs));
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, eventId);
+			try (ResultSet resultSet = preparedStatement.executeQuery()) {
+				while (resultSet.next()) {
+					users.add(mapResultSetToSimpleUser(resultSet));
 				}
 			}
 			logger.info("Found {} assigned users for event ID: {}", users.size(), eventId);
-		} catch (SQLException e) {
-			logger.error("SQL error fetching assigned users for event ID: {}", eventId, e);
+		} catch (SQLException exception) {
+			logger.error("SQL error fetching assigned users for event ID: {}", eventId, exception);
 		}
 		return users;
 	}
 
-	/**
-	 * Saves the final assignment of users to an event. This is a transactional
-	 * operation: it first clears all existing assignments for the event and then
-	 * inserts the new ones.
-	 * 
-	 * @param eventId The ID of the event.
-	 * @param userIds An array of user IDs to be assigned.
-	 */
 	public void assignUsersToEvent(int eventId, String[] userIds) {
 		String deleteSql = "DELETE FROM event_assignments WHERE event_id = ?";
 		String insertSql = "INSERT INTO event_assignments (event_id, user_id) VALUES (?, ?)";
 		logger.debug("Assigning users to event ID: {}", eventId);
-		Connection conn = null;
+		Connection connection = null;
 		try {
-			conn = DatabaseManager.getConnection();
-			conn.setAutoCommit(false); // Start transaction
+			connection = DatabaseManager.getConnection();
+			connection.setAutoCommit(false);
 
-			// 1. Delete all previous assignments for this event
-			try (PreparedStatement deletePstmt = conn.prepareStatement(deleteSql)) {
-				deletePstmt.setInt(1, eventId);
-				deletePstmt.executeUpdate();
+			try (PreparedStatement deleteStatement = connection.prepareStatement(deleteSql)) {
+				deleteStatement.setInt(1, eventId);
+				deleteStatement.executeUpdate();
 			}
 
-			// 2. Insert the new assignments if any users were selected
 			if (userIds != null && userIds.length > 0) {
-				try (PreparedStatement insertPstmt = conn.prepareStatement(insertSql)) {
+				try (PreparedStatement insertStatement = connection.prepareStatement(insertSql)) {
 					for (String userId : userIds) {
-						insertPstmt.setInt(1, eventId);
-						insertPstmt.setInt(2, Integer.parseInt(userId));
-						insertPstmt.addBatch();
+						insertStatement.setInt(1, eventId);
+						insertStatement.setInt(2, Integer.parseInt(userId));
+						insertStatement.addBatch();
 					}
-					insertPstmt.executeBatch();
+					insertStatement.executeBatch();
 				}
 			}
 
-			conn.commit(); // Commit transaction
+			connection.commit();
 			logger.info("Successfully assigned {} users to event ID {}", (userIds != null ? userIds.length : 0),
 					eventId);
 
-		} catch (SQLException | NumberFormatException e) {
-			logger.error("SQL transaction error during user assignment for event ID: {}. Rolling back.", eventId, e);
-			if (conn != null) {
+		} catch (SQLException | NumberFormatException exception) {
+			logger.error("SQL transaction error during user assignment for event ID: {}. Rolling back.", eventId,
+					exception);
+			if (connection != null) {
 				try {
-					conn.rollback();
-				} catch (SQLException ex) {
-					logger.error("Failed to rollback transaction.", ex);
+					connection.rollback();
+				} catch (SQLException rollbackException) {
+					logger.error("Failed to rollback transaction.", rollbackException);
 				}
 			}
 		} finally {
-			if (conn != null) {
+			if (connection != null) {
 				try {
-					conn.setAutoCommit(true);
-					conn.close();
-				} catch (SQLException ex) {
-					logger.error("Failed to close connection.", ex);
+					connection.setAutoCommit(true);
+					connection.close();
+				} catch (SQLException closeException) {
+					logger.error("Failed to close connection.", closeException);
 				}
 			}
 		}
 	}
 
-	/**
-	 * Fetches all upcoming events for a user, with a calculated status that
-	 * prioritizes assignments over simple sign-ups. Status can be: ZUGEWIESEN,
-	 * ANGEMELDET, ABGEMELDET, or OFFEN.
-	 *
-	 * @param user  The currently logged-in user.
-	 * @param limit The maximum number of events to return (0 for no limit).
-	 * @return A list of upcoming Event objects with the correctly calculated user
-	 *         status.
-	 */
 	public List<Event> getUpcomingEventsForUser(User user, int limit) {
 		List<Event> events = new ArrayList<>();
-
-		// This intelligent SQL query calculates the most relevant status for the user.
-		// It prioritizes "ZUGEWIESEN" (assigned) over "ANGEMELDET" (signed up).
-		String sql = "SELECT e.*, " + "CASE " + "    WHEN eas.user_id IS NOT NULL THEN 'ZUGEWIESEN' " + // 1. Check for
-																										// assignment
-																										// first
-				"    WHEN ea.signup_status IS NOT NULL THEN ea.signup_status " + // 2. Fall back to signup status
-				"    ELSE 'OFFEN' " + // 3. Default to open
-				"END AS calculated_user_status " + "FROM events e "
+		String sql = "SELECT e.*, " + "CASE " + "    WHEN eas.user_id IS NOT NULL THEN 'ZUGEWIESEN' "
+				+ "    WHEN ea.signup_status IS NOT NULL THEN ea.signup_status " + "    ELSE 'OFFEN' "
+				+ "END AS calculated_user_status " + "FROM events e "
 				+ "LEFT JOIN event_attendance ea ON e.id = ea.event_id AND ea.user_id = ? "
 				+ "LEFT JOIN event_assignments eas ON e.id = eas.event_id AND eas.user_id = ? "
-				+ "WHERE e.event_datetime >= NOW() " + "AND (" + // Qualification check remains the same
-				"  NOT EXISTS (SELECT 1 FROM event_skill_requirements esr WHERE esr.event_id = e.id) OR "
+				+ "WHERE e.event_datetime >= NOW() " + "AND ("
+				+ "  NOT EXISTS (SELECT 1 FROM event_skill_requirements esr WHERE esr.event_id = e.id) OR "
 				+ "  EXISTS (SELECT 1 FROM event_skill_requirements esr JOIN user_qualifications uq ON esr.required_course_id = uq.course_id WHERE esr.event_id = e.id AND uq.user_id = ?)"
 				+ ") " + "ORDER BY e.event_datetime ASC" + (limit > 0 ? " LIMIT ?" : "");
 
 		logger.debug("Fetching upcoming events for user ID: {} with limit: {}", user.getId(), limit);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
-			// Set the user ID for all three placeholders in the query
-			pstmt.setInt(1, user.getId());
-			pstmt.setInt(2, user.getId());
-			pstmt.setInt(3, user.getId());
+			preparedStatement.setInt(1, user.getId());
+			preparedStatement.setInt(2, user.getId());
+			preparedStatement.setInt(3, user.getId());
 			if (limit > 0) {
-				pstmt.setInt(4, limit);
+				preparedStatement.setInt(4, limit);
 			}
 
-			try (ResultSet rs = pstmt.executeQuery()) {
-				while (rs.next()) {
-					Event event = mapResultSetToEvent(rs); // Use your existing helper
-
-					// Get the final calculated status from our new CASE statement
-					String finalStatus = rs.getString("calculated_user_status");
+			try (ResultSet resultSet = preparedStatement.executeQuery()) {
+				while (resultSet.next()) {
+					Event event = mapResultSetToEvent(resultSet);
+					String finalStatus = resultSet.getString("calculated_user_status");
 					event.setUserAttendanceStatus(finalStatus);
-
 					events.add(event);
 				}
 				logger.info("Found {} qualified upcoming events for user ID {}", events.size(), user.getId());
 			}
-		} catch (SQLException e) {
-			logger.error("SQL error fetching qualified upcoming events for user {}", user.getId(), e);
+		} catch (SQLException exception) {
+			logger.error("SQL error fetching qualified upcoming events for user {}", user.getId(), exception);
 		}
 		return events;
 	}
 
-	/**
-	 * Fetches all events that are active or upcoming. This is a simplified query
-	 * for use in the calendar/iCal feeds.
-	 * 
-	 * @return A list of all relevant Event objects.
-	 */
 	public List<Event> getAllActiveAndUpcomingEvents() {
 		List<Event> events = new ArrayList<>();
 		String sql = "SELECT * FROM events WHERE status != 'ABGESCHLOSSEN' AND status != 'ABGESAGT' AND event_datetime >= NOW() - INTERVAL 1 DAY ORDER BY event_datetime ASC";
 		logger.debug("Fetching all active and upcoming events for calendar feed.");
-		try (Connection conn = DatabaseManager.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
-			while (rs.next()) {
-				events.add(mapResultSetToEvent(rs));
+		try (Connection connection = DatabaseManager.getConnection();
+				Statement statement = connection.createStatement();
+				ResultSet resultSet = statement.executeQuery(sql)) {
+			while (resultSet.next()) {
+				events.add(mapResultSetToEvent(resultSet));
 			}
-		} catch (SQLException e) {
-			logger.error("SQL error fetching active/upcoming events for calendar.", e);
+		} catch (SQLException exception) {
+			logger.error("SQL error fetching active/upcoming events for calendar.", exception);
 		}
 		return events;
 	}
@@ -700,48 +540,46 @@ public class EventDAO {
 		String deleteSql = "DELETE FROM event_storage_reservations WHERE event_id = ?";
 		String insertSql = "INSERT INTO event_storage_reservations (event_id, item_id, reserved_quantity) VALUES (?, ?, ?)";
 
-		Connection conn = null;
+		Connection connection = null;
 		try {
-			conn = DatabaseManager.getConnection();
-			conn.setAutoCommit(false); // Start transaction
+			connection = DatabaseManager.getConnection();
+			connection.setAutoCommit(false);
 
-			// 1. Clear existing reservations
-			try (PreparedStatement deletePstmt = conn.prepareStatement(deleteSql)) {
-				deletePstmt.setInt(1, eventId);
-				deletePstmt.executeUpdate();
+			try (PreparedStatement deleteStatement = connection.prepareStatement(deleteSql)) {
+				deleteStatement.setInt(1, eventId);
+				deleteStatement.executeUpdate();
 			}
 
-			// 2. Insert new reservations
 			if (itemIds != null && quantities != null && itemIds.length == quantities.length) {
-				try (PreparedStatement insertPstmt = conn.prepareStatement(insertSql)) {
+				try (PreparedStatement insertStatement = connection.prepareStatement(insertSql)) {
 					for (int i = 0; i < itemIds.length; i++) {
 						if (itemIds[i] == null || itemIds[i].isEmpty())
 							continue;
-						insertPstmt.setInt(1, eventId);
-						insertPstmt.setInt(2, Integer.parseInt(itemIds[i]));
-						insertPstmt.setInt(3, Integer.parseInt(quantities[i]));
-						insertPstmt.addBatch();
+						insertStatement.setInt(1, eventId);
+						insertStatement.setInt(2, Integer.parseInt(itemIds[i]));
+						insertStatement.setInt(3, Integer.parseInt(quantities[i]));
+						insertStatement.addBatch();
 					}
-					insertPstmt.executeBatch();
+					insertStatement.executeBatch();
 				}
 			}
-			conn.commit();
+			connection.commit();
 			logger.info("Successfully saved storage reservations for event ID: {}", eventId);
-		} catch (SQLException | NumberFormatException e) {
-			logger.error("Error saving storage reservations for event {}. Rolling back.", eventId, e);
-			if (conn != null)
+		} catch (SQLException | NumberFormatException exception) {
+			logger.error("Error saving storage reservations for event {}. Rolling back.", eventId, exception);
+			if (connection != null)
 				try {
-					conn.rollback();
-				} catch (SQLException ex) {
-					logger.error("Failed to rollback transaction.", ex);
+					connection.rollback();
+				} catch (SQLException rollbackException) {
+					logger.error("Failed to rollback transaction.", rollbackException);
 				}
 		} finally {
-			if (conn != null)
+			if (connection != null)
 				try {
-					conn.setAutoCommit(true);
-					conn.close();
-				} catch (SQLException ex) {
-					logger.error("Failed to close connection.", ex);
+					connection.setAutoCommit(true);
+					connection.close();
+				} catch (SQLException closeException) {
+					logger.error("Failed to close connection.", closeException);
 				}
 		}
 	}
@@ -750,19 +588,20 @@ public class EventDAO {
 		List<StorageItem> items = new ArrayList<>();
 		String sql = "SELECT si.id, si.name, esr.reserved_quantity FROM event_storage_reservations esr "
 				+ "JOIN storage_items si ON esr.item_id = si.id WHERE esr.event_id = ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, eventId);
-			try (ResultSet rs = pstmt.executeQuery()) {
-				while (rs.next()) {
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, eventId);
+			try (ResultSet resultSet = preparedStatement.executeQuery()) {
+				while (resultSet.next()) {
 					StorageItem item = new StorageItem();
-					item.setId(rs.getInt("id"));
-					item.setName(rs.getString("name"));
-					item.setQuantity(rs.getInt("reserved_quantity")); // Use quantity field to hold reserved amount
+					item.setId(resultSet.getInt("id"));
+					item.setName(resultSet.getString("name"));
+					item.setQuantity(resultSet.getInt("reserved_quantity"));
 					items.add(item);
 				}
 			}
-		} catch (SQLException e) {
-			logger.error("SQL error fetching reserved items for event ID: {}", eventId, e);
+		} catch (SQLException exception) {
+			logger.error("SQL error fetching reserved items for event ID: {}", eventId, exception);
 		}
 		return items;
 	}
@@ -772,14 +611,15 @@ public class EventDAO {
 		String sql = "SELECT e.* FROM events e " + "JOIN event_assignments ea ON e.id = ea.event_id "
 				+ "WHERE ea.user_id = ? AND e.status = 'ABGESCHLOSSEN' " + "ORDER BY e.event_datetime DESC";
 		logger.debug("Fetching completed event history for user ID: {}", userId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, userId);
-			ResultSet rs = pstmt.executeQuery();
-			while (rs.next()) {
-				history.add(mapResultSetToEvent(rs));
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, userId);
+			ResultSet resultSet = preparedStatement.executeQuery();
+			while (resultSet.next()) {
+				history.add(mapResultSetToEvent(resultSet));
 			}
-		} catch (SQLException e) {
-			logger.error("SQL error fetching completed event history for user {}", userId, e);
+		} catch (SQLException exception) {
+			logger.error("SQL error fetching completed event history for user {}", userId, exception);
 		}
 		return history;
 	}
@@ -791,18 +631,19 @@ public class EventDAO {
 		if (limit > 0) {
 			sql += " LIMIT ?";
 		}
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, userId);
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, userId);
 			if (limit > 0) {
-				pstmt.setInt(2, limit);
+				preparedStatement.setInt(2, limit);
 			}
-			try (ResultSet rs = pstmt.executeQuery()) {
-				while (rs.next()) {
-					events.add(mapResultSetToEvent(rs));
+			try (ResultSet resultSet = preparedStatement.executeQuery()) {
+				while (resultSet.next()) {
+					events.add(mapResultSetToEvent(resultSet));
 				}
 			}
-		} catch (SQLException e) {
-			logger.error("Error fetching assigned events for user {}", userId, e);
+		} catch (SQLException exception) {
+			logger.error("Error fetching assigned events for user {}", userId, exception);
 		}
 		return events;
 	}
@@ -814,30 +655,31 @@ public class EventDAO {
 				+ "JOIN events e ON esr.event_id = e.id "
 				+ "WHERE e.event_datetime <= ? AND (e.end_datetime IS NULL OR e.end_datetime >= ?)";
 
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setTimestamp(1, Timestamp.valueOf(end.atStartOfDay()));
-			pstmt.setTimestamp(2, Timestamp.valueOf(start.atStartOfDay()));
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setTimestamp(1, Timestamp.valueOf(end.atStartOfDay()));
+			preparedStatement.setTimestamp(2, Timestamp.valueOf(start.atStartOfDay()));
 
-			try (ResultSet rs = pstmt.executeQuery()) {
-				while (rs.next()) {
+			try (ResultSet resultSet = preparedStatement.executeQuery()) {
+				while (resultSet.next()) {
 					Map<String, Object> row = new HashMap<>();
-					row.put("item_id", rs.getInt("item_id"));
-					row.put("item_name", rs.getString("item_name"));
-					row.put("event_id", rs.getInt("event_id"));
-					row.put("event_name", rs.getString("event_name"));
-					row.put("event_datetime", rs.getTimestamp("event_datetime").toLocalDateTime());
-					Timestamp endTs = rs.getTimestamp("end_datetime");
-					if (endTs != null) {
-						row.put("end_datetime", endTs.toLocalDateTime());
+					row.put("item_id", resultSet.getInt("item_id"));
+					row.put("item_name", resultSet.getString("item_name"));
+					row.put("event_id", resultSet.getInt("event_id"));
+					row.put("event_name", resultSet.getString("event_name"));
+					row.put("event_datetime", resultSet.getTimestamp("event_datetime").toLocalDateTime());
+					Timestamp endTimestamp = resultSet.getTimestamp("end_datetime");
+					if (endTimestamp != null) {
+						row.put("end_datetime", endTimestamp.toLocalDateTime());
 					} else {
-						// If no end date, make it a 2-hour event for calendar visualization
-						row.put("end_datetime", rs.getTimestamp("event_datetime").toLocalDateTime().plusHours(2));
+						row.put("end_datetime",
+								resultSet.getTimestamp("event_datetime").toLocalDateTime().plusHours(2));
 					}
 					reservations.add(row);
 				}
 			}
-		} catch (SQLException e) {
-			logger.error("Error fetching reservations for resource calendar.", e);
+		} catch (SQLException exception) {
+			logger.error("Error fetching reservations for resource calendar.", exception);
 		}
 		return reservations;
 	}
