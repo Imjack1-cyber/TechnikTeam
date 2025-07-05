@@ -75,15 +75,13 @@ public class LoginServlet extends HttpServlet {
 		allPossibleItems.add(new NavigationItem("Dateien", "/admin/dateien", "fa-file-upload", "ACCESS_ADMIN_PANEL"));
 		allPossibleItems
 				.add(new NavigationItem("Lehrgangs-Vorlagen", "/admin/lehrgaenge", "fa-book", "ACCESS_ADMIN_PANEL"));
-		allPossibleItems.add(new NavigationItem("Kit-Verwaltung", "/admin/kits", "fa-box-open", "ACCESS_ADMIN_PANEL")); // NEW
+		allPossibleItems.add(new NavigationItem("Kit-Verwaltung", "/admin/kits", "fa-box-open", "ACCESS_ADMIN_PANEL"));
 		allPossibleItems
-				.add(new NavigationItem("Defekte Artikel", "/admin/defekte", "fa-wrench", "ACCESS_ADMIN_PANEL")); // NEW
+				.add(new NavigationItem("Defekte Artikel", "/admin/defekte", "fa-wrench", "ACCESS_ADMIN_PANEL"));
 		allPossibleItems.add(new NavigationItem("Quali-Matrix", "/admin/matrix", "fa-th-list", "ACCESS_ADMIN_PANEL"));
-		allPossibleItems.add(new NavigationItem("Ressourcen-Planer", "/admin/resource-calendar", "fa-calendar-check",
-				"ACCESS_ADMIN_PANEL")); // NEW
 		allPossibleItems.add(new NavigationItem("Berichte", "/admin/berichte", "fa-chart-pie", "ACCESS_ADMIN_PANEL"));
 		allPossibleItems
-				.add(new NavigationItem("Aktions-Log", "/admin/log", "fa-clipboard-list", "ACCESS_ADMIN_PANEL")); // NEW
+				.add(new NavigationItem("Aktions-Log", "/admin/log", "fa-clipboard-list", "ACCESS_ADMIN_PANEL"));
 		allPossibleItems.add(new NavigationItem("System", "/admin/system", "fa-server", "ACCESS_ADMIN_PANEL"));
 
 		List<NavigationItem> accessibleItems = new ArrayList<>();

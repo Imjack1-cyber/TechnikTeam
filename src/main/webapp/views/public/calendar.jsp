@@ -21,13 +21,15 @@
 	<div id="calendar"></div>
 </div>
 
+<%-- FIX: Updated CDN links to a stable and correct version of FullCalendar --%>
 <link
-	href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.css'
+	href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.css'
 	rel='stylesheet' />
 <script
-	src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.js'></script>
+	src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.js'></script>
 <script
-	src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/locales/de.js'></script>
+	src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/locales-all.min.js'></script>
+
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
 <script src="${pageContext.request.contextPath}/js/public/calendar.js"></script>
