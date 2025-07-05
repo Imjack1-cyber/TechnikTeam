@@ -36,16 +36,26 @@ public class InventoryKitDAO {
 	}
 
 	public boolean updateKit(InventoryKit kit) {
-		String sql = "UPDATE inventory_kits SET name = ?, description = ? WHERE id = ?";
+		String sql = "UPDATE inventory_kits SET name = ?, description = ?, location = ? WHERE id = ?";
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, kit.getName());
 			pstmt.setString(2, kit.getDescription());
-			pstmt.setInt(3, kit.getId());
+			pstmt.setString(3, kit.getLocation());
+			pstmt.setInt(4, kit.getId());
 			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
 			logger.error("Error updating inventory kit ID {}", kit.getId(), e);
 			return false;
 		}
+	}
+
+	private InventoryKit mapResultSetToKit(ResultSet rs) throws SQLException {
+		InventoryKit kit = new InventoryKit();
+		kit.setId(rs.getInt("id"));
+		kit.setName(rs.getString("name"));
+		kit.setDescription(rs.getString("description"));
+		kit.setLocation(rs.getString("location")); // CHANGED
+		return kit;
 	}
 
 	public InventoryKit getKitById(int kitId) {
@@ -54,11 +64,7 @@ public class InventoryKitDAO {
 			pstmt.setInt(1, kitId);
 			try (ResultSet rs = pstmt.executeQuery()) {
 				if (rs.next()) {
-					InventoryKit kit = new InventoryKit();
-					kit.setId(rs.getInt("id"));
-					kit.setName(rs.getString("name"));
-					kit.setDescription(rs.getString("description"));
-					return kit;
+					return mapResultSetToKit(rs);
 				}
 			}
 		} catch (SQLException e) {
@@ -85,11 +91,7 @@ public class InventoryKitDAO {
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
 			while (rs.next()) {
-				InventoryKit kit = new InventoryKit();
-				kit.setId(rs.getInt("id"));
-				kit.setName(rs.getString("name"));
-				kit.setDescription(rs.getString("description"));
-				kits.add(kit);
+				kits.add(mapResultSetToKit(rs));
 			}
 		} catch (SQLException e) {
 			logger.error("Error fetching all inventory kits", e);
@@ -119,29 +121,61 @@ public class InventoryKitDAO {
 		return items;
 	}
 
-	public boolean addItemToKit(int kitId, int itemId, int quantity) {
-		String sql = "INSERT INTO inventory_kit_items (kit_id, item_id, quantity) VALUES (?, ?, ?) "
-				+ "ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, kitId);
-			pstmt.setInt(2, itemId);
-			pstmt.setInt(3, quantity);
-			return pstmt.executeUpdate() > 0;
-		} catch (SQLException e) {
-			logger.error("Error adding item {} to kit {}", itemId, kitId, e);
-			return false;
-		}
-	}
+	public boolean updateKitItems(int kitId, String[] itemIds, String[] quantities) {
+		String deleteSql = "DELETE FROM inventory_kit_items WHERE kit_id = ?";
+		String insertSql = "INSERT INTO inventory_kit_items (kit_id, item_id, quantity) VALUES (?, ?, ?)";
+		Connection conn = null;
 
-	public boolean removeItemFromKit(int kitId, int itemId) {
-		String sql = "DELETE FROM inventory_kit_items WHERE kit_id = ? AND item_id = ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, kitId);
-			pstmt.setInt(2, itemId);
-			return pstmt.executeUpdate() > 0;
-		} catch (SQLException e) {
-			logger.error("Error removing item {} from kit {}", itemId, kitId, e);
+		try {
+			conn = DatabaseManager.getConnection();
+			conn.setAutoCommit(false); // Start transaction
+
+			try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
+				deleteStmt.setInt(1, kitId);
+				deleteStmt.executeUpdate();
+			}
+
+			if (itemIds != null && quantities != null && itemIds.length == quantities.length) {
+				try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
+					for (int i = 0; i < itemIds.length; i++) {
+						if (itemIds[i] == null || itemIds[i].isEmpty()) {
+							continue;
+						}
+						int itemId = Integer.parseInt(itemIds[i]);
+						int quantity = Integer.parseInt(quantities[i]);
+						if (quantity > 0) {
+							insertStmt.setInt(1, kitId);
+							insertStmt.setInt(2, itemId);
+							insertStmt.setInt(3, quantity);
+							insertStmt.addBatch();
+						}
+					}
+					insertStmt.executeBatch();
+				}
+			}
+
+			conn.commit(); // Commit transaction
+			logger.info("Successfully updated items for kit ID: {}", kitId);
+			return true;
+		} catch (SQLException | NumberFormatException e) {
+			logger.error("Error during transaction for updating kit items for kit ID {}. Rolling back.", kitId, e);
+			if (conn != null) {
+				try {
+					conn.rollback();
+				} catch (SQLException ex) {
+					logger.error("Failed to rollback transaction.", ex);
+				}
+			}
 			return false;
+		} finally {
+			if (conn != null) {
+				try {
+					conn.setAutoCommit(true);
+					conn.close();
+				} catch (SQLException ex) {
+					logger.error("Failed to close connection after kit item update.", ex);
+				}
+			}
 		}
 	}
 }

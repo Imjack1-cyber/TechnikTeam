@@ -43,6 +43,10 @@ public class AdminKitServlet extends HttpServlet {
 		}
 
 		List<InventoryKit> kits = kitDAO.getAllKits();
+		for (InventoryKit kit : kits) {
+			kit.setItems(kitDAO.getItemsForKit(kit.getId()));
+		}
+
 		List<StorageItem> allItems = storageDAO.getAllItems();
 		req.setAttribute("kits", kits);
 		req.setAttribute("allItems", allItems);
@@ -80,11 +84,8 @@ public class AdminKitServlet extends HttpServlet {
 			case "delete":
 				handleDeleteKit(req, adminUser);
 				break;
-			case "addItem":
-				handleAddItemToKit(req, adminUser);
-				break;
-			case "removeItem":
-				handleRemoveItemFromKit(req, adminUser);
+			case "updateKitItems":
+				handleUpdateKitItems(req, adminUser);
 				break;
 			default:
 				logger.warn("Unknown kit action: {}", action);
@@ -117,6 +118,8 @@ public class AdminKitServlet extends HttpServlet {
 		kit.setId(Integer.parseInt(req.getParameter("id")));
 		kit.setName(req.getParameter("name"));
 		kit.setDescription(req.getParameter("description"));
+		kit.setLocation(req.getParameter("location")); // CHANGED
+
 		if (kitDAO.updateKit(kit)) {
 			AdminLogService.log(adminUser.getUsername(), "UPDATE_KIT",
 					"Kit '" + kit.getName() + "' (ID: " + kit.getId() + ") aktualisiert.");
@@ -138,28 +141,17 @@ public class AdminKitServlet extends HttpServlet {
 		}
 	}
 
-	private void handleAddItemToKit(HttpServletRequest req, User adminUser) {
+	private void handleUpdateKitItems(HttpServletRequest req, User adminUser) {
 		int kitId = Integer.parseInt(req.getParameter("kitId"));
-		int itemId = Integer.parseInt(req.getParameter("itemId"));
-		int quantity = Integer.parseInt(req.getParameter("quantity"));
-		if (kitDAO.addItemToKit(kitId, itemId, quantity)) {
-			AdminLogService.log(adminUser.getUsername(), "ADD_ITEM_TO_KIT",
-					quantity + "x Item ID " + itemId + " zu Kit ID " + kitId + " hinzugefügt.");
-			req.getSession().setAttribute("successMessage", "Artikel zum Kit hinzugefügt.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Artikel konnte nicht zum Kit hinzugefügt werden.");
-		}
-	}
+		String[] itemIds = req.getParameterValues("itemIds");
+		String[] quantities = req.getParameterValues("quantities");
 
-	private void handleRemoveItemFromKit(HttpServletRequest req, User adminUser) {
-		int kitId = Integer.parseInt(req.getParameter("kitId"));
-		int itemId = Integer.parseInt(req.getParameter("itemId"));
-		if (kitDAO.removeItemFromKit(kitId, itemId)) {
-			AdminLogService.log(adminUser.getUsername(), "REMOVE_ITEM_FROM_KIT",
-					"Item ID " + itemId + " aus Kit ID " + kitId + " entfernt.");
-			req.getSession().setAttribute("successMessage", "Artikel aus Kit entfernt.");
+		if (kitDAO.updateKitItems(kitId, itemIds, quantities)) {
+			AdminLogService.log(adminUser.getUsername(), "UPDATE_KIT_ITEMS",
+					"Inhalt für Kit ID " + kitId + " aktualisiert.");
+			req.getSession().setAttribute("successMessage", "Kit-Inhalt erfolgreich gespeichert.");
 		} else {
-			req.getSession().setAttribute("errorMessage", "Artikel konnte nicht aus Kit entfernt werden.");
+			req.getSession().setAttribute("errorMessage", "Fehler beim Speichern des Kit-Inhalts.");
 		}
 	}
 }

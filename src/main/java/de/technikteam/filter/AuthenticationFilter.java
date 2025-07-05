@@ -25,7 +25,8 @@ public class AuthenticationFilter implements Filter {
 	private static final Logger logger = LogManager.getLogger(AuthenticationFilter.class.getName());
 
 	// CORRECTION: This set should only contain the servlet paths, not JSP paths.
-	private static final Set<String> PUBLIC_PATHS = new HashSet<>(Arrays.asList("/login", "/logout"));
+	// ADDED: /pack-kit to allow access from QR codes.
+	private static final Set<String> PUBLIC_PATHS = new HashSet<>(Arrays.asList("/login", "/logout", "/pack-kit"));
 
 	// CORRECTION: The /error directory prefix is correct for allowing error pages.
 	// ADDED: /public to allow access to public APIs like the iCal feed.

@@ -10,6 +10,7 @@ public class InventoryKit {
 	private int id;
 	private String name;
 	private String description;
+	private String location; // CHANGED: Replaced storageItemId with a simple text field
 
 	// Transient field for holding items when needed
 	private List<InventoryKitItem> items;
@@ -45,5 +46,13 @@ public class InventoryKit {
 
 	public void setItems(List<InventoryKitItem> items) {
 		this.items = items;
+	}
+
+	public String getLocation() {
+		return location;
+	}
+
+	public void setLocation(String location) {
+		this.location = location;
 	}
 }

@@ -1290,7 +1290,9 @@ body.nav-open .page-overlay {
 /* --- 9. KEYFRAME ANIMATIONS --- */
 @keyframes eye-scan { 0%, 100% {
 	background: var(--danger-color);
-}50%
+}
+
+50%
 {
 background
 :
@@ -1434,73 +1436,101 @@ var(
 /* =================================================================== */
 /*  11. SIDEBAR CONTROLS                                               */
 /* =================================================================== */
-
 .sidebar-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1rem;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 1rem;
+	margin-bottom: 1rem;
 }
 
 .sidebar-controls .btn {
-    flex-grow: 1;
+	flex-grow: 1;
 }
 
 /* Theme Switcher Styles */
 .theme-switcher {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--text-muted-color);
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	color: var(--text-muted-color);
 }
 
 .theme-switcher .switch {
-    position: relative;
-    display: inline-block;
-    width: 44px;
-    height: 24px;
+	position: relative;
+	display: inline-block;
+	width: 44px;
+	height: 24px;
 }
 
 /* Hide the default HTML checkbox */
 .theme-switcher .switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
+	opacity: 0;
+	width: 0;
+	height: 0;
 }
 
 /* The slider track */
 .theme-switcher .slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ccc;
-    transition: .4s;
-    border-radius: 24px; /* Make it pill-shaped */
+	position: absolute;
+	cursor: pointer;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: #ccc;
+	transition: .4s;
+	border-radius: 24px; /* Make it pill-shaped */
 }
 
 /* The sliding circle */
 .theme-switcher .slider:before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: .4s;
-    border-radius: 50%;
+	position: absolute;
+	content: "";
+	height: 18px;
+	width: 18px;
+	left: 3px;
+	bottom: 3px;
+	background-color: white;
+	transition: .4s;
+	border-radius: 50%;
 }
 
 /* Change the track color when checked (dark mode) */
-.theme-switcher input:checked + .slider {
-    background-color: var(--primary-color);
+.theme-switcher input:checked+.slider {
+	background-color: var(--primary-color);
 }
 
 /* Move the circle to the right when checked */
-.theme-switcher input:checked + .slider:before {
-    transform: translateX(20px);
+.theme-switcher input:checked+.slider:before {
+	transform: translateX(20px);
+}
+
+/* =================================================================== */
+/*  12. PRINT STYLES                                                   */
+/* =================================================================== */
+@media print {
+	.sidebar, .mobile-header, .no-print {
+		display: none !important;
+	}
+	.main-content-wrapper, .main-content {
+		margin-left: 0 !important;
+		padding: 0 !important;
+	}
+	body {
+		background-color: #fff;
+		color: #000;
+	}
+	.card {
+		box-shadow: none;
+		border: 1px solid #ccc;
+		page-break-inside: avoid;
+	}
+	a {
+		text-decoration: none;
+		color: #000;
+	}
+	h1, h2, h3 {
+		color: #000;
+	}
 }
