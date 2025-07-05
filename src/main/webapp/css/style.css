@@ -962,6 +962,34 @@ body.nav-open .page-overlay {
 	margin-top: 0.5rem;
 }
 
+/* NEW: Storage Page Redesign Styles */
+.item-name-cell {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.camera-btn {
+	background: transparent;
+	border: 1px solid var(--border-color);
+	color: var(--text-muted-color);
+	padding: 0.2rem 0.5rem;
+	line-height: 1;
+	border-radius: 4px;
+}
+
+.camera-btn:hover {
+	background: var(--bg-color);
+	color: var(--primary-color);
+	border-color: var(--primary-color);
+}
+
+.inventory-details, .item-status-details {
+	display: block;
+	font-size: 0.85rem;
+	color: var(--text-muted-color);
+}
+
 /* --- 8. ERROR PAGES --- */
 .error-page-container {
 	display: flex;

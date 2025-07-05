@@ -28,10 +28,10 @@
 		<thead>
 			<tr>
 				<th class="sortable" data-sort-type="string">Name</th>
-				<th>Bild</th>
 				<th class="sortable" data-sort-type="string">Ort</th>
+				<th class="sortable" data-sort-type="string">Schrank</th>
+				<th class="sortable" data-sort-type="string">Fach</th>
 				<th class="sortable" data-sort-type="number">Verfügbar</th>
-				<th class="sortable" data-sort-type="number">Defekt</th>
 				<th>Status</th>
 				<th>Aktionen</th>
 			</tr>
@@ -40,21 +40,26 @@
 			<c:forEach var="item" items="${storageList}">
 				<tr
 					class="${item.defectiveQuantity > 0 ? 'item-status-defect' : ''}">
-					<td><a href="<c:url value='/lager/details?id=${item.id}'/>"><c:out
-								value="${item.name}" /></a></td>
-					<td style="text-align: center;"><c:if
+					<td class="item-name-cell"><a
+						href="<c:url value='/lager/details?id=${item.id}'/>"><c:out
+								value="${item.name}" /></a> <c:if
 							test="${not empty item.imagePath}">
-							<a href="#" class="lightbox-trigger"
+							<button class="camera-btn lightbox-trigger"
 								data-src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
-								title="Bild anzeigen"> <img
-								src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
-								alt="Vorschaubild"
-								style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">
-							</a>
+								title="Bild anzeigen">
+								<i class="fas fa-camera"></i>
+							</button>
 						</c:if></td>
 					<td><c:out value="${item.location}" /></td>
-					<td><c:out value="${item.availableQuantity}" /></td>
-					<td><c:out value="${item.defectiveQuantity}" /></td>
+					<td><c:out
+							value="${not empty item.cabinet ? item.cabinet : '-'}" /></td>
+					<td><c:out
+							value="${not empty item.compartment ? item.compartment : '-'}" /></td>
+					<td>${item.availableQuantity} / ${item.quantity} <c:if
+							test="${item.defectiveQuantity > 0}">
+							<span class="text-danger">(${item.defectiveQuantity} def.)</span>
+						</c:if>
+					</td>
 					<td><span
 						class="status-badge ${item.status == 'IN_STORAGE' ? 'status-ok' : (item.status == 'CHECKED_OUT' ? 'status-danger' : 'status-warn')}"><c:out
 								value="${item.status}" /></span></td>
@@ -62,14 +67,11 @@
 						<button type="button" class="btn btn-small edit-item-btn"
 							data-fetch-url="<c:url value='/admin/lager?action=getItemData&id=${item.id}'/>">Bearbeiten</button>
 
-						<c:url var="actionUrl" value="/lager/aktionen">
-							<c:param name="id" value="${item.id}" />
-						</c:url> <c:url var="qrApiUrl"
-							value="https://api.qrserver.com/v1/create-qr-code/">
-							<c:param name="size" value="200x200" />
-							<c:param name="data"
-								value="${pageContext.request.scheme}://${pageContext.request.serverName}:${pageContext.request.serverPort}${actionUrl}" />
-						</c:url> <a href="${qrApiUrl}" target="_blank"
+						<c:set var="absoluteActionUrl"
+							value="${pageContext.request.scheme}://${pageContext.request.serverName}:${pageContext.request.serverPort}${pageContext.request.contextPath}/lager/aktionen?id=${item.id}" />
+						<c:set var="qrApiUrl"
+							value="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${fn:escapeXml(absoluteActionUrl)}" />
+						<a href="${qrApiUrl}" target="_blank"
 						class="btn btn-small btn-secondary">QR-Code</a>
 
 						<button class="btn btn-small btn-warning defect-modal-btn"
@@ -84,8 +86,8 @@
 							data-item-name="${fn:escapeXml(item.name)}"
 							data-current-status="${item.status}">Wartung</button>
 
-						<form action="<c:url value='/admin/lager'/>" method="post"
-							class="js-confirm-form"
+						<form action="${pageContext.request.contextPath}/admin/lager"
+							method="post" class="js-confirm-form"
 							data-confirm-message="Artikel '${fn:escapeXml(item.name)}' wirklich löschen?">
 							<input type="hidden" name="action" value="delete"> <input
 								type="hidden" name="id" value="${item.id}">
@@ -98,7 +100,10 @@
 	</table>
 </div>
 
-<%-- Lightbox is now created globally via main.js --%>
+<div id="lightbox" class="lightbox-overlay">
+	<span class="lightbox-close" title="Schließen">×</span> <img
+		class="lightbox-content" id="lightbox-image" alt="Großansicht">
+</div>
 
 <jsp:include page="/WEB-INF/jspf/storage_modals.jspf" />
 <c:import url="/WEB-INF/jspf/table_scripts.jspf" />

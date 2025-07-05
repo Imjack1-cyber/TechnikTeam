@@ -7,24 +7,37 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	});
 
-	// --- Lightbox Logic ---
+	// --- Lightbox Logic (Standardized) ---
 	const lightbox = document.getElementById('lightbox');
 	if (lightbox) {
-		const lightboxImage = lightbox.querySelector('img');
+		const lightboxImage = document.getElementById('lightbox-image');
 		const closeBtn = lightbox.querySelector('.lightbox-close');
 
+		// This listener works for both <a> and <button> triggers
 		document.querySelectorAll('.lightbox-trigger').forEach(trigger => {
 			trigger.addEventListener('click', (e) => {
 				e.preventDefault();
-				lightbox.style.display = 'block';
 				lightboxImage.src = trigger.dataset.src;
+				lightbox.style.display = 'flex';
 			});
 		});
 
-		const closeLightbox = () => { lightbox.style.display = 'none'; };
+		const closeLightbox = () => {
+			lightbox.style.display = 'none';
+			lightboxImage.src = ''; // Clear src to stop loading
+		};
+
 		if (closeBtn) closeBtn.addEventListener('click', closeLightbox);
-		lightbox.addEventListener('click', (e) => { if (e.target === lightbox) { closeLightbox(); } });
-		document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && lightbox.style.display === 'block') closeLightbox(); });
+		lightbox.addEventListener('click', (e) => {
+			if (e.target === lightbox) {
+				closeLightbox();
+			}
+		});
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape' && lightbox.style.display === 'flex') {
+				closeLightbox();
+			}
+		});
 	}
 
 	// --- Edit/Create Modal Logic ---

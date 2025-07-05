@@ -1,23 +1,27 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
 <!-- Modal for Create/Edit Item -->
 <div class="modal-overlay" id="item-modal">
-	<div class="modal-content" style="max-width: 800px;">
-		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
+	<div class="modal-content">
+		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
 		<h3>Lagerartikel verwalten</h3>
-		<form action="<c:url value='/admin/lager'/>" method="post"
+		<%-- FIX: Corrected form action using Expression Language --%>
+		<form id="item-modal-form"
+			action="${pageContext.request.contextPath}/admin/lager" method="post"
 			enctype="multipart/form-data">
 			<input type="hidden" name="action" value=""> <input
 				type="hidden" name="id" value="">
-			<div class="responsive-dashboard-grid">
-				<div class="form-group">
-					<label for="name-modal">Name des Artikels</label> <input
-						type="text" id="name-modal" name="name" required>
-				</div>
-				<div class="form-group">
-					<label for="location-modal">Lagerort</label> <input type="text"
-						id="location-modal" name="location">
-				</div>
+			<div class="form-group">
+				<label for="name-modal">Name</label> <input type="text"
+					id="name-modal" name="name" required>
 			</div>
 			<div class="responsive-dashboard-grid">
+				<div class="form-group">
+					<label for="location-modal">Standort</label> <input type="text"
+						id="location-modal" name="location">
+				</div>
 				<div class="form-group">
 					<label for="cabinet-modal">Schrank</label> <input type="text"
 						id="cabinet-modal" name="cabinet">
@@ -30,42 +34,41 @@
 			<div class="responsive-dashboard-grid">
 				<div class="form-group">
 					<label for="quantity-modal">Menge (Gesamt)</label> <input
-						type="number" id="quantity-modal" name="quantity" min="0" required>
+						type="number" id="quantity-modal" name="quantity" value="1"
+						min="0" required>
 				</div>
 				<div class="form-group">
-					<label for="maxQuantity-modal">Max. Menge (für Status)</label> <input
-						type="number" id="maxQuantity-modal" name="maxQuantity" min="0"
-						required>
+					<label for="maxQuantity-modal">Max. Menge</label> <input
+						type="number" id="maxQuantity-modal" name="maxQuantity" value="1"
+						min="0" required>
 				</div>
 			</div>
 			<div class="responsive-dashboard-grid">
 				<div class="form-group">
 					<label for="weight_kg-modal">Gewicht (kg)</label> <input
-						type="text" id="weight_kg-modal" name="weight_kg"
-						placeholder="z.B. 1.25">
+						type="number" id="weight_kg-modal" name="weight_kg" step="0.01"
+						min="0">
 				</div>
 				<div class="form-group">
-					<label for="price_eur-modal">Preis (€)</label> <input type="text"
-						id="price_eur-modal" name="price_eur" placeholder="z.B. 19.99">
+					<label for="price_eur-modal">Preis (€)</label> <input type="number"
+						id="price_eur-modal" name="price_eur" step="0.01" min="0">
 				</div>
 			</div>
 			<div class="form-group">
-				<label for="imageFile-modal">Bilddatei (optional,
-					überschreibt altes Bild)</label> <input type="file" id="imageFile-modal"
-					name="imageFile" accept="image/*">
+				<label for="imageFile">Bilddatei</label> <input type="file"
+					name="imageFile" id="imageFile">
 			</div>
-			<button type="submit" class="btn">
-				<i class="fas fa-save"></i> Speichern
-			</button>
+			<button type="submit" class="btn">Speichern</button>
 		</form>
 	</div>
 </div>
 
-<!-- Modal for Defect Status -->
+<!-- Modal for updating defect status -->
 <div class="modal-overlay" id="defect-modal">
 	<div class="modal-content">
 		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
-		<h3>Defekt-Status bearbeiten</h3>
+		<h3 id="defect-modal-title">Defekt-Status bearbeiten</h3>
+		<%-- FIX: Corrected form action using Expression Language --%>
 		<form action="${pageContext.request.contextPath}/admin/lager"
 			method="post">
 			<input type="hidden" name="action" value="updateDefect"> <input
@@ -86,71 +89,68 @@
 	</div>
 </div>
 
-<!-- Modal for Maintenance Status -->
+<!-- Modal for updating maintenance status -->
 <div class="modal-overlay" id="maintenance-modal">
 	<div class="modal-content">
 		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
-		<h3>Wartungs-Status setzen</h3>
+		<h3 id="maintenance-modal-title">Wartungs-Status setzen</h3>
+		<%-- FIX: Corrected form action using Expression Language --%>
 		<form action="${pageContext.request.contextPath}/admin/lager"
 			method="post">
 			<input type="hidden" name="action" value="updateStatus"> <input
 				type="hidden" name="id" id="maintenance-item-id">
 			<div class="form-group">
-				<label for="maintenance-status">Neuer Status</label> <select
-					name="status" id="maintenance-status" required>
-					<option value="IN_STORAGE">Zurück in den Dienst</option>
+				<label for="maintenance-status">Status</label> <select name="status"
+					id="maintenance-status">
+					<option value="IN_STORAGE">Zurück in den Service</option>
 					<option value="MAINTENANCE">Zur Wartung markieren</option>
 				</select>
 			</div>
 			<div class="form-group">
-				<label for="maintenance-notes">Notiz</label>
-				<textarea name="notes" id="maintenance-notes" rows="3" required
-					placeholder="z.B. 'Zur Reparatur eingeschickt' oder 'Reparatur abgeschlossen'"></textarea>
+				<label for="maintenance-notes">Notiz</label> <input type="text"
+					name="notes" id="maintenance-notes" required
+					placeholder="z.B. Defekt behoben, Reinigung, etc.">
 			</div>
-			<button type="submit" class="btn">
-				<i class="fas fa-save"></i> Speichern
-			</button>
+			<button type="submit" class="btn">Status aktualisieren</button>
 		</form>
 	</div>
 </div>
 
-<!-- Modal for User Transactions -->
+<!-- Transaction Modal for User View (can be shared) -->
 <div class="modal-overlay" id="transaction-modal">
 	<div class="modal-content">
 		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
-		<h3 id="transaction-modal-title">Aktion ausführen</h3>
+		<h3 id="transaction-modal-title">Artikel-Aktion</h3>
+		<%-- FIX: Corrected form action using Expression Language --%>
 		<form action="${pageContext.request.contextPath}/lager/transaktion"
 			method="post">
 			<input type="hidden" name="itemId" id="transaction-item-id">
 			<input type="hidden" name="redirectUrl"
-				value="${pageContext.request.contextPath}${requestScope['jakarta.servlet.forward.request_uri']}">
-
+				value="${pageContext.request.contextPath}/lager">
 			<div class="form-group">
-				<label for="quantity">Anzahl</label> <input type="number"
-					name="quantity" id="quantity" value="1" min="1" required>
+				<label for="transaction-quantity">Anzahl</label> <input
+					type="number" name="quantity" id="transaction-quantity" value="1"
+					min="1" required>
 			</div>
 			<div class="form-group">
-				<label for="notes">Notiz (z.B. Event-Name)</label> <input
-					type="text" name="notes" id="notes">
+				<label for="transaction-notes">Notiz (optional)</label> <input
+					type="text" name="notes" id="transaction-notes"
+					placeholder="z.B. für Event XYZ">
 			</div>
 			<div class="form-group">
-				<label for="eventId">Zuweisen zu Event (optional)</label> <select
-					name="eventId" id="eventId">
-					<option value="0">Kein Event</option>
+				<label for="transaction-eventId">Zuweisen zu Event
+					(optional)</label> <select name="eventId" id="transaction-eventId">
+					<option value="">Kein Event</option>
 					<c:forEach var="event" items="${activeEvents}">
-						<option value="${event.id}"><c:out value="${event.name}" /></option>
+						<option value="${event.id}">${event.name}</option>
 					</c:forEach>
 				</select>
 			</div>
-			<div style="display: flex; gap: 1rem; margin-top: 1rem;">
+			<div style="display: flex; justify-content: space-around; gap: 1rem;">
 				<button type="submit" name="type" value="checkout"
-					class="btn btn-danger" style="flex: 1;">
-					<i class="fas fa-sign-out-alt"></i> Entnehmen
-				</button>
+					class="btn btn-danger" style="flex-grow: 1;">Entnehmen</button>
 				<button type="submit" name="type" value="checkin"
-					class="btn btn-success" style="flex: 1;">
-					<i class="fas fa-sign-in-alt"></i> Einräumen
-				</button>
+					class="btn btn-success" style="flex-grow: 1;">Einräumen</button>
 			</div>
 		</form>
 	</div>

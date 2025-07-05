@@ -140,30 +140,33 @@ public class StorageDAO {
 		}
 	}
 
-	public boolean updateItemHolderAndStatus(int itemId, String status, Integer userId, Integer eventId)
-			throws SQLException {
-		String sql = "UPDATE storage_items SET status = ?, current_holder_user_id = ?, assigned_event_id = ? WHERE id = ?";
+	public boolean performCheckout(int itemId, int quantity, int userId, Integer eventId) throws SQLException {
+		String sql = "UPDATE storage_items "
+				+ "SET quantity = quantity - ?, status = 'CHECKED_OUT', current_holder_user_id = ?, assigned_event_id = ? "
+				+ "WHERE id = ? AND (quantity - defective_quantity) >= ?";
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setString(1, status);
-			if (userId != null)
-				pstmt.setInt(2, userId);
-			else
-				pstmt.setNull(2, Types.INTEGER);
-			if (eventId != null)
+			pstmt.setInt(1, quantity);
+			pstmt.setInt(2, userId);
+			if (eventId != null) {
 				pstmt.setInt(3, eventId);
-			else
+			} else {
 				pstmt.setNull(3, Types.INTEGER);
+			}
 			pstmt.setInt(4, itemId);
+			pstmt.setInt(5, quantity);
 			return pstmt.executeUpdate() > 0;
 		}
 	}
 
-	public boolean updateItemQuantity(int itemId, int quantityChange) throws SQLException {
-		String sql = "UPDATE storage_items SET quantity = quantity + ? WHERE id = ? AND quantity + ? >= defective_quantity";
+	public boolean performCheckin(int itemId, int quantity) throws SQLException {
+		// FIX: Simplified the query. The business logic now resides solely in the
+		// servlet.
+		String sql = "UPDATE storage_items "
+				+ "SET quantity = quantity + ?, status = 'IN_STORAGE', current_holder_user_id = NULL, assigned_event_id = NULL "
+				+ "WHERE id = ?";
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, quantityChange);
+			pstmt.setInt(1, quantity);
 			pstmt.setInt(2, itemId);
-			pstmt.setInt(3, quantityChange);
 			return pstmt.executeUpdate() > 0;
 		}
 	}

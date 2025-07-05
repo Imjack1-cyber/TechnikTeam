@@ -1,7 +1,9 @@
 package de.technikteam.servlet;
 
+import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.StorageDAO;
 import de.technikteam.dao.StorageLogDAO;
+import de.technikteam.model.Event;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
@@ -22,11 +24,13 @@ public class StorageTransactionServlet extends HttpServlet {
 	private static final Logger logger = LogManager.getLogger(StorageTransactionServlet.class);
 	private StorageDAO storageDAO;
 	private StorageLogDAO storageLogDAO;
+	private EventDAO eventDAO;
 
 	@Override
 	public void init() {
 		storageDAO = new StorageDAO();
 		storageLogDAO = new StorageLogDAO();
+		eventDAO = new EventDAO();
 	}
 
 	@Override
@@ -45,9 +49,12 @@ public class StorageTransactionServlet extends HttpServlet {
 			String notes = request.getParameter("notes");
 			Integer eventId = null;
 			try {
-				eventId = Integer.parseInt(request.getParameter("eventId"));
-				if (eventId == 0)
-					eventId = null; // Treat 0 as null
+				String eventIdParam = request.getParameter("eventId");
+				if (eventIdParam != null && !eventIdParam.isEmpty()) {
+					eventId = Integer.parseInt(eventIdParam);
+					if (eventId == 0)
+						eventId = null;
+				}
 			} catch (NumberFormatException e) {
 				// Ignore if not provided or invalid
 			}
@@ -64,40 +71,55 @@ public class StorageTransactionServlet extends HttpServlet {
 			}
 
 			if ("checkout".equals(type)) {
-				if (item.getAvailableQuantity() >= quantity) {
-					success = storageDAO.updateItemQuantity(itemId, quantityChange);
-					if (success) {
-						storageDAO.updateItemHolderAndStatus(itemId, "CHECKED_OUT", user.getId(), eventId);
-					}
+				if (item.getAvailableQuantity() < quantity) {
+					request.getSession().setAttribute("errorMessage",
+							"Entnahme fehlgeschlagen: Nicht genügend Artikel verfügbar.");
+				} else {
+					success = storageDAO.performCheckout(itemId, quantity, user.getId(), eventId);
 				}
 			} else if ("checkin".equals(type)) {
-				// Allow check-in even if it exceeds max quantity, but ensure it's not a holder
-				// anymore
-				success = storageDAO.updateItemQuantity(itemId, quantityChange);
-				if (success) {
-					// Only change status if the current user is the holder
-					if (item.getCurrentHolderUserId() == user.getId()) {
-						storageDAO.updateItemHolderAndStatus(itemId, "IN_STORAGE", null, null);
+				// FIX: Correctly check against max quantity BEFORE attempting the transaction.
+				if (item.getMaxQuantity() > 0 && (item.getQuantity() + quantity > item.getMaxQuantity())) {
+					int availableSpace = item.getMaxQuantity() - item.getQuantity();
+					if (availableSpace > 0) {
+						request.getSession().setAttribute("errorMessage",
+								"Einräumen fehlgeschlagen: Es ist nur Platz für " + availableSpace
+										+ " weitere Artikel.");
+					} else {
+						request.getSession().setAttribute("errorMessage",
+								"Einräumen fehlgeschlagen: Das Lager für diesen Artikel ist bereits voll.");
 					}
+				} else {
+					success = storageDAO.performCheckin(itemId, quantity);
 				}
 			}
 
 			if (success) {
-				storageLogDAO.logTransaction(itemId, user.getId(), quantityChange, notes,
+				String finalNotes = notes;
+				if ("checkout".equals(type) && eventId != null) {
+					Event event = eventDAO.getEventById(eventId);
+					if (event != null) {
+						String autoNote = "Für Event: " + event.getName();
+						finalNotes = (notes != null && !notes.trim().isEmpty()) ? autoNote + " - " + notes : autoNote;
+					}
+				}
+
+				storageLogDAO.logTransaction(itemId, user.getId(), quantityChange, finalNotes,
 						eventId != null ? eventId : 0);
 
 				String itemName = item.getName();
 				String action = "checkin".equals(type) ? "eingeräumt" : "entnommen";
 				String logDetails = String.format("%d x '%s' (ID: %d) %s. Notiz: %s", quantity, itemName, itemId,
-						action, notes);
+						action, finalNotes);
 				AdminLogService.log(user.getUsername(), "STORAGE_TRANSACTION", logDetails);
 
 				request.getSession().setAttribute("successMessage",
 						"Erfolgreich " + quantity + " Stück " + action + ".");
 			} else {
-				logger.warn("Storage transaction failed for item ID {}. Not enough stock or other issue.", itemId);
-				request.getSession().setAttribute("errorMessage",
-						"Transaktion fehlgeschlagen. Nicht genügend Artikel auf Lager?");
+				if (request.getSession().getAttribute("errorMessage") == null) {
+					request.getSession().setAttribute("errorMessage",
+							"Transaktion fehlgeschlagen. Bitte erneut versuchen.");
+				}
 			}
 
 		} catch (NumberFormatException e) {

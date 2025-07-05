@@ -39,10 +39,10 @@
 				<thead>
 					<tr>
 						<th>Gerät</th>
+						<th class="sortable" data-sort-type="string">Schrank</th>
+						<th class="sortable" data-sort-type="string">Fach</th>
 						<th>Status</th>
-						<th>Inhaber</th>
-						<th>Verfügbar</th>
-						<th>Defekt</th>
+						<th>Bestand</th>
 						<th>Aktion</th>
 					</tr>
 				</thead>
@@ -50,12 +50,26 @@
 					<c:forEach var="item" items="${locationEntry.value}">
 						<tr
 							class="${item.defectiveQuantity > 0 ? 'item-status-defect' : ''}">
-							<td><a href="<c:url value='/lager/details?id=${item.id}'/>"
+							<td class="item-name-cell"><a
+								href="<c:url value='/lager/details?id=${item.id}'/>"
 								title="Details für ${item.name} ansehen"><c:out
-										value="${item.name}" /></a></td>
+										value="${item.name}" /></a> <c:if
+									test="${not empty item.imagePath}">
+									<button class="camera-btn lightbox-trigger"
+										data-src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
+										title="Bild anzeigen">
+										<i class="fas fa-camera"></i>
+									</button>
+								</c:if></td>
+							<td><c:out
+									value="${not empty item.cabinet ? item.cabinet : '-'}" /></td>
+							<td><c:out
+									value="${not empty item.compartment ? item.compartment : '-'}" /></td>
 							<td><c:choose>
 									<c:when test="${item.status == 'CHECKED_OUT'}">
 										<span class="status-badge status-warn">Entnommen</span>
+										<span class="item-status-details">an:
+											${item.currentHolderUsername}</span>
 									</c:when>
 									<c:when test="${item.status == 'MAINTENANCE'}">
 										<span class="status-badge status-info">Wartung</span>
@@ -64,17 +78,18 @@
 										<span class="status-badge status-ok">Im Lager</span>
 									</c:otherwise>
 								</c:choose></td>
-							<td><c:out
-									value="${not empty item.currentHolderUsername ? item.currentHolderUsername : '-'}" /></td>
-							<td>${item.availableQuantity}/${item.quantity}</td>
-							<td>${item.defectiveQuantity}</td>
+							<td><span class="inventory-details">${item.availableQuantity}
+									/ ${item.quantity}</span> <c:if test="${item.defectiveQuantity > 0}">
+									<span class="inventory-details text-danger">(${item.defectiveQuantity}
+										defekt)</span>
+								</c:if></td>
 							<td>
 								<button class="btn btn-small transaction-btn"
 									data-item-id="${item.id}"
 									data-item-name="${fn:escapeXml(item.name)}"
 									data-max-qty="${item.availableQuantity}"
-									${item.availableQuantity <= 0 && item.status != 'CHECKED_OUT' ? 'disabled' : ''}>
-									Aktion</button>
+									data-current-qty="${item.quantity}"
+									data-total-max-qty="${item.maxQuantity}">Aktion</button>
 							</td>
 						</tr>
 					</c:forEach>
@@ -83,6 +98,12 @@
 		</div>
 	</div>
 </c:forEach>
+
+<!-- Lightbox Modal -->
+<div id="lightbox" class="lightbox-overlay">
+	<span class="lightbox-close" title="Schließen">×</span> <img
+		class="lightbox-content" id="lightbox-image" alt="Großansicht">
+</div>
 
 <%@ include file="/WEB-INF/jspf/storage_modals.jspf"%>
 <c:import url="/WEB-INF/jspf/table_scripts.jspf" />

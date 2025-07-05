@@ -41,9 +41,13 @@
 					</p>
 				</div>
 				<div style="display: flex; gap: 0.5rem;">
-					<a
-						href="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${pageContext.request.scheme}://${pageContext.request.serverName}:${pageContext.request.serverPort}${pageContext.request.contextPath}/pack-kit?kitId=${kit.id}"
-						target="_blank" class="btn btn-small">QR-Code</a>
+					<%-- DEFINITIVE FIX 2: Manually construct the final URL to prevent any JSTL misinterpretation. --%>
+					<c:set var="absoluteActionUrl"
+						value="${pageContext.request.scheme}://${pageContext.request.serverName}:${pageContext.request.serverPort}${pageContext.request.contextPath}/pack-kit?kitId=${kit.id}" />
+					<c:set var="qrApiUrl"
+						value="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${fn:escapeXml(absoluteActionUrl)}" />
+					<a href="${qrApiUrl}" target="_blank" class="btn btn-small">QR-Code</a>
+
 					<button type="button"
 						class="btn btn-small btn-secondary edit-kit-btn"
 						data-kit-id="${kit.id}" data-kit-name="${fn:escapeXml(kit.name)}"
