@@ -21,4 +21,4 @@
 </div>
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
-<script type="text/javascript" src="/js/auth/logout.js"></script>
+<script src="${pageContext.request.contextPath}/js/auth/logout.js"></script>

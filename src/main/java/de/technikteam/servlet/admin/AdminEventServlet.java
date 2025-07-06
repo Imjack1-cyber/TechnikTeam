@@ -132,14 +132,15 @@ public class AdminEventServlet extends HttpServlet {
 		logger.info("Listing all events for admin view.");
 		List<Event> eventList = eventDAO.getAllEvents();
 		List<Course> allCourses = courseDAO.getAllCourses();
-		List<StorageItem> allItems = storageDAO.getAllItems(); // CORRECTION: Use the simpler DAO method
+		List<StorageItem> allItems = storageDAO.getAllItems();
 		List<User> allUsers = userDAO.getAllUsers();
 
 		req.setAttribute("eventList", eventList);
-		req.setAttribute("allCourses", allCourses);
-		req.setAttribute("allItems", allItems);
 		req.setAttribute("allUsers", allUsers);
-		// CORRECTED: Forward to the actual JSP file path.
+		// CORRECTED: Pass data serialized as JSON for safe consumption by JavaScript.
+		req.setAttribute("allCoursesJson", gson.toJson(allCourses));
+		req.setAttribute("allItemsJson", gson.toJson(allItems));
+
 		req.getRequestDispatcher("/views/admin/admin_events_list.jsp").forward(req, resp);
 	}
 

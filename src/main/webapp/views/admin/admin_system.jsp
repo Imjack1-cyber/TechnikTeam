@@ -59,4 +59,4 @@
 </div>
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
-<script type="text/javascript" src="/js/admin/admin_system.js"></script>
+<script src="<c:url value='/js/admin/admin_system.js'/>"></script>

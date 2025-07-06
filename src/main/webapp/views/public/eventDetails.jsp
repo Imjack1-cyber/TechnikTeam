@@ -218,12 +218,11 @@
 	<jsp:include page="/WEB-INF/jspf/task_modal.jspf" />
 </c:if>
 
-<%-- DEFINITIVE FIX: Removed <c:out> which was corrupting the JSON.
-     Directly output the JSON string into the div's content. --%>
-<div id="allUsersData" style="display: none;">${assignedUsersJson}</div>
-<div id="allItemsData" style="display: none;">${allItemsJson}</div>
-<div id="allKitsData" style="display: none;">${allKitsJson}</div>
-<div id="allTasksData" style="display: none;">${tasksJson}</div>
+<%-- CORRECTED: Embed pre-serialized JSON from the servlet for safety --%>
+<script id="allUsersData" type="application/json">${assignedUsersJson}</script>
+<script id="allItemsData" type="application/json">${allItemsJson}</script>
+<script id="allKitsData" type="application/json">${allKitsJson}</script>
+<script id="allTasksData" type="application/json">${tasksJson}</script>
 
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />

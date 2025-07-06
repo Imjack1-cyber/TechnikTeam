@@ -293,21 +293,31 @@ public class FileDAO {
 	}
 
 	/**
-	 * Updates the content of a shared document.
+	 * Updates or creates the content of a shared document using an "upsert"
+	 * operation. This ensures that the document can be saved even if it doesn't
+	 * exist yet.
 	 * 
 	 * @param documentName The unique name/key of the document to update.
 	 * @param content      The new content to save.
 	 * @return true if the update was successful.
 	 */
 	public boolean updateDocumentContent(String documentName, String content) {
-		String sql = "UPDATE shared_documents SET content = ? WHERE document_name = ?";
-		logger.trace("Updating document content for name: {}", documentName);
+		// DEFINITIVE FIX: Use INSERT ... ON DUPLICATE KEY UPDATE for an "upsert".
+		// This creates the document on the first save and updates it on subsequent
+		// saves.
+		// This requires a UNIQUE index on the `document_name` column.
+		String sql = "INSERT INTO shared_documents (document_name, content) VALUES (?, ?) "
+				+ "ON DUPLICATE KEY UPDATE content = VALUES(content)";
+		logger.trace("Upserting document content for name: {}", documentName);
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setString(1, content);
-			pstmt.setString(2, documentName);
-			return pstmt.executeUpdate() > 0;
+			pstmt.setString(1, documentName);
+			pstmt.setString(2, content);
+			// executeUpdate returns 1 for an insert, 2 for an update, and 0 if the value
+			// didn't change.
+			// All of these are considered successful operations in our case.
+			return pstmt.executeUpdate() >= 0;
 		} catch (SQLException e) {
-			logger.error("Error updating document content for name: {}", documentName, e);
+			logger.error("Error upserting document content for name: {}", documentName, e);
 			return false;
 		}
 	}

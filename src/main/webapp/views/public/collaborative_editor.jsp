@@ -7,7 +7,6 @@
   fully integrated into the application's UI.
 --%>
 
-<%-- CORRECTED: The import path is now absolute from the context root. --%>
 <c:import url="/WEB-INF/jspf/main_header.jspf">
 	<c:param name="pageTitle" value="Gemeinsamer Editor" />
 	<c:param name="navType" value="user" />
@@ -27,5 +26,5 @@
 		style="text-align: right; font-style: italic; color: var(--text-muted-color); padding-top: 5px; min-height: 1.2em;"></div>
 </div>
 
-<script type="text/javascript" src="/js/public/collaborative_editor.js"></script>
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script src="<c:url value='/js/public/collaborative_editor.js'/>"></script>

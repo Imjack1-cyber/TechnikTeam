@@ -3,7 +3,6 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
 <!DOCTYPE html>
-<%-- REMOVED: hardcoded data-theme="dark" --%>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
@@ -14,11 +13,10 @@
 <link rel="stylesheet"
 	href="${pageContext.request.contextPath}/css/style.css">
 
-<%-- ADDED: Inline script to set the theme from localStorage on page load --%>
 <script>
-    // This script runs immediately to prevent a "flash" of the wrong theme.
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
+	// This script runs immediately to prevent a "flash" of the wrong theme.
+	const savedTheme = localStorage.getItem('theme') || 'light';
+	document.documentElement.setAttribute('data-theme', savedTheme);
 </script>
 
 </head>
@@ -45,7 +43,8 @@
 		</c:if>
 
 		<form action="${pageContext.request.contextPath}/lager/transaktion"
-			method="post">
+			method="post" data-available-qty="${item.availableQuantity}"
+			data-total-qty="${item.quantity}" data-max-qty="${item.maxQuantity}">
 			<input type="hidden" name="itemId" value="${item.id}"> <input
 				type="hidden" name="redirectUrl"
 				value="${pageContext.request.contextPath}/lager/aktionen?id=${item.id}">
@@ -85,31 +84,6 @@
 		</form>
 	</div>
 
-	<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const quantityInput = document.getElementById('quantity');
-        const checkoutBtn = document.getElementById('checkout-btn');
-        const checkinBtn = document.getElementById('checkin-btn');
-        
-        const availableQty = ${item.availableQuantity};
-        const totalQty = ${item.quantity};
-        const maxQty = ${item.maxQuantity};
-
-        // Set initial state for checkout
-        quantityInput.max = availableQty;
-
-        checkoutBtn.addEventListener('click', () => {
-            quantityInput.max = availableQty;
-            quantityInput.title = `Maximal entnehmbar: ${availableQty}`;
-        });
-
-        checkinBtn.addEventListener('click', () => {
-            const availableSpace = maxQty > 0 ? maxQty - totalQty : 9999;
-            quantityInput.max = availableSpace > 0 ? availableSpace : 9999;
-            quantityInput.title = `Maximal einräumbar: ${availableSpace}`;
-        });
-    });
-    </script>
-
+	<script src="${pageContext.request.contextPath}/js/public/qr_action.js"></script>
 </body>
 </html>

@@ -139,21 +139,5 @@
 </div>
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-		// Tab switching logic
-		const tabButtons = document.querySelectorAll('.modal-tab-button');
-		const tabContents = document.querySelectorAll('.modal-tab-content');
-		tabButtons.forEach(button => {
-			button.addEventListener('click', () => {
-				tabButtons.forEach(btn => btn.classList.remove('active'));
-				button.classList.add('active');
-				tabContents.forEach(content => {
-					content.classList.toggle('active', content.id === button.dataset.tab);
-				});
-			});
-		});
-    });
-</script>
 <script
 	src="${pageContext.request.contextPath}/js/public/storage_item_details.js"></script>

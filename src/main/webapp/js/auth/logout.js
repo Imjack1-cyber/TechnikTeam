@@ -1,3 +1,6 @@
-setTimeout(function() {
-	window.location.href = "/views/auth/login.jsp";
-}, 5000); 
+document.addEventListener('DOMContentLoaded', () => {
+	const contextPath = document.body.dataset.contextPath || '';
+	setTimeout(function() {
+		window.location.href = `${contextPath}/login`;
+	}, 5000);
+});

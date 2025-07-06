@@ -1,22 +1,22 @@
 document.addEventListener('DOMContentLoaded', () => {
 	const lightbox = document.getElementById('lightbox');
-	if (!lightbox) return;
+	if (lightbox) {
+		const lightboxImage = document.getElementById('lightbox-image');
+		const closeBtn = lightbox.querySelector('.lightbox-close');
 
-	const lightboxImage = document.getElementById('lightbox-image');
-	const closeBtn = lightbox.querySelector('.lightbox-close');
-
-	document.querySelectorAll('.lightbox-trigger').forEach(trigger => {
-		trigger.addEventListener('click', (e) => {
-			e.preventDefault();
-			lightboxImage.src = trigger.href; // Get src from the anchor's href
-			lightbox.style.display = 'flex';
+		document.querySelectorAll('.lightbox-trigger').forEach(trigger => {
+			trigger.addEventListener('click', (e) => {
+				e.preventDefault();
+				lightboxImage.src = trigger.href; // Get src from the anchor's href
+				lightbox.style.display = 'flex';
+			});
 		});
-	});
 
-	const closeLightbox = () => { lightbox.style.display = 'none'; };
-	if (closeBtn) closeBtn.addEventListener('click', closeLightbox);
-	lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });
-	document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && lightbox.style.display === 'flex') closeLightbox(); });
+		const closeLightbox = () => { lightbox.style.display = 'none'; };
+		if (closeBtn) closeBtn.addEventListener('click', closeLightbox);
+		lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });
+		document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && lightbox.style.display === 'flex') closeLightbox(); });
+	}
 
 	// Tab switching logic
 	const tabButtons = document.querySelectorAll('.modal-tab-button');
