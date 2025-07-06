@@ -92,11 +92,15 @@ public class EventDetailsServlet extends HttpServlet {
 			request.setAttribute("event", event);
 
 			if (hasTaskManagementPermission) {
-				request.setAttribute("assignedUsers", assignedUsers);
-				request.setAttribute("allItems", storageDAO.getAllItems());
-				request.setAttribute("allKits", kitDAO.getAllKits()); // FIX: Ensure kits are loaded
+				request.setAttribute("assignedUsersJson", gson.toJson(assignedUsers));
+				request.setAttribute("allItemsJson", gson.toJson(storageDAO.getAllItems()));
+				request.setAttribute("allKitsJson", gson.toJson(kitDAO.getAllKits()));
 				request.setAttribute("tasksJson", gson.toJson(event.getEventTasks()));
 			} else {
+				// Ensure JSON data is never null to prevent JSP errors
+				request.setAttribute("assignedUsersJson", "[]");
+				request.setAttribute("allItemsJson", "[]");
+				request.setAttribute("allKitsJson", "[]");
 				request.setAttribute("tasksJson", "[]");
 			}
 

@@ -1,6 +1,7 @@
 package de.technikteam.model;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Represents a single task from the `event_tasks` table, associated with a
@@ -11,31 +12,22 @@ public class EventTask {
 	private int id;
 	private int eventId;
 	private String description;
+	private String details; // NEW: For more detailed instructions
 	private String status;
 	private String eventName;
 
-	// New fields for reworked task system
 	private int displayOrder;
-	private int requiredPersons; // 0 means direct assignment, >0 means a pool
+	private int requiredPersons;
 
-	// Associations
 	private List<User> assignedUsers;
 	private List<StorageItem> requiredItems;
 	private List<InventoryKit> requiredKits;
 
-	// Transient field for display, still useful for simple lists
 	private String assignedUsernames;
 
 	public String getAssignedUsernames() {
 		if (assignedUsers != null && !assignedUsers.isEmpty()) {
-			StringBuilder names = new StringBuilder();
-			for (User u : assignedUsers) {
-				if (names.length() > 0) {
-					names.append(", ");
-				}
-				names.append(u.getUsername());
-			}
-			return names.toString();
+			return assignedUsers.stream().map(User::getUsername).collect(Collectors.joining(", "));
 		}
 		return "Niemand";
 	}
@@ -66,6 +58,14 @@ public class EventTask {
 		this.description = description;
 	}
 
+	public String getDetails() {
+		return details;
+	}
+
+	public void setDetails(String details) {
+		this.details = details;
+	}
+
 	public String getStatus() {
 		return status;
 	}
@@ -74,16 +74,16 @@ public class EventTask {
 		this.status = status;
 	}
 
+	public void setAssignedUsernames(String assignedUsernames) {
+		this.assignedUsernames = assignedUsernames;
+	}
+
 	public String getEventName() {
 		return eventName;
 	}
 
 	public void setEventName(String eventName) {
 		this.eventName = eventName;
-	}
-
-	public void setAssignedUsernames(String assignedUsernames) {
-		this.assignedUsernames = assignedUsernames;
 	}
 
 	public int getDisplayOrder() {

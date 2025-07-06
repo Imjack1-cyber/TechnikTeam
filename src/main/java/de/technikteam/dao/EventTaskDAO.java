@@ -12,36 +12,37 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class EventTaskDAO {
 	private static final Logger logger = LogManager.getLogger(EventTaskDAO.class);
 
-	// --- Transactional Create/Update ---
 	public int saveTask(EventTask task, int[] userIds, String[] itemIds, String[] itemQuantities, String[] kitIds) {
 		boolean isUpdate = task.getId() > 0;
 		String taskSql = isUpdate
-				? "UPDATE event_tasks SET description = ?, status = ?, display_order = ?, required_persons = ? WHERE id = ?"
-				: "INSERT INTO event_tasks (event_id, description, status, display_order, required_persons) VALUES (?, ?, 'OFFEN', ?, ?)";
+				? "UPDATE event_tasks SET description = ?, details = ?, status = ?, display_order = ?, required_persons = ? WHERE id = ?"
+				: "INSERT INTO event_tasks (event_id, description, details, status, display_order, required_persons) VALUES (?, ?, ?, 'OFFEN', ?, ?)";
 
 		Connection conn = null;
 		try {
 			conn = DatabaseManager.getConnection();
 			conn.setAutoCommit(false);
 
-			// 1. Save the main task record
 			try (PreparedStatement pstmt = conn.prepareStatement(taskSql, Statement.RETURN_GENERATED_KEYS)) {
 				if (isUpdate) {
 					pstmt.setString(1, task.getDescription());
-					pstmt.setString(2, task.getStatus());
-					pstmt.setInt(3, task.getDisplayOrder());
-					pstmt.setInt(4, task.getRequiredPersons());
-					pstmt.setInt(5, task.getId());
+					pstmt.setString(2, task.getDetails());
+					pstmt.setString(3, task.getStatus());
+					pstmt.setInt(4, task.getDisplayOrder());
+					pstmt.setInt(5, task.getRequiredPersons());
+					pstmt.setInt(6, task.getId());
 					pstmt.executeUpdate();
 				} else {
 					pstmt.setInt(1, task.getEventId());
 					pstmt.setString(2, task.getDescription());
-					pstmt.setInt(3, task.getDisplayOrder());
-					pstmt.setInt(4, task.getRequiredPersons());
+					pstmt.setString(3, task.getDetails());
+					pstmt.setInt(4, task.getDisplayOrder());
+					pstmt.setInt(5, task.getRequiredPersons());
 					pstmt.executeUpdate();
 					try (ResultSet rs = pstmt.getGeneratedKeys()) {
 						if (rs.next()) {
@@ -55,10 +56,7 @@ public class EventTaskDAO {
 			if (taskId == 0)
 				throw new SQLException("Failed to create task, no ID obtained.");
 
-			// 2. Clear old associations
 			clearAssociations(conn, taskId);
-
-			// 3. Save new associations
 			saveUserAssignments(conn, taskId, userIds);
 			saveItemRequirements(conn, taskId, itemIds, itemQuantities);
 			saveKitRequirements(conn, taskId, kitIds);
@@ -145,7 +143,6 @@ public class EventTaskDAO {
 		}
 	}
 
-	// --- Read Methods ---
 	public List<EventTask> getTasksForEvent(int eventId) {
 		Map<Integer, EventTask> tasksById = new HashMap<>();
 		String sql = "SELECT t.* FROM event_tasks t WHERE t.event_id = ? ORDER BY t.display_order ASC, t.id ASC";
@@ -158,6 +155,7 @@ public class EventTaskDAO {
 					task.setId(rs.getInt("id"));
 					task.setEventId(rs.getInt("event_id"));
 					task.setDescription(rs.getString("description"));
+					task.setDetails(rs.getString("details"));
 					task.setStatus(rs.getString("status"));
 					task.setDisplayOrder(rs.getInt("display_order"));
 					task.setRequiredPersons(rs.getInt("required_persons"));
@@ -177,11 +175,8 @@ public class EventTaskDAO {
 	}
 
 	private void fetchTaskAssociations(Connection conn, Map<Integer, EventTask> tasksById) throws SQLException {
-		String taskIds = tasksById.keySet().stream().map(String::valueOf)
-				.collect(java.util.stream.Collectors.joining(","));
-
-		// Fetch assigned users
-		String userSql = "SELECT ta.task_id, u.id, u.username, u.role_id, u.chat_color FROM event_task_assignments ta JOIN users u ON ta.user_id = u.id WHERE ta.task_id IN ("
+		String taskIds = tasksById.keySet().stream().map(String::valueOf).collect(Collectors.joining(","));
+		String userSql = "SELECT ta.task_id, u.id, u.username FROM event_task_assignments ta JOIN users u ON ta.user_id = u.id WHERE ta.task_id IN ("
 				+ taskIds + ")";
 		try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(userSql)) {
 			while (rs.next()) {
@@ -191,8 +186,6 @@ public class EventTaskDAO {
 				tasksById.get(rs.getInt("task_id")).getAssignedUsers().add(user);
 			}
 		}
-
-		// Fetch required items
 		String itemSql = "SELECT tsi.task_id, si.id, si.name, tsi.quantity FROM event_task_storage_items tsi JOIN storage_items si ON tsi.item_id = si.id WHERE tsi.task_id IN ("
 				+ taskIds + ")";
 		try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(itemSql)) {
@@ -200,12 +193,10 @@ public class EventTaskDAO {
 				StorageItem item = new StorageItem();
 				item.setId(rs.getInt("id"));
 				item.setName(rs.getString("name"));
-				item.setQuantity(rs.getInt("quantity")); // Repurpose to store required quantity
+				item.setQuantity(rs.getInt("quantity"));
 				tasksById.get(rs.getInt("task_id")).getRequiredItems().add(item);
 			}
 		}
-
-		// Fetch required kits
 		String kitSql = "SELECT tk.task_id, ik.id, ik.name FROM event_task_kits tk JOIN inventory_kits ik ON tk.kit_id = ik.id WHERE tk.task_id IN ("
 				+ taskIds + ")";
 		try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(kitSql)) {
@@ -218,11 +209,8 @@ public class EventTaskDAO {
 		}
 	}
 
-	// --- Other Action Methods ---
-
 	public boolean deleteTask(int taskId) {
 		String sql = "DELETE FROM event_tasks WHERE id = ?";
-		logger.warn("Attempting to delete task with ID: {}", taskId);
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, taskId);
 			return pstmt.executeUpdate() > 0;
@@ -245,7 +233,6 @@ public class EventTaskDAO {
 	}
 
 	public boolean claimTask(int taskId, int userId) {
-		// This query ensures a user can't claim a full task
 		String sql = "INSERT INTO event_task_assignments (task_id, user_id) " + "SELECT ?, ? FROM event_tasks "
 				+ "WHERE id = ? AND required_persons > (SELECT COUNT(*) FROM event_task_assignments WHERE task_id = ?)";
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -255,10 +242,9 @@ public class EventTaskDAO {
 			pstmt.setInt(4, taskId);
 			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
-			// Catch potential duplicate key error if user tries to claim twice
 			if (e.getErrorCode() == 1062) {
 				logger.warn("User {} already claimed task {}.", userId, taskId);
-				return true; // The desired state is achieved
+				return true;
 			}
 			logger.error("Error claiming task {} for user {}", taskId, userId, e);
 			return false;
@@ -277,7 +263,6 @@ public class EventTaskDAO {
 		}
 	}
 
-	// Legacy method for dashboard
 	public List<EventTask> getOpenTasksForUser(int userId) {
 		List<EventTask> tasks = new ArrayList<>();
 		String sql = "SELECT t.*, e.name as event_name " + "FROM event_tasks t "

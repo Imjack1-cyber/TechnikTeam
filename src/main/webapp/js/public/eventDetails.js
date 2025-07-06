@@ -4,20 +4,18 @@ document.addEventListener('DOMContentLoaded', () => {
 	const currentUserId = document.body.dataset.userId || '';
 	const isAdmin = document.body.dataset.isAdmin === 'true';
 
-	// --- Task Management ---
 	const taskModal = document.getElementById('task-modal');
 	if (taskModal) {
-		// --- DATA ---
 		const allUsers = JSON.parse(document.getElementById('allUsersData')?.textContent || '[]');
 		const allItems = JSON.parse(document.getElementById('allItemsData')?.textContent || '[]');
 		const allKits = JSON.parse(document.getElementById('allKitsData')?.textContent || '[]');
 		const allTasks = JSON.parse(document.getElementById('allTasksData')?.textContent || '[]');
 
-		// --- MODAL ELEMENTS ---
 		const form = document.getElementById('task-modal-form');
 		const title = document.getElementById('task-modal-title');
 		const taskIdInput = document.getElementById('task-id-modal');
 		const descInput = document.getElementById('task-description-modal');
+		const detailsInput = document.getElementById('task-details-modal'); // New details input
 		const orderInput = document.getElementById('task-display-order-modal');
 		const statusGroup = document.getElementById('task-status-group');
 		const statusInput = document.getElementById('task-status-modal');
@@ -32,7 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		const itemsContainer = document.getElementById('task-items-container');
 		const kitsContainer = document.getElementById('task-kits-container');
 
-		// --- DYNAMIC ROW CREATION ---
 		const createRow = (container, onRemove) => {
 			const row = document.createElement('div');
 			row.className = 'dynamic-row';
@@ -82,7 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			row.prepend(select);
 		};
 
-		// --- MODAL LOGIC ---
 		const openModal = () => taskModal.classList.add('active');
 		const closeModal = () => taskModal.classList.remove('active');
 
@@ -121,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 				taskIdInput.value = task.id;
 				descInput.value = task.description;
+				detailsInput.value = task.details || ''; // Populate details field
 				orderInput.value = task.displayOrder;
 				statusInput.value = task.status;
 
@@ -137,8 +134,8 @@ document.addEventListener('DOMContentLoaded', () => {
 					});
 				}
 
-				task.requiredItems.forEach(item => addItemRow({ id: item.id, quantity: item.quantity }));
-				task.requiredKits.forEach(kit => addKitRow({ id: kit.id }));
+				task.requiredItems?.forEach(item => addItemRow({ id: item.id, quantity: item.quantity }));
+				task.requiredKits?.forEach(kit => addKitRow({ id: kit.id }));
 				openModal();
 			});
 		});
@@ -161,28 +158,49 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 		});
 
-		document.getElementById('add-task-item-btn').addEventListener('click', () => addItemRow());
-		document.getElementById('add-task-kit-btn').addEventListener('click', () => addKitRow());
-		taskModal.querySelector('.modal-close-btn').addEventListener('click', closeModal);
+		document.body.addEventListener('click', e => {
+			const addItemBtn = e.target.closest('#add-task-item-btn');
+			const addKitBtn = e.target.closest('#add-task-kit-btn');
 
-		// --- USER ACTIONS ---
-		document.querySelectorAll('.mark-task-done-btn').forEach(btn => {
-			btn.addEventListener('click', () => {
-				const taskId = btn.dataset.taskId;
-				const form = new FormData();
-				form.append('action', 'updateStatus');
-				form.append('taskId', taskId);
-				form.append('status', 'ERLEDIGT');
-				fetch(`${contextPath}/task-action`, { method: 'POST', body: form })
+			if (addItemBtn) {
+				addItemRow();
+			}
+			if (addKitBtn) {
+				addKitRow();
+			}
+		});
+
+		taskModal.querySelector('.modal-close-btn').addEventListener('click', closeModal);
+	}
+
+	const taskListContainer = document.getElementById('task-list-container');
+	if (taskListContainer) {
+		taskListContainer.addEventListener('click', (e) => {
+			const markDoneBtn = e.target.closest('.mark-task-done-btn');
+			if (markDoneBtn) {
+				const taskId = markDoneBtn.dataset.taskId;
+				const params = new URLSearchParams();
+				params.append('action', 'updateStatus');
+				params.append('taskId', taskId);
+				params.append('status', 'ERLEDIGT');
+
+				fetch(`${contextPath}/task-action`, {
+					method: 'POST',
+					body: params
+				})
 					.then(response => {
 						if (response.ok) window.location.reload();
 						else alert('Fehler beim Aktualisieren der Aufgabe.');
+					})
+					.catch(error => {
+						console.error("Error updating task status:", error);
+						alert('Netzwerkfehler beim Aktualisieren der Aufgabe.');
 					});
-			});
+			}
 		});
 	}
 
-	// --- Chat Management ---
+	// --- Chat Management (unchanged) ---
 	const chatBox = document.getElementById('chat-box');
 	if (chatBox) {
 		const chatForm = document.getElementById('chat-form');

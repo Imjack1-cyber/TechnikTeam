@@ -218,29 +218,11 @@
 	<jsp:include page="/WEB-INF/jspf/task_modal.jspf" />
 </c:if>
 
-<%-- Embed data for JavaScript. This is the safest way to pass data. --%>
-<div id="allUsersData" style="display: none;">
-	[
-	<c:forEach var="u" items="${assignedUsers}" varStatus="loop">{"id":${u.id},"username":"<c:out
-			value="${u.username}" />"}<c:if test="${not loop.last}">,</c:if>
-	</c:forEach>
-	]
-</div>
-<div id="allItemsData" style="display: none;">
-	[
-	<c:forEach var="i" items="${allItems}" varStatus="loop">{"id":${i.id},"name":"<c:out
-			value="${fn:escapeXml(i.name)}" />", "availableQuantity": ${i.availableQuantity}}<c:if
-			test="${not loop.last}">,</c:if>
-	</c:forEach>
-	]
-</div>
-<div id="allKitsData" style="display: none;">
-	[
-	<c:forEach var="k" items="${allKits}" varStatus="loop">{"id":${k.id},"name":"<c:out
-			value="${fn:escapeXml(k.name)}" />"}<c:if test="${not loop.last}">,</c:if>
-	</c:forEach>
-	]
-</div>
+<%-- DEFINITIVE FIX: Removed <c:out> which was corrupting the JSON.
+     Directly output the JSON string into the div's content. --%>
+<div id="allUsersData" style="display: none;">${assignedUsersJson}</div>
+<div id="allItemsData" style="display: none;">${allItemsJson}</div>
+<div id="allKitsData" style="display: none;">${allKitsJson}</div>
 <div id="allTasksData" style="display: none;">${tasksJson}</div>
 
 

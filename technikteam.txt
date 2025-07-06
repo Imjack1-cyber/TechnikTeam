@@ -1539,118 +1539,227 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 package de.technikteam.dao;
 
 import de.technikteam.model.EventTask;
+import de.technikteam.model.InventoryKit;
+import de.technikteam.model.StorageItem;
+import de.technikteam.model.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
-/**
- * Data Access Object for managing event-specific tasks in the `event_tasks`
- * table. It handles creating, assigning, updating status, and deleting tasks
- * associated with a "running" event.
- */
 public class EventTaskDAO {
 	private static final Logger logger = LogManager.getLogger(EventTaskDAO.class);
 
-	/**
-	 * Creates a new task for an event.
-	 * 
-	 * @param task The EventTask object to create.
-	 * @return The ID of the newly created task, or 0 on failure.
-	 */
-	public int createTask(EventTask task) {
-		String sql = "INSERT INTO event_tasks (event_id, description, status) VALUES (?, ?, 'OFFEN')";
-		logger.debug("Creating new task '{}' for event ID {}", task.getDescription(), task.getEventId());
-		try (Connection conn = DatabaseManager.getConnection();
-				PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-			pstmt.setInt(1, task.getEventId());
-			pstmt.setString(2, task.getDescription());
-			if (pstmt.executeUpdate() > 0) {
-				try (ResultSet rs = pstmt.getGeneratedKeys()) {
-					if (rs.next()) {
-						int taskId = rs.getInt(1);
-						logger.info("Created task '{}' with ID {} for event {}", task.getDescription(), taskId,
-								task.getEventId());
-						return taskId;
-					}
-				}
-			}
-		} catch (SQLException e) {
-			logger.error("Error creating task for event {}", task.getEventId(), e);
-		}
-		return 0;
-	}
+	public int saveTask(EventTask task, int[] userIds, String[] itemIds, String[] itemQuantities, String[] kitIds) {
+		boolean isUpdate = task.getId() > 0;
+		String taskSql = isUpdate
+				? "UPDATE event_tasks SET description = ?, details = ?, status = ?, display_order = ?, required_persons = ? WHERE id = ?"
+				: "INSERT INTO event_tasks (event_id, description, details, status, display_order, required_persons) VALUES (?, ?, ?, 'OFFEN', ?, ?)";
 
-	/**
-	 * Assigns a task to one or more users. This is a transactional operation that
-	 * first clears all existing assignments for the task and then adds the new
-	 * ones.
-	 * 
-	 * @param taskId  The ID of the task.
-	 * @param userIds The array of user IDs to assign to the task.
-	 */
-	public void assignTaskToUsers(int taskId, int[] userIds) {
-		String deleteSql = "DELETE FROM event_task_assignments WHERE task_id = ?";
-		String insertSql = "INSERT INTO event_task_assignments (task_id, user_id) VALUES (?, ?)";
-		logger.debug("Assigning task ID {} to {} users.", taskId, userIds != null ? userIds.length : 0);
 		Connection conn = null;
 		try {
 			conn = DatabaseManager.getConnection();
-			conn.setAutoCommit(false); // Start transaction
+			conn.setAutoCommit(false);
 
-			// 1. Delete old assignments
-			try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
-				deleteStmt.setInt(1, taskId);
-				deleteStmt.executeUpdate();
-			}
-
-			// 2. Insert new assignments
-			if (userIds != null && userIds.length > 0) {
-				try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
-					for (int userId : userIds) {
-						insertStmt.setInt(1, taskId);
-						insertStmt.setInt(2, userId);
-						insertStmt.addBatch();
+			try (PreparedStatement pstmt = conn.prepareStatement(taskSql, Statement.RETURN_GENERATED_KEYS)) {
+				if (isUpdate) {
+					pstmt.setString(1, task.getDescription());
+					pstmt.setString(2, task.getDetails());
+					pstmt.setString(3, task.getStatus());
+					pstmt.setInt(4, task.getDisplayOrder());
+					pstmt.setInt(5, task.getRequiredPersons());
+					pstmt.setInt(6, task.getId());
+					pstmt.executeUpdate();
+				} else {
+					pstmt.setInt(1, task.getEventId());
+					pstmt.setString(2, task.getDescription());
+					pstmt.setString(3, task.getDetails());
+					pstmt.setInt(4, task.getDisplayOrder());
+					pstmt.setInt(5, task.getRequiredPersons());
+					pstmt.executeUpdate();
+					try (ResultSet rs = pstmt.getGeneratedKeys()) {
+						if (rs.next()) {
+							task.setId(rs.getInt(1));
+						}
 					}
-					insertStmt.executeBatch();
 				}
 			}
 
-			conn.commit(); // Commit transaction
-			logger.info("Successfully assigned task {} to {} users.", taskId, userIds != null ? userIds.length : 0);
-		} catch (SQLException e) {
-			logger.error("Error during transaction for assigning task {}. Rolling back.", taskId, e);
-			if (conn != null) {
+			int taskId = task.getId();
+			if (taskId == 0)
+				throw new SQLException("Failed to create task, no ID obtained.");
+
+			clearAssociations(conn, taskId);
+			saveUserAssignments(conn, taskId, userIds);
+			saveItemRequirements(conn, taskId, itemIds, itemQuantities);
+			saveKitRequirements(conn, taskId, kitIds);
+
+			conn.commit();
+			logger.info("Successfully saved task ID {}", taskId);
+			return taskId;
+
+		} catch (SQLException | NumberFormatException e) {
+			logger.error("Error saving task transaction. Rolling back.", e);
+			if (conn != null)
 				try {
 					conn.rollback();
 				} catch (SQLException ex) {
-					logger.error("Failed to rollback transaction for task assignment.", ex);
+					logger.error("Rollback failed.", ex);
 				}
-			}
+			return 0;
 		} finally {
-			if (conn != null) {
+			if (conn != null)
 				try {
 					conn.setAutoCommit(true);
 					conn.close();
 				} catch (SQLException ex) {
-					logger.error("Failed to close connection after task assignment transaction.", ex);
+					logger.error("Failed to close connection.", ex);
 				}
+		}
+	}
+
+	private void clearAssociations(Connection conn, int taskId) throws SQLException {
+		try (Statement stmt = conn.createStatement()) {
+			stmt.addBatch("DELETE FROM event_task_assignments WHERE task_id = " + taskId);
+			stmt.addBatch("DELETE FROM event_task_storage_items WHERE task_id = " + taskId);
+			stmt.addBatch("DELETE FROM event_task_kits WHERE task_id = " + taskId);
+			stmt.executeBatch();
+		}
+	}
+
+	private void saveUserAssignments(Connection conn, int taskId, int[] userIds) throws SQLException {
+		if (userIds != null && userIds.length > 0) {
+			String sql = "INSERT INTO event_task_assignments (task_id, user_id) VALUES (?, ?)";
+			try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+				for (int userId : userIds) {
+					pstmt.setInt(1, taskId);
+					pstmt.setInt(2, userId);
+					pstmt.addBatch();
+				}
+				pstmt.executeBatch();
 			}
 		}
 	}
 
-	/**
-	 * Updates the status of a task (e.g., from "OFFEN" to "ERLEDIGT").
-	 * 
-	 * @param taskId The ID of the task.
-	 * @param status The new status string.
-	 * @return true if the update was successful.
-	 */
+	private void saveItemRequirements(Connection conn, int taskId, String[] itemIds, String[] itemQuantities)
+			throws SQLException, NumberFormatException {
+		if (itemIds != null && itemQuantities != null && itemIds.length == itemQuantities.length) {
+			String sql = "INSERT INTO event_task_storage_items (task_id, item_id, quantity) VALUES (?, ?, ?)";
+			try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+				for (int i = 0; i < itemIds.length; i++) {
+					if (!itemIds[i].isEmpty()) {
+						pstmt.setInt(1, taskId);
+						pstmt.setInt(2, Integer.parseInt(itemIds[i]));
+						pstmt.setInt(3, Integer.parseInt(itemQuantities[i]));
+						pstmt.addBatch();
+					}
+				}
+				pstmt.executeBatch();
+			}
+		}
+	}
+
+	private void saveKitRequirements(Connection conn, int taskId, String[] kitIds)
+			throws SQLException, NumberFormatException {
+		if (kitIds != null && kitIds.length > 0) {
+			String sql = "INSERT INTO event_task_kits (task_id, kit_id) VALUES (?, ?)";
+			try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+				for (String kitId : kitIds) {
+					if (!kitId.isEmpty()) {
+						pstmt.setInt(1, taskId);
+						pstmt.setInt(2, Integer.parseInt(kitId));
+						pstmt.addBatch();
+					}
+				}
+				pstmt.executeBatch();
+			}
+		}
+	}
+
+	public List<EventTask> getTasksForEvent(int eventId) {
+		Map<Integer, EventTask> tasksById = new HashMap<>();
+		String sql = "SELECT t.* FROM event_tasks t WHERE t.event_id = ? ORDER BY t.display_order ASC, t.id ASC";
+
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, eventId);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					EventTask task = new EventTask();
+					task.setId(rs.getInt("id"));
+					task.setEventId(rs.getInt("event_id"));
+					task.setDescription(rs.getString("description"));
+					task.setDetails(rs.getString("details"));
+					task.setStatus(rs.getString("status"));
+					task.setDisplayOrder(rs.getInt("display_order"));
+					task.setRequiredPersons(rs.getInt("required_persons"));
+					task.setAssignedUsers(new ArrayList<>());
+					task.setRequiredItems(new ArrayList<>());
+					task.setRequiredKits(new ArrayList<>());
+					tasksById.put(task.getId(), task);
+				}
+			}
+			if (!tasksById.isEmpty()) {
+				fetchTaskAssociations(conn, tasksById);
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching tasks for event {}", eventId, e);
+		}
+		return new ArrayList<>(tasksById.values());
+	}
+
+	private void fetchTaskAssociations(Connection conn, Map<Integer, EventTask> tasksById) throws SQLException {
+		String taskIds = tasksById.keySet().stream().map(String::valueOf).collect(Collectors.joining(","));
+		String userSql = "SELECT ta.task_id, u.id, u.username FROM event_task_assignments ta JOIN users u ON ta.user_id = u.id WHERE ta.task_id IN ("
+				+ taskIds + ")";
+		try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(userSql)) {
+			while (rs.next()) {
+				User user = new User();
+				user.setId(rs.getInt("id"));
+				user.setUsername(rs.getString("username"));
+				tasksById.get(rs.getInt("task_id")).getAssignedUsers().add(user);
+			}
+		}
+		String itemSql = "SELECT tsi.task_id, si.id, si.name, tsi.quantity FROM event_task_storage_items tsi JOIN storage_items si ON tsi.item_id = si.id WHERE tsi.task_id IN ("
+				+ taskIds + ")";
+		try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(itemSql)) {
+			while (rs.next()) {
+				StorageItem item = new StorageItem();
+				item.setId(rs.getInt("id"));
+				item.setName(rs.getString("name"));
+				item.setQuantity(rs.getInt("quantity"));
+				tasksById.get(rs.getInt("task_id")).getRequiredItems().add(item);
+			}
+		}
+		String kitSql = "SELECT tk.task_id, ik.id, ik.name FROM event_task_kits tk JOIN inventory_kits ik ON tk.kit_id = ik.id WHERE tk.task_id IN ("
+				+ taskIds + ")";
+		try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(kitSql)) {
+			while (rs.next()) {
+				InventoryKit kit = new InventoryKit();
+				kit.setId(rs.getInt("id"));
+				kit.setName(rs.getString("name"));
+				tasksById.get(rs.getInt("task_id")).getRequiredKits().add(kit);
+			}
+		}
+	}
+
+	public boolean deleteTask(int taskId) {
+		String sql = "DELETE FROM event_tasks WHERE id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, taskId);
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("Error deleting task {}", taskId, e);
+			return false;
+		}
+	}
+
 	public boolean updateTaskStatus(int taskId, String status) {
 		String sql = "UPDATE event_tasks SET status = ? WHERE id = ?";
-		logger.debug("Updating status for task ID {} to '{}'", taskId, status);
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, status);
 			pstmt.setInt(2, taskId);
@@ -1661,59 +1770,35 @@ public class EventTaskDAO {
 		}
 	}
 
-	/**
-	 * Deletes a task and its assignments (due to database foreign key constraints).
-	 * 
-	 * @param taskId The ID of the task to delete.
-	 * @return true if successful.
-	 */
-	public boolean deleteTask(int taskId) {
-		String sql = "DELETE FROM event_tasks WHERE id = ?";
-		logger.warn("Attempting to delete task with ID: {}", taskId);
+	public boolean claimTask(int taskId, int userId) {
+		String sql = "INSERT INTO event_task_assignments (task_id, user_id) " + "SELECT ?, ? FROM event_tasks "
+				+ "WHERE id = ? AND required_persons > (SELECT COUNT(*) FROM event_task_assignments WHERE task_id = ?)";
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, taskId);
+			pstmt.setInt(2, userId);
+			pstmt.setInt(3, taskId);
+			pstmt.setInt(4, taskId);
 			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
-			logger.error("Error deleting task {}", taskId, e);
+			if (e.getErrorCode() == 1062) {
+				logger.warn("User {} already claimed task {}.", userId, taskId);
+				return true;
+			}
+			logger.error("Error claiming task {} for user {}", taskId, userId, e);
 			return false;
 		}
 	}
 
-	/**
-	 * Fetches all tasks for a given event, including a comma-separated list of
-	 * usernames of assigned users for easy display.
-	 * 
-	 * @param eventId The event's ID.
-	 * @return A list of EventTask objects.
-	 */
-	public List<EventTask> getTasksForEvent(int eventId) {
-		List<EventTask> tasks = new ArrayList<>();
-		// This query uses GROUP_CONCAT to aggregate assigned usernames into a single
-		// string
-		String sql = "SELECT t.id, t.event_id, t.description, t.status, "
-				+ "GROUP_CONCAT(u.username SEPARATOR ', ') as assigned_usernames " + "FROM event_tasks t "
-				+ "LEFT JOIN event_task_assignments ta ON t.id = ta.task_id "
-				+ "LEFT JOIN users u ON ta.user_id = u.id " + "WHERE t.event_id = ? "
-				+ "GROUP BY t.id, t.event_id, t.description, t.status " + "ORDER BY t.id";
-		logger.debug("Fetching all tasks for event ID: {}", eventId);
+	public boolean unclaimTask(int taskId, int userId) {
+		String sql = "DELETE FROM event_task_assignments WHERE task_id = ? AND user_id = ?";
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, eventId);
-			try (ResultSet rs = pstmt.executeQuery()) {
-				while (rs.next()) {
-					EventTask task = new EventTask();
-					task.setId(rs.getInt("id"));
-					task.setEventId(rs.getInt("event_id"));
-					task.setDescription(rs.getString("description"));
-					task.setStatus(rs.getString("status"));
-					task.setAssignedUsernames(rs.getString("assigned_usernames"));
-					tasks.add(task);
-				}
-				logger.info("Found {} tasks for event ID: {}", tasks.size(), eventId);
-			}
+			pstmt.setInt(1, taskId);
+			pstmt.setInt(2, userId);
+			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
-			logger.error("Error fetching tasks for event {}", eventId, e);
+			logger.error("Error unclaiming task {} for user {}", taskId, userId, e);
+			return false;
 		}
-		return tasks;
 	}
 
 	public List<EventTask> getOpenTasksForUser(int userId) {
@@ -2219,16 +2304,26 @@ public class InventoryKitDAO {
 	}
 
 	public boolean updateKit(InventoryKit kit) {
-		String sql = "UPDATE inventory_kits SET name = ?, description = ? WHERE id = ?";
+		String sql = "UPDATE inventory_kits SET name = ?, description = ?, location = ? WHERE id = ?";
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, kit.getName());
 			pstmt.setString(2, kit.getDescription());
-			pstmt.setInt(3, kit.getId());
+			pstmt.setString(3, kit.getLocation());
+			pstmt.setInt(4, kit.getId());
 			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
 			logger.error("Error updating inventory kit ID {}", kit.getId(), e);
 			return false;
 		}
+	}
+
+	private InventoryKit mapResultSetToKit(ResultSet rs) throws SQLException {
+		InventoryKit kit = new InventoryKit();
+		kit.setId(rs.getInt("id"));
+		kit.setName(rs.getString("name"));
+		kit.setDescription(rs.getString("description"));
+		kit.setLocation(rs.getString("location")); // CHANGED
+		return kit;
 	}
 
 	public InventoryKit getKitById(int kitId) {
@@ -2237,11 +2332,7 @@ public class InventoryKitDAO {
 			pstmt.setInt(1, kitId);
 			try (ResultSet rs = pstmt.executeQuery()) {
 				if (rs.next()) {
-					InventoryKit kit = new InventoryKit();
-					kit.setId(rs.getInt("id"));
-					kit.setName(rs.getString("name"));
-					kit.setDescription(rs.getString("description"));
-					return kit;
+					return mapResultSetToKit(rs);
 				}
 			}
 		} catch (SQLException e) {
@@ -2268,11 +2359,7 @@ public class InventoryKitDAO {
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
 			while (rs.next()) {
-				InventoryKit kit = new InventoryKit();
-				kit.setId(rs.getInt("id"));
-				kit.setName(rs.getString("name"));
-				kit.setDescription(rs.getString("description"));
-				kits.add(kit);
+				kits.add(mapResultSetToKit(rs));
 			}
 		} catch (SQLException e) {
 			logger.error("Error fetching all inventory kits", e);
@@ -2302,29 +2389,61 @@ public class InventoryKitDAO {
 		return items;
 	}
 
-	public boolean addItemToKit(int kitId, int itemId, int quantity) {
-		String sql = "INSERT INTO inventory_kit_items (kit_id, item_id, quantity) VALUES (?, ?, ?) "
-				+ "ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, kitId);
-			pstmt.setInt(2, itemId);
-			pstmt.setInt(3, quantity);
-			return pstmt.executeUpdate() > 0;
-		} catch (SQLException e) {
-			logger.error("Error adding item {} to kit {}", itemId, kitId, e);
-			return false;
-		}
-	}
+	public boolean updateKitItems(int kitId, String[] itemIds, String[] quantities) {
+		String deleteSql = "DELETE FROM inventory_kit_items WHERE kit_id = ?";
+		String insertSql = "INSERT INTO inventory_kit_items (kit_id, item_id, quantity) VALUES (?, ?, ?)";
+		Connection conn = null;
 
-	public boolean removeItemFromKit(int kitId, int itemId) {
-		String sql = "DELETE FROM inventory_kit_items WHERE kit_id = ? AND item_id = ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, kitId);
-			pstmt.setInt(2, itemId);
-			return pstmt.executeUpdate() > 0;
-		} catch (SQLException e) {
-			logger.error("Error removing item {} from kit {}", itemId, kitId, e);
+		try {
+			conn = DatabaseManager.getConnection();
+			conn.setAutoCommit(false); // Start transaction
+
+			try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
+				deleteStmt.setInt(1, kitId);
+				deleteStmt.executeUpdate();
+			}
+
+			if (itemIds != null && quantities != null && itemIds.length == quantities.length) {
+				try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
+					for (int i = 0; i < itemIds.length; i++) {
+						if (itemIds[i] == null || itemIds[i].isEmpty()) {
+							continue;
+						}
+						int itemId = Integer.parseInt(itemIds[i]);
+						int quantity = Integer.parseInt(quantities[i]);
+						if (quantity > 0) {
+							insertStmt.setInt(1, kitId);
+							insertStmt.setInt(2, itemId);
+							insertStmt.setInt(3, quantity);
+							insertStmt.addBatch();
+						}
+					}
+					insertStmt.executeBatch();
+				}
+			}
+
+			conn.commit(); // Commit transaction
+			logger.info("Successfully updated items for kit ID: {}", kitId);
+			return true;
+		} catch (SQLException | NumberFormatException e) {
+			logger.error("Error during transaction for updating kit items for kit ID {}. Rolling back.", kitId, e);
+			if (conn != null) {
+				try {
+					conn.rollback();
+				} catch (SQLException ex) {
+					logger.error("Failed to rollback transaction.", ex);
+				}
+			}
 			return false;
+		} finally {
+			if (conn != null) {
+				try {
+					conn.setAutoCommit(true);
+					conn.close();
+				} catch (SQLException ex) {
+					logger.error("Failed to close connection after kit item update.", ex);
+				}
+			}
 		}
 	}
 }
@@ -3330,30 +3449,33 @@ public class StorageDAO {
 		}
 	}
 
-	public boolean updateItemHolderAndStatus(int itemId, String status, Integer userId, Integer eventId)
-			throws SQLException {
-		String sql = "UPDATE storage_items SET status = ?, current_holder_user_id = ?, assigned_event_id = ? WHERE id = ?";
+	public boolean performCheckout(int itemId, int quantity, int userId, Integer eventId) throws SQLException {
+		String sql = "UPDATE storage_items "
+				+ "SET quantity = quantity - ?, status = 'CHECKED_OUT', current_holder_user_id = ?, assigned_event_id = ? "
+				+ "WHERE id = ? AND (quantity - defective_quantity) >= ?";
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setString(1, status);
-			if (userId != null)
-				pstmt.setInt(2, userId);
-			else
-				pstmt.setNull(2, Types.INTEGER);
-			if (eventId != null)
+			pstmt.setInt(1, quantity);
+			pstmt.setInt(2, userId);
+			if (eventId != null) {
 				pstmt.setInt(3, eventId);
-			else
+			} else {
 				pstmt.setNull(3, Types.INTEGER);
+			}
 			pstmt.setInt(4, itemId);
+			pstmt.setInt(5, quantity);
 			return pstmt.executeUpdate() > 0;
 		}
 	}
 
-	public boolean updateItemQuantity(int itemId, int quantityChange) throws SQLException {
-		String sql = "UPDATE storage_items SET quantity = quantity + ? WHERE id = ? AND quantity + ? >= defective_quantity";
+	public boolean performCheckin(int itemId, int quantity) throws SQLException {
+		// FIX: Simplified the query. The business logic now resides solely in the
+		// servlet.
+		String sql = "UPDATE storage_items "
+				+ "SET quantity = quantity + ?, status = 'IN_STORAGE', current_holder_user_id = NULL, assigned_event_id = NULL "
+				+ "WHERE id = ?";
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, quantityChange);
+			pstmt.setInt(1, quantity);
 			pstmt.setInt(2, itemId);
-			pstmt.setInt(3, quantityChange);
 			return pstmt.executeUpdate() > 0;
 		}
 	}
@@ -4045,7 +4167,8 @@ public class AuthenticationFilter implements Filter {
 	private static final Logger logger = LogManager.getLogger(AuthenticationFilter.class.getName());
 
 	// CORRECTION: This set should only contain the servlet paths, not JSP paths.
-	private static final Set<String> PUBLIC_PATHS = new HashSet<>(Arrays.asList("/login", "/logout"));
+	// ADDED: /pack-kit to allow access from QR codes.
+	private static final Set<String> PUBLIC_PATHS = new HashSet<>(Arrays.asList("/login", "/logout", "/pack-kit"));
 
 	// CORRECTION: The /error directory prefix is correct for allowing error pages.
 	// ADDED: /public to allow access to public APIs like the iCal feed.
@@ -4966,18 +5089,37 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.model;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
  * Represents a single task from the `event_tasks` table, associated with a
- * specific "running" event. It includes the task description, its status
- * ("OFFEN" or "ERLEDIGT"), and a transient field for displaying assigned users.
+ * specific "running" event. It includes the task description, its status,
+ * required personnel, ordering, and linked equipment.
  */
 public class EventTask {
 	private int id;
 	private int eventId;
 	private String description;
-	private String status; // e.g., "OFFEN" or "ERLEDIGT"
-	private String assignedUsernames; // Comma-separated list for display, not a direct table column
-	private String eventName; // For dashboard display
+	private String details; // NEW: For more detailed instructions
+	private String status;
+	private String eventName;
+
+	private int displayOrder;
+	private int requiredPersons;
+
+	private List<User> assignedUsers;
+	private List<StorageItem> requiredItems;
+	private List<InventoryKit> requiredKits;
+
+	private String assignedUsernames;
+
+	public String getAssignedUsernames() {
+		if (assignedUsers != null && !assignedUsers.isEmpty()) {
+			return assignedUsers.stream().map(User::getUsername).collect(Collectors.joining(", "));
+		}
+		return "Niemand";
+	}
 
 	// --- Getters and Setters ---
 
@@ -5005,16 +5147,20 @@ public class EventTask {
 		this.description = description;
 	}
 
+	public String getDetails() {
+		return details;
+	}
+
+	public void setDetails(String details) {
+		this.details = details;
+	}
+
 	public String getStatus() {
 		return status;
 	}
 
 	public void setStatus(String status) {
 		this.status = status;
-	}
-
-	public String getAssignedUsernames() {
-		return assignedUsernames;
 	}
 
 	public void setAssignedUsernames(String assignedUsernames) {
@@ -5027,6 +5173,46 @@ public class EventTask {
 
 	public void setEventName(String eventName) {
 		this.eventName = eventName;
+	}
+
+	public int getDisplayOrder() {
+		return displayOrder;
+	}
+
+	public void setDisplayOrder(int displayOrder) {
+		this.displayOrder = displayOrder;
+	}
+
+	public int getRequiredPersons() {
+		return requiredPersons;
+	}
+
+	public void setRequiredPersons(int requiredPersons) {
+		this.requiredPersons = requiredPersons;
+	}
+
+	public List<User> getAssignedUsers() {
+		return assignedUsers;
+	}
+
+	public void setAssignedUsers(List<User> assignedUsers) {
+		this.assignedUsers = assignedUsers;
+	}
+
+	public List<StorageItem> getRequiredItems() {
+		return requiredItems;
+	}
+
+	public void setRequiredItems(List<StorageItem> requiredItems) {
+		this.requiredItems = requiredItems;
+	}
+
+	public List<InventoryKit> getRequiredKits() {
+		return requiredKits;
+	}
+
+	public void setRequiredKits(List<InventoryKit> requiredKits) {
+		this.requiredKits = requiredKits;
 	}
 }
 
@@ -5284,6 +5470,7 @@ public class InventoryKit {
 	private int id;
 	private String name;
 	private String description;
+	private String location; // CHANGED: Replaced storageItemId with a simple text field
 
 	// Transient field for holding items when needed
 	private List<InventoryKitItem> items;
@@ -5319,6 +5506,14 @@ public class InventoryKit {
 
 	public void setItems(List<InventoryKitItem> items) {
 		this.items = items;
+	}
+
+	public String getLocation() {
+		return location;
+	}
+
+	public void setLocation(String location) {
+		this.location = location;
 	}
 }
 
@@ -7738,6 +7933,10 @@ public class AdminKitServlet extends HttpServlet {
 		}
 
 		List<InventoryKit> kits = kitDAO.getAllKits();
+		for (InventoryKit kit : kits) {
+			kit.setItems(kitDAO.getItemsForKit(kit.getId()));
+		}
+
 		List<StorageItem> allItems = storageDAO.getAllItems();
 		req.setAttribute("kits", kits);
 		req.setAttribute("allItems", allItems);
@@ -7775,11 +7974,8 @@ public class AdminKitServlet extends HttpServlet {
 			case "delete":
 				handleDeleteKit(req, adminUser);
 				break;
-			case "addItem":
-				handleAddItemToKit(req, adminUser);
-				break;
-			case "removeItem":
-				handleRemoveItemFromKit(req, adminUser);
+			case "updateKitItems":
+				handleUpdateKitItems(req, adminUser);
 				break;
 			default:
 				logger.warn("Unknown kit action: {}", action);
@@ -7812,6 +8008,8 @@ public class AdminKitServlet extends HttpServlet {
 		kit.setId(Integer.parseInt(req.getParameter("id")));
 		kit.setName(req.getParameter("name"));
 		kit.setDescription(req.getParameter("description"));
+		kit.setLocation(req.getParameter("location")); // CHANGED
+
 		if (kitDAO.updateKit(kit)) {
 			AdminLogService.log(adminUser.getUsername(), "UPDATE_KIT",
 					"Kit '" + kit.getName() + "' (ID: " + kit.getId() + ") aktualisiert.");
@@ -7833,28 +8031,17 @@ public class AdminKitServlet extends HttpServlet {
 		}
 	}
 
-	private void handleAddItemToKit(HttpServletRequest req, User adminUser) {
+	private void handleUpdateKitItems(HttpServletRequest req, User adminUser) {
 		int kitId = Integer.parseInt(req.getParameter("kitId"));
-		int itemId = Integer.parseInt(req.getParameter("itemId"));
-		int quantity = Integer.parseInt(req.getParameter("quantity"));
-		if (kitDAO.addItemToKit(kitId, itemId, quantity)) {
-			AdminLogService.log(adminUser.getUsername(), "ADD_ITEM_TO_KIT",
-					quantity + "x Item ID " + itemId + " zu Kit ID " + kitId + " hinzugefügt.");
-			req.getSession().setAttribute("successMessage", "Artikel zum Kit hinzugefügt.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Artikel konnte nicht zum Kit hinzugefügt werden.");
-		}
-	}
+		String[] itemIds = req.getParameterValues("itemIds");
+		String[] quantities = req.getParameterValues("quantities");
 
-	private void handleRemoveItemFromKit(HttpServletRequest req, User adminUser) {
-		int kitId = Integer.parseInt(req.getParameter("kitId"));
-		int itemId = Integer.parseInt(req.getParameter("itemId"));
-		if (kitDAO.removeItemFromKit(kitId, itemId)) {
-			AdminLogService.log(adminUser.getUsername(), "REMOVE_ITEM_FROM_KIT",
-					"Item ID " + itemId + " aus Kit ID " + kitId + " entfernt.");
-			req.getSession().setAttribute("successMessage", "Artikel aus Kit entfernt.");
+		if (kitDAO.updateKitItems(kitId, itemIds, quantities)) {
+			AdminLogService.log(adminUser.getUsername(), "UPDATE_KIT_ITEMS",
+					"Inhalt für Kit ID " + kitId + " aktualisiert.");
+			req.getSession().setAttribute("successMessage", "Kit-Inhalt erfolgreich gespeichert.");
 		} else {
-			req.getSession().setAttribute("errorMessage", "Artikel konnte nicht aus Kit entfernt werden.");
+			req.getSession().setAttribute("errorMessage", "Fehler beim Speichern des Kit-Inhalts.");
 		}
 	}
 }
@@ -8637,7 +8824,6 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 package de.technikteam.servlet.admin;
 
 import de.technikteam.dao.EventTaskDAO;
-import de.technikteam.dao.UserDAO;
 import de.technikteam.model.EventTask;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
@@ -8650,29 +8836,17 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 
-/**
- * Mapped to `/admin/tasks`, this servlet manages administrative actions for
- * event tasks. It handles POST requests for creating and assigning tasks, and
- * DELETE requests for removing them. All actions are logged to the admin audit
- * trail. It's designed to be called via forms or AJAX from the event details
- * page.
- */
 @WebServlet("/admin/tasks")
 public class AdminTaskServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminTaskServlet.class);
 	private EventTaskDAO taskDAO;
-	private UserDAO userDAO;
 
 	@Override
 	public void init() {
 		taskDAO = new EventTaskDAO();
-		userDAO = new UserDAO();
 	}
 
 	@Override
@@ -8680,88 +8854,76 @@ public class AdminTaskServlet extends HttpServlet {
 			throws ServletException, IOException {
 		request.setCharacterEncoding("UTF-8");
 		String action = request.getParameter("action");
-		logger.debug("AdminTaskServlet received POST with action: {}", action);
-
-		switch (action) {
-		case "create":
-			handleCreateTask(request, response);
-			break;
-		case "assign":
-			handleAssignTask(request, response);
-			break;
-		default:
-			logger.warn("Unknown POST action received: {}", action);
-			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unknown action");
-			break;
-		}
-	}
-
-	private void handleCreateTask(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		User adminUser = (User) request.getSession().getAttribute("user");
 		int eventId = Integer.parseInt(request.getParameter("eventId"));
-		String description = request.getParameter("description");
-		logger.info("Creating new task '{}' for event ID {}", description, eventId);
 
-		EventTask newTask = new EventTask();
-		newTask.setEventId(eventId);
-		newTask.setDescription(description);
-
-		int newTaskId = taskDAO.createTask(newTask);
-		if (newTaskId > 0) {
-			AdminLogService.log(adminUser.getUsername(), "CREATE_TASK",
-					"Aufgabe '" + description + "' (ID: " + newTaskId + ") für Event-ID " + eventId + " erstellt.");
-		}
-		response.sendRedirect(request.getContextPath() + "/veranstaltungen/details?id=" + eventId);
-	}
-
-	private void handleAssignTask(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		int eventId = Integer.parseInt(request.getParameter("eventId"));
-		int taskId = Integer.parseInt(request.getParameter("taskId"));
-		String[] userIdsStr = request.getParameterValues("userIds");
-		int[] userIds = userIdsStr == null ? new int[0]
-				: Arrays.stream(userIdsStr).mapToInt(Integer::parseInt).toArray();
-
-		logger.info("Assigning task ID {} to {} users for event ID {}", taskId, userIds.length, eventId);
-		taskDAO.assignTaskToUsers(taskId, userIds);
-
-		String assignedUsersString;
-		if (userIds.length > 0) {
-			List<String> usernames = new ArrayList<>();
-			for (int userId : userIds) {
-				User u = userDAO.getUserById(userId);
-				if (u != null) {
-					usernames.add(u.getUsername());
-				} else {
-					usernames.add("ID:" + userId);
-				}
-			}
-			assignedUsersString = String.join(", ", usernames);
-		} else {
-			assignedUsersString = "niemandem";
-		}
-
-		AdminLogService.log(adminUser.getUsername(), "ASSIGN_TASK",
-				"Aufgabe (ID: " + taskId + ") für Event-ID " + eventId + " an " + assignedUsersString + " zugewiesen.");
-
-		response.sendRedirect(request.getContextPath() + "/veranstaltungen/details?id=" + eventId);
-	}
-
-	@Override
-	protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		User adminUser = (User) req.getSession().getAttribute("user");
 		try {
-			int taskId = Integer.parseInt(req.getParameter("taskId"));
-			logger.warn("Attempting to delete task ID {} by user '{}'", taskId, adminUser.getUsername());
-			if (taskDAO.deleteTask(taskId)) {
-				AdminLogService.log(adminUser.getUsername(), "DELETE_TASK", "Aufgabe mit ID " + taskId + " gelöscht.");
-				resp.setStatus(HttpServletResponse.SC_OK);
-			} else {
-				resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+			switch (action) {
+			case "save":
+				handleSaveTask(request, adminUser, eventId);
+				break;
+			case "delete":
+				handleDelete(request, adminUser);
+				break;
+			default:
+				logger.warn("Unknown POST action received: {}", action);
+				break;
 			}
-		} catch (NumberFormatException e) {
-			logger.error("Invalid task ID format for deletion.", e);
-			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid task ID.");
+		} catch (Exception e) {
+			logger.error("Error processing admin task request", e);
+			request.getSession().setAttribute("errorMessage", "Ein Fehler ist aufgetreten: " + e.getMessage());
+		}
+		response.sendRedirect(request.getContextPath() + "/veranstaltungen/details?id=" + eventId);
+	}
+
+	private void handleSaveTask(HttpServletRequest request, User adminUser, int eventId) {
+		boolean isUpdate = !request.getParameter("taskId").isEmpty();
+		EventTask task = new EventTask();
+		task.setEventId(eventId);
+		task.setDescription(request.getParameter("description"));
+		task.setDetails(request.getParameter("details")); // Set details
+		task.setDisplayOrder(Integer.parseInt(request.getParameter("displayOrder")));
+
+		if (isUpdate) {
+			task.setId(Integer.parseInt(request.getParameter("taskId")));
+			task.setStatus(request.getParameter("status"));
+		}
+
+		String assignmentType = request.getParameter("assignmentType");
+		int[] userIds = null;
+		if ("direct".equals(assignmentType)) {
+			String[] userIdsStr = request.getParameterValues("userIds");
+			userIds = userIdsStr == null ? new int[0] : Arrays.stream(userIdsStr).mapToInt(Integer::parseInt).toArray();
+			task.setRequiredPersons(0);
+		} else { // "pool"
+			task.setRequiredPersons(Integer.parseInt(request.getParameter("requiredPersons")));
+		}
+
+		String[] itemIds = request.getParameterValues("itemIds");
+		String[] itemQuantities = request.getParameterValues("itemQuantities");
+		String[] kitIds = request.getParameterValues("kitIds");
+
+		int taskId = taskDAO.saveTask(task, userIds, itemIds, itemQuantities, kitIds);
+
+		if (taskId > 0) {
+			String logAction = isUpdate ? "UPDATE_TASK" : "CREATE_TASK";
+			String logDetails = String.format("Aufgabe '%s' (ID: %d) für Event-ID %d %s.", task.getDescription(),
+					taskId, eventId, isUpdate ? "aktualisiert" : "erstellt");
+			AdminLogService.log(adminUser.getUsername(), logAction, logDetails);
+			request.getSession().setAttribute("successMessage", "Aufgabe erfolgreich gespeichert.");
+		} else {
+			request.getSession().setAttribute("errorMessage", "Fehler beim Speichern der Aufgabe.");
+		}
+	}
+
+	private void handleDelete(HttpServletRequest request, User adminUser) {
+		int taskId = Integer.parseInt(request.getParameter("taskId"));
+		logger.warn("Admin '{}' attempting to delete task ID {}", adminUser.getUsername(), taskId);
+		if (taskDAO.deleteTask(taskId)) {
+			AdminLogService.log(adminUser.getUsername(), "DELETE_TASK", "Aufgabe mit ID " + taskId + " gelöscht.");
+			request.getSession().setAttribute("successMessage", "Aufgabe erfolgreich gelöscht.");
+		} else {
+			request.getSession().setAttribute("errorMessage", "Aufgabe konnte nicht gelöscht werden.");
 		}
 	}
 }
@@ -9170,117 +9332,6 @@ public class MatrixServlet extends HttpServlet {
 		logger.info("Data generation for matrix complete. Forwarding to admin_matrix.jsp.");
 		// CORRECTED: Forward to the actual JSP file path.
 		request.getRequestDispatcher("/views/admin/admin_matrix.jsp").forward(request, response);
-	}
-}
-
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\ResourceCalendarServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-
-/**
- * Mapped to /admin/resource-calendar, this servlet's sole purpose is to forward
- * the request to the JSP page that will render the resource timeline view. The
- * actual event data is fetched by the calendar's JavaScript from the
- * ResourceCalendarApiServlet.
- */
-@WebServlet("/admin/resource-calendar")
-public class ResourceCalendarServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		request.getRequestDispatcher("/views/admin/resource_calendar.jsp").forward(request, response);
-	}
-}
-
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\api\ResourceCalendarApiServlet.java
-========================================================================
-
-package de.technikteam.servlet.api;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import de.technikteam.config.LocalDateTimeAdapter;
-import de.technikteam.dao.EventDAO;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-
-import java.io.IOException;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-@WebServlet("/api/admin/resource-calendar")
-public class ResourceCalendarApiServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private EventDAO eventDAO;
-	private Gson gson;
-
-	@Override
-	public void init() {
-		eventDAO = new EventDAO();
-		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
-				.setPrettyPrinting().create();
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		// FullCalendar sends start and end parameters
-		String startParam = req.getParameter("start");
-		String endParam = req.getParameter("end");
-
-		// We can parse them to optimize the DB query
-		LocalDate start = LocalDate.parse(startParam.substring(0, 10));
-		LocalDate end = LocalDate.parse(endParam.substring(0, 10));
-
-		List<Map<String, Object>> reservations = eventDAO.getReservationsForCalendar(start, end);
-
-		Set<Map<String, Object>> resources = new HashSet<>();
-		List<Map<String, Object>> events = new ArrayList<>();
-
-		for (Map<String, Object> res : reservations) {
-			// Add unique items to the resources set
-			Map<String, Object> resource = new HashMap<>();
-			resource.put("id", res.get("item_id").toString());
-			resource.put("title", res.get("item_name").toString());
-			resources.add(resource);
-
-			// Create the calendar event
-			Map<String, Object> event = new HashMap<>();
-			event.put("resourceId", res.get("item_id").toString());
-			event.put("title", res.get("event_name").toString());
-			event.put("start", res.get("event_datetime").toString());
-			event.put("end", res.get("end_datetime").toString());
-			event.put("url", req.getContextPath() + "/veranstaltungen/details?id=" + res.get("event_id"));
-			events.add(event);
-		}
-
-		Map<String, Object> responseData = new HashMap<>();
-		responseData.put("resources", new ArrayList<>(resources));
-		responseData.put("events", events);
-
-		resp.setContentType("application/json");
-		resp.setCharacterEncoding("UTF-8");
-		resp.getWriter().write(gson.toJson(responseData));
 	}
 }
 

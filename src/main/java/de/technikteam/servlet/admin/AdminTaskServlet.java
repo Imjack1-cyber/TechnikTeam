@@ -58,6 +58,7 @@ public class AdminTaskServlet extends HttpServlet {
 		EventTask task = new EventTask();
 		task.setEventId(eventId);
 		task.setDescription(request.getParameter("description"));
+		task.setDetails(request.getParameter("details")); // Set details
 		task.setDisplayOrder(Integer.parseInt(request.getParameter("displayOrder")));
 
 		if (isUpdate) {

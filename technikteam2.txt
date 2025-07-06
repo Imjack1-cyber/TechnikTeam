@@ -1,0 +1,2093 @@
+﻿
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\auth\login.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle" value="Anmeldung" />
+	<c:param name="showNav" value="false" />
+</c:import>
+
+<div class="login-page-container">
+	<div class="login-box">
+		<h1>
+			<i class="fas fa-bolt"></i> TechnikTeam
+		</h1>
+		<c:if test="${not empty errorMessage}">
+			<p class="error-message">
+				<c:out value="${errorMessage}" />
+			</p>
+		</c:if>
+		<form action="<c:url value='/login'/>" method="post">
+			<div class="form-group">
+				<label for="username">Benutzername</label> <input type="text"
+					id="username" name="username" required autocomplete="username"
+					autofocus>
+			</div>
+			<div class="form-group">
+				<label for="password">Passwort</label> <input type="password"
+					id="password" name="password" required
+					autocomplete="current-password">
+			</div>
+			<button type="submit" class="btn" style="width: 100%;">Anmelden</button>
+		</form>
+	</div>
+</div>
+
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\auth\logout.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle" value="Logout" />
+	<c:param name="showNav" value="false" />
+</c:import>
+
+<div style="text-align: center; margin-top: 5rem; padding: 2rem;">
+	<h1>
+		<c:out value="${not empty username ? username : 'Du'}" />
+		, du wurdest erfolgreich ausgeloggt!
+	</h1>
+	<p>Du wirst in 5 Sekunden automatisch zur Login-Seite
+		weitergeleitet.</p>
+	<p>
+		<a href="${pageContext.request.contextPath}/login">Jetzt zur
+			Login-Seite</a>
+	</p>
+</div>
+
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script type="text/javascript" src="/js/auth/logout.js"></script>
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\error\error400.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isErrorPage="true" isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+
+<c:import url="/WEB-INF/jspf/error_header.jspf">
+	<c:param name="pageTitle" value="400 - Fehlerhafte Anfrage" />
+</c:import>
+
+<div class="error-page-container">
+	<h1 class="error-code" style="color: var(--info-color);">400</h1>
+	<h2>Fehlerhafte Anfrage</h2>
+	<p class="error-message-text">Der Server konnte die Anfrage
+		aufgrund einer fehlerhaften Syntax nicht verstehen. Das
+		Protokolldroiden-System analysiert die Übertragung.</p>
+
+	<div class="protocol-droid-console">
+		<div class="droid-eye"></div>
+		<pre id="droid-output"></pre>
+	</div>
+
+	<div id="redirect-container"
+		style="margin-top: 1.5rem; opacity: 0; transition: opacity 0.5s;">
+		<a href="javascript:history.back()" class="btn btn-secondary"> <i
+			class="fas fa-arrow-left"></i> Einen Schritt zurück
+		</a>
+	</div>
+</div>
+
+<c:import url="/WEB-INF/jspf/error_footer.jspf" />
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const output = document.getElementById('droid-output');
+    const redirectContainer = document.getElementById('redirect-container');
+
+    const lines = [
+        'INITIATING DATASTREAM ANALYSIS...',
+        'PACKET RECEIVED. SIZE: ${pageContext.request.contentLength > 0 ? pageContext.request.contentLength : "UNKNOWN"} BYTES.',
+        'PARSING HEADER... [OK]',
+        'ANALYSING PAYLOAD...',
+        '    > SCANNING FOR SYNTAX VIOLATIONS...',
+        '    > ERROR! UNEXPECTED TOKEN OR MALFORMED PARAMETER DETECTED.',
+        '    > CORRUPTION LEVEL: MODERATE.',
+        'CONCLUSION: ANFRAGE NICHT VERARBEITBAR. DATENINTEGRITÄT KOMPROMITTIERT.',
+        'EMPFEHLUNG: ZURÜCKKEHREN UND ANFRAGE NEU FORMULIEREN.',
+        ''
+    ];
+
+    let lineIndex = 0;
+    
+    function printLine() {
+        if (lineIndex < lines.length) {
+            const p = document.createElement('p');
+            p.textContent = lines[lineIndex];
+            output.appendChild(p);
+            output.scrollTop = output.scrollHeight;
+            lineIndex++;
+            setTimeout(printLine, Math.random() * 200 + 50);
+        } else {
+             redirectContainer.style.opacity = '1';
+        }
+    }
+
+    printLine();
+});
+</script>
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\error\error401.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isErrorPage="true" isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<c:import url="/WEB-INF/jspf/error_header.jspf">
+	<c:param name="pageTitle" value="401 - Nicht autorisiert" />
+</c:import>
+
+<div class="error-page-container">
+	<h1 class="error-code" style="color: var(--danger-color);">401</h1>
+	<h2>Nicht Autorisiert</h2>
+	<p class="error-message-text">Für den Zugriff auf diese Ressource
+		ist eine Authentifizierung erforderlich. Ihre Anmeldeinformationen
+		fehlen oder sind ungültig.</p>
+
+	<div class="card-scanner">
+		<div class="scanner-light" id="scanner-light"></div>
+		<div class="card-slot">
+			<div class="card-content">
+				<p>STATUS:</p>
+				<h3 id="scanner-status">BEREIT</h3>
+				<div class="progress-bar-container"
+					style="height: 10px; margin-top: 1rem;">
+					<div id="scanner-progress" class="progress-bar"></div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div id="redirect-container"
+		style="margin-top: 1.5rem; opacity: 0; transition: opacity 0.5s;">
+		<a href="${pageContext.request.contextPath}/login"
+			class="btn btn-success"> <i class="fas fa-sign-in-alt"></i> Zur
+			Anmeldeseite
+		</a>
+	</div>
+</div>
+
+<c:import url="/WEB-INF/jspf/error_footer.jspf" />
+<script src="${pageContext.request.contextPath}/js/error/error401.js"></script>
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\error\error403.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isErrorPage="true" isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+
+<c:import url="/WEB-INF/jspf/error_header.jspf">
+	<c:param name="pageTitle" value="403 - Zugriff Verweigert" />
+</c:import>
+
+<div class="error-page-container">
+	<h1 class="error-code" style="color: var(--warning-color);">403</h1>
+	<h2>Zugriff Verweigert</h2>
+	<p class="error-message-text">Ihre Zugriffsebene ist für die
+		angeforderte Ressource nicht ausreichend. Das Sicherheitsprotokoll
+		wurde aktiviert.</p>
+
+	<div class="security-console">
+		<div class="console-header">
+			<span>SYSTEM SECURITY DAEMON - PROTOKOLL</span>
+		</div>
+		<pre id="console-body"></pre>
+	</div>
+
+	<div id="redirect-container"
+		style="margin-top: 1.5rem; opacity: 0; transition: opacity 0.5s;">
+		<a href="${pageContext.request.contextPath}/home"
+			class="btn btn-primary"> <i class="fas fa-home"></i> Zurück zur
+			Startseite
+		</a>
+	</div>
+</div>
+
+<c:import url="/WEB-INF/jspf/error_footer.jspf" />
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const consoleBody = document.getElementById('console-body');
+    const redirectContainer = document.getElementById('redirect-container');
+    const username = "${fn:escapeXml(sessionScope.user.username)}";
+    const role = "${fn:escapeXml(sessionScope.user.roleName)}";
+    const requestUri = "${fn:escapeXml(pageContext.errorData.requestURI)}";
+
+    let currentLine;
+
+    async function type(text, delay = 25) {
+        for (const char of text) {
+            currentLine.innerHTML += char;
+            consoleBody.scrollTop = consoleBody.scrollHeight;
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+        currentLine.innerHTML = currentLine.innerHTML.replace('<span class="cursor"></span>', ''); 
+        consoleBody.innerHTML += '\n'; // New line
+    }
+    
+    async function addLine(text, className = '') {
+        currentLine = document.createElement('span');
+        if(className) currentLine.className = className;
+        consoleBody.appendChild(currentLine);
+        await type(text + ' <span class="cursor"></span>');
+    }
+
+    async function runSequence() {
+        await addLine('[INFO] Eingehender Request erkannt...', 'info');
+        await new Promise(resolve => setTimeout(resolve, 300));
+        await addLine(`[INFO] Ziel-Ressource: ${requestUri}`, 'info');
+        await new Promise(resolve => setTimeout(resolve, 400));
+        await addLine('[INFO] Starte Identitäts-Scan...', 'info');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await addLine(`[OK]   ... Subjekt identifiziert: "${username}"`, 'ok');
+        await new Promise(resolve => setTimeout(resolve, 200));
+        await addLine(`[OK]   ... Zugehörigkeit/Rolle: [${role}]`, 'ok');
+        await new Promise(resolve => setTimeout(resolve, 400));
+        await addLine('[WARN] Prüfe Berechtigungs-Matrix für Ziel-Ressource...', 'warn');
+        await new Promise(resolve => setTimeout(resolve, 800));
+        await addLine('[FAIL] >>> ZUGRIFF VERWEIGERT <<<', 'fail');
+        await new Promise(resolve => setTimeout(resolve, 200));
+        await addLine('[FAIL] >>> Erforderliche Berechtigung nicht im Token des Subjekts gefunden.', 'fail');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await addLine('[INFO] Aktion protokolliert. Sicherheits-Subsystem wird heruntergefahren.', 'info');
+        
+        currentLine = document.createElement('span');
+        consoleBody.appendChild(currentLine);
+        currentLine.innerHTML = '> <span class="cursor"></span>';
+
+        redirectContainer.style.opacity = '1';
+
+        setTimeout(() => {
+            window.location.href = "${pageContext.request.contextPath}/home";
+        }, 5000);
+    }
+
+    runSequence();
+});
+</script>
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\error\error404.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isErrorPage="true" isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+
+<c:import url="/WEB-INF/jspf/error_header.jspf">
+	<c:param name="pageTitle" value="404 - Seite nicht gefunden" />
+</c:import>
+
+<div class="error-page-container">
+	<h1 class="error-code">404</h1>
+	<h2>Ressource nicht gefunden</h2>
+	<p class="error-message-text">
+		Sie haben sich im Dateisystem verirrt. Die angeforderte Ressource
+		wurde nicht gefunden. <br>Das Systemprotokoll unten zeigt weitere
+		Details.
+	</p>
+
+	<div class="terminal-window">
+		<div class="terminal-header">
+			<div class="terminal-buttons">
+				<span class="term-btn close"></span><span class="term-btn min"></span><span
+					class="term-btn max"></span>
+			</div>
+			<span>bash -- technik-team</span>
+		</div>
+		<div id="terminal-body" class="terminal-body"></div>
+	</div>
+
+	<div id="home-link-container"
+		style="margin-top: 1.5rem; opacity: 0; transition: opacity 0.5s;">
+		<a href="${pageContext.request.contextPath}/home"
+			class="btn btn-primary"> <i class="fas fa-home"></i> Zurück zur
+			Startseite
+		</a>
+	</div>
+</div>
+
+<c:import url="/WEB-INF/jspf/error_footer.jspf" />
+<script src="${pageContext.request.contextPath}/js/error/error404.js"></script>
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\error\error500.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isErrorPage="true" isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<c:import url="/WEB-INF/jspf/error_header.jspf">
+	<c:param name="pageTitle" value="500 - Interner Fehler" />
+</c:import>
+
+<div class="error-page-container">
+	<h1 class="error-code" style="color: var(--danger-color);">500</h1>
+	<h2>Systemfehler im Hauptrechner</h2>
+	<p class="error-message-text">Ein unerwarteter Fehler ist
+		aufgetreten und unser System ist ins Stolpern geraten. Starten Sie die
+		automatische Systemdiagnose, um den Fehler zu analysieren.</p>
+
+	<div class="diagnostic-container">
+		<button id="diagnostic-btn" class="btn btn-warning">
+			<i class="fas fa-tasks"></i> Diagnose starten
+		</button>
+		<div id="diagnostic-output" class="diagnostic-console">
+			<!-- Terminal content will be generated by script -->
+		</div>
+	</div>
+
+	<a href="${pageContext.request.contextPath}/home"
+		class="btn btn-primary" style="margin-top: 1.5rem;"> <i
+		class="fas fa-home"></i> Flucht zur Startseite
+	</a>
+</div>
+
+<!--
+    Exception Details: Request URI: ${pageContext.errorData.requestURI}, Servlet: ${pageContext.errorData.servletName}, Exception: ${pageContext.exception.message}
+-->
+
+<c:import url="/WEB-INF/jspf/error_footer.jspf" />
+<script src="${pageContext.request.contextPath}/js/error/error500.js"></script>
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\error\error503.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isErrorPage="true" isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<c:import url="/WEB-INF/jspf/error_header.jspf">
+	<c:param name="pageTitle" value="503 - Dienst nicht verfügbar" />
+</c:import>
+
+<div class="error-page-container">
+	<h1 class="error-code" style="color: #ff8c00;">503</h1>
+	<h2>Dienst Nicht Verfügbar</h2>
+	<p class="error-message-text">Der Server ist zurzeit überlastet
+		oder wird gewartet. Bitte versuchen Sie es in Kürze erneut. Das System
+		versucht einen Neustart.</p>
+
+	<div class="reboot-console">
+		<pre id="reboot-output"></pre>
+		<div class="progress-bar-container"
+			style="margin-top: 1rem; background: #333;">
+			<div id="reboot-progress" class="progress-bar"
+				style="background: var(--success-color);"></div>
+		</div>
+	</div>
+</div>
+
+<c:import url="/WEB-INF/jspf/error_footer.jspf" />
+<script src="${pageContext.request.contextPath}/js/error/error503.js"></script>
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\error\error_generic.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isErrorPage="true" isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<c:import url="/WEB-INF/jspf/error_header.jspf">
+	<c:param name="pageTitle" value="Fehler" />
+</c:import>
+
+<c:set var="statusCode" value="${pageContext.errorData.statusCode}" />
+
+<c:set var="errorMessage"
+	value="Ein unerwarteter Fehler ist aufgetreten." />
+<c:choose>
+	<c:when test="${statusCode == 402}">
+		<c:set var="errorMessage"
+			value="Zahlung erforderlich. (Dieser Code ist für die zukünftige Verwendung reserviert.)" />
+	</c:when>
+	<c:when test="${statusCode == 405}">
+		<c:set var="errorMessage"
+			value="Methode nicht erlaubt. Die verwendete HTTP-Methode (z.B. GET, POST) ist für diese Ressource nicht zulässig." />
+	</c:when>
+	<c:when test="${statusCode == 406}">
+		<c:set var="errorMessage"
+			value="Nicht akzeptabel. Der Server kann keine Antwort generieren, die den Kriterien des Clients entspricht." />
+	</c:when>
+	<c:when test="${statusCode == 408}">
+		<c:set var="errorMessage"
+			value="Anfrage-Zeitüberschreitung. Der Server hat zu lange auf eine Antwort gewartet." />
+	</c:when>
+	<c:when test="${statusCode == 409}">
+		<c:set var="errorMessage"
+			value="Konflikt. Die Anfrage konnte wegen eines Konflikts mit dem aktuellen Zustand der Ressource nicht abgeschlossen werden." />
+	</c:when>
+	<c:when test="${statusCode == 410}">
+		<c:set var="errorMessage"
+			value="Verschwunden. Die angeforderte Ressource ist nicht mehr verfügbar und wird es auch in Zukunft nicht sein." />
+	</c:when>
+	<c:when test="${statusCode == 501}">
+		<c:set var="errorMessage"
+			value="Nicht implementiert. Der Server erkennt die Anfragemethode nicht oder kann sie nicht erfüllen." />
+	</c:when>
+	<c:when test="${statusCode == 502}">
+		<c:set var="errorMessage"
+			value="Bad Gateway. Der Server hat als Gateway oder Proxy eine ungültige Antwort vom Upstream-Server erhalten." />
+	</c:when>
+	<c:when test="${statusCode == 504}">
+		<c:set var="errorMessage"
+			value="Gateway-Zeitüberschreitung. Der Server hat als Gateway oder Proxy keine rechtzeitige Antwort erhalten." />
+	</c:when>
+</c:choose>
+
+<div class="error-page-container">
+	<h1 class="error-code">${statusCode}</h1>
+	<h2>${errorMessage}</h2>
+	<p class="error-message-text">Wenn Sie glauben, dass dies ein
+		Fehler ist, kontaktieren Sie bitte den Administrator.</p>
+	<a href="${pageContext.request.contextPath}/home"
+		class="btn btn-primary"> <i class="fas fa-home"></i> Zurück zur
+		Startseite
+	</a>
+</div>
+
+<c:import url="/WEB-INF/jspf/error_footer.jspf" />
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\calendar.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle" value="Kalender" />
+</c:import>
+
+<h1>
+	<i class="fas fa-calendar-alt"></i> Kalender
+</h1>
+<p>
+	Übersicht aller anstehenden Veranstaltungen und Lehrgänge. <a
+		href="<c:url value='/public/calendar.ics'/>"
+		class="btn btn-small btn-info" style="margin-left: 1rem;"> <i
+		class="fas fa-rss"></i> Kalender abonnieren
+	</a>
+</p>
+
+<div class="card">
+	<div id="calendar"></div>
+</div>
+
+<%-- FIX: Updated CDN links to a stable and correct version of FullCalendar --%>
+<link
+	href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.css'
+	rel='stylesheet' />
+<script
+	src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.js'></script>
+<script
+	src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/locales-all.min.js'></script>
+
+
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script src="${pageContext.request.contextPath}/js/public/calendar.js"></script>
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\collaborative_editor.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<%--
+  This page now imports the standard header and footer to be
+  fully integrated into the application's UI.
+--%>
+
+<%-- CORRECTED: The import path is now absolute from the context root. --%>
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle" value="Gemeinsamer Editor" />
+	<c:param name="navType" value="user" />
+</c:import>
+
+<h1>
+	<i class="fas fa-edit"></i> Gemeinsamer Notizblock
+</h1>
+<p>Änderungen werden automatisch für alle Benutzer gespeichert und
+	angezeigt.</p>
+
+<div class="card">
+	<textarea id="editor" class="form-group"
+		style="width: 100%; height: 60vh; font-family: monospace; font-size: 16px; margin: 0; background-color: var(--surface-color);"
+		placeholder="Lade Inhalt..."></textarea>
+	<div id="status-indicator"
+		style="text-align: right; font-style: italic; color: var(--text-muted-color); padding-top: 5px; min-height: 1.2em;"></div>
+</div>
+
+<script type="text/javascript" src="/js/public/collaborative_editor.js"></script>
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\dateien.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle" value="Dateien" />
+</c:import>
+
+<h1>Dateien & Dokumente</h1>
+
+<%-- CORRECTED: The path is now absolute from the context root. --%>
+<c:import url="/WEB-INF/jspf/message_banner.jspf" />
+
+<c:if test="${empty fileData}">
+	<div class="card">
+		<p>Es sind keine Dateien oder Dokumente verfügbar.</p>
+	</div>
+</c:if>
+
+<c:forEach var="categoryEntry" items="${fileData}">
+	<div class="card">
+		<h2>
+			<c:out value="${categoryEntry.key}" />
+		</h2>
+		<ul style="list-style: none; padding-left: 0;">
+			<c:forEach var="file" items="${categoryEntry.value}" varStatus="loop">
+				<li
+					style="padding: 0.75rem 0; ${!loop.last ? 'border-bottom: 1px solid var(--border-color);' : ''}">
+					<c:choose>
+						<c:when test="${file.id == -1}">
+							<a href="${pageContext.request.contextPath}/editor-page"
+								style="font-weight: 600;"><c:out value="${file.filename}" /></a>
+						</c:when>
+						<c:otherwise>
+							<a
+								href="${pageContext.request.contextPath}/download?file=${file.filepath}"><c:out
+									value="${file.filename}" /></a>
+						</c:otherwise>
+					</c:choose>
+				</li>
+			</c:forEach>
+		</ul>
+	</div>
+</c:forEach>
+
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\eventDetails.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle" value="Event Details: ${event.name}" />
+</c:import>
+
+
+<div
+	style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+	<h1>
+		<c:out value="${event.name}" />
+	</h1>
+	<c:if test="${not empty event.status}">
+		<c:set var="statusClass"
+			value="${event.status == 'LAUFEND' ? 'status-warn' : (event.status == 'ABGESCHLOSSEN' or event.status == 'ABGESAGT') ? 'status-info' : 'status-ok'}" />
+		<span class="status-badge ${statusClass}"><c:out
+				value="${event.status}" /></span>
+	</c:if>
+</div>
+
+<p class="details-subtitle">
+	<strong>Zeitraum:</strong>
+	<c:out value="${event.formattedEventDateTimeRange}" />
+	<c:if test="${not empty event.location}">
+		<span style="margin-left: 1rem;"><strong>Ort:</strong> <c:out
+				value="${event.location}" /></span>
+	</c:if>
+</p>
+
+<div class="responsive-dashboard-grid">
+	<div class="card" style="grid-column: 1/-1;">
+		<h2 class="card-title">Aufgaben</h2>
+		<div id="task-list-container">
+			<c:if test="${empty event.eventTasks}">
+				<p>Für dieses Event wurden noch keine Aufgaben erstellt.</p>
+			</c:if>
+			<c:forEach var="task" items="${event.eventTasks}">
+				<div class="card" style="margin-bottom: 1rem;">
+					<div
+						style="display: flex; justify-content: space-between; align-items: start;">
+						<div>
+							<span
+								class="status-badge ${task.status == 'ERLEDIGT' ? 'status-ok' : 'status-warn'}">${task.status}</span>
+							<h4 style="margin-top: 0.5rem;">${task.displayOrder}.
+								${task.description}</h4>
+						</div>
+						<c:if test="${hasTaskManagementPermission}">
+							<div>
+								<button class="btn btn-small edit-task-btn"
+									data-task-id="${task.id}">Bearbeiten</button>
+							</div>
+						</c:if>
+					</div>
+
+					<p style="margin-top: 1rem;">
+						<strong>Zugewiesen an:</strong>
+						<c:if test="${task.requiredPersons > 0}">
+							<span class="text-muted">Offener Pool
+								(${fn:length(task.assignedUsers)} / ${task.requiredPersons}
+								Plätze)</span>
+						</c:if>
+						<c:out value="${task.getAssignedUsernames()}" />
+					</p>
+
+					<c:if
+						test="${not empty task.requiredItems || not empty task.requiredKits}">
+						<p style="margin-top: 1rem;">
+							<strong>Benötigtes Material:</strong>
+						</p>
+						<ul style="padding-left: 1.5rem;">
+							<c:forEach var="item" items="${task.requiredItems}">
+								<li>${item.quantity}x${item.name}</li>
+							</c:forEach>
+							<c:forEach var="kit" items="${task.requiredKits}">
+								<li>1x Kit: ${kit.name}</li>
+							</c:forEach>
+						</ul>
+					</c:if>
+
+					<c:if test="${event.status == 'LAUFEND'}">
+						<div
+							style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+							<c:set var="isTaskAssignedToCurrentUser" value="false" />
+							<c:forEach var="assigned" items="${task.assignedUsers}">
+								<c:if test="${assigned.id == sessionScope.user.id}">
+									<c:set var="isTaskAssignedToCurrentUser" value="true" />
+								</c:if>
+							</c:forEach>
+
+							<c:if test="${task.requiredPersons > 0}">
+								<c:choose>
+									<c:when test="${isTaskAssignedToCurrentUser}">
+										<form action="${pageContext.request.contextPath}/task-action"
+											method="post">
+											<input type="hidden" name="action" value="unclaim"> <input
+												type="hidden" name="taskId" value="${task.id}">
+											<button type="submit"
+												class="btn btn-danger-outline btn-small">Aufgabe
+												zurückgeben</button>
+										</form>
+									</c:when>
+									<c:when
+										test="${fn:length(task.assignedUsers) < task.requiredPersons}">
+										<form action="${pageContext.request.contextPath}/task-action"
+											method="post">
+											<input type="hidden" name="action" value="claim"> <input
+												type="hidden" name="taskId" value="${task.id}">
+											<button type="submit" class="btn btn-success btn-small">Aufgabe
+												übernehmen</button>
+										</form>
+									</c:when>
+								</c:choose>
+							</c:if>
+
+							<c:if
+								test="${isTaskAssignedToCurrentUser and task.status == 'OFFEN'}">
+								<button class="btn btn-primary btn-small mark-task-done-btn"
+									data-task-id="${task.id}">Als erledigt markieren</button>
+							</c:if>
+						</div>
+					</c:if>
+				</div>
+			</c:forEach>
+		</div>
+		<c:if test="${hasTaskManagementPermission}">
+			<button class="btn btn-success" id="new-task-btn"
+				style="margin-top: 1rem;">
+				<i class="fas fa-plus"></i> Neue Aufgabe
+			</button>
+		</c:if>
+	</div>
+
+	<c:if
+		test="${event.status == 'LAUFEND' and (isUserAssigned or hasTaskManagementPermission)}">
+		<div class="card" style="grid-column: 1/-1;">
+			<h2 class="card-title">Event-Chat</h2>
+			<div id="chat-box"
+				style="height: 300px; overflow-y: auto; border: 1px solid var(--border-color); padding: 0.5rem; margin-bottom: 1rem; background: var(--bg-color);"></div>
+			<form id="chat-form" style="display: flex; gap: 0.5rem;">
+				<input type="text" id="chat-message-input" class="form-group"
+					style="flex-grow: 1; margin: 0;"
+					placeholder="Nachricht eingeben...">
+				<button type="submit" class="btn">Senden</button>
+			</form>
+		</div>
+	</c:if>
+</div>
+
+<div class="dashboard-grid">
+	<div class="card">
+		<h2 class="card-title">Beschreibung</h2>
+		<p>
+			<c:out
+				value="${not empty event.description ? event.description : 'Keine Beschreibung für dieses Event vorhanden.'}" />
+		</p>
+	</div>
+	<div class="card">
+		<h2 class="card-title">Benötigter Personalbedarf</h2>
+		<ul class="details-list">
+			<c:if test="${empty event.skillRequirements}">
+				<li>Keine speziellen Qualifikationen benötigt.</li>
+			</c:if>
+			<c:forEach var="req" items="${event.skillRequirements}">
+				<li><strong><c:out value="${req.courseName}" />:</strong> <span><c:out
+							value="${req.requiredPersons}" /> Person(en)</span></li>
+			</c:forEach>
+		</ul>
+	</div>
+	<div class="card">
+		<h2 class="card-title">Reserviertes Material</h2>
+		<ul class="details-list">
+			<c:if test="${empty event.reservedItems}">
+				<li>Kein Material für dieses Event reserviert.</li>
+			</c:if>
+			<c:forEach var="item" items="${event.reservedItems}">
+				<li><c:out value="${item.name}" /> <span><c:out
+							value="${item.quantity}" />x</span></li>
+			</c:forEach>
+		</ul>
+	</div>
+	<div class="card">
+		<h2 class="card-title">Anhänge</h2>
+		<ul class="details-list">
+			<c:if test="${empty event.attachments}">
+				<li>Keine Anhänge für dieses Event vorhanden.</li>
+			</c:if>
+			<c:forEach var="att" items="${event.attachments}">
+				<li><a
+					href="${pageContext.request.contextPath}/download?file=${att.filepath}"><c:out
+							value="${att.filename}" /></a></li>
+			</c:forEach>
+		</ul>
+	</div>
+</div>
+
+<div class="card">
+	<h2 class="card-title">Zugewiesenes Team</h2>
+	<ul class="details-list">
+		<c:if test="${empty event.assignedAttendees}">
+			<li>Noch kein Team zugewiesen.</li>
+		</c:if>
+		<c:forEach var="attendee" items="${event.assignedAttendees}">
+			<li><c:out value="${attendee.username}" /></li>
+		</c:forEach>
+	</ul>
+</div>
+
+<div style="margin-top: 2rem;">
+	<a href="${pageContext.request.contextPath}/veranstaltungen"
+		class="btn"><i class="fas fa-arrow-left"></i> Zurück zur
+		Event-Übersicht</a>
+</div>
+
+<c:if test="${hasTaskManagementPermission}">
+	<jsp:include page="/WEB-INF/jspf/task_modal.jspf" />
+</c:if>
+
+<%-- DEFINITIVE FIX: Removed <c:out> which was corrupting the JSON.
+     Directly output the JSON string into the div's content. --%>
+<div id="allUsersData" style="display: none;">${assignedUsersJson}</div>
+<div id="allItemsData" style="display: none;">${allItemsJson}</div>
+<div id="allKitsData" style="display: none;">${allKitsJson}</div>
+<div id="allTasksData" style="display: none;">${tasksJson}</div>
+
+
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script>
+	document.body.dataset.eventId = "${event.id}";
+	document.body.dataset.userId = "${sessionScope.user.id}";
+	document.body.dataset.isAdmin = "${sessionScope.user.roleName == 'ADMIN'}";
+</script>
+<script
+	src="${pageContext.request.contextPath}/js/public/eventDetails.js"></script>
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\events.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle" value="Veranstaltungen" />
+</c:import>
+
+<h1>Anstehende Veranstaltungen</h1>
+
+<c:import url="/WEB-INF/jspf/message_banner.jspf" />
+
+<div class="table-controls">
+	<div class="form-group" style="margin-bottom: 0; flex-grow: 1;">
+		<input type="search" id="table-filter" placeholder="Events filtern..."
+			style="width: 100%;" aria-label="Events filtern">
+	</div>
+</div>
+
+<c:if test="${empty events}">
+	<div class="card">
+		<p>Für dich stehen derzeit keine Veranstaltungen an, für die du
+			qualifiziert bist.</p>
+	</div>
+</c:if>
+
+<div class="table-wrapper">
+	<table class="data-table sortable-table searchable-table">
+		<thead>
+			<tr>
+				<th class="sortable" data-sort-type="string">Veranstaltung</th>
+				<th class="sortable" data-sort-type="date">Datum & Uhrzeit</th>
+				<th class="sortable" data-sort-type="string">Dein Status</th>
+				<th>Aktion</th>
+			</tr>
+		</thead>
+		<tbody>
+			<c:forEach var="event" items="${events}">
+				<tr>
+					<td><a
+						href="${pageContext.request.contextPath}/veranstaltungen/details?id=${event.id}"><c:out
+								value="${event.name}" /></a></td>
+					<td data-sort-value="${event.eventDateTime}"><c:out
+							value="${event.formattedEventDateTimeRange}" /></td>
+					<td><c:choose>
+							<c:when test="${event.userAttendanceStatus == 'ZUGEWIESEN'}">
+								<strong class="text-success">Zugewiesen</strong>
+							</c:when>
+							<c:when test="${event.userAttendanceStatus == 'ANGEMELDET'}">
+								<span class="text-success">Angemeldet</span>
+							</c:when>
+							<c:when test="${event.userAttendanceStatus == 'ABGEMELDET'}">
+								<span class="text-danger">Abgemeldet</span>
+							</c:when>
+							<c:otherwise>Offen</c:otherwise>
+						</c:choose></td>
+					<td><c:if test="${event.userAttendanceStatus != 'ZUGEWIESEN'}">
+							<div style="display: flex; gap: 0.5rem;">
+								<c:if
+									test="${event.userAttendanceStatus == 'OFFEN' or event.userAttendanceStatus == 'ABGEMELDET'}">
+									<button type="button"
+										class="btn btn-small btn-success signup-btn"
+										data-event-id="${event.id}"
+										data-event-name="${fn:escapeXml(event.name)}">Anmelden</button>
+								</c:if>
+								<c:if test="${event.userAttendanceStatus == 'ANGEMELDET'}">
+									<form action="${pageContext.request.contextPath}/event-action"
+										method="post" class="js-confirm-form"
+										data-confirm-message="Wirklich vom Event '${fn:escapeXml(event.name)}' abmelden?">
+										<input type="hidden" name="eventId" value="${event.id}">
+										<button type="submit" name="action" value="signoff"
+											class="btn btn-small btn-danger">Abmelden</button>
+									</form>
+								</c:if>
+							</div>
+						</c:if></td>
+				</tr>
+			</c:forEach>
+		</tbody>
+	</table>
+</div>
+
+<!-- Signup Modal -->
+<div class="modal-overlay" id="signup-modal">
+	<div class="modal-content">
+		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
+		<h3 id="signup-modal-title">Anmeldung</h3>
+		<form id="signup-form"
+			action="${pageContext.request.contextPath}/event-action"
+			method="post">
+			<input type="hidden" name="action" value="signup"> <input
+				type="hidden" name="eventId" id="signup-event-id">
+			<div id="custom-fields-container"></div>
+			<button type="submit" class="btn btn-success"
+				style="margin-top: 1rem;">Anmeldung bestätigen</button>
+		</form>
+	</div>
+</div>
+
+<c:import url="/WEB-INF/jspf/table_scripts.jspf" />
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script src="${pageContext.request.contextPath}/js/public/events.js"></script>
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\feedback_form.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle" value="Feedback geben" />
+</c:import>
+
+<div style="max-width: 700px; margin: auto;">
+	<div class="card">
+		<h1>
+			Feedback für:
+			<c:out value="${event.name}" />
+		</h1>
+		<p>Dein Feedback hilft uns, zukünftige Events zu verbessern.</p>
+
+		<form action="${pageContext.request.contextPath}/feedback"
+			method="post">
+			<input type="hidden" name="action" value="submitResponse"> <input
+				type="hidden" name="formId" value="${form.id}">
+
+			<div class="form-group">
+				<label>Gesamteindruck (1 = schlecht, 5 = super)</label>
+				<div class="star-rating">
+					<input type="radio" id="star5" name="rating" value="5" required /><label
+						for="star5" title="5 Sterne"></label> <input type="radio"
+						id="star4" name="rating" value="4" /><label for="star4"
+						title="4 Sterne"></label> <input type="radio" id="star3"
+						name="rating" value="3" /><label for="star3" title="3 Sterne"></label>
+					<input type="radio" id="star2" name="rating" value="2" /><label
+						for="star2" title="2 Sterne"></label> <input type="radio"
+						id="star1" name="rating" value="1" /><label for="star1"
+						title="1 Stern"></label>
+				</div>
+			</div>
+
+			<div class="form-group">
+				<label for="comments">Kommentare & Verbesserungsvorschläge</label>
+				<textarea id="comments" name="comments" rows="5"></textarea>
+			</div>
+
+			<button type="submit" class="btn">Feedback absenden</button>
+		</form>
+	</div>
+</div>
+
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\home.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle" value="Home" />
+</c:import>
+
+<h1>
+	Willkommen zurück,
+	<c:out value="${sessionScope.user.username}" />
+	!
+</h1>
+<c:import url="/WEB-INF/jspf/message_banner.jspf" />
+
+<div class="dashboard-grid">
+	<div class="card">
+		<h2 class="card-title">Meine nächsten Einsätze</h2>
+		<c:choose>
+			<c:when test="${not empty assignedEvents}">
+				<ul class="details-list">
+					<c:forEach var="event" items="${assignedEvents}">
+						<li><a
+							href="${pageContext.request.contextPath}/veranstaltungen/details?id=${event.id}"><c:out
+									value="${event.name}" /></a> <small><c:out
+									value="${event.formattedEventDateTimeRange}" /></small></li>
+					</c:forEach>
+				</ul>
+			</c:when>
+			<c:otherwise>
+				<p>Du bist derzeit für keine kommenden Events fest eingeteilt.</p>
+			</c:otherwise>
+		</c:choose>
+		<a href="${pageContext.request.contextPath}/veranstaltungen"
+			class="btn btn-small" style="margin-top: 1rem;">Alle
+			Veranstaltungen anzeigen</a>
+	</div>
+
+	<div class="card">
+		<h2 class="card-title">Meine offenen Aufgaben</h2>
+		<c:choose>
+			<c:when test="${not empty openTasks}">
+				<ul class="details-list">
+					<c:forEach var="task" items="${openTasks}">
+						<li><a
+							href="${pageContext.request.contextPath}/veranstaltungen/details?id=${task.eventId}">
+								<c:out value="${task.description}" /> <small
+								style="display: block; color: var(--text-muted-color);">Für
+									Event: <c:out value="${task.eventName}" />
+							</small>
+						</a></li>
+					</c:forEach>
+				</ul>
+			</c:when>
+			<c:otherwise>
+				<p>Super! Du hast aktuell keine offenen Aufgaben.</p>
+			</c:otherwise>
+		</c:choose>
+	</div>
+
+	<div class="card">
+		<h2 class="card-title">Weitere anstehende Veranstaltungen</h2>
+		<c:choose>
+			<c:when test="${not empty upcomingEvents}">
+				<ul class="details-list">
+					<c:forEach var="event" items="${upcomingEvents}">
+						<li><a
+							href="${pageContext.request.contextPath}/veranstaltungen/details?id=${event.id}"><c:out
+									value="${event.name}" /></a> <small><c:out
+									value="${event.formattedEventDateTimeRange}" /></small></li>
+					</c:forEach>
+				</ul>
+			</c:when>
+			<c:otherwise>
+				<p>Keine weiteren anstehenden Veranstaltungen.</p>
+			</c:otherwise>
+		</c:choose>
+	</div>
+</div>
+
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\lager.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle" value="Lager" />
+</c:import>
+
+<h1>
+	<i class="fas fa-boxes"></i> Lagerübersicht
+</h1>
+<p>Hier finden Sie eine Übersicht aller erfassten Artikel im Lager.
+	Klicken Sie auf einen Artikelnamen für Details und Verlauf.</p>
+
+<c:import url="/WEB-INF/jspf/message_banner.jspf" />
+
+<div class="table-controls">
+	<div class="form-group" style="margin-bottom: 0; flex-grow: 1;">
+		<input type="search" id="table-filter"
+			placeholder="Alle Artikel filtern..." aria-label="Lager filtern">
+	</div>
+</div>
+
+<c:if test="${empty storageData}">
+	<div class="card">
+		<p>Derzeit sind keine Artikel im Lager erfasst.</p>
+	</div>
+</c:if>
+
+<c:forEach var="locationEntry" items="${storageData}">
+	<div class="card">
+		<h2>
+			<i class="fas fa-map-marker-alt"></i>
+			<c:out value="${locationEntry.key}" />
+		</h2>
+		<div class="table-wrapper">
+			<table class="data-table searchable-table">
+				<thead>
+					<tr>
+						<th>Gerät</th>
+						<th class="sortable" data-sort-type="string">Schrank</th>
+						<th class="sortable" data-sort-type="string">Fach</th>
+						<th>Status</th>
+						<th>Bestand</th>
+						<th>Aktion</th>
+					</tr>
+				</thead>
+				<tbody>
+					<c:forEach var="item" items="${locationEntry.value}">
+						<tr
+							class="${item.defectiveQuantity > 0 ? 'item-status-defect' : ''}">
+							<td class="item-name-cell"><a
+								href="<c:url value='/lager/details?id=${item.id}'/>"
+								title="Details für ${item.name} ansehen"><c:out
+										value="${item.name}" /></a> <c:if
+									test="${not empty item.imagePath}">
+									<button class="camera-btn lightbox-trigger"
+										data-src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
+										title="Bild anzeigen">
+										<i class="fas fa-camera"></i>
+									</button>
+								</c:if></td>
+							<td><c:out
+									value="${not empty item.cabinet ? item.cabinet : '-'}" /></td>
+							<td><c:out
+									value="${not empty item.compartment ? item.compartment : '-'}" /></td>
+							<td><c:choose>
+									<c:when test="${item.status == 'CHECKED_OUT'}">
+										<span class="status-badge status-warn">Entnommen</span>
+										<span class="item-status-details">an:
+											${item.currentHolderUsername}</span>
+									</c:when>
+									<c:when test="${item.status == 'MAINTENANCE'}">
+										<span class="status-badge status-info">Wartung</span>
+									</c:when>
+									<c:otherwise>
+										<span class="status-badge status-ok">Im Lager</span>
+									</c:otherwise>
+								</c:choose></td>
+							<td><span class="inventory-details">${item.availableQuantity}
+									/ ${item.quantity}</span> <c:if test="${item.defectiveQuantity > 0}">
+									<span class="inventory-details text-danger">(${item.defectiveQuantity}
+										defekt)</span>
+								</c:if></td>
+							<td>
+								<button class="btn btn-small transaction-btn"
+									data-item-id="${item.id}"
+									data-item-name="${fn:escapeXml(item.name)}"
+									data-max-qty="${item.availableQuantity}"
+									data-current-qty="${item.quantity}"
+									data-total-max-qty="${item.maxQuantity}">Aktion</button>
+							</td>
+						</tr>
+					</c:forEach>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</c:forEach>
+
+<!-- Lightbox Modal -->
+<div id="lightbox" class="lightbox-overlay">
+	<span class="lightbox-close" title="Schließen">×</span> <img
+		class="lightbox-content" id="lightbox-image" alt="Großansicht">
+</div>
+
+<%@ include file="/WEB-INF/jspf/storage_modals.jspf"%>
+<c:import url="/WEB-INF/jspf/table_scripts.jspf" />
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script src="${pageContext.request.contextPath}/js/public/lager.js"></script>
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\lehrgaenge.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle" value="Lehrgänge" />
+</c:import>
+
+<h1>Anstehende Lehrgänge & Meetings</h1>
+
+<c:import url="/WEB-INF/jspf/message_banner.jspf" />
+
+<div class="table-controls">
+	<div class="form-group" style="margin-bottom: 0; flex-grow: 1;">
+		<input type="search" id="table-filter"
+			placeholder="Lehrgänge filtern..." style="width: 100%;"
+			aria-label="Lehrgänge filtern">
+	</div>
+</div>
+
+<c:if test="${empty meetings}">
+	<div class="card">
+		<p>Derzeit stehen keine Lehrgänge oder Meetings an.</p>
+	</div>
+</c:if>
+
+<div class="table-wrapper">
+	<table class="data-table sortable-table searchable-table">
+		<thead>
+			<tr>
+				<th class="sortable" data-sort-type="string">Meeting</th>
+				<th class="sortable" data-sort-type="string">Gehört zu Kurs</th>
+				<th class="sortable" data-sort-type="date">Datum & Uhrzeit</th>
+				<th class="sortable" data-sort-type="string">Dein Status</th>
+				<th>Aktion</th>
+			</tr>
+		</thead>
+		<tbody>
+			<c:forEach var="meeting" items="${meetings}">
+				<tr>
+					<td><a
+						href="${pageContext.request.contextPath}/meeting/details?id=${meeting.id}"><c:out
+								value="${meeting.name}" /></a></td>
+					<td><c:out value="${meeting.parentCourseName}" /></td>
+					<td data-sort-value="${meeting.meetingDateTime}"><c:out
+							value="${meeting.formattedMeetingDateTimeRange}" /></td>
+					<td><c:choose>
+							<c:when test="${meeting.userAttendanceStatus == 'ANGEMELDET'}">
+								<span class="text-success">Angemeldet</span>
+							</c:when>
+							<c:when test="${meeting.userAttendanceStatus == 'ABGEMELDET'}">
+								<span class="text-danger">Abgemeldet</span>
+							</c:when>
+							<c:otherwise>Offen</c:otherwise>
+						</c:choose></td>
+					<td>
+						<form action="${pageContext.request.contextPath}/meeting-action"
+							method="post" style="display: flex; gap: 0.5rem;">
+							<input type="hidden" name="meetingId" value="${meeting.id}">
+							<c:if test="${meeting.userAttendanceStatus != 'ANGEMELDET'}">
+								<button type="submit" name="action" value="signup"
+									class="btn btn-small btn-success">Anmelden</button>
+							</c:if>
+							<c:if test="${meeting.userAttendanceStatus == 'ANGEMELDET'}">
+								<button type="submit" name="action" value="signoff"
+									class="btn btn-small btn-danger">Abmelden</button>
+							</c:if>
+						</form>
+					</td>
+				</tr>
+			</c:forEach>
+		</tbody>
+	</table>
+</div>
+
+<c:import url="/WEB-INF/jspf/table_scripts.jspf" />
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\meetingDetails.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle" value="Event Details: ${event.name}" />
+</c:import>
+
+
+<div
+	style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+	<h1>
+		<c:out value="${event.name}" />
+	</h1>
+	<c:if test="${not empty event.status}">
+		<c:set var="statusClass"
+			value="${event.status == 'LAUFEND' ? 'status-warn' : (event.status == 'ABGESCHLOSSEN' or event.status == 'ABGESAGT') ? 'status-info' : 'status-ok'}" />
+		<span class="status-badge ${statusClass}"><c:out
+				value="${event.status}" /></span>
+	</c:if>
+</div>
+
+<p class="details-subtitle">
+	<strong>Zeitraum:</strong>
+	<c:out value="${event.formattedEventDateTimeRange}" />
+	<c:if test="${not empty event.location}">
+		<span style="margin-left: 1rem;"><strong>Ort:</strong> <c:out
+				value="${event.location}" /></span>
+	</c:if>
+</p>
+
+<%-- This section is only rendered if the event is running AND the user has a reason to see it --%>
+<c:if
+	test="${event.status == 'LAUFEND' and (isUserAssigned or hasTaskManagementPermission)}">
+	<div class="dashboard-grid">
+		<div class="card">
+			<h2 class="card-title">Aufgaben</h2>
+			<div id="task-list-container">
+				<c:if test="${empty event.eventTasks}">
+					<p>Für dieses Event wurden noch keine Aufgaben erstellt.</p>
+				</c:if>
+				<c:forEach var="task" items="${event.eventTasks}">
+					<div class="card" style="margin-bottom: 1rem;">
+						<div
+							style="display: flex; justify-content: space-between; align-items: start;">
+							<div>
+								<span
+									class="status-badge ${task.status == 'ERLEDIGT' ? 'status-ok' : 'status-warn'}">${task.status}</span>
+								<h4 style="margin-top: 0.5rem;">${task.displayOrder}.
+									${task.description}</h4>
+							</div>
+							<c:if test="${hasTaskManagementPermission}">
+								<div>
+									<button class="btn btn-small edit-task-btn"
+										data-task-id="${task.id}">Bearbeiten</button>
+								</div>
+							</c:if>
+						</div>
+
+						<p style="margin-top: 1rem;">
+							<strong>Zugewiesen an:</strong>
+							<c:if test="${task.requiredPersons > 0}">
+								<span class="text-muted">Offener Pool
+									(${fn:length(task.assignedUsers)} / ${task.requiredPersons}
+									Plätze)</span>
+							</c:if>
+							<c:out value="${task.getAssignedUsernames()}" />
+						</p>
+
+						<c:if
+							test="${not empty task.requiredItems || not empty task.requiredKits}">
+							<p style="margin-top: 1rem;">
+								<strong>Benötigtes Material:</strong>
+							</p>
+							<ul style="padding-left: 1.5rem;">
+								<c:forEach var="item" items="${task.requiredItems}">
+									<li>${item.quantity}x${item.name}</li>
+								</c:forEach>
+								<c:forEach var="kit" items="${task.requiredKits}">
+									<li>1x Kit: ${kit.name}</li>
+								</c:forEach>
+							</ul>
+						</c:if>
+
+						<div
+							style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+							<c:set var="isTaskAssignedToCurrentUser" value="false" />
+							<c:forEach var="assigned" items="${task.assignedUsers}">
+								<c:if test="${assigned.id == sessionScope.user.id}">
+									<c:set var="isTaskAssignedToCurrentUser" value="true" />
+								</c:if>
+							</c:forEach>
+
+							<c:if test="${task.requiredPersons > 0}">
+								<c:choose>
+									<c:when test="${isTaskAssignedToCurrentUser}">
+										<form action="${pageContext.request.contextPath}/task-action"
+											method="post">
+											<input type="hidden" name="action" value="unclaim"> <input
+												type="hidden" name="taskId" value="${task.id}">
+											<button type="submit"
+												class="btn btn-danger-outline btn-small">Aufgabe
+												zurückgeben</button>
+										</form>
+									</c:when>
+									<c:when
+										test="${fn:length(task.assignedUsers) < task.requiredPersons}">
+										<form action="${pageContext.request.contextPath}/task-action"
+											method="post">
+											<input type="hidden" name="action" value="claim"> <input
+												type="hidden" name="taskId" value="${task.id}">
+											<button type="submit" class="btn btn-success btn-small">Aufgabe
+												übernehmen</button>
+										</form>
+									</c:when>
+								</c:choose>
+							</c:if>
+
+							<c:if
+								test="${isTaskAssignedToCurrentUser and task.status == 'OFFEN'}">
+								<button class="btn btn-primary btn-small mark-task-done-btn"
+									data-task-id="${task.id}">Als erledigt markieren</button>
+							</c:if>
+						</div>
+					</div>
+				</c:forEach>
+			</div>
+			<c:if test="${hasTaskManagementPermission}">
+				<button class="btn btn-success" id="new-task-btn"
+					style="margin-top: 1rem;">
+					<i class="fas fa-plus"></i> Neue Aufgabe
+				</button>
+			</c:if>
+		</div>
+		<div class="card">
+			<h2 class="card-title">Event-Chat</h2>
+			<div id="chat-box"
+				style="height: 300px; overflow-y: auto; border: 1px solid var(--border-color); padding: 0.5rem; margin-bottom: 1rem; background: var(--bg-color);"></div>
+			<form id="chat-form" style="display: flex; gap: 0.5rem;">
+				<input type="text" id="chat-message-input" class="form-group"
+					style="flex-grow: 1; margin: 0;"
+					placeholder="Nachricht eingeben...">
+				<button type="submit" class="btn">Senden</button>
+			</form>
+		</div>
+	</div>
+</c:if>
+
+<div class="dashboard-grid">
+	<div class="card">
+		<h2 class="card-title">Beschreibung</h2>
+		<p>
+			<c:out
+				value="${not empty event.description ? event.description : 'Keine Beschreibung für dieses Event vorhanden.'}" />
+		</p>
+	</div>
+	<div class="card">
+		<h2 class="card-title">Benötigter Personalbedarf</h2>
+		<ul class="details-list">
+			<c:if test="${empty event.skillRequirements}">
+				<li>Keine speziellen Qualifikationen benötigt.</li>
+			</c:if>
+			<c:forEach var="req" items="${event.skillRequirements}">
+				<li><strong><c:out value="${req.courseName}" />:</strong> <span><c:out
+							value="${req.requiredPersons}" /> Person(en)</span></li>
+			</c:forEach>
+		</ul>
+	</div>
+	<div class="card">
+		<h2 class="card-title">Reserviertes Material</h2>
+		<ul class="details-list">
+			<c:if test="${empty event.reservedItems}">
+				<li>Kein Material für dieses Event reserviert.</li>
+			</c:if>
+			<c:forEach var="item" items="${event.reservedItems}">
+				<li><c:out value="${item.name}" /> <span><c:out
+							value="${item.quantity}" />x</span></li>
+			</c:forEach>
+		</ul>
+	</div>
+	<div class="card">
+		<h2 class="card-title">Anhänge</h2>
+		<ul class="details-list">
+			<c:if test="${empty event.attachments}">
+				<li>Keine Anhänge für dieses Event vorhanden.</li>
+			</c:if>
+			<c:forEach var="att" items="${event.attachments}">
+				<li><a
+					href="${pageContext.request.contextPath}/download?file=${att.filepath}"><c:out
+							value="${att.filename}" /></a></li>
+			</c:forEach>
+		</ul>
+	</div>
+</div>
+
+<div class="card">
+	<h2 class="card-title">Zugewiesenes Team</h2>
+	<ul class="details-list">
+		<c:if test="${empty event.assignedAttendees}">
+			<li>Noch kein Team zugewiesen.</li>
+		</c:if>
+		<c:forEach var="attendee" items="${event.assignedAttendees}">
+			<li><c:out value="${attendee.username}" /></li>
+		</c:forEach>
+	</ul>
+</div>
+
+<div style="margin-top: 2rem;">
+	<a href="${pageContext.request.contextPath}/veranstaltungen"
+		class="btn"><i class="fas fa-arrow-left"></i> Zurück zur
+		Event-Übersicht</a>
+</div>
+
+<c:if test="${hasTaskManagementPermission}">
+	<jsp:include page="/WEB-INF/jspf/task_modal.jspf" />
+</c:if>
+
+<%-- Embed data for JavaScript --%>
+<script id="allUsersData" type="application/json">[<c:forEach var="u" items="${assignedUsers}" varStatus="loop">{"id":${u.id},"username":"<c:out value="${u.username}"/>"}<c:if test="${not loop.last}">,</c:if></c:forEach>]</script>
+<script id="allItemsData" type="application/json">[<c:forEach var="i" items="${allItems}" varStatus="loop">{"id":${i.id},"name":"<c:out value="${fn:escapeXml(i.name)}"/>"}<c:if test="${not loop.last}">,</c:if></c:forEach>]</script>
+<script id="allKitsData" type="application/json">[<c:forEach var="k" items="${allKits}" varStatus="loop">{"id":${k.id},"name":"<c:out value="${fn:escapeXml(k.name)}"/>"}<c:if test="${not loop.last}">,</c:if></c:forEach>]</script>
+<script id="allTasksData" type="application/json">${tasksJson}</script>
+
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script>
+	document.body.dataset.eventId = "${event.id}";
+	document.body.dataset.userId = "${sessionScope.user.id}";
+	document.body.dataset.isAdmin = "${sessionScope.user.roleName == 'ADMIN'}";
+</script>
+<script
+	src="${pageContext.request.contextPath}/js/public/eventDetails.js"></script>
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\pack_kit.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle" value="Packliste: ${kit.name}" />
+	<c:param name="showNav" value="false" />
+</c:import>
+
+<div class="main-content" style="max-width: 800px; margin: 2rem auto;">
+	<div class="card">
+		<div
+			style="display: flex; justify-content: space-between; align-items: start;">
+			<div>
+				<h1>
+					Packliste:
+					<c:out value="${kit.name}" />
+				</h1>
+				<p class="details-subtitle" style="margin-top: -1rem;">
+					<c:out value="${kit.description}" />
+				</p>
+			</div>
+			<button class="btn no-print" onclick="window.print()">
+				<i class="fas fa-print"></i> Drucken
+			</button>
+		</div>
+
+		<c:if test="${not empty kit.location}">
+			<div class="card" style="background-color: var(--bg-color);">
+				<h3 class="card-title" style="border: none; padding: 0;">Standort</h3>
+				<p style="font-size: 1.2rem; font-weight: 500;">
+					<c:out value="${kit.location}" />
+				</p>
+			</div>
+		</c:if>
+		<c:if test="${empty kit.location}">
+			<p class="info-message">Für dieses Kit ist kein physischer
+				Standort hinterlegt.</p>
+		</c:if>
+
+		<h3 style="margin-top: 2rem;">Inhalt zum Einpacken</h3>
+		<ul class="details-list">
+			<c:if test="${empty kitItems}">
+				<li>Dieses Kit hat keinen definierten Inhalt.</li>
+			</c:if>
+			<c:forEach var="item" items="${kitItems}">
+				<li><label
+					style="display: flex; align-items: center; gap: 1rem; cursor: pointer; width: 100%;">
+						<input type="checkbox"
+						style="width: 1.5rem; height: 1.5rem; flex-shrink: 0;"> <span>
+							<strong>${item.quantity}x</strong> <c:out
+								value="${item.itemName}" />
+					</span>
+				</label></li>
+			</c:forEach>
+		</ul>
+		<div class="no-print" style="margin-top: 2rem; text-align: center;">
+			<a href="${pageContext.request.contextPath}/lager"
+				class="btn btn-secondary">Zurück zur Lagerübersicht</a>
+		</div>
+	</div>
+</div>
+
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\passwort.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle" value="Passwort ändern" />
+</c:import>
+
+<div style="max-width: 600px; margin: auto;">
+	<div class="card">
+		<h1>Passwort ändern</h1>
+
+		<c:if test="${not empty successMessage}">
+			<p class="success-message">
+				<c:out value="${successMessage}" />
+			</p>
+		</c:if>
+		<c:if test="${not empty errorMessage}">
+			<p class="error-message">
+				<c:out value="${errorMessage}" />
+			</p>
+		</c:if>
+
+		<form action="${pageContext.request.contextPath}/passwort"
+			method="post">
+			<div class="form-group">
+				<label for="currentPassword">Aktuelles Passwort</label> <input
+					type="password" id="currentPassword" name="currentPassword"
+					required autocomplete="current-password">
+			</div>
+			<div class="form-group">
+				<label for="newPassword">Neues Passwort</label> <input
+					type="password" id="newPassword" name="newPassword" required
+					autocomplete="new-password">
+			</div>
+			<div class="form-group">
+				<label for="confirmPassword">Neues Passwort bestätigen</label> <input
+					type="password" id="confirmPassword" name="confirmPassword"
+					required autocomplete="new-password">
+			</div>
+			<button type="submit" class="btn">Passwort speichern</button>
+		</form>
+	</div>
+</div>
+
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\profile.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle" value="Mein Profil" />
+</c:import>
+
+<h1>Mein Profil</h1>
+<p>Hier finden Sie eine Übersicht Ihrer Daten, Qualifikationen und
+	Aktivitäten.</p>
+
+<c:import url="/WEB-INF/jspf/message_banner.jspf" />
+
+<div class="responsive-dashboard-grid">
+	<div class="card">
+		<h2 class="card-title">Stammdaten</h2>
+		<ul class="details-list">
+			<li><strong>Benutzername:</strong> <span><c:out
+						value="${sessionScope.user.username}" /></span></li>
+			<li><strong>Rolle:</strong> <span><c:out
+						value="${sessionScope.user.roleName}" /></span></li>
+			<li><strong>Jahrgang:</strong> <span><c:out
+						value="${sessionScope.user.classYear}" /></span></li>
+			<li><strong>Klasse:</strong> <span><c:out
+						value="${sessionScope.user.className}" /></span></li>
+			<li><strong>E-Mail:</strong> <span><c:out
+						value="${not empty sessionScope.user.email ? sessionScope.user.email : 'Nicht hinterlegt'}" /></span></li>
+			<li style="align-items: center; gap: 1rem;"><strong>Chat-Farbe:</strong>
+				<form action="${pageContext.request.contextPath}/profil"
+					method="post"
+					style="display: flex; align-items: center; gap: 0.5rem;">
+					<input type="color" name="chatColor"
+						value="${not empty sessionScope.user.chatColor ? sessionScope.user.chatColor : '#E9ECEF'}"
+						title="Wähle deine Chat-Farbe">
+					<button type="submit" class="btn btn-small">Speichern</button>
+				</form></li>
+		</ul>
+	</div>
+
+	<div class="card">
+		<h2 class="card-title">Meine Qualifikationen</h2>
+		<div class="table-wrapper"
+			style="max-height: 400px; overflow-y: auto;">
+			<table class="data-table">
+				<thead>
+					<tr>
+						<th>Lehrgang</th>
+						<th>Status</th>
+					</tr>
+				</thead>
+				<tbody>
+					<c:if test="${empty qualifications}">
+						<tr>
+							<td colspan="2">Keine Qualifikationen erworben.</td>
+						</tr>
+					</c:if>
+					<c:forEach var="qual" items="${qualifications}">
+						<tr>
+							<td><c:out value="${qual.courseName}" /></td>
+							<td><c:out value="${qual.status}" /></td>
+						</tr>
+					</c:forEach>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+<div class="card">
+	<h2 class="card-title">Meine Event-Historie</h2>
+	<div class="table-wrapper" style="max-height: 500px; overflow-y: auto;">
+		<table class="data-table">
+			<thead>
+				<tr>
+					<th>Event</th>
+					<th>Datum</th>
+					<th>Dein Status</th>
+					<th>Feedback</th>
+				</tr>
+			</thead>
+			<tbody>
+				<c:if test="${empty eventHistory}">
+					<tr>
+						<td colspan="4">Keine Event-Historie vorhanden.</td>
+					</tr>
+				</c:if>
+				<c:forEach var="event" items="${eventHistory}">
+					<tr>
+						<td><a
+							href="${pageContext.request.contextPath}/veranstaltungen/details?id=${event.id}"><c:out
+									value="${event.name}" /></a></td>
+						<td><c:out value="${event.formattedEventDateTime}" /> Uhr</td>
+						<td><c:out value="${event.userAttendanceStatus}" /></td>
+						<td><c:if
+								test="${event.status == 'ABGESCHLOSSEN' && event.userAttendanceStatus == 'ZUGEWIESEN'}">
+								<a
+									href="${pageContext.request.contextPath}/feedback?action=submit&eventId=${event.id}"
+									class="btn btn-small">Feedback geben</a>
+							</c:if></td>
+					</tr>
+				</c:forEach>
+			</tbody>
+		</table>
+	</div>
+</div>
+
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\qr_action.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<!DOCTYPE html>
+<%-- REMOVED: hardcoded data-theme="dark" --%>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lager-Aktion: ${item.name}</title>
+<link rel="stylesheet"
+	href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<link rel="stylesheet"
+	href="${pageContext.request.contextPath}/css/style.css">
+
+<%-- ADDED: Inline script to set the theme from localStorage on page load --%>
+<script>
+    // This script runs immediately to prevent a "flash" of the wrong theme.
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+</script>
+
+</head>
+<body class="qr-action-body">
+
+	<div class="qr-action-container card">
+		<p>Aktion für:</p>
+		<h1 class="qr-action-item-name">
+			<c:out value="${item.name}" />
+		</h1>
+		<p class="details-subtitle"
+			style="margin-top: -1rem; margin-bottom: 2rem;">Bestand:
+			${item.quantity} / ${item.maxQuantity} (Verfügbar:
+			${item.availableQuantity})</p>
+
+
+		<c:if test="${not empty sessionScope.successMessage}">
+			<p class="success-message" style="margin-top: 1rem;">${sessionScope.successMessage}</p>
+			<c:remove var="successMessage" scope="session" />
+		</c:if>
+		<c:if test="${not empty sessionScope.errorMessage}">
+			<p class="error-message" style="margin-top: 1rem;">${sessionScope.errorMessage}</p>
+			<c:remove var="errorMessage" scope="session" />
+		</c:if>
+
+		<form action="${pageContext.request.contextPath}/lager/transaktion"
+			method="post">
+			<input type="hidden" name="itemId" value="${item.id}"> <input
+				type="hidden" name="redirectUrl"
+				value="${pageContext.request.contextPath}/lager/aktionen?id=${item.id}">
+
+			<div class="form-group">
+				<label for="quantity">Anzahl</label> <input type="number"
+					name="quantity" id="quantity" value="1" min="1" required>
+			</div>
+
+			<div class="form-group">
+				<label for="notes">Notiz (optional, z.B. für welches Event)</label>
+				<input type="text" name="notes" id="notes"
+					placeholder="z.B. für Event XYZ">
+			</div>
+			<div class="form-group">
+				<label for="eventId">Zuweisen zu Event (optional)</label> <select
+					name="eventId" id="eventId">
+					<option value="">Kein Event</option>
+					<c:forEach var="event" items="${activeEvents}">
+						<option value="${event.id}">${event.name}</option>
+					</c:forEach>
+				</select>
+			</div>
+
+			<div class="qr-action-buttons">
+				<button type="submit" name="type" value="checkout" id="checkout-btn"
+					class="btn btn-danger qr-action-btn"
+					${item.availableQuantity <= 0 ? 'disabled' : ''}>
+					<i class="fas fa-sign-out-alt"></i> Entnehmen
+				</button>
+				<button type="submit" name="type" value="checkin" id="checkin-btn"
+					class="btn btn-success qr-action-btn"
+					${item.maxQuantity > 0 && item.quantity >= item.maxQuantity ? 'disabled' : ''}>
+					<i class="fas fa-sign-in-alt"></i> Einräumen
+				</button>
+			</div>
+		</form>
+	</div>
+
+	<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const quantityInput = document.getElementById('quantity');
+        const checkoutBtn = document.getElementById('checkout-btn');
+        const checkinBtn = document.getElementById('checkin-btn');
+        
+        const availableQty = ${item.availableQuantity};
+        const totalQty = ${item.quantity};
+        const maxQty = ${item.maxQuantity};
+
+        // Set initial state for checkout
+        quantityInput.max = availableQty;
+
+        checkoutBtn.addEventListener('click', () => {
+            quantityInput.max = availableQty;
+            quantityInput.title = `Maximal entnehmbar: ${availableQty}`;
+        });
+
+        checkinBtn.addEventListener('click', () => {
+            const availableSpace = maxQty > 0 ? maxQty - totalQty : 9999;
+            quantityInput.max = availableSpace > 0 ? availableSpace : 9999;
+            quantityInput.title = `Maximal einräumbar: ${availableSpace}`;
+        });
+    });
+    </script>
+
+</body>
+</html>
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\storage_item_details.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle" value="Artikeldetails: ${item.name}" />
+</c:import>
+
+<h1>
+	<i class="fas fa-cube"></i> Artikeldetails
+</h1>
+
+<div class="dashboard-grid"
+	style="grid-template-columns: 1fr 2fr; align-items: flex-start;">
+
+	<div class="card">
+		<h2 class="card-title">${item.name}</h2>
+		<c:if test="${not empty item.imagePath}">
+			<a
+				href="${pageContext.request.contextPath}/image?file=${item.imagePath}"
+				class="lightbox-trigger"> <img
+				src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
+				alt="${item.name}"
+				style="width: 100%; border-radius: var(--border-radius); margin-bottom: 1rem; cursor: zoom-in;">
+			</a>
+		</c:if>
+		<ul class="details-list">
+			<li><strong>Allg. Status:</strong> <span
+				class="status-badge ${item.availabilityStatusCssClass}">${item.availabilityStatus}</span></li>
+			<li><strong>Verfügbar:</strong> <span>${item.availableQuantity}
+					/ ${item.quantity}</span></li>
+			<li><strong>Defekt:</strong> <span>${item.defectiveQuantity}</span></li>
+			<li><strong>Tracking-Status:</strong> <span> <c:choose>
+						<c:when test="${item.status == 'CHECKED_OUT'}">
+							<span class="status-badge status-warn">Entnommen</span>
+						</c:when>
+						<c:when test="${item.status == 'MAINTENANCE'}">
+							<span class="status-badge status-info">Wartung</span>
+						</c:when>
+						<c:otherwise>
+							<span class="status-badge status-ok">Im Lager</span>
+						</c:otherwise>
+					</c:choose>
+			</span></li>
+			<c:if test="${not empty item.currentHolderUsername}">
+				<li><strong>Aktueller Inhaber:</strong> <span>${item.currentHolderUsername}</span></li>
+			</c:if>
+			<li><strong>Ort:</strong> <span>${item.location}</span></li>
+			<li><strong>Schrank:</strong> <span>${not empty item.cabinet ? item.cabinet : 'N/A'}</span></li>
+			<li><strong>Fach:</strong> <span>${not empty item.compartment ? item.compartment : 'N/A'}</span></li>
+		</ul>
+		<div style="margin-top: 2rem;">
+			<a href="<c:url value='/lager'/>" class="btn btn-small"><i
+				class="fas fa-arrow-left"></i> Zur Lagerübersicht</a>
+		</div>
+	</div>
+
+	<div class="card">
+		<div class="modal-tabs">
+			<button class="modal-tab-button active" data-tab="history-tab">Verlauf</button>
+			<button class="modal-tab-button" data-tab="maintenance-tab">Wartungshistorie</button>
+		</div>
+
+		<div id="history-tab" class="modal-tab-content active">
+			<h2 class="card-title" style="border: none; padding: 0;">Verlauf
+				/ Chronik</h2>
+			<div class="table-wrapper"
+				style="max-height: 60vh; overflow-y: auto;">
+				<table class="data-table">
+					<thead>
+						<tr>
+							<th>Wann</th>
+							<th>Aktion</th>
+							<th>Wer</th>
+							<th>Notiz</th>
+						</tr>
+					</thead>
+					<tbody>
+						<c:if test="${empty history}">
+							<tr>
+								<td colspan="4" style="text-align: center;">Kein Verlauf
+									für diesen Artikel vorhanden.</td>
+							</tr>
+						</c:if>
+						<c:forEach var="entry" items="${history}">
+							<tr>
+								<td>${entry.transactionTimestampLocaleString}</td>
+								<td><span
+									class="status-badge ${entry.quantityChange > 0 ? 'status-ok' : 'status-danger'}">${entry.quantityChange > 0 ? '+' : ''}${entry.quantityChange}</span></td>
+								<td>${entry.username}</td>
+								<td>${not empty entry.notes ? entry.notes : '-'}</td>
+							</tr>
+						</c:forEach>
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		<div id="maintenance-tab" class="modal-tab-content">
+			<h2 class="card-title" style="border: none; padding: 0;">Wartungshistorie</h2>
+			<div class="table-wrapper"
+				style="max-height: 60vh; overflow-y: auto;">
+				<table class="data-table">
+					<thead>
+						<tr>
+							<th>Datum</th>
+							<th>Aktion</th>
+							<th>Bearbeiter</th>
+							<th>Notiz</th>
+						</tr>
+					</thead>
+					<tbody>
+						<c:if test="${empty maintenanceHistory}">
+							<tr>
+								<td colspan="4" style="text-align: center;">Keine
+									Wartungseinträge für diesen Artikel vorhanden.</td>
+							</tr>
+						</c:if>
+						<c:forEach var="entry" items="${maintenanceHistory}">
+							<tr>
+								<td>${entry.formattedLogDate}</td>
+								<td><c:out value="${entry.action}" /></td>
+								<td><c:out value="${entry.username}" /></td>
+								<td><c:out value="${entry.notes}" /></td>
+							</tr>
+						</c:forEach>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+
+
+<div id="lightbox" class="lightbox-overlay">
+	<span class="lightbox-close" title="Schließen">×</span> <img
+		class="lightbox-content" id="lightbox-image" alt="Großansicht">
+</div>
+
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+		// Tab switching logic
+		const tabButtons = document.querySelectorAll('.modal-tab-button');
+		const tabContents = document.querySelectorAll('.modal-tab-content');
+		tabButtons.forEach(button => {
+			button.addEventListener('click', () => {
+				tabButtons.forEach(btn => btn.classList.remove('active'));
+				button.classList.add('active');
+				tabContents.forEach(content => {
+					content.classList.toggle('active', content.id === button.dataset.tab);
+				});
+			});
+		});
+    });
+</script>
+<script
+	src="${pageContext.request.contextPath}/js/public/storage_item_details.js"></script>
+
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\web.xml
+========================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd"
+	version="5.0">
+
+	<display-name>TechnikTeam Web Application</display-name>
+
+	<session-config>
+		<session-timeout>30</session-timeout>
+	</session-config>
+
+	<welcome-file-list>
+		<welcome-file>/views/auth/login.jsp</welcome-file>
+	</welcome-file-list>
+
+	<jsp-config>
+		<jsp-property-group>
+			<url-pattern>*.jsp</url-pattern>
+			<url-pattern>*.jspf</url-pattern>
+			<el-ignored>false</el-ignored>
+		</jsp-property-group>
+	</jsp-config>
+
+	<!-- Custom Error Pages -->
+	<error-page>
+		<error-code>400</error-code>
+		<location>/views/error/error400.jsp</location>
+	</error-page>
+	<error-page>
+		<error-code>401</error-code>
+		<location>/views/error/error401.jsp</location>
+	</error-page>
+	<error-page>
+		<error-code>403</error-code>
+		<location>/views/error/error403.jsp</location>
+	</error-page>
+	<error-page>
+		<error-code>404</error-code>
+		<location>/views/error/error404.jsp</location>
+	</error-page>
+	<error-page>
+		<error-code>500</error-code>
+		<location>/views/error/error500.jsp</location>
+	</error-page>
+	<error-page>
+		<exception-type>java.lang.Throwable</exception-type>
+		<location>/views/error/error500.jsp</location>
+	</error-page>
+
+</web-app>
