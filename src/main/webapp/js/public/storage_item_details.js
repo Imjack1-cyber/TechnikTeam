@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		document.querySelectorAll('.lightbox-trigger').forEach(trigger => {
 			trigger.addEventListener('click', (e) => {
 				e.preventDefault();
-				lightboxImage.src = trigger.href; // Get src from the anchor's href
+				lightboxImage.src = trigger.href;
 				lightbox.style.display = 'flex';
 			});
 		});
@@ -18,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && lightbox.style.display === 'flex') closeLightbox(); });
 	}
 
-	// Tab switching logic
 	const tabButtons = document.querySelectorAll('.modal-tab-button');
 	const tabContents = document.querySelectorAll('.modal-tab-content');
 	tabButtons.forEach(button => {

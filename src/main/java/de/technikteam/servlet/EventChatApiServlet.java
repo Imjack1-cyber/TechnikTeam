@@ -54,6 +54,4 @@ public class EventChatApiServlet extends HttpServlet {
 			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid or missing eventId.");
 		}
 	}
-	// The doPost method has been removed as new messages are now sent via
-	// WebSocket.
 }

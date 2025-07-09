@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	const contextPath = document.body.dataset.contextPath || '';
 
-	// --- 1. Mobile Navigation Toggle Logic ---
 	const navToggle = document.querySelector('.mobile-nav-toggle');
 	const pageOverlay = document.querySelector('.page-overlay');
 	if (navToggle) {
@@ -21,9 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	}
 
-	// --- 2. Active Navigation Link Highlighting ---
-	// This logic is now part of the main_header.jspf and can be simplified or removed
-	// if the JSP handles it completely. We keep it as a fallback.
 	const currentPath = window.location.pathname;
 	document.querySelectorAll('.sidebar-nav a').forEach(link => {
 		if (link.getAttribute('href') === currentPath) {
@@ -32,18 +28,14 @@ document.addEventListener('DOMContentLoaded', () => {
 	});
 
 
-	// --- 3. Theme Switcher Logic ---
 	const themeSwitch = document.getElementById('theme-toggle');
-	// Check for saved theme in localStorage, default to 'light'
 	const currentTheme = localStorage.getItem('theme') || 'light';
 	document.documentElement.setAttribute('data-theme', currentTheme);
 
 	if (themeSwitch) {
-		// Set the toggle to the correct initial state
 		if (currentTheme === 'dark') {
 			themeSwitch.checked = true;
 		}
-		// Add event listener to handle changes
 		themeSwitch.addEventListener('change', (event) => {
 			const newTheme = event.target.checked ? 'dark' : 'light';
 			document.documentElement.setAttribute('data-theme', newTheme);
@@ -51,7 +43,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	}
 
-	// --- 4. Global Confirmation Modal Logic ---
 	const confirmationModalElement = document.createElement('div');
 	confirmationModalElement.className = 'modal-overlay';
 	confirmationModalElement.id = 'confirmation-modal';
@@ -93,8 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		if (e.target === confirmationModalElement) closeConfirmModal();
 	});
 
-	// Attach confirmation to logout link
-	// main.js
 	const logoutLink = document.getElementById('logout-link');
 	if (logoutLink) {
 		logoutLink.addEventListener('click', (event) => {
@@ -106,7 +95,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	}
 
-	// --- 5. Server-Sent Events (SSE) Notification Logic ---
 	if (document.body.dataset.isLoggedIn === 'true' && window.EventSource) {
 		const eventSource = new EventSource(`${contextPath}/notifications`);
 		eventSource.onopen = () => console.log("SSE connection established.");
@@ -116,15 +104,12 @@ document.addEventListener('DOMContentLoaded', () => {
 				console.log("SSE data received:", data);
 
 				if (data.type === 'chat_update') {
-					// Fire a custom event that the eventDetails.js can listen for
 					const chatUpdateEvent = new CustomEvent('sse_chat_update', { detail: data });
 					document.dispatchEvent(chatUpdateEvent);
 				} else {
-					// Fallback for other potential JSON messages
 					showBrowserNotification(data.message || JSON.stringify(data));
 				}
 			} catch (e) {
-				// If it's not JSON, treat it as a plain text notification
 				console.log("SSE (plain text) message received:", event.data);
 				showBrowserNotification(event.data);
 			}

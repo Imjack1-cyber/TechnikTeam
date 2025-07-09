@@ -15,8 +15,8 @@ public class ReportDAO {
 	public List<Map<String, Object>> getEventParticipationSummary() {
 		List<Map<String, Object>> summary = new ArrayList<>();
 		String sql = "SELECT e.name AS event_name, COUNT(ea.user_id) AS participant_count " + "FROM events e "
-				+ "LEFT JOIN event_attendance ea ON e.id = ea.event_id AND ea.signup_status = 'ANGEMELDET' "
-				+ "GROUP BY e.id, e.name " + "ORDER BY participant_count DESC, e.event_datetime DESC";
+				+ "LEFT JOIN event_assignments ea ON e.id = ea.event_id " + "GROUP BY e.id, e.name "
+				+ "ORDER BY participant_count DESC, e.event_datetime DESC";
 		logger.debug("Executing event participation summary query.");
 		try (Connection conn = DatabaseManager.getConnection();
 				Statement stmt = conn.createStatement();
@@ -59,18 +59,18 @@ public class ReportDAO {
 
 	public List<Map<String, Object>> getInventoryUsageFrequency() {
 		List<Map<String, Object>> stats = new ArrayList<>();
-		String sql = "SELECT si.name, COUNT(sl.id) AS transaction_count " + "FROM storage_items si "
-				+ "JOIN storage_log sl ON si.id = sl.item_id " + "WHERE sl.quantity_change < 0 " + // Count only
-																									// check-outs
-				"GROUP BY si.id, si.name " + "ORDER BY transaction_count DESC";
+		String sql = "SELECT si.name AS item_name, SUM(ABS(sl.quantity_change)) AS total_quantity_checked_out "
+				+ "FROM storage_items si " + "JOIN storage_log sl ON si.id = sl.item_id "
+				+ "WHERE sl.quantity_change < 0 " + "GROUP BY si.id, si.name "
+				+ "ORDER BY total_quantity_checked_out DESC";
 		logger.debug("Executing inventory usage frequency query.");
 		try (Connection conn = DatabaseManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
 			while (rs.next()) {
 				Map<String, Object> row = new HashMap<>();
-				row.put("item_name", rs.getString("name"));
-				row.put("checkout_count", rs.getInt("transaction_count"));
+				row.put("item_name", rs.getString("item_name"));
+				row.put("total_quantity_checked_out", rs.getInt("total_quantity_checked_out"));
 				stats.add(row);
 			}
 		} catch (SQLException e) {

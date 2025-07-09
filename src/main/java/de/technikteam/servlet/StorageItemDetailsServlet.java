@@ -53,7 +53,6 @@ public class StorageItemDetailsServlet extends HttpServlet {
 				return;
 			}
 
-			// Fetch the transaction history for the item
 			List<StorageLogEntry> history = storageLogDAO.getHistoryForItem(itemId);
 			List<MaintenanceLogEntry> maintenanceHistory = maintenanceLogDAO.getHistoryForItem(itemId);
 

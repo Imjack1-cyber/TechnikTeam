@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
 	const contextPath = document.body.dataset.contextPath || '';
 
-	// Custom confirmation for delete forms
 	document.querySelectorAll('.js-confirm-form').forEach(form => {
 		form.addEventListener('submit', function(e) {
 			e.preventDefault();
@@ -10,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	});
 
-	// Modal Logic
 	const modal = document.getElementById('meeting-modal');
 	if (!modal) return;
 
@@ -29,7 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		attachmentsList.innerHTML = '';
 	};
 
-	// Open "Create" Modal
 	const newMeetingBtn = document.getElementById('new-meeting-btn');
 	if (newMeetingBtn) {
 		newMeetingBtn.addEventListener('click', () => {
@@ -44,13 +41,15 @@ document.addEventListener('DOMContentLoaded', () => {
 	const addAttachmentRow = (attachment, courseId) => {
 		const li = document.createElement('li');
 		li.id = `attachment-item-${attachment.id}`;
-		li.innerHTML = `<a href="${contextPath}/download?file=${attachment.filepath}" target="_blank">${attachment.filename}</a> (Rolle: ${attachment.requiredRole})`;
+		// Corrected the download link to use the correct 'type' parameter.
+		li.innerHTML = `<a href="${contextPath}/download?type=meeting&id=${attachment.id}" target="_blank">${attachment.filename}</a> (Rolle: ${attachment.requiredRole})`;
 		const removeBtn = document.createElement('button');
 		removeBtn.type = 'button';
 		removeBtn.className = 'btn btn-small btn-danger-outline';
 		removeBtn.innerHTML = '×';
 		removeBtn.onclick = () => {
 			showConfirmationModal(`Anhang '${attachment.filename}' wirklich löschen?`, () => {
+				const csrfToken = form.querySelector('input[name="csrfToken"]').value; // Get token from main form
 				const deleteForm = document.createElement('form');
 				deleteForm.method = 'post';
 				deleteForm.action = `${contextPath}/admin/meetings`;
@@ -58,7 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
 					<input type="hidden" name="action" value="deleteAttachment">
 					<input type="hidden" name="attachmentId" value="${attachment.id}">
 					<input type="hidden" name="courseId" value="${courseId}">
-				`;
+					<input type="hidden" name="csrfToken" value="${csrfToken}">
+				`; // FIXED: Added CSRF token
 				document.body.appendChild(deleteForm);
 				deleteForm.submit();
 			});
@@ -67,7 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		attachmentsList.appendChild(li);
 	};
 
-	// Open "Edit" Modal
 	document.querySelectorAll('.edit-meeting-btn').forEach(btn => {
 		btn.addEventListener('click', async () => {
 			const meetingId = btn.dataset.meetingId;
@@ -115,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (file && file.size > maxSize) {
 				warningElement.style.display = 'block';
 				e.target.value = '';
-			} else {
+			} else if (warningElement) {
 				warningElement.style.display = 'none';
 			}
 		});

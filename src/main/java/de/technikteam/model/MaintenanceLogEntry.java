@@ -15,10 +15,8 @@ public class MaintenanceLogEntry {
 	private String notes;
 	private double cost;
 
-	// Transient field for display
 	private String username;
 
-	// --- Getters and Setters ---
 	public int getId() {
 		return id;
 	}

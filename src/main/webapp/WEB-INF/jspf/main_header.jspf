@@ -1,89 +1,104 @@
+<%-- FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\main_header.jspf --%>
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
-
-<c:set var="pageTitle"
-	value="${not empty param.pageTitle ? param.pageTitle : 'TechnikTeam'}" />
-<c:set var="showNav" value="${param.showNav ne 'false'}" />
 
 <!DOCTYPE html>
 <html lang="de" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><c:out value="${pageTitle}" /> - TechnikTeam</title>
+<title>${param.pageTitle}-TechnikTeam</title>
 <link rel="stylesheet"
 	href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 <link rel="stylesheet"
 	href="${pageContext.request.contextPath}/css/style.css">
-<script
-	src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<link rel="icon"
+	href="${pageContext.request.contextPath}/images/favicon.ico"
+	type="image/x-icon">
 </head>
 <body data-context-path="${pageContext.request.contextPath}"
-	data-is-logged-in="${not empty sessionScope.user}">
+	data-is-logged-in="${not empty sessionScope.user}"
+	data-csrf-token="${sessionScope.csrfToken}"
+	data-all-permissions="${fn:escapeXml(not empty param.permissionsJson ? param.permissionsJson : '[]')}">
+
+	<c:set var="showNav"
+		value="${empty param.showNav or param.showNav == 'true'}" />
 	<c:if test="${showNav}">
-		<div class="sidebar">
+		<c:set var="user" value="${sessionScope.user}" />
+
+		<aside class="sidebar">
 			<header class="sidebar-header">
-				<a href="${pageContext.request.contextPath}/home" class="logo"><i
-					class="fas fa-bolt"></i> TechnikTeam</a>
+				<a href="${pageContext.request.contextPath}/home" class="logo">
+					<i class="fas fa-bolt"></i> TechnikTeam
+				</a>
 			</header>
-			<ul class="sidebar-nav">
-				<c:set var="requestURI" value="${pageContext.request.requestURI}" />
-				<c:forEach var="item" items="${sessionScope.navigationItems}">
-					<c:if
-						test="${fn:startsWith(item.url, '/admin') and not fn:startsWith(previousUrl, '/admin')}">
-						<li class="nav-section-title">Verwaltung</li>
+			<nav class="sidebar-nav">
+				<ul>
+					<li class="nav-section-title">Benutzerbereich</li>
+					<c:forEach var="navItem" items="${sessionScope.navigationItems}">
+						<c:if test="${navItem.requiredPermission == null}">
+							<li><a
+								href="${pageContext.request.contextPath}${navItem.url}"
+								class="${pageContext.request.requestURI eq (pageContext.request.contextPath.concat(navItem.url)) ? 'active-nav-link' : ''}">
+									<i class="fas ${navItem.icon} fa-fw"></i> ${navItem.label}
+							</a></li>
+						</c:if>
+					</c:forEach>
+
+					<c:set var="adminSectionExists" value="${false}" />
+					<c:forEach var="navItem" items="${sessionScope.navigationItems}">
+						<c:if test="${not empty navItem.requiredPermission}">
+							<c:set var="adminSectionExists" value="${true}" />
+						</c:if>
+					</c:forEach>
+
+					<c:if test="${adminSectionExists}">
+						<li class="nav-section-title">Admin-Bereich</li>
+						<c:forEach var="navItem" items="${sessionScope.navigationItems}">
+							<c:if test="${not empty navItem.requiredPermission}">
+								<li><a
+									href="${pageContext.request.contextPath}${navItem.url}"
+									class="${pageContext.request.requestURI eq (pageContext.request.contextPath.concat(navItem.url)) ? 'active-nav-link' : ''}">
+										<i class="fas ${navItem.icon} fa-fw"></i> ${navItem.label}
+								</a></li>
+							</c:if>
+						</c:forEach>
 					</c:if>
 
-					<c:set var="isActive" value="${fn:endsWith(requestURI, item.url)}" />
-
-					<li><a href="${pageContext.request.contextPath}${item.url}"
-						class="${isActive ? 'active-nav-link' : ''}"> <i
-							class="fas ${item.icon} fa-fw"></i> <span>${item.label}</span>
-					</a></li>
-					<c:set var="previousUrl" value="${item.url}" />
-				</c:forEach>
-			</ul>
+				</ul>
+			</nav>
 			<div class="user-actions">
-				<div class="user-info">
-					Angemeldet als: <strong><c:out
-							value="${sessionScope.user.username}" /></strong>
+				<div class="theme-switcher">
+					<i class="fas fa-sun"></i> <label class="switch"> <input
+						type="checkbox" id="theme-toggle"> <span class="slider"></span>
+					</label> <i class="fas fa-moon"></i>
 				</div>
-
-				<%-- NEW: Theme Switcher and Profile Button --%>
+				<hr style="margin: 1rem 0;">
+				<div class="user-info">
+					Angemeldet als: <strong>${user.username}</strong>
+				</div>
 				<div class="sidebar-controls">
 					<a href="${pageContext.request.contextPath}/profil"
-						class="btn btn-secondary btn-small"> <i
-						class="fas fa-user-circle"></i> Mein Profil
-					</a>
-					<div class="theme-switcher">
-						<i class="fas fa-sun"></i> <label class="switch"> <input
-							type="checkbox" id="theme-toggle"> <span
-							class="slider round"></span>
-						</label> <i class="fas fa-moon"></i>
-					</div>
+						class="btn btn-secondary btn-small" style="flex-grow: 1;">Profil</a>
+					<a href="${pageContext.request.contextPath}/logout"
+						id="logout-link" class="btn btn-danger-outline btn-small"
+						style="flex-grow: 1;">Logout</a>
 				</div>
-
-				<a href="${pageContext.request.contextPath}/logout" id="logout-link"
-					class="btn btn-secondary btn-small"
-					style="width: 100%; margin-top: 1rem;"> <i
-					class="fas fa-sign-out-alt"></i> Ausloggen
-				</a>
 			</div>
-		</div>
-
-		<div class="page-overlay"></div>
+		</aside>
 
 		<header class="mobile-header">
 			<button class="mobile-nav-toggle" aria-label="Navigation umschalten">
-				<div class="line line-1"></div>
-				<div class="line line-2"></div>
-				<div class="line line-3"></div>
+				<span class="line line-1"></span> <span class="line line-2"></span>
+				<span class="line line-3"></span>
 			</button>
 			<a href="${pageContext.request.contextPath}/home" class="mobile-logo">TechnikTeam</a>
-			<div style="width: 40px;"></div>
+			<a href="${pageContext.request.contextPath}/profil"><i
+				class="fas fa-user-circle" style="font-size: 1.5rem;"></i></a>
 		</header>
+		<div class="page-overlay"></div>
 	</c:if>
 
 	<div class="main-content-wrapper">

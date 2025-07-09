@@ -9,6 +9,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -86,11 +87,19 @@ public class EventTaskDAO {
 	}
 
 	private void clearAssociations(Connection conn, int taskId) throws SQLException {
-		try (Statement stmt = conn.createStatement()) {
-			stmt.addBatch("DELETE FROM event_task_assignments WHERE task_id = " + taskId);
-			stmt.addBatch("DELETE FROM event_task_storage_items WHERE task_id = " + taskId);
-			stmt.addBatch("DELETE FROM event_task_kits WHERE task_id = " + taskId);
-			stmt.executeBatch();
+		try (PreparedStatement userStmt = conn.prepareStatement("DELETE FROM event_task_assignments WHERE task_id = ?");
+				PreparedStatement itemStmt = conn
+						.prepareStatement("DELETE FROM event_task_storage_items WHERE task_id = ?");
+				PreparedStatement kitStmt = conn.prepareStatement("DELETE FROM event_task_kits WHERE task_id = ?")) {
+
+			userStmt.setInt(1, taskId);
+			userStmt.executeUpdate();
+
+			itemStmt.setInt(1, taskId);
+			itemStmt.executeUpdate();
+
+			kitStmt.setInt(1, taskId);
+			kitStmt.executeUpdate();
 		}
 	}
 
@@ -175,38 +184,74 @@ public class EventTaskDAO {
 	}
 
 	private void fetchTaskAssociations(Connection conn, Map<Integer, EventTask> tasksById) throws SQLException {
-		String taskIds = tasksById.keySet().stream().map(String::valueOf).collect(Collectors.joining(","));
+		List<Integer> taskIds = new ArrayList<>(tasksById.keySet());
+		String placeholders = String.join(",", Collections.nCopies(taskIds.size(), "?"));
+
 		String userSql = "SELECT ta.task_id, u.id, u.username FROM event_task_assignments ta JOIN users u ON ta.user_id = u.id WHERE ta.task_id IN ("
-				+ taskIds + ")";
-		try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(userSql)) {
-			while (rs.next()) {
-				User user = new User();
-				user.setId(rs.getInt("id"));
-				user.setUsername(rs.getString("username"));
-				tasksById.get(rs.getInt("task_id")).getAssignedUsers().add(user);
+				+ placeholders + ")";
+		try (PreparedStatement ps = conn.prepareStatement(userSql)) {
+			for (int i = 0; i < taskIds.size(); i++) {
+				ps.setInt(i + 1, taskIds.get(i));
+			}
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					User user = new User();
+					user.setId(rs.getInt("id"));
+					user.setUsername(rs.getString("username"));
+					tasksById.get(rs.getInt("task_id")).getAssignedUsers().add(user);
+				}
 			}
 		}
+
 		String itemSql = "SELECT tsi.task_id, si.id, si.name, tsi.quantity FROM event_task_storage_items tsi JOIN storage_items si ON tsi.item_id = si.id WHERE tsi.task_id IN ("
-				+ taskIds + ")";
-		try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(itemSql)) {
-			while (rs.next()) {
-				StorageItem item = new StorageItem();
-				item.setId(rs.getInt("id"));
-				item.setName(rs.getString("name"));
-				item.setQuantity(rs.getInt("quantity"));
-				tasksById.get(rs.getInt("task_id")).getRequiredItems().add(item);
+				+ placeholders + ")";
+		try (PreparedStatement ps = conn.prepareStatement(itemSql)) {
+			for (int i = 0; i < taskIds.size(); i++) {
+				ps.setInt(i + 1, taskIds.get(i));
+			}
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					StorageItem item = new StorageItem();
+					item.setId(rs.getInt("id"));
+					item.setName(rs.getString("name"));
+					item.setQuantity(rs.getInt("quantity"));
+					tasksById.get(rs.getInt("task_id")).getRequiredItems().add(item);
+				}
 			}
 		}
 		String kitSql = "SELECT tk.task_id, ik.id, ik.name FROM event_task_kits tk JOIN inventory_kits ik ON tk.kit_id = ik.id WHERE tk.task_id IN ("
-				+ taskIds + ")";
-		try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(kitSql)) {
-			while (rs.next()) {
-				InventoryKit kit = new InventoryKit();
-				kit.setId(rs.getInt("id"));
-				kit.setName(rs.getString("name"));
-				tasksById.get(rs.getInt("task_id")).getRequiredKits().add(kit);
+				+ placeholders + ")";
+		try (PreparedStatement ps = conn.prepareStatement(kitSql)) {
+			for (int i = 0; i < taskIds.size(); i++) {
+				ps.setInt(i + 1, taskIds.get(i));
+			}
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					InventoryKit kit = new InventoryKit();
+					kit.setId(rs.getInt("id"));
+					kit.setName(rs.getString("name"));
+					tasksById.get(rs.getInt("task_id")).getRequiredKits().add(kit);
+				}
 			}
 		}
+	}
+
+	public EventTask getTaskById(int taskId) {
+		String sql = "SELECT * FROM event_tasks WHERE id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, taskId);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				if (rs.next()) {
+					EventTask task = new EventTask();
+					task.setId(rs.getInt("id"));
+					task.setEventId(rs.getInt("event_id"));
+					return task;
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching task by ID {}", taskId, e);
+		}
+		return null;
 	}
 
 	public boolean deleteTask(int taskId) {
@@ -259,6 +304,20 @@ public class EventTaskDAO {
 			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
 			logger.error("Error unclaiming task {} for user {}", taskId, userId, e);
+			return false;
+		}
+	}
+
+	public boolean isUserAssignedToTask(int taskId, int userId) {
+		String sql = "SELECT 1 FROM event_task_assignments WHERE task_id = ? AND user_id = ? LIMIT 1";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, taskId);
+			pstmt.setInt(2, userId);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				return rs.next();
+			}
+		} catch (SQLException e) {
+			logger.error("Error checking user assignment for task {} and user {}", taskId, userId, e);
 			return false;
 		}
 	}

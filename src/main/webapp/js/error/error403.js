@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			await new Promise(resolve => setTimeout(resolve, delay));
 		}
 		currentLine.innerHTML = currentLine.innerHTML.replace('<span class="cursor"></span>', '');
-		consoleBody.innerHTML += '\n'; // New line
+		consoleBody.innerHTML += '\n'; 
 	}
 
 	async function addLine(text, className = '') {

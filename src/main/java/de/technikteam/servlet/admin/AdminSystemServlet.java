@@ -16,7 +16,6 @@ public class AdminSystemServlet extends HttpServlet {
 
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		// CORRECTED: Forward to the actual JSP file path.
 		request.getRequestDispatcher("/views/admin/admin_system.jsp").forward(request, response);
 	}
 }

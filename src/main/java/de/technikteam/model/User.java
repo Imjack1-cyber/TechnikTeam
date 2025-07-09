@@ -13,7 +13,7 @@ public class User {
 	private int classYear;
 	private String className;
 	private String email;
-	private String chatColor; // NEW: To store the user's preferred chat bubble color
+	private String chatColor; 
 
 	public User() {
 	}
@@ -24,7 +24,6 @@ public class User {
 		this.roleName = roleName;
 	}
 
-	// Getters and Setters
 	public int getId() {
 		return id;
 	}
@@ -99,11 +98,11 @@ public class User {
 
 	public String getChatColor() {
 		return chatColor;
-	} // NEW
+	} 
 
 	public void setChatColor(String chatColor) {
 		this.chatColor = chatColor;
-	} // NEW
+	} 
 
 	public String getFormattedCreatedAt() {
 		return de.technikteam.config.DateFormatter.formatDateTime(this.createdAt);

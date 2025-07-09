@@ -626,11 +626,14 @@ body.nav-open .page-overlay {
 .list-item-card .card-title {
 	margin-bottom: 0.5rem;
 	font-size: 1.1rem;
+	border-bottom: none;
+	padding-bottom: 0;
 }
 
 .card-row {
 	display: flex;
 	justify-content: space-between;
+	align-items: center;
 	font-size: 0.9rem;
 	padding: 0.4rem 0;
 	border-bottom: 1px solid var(--border-color);

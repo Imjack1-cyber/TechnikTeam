@@ -17,12 +17,12 @@ document.addEventListener('DOMContentLoaded', function() {
 		},
 		events: `${contextPath}/api/calendar/entries`,
 		eventClick: function(info) {
-			info.jsEvent.preventDefault(); // don't let the browser navigate
+			info.jsEvent.preventDefault(); 
 			if (info.event.url) {
 				window.open(info.event.url, "_self");
 			}
 		},
-		eventTimeFormat: { // German time format
+		eventTimeFormat: { 
 			hour: '2-digit',
 			minute: '2-digit',
 			meridiem: false,

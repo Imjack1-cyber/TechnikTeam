@@ -13,15 +13,16 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Mapped to `/meetingDetails`, this servlet handles GET requests to display the
  * detailed view of a single course meeting. It fetches the core meeting data as
  * well as any associated file attachments, applying role-based filtering for
- * the attachments. The collected data is then forwarded to
- * `meetingDetails.jsp`.
+ * the attachments.
  */
-@WebServlet("/meeting/details")
+@WebServlet("/meetingDetails")
 public class MeetingDetailsServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(MeetingDetailsServlet.class);
@@ -58,21 +59,31 @@ public class MeetingDetailsServlet extends HttpServlet {
 				return;
 			}
 
-			// If current user is the leader, they act as an ADMIN for viewing attachments
-			String attachmentUserRole = user.getRoleName();
-			if (user.getId() == meeting.getLeaderUserId()) {
-				attachmentUserRole = "ADMIN";
-				logger.debug("User {} is leader of meeting {}. Granting admin view for attachments.",
+			boolean hasAdminRights = user.getPermissions().contains("ACCESS_ADMIN_PANEL")
+					|| user.getPermissions().contains("COURSE_READ");
+			boolean isLeader = user.getId() == meeting.getLeaderUserId();
+
+			boolean isParticipant = meetingDAO.isUserAssociatedWithMeeting(meetingId, user.getId());
+
+			if (!hasAdminRights && !isLeader && !isParticipant) {
+				logger.warn("Authorization DENIED for user '{}' trying to access meeting details for ID {}",
 						user.getUsername(), meetingId);
+				response.sendError(HttpServletResponse.SC_FORBIDDEN,
+						"Sie sind nicht berechtigt, diese Meeting-Details anzuzeigen.");
+				return;
 			}
 
-			// Fetch attachments for the meeting, respecting the user's role (or leader
-			// override)
+			String attachmentUserRole = "NUTZER";
+			if (hasAdminRights || isLeader) {
+				attachmentUserRole = "ADMIN";
+				logger.debug("User {} granted admin view for attachments of meeting {}.", user.getUsername(),
+						meetingId);
+			}
+
 			request.setAttribute("attachments", attachmentDAO.getAttachmentsForMeeting(meetingId, attachmentUserRole));
 			request.setAttribute("meeting", meeting);
 
 			logger.debug("Forwarding to meetingDetails.jsp for meeting '{}'", meeting.getName());
-			// CORRECTED: Forward to the actual JSP file path.
 			request.getRequestDispatcher("/views/public/meetingDetails.jsp").forward(request, response);
 
 		} catch (NumberFormatException e) {

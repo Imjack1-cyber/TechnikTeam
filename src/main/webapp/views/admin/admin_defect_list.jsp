@@ -61,9 +61,11 @@
 		<h3 id="defect-modal-title">Defekt-Status bearbeiten</h3>
 		<form action="${pageContext.request.contextPath}/admin/lager"
 			method="post">
-			<input type="hidden" name="action" value="updateDefect"> <input
-				type="hidden" name="id" id="defect-item-id"> <input
-				type="hidden" name="returnTo" value="defekte">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="updateDefect"> <input type="hidden"
+				name="id" id="defect-item-id"> <input type="hidden"
+				name="returnTo" value="defekte">
 			<div class="form-group">
 				<label for="defective_quantity">Anzahl defekter Artikel</label> <input
 					type="number" name="defective_quantity" id="defective_quantity"

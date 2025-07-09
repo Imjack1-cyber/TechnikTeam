@@ -26,11 +26,9 @@
 			<li style="padding: 0.5rem 0;"><a
 				href="${pageContext.request.contextPath}/admin/veranstaltungen">Neue
 					Veranstaltung anlegen</a></li>
-			<li style="padding: 0.5rem 0;">
-				<%-- CORRECTED: Link points to /admin/mitglieder --%> <a
+			<li style="padding: 0.5rem 0;"><a
 				href="${pageContext.request.contextPath}/admin/mitglieder">Neuen
-					Benutzer erstellen</a>
-			</li>
+					Benutzer erstellen</a></li>
 			<li style="padding: 0.5rem 0;"><a
 				href="${pageContext.request.contextPath}/admin/lager">Neuen
 					Lagerartikel anlegen</a></li>

@@ -16,14 +16,11 @@ public class StorageLogEntry {
 	private String username;
 	private int quantityChange;
 	private String notes;
-	private int eventId; // Can be 0 if not linked
+	private int eventId; 
 	private LocalDateTime transactionTimestamp;
 
-	// Define the formatter here
 	private static final DateTimeFormatter GERMAN_LOCALE_FORMATTER = DateTimeFormatter
 			.ofPattern("dd.MM.yyyy, HH:mm:ss");
-
-	// --- Getters and Setters ---
 
 	public int getId() {
 		return id;
@@ -89,12 +86,10 @@ public class StorageLogEntry {
 		this.transactionTimestamp = transactionTimestamp;
 	}
 
-	// OLD METHOD - uses a different formatter
 	public String getFormattedTimestamp() {
 		return DateFormatter.formatDateTime(this.transactionTimestamp);
 	}
 
-	// NEW GETTER for the specific locale string required by the JSP
 	public String getTransactionTimestampLocaleString() {
 		if (this.transactionTimestamp == null) {
 			return "";

@@ -7,6 +7,7 @@ import de.technikteam.model.Event;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
+import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -37,6 +38,13 @@ public class StorageTransactionServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		User user = (User) request.getSession().getAttribute("user");
+		if (!CSRFUtil.isTokenValid(request)) {
+			logger.warn("CSRF token validation failed for storage transaction by user '{}'",
+					user != null ? user.getUsername() : "GUEST");
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
+
 		String redirectUrl = request.getParameter("redirectUrl");
 		if (redirectUrl == null || redirectUrl.isEmpty()) {
 			redirectUrl = request.getContextPath() + "/lager";
@@ -45,7 +53,7 @@ public class StorageTransactionServlet extends HttpServlet {
 		try {
 			int itemId = Integer.parseInt(request.getParameter("itemId"));
 			int quantity = Integer.parseInt(request.getParameter("quantity"));
-			String type = request.getParameter("type"); // "checkout" or "checkin"
+			String type = request.getParameter("type");
 			String notes = request.getParameter("notes");
 			Integer eventId = null;
 			try {
@@ -56,7 +64,6 @@ public class StorageTransactionServlet extends HttpServlet {
 						eventId = null;
 				}
 			} catch (NumberFormatException e) {
-				// Ignore if not provided or invalid
 			}
 
 			int quantityChange = "checkin".equals(type) ? quantity : -quantity;
@@ -78,7 +85,6 @@ public class StorageTransactionServlet extends HttpServlet {
 					success = storageDAO.performCheckout(itemId, quantity, user.getId(), eventId);
 				}
 			} else if ("checkin".equals(type)) {
-				// FIX: Correctly check against max quantity BEFORE attempting the transaction.
 				if (item.getMaxQuantity() > 0 && (item.getQuantity() + quantity > item.getMaxQuantity())) {
 					int availableSpace = item.getMaxQuantity() - item.getQuantity();
 					if (availableSpace > 0) {

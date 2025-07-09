@@ -39,15 +39,10 @@ public class CharacterEncodingFilter implements Filter {
 
 		logger.trace("Applying UTF-8 character encoding to request and response.");
 
-		// Set the character encoding for the request to correctly interpret incoming
-		// data
 		request.setCharacterEncoding("UTF-8");
 
-		// Set the character encoding for the response to ensure the browser renders it
-		// correctly
 		response.setCharacterEncoding("UTF-8");
 
-		// Pass the request along the filter chain
 		chain.doFilter(request, response);
 	}
 

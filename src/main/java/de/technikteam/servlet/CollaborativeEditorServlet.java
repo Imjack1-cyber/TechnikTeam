@@ -20,9 +20,6 @@ public class CollaborativeEditorServlet extends HttpServlet {
 
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		// CORRECTED: Forward to the actual JSP file path. Note the original servlet
-		// mapping was `/dateien/texte` but the JSP link uses `/editor-page`. I'll map
-		// this to the JSP link.
 		request.getRequestDispatcher("/views/public/collaborative_editor.jsp").forward(request, response);
 	}
 }

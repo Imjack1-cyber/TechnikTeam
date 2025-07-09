@@ -23,7 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
         signupModal.classList.add('active');
 
         try {
-            // UPDATED: Fetch from the new, correct public API endpoint
             const response = await fetch(`${contextPath}/api/public/event-custom-fields?eventId=${eventId}`);
             if (!response.ok) throw new Error('Could not fetch custom fields for the event.');
             

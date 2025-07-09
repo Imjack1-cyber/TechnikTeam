@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-	// Transaction Modal Logic
 	const transactionModal = document.getElementById('transaction-modal');
 	if (transactionModal) {
 		const modalTitle = document.getElementById('transaction-modal-title');
@@ -18,7 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			const totalMaxQty = parseInt(btn.dataset.totalMaxQty, 10);
 			const availableSpace = totalMaxQty > 0 ? totalMaxQty - currentQty : 9999;
 
-			// Set initial state for checkout validation
 			quantityInput.max = availableQty;
 			quantityInput.title = `Maximal entnehmbar: ${availableQty}`;
 			quantityInput.value = 1;
@@ -26,14 +24,13 @@ document.addEventListener('DOMContentLoaded', () => {
 			checkoutButton.disabled = (availableQty <= 0);
 			checkinButton.disabled = (totalMaxQty > 0 && currentQty >= totalMaxQty);
 
-			// DYNAMICALLY UPDATE MAX ATTRIBUTE ON HOVER
 			checkoutButton.onmouseover = () => {
 				quantityInput.max = availableQty;
 				quantityInput.title = `Maximal entnehmbar: ${availableQty}`;
 			};
 
 			checkinButton.onmouseover = () => {
-				quantityInput.max = availableSpace > 0 ? availableSpace : 9999; // Allow large number if no max
+				quantityInput.max = availableSpace > 0 ? availableSpace : 9999;
 				quantityInput.title = `Maximal einräumbar: ${availableSpace}`;
 			};
 
@@ -46,7 +43,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		transactionModal.addEventListener('click', e => { if (e.target === transactionModal) closeModal(); });
 	}
 
-	// Lightbox Logic
 	const lightbox = document.getElementById('lightbox');
 	if (lightbox) {
 		const lightboxImage = document.getElementById('lightbox-image');

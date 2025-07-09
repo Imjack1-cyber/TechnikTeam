@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
 	const totalQty = parseInt(form.dataset.totalQty, 10);
 	const maxQty = parseInt(form.dataset.maxQty, 10);
 
-	// Set initial state for checkout
 	quantityInput.max = availableQty;
 
 	checkoutBtn.addEventListener('click', () => {

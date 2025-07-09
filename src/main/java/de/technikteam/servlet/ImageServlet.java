@@ -7,6 +7,7 @@ import java.io.OutputStream;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 
+import de.technikteam.model.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -16,6 +17,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 /**
  * Mapped to `/image`, this servlet acts as a secure proxy to serve images. It
@@ -33,6 +35,14 @@ public class ImageServlet extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+
+		HttpSession session = request.getSession(false);
+		if (session == null || session.getAttribute("user") == null) {
+			response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authentication required.");
+			return;
+		}
+		User user = (User) session.getAttribute("user");
+
 		String filename = request.getParameter("file");
 		if (filename == null || filename.isEmpty()) {
 			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing 'file' parameter.");
@@ -47,15 +57,20 @@ public class ImageServlet extends HttpServlet {
 			return;
 		}
 
-		// Prevent path traversal
-		if (filename.contains("..")) {
-			logger.warn("Potential path traversal attack detected for image filename: {}", filename);
+		File imageUploadDir = new File(AppConfig.UPLOAD_DIRECTORY, "images");
+		String imageDirCanonicalPath = imageUploadDir.getCanonicalPath();
+
+		File imageFile = new File(imageUploadDir, filename);
+		String requestedFileCanonicalPath = imageFile.getCanonicalPath();
+
+		if (!requestedFileCanonicalPath.startsWith(imageDirCanonicalPath)) {
+			String username = (user != null) ? user.getUsername() : "GUEST";
+			logger.fatal(
+					"CRITICAL: Path Traversal Attack Detected! User: '{}' attempted to access '{}' via image servlet.",
+					username, requestedFileCanonicalPath);
 			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
 			return;
 		}
-
-		// Construct the full path to the image file inside the 'images' subdirectory
-		File imageFile = new File(AppConfig.UPLOAD_DIRECTORY + File.separator + "images", filename);
 
 		if (!imageFile.exists() || !imageFile.isFile()) {
 			logger.warn("Image not found at path: {}", imageFile.getAbsolutePath());
@@ -63,22 +78,18 @@ public class ImageServlet extends HttpServlet {
 			return;
 		}
 
-		// Determine content type (MIME type) from file extension
 		String contentType = getServletContext().getMimeType(imageFile.getName());
 		if (contentType == null) {
-			contentType = "application/octet-stream"; // Fallback if type is unknown
+			contentType = "application/octet-stream";
 		}
 
 		response.setContentType(contentType);
 		response.setContentLengthLong(imageFile.length());
 
-		// The 'inline' header tells the browser to display the file, not to download
-		// it.
 		response.setHeader("Content-Disposition", "inline; filename=\"" + imageFile.getName() + "\"");
 
 		logger.debug("Serving image: {} with content type {}", imageFile.getAbsolutePath(), contentType);
 
-		// Stream the file content to the response
 		try (FileInputStream inStream = new FileInputStream(imageFile);
 				OutputStream outStream = response.getOutputStream()) {
 

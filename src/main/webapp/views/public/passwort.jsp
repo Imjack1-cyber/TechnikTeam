@@ -23,6 +23,8 @@
 
 		<form action="${pageContext.request.contextPath}/passwort"
 			method="post">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}">
 			<div class="form-group">
 				<label for="currentPassword">Aktuelles Passwort</label> <input
 					type="password" id="currentPassword" name="currentPassword"

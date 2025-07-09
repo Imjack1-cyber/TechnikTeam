@@ -1,7 +1,9 @@
 package de.technikteam.servlet.admin;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -14,13 +16,14 @@ import de.technikteam.model.File;
 import de.technikteam.model.FileCategory;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
-import de.technikteam.util.ServletUtils;
+import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
 
 @MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 20, maxRequestSize = 1024 * 1024 * 50)
@@ -57,11 +60,17 @@ public class AdminFileServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		request.setCharacterEncoding("UTF-8");
+
 		String contentType = request.getContentType();
 
 		if (contentType != null && contentType.toLowerCase().startsWith("multipart/")) {
 			handleUpload(request, response);
 		} else {
+			if (!CSRFUtil.isTokenValid(request)) {
+				logger.warn("CSRF token validation failed for file management action.");
+				response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+				return;
+			}
 			String action = request.getParameter("action");
 			if ("delete".equals(action)) {
 				handleDelete(request, response);
@@ -75,60 +84,95 @@ public class AdminFileServlet extends HttpServlet {
 
 	private void handleUpload(HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
-		User adminUser = (User) request.getSession().getAttribute("user");
+		HttpSession session = request.getSession();
+		User adminUser = (User) session.getAttribute("user");
+
+		String categoryIdStr = null;
+		String requiredRole = null;
+		String csrfToken = null;
+		Part filePart = null;
+
 		try {
+			for (Part part : request.getParts()) {
+				if (part.getSubmittedFileName() == null || part.getSubmittedFileName().isEmpty()) {
+					// This is a form field
+					String fieldName = part.getName();
+					String fieldValue = new String(part.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+					switch (fieldName) {
+					case "csrfToken":
+						csrfToken = fieldValue;
+						break;
+					case "categoryId":
+						categoryIdStr = fieldValue;
+						break;
+					case "requiredRole":
+						requiredRole = fieldValue;
+						break;
+					}
+				} else {
+					// This is the file part
+					if (filePart == null) {
+						filePart = part;
+					}
+				}
+			}
+
+			logger.debug(
+					"Parsed from multipart form: categoryId='{}', requiredRole='{}', csrfToken (present)='{}', filePart (present)='{}'",
+					categoryIdStr, requiredRole, csrfToken != null, filePart != null);
+
+			if (!CSRFUtil.isTokenValid(session, csrfToken)) {
+				logger.warn("CSRF token validation failed for file upload action.");
+				response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+				return;
+			}
+
+			if (categoryIdStr == null || categoryIdStr.trim().isEmpty() || "0".equals(categoryIdStr)) {
+				logger.warn("File upload failed: No category was selected. categoryIdStr was '{}'.", categoryIdStr);
+				session.setAttribute("errorMessage", "Es muss eine Kategorie ausgewählt werden.");
+				response.sendRedirect(request.getContextPath() + "/admin/dateien");
+				return;
+			}
+			int categoryId = Integer.parseInt(categoryIdStr);
+
+			if (filePart == null || filePart.getSize() == 0) {
+				session.setAttribute("errorMessage", "Bitte wählen Sie eine Datei zum Hochladen aus.");
+				response.sendRedirect(request.getContextPath() + "/admin/dateien");
+				return;
+			}
+
+			String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
+
 			String uploadFilePath = AppConfig.UPLOAD_DIRECTORY;
 			java.io.File uploadDir = new java.io.File(uploadFilePath);
 			if (!uploadDir.exists())
 				uploadDir.mkdirs();
 
-			Part filePart = request.getPart("file");
-			String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
+			java.io.File targetFile = new java.io.File(uploadDir, fileName);
+			filePart.write(targetFile.getAbsolutePath());
+			logger.info("File '{}' uploaded by '{}' to: {}", fileName, adminUser.getUsername(),
+					targetFile.getAbsolutePath());
 
-			String requiredRole = ServletUtils.getPartValue(request.getPart("requiredRole"));
-			String categoryIdStr = ServletUtils.getPartValue(request.getPart("categoryId"));
+			File newDbFile = new File();
+			newDbFile.setFilename(fileName);
+			newDbFile.setFilepath(fileName);
+			newDbFile.setCategoryId(categoryId);
+			newDbFile.setRequiredRole(requiredRole);
 
-			int categoryId = 0;
-			try {
-				if (categoryIdStr != null && !categoryIdStr.isEmpty()) {
-					categoryId = Integer.parseInt(categoryIdStr);
-				}
-			} catch (NumberFormatException e) {
-				logger.warn("No valid category ID provided during upload.");
-			}
-
-			if (fileName == null || fileName.isEmpty()) {
-				request.getSession().setAttribute("errorMessage", "Bitte wählen Sie eine Datei zum Hochladen aus.");
-			} else if (categoryId == 0) {
-				request.getSession().setAttribute("errorMessage", "Bitte wählen Sie eine Kategorie aus.");
+			if (fileDAO.createFile(newDbFile)) {
+				String categoryName = fileDAO.getCategoryNameById(categoryId);
+				String logDetails = String.format("Datei '%s' in Kategorie '%s' hochgeladen. Sichtbar für: %s.",
+						fileName, categoryName, requiredRole);
+				AdminLogService.log(adminUser.getUsername(), "FILE_UPLOAD", logDetails);
+				session.setAttribute("successMessage", "Datei '" + fileName + "' erfolgreich hochgeladen.");
 			} else {
-				java.io.File targetFile = new java.io.File(uploadDir, fileName);
-				filePart.write(targetFile.getAbsolutePath());
-				logger.info("File '{}' uploaded by '{}' to: {}", fileName, adminUser.getUsername(),
-						targetFile.getAbsolutePath());
-
-				File newDbFile = new File();
-				newDbFile.setFilename(fileName);
-				newDbFile.setFilepath(fileName);
-				newDbFile.setCategoryId(categoryId);
-				newDbFile.setRequiredRole(requiredRole);
-
-				if (fileDAO.createFile(newDbFile)) {
-					String categoryName = fileDAO.getCategoryNameById(categoryId);
-					String logDetails = String.format("Datei '%s' in Kategorie '%s' hochgeladen. Sichtbar für: %s.",
-							fileName, categoryName, requiredRole);
-					AdminLogService.log(adminUser.getUsername(), "FILE_UPLOAD", logDetails);
-					request.getSession().setAttribute("successMessage",
-							"Datei '" + fileName + "' erfolgreich hochgeladen.");
-				} else {
-					request.getSession().setAttribute("errorMessage",
-							"DB-Fehler: Datei konnte nicht gespeichert werden (ggf. existiert der Name bereits).");
-					targetFile.delete();
-				}
+				session.setAttribute("errorMessage",
+						"DB-Fehler: Datei konnte nicht gespeichert werden (ggf. existiert der Name bereits).");
+				targetFile.delete();
 			}
 		} catch (Exception e) {
 			logger.error("File upload failed.", e);
-			request.getSession().setAttribute("errorMessage", "Fehler beim Upload: " + e.getMessage());
+			session.setAttribute("errorMessage", "Fehler beim Upload: " + e.getMessage());
 		}
 		response.sendRedirect(request.getContextPath() + "/admin/dateien");
 	}

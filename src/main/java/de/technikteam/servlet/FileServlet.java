@@ -41,26 +41,19 @@ public class FileServlet extends HttpServlet {
 		User user = (User) request.getSession().getAttribute("user");
 		logger.info("File page requested by user '{}' (Role: {})", user.getUsername(), user.getRoleName());
 
-		// 1. Fetch files from the database, already filtered by the user's role in the
-		// DAO.
 		Map<String, List<File>> fileData = fileDAO.getAllFilesGroupedByCategory(user);
 
-		// 2. Create our "virtual" file object for the collaborative editor.
 		File collaborativeFile = new File();
-		collaborativeFile.setId(-1); // Use a special ID to identify it in the JSP.
+		collaborativeFile.setId(-1); 
 		collaborativeFile.setFilename("Gemeinsamer Notizblock (Live-Editor)");
-		collaborativeFile.setFilepath(null); // No physical file path.
+		collaborativeFile.setFilepath(null); 
 
-		// 3. Add the virtual file to a specific category. If the category doesn't
-		// exist, create it.
 		String virtualCategoryName = "Allgemeine Dokumente";
 		List<File> generalFiles = fileData.computeIfAbsent(virtualCategoryName, k -> new ArrayList<>());
-		generalFiles.add(0, collaborativeFile); // Add to the beginning of the list.
+		generalFiles.add(0, collaborativeFile); 
 
-		// 4. Send the modified map to the JSP.
 		request.setAttribute("fileData", fileData);
 		logger.debug("Forwarding file data (including virtual editor link) to dateien.jsp.");
-		// CORRECTED: Forward to the actual JSP file path.
 		request.getRequestDispatcher("/views/public/dateien.jsp").forward(request, response);
 	}
 }

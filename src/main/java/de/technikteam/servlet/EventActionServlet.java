@@ -11,6 +11,7 @@ import de.technikteam.dao.EventDAO;
 import de.technikteam.model.EventCustomField;
 import de.technikteam.model.EventCustomFieldResponse;
 import de.technikteam.model.User;
+import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -34,6 +35,11 @@ public class EventActionServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 
+		if (!CSRFUtil.isTokenValid(request)) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
+
 		User user = (User) request.getSession().getAttribute("user");
 		String action = request.getParameter("action");
 		String eventIdParam = request.getParameter("eventId");
@@ -52,7 +58,6 @@ public class EventActionServlet extends HttpServlet {
 			if ("signup".equals(action)) {
 				eventDAO.signUpForEvent(user.getId(), eventId);
 
-				// Handle custom field responses
 				List<EventCustomField> fields = customFieldDAO.getCustomFieldsForEvent(eventId);
 				for (EventCustomField field : fields) {
 					String paramName = "customfield_" + field.getId();

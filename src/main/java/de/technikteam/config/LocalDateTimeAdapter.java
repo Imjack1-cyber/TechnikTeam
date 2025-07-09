@@ -15,7 +15,6 @@ import java.time.format.DateTimeFormatter;
  */
 public class LocalDateTimeAdapter extends TypeAdapter<LocalDateTime> {
 
-    // Use the standard ISO format, which is ideal for JSON
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     @Override

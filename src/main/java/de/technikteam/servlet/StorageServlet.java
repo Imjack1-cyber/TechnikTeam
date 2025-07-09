@@ -38,15 +38,12 @@ public class StorageServlet extends HttpServlet {
 			throws ServletException, IOException {
 		logger.info("Main storage page requested. Fetching all items.");
 
-		// Fetch all items, grouped by their location (e.g., "Erdgeschoss",
-		// "Lagercontainer").
 		Map<String, List<StorageItem>> storageData = storageDAO.getAllItemsGroupedByLocation();
 		List<Event> activeEvents = eventDAO.getActiveEvents();
 
 		request.setAttribute("storageData", storageData);
 		request.setAttribute("activeEvents", activeEvents);
 		logger.debug("Forwarding {} location groups to /views/public/lager.jsp.", storageData.size());
-		// CORRECTED: Forward to the actual JSP file path.
 		request.getRequestDispatcher("/views/public/lager.jsp").forward(request, response);
 	}
 }

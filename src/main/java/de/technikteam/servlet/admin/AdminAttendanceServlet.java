@@ -6,6 +6,7 @@ import de.technikteam.dao.UserDAO;
 import de.technikteam.model.Meeting;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
+import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -39,16 +40,18 @@ public class AdminAttendanceServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 
+		if (!CSRFUtil.isTokenValid(request)) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
+
 		request.setCharacterEncoding("UTF-8");
 		User adminUser = (User) request.getSession().getAttribute("user");
-		String returnTo = request.getParameter("returnTo"); // e.g., "matrix"
+		String returnTo = request.getParameter("returnTo");
 
 		try {
 			int userId = Integer.parseInt(request.getParameter("userId"));
 			int meetingId = Integer.parseInt(request.getParameter("meetingId"));
-
-			// A checkbox sends "true" if checked, and null if not. This is a standard way
-			// to check it.
 			boolean attended = "true".equals(request.getParameter("attended"));
 
 			String remarks = request.getParameter("remarks");
@@ -56,7 +59,6 @@ public class AdminAttendanceServlet extends HttpServlet {
 					userId, meetingId, attended, remarks);
 
 			if (attendanceDAO.setAttendance(userId, meetingId, attended, remarks)) {
-				// Fetch details for rich logging
 				User targetUser = userDAO.getUserById(userId);
 				Meeting meeting = meetingDAO.getMeetingById(meetingId);
 
@@ -81,7 +83,6 @@ public class AdminAttendanceServlet extends HttpServlet {
 			request.getSession().setAttribute("errorMessage", "Fehler: Ungültige ID empfangen.");
 		}
 
-		// Redirect back to the matrix or a default page
 		String redirectUrl = request.getContextPath()
 				+ ("/matrix".equals(returnTo) ? "/admin/matrix" : "/admin/dashboard");
 		logger.debug("Redirecting to {}", redirectUrl);

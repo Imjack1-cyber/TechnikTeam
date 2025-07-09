@@ -12,7 +12,7 @@ public class EventTask {
 	private int id;
 	private int eventId;
 	private String description;
-	private String details; // NEW: For more detailed instructions
+	private String details; 
 	private String status;
 	private String eventName;
 
@@ -31,8 +31,6 @@ public class EventTask {
 		}
 		return "Niemand";
 	}
-
-	// --- Getters and Setters ---
 
 	public int getId() {
 		return id;

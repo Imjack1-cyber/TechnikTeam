@@ -7,13 +7,11 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	});
 
-	// --- Lightbox Logic (Standardized) ---
 	const lightbox = document.getElementById('lightbox');
 	if (lightbox) {
 		const lightboxImage = document.getElementById('lightbox-image');
 		const closeBtn = lightbox.querySelector('.lightbox-close');
 
-		// This listener works for both <a> and <button> triggers
 		document.querySelectorAll('.lightbox-trigger').forEach(trigger => {
 			trigger.addEventListener('click', (e) => {
 				e.preventDefault();
@@ -24,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		const closeLightbox = () => {
 			lightbox.style.display = 'none';
-			lightboxImage.src = ''; // Clear src to stop loading
+			lightboxImage.src = '';
 		};
 
 		if (closeBtn) closeBtn.addEventListener('click', closeLightbox);
@@ -40,7 +38,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	}
 
-	// --- Edit/Create Modal Logic ---
 	const itemModal = document.getElementById('item-modal');
 	if (itemModal) {
 		const form = itemModal.querySelector('form');
@@ -86,7 +83,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		closeModalBtn.addEventListener('click', () => itemModal.classList.remove('active'));
 	}
 
-	// --- Defect Modal Logic ---
 	const defectModal = document.getElementById('defect-modal');
 	if (defectModal) {
 		const modalTitle = defectModal.querySelector('h3');
@@ -108,7 +104,29 @@ document.addEventListener('DOMContentLoaded', () => {
 		closeModalBtn.addEventListener('click', () => defectModal.classList.remove('active'));
 	}
 
-	// --- Maintenance Modal Logic ---
+	const repairModal = document.getElementById('repair-modal');
+	if (repairModal) {
+		const modalTitle = repairModal.querySelector('#repair-modal-title');
+		const itemIdInput = repairModal.querySelector('#repair-item-id');
+		const repairQtyInput = repairModal.querySelector('#repaired_quantity');
+		const closeModalBtn = repairModal.querySelector('.modal-close-btn');
+
+		document.querySelectorAll('.repair-modal-btn').forEach(btn => {
+			btn.addEventListener('click', () => {
+				modalTitle.textContent = `Artikel "${btn.dataset.itemName}" repariert`;
+				itemIdInput.value = btn.dataset.itemId;
+				repairQtyInput.value = "1";
+				repairQtyInput.max = btn.dataset.maxRepairQty;
+				repairModal.classList.add('active');
+			});
+		});
+
+		closeModalBtn.addEventListener('click', () => repairModal.classList.remove('active'));
+		repairModal.addEventListener('click', (e) => {
+			if (e.target === repairModal) repairModal.classList.remove('active');
+		});
+	}
+
 	const maintenanceModal = document.getElementById('maintenance-modal');
 	if (maintenanceModal) {
 		const modalTitle = maintenanceModal.querySelector('h3');

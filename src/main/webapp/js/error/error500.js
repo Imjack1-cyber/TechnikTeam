@@ -18,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	let isRunning = false;
 
-	// Function to simulate typing text into an element
 	async function typeText(element, text, delay = 20) {
 		for (let i = 0; i < text.length; i++) {
 			element.innerHTML += text.charAt(i);
@@ -33,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		isRunning = true;
 		diagBtn.disabled = true;
 		diagBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Diagnose läuft...';
-		output.innerHTML = ''; // Clear previous output
+		output.innerHTML = ''; 
 
 		for (const step of steps) {
 			const line = document.createElement('p');
@@ -42,13 +41,11 @@ document.addEventListener('DOMContentLoaded', () => {
 			line.innerHTML = `${iconHtml}`;
 			output.appendChild(line);
 
-			// Type out the text for the current line
 			await typeText(line, step.text);
 
-			await new Promise(resolve => setTimeout(resolve, 300)); // Pause between lines
+			await new Promise(resolve => setTimeout(resolve, 300)); 
 		}
 
-		// Add final cursor
 		const finalLine = document.createElement('p');
 		finalLine.innerHTML = '> <span class="cursor"> </span>';
 		output.appendChild(finalLine);

@@ -31,5 +31,5 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(runScan, step.duration);
     }
 
-    setTimeout(runScan, 500); // Initial delay
+    setTimeout(runScan, 500); 
 });

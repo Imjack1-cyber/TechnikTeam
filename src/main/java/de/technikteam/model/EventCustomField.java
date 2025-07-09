@@ -11,7 +11,6 @@ public class EventCustomField {
 	private boolean isRequired;
 	private String fieldOptions;
 
-	// --- Getters and Setters ---
 	public int getId() {
 		return id;
 	}

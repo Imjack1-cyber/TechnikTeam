@@ -23,6 +23,8 @@
 		<form
 			action="${pageContext.request.contextPath}/admin/dateien/kategorien/erstellen"
 			method="post" style="margin-bottom: 2rem;">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}">
 			<div class="form-group">
 				<label for="newCategoryName">Neue Kategorie erstellen</label> <input
 					type="text" name="categoryName" id="newCategoryName" required>
@@ -37,6 +39,8 @@
 		<h3 style="margin-top: 1.5rem;">Datei hochladen</h3>
 		<form action="${pageContext.request.contextPath}/admin/dateien"
 			method="post" enctype="multipart/form-data">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}">
 			<div class="form-group">
 				<label for="file">Datei auswählen</label> <input type="file"
 					name="file" id="file" class="file-input" data-max-size="20971520"
@@ -48,7 +52,7 @@
 					name="categoryId" id="categoryId" required>
 					<option value="">-- Bitte wählen --</option>
 					<c:forEach var="cat" items="${allCategories}">
-						<option value="${cat.id}">${cat.name}</option>
+						<option value="${cat.id}"><c:out value="${cat.name}" /></option>
 					</c:forEach>
 				</select>
 			</div>
@@ -86,16 +90,19 @@
 					<c:forEach var="file" items="${categoryEntry.value}">
 						<li>
 							<div class="file-info">
-								<a
-									href="${pageContext.request.contextPath}/download?file=${fn:escapeXml(file.filepath)}"
-									title="Datei herunterladen">${file.filename}</a> <small
-									class="file-meta">(Sichtbar für: ${file.requiredRole})</small>
+								<a href="<c:url value='/download?type=file&id=${file.id}'/>"
+									title="Datei herunterladen"><c:out value="${file.filename}" /></a>
+								<small class="file-meta">(Sichtbar für: <c:out
+										value="${file.requiredRole}" />)
+								</small>
 							</div>
 							<form action="${pageContext.request.contextPath}/admin/dateien"
 								method="post" class="js-confirm-form"
 								data-confirm-message="Datei '${fn:escapeXml(file.filename)}' wirklich löschen?">
-								<input type="hidden" name="action" value="delete"> <input
-									type="hidden" name="fileId" value="${file.id}">
+								<input type="hidden" name="csrfToken"
+									value="${sessionScope.csrfToken}"> <input type="hidden"
+									name="action" value="delete"> <input type="hidden"
+									name="fileId" value="${file.id}">
 								<button type="submit" class="btn btn-small btn-danger-outline"
 									title="Löschen">
 									<i class="fas fa-trash-alt"></i>

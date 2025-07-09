@@ -49,11 +49,13 @@
 	</div>
 </div>
 
-<script>
-	// Embed data safely for JS
-	const eventTrendData = JSON.parse('${eventTrendDataJson}');
-	const userActivityData = JSON.parse('${userActivityDataJson}');
+<script id="eventTrendData" type="application/json">
+    <c:out value="${eventTrendDataJson}" />
 </script>
+<script id="userActivityData" type="application/json">
+    <c:out value="${userActivityDataJson}" />
+</script>
+
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
 <script

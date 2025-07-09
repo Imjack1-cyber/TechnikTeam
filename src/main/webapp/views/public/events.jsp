@@ -25,7 +25,8 @@
 	</div>
 </c:if>
 
-<div class="table-wrapper">
+<!-- Desktop Table View -->
+<div class="desktop-table-wrapper">
 	<table class="data-table sortable-table searchable-table">
 		<thead>
 			<tr>
@@ -45,15 +46,17 @@
 							value="${event.formattedEventDateTimeRange}" /></td>
 					<td><c:choose>
 							<c:when test="${event.userAttendanceStatus == 'ZUGEWIESEN'}">
-								<strong class="text-success">Zugewiesen</strong>
+								<strong class="text-success"><c:out value="Zugewiesen" /></strong>
 							</c:when>
 							<c:when test="${event.userAttendanceStatus == 'ANGEMELDET'}">
-								<span class="text-success">Angemeldet</span>
+								<span class="text-success"><c:out value="Angemeldet" /></span>
 							</c:when>
 							<c:when test="${event.userAttendanceStatus == 'ABGEMELDET'}">
-								<span class="text-danger">Abgemeldet</span>
+								<span class="text-danger"><c:out value="Abgemeldet" /></span>
 							</c:when>
-							<c:otherwise>Offen</c:otherwise>
+							<c:otherwise>
+								<c:out value="Offen" />
+							</c:otherwise>
 						</c:choose></td>
 					<td><c:if test="${event.userAttendanceStatus != 'ZUGEWIESEN'}">
 							<div style="display: flex; gap: 0.5rem;">
@@ -68,7 +71,9 @@
 									<form action="${pageContext.request.contextPath}/event-action"
 										method="post" class="js-confirm-form"
 										data-confirm-message="Wirklich vom Event '${fn:escapeXml(event.name)}' abmelden?">
-										<input type="hidden" name="eventId" value="${event.id}">
+										<input type="hidden" name="csrfToken"
+											value="${sessionScope.csrfToken}"> <input
+											type="hidden" name="eventId" value="${event.id}">
 										<button type="submit" name="action" value="signoff"
 											class="btn btn-small btn-danger">Abmelden</button>
 									</form>
@@ -81,6 +86,59 @@
 	</table>
 </div>
 
+<!-- Mobile Card View -->
+<div class="mobile-card-list searchable-table">
+	<c:forEach var="event" items="${events}">
+		<div class="list-item-card">
+			<h3 class="card-title">
+				<a
+					href="${pageContext.request.contextPath}/veranstaltungen/details?id=${event.id}"><c:out
+						value="${event.name}" /></a>
+			</h3>
+			<div class="card-row">
+				<span>Zeitraum:</span> <strong><c:out
+						value="${event.formattedEventDateTimeRange}" /></strong>
+			</div>
+			<div class="card-row">
+				<span>Dein Status:</span> <strong> <c:choose>
+						<c:when test="${event.userAttendanceStatus == 'ZUGEWIESEN'}">
+							<span class="text-success">Zugewiesen</span>
+						</c:when>
+						<c:when test="${event.userAttendanceStatus == 'ANGEMELDET'}">
+							<span class="text-success">Angemeldet</span>
+						</c:when>
+						<c:when test="${event.userAttendanceStatus == 'ABGEMELDET'}">
+							<span class="text-danger">Abgemeldet</span>
+						</c:when>
+						<c:otherwise>Offen</c:otherwise>
+					</c:choose>
+				</strong>
+			</div>
+			<c:if test="${event.userAttendanceStatus != 'ZUGEWIESEN'}">
+				<div class="card-actions">
+					<c:if
+						test="${event.userAttendanceStatus == 'OFFEN' or event.userAttendanceStatus == 'ABGEMELDET'}">
+						<button type="button" class="btn btn-small btn-success signup-btn"
+							data-event-id="${event.id}"
+							data-event-name="${fn:escapeXml(event.name)}">Anmelden</button>
+					</c:if>
+					<c:if test="${event.userAttendanceStatus == 'ANGEMELDET'}">
+						<form action="${pageContext.request.contextPath}/event-action"
+							method="post" class="js-confirm-form"
+							data-confirm-message="Wirklich vom Event '${fn:escapeXml(event.name)}' abmelden?">
+							<input type="hidden" name="csrfToken"
+								value="${sessionScope.csrfToken}"> <input type="hidden"
+								name="eventId" value="${event.id}">
+							<button type="submit" name="action" value="signoff"
+								class="btn btn-small btn-danger">Abmelden</button>
+						</form>
+					</c:if>
+				</div>
+			</c:if>
+		</div>
+	</c:forEach>
+</div>
+
 <!-- Signup Modal -->
 <div class="modal-overlay" id="signup-modal">
 	<div class="modal-content">
@@ -89,8 +147,10 @@
 		<form id="signup-form"
 			action="${pageContext.request.contextPath}/event-action"
 			method="post">
-			<input type="hidden" name="action" value="signup"> <input
-				type="hidden" name="eventId" id="signup-event-id">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="signup"> <input type="hidden"
+				name="eventId" id="signup-event-id">
 			<div id="custom-fields-container"></div>
 			<button type="submit" class="btn btn-success"
 				style="margin-top: 1rem;">Anmeldung bestätigen</button>

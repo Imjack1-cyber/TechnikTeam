@@ -6,6 +6,7 @@ import de.technikteam.dao.UserQualificationsDAO;
 import de.technikteam.model.Event;
 import de.technikteam.model.User;
 import de.technikteam.model.UserQualification;
+import de.technikteam.util.CSRFUtil; 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -53,6 +54,12 @@ public class ProfileServlet extends HttpServlet {
 			throws ServletException, IOException {
 		HttpSession session = request.getSession();
 		User user = (User) session.getAttribute("user");
+
+		if (!CSRFUtil.isTokenValid(request)) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
+
 		String chatColor = request.getParameter("chatColor");
 
 		if (user != null && chatColor != null) {

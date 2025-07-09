@@ -7,7 +7,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lager-Aktion: ${item.name}</title>
+<title>Lager-Aktion: <c:out value="${item.name}" /></title>
 <link rel="stylesheet"
 	href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 <link rel="stylesheet"
@@ -45,8 +45,10 @@
 		<form action="${pageContext.request.contextPath}/lager/transaktion"
 			method="post" data-available-qty="${item.availableQuantity}"
 			data-total-qty="${item.quantity}" data-max-qty="${item.maxQuantity}">
-			<input type="hidden" name="itemId" value="${item.id}"> <input
-				type="hidden" name="redirectUrl"
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="itemId" value="${item.id}"> <input type="hidden"
+				name="redirectUrl"
 				value="${pageContext.request.contextPath}/lager/aktionen?id=${item.id}">
 
 			<div class="form-group">

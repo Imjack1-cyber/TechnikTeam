@@ -21,8 +21,6 @@ import net.fortuna.ical4j.model.property.Summary;
 import net.fortuna.ical4j.model.property.Url;
 import net.fortuna.ical4j.model.property.Version;
 import net.fortuna.ical4j.util.RandomUidGenerator;
-
-// Import the required iCal4j DateTime class
 import net.fortuna.ical4j.model.DateTime;
 
 import java.io.IOException;
@@ -34,7 +32,7 @@ import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.List;
 
-@WebServlet("/public/calendar.ics")
+@WebServlet("/calendar.ics")
 public class IcalServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private EventDAO eventDAO;
@@ -49,6 +47,7 @@ public class IcalServlet extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+
 		try {
 			Calendar calendar = new Calendar();
 			calendar.getProperties().add(new ProdId("-//TechnikTeam Calendar//iCal4j 3.2.4//DE"));
@@ -59,14 +58,11 @@ public class IcalServlet extends HttpServlet {
 					+ request.getContextPath();
 			ZoneId systemZone = ZoneId.systemDefault();
 
-			// Add Events
 			List<Event> events = eventDAO.getAllActiveAndUpcomingEvents();
 			for (Event event : events) {
 				VEvent vEvent = new VEvent();
 				vEvent.getProperties().add(uidGenerator.generateUid());
 
-				// FINAL CORRECTION: Convert to java.util.Date and wrap in iCal4j's DateTime
-				// object.
 				if (event.getEventDateTime() != null) {
 					ZonedDateTime zdtStart = event.getEventDateTime().atZone(systemZone);
 					Date utilDateStart = Date.from(zdtStart.toInstant());
@@ -90,14 +86,12 @@ public class IcalServlet extends HttpServlet {
 				calendar.getComponents().add(vEvent);
 			}
 
-			// Add Meetings
 			List<Meeting> meetings = meetingDAO.getAllUpcomingMeetings();
 			for (Meeting meeting : meetings) {
 				String title = meeting.getParentCourseName() + ": " + meeting.getName();
 				VEvent vMeeting = new VEvent();
 				vMeeting.getProperties().add(uidGenerator.generateUid());
 
-				// FINAL CORRECTION: Apply the same robust conversion here.
 				if (meeting.getMeetingDateTime() != null) {
 					ZonedDateTime zdtStart = meeting.getMeetingDateTime().atZone(systemZone);
 					Date utilDateStart = Date.from(zdtStart.toInstant());

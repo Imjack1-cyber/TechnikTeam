@@ -1,30 +1,31 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
-<!-- MODAL FOR CREATE/EDIT EVENT -->
+<!-- Event Create/Edit Modal -->
 <div class="modal-overlay" id="event-modal">
 	<div class="modal-content" style="max-width: 800px;">
 		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
 		<h3 id="event-modal-title">Event verwalten</h3>
 
 		<div class="modal-tabs">
-			<button class="modal-tab-button active" data-tab="details-tab">Details</button>
-			<button class="modal-tab-button" data-tab="requirements-tab">Personalbedarf</button>
-			<button class="modal-tab-button" data-tab="reservations-tab">Material</button>
-			<button class="modal-tab-button" data-tab="attachments-tab">Anhänge</button>
-			<button class="modal-tab-button" data-tab="custom-fields-tab">Anmeldefelder</button>
+			<button class="modal-tab-button active" data-tab="general">Allgemein</button>
+			<button class="modal-tab-button" data-tab="requirements">Bedarf</button>
+			<button class="modal-tab-button" data-tab="reservations">Material</button>
+			<button class="modal-tab-button" data-tab="attachments">Anhänge</button>
+			<button class="modal-tab-button" data-tab="custom-fields">Anmeldefelder</button>
 		</div>
 
 		<form id="event-modal-form"
 			action="${pageContext.request.contextPath}/admin/veranstaltungen"
 			method="post" enctype="multipart/form-data">
-			<input type="hidden" name="action" id="event-modal-action"> <input
-				type="hidden" name="id" id="event-modal-id">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" id="event-modal-action"> <input type="hidden"
+				name="id" id="event-modal-id">
 
-			<!-- TAB 1: DETAILS -->
-			<div id="details-tab" class="modal-tab-content active">
+			<!-- General Tab -->
+			<div class="modal-tab-content active" id="general">
 				<div class="form-group">
 					<label for="name-modal">Name des Events</label> <input type="text"
 						id="name-modal" name="name" required>
@@ -46,11 +47,12 @@
 							id="location-modal" name="location">
 					</div>
 					<div class="form-group">
-						<label for="leaderUserId-modal">Leitende Person</label> <select
+						<label for="leaderUserId-modal">Event-Leitung</label> <select
 							name="leaderUserId" id="leaderUserId-modal">
 							<option value="">(Keine)</option>
 							<c:forEach var="user" items="${allUsers}">
-								<option value="${user.id}">${user.username}</option>
+								<option value="${user.id}"><c:out
+										value="${user.username}" /></option>
 							</c:forEach>
 						</select>
 					</div>
@@ -61,9 +63,10 @@
 				</div>
 			</div>
 
-			<!-- TAB 2: PERSONALBEDARF -->
-			<div id="requirements-tab" class="modal-tab-content">
-				<p>Definieren Sie, welche Qualifikationen (Lehrgänge) wie oft
+			<!-- Requirements Tab -->
+			<div class="modal-tab-content" id="requirements">
+				<h4>Personalbedarf</h4>
+				<p>Legen Sie fest, welche Qualifikationen für dieses Event
 					benötigt werden.</p>
 				<div id="modal-requirements-container"></div>
 				<button type="button" class="btn btn-small"
@@ -72,50 +75,48 @@
 				</button>
 			</div>
 
-			<!-- TAB 3: MATERIAL -->
-			<div id="reservations-tab" class="modal-tab-content">
-				<p>Reservieren Sie Material für dieses Event.</p>
+			<!-- Reservations Tab -->
+			<div class="modal-tab-content" id="reservations">
+				<h4>Materialreservierung</h4>
+				<p>Reservieren Sie Material aus dem Lager für dieses Event.</p>
 				<div class="form-group">
-					<label for="kitId">Vordefiniertes Kit hinzufügen</label> <select
-						id="kitId" name="kitId">
+					<label for="kit-selection-modal">Aus Kit hinzufügen</label> <select
+						id="kit-selection-modal">
 						<option value="">-- Kit auswählen --</option>
 						<c:forEach var="kit" items="${allKits}">
-							<option value="${kit.id}">${kit.name}</option>
+							<option value="${kit.id}"><c:out value="${kit.name}" /></option>
 						</c:forEach>
 					</select>
 				</div>
-				<hr style="margin: 1.5rem 0;">
-				<p>Oder fügen Sie einzelne Artikel hinzu:</p>
 				<div id="modal-reservations-container"></div>
 				<button type="button" class="btn btn-small"
 					id="modal-add-reservation-btn" style="margin-top: 1rem;">
-					<i class="fas fa-plus"></i> Einzeln hinzufügen
+					<i class="fas fa-plus"></i> Material hinzufügen
 				</button>
 			</div>
 
-			<!-- TAB 4: ANHÄNGE -->
-			<div id="attachments-tab" class="modal-tab-content">
-				<ul id="modal-attachments-list" class="details-list"
-					style="margin-bottom: 1rem;"></ul>
+			<!-- Attachments Tab -->
+			<div class="modal-tab-content" id="attachments">
+				<h4>Anhänge</h4>
+				<ul id="modal-attachments-list" class="details-list"></ul>
 				<div class="form-group">
-					<label for="attachment">Neuen Anhang hochladen</label> <input
-						type="file" name="attachment" id="attachment" class="file-input"
-						data-max-size="20971520"> <small class="file-size-warning">Datei
-						ist zu groß! (Max. 20 MB)</small>
+					<label for="attachment-modal">Neuen Anhang hochladen</label> <input
+						type="file" name="attachment" id="attachment-modal">
 				</div>
 				<div class="form-group">
-					<label for="requiredRole">Sichtbar für</label> <select
-						name="requiredRole" id="requiredRole">
+					<label for="requiredRole-modal">Sichtbar für</label> <select
+						name="requiredRole" id="requiredRole-modal">
 						<option value="NUTZER" selected>Alle Nutzer</option>
 						<option value="ADMIN">Nur Admins</option>
 					</select>
 				</div>
 			</div>
 
-			<!-- TAB 5: ANMELDEFELDER -->
-			<div id="custom-fields-tab" class="modal-tab-content">
-				<p>Fügen Sie zusätzliche Felder hinzu, die bei der Anmeldung
-					ausgefüllt werden müssen.</p>
+			<!-- Custom Fields Tab -->
+			<div class="modal-tab-content" id="custom-fields">
+				<h4>Zusätzliche Anmeldefelder</h4>
+				<p>Fügen Sie benutzerdefinierte Felder hinzu, die bei der
+					Anmeldung abgefragt werden (z.B. T-Shirt Größe, Allergien etc.).</p>
 				<div id="modal-custom-fields-container"></div>
 				<button type="button" class="btn btn-small"
 					id="modal-add-custom-field-btn" style="margin-top: 1rem;">
@@ -123,35 +124,34 @@
 				</button>
 			</div>
 
-
-			<div
-				style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+			<div style="margin-top: 1.5rem;">
 				<button type="submit" class="btn btn-success">
-					<i class="fas fa-save"></i> Event Speichern
+					<i class="fas fa-save"></i> Event speichern
 				</button>
 			</div>
 		</form>
 	</div>
 </div>
 
-<!-- MODAL FOR ASSIGNING USERS -->
+<!-- User Assignment Modal -->
 <div class="modal-overlay" id="assign-users-modal">
-	<div class="modal-content">
+	<div class="modal-content" style="max-width: 500px;">
 		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
 		<h3 id="assign-users-modal-title">Team zuweisen</h3>
-		<p>Wählen Sie die Benutzer aus, die dem finalen Team für dieses
-			Event zugewiesen werden sollen. Nur angemeldete Benutzer werden hier
-			angezeigt.</p>
 		<form id="assign-users-form"
 			action="${pageContext.request.contextPath}/admin/veranstaltungen"
 			method="post">
-			<input type="hidden" name="action" value="assignUsers"> <input
-				type="hidden" name="eventId">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="assignUsers"> <input type="hidden"
+				name="eventId" value="">
 			<div id="user-checkboxes-container"
-				style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); padding: 1rem; border-radius: var(--border-radius);">
+				style="max-height: 40vh; overflow-y: auto;">
+				<!-- Checkboxes populated by JS -->
 			</div>
-			<button type="submit" class="btn" style="margin-top: 1rem;">
-				<i class="fas fa-user-check"></i> Team finalisieren
+			<button type="submit" class="btn btn-success"
+				style="margin-top: 1rem;">
+				<i class="fas fa-users"></i> Team finalisieren
 			</button>
 		</form>
 	</div>

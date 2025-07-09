@@ -70,6 +70,7 @@ public class EventAttachmentDAO {
 					att.setFilename(rs.getString("filename"));
 					att.setFilepath(rs.getString("filepath"));
 					att.setEventId(rs.getInt("event_id"));
+					att.setRequiredRole(rs.getString("required_role"));
 					return att;
 				}
 			}

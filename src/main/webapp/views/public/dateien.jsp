@@ -8,7 +8,6 @@
 
 <h1>Dateien & Dokumente</h1>
 
-<%-- CORRECTED: The path is now absolute from the context root. --%>
 <c:import url="/WEB-INF/jspf/message_banner.jspf" />
 
 <c:if test="${empty fileData}">
@@ -32,8 +31,7 @@
 								style="font-weight: 600;"><c:out value="${file.filename}" /></a>
 						</c:when>
 						<c:otherwise>
-							<a
-								href="${pageContext.request.contextPath}/download?file=${file.filepath}"><c:out
+							<a href="<c:url value='/download?type=file&id=${file.id}'/>"><c:out
 									value="${file.filename}" /></a>
 						</c:otherwise>
 					</c:choose>

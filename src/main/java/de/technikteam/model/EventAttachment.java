@@ -13,9 +13,7 @@ public class EventAttachment {
 	private String filename;
 	private String filepath;
 	private LocalDateTime uploadedAt;
-	private String requiredRole; // "NUTZER" or "ADMIN"
-
-	// --- Getters and Setters ---
+	private String requiredRole; 
 
 	public int getId() {
 		return id;

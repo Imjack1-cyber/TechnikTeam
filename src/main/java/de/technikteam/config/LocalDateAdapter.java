@@ -17,9 +17,6 @@ public class LocalDateAdapter implements JsonSerializer<LocalDate> {
 
 	@Override
 	public JsonElement serialize(LocalDate date, Type typeOfSrc, JsonSerializationContext context) {
-		// We convert the LocalDate to its standard ISO_LOCAL_DATE string format
-		// ("YYYY-MM-DD").
-		// This also gracefully handles the case where the date object might be null.
 		return date == null ? null : new JsonPrimitive(date.format(DateTimeFormatter.ISO_LOCAL_DATE));
 	}
 }

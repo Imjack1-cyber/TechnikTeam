@@ -15,7 +15,7 @@ public class EventChatMessage {
 	private String deletedByUsername;
 	private LocalDateTime deletedAt;
 	private LocalDateTime sentAt;
-	private String chatColor; // To carry the user's color preference
+	private String chatColor; 
 
 	private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yy, HH:mm");
@@ -27,8 +27,6 @@ public class EventChatMessage {
 	public String getFormattedDeletedAt() {
 		return deletedAt != null ? deletedAt.format(DATE_TIME_FORMATTER) : "";
 	}
-
-	// --- Getters and Setters ---
 
 	public int getId() {
 		return id;

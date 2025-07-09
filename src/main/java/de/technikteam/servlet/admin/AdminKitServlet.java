@@ -8,6 +8,7 @@ import de.technikteam.model.InventoryKitItem;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
+import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -50,6 +51,8 @@ public class AdminKitServlet extends HttpServlet {
 		List<StorageItem> allItems = storageDAO.getAllItems();
 		req.setAttribute("kits", kits);
 		req.setAttribute("allItems", allItems);
+		req.setAttribute("allItemsJson", gson.toJson(allItems));
+
 		req.getRequestDispatcher("/views/admin/admin_kits.jsp").forward(req, resp);
 	}
 
@@ -69,6 +72,13 @@ public class AdminKitServlet extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		req.setCharacterEncoding("UTF-8");
+
+		if (!CSRFUtil.isTokenValid(req)) {
+			logger.warn("CSRF token validation failed for kit action.");
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
+
 		User adminUser = (User) req.getSession().getAttribute("user");
 		String action = req.getParameter("action");
 		logger.debug("AdminKitServlet received POST with action: {}", action);
@@ -118,7 +128,7 @@ public class AdminKitServlet extends HttpServlet {
 		kit.setId(Integer.parseInt(req.getParameter("id")));
 		kit.setName(req.getParameter("name"));
 		kit.setDescription(req.getParameter("description"));
-		kit.setLocation(req.getParameter("location")); // CHANGED
+		kit.setLocation(req.getParameter("location"));
 
 		if (kitDAO.updateKit(kit)) {
 			AdminLogService.log(adminUser.getUsername(), "UPDATE_KIT",

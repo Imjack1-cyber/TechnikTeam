@@ -41,7 +41,6 @@
 					</p>
 				</div>
 				<div style="display: flex; gap: 0.5rem;">
-					<%-- DEFINITIVE FIX 2: Manually construct the final URL to prevent any JSTL misinterpretation. --%>
 					<c:set var="absoluteActionUrl"
 						value="${pageContext.request.scheme}://${pageContext.request.serverName}:${pageContext.request.serverPort}${pageContext.request.contextPath}/pack-kit?kitId=${kit.id}" />
 					<c:set var="qrApiUrl"
@@ -56,8 +55,10 @@
 					<form action="${pageContext.request.contextPath}/admin/kits"
 						method="post" class="js-confirm-form"
 						data-confirm-message="Kit '${fn:escapeXml(kit.name)}' wirklich löschen?">
-						<input type="hidden" name="action" value="delete"> <input
-							type="hidden" name="id" value="${kit.id}">
+						<input type="hidden" name="csrfToken"
+							value="${sessionScope.csrfToken}"> <input type="hidden"
+							name="action" value="delete"> <input type="hidden"
+							name="id" value="${kit.id}">
 						<button type="submit" class="btn btn-small btn-danger">Löschen</button>
 					</form>
 				</div>
@@ -67,8 +68,10 @@
 
 				<form action="${pageContext.request.contextPath}/admin/kits"
 					method="post">
-					<input type="hidden" name="action" value="updateKitItems">
-					<input type="hidden" name="kitId" value="${kit.id}">
+					<input type="hidden" name="csrfToken"
+						value="${sessionScope.csrfToken}"> <input type="hidden"
+						name="action" value="updateKitItems"> <input type="hidden"
+						name="kitId" value="${kit.id}">
 
 					<h4>Inhalt bearbeiten</h4>
 					<div id="kit-items-container-${kit.id}" class="kit-items-container">
@@ -118,8 +121,10 @@
 		<h3>Kit verwalten</h3>
 		<form action="${pageContext.request.contextPath}/admin/kits"
 			method="post">
-			<input type="hidden" name="action" value=""> <input
-				type="hidden" name="id" value="">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value=""> <input type="hidden" name="id"
+				value="">
 			<div class="form-group">
 				<label for="name-modal">Name des Kits</label> <input type="text"
 					id="name-modal" name="name" required>
@@ -139,7 +144,7 @@
 </div>
 
 <script id="allItemsData" type="application/json">
-[<c:forEach var="i" items="${allItems}" varStatus="loop">{"id": ${i.id},"name": "<c:out value="${fn:escapeXml(i.name)}"/>", "availableQuantity": ${i.availableQuantity}}<c:if test="${not loop.last}">,</c:if></c:forEach>]
+    ${allItemsJson}
 </script>
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />

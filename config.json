@@ -1,0 +1,6 @@
+{
+    "SourceDirectory":  "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam",
+    "OutputFile":  "technikteam.txt",
+    "MaxFileSizeKB":  425,
+    "ExcludeList":  "target,.settings,.metadata,resources,.gitattributes,.project,.classpath,dbScript.txt,README.md,.gitignore,run_combine_src_only.txt,combine_src_only.ps1,technikteam.txt,technikteam1.txt,technikteam2.txt,FileCombiner.exe,combine_code_gui.ps1,pom.xml,config.json"
+}

@@ -14,7 +14,6 @@ public class ChatSessionManager {
 	private static final Logger logger = LogManager.getLogger(ChatSessionManager.class);
 	private static final ChatSessionManager INSTANCE = new ChatSessionManager();
 
-	// Map<EventID, Set<Session>>
 	private final Map<String, Set<Session>> sessionsByEvent = new ConcurrentHashMap<>();
 
 	private ChatSessionManager() {

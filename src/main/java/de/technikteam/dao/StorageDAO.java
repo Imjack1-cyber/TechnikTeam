@@ -159,8 +159,6 @@ public class StorageDAO {
 	}
 
 	public boolean performCheckin(int itemId, int quantity) throws SQLException {
-		// FIX: Simplified the query. The business logic now resides solely in the
-		// servlet.
 		String sql = "UPDATE storage_items "
 				+ "SET quantity = quantity + ?, status = 'IN_STORAGE', current_holder_user_id = NULL, assigned_event_id = NULL "
 				+ "WHERE id = ?";
@@ -178,6 +176,19 @@ public class StorageDAO {
 			pstmt.setString(2, reason);
 			pstmt.setInt(3, itemId);
 			pstmt.setInt(4, defectiveQty);
+			return pstmt.executeUpdate() > 0;
+		}
+	}
+
+	public boolean repairItems(int itemId, int repairedQuantity) throws SQLException {
+		String sql = "UPDATE storage_items "
+				+ "SET defective_quantity = defective_quantity - ?, status = CASE WHEN (defective_quantity - ?) <= 0 THEN 'IN_STORAGE' ELSE status END "
+				+ "WHERE id = ? AND defective_quantity >= ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, repairedQuantity);
+			pstmt.setInt(2, repairedQuantity);
+			pstmt.setInt(3, itemId);
+			pstmt.setInt(4, repairedQuantity);
 			return pstmt.executeUpdate() > 0;
 		}
 	}

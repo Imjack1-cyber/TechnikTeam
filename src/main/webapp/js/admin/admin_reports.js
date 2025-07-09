@@ -2,8 +2,23 @@ document.addEventListener('DOMContentLoaded', () => {
 	const eventTrendCanvas = document.getElementById('eventTrendChart');
 	const userActivityCanvas = document.getElementById('userActivityChart');
 
-	// Function to render a line chart for event trends
-	if (eventTrendCanvas && typeof eventTrendData !== 'undefined' && eventTrendData.length > 0) {
+	const getJsonData = (id) => {
+		const element = document.getElementById(id);
+		if (element) {
+			try {
+				return JSON.parse(element.textContent);
+			} catch (e) {
+				console.error(`Failed to parse JSON from #${id}`, e);
+				return null;
+			}
+		}
+		return null;
+	};
+
+	const eventTrendData = getJsonData('eventTrendData');
+	const userActivityData = getJsonData('userActivityData');
+
+	if (eventTrendCanvas && eventTrendData && eventTrendData.length > 0) {
 		const labels = eventTrendData.map(d => d.month);
 		const data = eventTrendData.map(d => d.count);
 
@@ -37,8 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		eventTrendCanvas.parentElement.innerHTML = '<p>Nicht genügend Daten für den Event-Trend vorhanden.</p>';
 	}
 
-	// Function to render a bar chart for user activity
-	if (userActivityCanvas && typeof userActivityData !== 'undefined' && userActivityData.length > 0) {
+	if (userActivityCanvas && userActivityData && userActivityData.length > 0) {
 		const labels = userActivityData.map(d => d.username);
 		const data = userActivityData.map(d => d.participation_count);
 
@@ -55,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				}]
 			},
 			options: {
-				indexAxis: 'y', // Horizontal bars
+				indexAxis: 'y', 
 				responsive: true,
 				maintainAspectRatio: false,
 				scales: {

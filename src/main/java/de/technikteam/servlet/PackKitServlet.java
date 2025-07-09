@@ -49,7 +49,6 @@ public class PackKitServlet extends HttpServlet {
 				return;
 			}
 
-			// Fetch the items that belong to the kit template
 			List<InventoryKitItem> kitItems = kitDAO.getItemsForKit(kitId);
 
 			request.setAttribute("kit", kit);

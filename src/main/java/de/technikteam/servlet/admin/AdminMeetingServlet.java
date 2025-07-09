@@ -12,7 +12,7 @@ import de.technikteam.model.Meeting;
 import de.technikteam.model.MeetingAttachment;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
-import de.technikteam.util.ServletUtils;
+import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
@@ -31,7 +31,9 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @WebServlet("/admin/meetings")
 @MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 20, maxRequestSize = 1024 * 1024 * 50)
@@ -67,13 +69,14 @@ public class AdminMeetingServlet extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		req.setCharacterEncoding("UTF-8");
-		String action;
 
-		if (req.getContentType() != null && req.getContentType().toLowerCase().startsWith("multipart/")) {
-			action = ServletUtils.getPartValue(req.getPart("action"));
-		} else {
-			action = req.getParameter("action");
+		if (!CSRFUtil.isTokenValid(req)) {
+			logger.warn("CSRF token validation failed for meeting action.");
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
 		}
+
+		String action = req.getParameter("action");
 
 		logger.debug("AdminMeetingServlet received POST with action: {}", action);
 
@@ -106,7 +109,6 @@ public class AdminMeetingServlet extends HttpServlet {
 		req.setAttribute("meetings", meetings);
 		req.setAttribute("allUsers", allUsers);
 
-		// CORRECTED: Forward to the actual JSP file path.
 		req.getRequestDispatcher("/views/admin/admin_meeting_list.jsp").forward(req, resp);
 	}
 
@@ -116,11 +118,10 @@ public class AdminMeetingServlet extends HttpServlet {
 			Meeting meeting = meetingDAO.getMeetingById(meetingId);
 			if (meeting != null) {
 				List<MeetingAttachment> attachments = attachmentDAO.getAttachmentsForMeeting(meetingId, "ADMIN");
-				// Create a wrapper object to send both meeting and attachments
-				var responseData = new Object() {
-					final Meeting meetingData = meeting;
-					final List<MeetingAttachment> attachmentsData = attachments;
-				};
+				Map<String, Object> responseData = new HashMap<>();
+				responseData.put("meetingData", meeting);
+				responseData.put("attachmentsData", attachments);
+
 				String jsonResponse = gson.toJson(responseData);
 				resp.setContentType("application/json");
 				resp.setCharacterEncoding("UTF-8");
@@ -137,28 +138,28 @@ public class AdminMeetingServlet extends HttpServlet {
 	private void handleCreateOrUpdate(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException, ServletException {
 		User adminUser = (User) req.getSession().getAttribute("user");
-		String action = ServletUtils.getPartValue(req.getPart("action"));
+		String action = req.getParameter("action");
 		boolean isUpdate = "update".equals(action);
-		int courseId = Integer.parseInt(ServletUtils.getPartValue(req.getPart("courseId")));
+		int courseId = Integer.parseInt(req.getParameter("courseId"));
 		int meetingId = 0;
 
 		try {
 			Meeting meeting = new Meeting();
 			meeting.setCourseId(courseId);
-			meeting.setName(ServletUtils.getPartValue(req.getPart("name")));
-			meeting.setDescription(ServletUtils.getPartValue(req.getPart("description")));
-			meeting.setLocation(ServletUtils.getPartValue(req.getPart("location")));
+			meeting.setName(req.getParameter("name"));
+			meeting.setDescription(req.getParameter("description"));
+			meeting.setLocation(req.getParameter("location"));
 
-			String leaderIdStr = ServletUtils.getPartValue(req.getPart("leaderUserId"));
+			String leaderIdStr = req.getParameter("leaderUserId");
 			if (leaderIdStr != null && !leaderIdStr.isEmpty()) {
 				meeting.setLeaderUserId(Integer.parseInt(leaderIdStr));
 			}
 
-			String startDateTimeStr = ServletUtils.getPartValue(req.getPart("meetingDateTime"));
+			String startDateTimeStr = req.getParameter("meetingDateTime");
 			if (startDateTimeStr != null && !startDateTimeStr.isEmpty()) {
 				meeting.setMeetingDateTime(LocalDateTime.parse(startDateTimeStr));
 			}
-			String endDateTimeStr = ServletUtils.getPartValue(req.getPart("endDateTime"));
+			String endDateTimeStr = req.getParameter("endDateTime");
 			if (endDateTimeStr != null && !endDateTimeStr.isEmpty()) {
 				meeting.setEndDateTime(LocalDateTime.parse(endDateTimeStr));
 			}
@@ -167,14 +168,14 @@ public class AdminMeetingServlet extends HttpServlet {
 			String parentCourseName = (parentCourse != null) ? parentCourse.getName() : "N/A";
 
 			if (isUpdate) {
-				meetingId = Integer.parseInt(ServletUtils.getPartValue(req.getPart("id")));
+				meetingId = Integer.parseInt(req.getParameter("id"));
 				meeting.setId(meetingId);
 				if (meetingDAO.updateMeeting(meeting)) {
 					AdminLogService.log(adminUser.getUsername(), "UPDATE_MEETING", "Meeting '" + meeting.getName()
 							+ "' (ID: " + meetingId + ") für Lehrgang '" + parentCourseName + "' aktualisiert.");
 					req.getSession().setAttribute("successMessage", "Meeting erfolgreich aktualisiert.");
 				}
-			} else { // CREATE
+			} else {
 				meetingId = meetingDAO.createMeeting(meeting);
 				if (meetingId > 0) {
 					AdminLogService.log(adminUser.getUsername(), "CREATE_MEETING", "Meeting '" + meeting.getName()
@@ -185,7 +186,7 @@ public class AdminMeetingServlet extends HttpServlet {
 
 			Part filePart = req.getPart("attachment");
 			if (filePart != null && filePart.getSize() > 0 && meetingId > 0) {
-				String requiredRole = ServletUtils.getPartValue(req.getPart("requiredRole"));
+				String requiredRole = req.getParameter("requiredRole");
 				handleAttachmentUpload(filePart, meetingId, requiredRole, adminUser, req);
 			}
 
@@ -262,7 +263,6 @@ public class AdminMeetingServlet extends HttpServlet {
 		MeetingAttachment attachment = new MeetingAttachment();
 		attachment.setMeetingId(meetingId);
 		attachment.setFilename(fileName);
-		// Always use forward slashes for URL paths
 		attachment.setFilepath("meetings/" + fileName);
 		attachment.setRequiredRole(requiredRole);
 		if (attachmentDAO.addAttachment(attachment)) {

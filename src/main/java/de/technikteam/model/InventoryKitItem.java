@@ -8,11 +8,8 @@ public class InventoryKitItem {
 	private int kitId;
 	private int itemId;
 	private int quantity;
-
-	// Transient field for display
 	private String itemName;
-
-	// --- Getters and Setters ---
+	
 	public int getKitId() {
 		return kitId;
 	}

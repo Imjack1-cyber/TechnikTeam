@@ -4,7 +4,8 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
 <c:import url="/WEB-INF/jspf/main_header.jspf">
-	<c:param name="pageTitle" value="Artikeldetails: ${item.name}" />
+	<c:param name="pageTitle"
+		value="Artikeldetails: ${fn:escapeXml(item.name)}" />
 </c:import>
 
 <h1>
@@ -15,40 +16,52 @@
 	style="grid-template-columns: 1fr 2fr; align-items: flex-start;">
 
 	<div class="card">
-		<h2 class="card-title">${item.name}</h2>
+		<h2 class="card-title">
+			<c:out value="${item.name}" />
+		</h2>
 		<c:if test="${not empty item.imagePath}">
 			<a
 				href="${pageContext.request.contextPath}/image?file=${item.imagePath}"
 				class="lightbox-trigger"> <img
 				src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
-				alt="${item.name}"
+				alt="<c:out value='${item.name}'/>"
 				style="width: 100%; border-radius: var(--border-radius); margin-bottom: 1rem; cursor: zoom-in;">
 			</a>
 		</c:if>
 		<ul class="details-list">
 			<li><strong>Allg. Status:</strong> <span
-				class="status-badge ${item.availabilityStatusCssClass}">${item.availabilityStatus}</span></li>
-			<li><strong>Verfügbar:</strong> <span>${item.availableQuantity}
-					/ ${item.quantity}</span></li>
-			<li><strong>Defekt:</strong> <span>${item.defectiveQuantity}</span></li>
+				class="status-badge ${item.availabilityStatusCssClass}"><c:out
+						value="${item.availabilityStatus}" /></span></li>
+			<li><strong>Verfügbar:</strong> <span><c:out
+						value="${item.availableQuantity}" /> / <c:out
+						value="${item.quantity}" /></span></li>
+			<li><strong>Defekt:</strong> <span><c:out
+						value="${item.defectiveQuantity}" /></span></li>
 			<li><strong>Tracking-Status:</strong> <span> <c:choose>
 						<c:when test="${item.status == 'CHECKED_OUT'}">
-							<span class="status-badge status-warn">Entnommen</span>
+							<span class="status-badge status-warn"><c:out
+									value="Entnommen" /></span>
 						</c:when>
 						<c:when test="${item.status == 'MAINTENANCE'}">
-							<span class="status-badge status-info">Wartung</span>
+							<span class="status-badge status-info"><c:out
+									value="Wartung" /></span>
 						</c:when>
 						<c:otherwise>
-							<span class="status-badge status-ok">Im Lager</span>
+							<span class="status-badge status-ok"><c:out
+									value="Im Lager" /></span>
 						</c:otherwise>
 					</c:choose>
 			</span></li>
 			<c:if test="${not empty item.currentHolderUsername}">
-				<li><strong>Aktueller Inhaber:</strong> <span>${item.currentHolderUsername}</span></li>
+				<li><strong>Aktueller Inhaber:</strong> <span><c:out
+							value="${item.currentHolderUsername}" /></span></li>
 			</c:if>
-			<li><strong>Ort:</strong> <span>${item.location}</span></li>
-			<li><strong>Schrank:</strong> <span>${not empty item.cabinet ? item.cabinet : 'N/A'}</span></li>
-			<li><strong>Fach:</strong> <span>${not empty item.compartment ? item.compartment : 'N/A'}</span></li>
+			<li><strong>Ort:</strong> <span><c:out
+						value="${item.location}" /></span></li>
+			<li><strong>Schrank:</strong> <span><c:out
+						value="${not empty item.cabinet ? item.cabinet : 'N/A'}" /></span></li>
+			<li><strong>Fach:</strong> <span><c:out
+						value="${not empty item.compartment ? item.compartment : 'N/A'}" /></span></li>
 		</ul>
 		<div style="margin-top: 2rem;">
 			<a href="<c:url value='/lager'/>" class="btn btn-small"><i
@@ -85,11 +98,14 @@
 						</c:if>
 						<c:forEach var="entry" items="${history}">
 							<tr>
-								<td>${entry.transactionTimestampLocaleString}</td>
+								<td><c:out
+										value="${entry.transactionTimestampLocaleString}" /></td>
 								<td><span
-									class="status-badge ${entry.quantityChange > 0 ? 'status-ok' : 'status-danger'}">${entry.quantityChange > 0 ? '+' : ''}${entry.quantityChange}</span></td>
-								<td>${entry.username}</td>
-								<td>${not empty entry.notes ? entry.notes : '-'}</td>
+									class="status-badge ${entry.quantityChange > 0 ? 'status-ok' : 'status-danger'}">${entry.quantityChange > 0 ? '+' : ''}<c:out
+											value="${entry.quantityChange}" /></span></td>
+								<td><c:out value="${entry.username}" /></td>
+								<td><c:out
+										value="${not empty entry.notes ? entry.notes : '-'}" /></td>
 							</tr>
 						</c:forEach>
 					</tbody>
@@ -119,7 +135,7 @@
 						</c:if>
 						<c:forEach var="entry" items="${maintenanceHistory}">
 							<tr>
-								<td>${entry.formattedLogDate}</td>
+								<td><c:out value="${entry.formattedLogDate}" /></td>
 								<td><c:out value="${entry.action}" /></td>
 								<td><c:out value="${entry.username}" /></td>
 								<td><c:out value="${entry.notes}" /></td>

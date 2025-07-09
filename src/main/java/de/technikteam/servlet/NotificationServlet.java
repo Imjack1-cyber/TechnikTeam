@@ -34,17 +34,14 @@ public class NotificationServlet extends HttpServlet {
 			return;
 		}
 
-		// FIX: Get User object and then username for correct logging
 		de.technikteam.model.User user = (de.technikteam.model.User) session.getAttribute("user");
 		logger.info("Client '{}' connecting to SSE stream.", user.getUsername());
 
-		// Set headers for Server-Sent Events
 		response.setContentType("text/event-stream");
 		response.setCharacterEncoding("UTF-8");
 		response.setHeader("Cache-Control", "no-cache");
 		response.setHeader("Connection", "keep-alive");
 
-		// Register the client with the notification service
 		NotificationService.getInstance().register(request);
 	}
 }

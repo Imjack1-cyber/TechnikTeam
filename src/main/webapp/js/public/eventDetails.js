@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const title = document.getElementById('task-modal-title');
 		const taskIdInput = document.getElementById('task-id-modal');
 		const descInput = document.getElementById('task-description-modal');
-		const detailsInput = document.getElementById('task-details-modal'); // New details input
+		const detailsInput = document.getElementById('task-details-modal');
 		const orderInput = document.getElementById('task-display-order-modal');
 		const statusGroup = document.getElementById('task-status-group');
 		const statusInput = document.getElementById('task-status-modal');
@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 				taskIdInput.value = task.id;
 				descInput.value = task.description;
-				detailsInput.value = task.details || ''; // Populate details field
+				detailsInput.value = task.details || '';
 				orderInput.value = task.displayOrder;
 				statusInput.value = task.status;
 
@@ -149,10 +149,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		deleteBtn.addEventListener('click', () => {
 			showConfirmationModal('Diese Aufgabe wirklich löschen?', () => {
+				const csrfToken = form.querySelector('input[name="csrfToken"]').value;
 				const deleteForm = document.createElement('form');
 				deleteForm.method = 'post';
-				deleteForm.action = `${contextPath}/admin/tasks`;
-				deleteForm.innerHTML = `<input type="hidden" name="action" value="delete"><input type="hidden" name="taskId" value="${taskIdInput.value}"><input type="hidden" name="eventId" value="${eventId}">`;
+				deleteForm.action = `${contextPath}/task-action`;
+				deleteForm.innerHTML = `
+					<input type="hidden" name="action" value="delete">
+					<input type="hidden" name="taskId" value="${taskIdInput.value}">
+					<input type="hidden" name="eventId" value="${eventId}">
+					<input type="hidden" name="csrfToken" value="${csrfToken}">`;
 				document.body.appendChild(deleteForm);
 				deleteForm.submit();
 			});
@@ -179,10 +184,14 @@ document.addEventListener('DOMContentLoaded', () => {
 			const markDoneBtn = e.target.closest('.mark-task-done-btn');
 			if (markDoneBtn) {
 				const taskId = markDoneBtn.dataset.taskId;
+				const csrfToken = document.body.dataset.csrfToken;
 				const params = new URLSearchParams();
 				params.append('action', 'updateStatus');
 				params.append('taskId', taskId);
 				params.append('status', 'ERLEDIGT');
+				if (csrfToken) {
+					params.append('csrfToken', csrfToken);
+				}
 
 				fetch(`${contextPath}/task-action`, {
 					method: 'POST',
@@ -200,7 +209,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	}
 
-	// --- Chat Management (unchanged) ---
 	const chatBox = document.getElementById('chat-box');
 	if (chatBox) {
 		const chatForm = document.getElementById('chat-form');
@@ -309,12 +317,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		const renderDeletedState = (bubbleElement, message) => {
 			let deletedText;
+			const deletedByEl = document.createElement('span');
+			deletedByEl.textContent = message.deletedByUsername;
+
+			const originalUserEl = document.createElement('span');
+			originalUserEl.textContent = message.username;
+
+			const infoSpan = document.createElement('span');
+			infoSpan.className = 'chat-deleted-info';
+
 			if (message.username === message.deletedByUsername) {
-				deletedText = `Nachricht wurde von ${message.username} gelöscht`;
+				infoSpan.textContent = `Nachricht wurde von ${originalUserEl.textContent} gelöscht`;
 			} else {
-				deletedText = `Nachricht von ${message.username} wurde von ${message.deletedByUsername} gelöscht`;
+				infoSpan.textContent = `Nachricht von ${originalUserEl.textContent} wurde von ${deletedByEl.textContent} gelöscht`;
 			}
-			bubbleElement.innerHTML = `<span class="chat-deleted-info">${deletedText}</span>`;
+			bubbleElement.appendChild(infoSpan);
 			bubbleElement.classList.add('deleted');
 		};
 
@@ -350,13 +367,23 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (bubbleElement && containerElement) {
 				containerElement.querySelector('.chat-options')?.remove();
 
-				let deletedText;
+				const deletedByEl = document.createElement('span');
+				deletedByEl.textContent = payload.deletedByUsername;
+
+				const originalUserEl = document.createElement('span');
+				originalUserEl.textContent = payload.originalUsername;
+
+				const infoSpan = document.createElement('span');
+				infoSpan.className = 'chat-deleted-info';
+
 				if (payload.originalUsername === payload.deletedByUsername) {
-					deletedText = `Nachricht von ${payload.originalUsername} gelöscht`;
+					infoSpan.textContent = `Nachricht von ${originalUserEl.textContent} gelöscht`;
 				} else {
-					deletedText = `Nachricht von ${payload.originalUsername} wurde von ${payload.deletedByUsername} gelöscht`;
+					infoSpan.textContent = `Nachricht von ${originalUserEl.textContent} wurde von ${deletedByEl.textContent} gelöscht`;
 				}
-				bubbleElement.innerHTML = `<span class="chat-deleted-info">${deletedText}</span>`;
+
+				bubbleElement.innerHTML = ''; // Clear existing content
+				bubbleElement.appendChild(infoSpan);
 				bubbleElement.classList.add('deleted');
 			}
 		};

@@ -41,7 +41,6 @@ public class AdminReportServlet extends HttpServlet {
 
 		logger.debug("Serving main reports dashboard.");
 
-		// Fetch data for dashboard charts
 		List<Map<String, Object>> eventTrendData = reportDAO.getEventCountByMonth(12);
 		List<Map<String, Object>> userActivityData = reportDAO.getUserParticipationStats(10);
 
@@ -100,11 +99,9 @@ public class AdminReportServlet extends HttpServlet {
 		}
 
 		try (PrintWriter writer = response.getWriter()) {
-			// Write header
 			String header = String.join(",", data.get(0).keySet());
 			writer.println(header);
 
-			// Write data rows
 			for (Map<String, Object> row : data) {
 				String line = row.values().stream().map(this::escapeCsvField).collect(Collectors.joining(","));
 				writer.println(line);

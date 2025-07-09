@@ -1,6 +1,6 @@
 package de.technikteam.dao;
 
-import de.technikteam.model.Role; // Assuming a simple Role model
+import de.technikteam.model.Role;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -11,6 +11,10 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * A minimal DAO to fetch role information for populating UI elements. It is no
+ * longer responsible for managing permissions.
+ */
 public class RoleDAO {
 	private static final Logger logger = LogManager.getLogger(RoleDAO.class);
 

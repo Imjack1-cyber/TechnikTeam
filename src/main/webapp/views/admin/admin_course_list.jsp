@@ -23,7 +23,8 @@
 	</div>
 </div>
 
-<div class="table-wrapper">
+<!-- Desktop Table View -->
+<div class="desktop-table-wrapper">
 	<table class="data-table sortable-table searchable-table">
 		<thead>
 			<tr>
@@ -57,8 +58,10 @@
 						<form action="${pageContext.request.contextPath}/admin/lehrgaenge"
 							method="post" class="js-confirm-form"
 							data-confirm-message="Vorlage '${fn:escapeXml(course.name)}' wirklich löschen? Alle zugehörigen Meetings und Qualifikationen werden auch gelöscht!">
-							<input type="hidden" name="action" value="delete"> <input
-								type="hidden" name="id" value="${course.id}">
+							<input type="hidden" name="csrfToken"
+								value="${sessionScope.csrfToken}"> <input type="hidden"
+								name="action" value="delete"> <input type="hidden"
+								name="id" value="${course.id}">
 							<button type="submit" class="btn btn-small btn-danger">
 								<i class="fas fa-trash"></i> Löschen
 							</button>
@@ -69,6 +72,49 @@
 	</table>
 </div>
 
+<!-- Mobile Card View -->
+<div class="mobile-card-list searchable-table">
+	<c:if test="${empty courseList}">
+		<div class="card">
+			<p>Es wurden noch keine Lehrgangs-Vorlagen erstellt.</p>
+		</div>
+	</c:if>
+	<c:forEach var="course" items="${courseList}">
+		<div class="list-item-card">
+			<h3 class="card-title">
+				<c:out value="${course.name}" />
+			</h3>
+			<div class="card-row">
+				<span>Abkürzung:</span> <strong><c:out
+						value="${course.abbreviation}" /></strong>
+			</div>
+			<div class="card-actions">
+				<a
+					href="${pageContext.request.contextPath}/admin/meetings?courseId=${course.id}"
+					class="btn btn-small"> <i class="fas fa-calendar-day"></i>
+					Meetings
+				</a>
+				<button type="button"
+					class="btn btn-small btn-secondary edit-course-btn"
+					data-id="${course.id}">
+					<i class="fas fa-edit"></i> Bearbeiten
+				</button>
+				<form action="${pageContext.request.contextPath}/admin/lehrgaenge"
+					method="post" class="js-confirm-form"
+					data-confirm-message="Vorlage '${fn:escapeXml(course.name)}' wirklich löschen? Alle zugehörigen Meetings und Qualifikationen werden auch gelöscht!">
+					<input type="hidden" name="csrfToken"
+						value="${sessionScope.csrfToken}"> <input type="hidden"
+						name="action" value="delete"> <input type="hidden"
+						name="id" value="${course.id}">
+					<button type="submit" class="btn btn-small btn-danger">
+						<i class="fas fa-trash"></i> Löschen
+					</button>
+				</form>
+			</div>
+		</div>
+	</c:forEach>
+</div>
+
 <!-- MODAL FOR CREATE/EDIT COURSE -->
 <div class="modal-overlay" id="course-modal">
 	<div class="modal-content">
@@ -77,8 +123,10 @@
 		<form id="course-modal-form"
 			action="${pageContext.request.contextPath}/admin/lehrgaenge"
 			method="post">
-			<input type="hidden" name="action" id="course-modal-action">
-			<input type="hidden" name="id" id="course-modal-id">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" id="course-modal-action"> <input type="hidden"
+				name="id" id="course-modal-id">
 			<div class="form-group">
 				<label for="name-modal">Name der Vorlage</label> <input type="text"
 					id="name-modal" name="name" required>

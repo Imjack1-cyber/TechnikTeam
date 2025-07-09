@@ -4,12 +4,15 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.EventDAO;
+import de.technikteam.dao.PermissionDAO;
 import de.technikteam.dao.RoleDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.Event;
+import de.technikteam.model.Permission;
 import de.technikteam.model.Role;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
+import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -22,12 +25,8 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
-// CORRECTED: The servlet is now mapped to /admin/mitglieder as requested.
 @WebServlet("/admin/mitglieder")
 public class AdminUserServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
@@ -36,6 +35,7 @@ public class AdminUserServlet extends HttpServlet {
 	private UserDAO userDAO;
 	private EventDAO eventDAO;
 	private RoleDAO roleDAO;
+	private PermissionDAO permissionDAO;
 	private Gson gson;
 
 	@Override
@@ -43,6 +43,7 @@ public class AdminUserServlet extends HttpServlet {
 		userDAO = new UserDAO();
 		eventDAO = new EventDAO();
 		roleDAO = new RoleDAO();
+		permissionDAO = new PermissionDAO();
 		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
@@ -50,8 +51,15 @@ public class AdminUserServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		String action = request.getParameter("action") == null ? "list" : request.getParameter("action");
+		User currentUser = (User) request.getSession().getAttribute("user");
+		Set<String> permissions = currentUser.getPermissions();
+
 		logger.debug("AdminUserServlet received GET with action: {}", action);
 		try {
+			if (!permissions.contains("USER_READ") && !permissions.contains("ACCESS_ADMIN_PANEL")) {
+				response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+				return;
+			}
 			switch (action) {
 			case "details":
 				showUserDetails(request, response);
@@ -63,6 +71,9 @@ public class AdminUserServlet extends HttpServlet {
 				listUsers(request, response);
 				break;
 			}
+		} catch (NumberFormatException e) {
+			logger.warn("Invalid ID format in GET request: {}", e.getMessage());
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Ungültige ID angegeben.");
 		} catch (Exception e) {
 			logger.error("Error in AdminUserServlet doGet", e);
 			request.getSession().setAttribute("errorMessage", "Ein Fehler ist aufgetreten: " + e.getMessage());
@@ -78,6 +89,13 @@ public class AdminUserServlet extends HttpServlet {
 			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
 			return;
 		}
+
+		if (!CSRFUtil.isTokenValid(request)) {
+			logger.warn("CSRF token validation failed for action '{}'.", action);
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid or missing CSRF token.");
+			return;
+		}
+
 		try {
 			switch (action) {
 			case "create":
@@ -97,6 +115,10 @@ public class AdminUserServlet extends HttpServlet {
 				response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
 				break;
 			}
+		} catch (NumberFormatException e) {
+			logger.warn("Invalid ID format in POST request: {}", e.getMessage());
+			request.getSession().setAttribute("errorMessage", "Fehler: Ungültige ID übermittelt.");
+			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
 		} catch (Exception e) {
 			logger.error("Error in AdminUserServlet doPost", e);
 			request.getSession().setAttribute("errorMessage",
@@ -110,26 +132,41 @@ public class AdminUserServlet extends HttpServlet {
 		logger.info("Executing listUsers method.");
 		List<User> userList = userDAO.getAllUsers();
 		List<Role> allRoles = roleDAO.getAllRoles();
-		logger.debug("Fetched {} users and {} roles from DAOs.", userList.size(), allRoles.size());
+		List<Permission> allPermissions = permissionDAO.getAllPermissions();
+
+		Map<String, List<Permission>> groupedPermissions = new LinkedHashMap<>();
+		for (Permission p : allPermissions) {
+			String key = p.getPermissionKey();
+			String groupName = "ALLGEMEIN";
+			if (key.contains("_")) {
+				groupName = key.substring(0, key.indexOf('_'));
+			}
+			groupedPermissions.computeIfAbsent(groupName, k -> new ArrayList<>()).add(p);
+		}
+
+		logger.debug("Fetched {} users, {} roles, and {} permissions from DAOs.", userList.size(), allRoles.size(),
+				allPermissions.size());
 		request.setAttribute("userList", userList);
 		request.setAttribute("allRoles", allRoles);
+		request.setAttribute("groupedPermissionsJson", gson.toJson(groupedPermissions));
 		request.getRequestDispatcher("/views/admin/admin_users.jsp").forward(request, response);
 	}
 
 	private void getUserDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		try {
-			int userId = Integer.parseInt(req.getParameter("id"));
-			User user = userDAO.getUserById(userId);
-			if (user != null) {
-				String userJson = gson.toJson(user);
-				resp.setContentType("application/json");
-				resp.setCharacterEncoding("UTF-8");
-				resp.getWriter().write(userJson);
-			} else {
-				resp.sendError(HttpServletResponse.SC_NOT_FOUND, "User not found");
-			}
-		} catch (NumberFormatException e) {
-			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid User ID");
+		int userId = Integer.parseInt(req.getParameter("id"));
+		User user = userDAO.getUserById(userId);
+		if (user != null) {
+			Set<Integer> permissionIds = permissionDAO.getPermissionIdsForUser(userId);
+			Map<String, Object> responseData = new HashMap<>();
+			responseData.put("user", user);
+			responseData.put("permissionIds", permissionIds);
+
+			String userJson = gson.toJson(responseData);
+			resp.setContentType("application/json");
+			resp.setCharacterEncoding("UTF-8");
+			resp.getWriter().write(userJson);
+		} else {
+			resp.sendError(HttpServletResponse.SC_NOT_FOUND, "User not found");
 		}
 	}
 
@@ -149,6 +186,13 @@ public class AdminUserServlet extends HttpServlet {
 	}
 
 	private void handleCreateUser(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		User adminUser = (User) request.getSession().getAttribute("user");
+		if (!adminUser.getPermissions().contains("USER_CREATE")
+				&& !adminUser.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return;
+		}
+
 		String username = request.getParameter("username");
 		String pass = request.getParameter("password");
 		if (username == null || username.trim().isEmpty() || pass == null || pass.trim().isEmpty()) {
@@ -157,6 +201,7 @@ public class AdminUserServlet extends HttpServlet {
 			return;
 		}
 		int roleId = Integer.parseInt(request.getParameter("roleId"));
+		String[] permissionIds = request.getParameterValues("permissionIds");
 
 		User newUser = new User();
 		newUser.setUsername(username.trim());
@@ -167,12 +212,15 @@ public class AdminUserServlet extends HttpServlet {
 			newUser.setClassYear(0);
 		}
 		newUser.setClassName(request.getParameter("className"));
-		newUser.setEmail(request.getParameter("email"));
+
+		String email = request.getParameter("email");
+		newUser.setEmail(email != null && !email.trim().isEmpty() ? email.trim() : null);
 
 		int newUserId = userDAO.createUser(newUser, pass);
 		if (newUserId > 0) {
-			User adminUser = (User) request.getSession().getAttribute("user");
-			String logDetails = String.format("Benutzer '%s' (ID: %d, Rolle-ID: %d, Klasse: %d %s) erstellt.",
+			userDAO.updateUserPermissions(newUserId, permissionIds);
+			String logDetails = String.format(
+					"Benutzer '%s' (ID: %d, Rolle-ID: %d, Klasse: %d %s) erstellt und Berechtigungen zugewiesen.",
 					newUser.getUsername(), newUserId, newUser.getRoleId(), newUser.getClassYear(),
 					newUser.getClassName());
 			AdminLogService.log(adminUser.getUsername(), "CREATE_USER", logDetails);
@@ -189,6 +237,13 @@ public class AdminUserServlet extends HttpServlet {
 		int userId = Integer.parseInt(request.getParameter("userId"));
 		HttpSession session = request.getSession();
 		User adminUser = (User) session.getAttribute("user");
+
+		if (!adminUser.getPermissions().contains("USER_UPDATE")
+				&& !adminUser.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return;
+		}
+
 		User originalUser = userDAO.getUserById(userId);
 
 		if (originalUser == null) {
@@ -198,47 +253,35 @@ public class AdminUserServlet extends HttpServlet {
 			return;
 		}
 		int roleId = Integer.parseInt(request.getParameter("roleId"));
+		String[] permissionIds = request.getParameterValues("permissionIds");
 
 		User updatedUser = new User();
 		updatedUser.setId(userId);
 		updatedUser.setUsername(request.getParameter("username").trim());
 		updatedUser.setRoleId(roleId);
 		updatedUser.setClassName(request.getParameter("className"));
-		updatedUser.setEmail(request.getParameter("email"));
+
+		String email = request.getParameter("email");
+		updatedUser.setEmail(email != null && !email.trim().isEmpty() ? email.trim() : null);
+
 		try {
 			updatedUser.setClassYear(Integer.parseInt(request.getParameter("classYear")));
 		} catch (NumberFormatException e) {
 			updatedUser.setClassYear(0);
 		}
 
-		List<String> changes = new ArrayList<>();
-		if (!Objects.equals(originalUser.getUsername(), updatedUser.getUsername()))
-			changes.add("Benutzername von '" + originalUser.getUsername() + "' zu '" + updatedUser.getUsername() + "'");
-		if (originalUser.getRoleId() != updatedUser.getRoleId())
-			changes.add("Rolle-ID von '" + originalUser.getRoleId() + "' zu '" + updatedUser.getRoleId() + "'");
-		if (originalUser.getClassYear() != updatedUser.getClassYear())
-			changes.add("Jahrgang von '" + originalUser.getClassYear() + "' zu '" + updatedUser.getClassYear() + "'");
-		if (!Objects.equals(originalUser.getClassName(), updatedUser.getClassName()))
-			changes.add("Klasse von '" + originalUser.getClassName() + "' zu '" + updatedUser.getClassName() + "'");
-		if (!Objects.equals(originalUser.getEmail(), updatedUser.getEmail()))
-			changes.add("E-Mail geändert");
+		boolean profileUpdated = userDAO.updateUser(updatedUser);
+		boolean permissionsUpdated = userDAO.updateUserPermissions(userId, permissionIds);
 
-		if (!changes.isEmpty()) {
-			if (userDAO.updateUser(updatedUser)) {
-				if (adminUser.getId() == userId) {
-					User refreshedUserInSession = userDAO.getUserById(userId);
-					Set<String> newPermissions = userDAO.getPermissionsForRole(refreshedUserInSession.getRoleId());
-					refreshedUserInSession.setPermissions(newPermissions);
-					session.setAttribute("user", refreshedUserInSession);
-				}
-				String logDetails = String.format("Benutzer '%s' (ID: %d) aktualisiert. Änderungen: %s.",
-						originalUser.getUsername(), userId, String.join(", ", changes));
-				AdminLogService.log(adminUser.getUsername(), "UPDATE_USER", logDetails);
-				request.getSession().setAttribute("successMessage", "Benutzerdaten erfolgreich aktualisiert.");
-			} else {
-				request.getSession().setAttribute("errorMessage",
-						"Fehler: Benutzerdaten konnten nicht in der DB aktualisiert werden.");
+		if (profileUpdated || permissionsUpdated) {
+			if (adminUser.getId() == userId) {
+				User refreshedUserInSession = userDAO.getUserById(userId);
+				refreshedUserInSession.setPermissions(userDAO.getPermissionsForUser(userId));
+				session.setAttribute("user", refreshedUserInSession);
 			}
+			AdminLogService.log(adminUser.getUsername(), "UPDATE_USER",
+					"Benutzer '" + originalUser.getUsername() + "' (ID: " + userId + ") aktualisiert.");
+			request.getSession().setAttribute("successMessage", "Benutzerdaten erfolgreich aktualisiert.");
 		} else {
 			request.getSession().setAttribute("infoMessage", "Keine Änderungen an den Benutzerdaten vorgenommen.");
 		}
@@ -248,16 +291,43 @@ public class AdminUserServlet extends HttpServlet {
 	private void handleDeleteUser(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		int userIdToDelete = Integer.parseInt(request.getParameter("userId"));
 		User loggedInAdmin = (User) request.getSession().getAttribute("user");
+
+		if (!loggedInAdmin.getPermissions().contains("USER_DELETE")
+				&& !loggedInAdmin.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return;
+		}
+
 		if (loggedInAdmin.getId() == userIdToDelete) {
 			request.getSession().setAttribute("errorMessage", "Sie können sich nicht selbst löschen.");
 			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
 			return;
 		}
+
 		User userToDelete = userDAO.getUserById(userIdToDelete);
+		if (userToDelete == null) {
+			request.getSession().setAttribute("errorMessage", "Benutzer mit ID " + userIdToDelete + " nicht gefunden.");
+			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
+			return;
+		}
+
+		Set<String> targetPermissions = userDAO.getPermissionsForUser(userIdToDelete);
+		if (targetPermissions.contains("ACCESS_ADMIN_PANEL")
+				&& !loggedInAdmin.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
+			logger.warn("Privilege Escalation Attempt: User '{}' tried to delete super-admin '{}'",
+					loggedInAdmin.getUsername(), userToDelete.getUsername());
+			request.getSession().setAttribute("errorMessage",
+					"Sie haben keine Berechtigung, einen Haupt-Administrator zu löschen.");
+			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
+			return;
+		}
+
+		String deletedUsername = userToDelete.getUsername();
+		String deletedRoleName = userToDelete.getRoleName();
+
 		if (userDAO.deleteUser(userIdToDelete)) {
-			String logDetails = String.format("Benutzer '%s' (ID: %d, Rolle: %s) wurde gelöscht.",
-					(userToDelete != null ? userToDelete.getUsername() : "N/A"), userIdToDelete,
-					(userToDelete != null ? userToDelete.getRoleName() : "N/A"));
+			String logDetails = String.format("Benutzer '%s' (ID: %d, Rolle: %s) wurde gelöscht.", deletedUsername,
+					userIdToDelete, deletedRoleName);
 			AdminLogService.log(loggedInAdmin.getUsername(), "DELETE_USER", logDetails);
 			request.getSession().setAttribute("successMessage", "Benutzer erfolgreich gelöscht.");
 		} else {
@@ -268,29 +338,29 @@ public class AdminUserServlet extends HttpServlet {
 
 	private void handleResetPassword(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		User adminUser = (User) request.getSession().getAttribute("user");
-		try {
-			int userId = Integer.parseInt(request.getParameter("userId"));
-			User userToReset = userDAO.getUserById(userId);
+		if (!adminUser.getPermissions().contains("USER_PASSWORD_RESET")
+				&& !adminUser.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return;
+		}
 
-			if (userToReset == null) {
-				request.getSession().setAttribute("errorMessage", "Benutzer zum Zurücksetzen nicht gefunden.");
+		int userId = Integer.parseInt(request.getParameter("userId"));
+		User userToReset = userDAO.getUserById(userId);
+
+		if (userToReset == null) {
+			request.getSession().setAttribute("errorMessage", "Benutzer zum Zurücksetzen nicht gefunden.");
+		} else {
+			String newPassword = generateRandomPassword(12);
+			if (userDAO.changePassword(userId, newPassword)) {
+				String logDetails = String.format("Passwort für Benutzer '%s' (ID: %d) zurückgesetzt.",
+						userToReset.getUsername(), userId);
+				AdminLogService.log(adminUser.getUsername(), "RESET_PASSWORD", logDetails);
+
+				request.getSession().setAttribute("passwordResetUser", userToReset.getUsername());
+				request.getSession().setAttribute("passwordResetNewPassword", newPassword);
 			} else {
-				String newPassword = generateRandomPassword(8);
-				if (userDAO.changePassword(userId, newPassword)) {
-					String logDetails = String.format("Passwort für Benutzer '%s' (ID: %d) zurückgesetzt.",
-							userToReset.getUsername(), userId);
-					AdminLogService.log(adminUser.getUsername(), "RESET_PASSWORD", logDetails);
-					String successMessage = String.format(
-							"Passwort für '%s' wurde zurückgesetzt auf: <strong class=\"copyable-password\">%s</strong> (wurde in die Zwischenablage kopiert).",
-							userToReset.getUsername(), newPassword);
-					request.getSession().setAttribute("passwordResetInfo", successMessage);
-				} else {
-					request.getSession().setAttribute("errorMessage", "Passwort konnte nicht zurückgesetzt werden.");
-				}
+				request.getSession().setAttribute("errorMessage", "Passwort konnte nicht zurückgesetzt werden.");
 			}
-		} catch (NumberFormatException e) {
-			logger.error("Invalid user ID for password reset.", e);
-			request.getSession().setAttribute("errorMessage", "Ungültige Benutzer-ID.");
 		}
 		response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
 	}

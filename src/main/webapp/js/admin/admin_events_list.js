@@ -7,7 +7,24 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	});
 
-	// --- Modal References ---
+	// Client-side file size validation
+	document.querySelectorAll('.file-input').forEach(input => {
+		input.addEventListener('change', (e) => {
+			const file = e.target.files[0];
+			if (!file) return;
+
+			const maxSize = parseInt(e.target.dataset.maxSize, 10);
+			const warningElement = e.target.closest('.form-group').querySelector('.file-size-warning');
+
+			if (file.size > maxSize) {
+				if (warningElement) warningElement.style.display = 'block';
+				e.target.value = ''; // Clear the invalid selection
+			} else {
+				if (warningElement) warningElement.style.display = 'none';
+			}
+		});
+	});
+
 	const assignModal = document.getElementById('assign-users-modal');
 	const eventModal = document.getElementById('event-modal');
 	const reqContainer = document.getElementById('modal-requirements-container');
@@ -16,11 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
 	const attachmentsList = document.getElementById('modal-attachments-list');
 	const kitSelect = document.getElementById('kit-selection-modal');
 
-	// --- Data from JSP for dynamic fields ---
 	const allCourses = JSON.parse(document.getElementById('allCoursesData').textContent);
 	const allItems = JSON.parse(document.getElementById('allItemsData').textContent);
 
-	// --- Assign Users Modal Logic ---
 	const assignForm = document.getElementById('assign-users-form');
 	const assignModalTitle = document.getElementById('assign-users-modal-title');
 	const assignCheckboxes = document.getElementById('user-checkboxes-container');
@@ -58,7 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
 	document.querySelectorAll('.assign-users-btn').forEach(btn => btn.addEventListener('click', () => openAssignModal(btn)));
 	assignModal.querySelector('.modal-close-btn').addEventListener('click', () => assignModal.classList.remove('active'));
 
-	// --- Generic Row Creation and Addition Functions ---
 	const createRow = (container) => {
 		const newRow = document.createElement('div'); newRow.className = 'dynamic-row';
 		const removeBtn = document.createElement('button'); removeBtn.type = 'button'; removeBtn.className = 'btn-small btn-danger';
@@ -106,16 +120,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	const addAttachmentRow = (id, filename, filepath) => {
 		const li = document.createElement('li'); li.id = `attachment-item-${id}`;
-		li.innerHTML = `<a href="${contextPath}/download?file=${filepath}" target="_blank">${filename}</a>`;
+		li.innerHTML = `<a href="${contextPath}/download?type=event&id=${id}" target="_blank">${filename}</a>`;
 		const removeBtn = document.createElement('button'); removeBtn.type = 'button'; removeBtn.className = 'btn btn-small btn-danger-outline';
 		removeBtn.innerHTML = '×';
 		removeBtn.onclick = () => {
 			showConfirmationModal(`Anhang '${filename}' wirklich löschen?`, async () => {
+				const formData = new FormData();
+				formData.append('action', 'deleteAttachment');
+				formData.append('id', id);
+				formData.append('csrfToken', document.querySelector('#event-modal-form input[name="csrfToken"]').value);
+
 				try {
-					const response = await fetch(`${contextPath}/admin/veranstaltungen`, { method: 'POST', body: new URLSearchParams({ action: 'deleteAttachment', id: id }) });
+					const response = await fetch(`${contextPath}/admin/veranstaltungen`, {
+						method: 'POST',
+						body: new URLSearchParams(formData)
+					});
 					if (response.ok) li.remove();
 					else alert('Fehler beim Löschen des Anhangs.');
 				} catch (e) {
+					console.error('Error deleting attachment:', e);
 					alert('Netzwerkfehler beim Löschen des Anhangs.');
 				}
 			});
@@ -123,7 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		li.appendChild(removeBtn); attachmentsList.appendChild(li);
 	};
 
-	// --- Kit Selection Logic ---
 	if (kitSelect) {
 		kitSelect.addEventListener('change', async () => {
 			const kitId = kitSelect.value;
@@ -138,12 +160,10 @@ document.addEventListener('DOMContentLoaded', () => {
 				console.error("Error fetching kit items:", e);
 				alert("Fehler beim Laden der Kit-Inhalte.");
 			}
-			// Reset selection to allow re-adding the same kit
 			kitSelect.value = '';
 		});
 	}
 
-	// --- Edit/Create Event Modal Logic ---
 	document.getElementById('modal-add-requirement-btn').addEventListener('click', () => addRequirementRow());
 	document.getElementById('modal-add-reservation-btn').addEventListener('click', () => addReservationRow());
 	document.getElementById('modal-add-custom-field-btn').addEventListener('click', () => addCustomFieldRow());
@@ -159,6 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		resContainer.innerHTML = '';
 		cfContainer.innerHTML = '';
 		attachmentsList.innerHTML = '';
+		document.querySelectorAll('.file-size-warning').forEach(el => el.style.display = 'none');
 	};
 
 	const openEventModal = () => eventModal.classList.add('active');
@@ -205,7 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	});
 
-	// --- Tab Logic ---
 	const tabButtons = eventModal.querySelectorAll('.modal-tab-button');
 	const tabContents = eventModal.querySelectorAll('.modal-tab-content');
 	tabButtons.forEach(button => {

@@ -24,12 +24,8 @@ public class AuthenticationFilter implements Filter {
 
 	private static final Logger logger = LogManager.getLogger(AuthenticationFilter.class.getName());
 
-	// CORRECTION: This set should only contain the servlet paths, not JSP paths.
-	// ADDED: /pack-kit to allow access from QR codes.
-	private static final Set<String> PUBLIC_PATHS = new HashSet<>(Arrays.asList("/login", "/logout", "/pack-kit"));
+	private static final Set<String> PUBLIC_PATHS = new HashSet<>(Arrays.asList("/login", "/logout", "/calendar.ics"));
 
-	// CORRECTION: The /error directory prefix is correct for allowing error pages.
-	// ADDED: /public to allow access to public APIs like the iCal feed.
 	private static final Set<String> PUBLIC_RESOURCE_PREFIXES = new HashSet<>(
 			Arrays.asList("/css", "/js", "/images", "/error", "/public"));
 
@@ -64,7 +60,6 @@ public class AuthenticationFilter implements Filter {
 		} else {
 			logger.warn("Unauthorized access attempt by a guest to protected path: '{}'. Redirecting to login page.",
 					path);
-			// CORRECTION: Redirect to the /login servlet URL, not the JSP file path.
 			response.sendRedirect(contextPath + "/login");
 		}
 	}

@@ -5,6 +5,8 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.EventChatDAO;
+import de.technikteam.dao.EventDAO;
+import de.technikteam.model.Event;
 import de.technikteam.model.EventChatMessage;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
@@ -24,6 +26,7 @@ public class EventChatSocket {
 
 	private static final Logger logger = LogManager.getLogger(EventChatSocket.class);
 	private static final EventChatDAO chatDAO = new EventChatDAO();
+	private static final EventDAO eventDAO = new EventDAO(); 
 	private static final Gson gson = new GsonBuilder()
 			.registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 
@@ -82,7 +85,7 @@ public class EventChatSocket {
 		EventChatMessage savedMessage = chatDAO.postMessage(newMessage);
 
 		if (savedMessage != null) {
-			savedMessage.setChatColor(user.getChatColor()); // Add user's color to broadcast
+			savedMessage.setChatColor(user.getChatColor()); 
 			Map<String, Object> broadcastPayload = Map.of("type", "new_message", "payload", savedMessage);
 			ChatSessionManager.getInstance().broadcast(eventId, gson.toJson(broadcastPayload));
 		}
@@ -90,11 +93,16 @@ public class EventChatSocket {
 
 	private void handleDeleteMessage(User user, String eventId, Map<String, Object> payload) {
 		int messageId = ((Double) payload.get("messageId")).intValue();
-		boolean isAdmin = user.getPermissions().contains("ACCESS_ADMIN_PANEL");
+		boolean hasMasterPermission = user.getPermissions().contains("ACCESS_ADMIN_PANEL");
 
-		if (chatDAO.deleteMessage(messageId, user.getId(), isAdmin)) {
-			if (isAdmin && user.getId() != ((Double) payload.get("originalUserId")).intValue()) {
-				String logDetails = String.format("Admin '%s' deleted a chat message (ID: %d) in event chat (ID: %s).",
+		Event event = eventDAO.getEventById(Integer.parseInt(eventId));
+		boolean isEventLeader = event != null && event.getLeaderUserId() == user.getId();
+
+		boolean canDeleteAsAdmin = hasMasterPermission || isEventLeader;
+
+		if (chatDAO.deleteMessage(messageId, user.getId(), canDeleteAsAdmin)) {
+			if (canDeleteAsAdmin && user.getId() != ((Double) payload.get("originalUserId")).intValue()) {
+				String logDetails = String.format("User '%s' deleted a chat message (ID: %d) in event chat (ID: %s).",
 						user.getUsername(), messageId, eventId);
 				AdminLogService.log(user.getUsername(), "DELETE_CHAT_MESSAGE", logDetails);
 			}

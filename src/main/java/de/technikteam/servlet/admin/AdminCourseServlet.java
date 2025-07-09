@@ -5,6 +5,7 @@ import de.technikteam.dao.CourseDAO;
 import de.technikteam.model.Course;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
+import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -56,8 +57,15 @@ public class AdminCourseServlet extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		req.setCharacterEncoding("UTF-8");
+
+		if (!CSRFUtil.isTokenValid(req)) {
+			logger.warn("CSRF token validation failed for course action.");
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
+
 		String action = req.getParameter("action");
-		logger.debug("AdminCourseServlet received POST request with action: {}", action);
+		logger.debug("AdminCourseServlet received POST with action: {}", action);
 		if ("delete".equals(action)) {
 			handleDelete(req, resp);
 		} else if ("create".equals(action) || "update".equals(action)) {
@@ -94,7 +102,7 @@ public class AdminCourseServlet extends HttpServlet {
 		course.setDescription(request.getParameter("description"));
 
 		boolean success;
-		if (idParam != null && !idParam.isEmpty()) { // UPDATE
+		if (idParam != null && !idParam.isEmpty()) {
 			course.setId(Integer.parseInt(idParam));
 			logger.info("Attempting to update course: {}", course.getName());
 			Course originalCourse = courseDAO.getCourseById(course.getId());
@@ -119,7 +127,7 @@ public class AdminCourseServlet extends HttpServlet {
 			} else {
 				request.getSession().setAttribute("errorMessage", "Fehler beim Aktualisieren der Vorlage.");
 			}
-		} else { // CREATE
+		} else {
 			logger.info("Attempting to create new course: {}", course.getName());
 			success = courseDAO.createCourse(course);
 			if (success) {
@@ -139,7 +147,6 @@ public class AdminCourseServlet extends HttpServlet {
 		try {
 			int courseId = Integer.parseInt(req.getParameter("id"));
 			logger.warn("Attempting to delete course with ID: {}", courseId);
-			// Fetch course details before deleting for detailed logging
 			Course courseToDelete = courseDAO.getCourseById(courseId);
 			String courseName = (courseToDelete != null) ? courseToDelete.getName() : "N/A";
 

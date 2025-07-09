@@ -98,6 +98,7 @@ public class MeetingAttachmentDAO {
 					att.setFilename(rs.getString("filename"));
 					att.setFilepath(rs.getString("filepath"));
 					att.setMeetingId(rs.getInt("meeting_id"));
+					att.setRequiredRole(rs.getString("required_role"));
 					return att;
 				}
 			}

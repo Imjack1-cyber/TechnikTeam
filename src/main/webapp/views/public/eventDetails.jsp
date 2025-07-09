@@ -43,9 +43,13 @@
 						style="display: flex; justify-content: space-between; align-items: start;">
 						<div>
 							<span
-								class="status-badge ${task.status == 'ERLEDIGT' ? 'status-ok' : 'status-warn'}">${task.status}</span>
-							<h4 style="margin-top: 0.5rem;">${task.displayOrder}.
-								${task.description}</h4>
+								class="status-badge ${task.status == 'ERLEDIGT' ? 'status-ok' : 'status-warn'}"><c:out
+									value="${task.status}" /></span>
+							<h4 style="margin-top: 0.5rem;">
+								<c:out value="${task.displayOrder}" />
+								.
+								<c:out value="${task.description}" />
+							</h4>
 						</div>
 						<c:if test="${hasTaskManagementPermission}">
 							<div>
@@ -72,15 +76,21 @@
 						</p>
 						<ul style="padding-left: 1.5rem;">
 							<c:forEach var="item" items="${task.requiredItems}">
-								<li>${item.quantity}x${item.name}</li>
+								<li><a
+									href="${pageContext.request.contextPath}/lager/details?id=${item.id}"><c:out
+											value="${item.quantity}" />x <c:out value="${item.name}" /></a></li>
 							</c:forEach>
 							<c:forEach var="kit" items="${task.requiredKits}">
-								<li>1x Kit: ${kit.name}</li>
+								<li><a
+									href="${pageContext.request.contextPath}/pack-kit?kitId=${kit.id}">1x
+										Kit: <c:out value="${kit.name}" />
+								</a></li>
 							</c:forEach>
 						</ul>
 					</c:if>
 
-					<c:if test="${event.status == 'LAUFEND'}">
+					<c:if
+						test="${event.status == 'LAUFEND' and (isUserAssigned or isUserParticipant)}">
 						<div
 							style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
 							<c:set var="isTaskAssignedToCurrentUser" value="false" />
@@ -95,7 +105,9 @@
 									<c:when test="${isTaskAssignedToCurrentUser}">
 										<form action="${pageContext.request.contextPath}/task-action"
 											method="post">
-											<input type="hidden" name="action" value="unclaim"> <input
+											<input type="hidden" name="csrfToken"
+												value="${sessionScope.csrfToken}"> <input
+												type="hidden" name="action" value="unclaim"> <input
 												type="hidden" name="taskId" value="${task.id}">
 											<button type="submit"
 												class="btn btn-danger-outline btn-small">Aufgabe
@@ -106,7 +118,9 @@
 										test="${fn:length(task.assignedUsers) < task.requiredPersons}">
 										<form action="${pageContext.request.contextPath}/task-action"
 											method="post">
-											<input type="hidden" name="action" value="claim"> <input
+											<input type="hidden" name="csrfToken"
+												value="${sessionScope.csrfToken}"> <input
+												type="hidden" name="action" value="claim"> <input
 												type="hidden" name="taskId" value="${task.id}">
 											<button type="submit" class="btn btn-success btn-small">Aufgabe
 												übernehmen</button>
@@ -133,18 +147,25 @@
 		</c:if>
 	</div>
 
-	<c:if
-		test="${event.status == 'LAUFEND' and (isUserAssigned or hasTaskManagementPermission)}">
+	<c:if test="${isUserAssigned or isUserParticipant}">
 		<div class="card" style="grid-column: 1/-1;">
 			<h2 class="card-title">Event-Chat</h2>
-			<div id="chat-box"
-				style="height: 300px; overflow-y: auto; border: 1px solid var(--border-color); padding: 0.5rem; margin-bottom: 1rem; background: var(--bg-color);"></div>
-			<form id="chat-form" style="display: flex; gap: 0.5rem;">
-				<input type="text" id="chat-message-input" class="form-group"
-					style="flex-grow: 1; margin: 0;"
-					placeholder="Nachricht eingeben...">
-				<button type="submit" class="btn">Senden</button>
-			</form>
+			<c:choose>
+				<c:when test="${event.status == 'LAUFEND'}">
+					<div id="chat-box"
+						style="height: 300px; overflow-y: auto; border: 1px solid var(--border-color); padding: 0.5rem; margin-bottom: 1rem; background: var(--bg-color);"></div>
+					<form id="chat-form" style="display: flex; gap: 0.5rem;">
+						<input type="text" id="chat-message-input" class="form-group"
+							style="flex-grow: 1; margin: 0;"
+							placeholder="Nachricht eingeben...">
+						<button type="submit" class="btn">Senden</button>
+					</form>
+				</c:when>
+				<c:otherwise>
+					<p class="info-message">Der Chat ist nur aktiv, während das
+						Event läuft.</p>
+				</c:otherwise>
+			</c:choose>
 		</div>
 	</c:if>
 </div>
@@ -189,7 +210,7 @@
 			</c:if>
 			<c:forEach var="att" items="${event.attachments}">
 				<li><a
-					href="${pageContext.request.contextPath}/download?file=${att.filepath}"><c:out
+					href="<c:url value='/download?type=event&id=${att.id}'/>"><c:out
 							value="${att.filename}" /></a></li>
 			</c:forEach>
 		</ul>
@@ -218,7 +239,6 @@
 	<jsp:include page="/WEB-INF/jspf/task_modal.jspf" />
 </c:if>
 
-<%-- CORRECTED: Embed pre-serialized JSON from the servlet for safety --%>
 <script id="allUsersData" type="application/json">${assignedUsersJson}</script>
 <script id="allItemsData" type="application/json">${allItemsJson}</script>
 <script id="allKitsData" type="application/json">${allKitsJson}</script>
@@ -229,7 +249,7 @@
 <script>
 	document.body.dataset.eventId = "${event.id}";
 	document.body.dataset.userId = "${sessionScope.user.id}";
-	document.body.dataset.isAdmin = "${sessionScope.user.roleName == 'ADMIN'}";
+	document.body.dataset.isAdmin = "${hasTaskManagementPermission}";
 </script>
 <script
 	src="${pageContext.request.contextPath}/js/public/eventDetails.js"></script>

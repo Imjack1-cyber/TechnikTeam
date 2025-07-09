@@ -19,10 +19,8 @@ public class Event {
 	private String location;
 	private String status;
 	private int leaderUserId;
-	private String userAttendanceStatus; // Specific to the logged-in user (e.g., ANGEMELDET, ZUGEWIESEN)
+	private String userAttendanceStatus;
 
-	// These fields are populated on-demand for detailed views and are not direct
-	// table columns.
 	private List<SkillRequirement> skillRequirements;
 	private List<User> assignedAttendees;
 	private List<EventTask> eventTasks;
@@ -30,12 +28,10 @@ public class Event {
 	private List<EventAttachment> attachments;
 	private List<StorageItem> reservedItems;
 	private String leaderUsername;
-	private List<EventCustomField> customFields; // NEW: For advanced sign-up forms
+	private List<EventCustomField> customFields; 
 
 	public Event() {
 	}
-
-	// --- Getters and Setters ---
 
 	public int getId() {
 		return id;
@@ -172,8 +168,6 @@ public class Event {
 	public void setCustomFields(List<EventCustomField> customFields) {
 		this.customFields = customFields;
 	}
-
-	// --- Formatted Helpers ---
 
 	public String getFormattedEventDateTime() {
 		return de.technikteam.config.DateFormatter.formatDateTime(this.eventDateTime);

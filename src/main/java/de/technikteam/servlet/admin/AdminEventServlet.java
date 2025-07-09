@@ -25,16 +25,18 @@ import de.technikteam.dao.CourseDAO;
 import de.technikteam.dao.EventAttachmentDAO;
 import de.technikteam.dao.EventCustomFieldDAO;
 import de.technikteam.dao.EventDAO;
+import de.technikteam.dao.InventoryKitDAO;
 import de.technikteam.dao.StorageDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.Course;
 import de.technikteam.model.Event;
 import de.technikteam.model.EventAttachment;
 import de.technikteam.model.EventCustomField;
+import de.technikteam.model.InventoryKit;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
-import de.technikteam.util.ServletUtils;
+import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
@@ -55,6 +57,7 @@ public class AdminEventServlet extends HttpServlet {
 	private UserDAO userDAO;
 	private EventAttachmentDAO attachmentDAO;
 	private EventCustomFieldDAO customFieldDAO;
+	private InventoryKitDAO kitDAO;
 	private Gson gson;
 
 	@Override
@@ -64,15 +67,22 @@ public class AdminEventServlet extends HttpServlet {
 		storageDAO = new StorageDAO();
 		userDAO = new UserDAO();
 		attachmentDAO = new EventAttachmentDAO();
-		customFieldDAO = new EventCustomFieldDAO(); // Correct initialization
+		customFieldDAO = new EventCustomFieldDAO();
+		kitDAO = new InventoryKitDAO();
 		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
 				.registerTypeAdapter(java.time.LocalDate.class, new LocalDateAdapter()).setPrettyPrinting().create();
 	}
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		User user = (User) req.getSession().getAttribute("user");
+		if (!user.getPermissions().contains("EVENT_READ") && !user.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return;
+		}
+
 		String action = req.getParameter("action") == null ? "list" : req.getParameter("action");
-		logger.debug("AdminEventServlet received GET request with action: {}", action);
+		logger.debug("AdminEventServlet received GET with action: {}", action);
 		try {
 			switch (action) {
 			case "getEventData":
@@ -95,14 +105,16 @@ public class AdminEventServlet extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		req.setCharacterEncoding("UTF-8");
-		String action;
 
-		if (req.getContentType() != null && req.getContentType().toLowerCase().startsWith("multipart/")) {
-			action = ServletUtils.getPartValue(req.getPart("action"));
-		} else {
-			action = req.getParameter("action");
+		if (!CSRFUtil.isTokenValid(req)) {
+			logger.warn("CSRF token validation failed for event action.");
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
 		}
-		logger.debug("AdminEventServlet received POST request with action: {}", action);
+
+		String action = req.getParameter("action");
+
+		logger.debug("AdminEventServlet received POST with action: {}", action);
 
 		switch (action) {
 		case "create":
@@ -134,12 +146,14 @@ public class AdminEventServlet extends HttpServlet {
 		List<Course> allCourses = courseDAO.getAllCourses();
 		List<StorageItem> allItems = storageDAO.getAllItems();
 		List<User> allUsers = userDAO.getAllUsers();
+		List<InventoryKit> allKits = kitDAO.getAllKits();
 
 		req.setAttribute("eventList", eventList);
 		req.setAttribute("allUsers", allUsers);
-		// CORRECTED: Pass data serialized as JSON for safe consumption by JavaScript.
+		req.setAttribute("allKits", allKits);
 		req.setAttribute("allCoursesJson", gson.toJson(allCourses));
 		req.setAttribute("allItemsJson", gson.toJson(allItems));
+		req.setAttribute("allKitsJson", gson.toJson(allKits));
 
 		req.getRequestDispatcher("/views/admin/admin_events_list.jsp").forward(req, resp);
 	}
@@ -189,22 +203,40 @@ public class AdminEventServlet extends HttpServlet {
 	private void handleCreateOrUpdate(HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
 		User adminUser = (User) request.getSession().getAttribute("user");
-		String idParam = ServletUtils.getPartValue(request.getPart("id"));
+		String idParam = request.getParameter("id");
 		boolean isUpdate = idParam != null && !idParam.isEmpty();
+
+		boolean hasPermission = false;
+		if (isUpdate) {
+			int eventId = Integer.parseInt(idParam);
+			Event event = eventDAO.getEventById(eventId);
+			boolean isLeader = event != null && event.getLeaderUserId() == adminUser.getId();
+			hasPermission = adminUser.getPermissions().contains("EVENT_UPDATE")
+					|| adminUser.getPermissions().contains("ACCESS_ADMIN_PANEL") || isLeader;
+		} else {
+			hasPermission = adminUser.getPermissions().contains("EVENT_CREATE")
+					|| adminUser.getPermissions().contains("ACCESS_ADMIN_PANEL");
+		}
+
+		if (!hasPermission) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return;
+		}
+
 		Event event = new Event();
 
 		try {
-			event.setName(ServletUtils.getPartValue(request.getPart("name")));
-			event.setDescription(ServletUtils.getPartValue(request.getPart("description")));
-			event.setLocation(ServletUtils.getPartValue(request.getPart("location")));
-			event.setEventDateTime(LocalDateTime.parse(ServletUtils.getPartValue(request.getPart("eventDateTime"))));
+			event.setName(request.getParameter("name"));
+			event.setDescription(request.getParameter("description"));
+			event.setLocation(request.getParameter("location"));
+			event.setEventDateTime(LocalDateTime.parse(request.getParameter("eventDateTime")));
 
-			String endDateTimeParam = ServletUtils.getPartValue(request.getPart("endDateTime"));
+			String endDateTimeParam = request.getParameter("endDateTime");
 			if (endDateTimeParam != null && !endDateTimeParam.isEmpty()) {
 				event.setEndDateTime(LocalDateTime.parse(endDateTimeParam));
 			}
 
-			String leaderIdStr = ServletUtils.getPartValue(request.getPart("leaderUserId"));
+			String leaderIdStr = request.getParameter("leaderUserId");
 			if (leaderIdStr != null && !leaderIdStr.isEmpty()) {
 				event.setLeaderUserId(Integer.parseInt(leaderIdStr));
 			}
@@ -214,12 +246,12 @@ public class AdminEventServlet extends HttpServlet {
 				eventId = Integer.parseInt(idParam);
 				Event originalEvent = eventDAO.getEventById(eventId);
 				event.setId(eventId);
-				event.setStatus(originalEvent.getStatus()); // Status is updated via its own action
+				event.setStatus(originalEvent.getStatus());
 				if (eventDAO.updateEvent(event)) {
 					AdminLogService.log(adminUser.getUsername(), "UPDATE_EVENT",
 							"Event '" + event.getName() + "' (ID: " + eventId + ") aktualisiert.");
 				}
-			} else { // CREATE
+			} else {
 				eventId = eventDAO.createEvent(event);
 				if (eventId > 0) {
 					event.setId(eventId);
@@ -229,17 +261,14 @@ public class AdminEventServlet extends HttpServlet {
 			}
 
 			if (eventId > 0) {
-				// Handle skill requirements
 				String[] requiredCourseIds = request.getParameterValues("requiredCourseId");
 				String[] requiredPersons = request.getParameterValues("requiredPersons");
 				eventDAO.saveSkillRequirements(eventId, requiredCourseIds, requiredPersons);
 
-				// Handle storage reservations
 				String[] itemIds = request.getParameterValues("itemId");
 				String[] quantities = request.getParameterValues("itemQuantity");
 				eventDAO.saveReservations(eventId, itemIds, quantities);
 
-				// Handle custom sign-up fields
 				String[] customFieldNames = request.getParameterValues("customFieldName");
 				String[] customFieldTypes = request.getParameterValues("customFieldType");
 				if (customFieldNames != null) {
@@ -249,17 +278,16 @@ public class AdminEventServlet extends HttpServlet {
 							EventCustomField cf = new EventCustomField();
 							cf.setFieldName(customFieldNames[i]);
 							cf.setFieldType(customFieldTypes[i]);
-							cf.setRequired(true); // Simplified for this implementation
+							cf.setRequired(true);
 							customFields.add(cf);
 						}
 					}
 					customFieldDAO.saveCustomFieldsForEvent(eventId, customFields);
 				}
 
-				// Handle file upload
 				Part filePart = request.getPart("attachment");
 				if (filePart != null && filePart.getSize() > 0) {
-					String requiredRole = ServletUtils.getPartValue(request.getPart("requiredRole"));
+					String requiredRole = request.getParameter("requiredRole");
 					handleAttachmentUpload(filePart, eventId, requiredRole, adminUser, request);
 				}
 				request.getSession().setAttribute("successMessage", "Event erfolgreich gespeichert.");
@@ -292,7 +320,7 @@ public class AdminEventServlet extends HttpServlet {
 		EventAttachment attachment = new EventAttachment();
 		attachment.setEventId(eventId);
 		attachment.setFilename(fileName);
-		attachment.setFilepath("events/" + fileName); // Use forward slashes for URL
+		attachment.setFilepath("events/" + fileName);
 		attachment.setRequiredRole(requiredRole);
 
 		if (attachmentDAO.addAttachment(attachment)) {
@@ -306,30 +334,47 @@ public class AdminEventServlet extends HttpServlet {
 	private void handleDeleteAttachment(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		User adminUser = (User) req.getSession().getAttribute("user");
 		int attachmentId = Integer.parseInt(req.getParameter("id"));
+		EventAttachment attachment = attachmentDAO.getAttachmentById(attachmentId);
+
+		if (attachment == null) {
+			resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Anhang nicht gefunden.");
+			return;
+		}
+
+		Event event = eventDAO.getEventById(attachment.getEventId());
+		boolean isLeader = event != null && event.getLeaderUserId() == adminUser.getId();
+		boolean hasPermission = adminUser.getPermissions().contains("EVENT_UPDATE")
+				|| adminUser.getPermissions().contains("ACCESS_ADMIN_PANEL") || isLeader;
+
+		if (!hasPermission) {
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return;
+		}
+
 		logger.warn("Attempting to delete event attachment ID {}", attachmentId);
 
-		EventAttachment attachment = attachmentDAO.getAttachmentById(attachmentId);
-		if (attachment != null) {
-			File physicalFile = new File(AppConfig.UPLOAD_DIRECTORY, attachment.getFilepath());
-			if (physicalFile.exists())
-				physicalFile.delete();
+		File physicalFile = new File(AppConfig.UPLOAD_DIRECTORY, attachment.getFilepath());
+		if (physicalFile.exists())
+			physicalFile.delete();
 
-			if (attachmentDAO.deleteAttachment(attachmentId)) {
-				AdminLogService.log(adminUser.getUsername(), "DELETE_EVENT_ATTACHMENT", "Anhang '"
-						+ attachment.getFilename() + "' von Event ID " + attachment.getEventId() + " gelöscht.");
-				resp.setContentType("application/json");
-				resp.getWriter().write("{\"message\":\"Anhang gelöscht\"}");
-			} else {
-				resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-						"Anhang konnte nicht aus DB gelöscht werden.");
-			}
+		if (attachmentDAO.deleteAttachment(attachmentId)) {
+			AdminLogService.log(adminUser.getUsername(), "DELETE_EVENT_ATTACHMENT",
+					"Anhang '" + attachment.getFilename() + "' von Event ID " + attachment.getEventId() + " gelöscht.");
+			resp.setContentType("application/json");
+			resp.getWriter().write("{\"message\":\"Anhang gelöscht\"}");
 		} else {
-			resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Anhang nicht gefunden.");
+			resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Anhang konnte nicht aus DB gelöscht werden.");
 		}
 	}
 
 	private void handleDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		User adminUser = (User) req.getSession().getAttribute("user");
+		if (!adminUser.getPermissions().contains("EVENT_DELETE")
+				&& !adminUser.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return;
+		}
+
 		try {
 			int eventId = Integer.parseInt(req.getParameter("id"));
 			logger.warn("Attempting to delete event with ID: {}", eventId);
@@ -350,11 +395,19 @@ public class AdminEventServlet extends HttpServlet {
 
 	private void handleAssignUsers(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		User adminUser = (User) req.getSession().getAttribute("user");
+		int eventId = Integer.parseInt(req.getParameter("eventId"));
+		Event event = eventDAO.getEventById(eventId);
+		boolean isLeader = event != null && event.getLeaderUserId() == adminUser.getId();
+
+		if (!adminUser.getPermissions().contains("EVENT_MANAGE_ASSIGNMENTS")
+				&& !adminUser.getPermissions().contains("ACCESS_ADMIN_PANEL") && !isLeader) {
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return;
+		}
+
 		try {
-			int eventId = Integer.parseInt(req.getParameter("eventId"));
 			String[] userIds = req.getParameterValues("userIds");
 			logger.info("Assigning {} users to event ID {}", (userIds != null ? userIds.length : 0), eventId);
-			Event event = eventDAO.getEventById(eventId);
 			eventDAO.assignUsersToEvent(eventId, userIds);
 
 			String assignedUserCount = (userIds != null) ? String.valueOf(userIds.length) : "0";
@@ -372,11 +425,19 @@ public class AdminEventServlet extends HttpServlet {
 
 	private void handleStatusUpdate(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		User adminUser = (User) req.getSession().getAttribute("user");
+		int eventId = Integer.parseInt(req.getParameter("id"));
+		Event event = eventDAO.getEventById(eventId);
+		boolean isLeader = event != null && event.getLeaderUserId() == adminUser.getId();
+
+		if (!adminUser.getPermissions().contains("EVENT_UPDATE")
+				&& !adminUser.getPermissions().contains("ACCESS_ADMIN_PANEL") && !isLeader) {
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return;
+		}
+
 		try {
-			int eventId = Integer.parseInt(req.getParameter("id"));
 			String newStatus = req.getParameter("newStatus");
 			logger.info("Updating status for event ID {} to '{}'", eventId, newStatus);
-			Event event = eventDAO.getEventById(eventId);
 			if (event != null && eventDAO.updateEventStatus(eventId, newStatus)) {
 				String logDetails = String.format("Status für Event '%s' (ID: %d) von '%s' auf '%s' geändert.",
 						event.getName(), eventId, event.getStatus(), newStatus);

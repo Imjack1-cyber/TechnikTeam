@@ -25,7 +25,6 @@ public class EventDAO {
 		event.setId(resultSet.getInt("id"));
 		event.setName(resultSet.getString("name"));
 
-		// DEFINITIVE FIX: Read the timestamp without conversion
 		Timestamp eventTimestamp = resultSet.getTimestamp("event_datetime");
 		if (eventTimestamp != null) {
 			event.setEventDateTime(eventTimestamp.toLocalDateTime());
@@ -682,5 +681,31 @@ public class EventDAO {
 			logger.error("Error fetching reservations for resource calendar.", exception);
 		}
 		return reservations;
+	}
+
+	/**
+	 * Checks if a given user is associated with an event, either by being
+	 * signed-up or directly assigned.
+	 * @param eventId The ID of the event.
+	 * @param userId The ID of the user.
+	 * @return true if the user is associated with the event, false otherwise.
+	 */
+	public boolean isUserAssociatedWithEvent(int eventId, int userId) {
+	    String sql = "SELECT 1 FROM event_attendance WHERE event_id = ? AND user_id = ? AND signup_status = 'ANGEMELDET' "
+	               + "UNION "
+	               + "SELECT 1 FROM event_assignments WHERE event_id = ? AND user_id = ?";
+	    try (Connection conn = DatabaseManager.getConnection();
+	         PreparedStatement pstmt = conn.prepareStatement(sql)) {
+	        pstmt.setInt(1, eventId);
+	        pstmt.setInt(2, userId);
+	        pstmt.setInt(3, eventId);
+	        pstmt.setInt(4, userId);
+	        try (ResultSet rs = pstmt.executeQuery()) {
+	            return rs.next();
+	        }
+	    } catch (SQLException e) {
+	        logger.error("Error checking user association for event {} and user {}", eventId, userId, e);
+	        return false;
+	    }
 	}
 }

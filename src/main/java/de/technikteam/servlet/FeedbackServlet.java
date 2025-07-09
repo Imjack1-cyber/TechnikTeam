@@ -42,8 +42,6 @@ public class FeedbackServlet extends HttpServlet {
 				viewFeedbackResults(request, response);
 				break;
 			default:
-				// Default action will now redirect to profile, as the listing is integrated
-				// there.
 				response.sendRedirect(request.getContextPath() + "/profil");
 				break;
 			}
@@ -106,7 +104,6 @@ public class FeedbackServlet extends HttpServlet {
 
 		request.setAttribute("event", event);
 		request.setAttribute("form", form);
-		// CORRECTED: Forward to the actual JSP file path.
 		request.getRequestDispatcher("/views/public/feedback_form.jsp").forward(request, response);
 	}
 
@@ -122,11 +119,6 @@ public class FeedbackServlet extends HttpServlet {
 		}
 
 		request.setAttribute("event", event);
-		// CORRECTED: Forward to a (currently non-existent but logically correct)
-		// results page.
-		// For now, let's assume it should have been named feedback_results.jsp.
-		// If this file does not exist, it will 404, but the servlet logic is now
-		// correct.
 		request.getRequestDispatcher("/views/public/feedback_results.jsp").forward(request, response);
 	}
 }

@@ -16,6 +16,19 @@ public class AdminLogService {
 	private static final AdminLogDAO logDAO = new AdminLogDAO();
 
 	/**
+	 * Removes characters that could be used for log injection attacks.
+	 * 
+	 * @param input The string to sanitize.
+	 * @return The sanitized string.
+	 */
+	private static String sanitize(String input) {
+		if (input == null) {
+			return "";
+		}
+		return input.replace('\n', '_').replace('\r', '_');
+	}
+
+	/**
 	 * Creates and persists an administrative audit log entry. This is the central
 	 * point for all audit logging.
 	 * 
@@ -27,19 +40,22 @@ public class AdminLogService {
 	 */
 	public static void log(String adminUsername, String actionType, String details) {
 		try {
-			AdminLog log = new AdminLog();
-			log.setAdminUsername(adminUsername);
-			log.setActionType(actionType);
-			log.setDetails(details);
+			String saneAdminUsername = sanitize(adminUsername);
+			String saneActionType = sanitize(actionType);
+			String saneDetails = sanitize(details);
 
-			// Log the same info to the file/console for debugging purposes before DB write
-			logger.info("[AUDIT] User: '{}', Action: '{}', Details: {}", adminUsername, actionType, details);
+			AdminLog log = new AdminLog();
+			log.setAdminUsername(saneAdminUsername);
+			log.setActionType(saneActionType);
+			log.setDetails(saneDetails);
+
+			logger.info("[AUDIT] User: '{}', Action: '{}', Details: {}", saneAdminUsername, saneActionType,
+					saneDetails);
 
 			logDAO.createLog(log);
 		} catch (Exception e) {
-			// Log the failure to write to the audit log itself
 			logger.error("CRITICAL: Failed to write to admin audit log! Data: [User: {}, Action: {}, Details: {}]",
-					adminUsername, actionType, details, e);
+					sanitize(adminUsername), sanitize(actionType), sanitize(details), e);
 		}
 	}
 }

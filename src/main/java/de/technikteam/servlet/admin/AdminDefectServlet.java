@@ -28,7 +28,6 @@ public class AdminDefectServlet extends HttpServlet {
 			throws ServletException, IOException {
 		List<StorageItem> defectiveItems = storageDAO.getDefectiveItems();
 		request.setAttribute("defectiveItems", defectiveItems);
-		// CORRECTED: Forward to the actual JSP file path.
 		request.getRequestDispatcher("/views/admin/admin_defect_list.jsp").forward(request, response);
 	}
 }

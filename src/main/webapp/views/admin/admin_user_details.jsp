@@ -5,7 +5,7 @@
 
 <c:import url="/WEB-INF/jspf/main_header.jspf">
 	<c:param name="pageTitle"
-		value="Benutzerdetails: ${userToView.username}" />
+		value="Benutzerdetails: ${fn:escapeXml(userToView.username)}" />
 </c:import>
 
 <h1>

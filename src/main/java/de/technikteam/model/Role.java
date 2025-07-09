@@ -3,8 +3,7 @@ package de.technikteam.model;
 public class Role {
     private int id;
     private String roleName;
-
-    // Getters and Setters
+    
     public int getId() {
         return id;
     }

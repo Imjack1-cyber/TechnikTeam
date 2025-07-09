@@ -12,11 +12,7 @@
 		<h1>
 			<i class="fas fa-bolt"></i> TechnikTeam
 		</h1>
-		<c:if test="${not empty errorMessage}">
-			<p class="error-message">
-				<c:out value="${errorMessage}" />
-			</p>
-		</c:if>
+		<c:import url="/WEB-INF/jspf/message_banner.jspf" />
 		<form action="<c:url value='/login'/>" method="post">
 			<div class="form-group">
 				<label for="username">Benutzername</label> <input type="text"

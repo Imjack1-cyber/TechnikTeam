@@ -42,11 +42,9 @@ public class AdminLogServlet extends HttpServlet {
 			List<AdminLog> logs = adminLogDAO.getAllLogs();
 			request.setAttribute("logs", logs);
 			logger.info("Fetched {} log entries. Forwarding to JSP.", logs.size());
-			// CORRECTED: Forward to the actual JSP file path.
 			request.getRequestDispatcher("/views/admin/admin_log.jsp").forward(request, response);
 		} catch (Exception e) {
 			logger.error("A critical error occurred in AdminLogServlet doGet()", e);
-			// Redirect to a generic error page to avoid exposing stack traces to the user
 			response.sendRedirect(request.getContextPath() + "/error500");
 		}
 	}

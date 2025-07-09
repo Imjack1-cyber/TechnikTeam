@@ -64,30 +64,34 @@ public class EventDetailsServlet extends HttpServlet {
 				return;
 			}
 
-			boolean isGlobalAdmin = user.getPermissions().contains("TASK_MANAGE");
+			boolean isGlobalAdmin = user.getPermissions().contains("EVENT_MANAGE_TASKS")
+					|| user.getPermissions().contains("ACCESS_ADMIN_PANEL");
 			boolean isEventLeader = user.getId() == event.getLeaderUserId();
 			boolean hasTaskManagementPermission = isGlobalAdmin || isEventLeader;
 			request.setAttribute("hasTaskManagementPermission", hasTaskManagementPermission);
 
 			String userRoleForAttachments = (hasTaskManagementPermission) ? "ADMIN" : "NUTZER";
 
+			List<User> assignedUsers = eventDAO.getAssignedUsersForEvent(eventId);
+			Set<Integer> assignedUserIds = assignedUsers.stream().map(User::getId).collect(Collectors.toSet());
+			boolean isUserAssigned = assignedUserIds.contains(user.getId());
+			request.setAttribute("isUserAssigned", isUserAssigned);
+
+			List<User> signedUpUsers = eventDAO.getSignedUpUsersForEvent(eventId);
+			boolean isUserParticipant = signedUpUsers.stream().anyMatch(u -> u.getId() == user.getId());
+			request.setAttribute("isUserParticipant", isUserParticipant);
+
 			event.setAttachments(attachmentDAO.getAttachmentsForEvent(eventId, userRoleForAttachments));
 			event.setSkillRequirements(eventDAO.getSkillRequirementsForEvent(eventId));
 			event.setReservedItems(eventDAO.getReservedItemsForEvent(eventId));
-
-			List<User> assignedUsers = eventDAO.getAssignedUsersForEvent(eventId);
 			event.setAssignedAttendees(assignedUsers);
-
 			event.setEventTasks(taskDAO.getTasksForEvent(eventId));
+
 			if ("LAUFEND".equalsIgnoreCase(event.getStatus())) {
 				event.setChatMessages(chatDAO.getMessagesForEvent(eventId));
 			} else {
 				event.setChatMessages(new ArrayList<>());
 			}
-
-			Set<Integer> assignedUserIds = assignedUsers.stream().map(User::getId).collect(Collectors.toSet());
-			boolean isUserAssigned = assignedUserIds.contains(user.getId());
-			request.setAttribute("isUserAssigned", isUserAssigned);
 
 			request.setAttribute("event", event);
 
@@ -97,7 +101,6 @@ public class EventDetailsServlet extends HttpServlet {
 				request.setAttribute("allKitsJson", gson.toJson(kitDAO.getAllKits()));
 				request.setAttribute("tasksJson", gson.toJson(event.getEventTasks()));
 			} else {
-				// Ensure JSON data is never null to prevent JSP errors
 				request.setAttribute("assignedUsersJson", "[]");
 				request.setAttribute("allItemsJson", "[]");
 				request.setAttribute("allKitsJson", "[]");

@@ -17,8 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 public class NotificationService {
 	private static final Logger logger = LogManager.getLogger(NotificationService.class);
 	private static final NotificationService INSTANCE = new NotificationService();
-
-	// CORRECTION: Change from a simple list to a map keyed by userId
+	
 	private final Map<Integer, List<AsyncContext>> contextsByUser = new ConcurrentHashMap<>();
 
 	private NotificationService() {
@@ -36,9 +35,8 @@ public class NotificationService {
 		}
 
 		AsyncContext asyncContext = request.startAsync();
-		asyncContext.setTimeout(0); // No timeout for SSE connections
+		asyncContext.setTimeout(0); 
 
-		// Register the context under the user's ID
 		contextsByUser.computeIfAbsent(user.getId(), k -> new CopyOnWriteArrayList<>()).add(asyncContext);
 		logger.info("New client registered for SSE notifications for user ID {}. Total clients for user: {}",
 				user.getId(), contextsByUser.get(user.getId()).size());
@@ -46,7 +44,6 @@ public class NotificationService {
 
 	public void sendNotification(String message) {
 		logger.info("Broadcasting notification to all clients: {}", message);
-		// Iterate through all user lists and all their contexts
 		contextsByUser.values().forEach(contextList -> {
 			contextList.forEach(context -> sendMessageToContext(context, message, contextList));
 		});
@@ -69,7 +66,7 @@ public class NotificationService {
 			writer.flush();
 		} catch (IOException e) {
 			logger.warn("Failed to send notification to a client (likely disconnected), removing it.");
-			contextList.remove(context); // Remove from the specific user's list
+			contextList.remove(context); 
 		}
 	}
 }

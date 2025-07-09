@@ -2,11 +2,6 @@
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
-<%--
-  This page now imports the standard header and footer to be
-  fully integrated into the application's UI.
---%>
-
 <c:import url="/WEB-INF/jspf/main_header.jspf">
 	<c:param name="pageTitle" value="Gemeinsamer Editor" />
 	<c:param name="navType" value="user" />

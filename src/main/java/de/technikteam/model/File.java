@@ -12,11 +12,9 @@ public class File {
 	private String filename;
 	private String filepath;
 	private int categoryId;
-	private String categoryName; // For display purposes, joined from file_categories
+	private String categoryName; 
 	private LocalDateTime uploadedAt;
-	private String requiredRole; // "NUTZER" or "ADMIN"
-
-	// --- Getters and Setters ---
+	private String requiredRole; 
 
 	public int getId() {
 		return id;

@@ -54,7 +54,7 @@ public class InventoryKitDAO {
 		kit.setId(rs.getInt("id"));
 		kit.setName(rs.getString("name"));
 		kit.setDescription(rs.getString("description"));
-		kit.setLocation(rs.getString("location")); // CHANGED
+		kit.setLocation(rs.getString("location")); 
 		return kit;
 	}
 
@@ -128,7 +128,7 @@ public class InventoryKitDAO {
 
 		try {
 			conn = DatabaseManager.getConnection();
-			conn.setAutoCommit(false); // Start transaction
+			conn.setAutoCommit(false);
 
 			try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
 				deleteStmt.setInt(1, kitId);
@@ -154,7 +154,7 @@ public class InventoryKitDAO {
 				}
 			}
 
-			conn.commit(); // Commit transaction
+			conn.commit(); 
 			logger.info("Successfully updated items for kit ID: {}", kitId);
 			return true;
 		} catch (SQLException | NumberFormatException e) {

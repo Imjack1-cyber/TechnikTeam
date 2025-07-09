@@ -62,7 +62,6 @@ public class UserQualificationsDAO {
 	public List<UserQualification> getAllQualifications() {
 		logger.debug("Fetching all user qualifications.");
 		List<UserQualification> qualifications = new ArrayList<>();
-		// This query needs the user_id to build a lookup map later.
 		String sql = "SELECT uq.user_id, uq.course_id, c.name, uq.status, uq.completion_date, uq.remarks "
 				+ "FROM user_qualifications uq " + "JOIN courses c ON uq.course_id = c.id";
 		try (Connection conn = DatabaseManager.getConnection();
@@ -99,7 +98,6 @@ public class UserQualificationsDAO {
 				userId, courseId, status, completionDate, remarks);
 
 		if ("NICHT BESUCHT".equals(status)) {
-			// If status is "Not Attended", we delete the record from the database.
 			String deleteSql = "DELETE FROM user_qualifications WHERE user_id = ? AND course_id = ?";
 			try (Connection conn = DatabaseManager.getConnection();
 					PreparedStatement pstmt = conn.prepareStatement(deleteSql)) {
@@ -108,13 +106,12 @@ public class UserQualificationsDAO {
 				int affectedRows = pstmt.executeUpdate();
 				logger.info("Deleted qualification entry for user {} and course {}. Rows affected: {}", userId,
 						courseId, affectedRows);
-				return true; // The desired state is achieved, so return true.
+				return true; 
 			} catch (SQLException e) {
 				logger.error("DAO Error deleting qualification for user {} course {}", userId, courseId, e);
 				return false;
 			}
 		} else {
-			// Otherwise, we insert a new record or update an existing one.
 			String upsertSql = "INSERT INTO user_qualifications (user_id, course_id, status, completion_date, remarks) VALUES (?, ?, ?, ?, ?) "
 					+ "ON DUPLICATE KEY UPDATE status = VALUES(status), completion_date = VALUES(completion_date), remarks = VALUES(remarks)";
 			try (Connection conn = DatabaseManager.getConnection();
@@ -134,8 +131,6 @@ public class UserQualificationsDAO {
 				int affectedRows = pstmt.executeUpdate();
 				logger.info("Upserted qualification for user {} and course {}. Rows affected: {}", userId, courseId,
 						affectedRows);
-				// Can return 0 (no change), 1 (insert), or 2 (update), so >= 0 is a good check
-				// for success.
 				return affectedRows >= 0;
 			} catch (SQLException e) {
 				logger.error("DAO Error upserting qualification for user {} course {}", userId, courseId, e);
@@ -143,8 +138,6 @@ public class UserQualificationsDAO {
 			}
 		}
 	}
-
-	// --- Helper Methods ---
 
 	/**
 	 * Maps a row from a ResultSet to a UserQualification object.
@@ -155,7 +148,6 @@ public class UserQualificationsDAO {
 	 */
 	private UserQualification mapResultSetToUserQualification(ResultSet rs) throws SQLException {
 		UserQualification uq = new UserQualification();
-		// user_id is only present in the getAllQualifications query
 		if (hasColumn(rs, "user_id")) {
 			uq.setUserId(rs.getInt("user_id"));
 		}

@@ -9,7 +9,6 @@ public class EventCustomFieldResponse {
     private int userId;
     private String responseValue;
     
-    // --- Getters and Setters ---
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
     public int getFieldId() { return fieldId; }

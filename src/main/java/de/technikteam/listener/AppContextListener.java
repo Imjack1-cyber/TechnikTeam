@@ -7,6 +7,8 @@ import java.util.Enumeration;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.mysql.cj.jdbc.AbandonedConnectionCleanupThread;
+
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
 import jakarta.servlet.annotation.WebListener;
@@ -16,7 +18,8 @@ import jakarta.servlet.annotation.WebListener;
  * when the web application is shut down or undeployed from the server. Its
  * primary purpose is to manually deregister the JDBC driver that was loaded by
  * this application's classloader. This prevents potential memory leaks in
- * application servers like Tomcat.
+ * application servers like Tomcat. It also explicitly shuts down the MySQL
+ * cleanup thread.
  */
 @WebListener
 public class AppContextListener implements ServletContextListener {
@@ -32,10 +35,14 @@ public class AppContextListener implements ServletContextListener {
 	public void contextDestroyed(ServletContextEvent sce) {
 		logger.info(">>>>>>>>>> TechnikTeam Application Context Being Destroyed. Cleaning up resources... <<<<<<<<<<");
 
-		// This is the officially supported way to prevent memory leaks caused by JDBC
-		// drivers
-		// when a web application is shut down. We iterate through all loaded drivers
-		// and deregister any that were loaded by this application's classloader.
+		try {
+			logger.info("Attempting to shut down MySQL abandoned connection cleanup thread...");
+			AbandonedConnectionCleanupThread.checkedShutdown();
+			logger.info("MySQL cleanup thread shutdown signal sent.");
+		} catch (Exception e) {
+			logger.error("Error shutting down MySQL cleanup thread.", e);
+		}
+
 		Enumeration<java.sql.Driver> drivers = DriverManager.getDrivers();
 		while (drivers.hasMoreElements()) {
 			java.sql.Driver driver = drivers.nextElement();

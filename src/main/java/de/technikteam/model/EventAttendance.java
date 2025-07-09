@@ -9,14 +9,12 @@ package de.technikteam.model;
 public class EventAttendance {
 	private int eventId;
 	private int userId;
-	private String username; // To display the user's name in lists
-	private String signupStatus; // e.g., ANGEMELDET, ABGEMELDET
-	private String commitmentStatus; // e.g., BESTÄTIGT, OFFEN
+	private String username; 
+	private String signupStatus; 
+	private String commitmentStatus;
 
 	public EventAttendance() {
 	}
-
-	// --- Getters and Setters ---
 
 	public int getEventId() {
 		return eventId;

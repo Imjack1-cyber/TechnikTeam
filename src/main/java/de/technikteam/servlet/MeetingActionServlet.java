@@ -2,6 +2,7 @@ package de.technikteam.servlet;
 
 import de.technikteam.dao.MeetingAttendanceDAO;
 import de.technikteam.model.User;
+import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -34,6 +35,14 @@ public class MeetingActionServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		User user = (User) request.getSession().getAttribute("user");
+
+		if (!CSRFUtil.isTokenValid(request)) {
+			logger.warn("CSRF token validation failed for meeting action by user '{}'",
+					user != null ? user.getUsername() : "GUEST");
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
+
 		String action = request.getParameter("action");
 		String meetingIdParam = request.getParameter("meetingId");
 
@@ -49,7 +58,6 @@ public class MeetingActionServlet extends HttpServlet {
 					action, meetingId);
 
 			if ("signup".equals(action)) {
-				// The DAO method handles both new signups and re-signups.
 				attendanceDAO.setAttendance(user.getId(), meetingId, true, "");
 				request.getSession().setAttribute("successMessage", "Erfolgreich zum Meeting angemeldet.");
 			} else if ("signoff".equals(action)) {
@@ -60,8 +68,6 @@ public class MeetingActionServlet extends HttpServlet {
 			logger.error("Invalid meeting ID format in MeetingActionServlet.", e);
 			request.getSession().setAttribute("errorMessage", "Ungültige Meeting-ID.");
 		}
-
-		// Redirect back to the meeting list page to show the updated status.
 		response.sendRedirect(request.getContextPath() + "/lehrgaenge");
 	}
 }

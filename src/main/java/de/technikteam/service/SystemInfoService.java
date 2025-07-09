@@ -19,40 +19,38 @@ import java.util.concurrent.TimeUnit;
 public class SystemInfoService {
 	private static final Logger logger = LogManager.getLogger(SystemInfoService.class);
 	private static final long GIGA_BYTE = 1024L * 1024L * 1024L;
+	private static final boolean IS_LINUX = System.getProperty("os.name").toLowerCase().startsWith("linux");
 
 	public SystemStatsDTO getSystemStats() {
 		SystemStatsDTO stats = new SystemStatsDTO();
 		OperatingSystemMXBean osBean = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean.class);
 		File root = new File("/");
 
-		// CPU Load (cross-platform)
 		stats.setCpuLoad(osBean.getSystemCpuLoad() * 100.0);
 
-		// Physical Memory (cross-platform)
 		long totalMemoryBytes = osBean.getTotalPhysicalMemorySize();
 		long freeMemoryBytes = osBean.getFreePhysicalMemorySize();
 		stats.setTotalMemory(totalMemoryBytes / GIGA_BYTE);
 		stats.setUsedMemory((totalMemoryBytes - freeMemoryBytes) / GIGA_BYTE);
 
-		// Disk Space (cross-platform)
 		long totalDiskBytes = root.getTotalSpace();
 		long usableDiskBytes = root.getUsableSpace();
 		stats.setTotalDiskSpace(totalDiskBytes / GIGA_BYTE);
 		stats.setUsedDiskSpace((totalDiskBytes - usableDiskBytes) / GIGA_BYTE);
 
-		// Uptime (Linux-specific with fallback)
 		stats.setUptime(getSystemUptime());
 
-		// Battery (Linux-specific with fallback)
 		stats.setBatteryPercentage(getBatteryPercentage());
 
 		return stats;
 	}
 
 	private String getSystemUptime() {
-		// This part is Linux-specific, so we wrap it in a try-catch.
+		if (!IS_LINUX) {
+			logger.trace("Uptime not available on non-Linux OS.");
+			return "Nicht verfügbar";
+		}
 		try {
-			// On Linux, this file contains the system uptime in seconds.
 			String content = new String(Files.readAllBytes(Paths.get("/proc/uptime")));
 			double uptimeSeconds = Double.parseDouble(content.split(" ")[0]);
 			long days = TimeUnit.SECONDS.toDays((long) uptimeSeconds);
@@ -60,22 +58,22 @@ public class SystemInfoService {
 			long minutes = TimeUnit.SECONDS.toMinutes((long) uptimeSeconds) % 60;
 			return String.format("%d Tage, %d Stunden, %d Minuten", days, hours, minutes);
 		} catch (IOException | NumberFormatException e) {
-			// This will be caught on Windows or if the file is unreadable.
-			logger.warn("Could not read /proc/uptime. Uptime not available. OS might not be Linux.");
+			logger.warn("Could not read /proc/uptime, even on a Linux-like system.");
 			return "Nicht verfügbar";
 		}
 	}
 
 	private int getBatteryPercentage() {
-		// This part is also Linux-specific.
+		if (!IS_LINUX) {
+			logger.trace("Battery status not available on non-Linux OS.");
+			return -1;
+		}
 		try {
-			// Common path for laptop batteries on Linux.
 			String content = new String(Files.readAllBytes(Paths.get("/sys/class/power_supply/BAT0/capacity")));
 			return Integer.parseInt(content.trim());
 		} catch (IOException | NumberFormatException e) {
-			// This will fail on systems without a battery or non-Linux OS.
 			logger.trace("Could not read battery status. System might not have a battery or is not Linux.");
-			return -1; // Indicates no battery or not available
+			return -1;
 		}
 	}
 }

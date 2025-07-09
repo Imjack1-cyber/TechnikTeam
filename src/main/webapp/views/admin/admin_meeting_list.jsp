@@ -49,7 +49,7 @@
 			<c:forEach var="meeting" items="${meetings}">
 				<tr>
 					<td><a
-						href="${pageContext.request.contextPath}/meeting/details?id=${meeting.id}"><c:out
+						href="${pageContext.request.contextPath}/meetingDetails?id=${meeting.id}"><c:out
 								value="${meeting.name}" /></a></td>
 					<td><c:out value="${meeting.formattedMeetingDateTimeRange}" /></td>
 					<td><c:out
@@ -60,9 +60,11 @@
 						<form action="${pageContext.request.contextPath}/admin/meetings"
 							method="post" class="inline-form js-confirm-form"
 							data-confirm-message="Meeting '${fn:escapeXml(meeting.name)}' wirklich löschen?">
-							<input type="hidden" name="action" value="delete"> <input
-								type="hidden" name="courseId" value="${parentCourse.id}">
-							<input type="hidden" name="meetingId" value="${meeting.id}">
+							<input type="hidden" name="csrfToken"
+								value="${sessionScope.csrfToken}"> <input type="hidden"
+								name="action" value="delete"> <input type="hidden"
+								name="courseId" value="${parentCourse.id}"> <input
+								type="hidden" name="meetingId" value="${meeting.id}">
 							<button type="submit" class="btn btn-small btn-danger">Löschen</button>
 						</form>
 					</td>
@@ -72,7 +74,43 @@
 	</table>
 </div>
 
-<!-- MODAL FOR CREATE/EDIT MEETING -->
+<!-- Mobile Card View -->
+<div class="mobile-card-list searchable-table">
+	<c:forEach var="meeting" items="${meetings}">
+		<div class="list-item-card">
+			<h3 class="card-title">
+				<a
+					href="${pageContext.request.contextPath}/meetingDetails?id=${meeting.id}"><c:out
+						value="${meeting.name}" /></a>
+			</h3>
+			<div class="card-row">
+				<span>Zeitraum:</span> <strong><c:out
+						value="${meeting.formattedMeetingDateTimeRange}" /></strong>
+			</div>
+			<div class="card-row">
+				<span>Leitung:</span> <strong><c:out
+						value="${empty meeting.leaderUsername ? 'N/A' : meeting.leaderUsername}" /></strong>
+			</div>
+			<div class="card-actions">
+				<button type="button" class="btn btn-small edit-meeting-btn"
+					data-meeting-id="${meeting.id}">Bearbeiten & Anhänge</button>
+				<form action="${pageContext.request.contextPath}/admin/meetings"
+					method="post" class="inline-form js-confirm-form"
+					data-confirm-message="Meeting '${fn:escapeXml(meeting.name)}' wirklich löschen?">
+					<input type="hidden" name="csrfToken"
+						value="${sessionScope.csrfToken}"> <input type="hidden"
+						name="action" value="delete"> <input type="hidden"
+						name="courseId" value="${parentCourse.id}"> <input
+						type="hidden" name="meetingId" value="${meeting.id}">
+					<button type="submit" class="btn btn-small btn-danger">Löschen</button>
+				</form>
+			</div>
+		</div>
+	</c:forEach>
+</div>
+
+
+<!-- Modal for creating/editing a meeting -->
 <div class="modal-overlay" id="meeting-modal">
 	<div class="modal-content" style="max-width: 700px;">
 		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
@@ -80,8 +118,10 @@
 		<form id="meeting-modal-form"
 			action="${pageContext.request.contextPath}/admin/meetings"
 			method="post" enctype="multipart/form-data">
-			<input type="hidden" name="action" id="meeting-action"> <input
-				type="hidden" name="courseId" value="${parentCourse.id}"> <input
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" id="meeting-action"> <input type="hidden"
+				name="courseId" value="${parentCourse.id}"> <input
 				type="hidden" name="id" id="meeting-id">
 			<div class="form-group">
 				<label for="name-modal">Name des Meetings</label> <input type="text"

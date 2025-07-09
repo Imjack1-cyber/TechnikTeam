@@ -22,7 +22,6 @@ public class CalendarServlet extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		// CORRECTED: Forward to the actual JSP file path.
 		request.getRequestDispatcher("/views/public/calendar.jsp").forward(request, response);
 	}
 }

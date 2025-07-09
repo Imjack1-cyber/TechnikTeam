@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
             modalTitle.textContent = `Defekt-Status für "${btn.dataset.itemName}" bearbeiten`;
             itemIdInput.value = btn.dataset.itemId;
             defectQtyInput.value = btn.dataset.currentDefectQty;
-            defectQtyInput.max = btn.dataset.maxQty; // Set max based on total quantity
+            defectQtyInput.max = btn.dataset.maxQty; 
             reasonInput.value = btn.dataset.currentReason;
             defectModal.classList.add('active');
         });

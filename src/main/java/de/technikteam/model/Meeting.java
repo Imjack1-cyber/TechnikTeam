@@ -19,12 +19,9 @@ public class Meeting {
 	private String description;
 	private String location;
 
-	// Transient fields populated by DAO joins for UI display
 	private String parentCourseName;
-	private String leaderUsername; // For displaying the leader's name
-	private String userAttendanceStatus; // User-specific status (ANGEMELDET, ABGEMELDET, OFFEN)
-
-	// --- Formatted Helpers ---
+	private String leaderUsername;
+	private String userAttendanceStatus;
 
 	public String getFormattedMeetingDateTime() {
 		return DateFormatter.formatDateTime(this.meetingDateTime);
@@ -33,8 +30,6 @@ public class Meeting {
 	public String getFormattedMeetingDateTimeRange() {
 		return DateFormatter.formatDateTimeRange(this.meetingDateTime, this.endDateTime);
 	}
-
-	// --- Getters and Setters ---
 
 	public int getLeaderUserId() {
 		return leaderUserId;

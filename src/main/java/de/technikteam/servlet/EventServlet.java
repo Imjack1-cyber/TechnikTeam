@@ -21,7 +21,6 @@ import org.apache.logging.log4j.Logger;
  * for each event (e.g., ZUGEWIESEN, ANGEMELDET, OFFEN). It then passes this
  * data to `events.jsp`.
  */
-// CORRECTED: The servlet mapping is changed to /veranstaltungen to match all links and user expectations.
 @WebServlet("/veranstaltungen")
 public class EventServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
@@ -38,14 +37,11 @@ public class EventServlet extends HttpServlet {
 		User user = (User) request.getSession().getAttribute("user");
 		logger.info("Fetching upcoming events for user '{}' (ID: {})", user.getUsername(), user.getId());
 
-		// The DAO method intelligently calculates the most relevant status for the
-		// user.
-		List<Event> events = eventDAO.getUpcomingEventsForUser(user, 0); // 0 means no limit
+		List<Event> events = eventDAO.getUpcomingEventsForUser(user, 0); 
 
 		request.setAttribute("events", events);
 		logger.debug("Found {} upcoming events for user '{}'. Forwarding to veranstaltungen.jsp.", events.size(),
 				user.getUsername());
-		// CORRECTED: Forward to the actual JSP file path.
 		request.getRequestDispatcher("/views/public/events.jsp").forward(request, response);
 	}
 }

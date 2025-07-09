@@ -4,6 +4,7 @@ import de.technikteam.model.User;
 import de.technikteam.util.DaoUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder; 
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -13,6 +14,8 @@ import java.util.Set;
 
 public class UserDAO {
 	private static final Logger logger = LogManager.getLogger(UserDAO.class);
+	private final PermissionDAO permissionDAO = new PermissionDAO();
+	private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(); 
 
 	private User mapResultSetToUser(ResultSet resultSet) throws SQLException {
 		User user = new User();
@@ -40,45 +43,101 @@ public class UserDAO {
 
 	public User validateUser(String username, String password) {
 		String sql = "SELECT u.*, r.role_name FROM users u " + "LEFT JOIN roles r ON u.role_id = r.id "
-				+ "WHERE u.username = ? AND u.password_hash = ?";
-		logger.debug("Validating user credentials for username: {}", username);
+				+ "WHERE u.username = ?";
+		logger.debug("Attempting to validate user: {}", username);
 		try (Connection connection = DatabaseManager.getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+
 			preparedStatement.setString(1, username);
-			preparedStatement.setString(2, password);
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				if (resultSet.next()) {
-					logger.info("User validation successful for username: {}", username);
-					User user = mapResultSetToUser(resultSet);
-					user.setPermissions(getPermissionsForRole(user.getRoleId()));
-					return user;
-				} else {
-					logger.warn("User validation failed for username: {}", username);
+					String storedHash = resultSet.getString("password_hash");
+					if (passwordEncoder.matches(password, storedHash)) {
+						logger.info("User validation successful for username: {}", username);
+						User user = mapResultSetToUser(resultSet);
+						user.setPermissions(getPermissionsForUser(user.getId()));
+						return user;
+					}
 				}
+				logger.warn("User validation failed for username: {}. Incorrect username or password.", username);
 			}
 		} catch (SQLException exception) {
 			logger.error("SQL error during user validation for username: {}", username, exception);
+		} catch (IllegalArgumentException e) {
+			logger.error("BCrypt Error: The stored password for user '{}' is not a valid hash. "
+					+ "Please run a password migration utility.", username, e);
 		}
 		return null;
 	}
 
-	public Set<String> getPermissionsForRole(int roleId) {
+	public Set<String> getPermissionsForUser(int userId) {
 		Set<String> permissions = new HashSet<>();
 		String sql = "SELECT p.permission_key FROM permissions p "
-				+ "JOIN role_permissions rp ON p.id = rp.permission_id " + "WHERE rp.role_id = ?";
+				+ "JOIN user_permissions up ON p.id = up.permission_id " + "WHERE up.user_id = ?";
 		try (Connection connection = DatabaseManager.getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-			preparedStatement.setInt(1, roleId);
+			preparedStatement.setInt(1, userId);
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				while (resultSet.next()) {
 					permissions.add(resultSet.getString("permission_key"));
 				}
 			}
 		} catch (SQLException exception) {
-			logger.error("Could not fetch permissions for role ID: {}", roleId, exception);
+			logger.error("Could not fetch permissions for user ID: {}", userId, exception);
 		}
-		logger.debug("Fetched {} permissions for role ID {}", permissions.size(), roleId);
+		logger.debug("Fetched {} permissions for user ID {}", permissions.size(), userId);
 		return permissions;
+	}
+
+	public boolean updateUserPermissions(int userId, String[] permissionIds) {
+		String deleteSql = "DELETE FROM user_permissions WHERE user_id = ?";
+		String insertSql = "INSERT INTO user_permissions (user_id, permission_id) VALUES (?, ?)";
+		Connection conn = null;
+
+		try {
+			conn = DatabaseManager.getConnection();
+			conn.setAutoCommit(false);
+
+			try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
+				deleteStmt.setInt(1, userId);
+				deleteStmt.executeUpdate();
+			}
+
+			if (permissionIds != null && permissionIds.length > 0) {
+				try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
+					for (String permId : permissionIds) {
+						insertStmt.setInt(1, userId);
+						insertStmt.setInt(2, Integer.parseInt(permId));
+						insertStmt.addBatch();
+					}
+					insertStmt.executeBatch();
+				}
+			}
+
+			conn.commit();
+			logger.info("Successfully updated permissions for user ID: {}", userId);
+			return true;
+		} catch (SQLException | NumberFormatException e) {
+			logger.error("Error during transaction for updating user permissions for user ID {}. Rolling back.", userId,
+					e);
+			if (conn != null) {
+				try {
+					conn.rollback();
+				} catch (SQLException ex) {
+					logger.error("Failed to rollback transaction for user permissions update.", ex);
+				}
+			}
+			return false;
+		} finally {
+			if (conn != null) {
+				try {
+					conn.setAutoCommit(true);
+					conn.close();
+				} catch (SQLException ex) {
+					logger.error("Failed to close connection after user permissions update.", ex);
+				}
+			}
+		}
 	}
 
 	public List<User> getAllUsers() {
@@ -137,6 +196,8 @@ public class UserDAO {
 	}
 
 	public int createUser(User user, String password) {
+		String hashedPassword = passwordEncoder.encode(password);
+
 		String sql = "INSERT INTO users (username, password_hash, role_id, class_year, class_name, email) VALUES (?, ?, ?, ?, ?, ?)";
 		logger.debug("Attempting to create user: {}", user.getUsername());
 		try (Connection connection = DatabaseManager.getConnection();
@@ -144,7 +205,7 @@ public class UserDAO {
 						Statement.RETURN_GENERATED_KEYS)) {
 
 			preparedStatement.setString(1, user.getUsername());
-			preparedStatement.setString(2, password);
+			preparedStatement.setString(2, hashedPassword);
 			preparedStatement.setInt(3, user.getRoleId());
 			preparedStatement.setInt(4, user.getClassYear());
 			preparedStatement.setString(5, user.getClassName());
@@ -213,11 +274,13 @@ public class UserDAO {
 	}
 
 	public boolean changePassword(int userId, String newPassword) {
+		String hashedPassword = passwordEncoder.encode(newPassword);
+
 		String sql = "UPDATE users SET password_hash = ? WHERE id = ?";
 		logger.debug("Changing password for user ID: {}", userId);
 		try (Connection connection = DatabaseManager.getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-			preparedStatement.setString(1, newPassword);
+			preparedStatement.setString(1, hashedPassword);
 			preparedStatement.setInt(2, userId);
 			return preparedStatement.executeUpdate() > 0;
 		} catch (SQLException exception) {

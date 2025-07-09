@@ -17,12 +17,9 @@ public class StorageItem {
 	private double priceEur;
 	private String imagePath;
 
-	// NEW FIELDS for enhanced tracking
-	private String status; // ENUM: 'IN_STORAGE', 'CHECKED_OUT', 'ASSIGNED_TO_EVENT', 'MAINTENANCE'
+	private String status;
 	private int currentHolderUserId;
 	private int assignedEventId;
-
-	// TRANSIENT FIELD for displaying the holder's name
 	private String currentHolderUsername;
 
 	public StorageItem() {
@@ -54,8 +51,6 @@ public class StorageItem {
 		}
 		return "status-ok";
 	}
-
-	// --- Getters and Setters ---
 
 	public int getId() {
 		return id;
@@ -153,7 +148,6 @@ public class StorageItem {
 		this.imagePath = imagePath;
 	}
 
-	// --- Getters and Setters for NEW fields ---
 	public String getStatus() {
 		return status;
 	}

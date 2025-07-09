@@ -66,7 +66,7 @@ public class MeetingDAO {
 		} catch (SQLException e) {
 			logger.error("SQL error creating meeting: {}", meeting.getName(), e);
 		}
-		return 0; // Return 0 on failure
+		return 0; 
 	}
 
 	/**
@@ -164,10 +164,8 @@ public class MeetingDAO {
 		meeting.setId(rs.getInt("id"));
 		meeting.setCourseId(rs.getInt("course_id"));
 		meeting.setName(rs.getString("name"));
-		// REVERTED: Use the original, compatible method
 		meeting.setMeetingDateTime(rs.getTimestamp("meeting_datetime").toLocalDateTime());
 		if (rs.getTimestamp("end_datetime") != null) {
-			// REVERTED: Use the original, compatible method
 			meeting.setEndDateTime(rs.getTimestamp("end_datetime").toLocalDateTime());
 		}
 		meeting.setLeaderUserId(rs.getInt("leader_user_id"));
@@ -262,7 +260,6 @@ public class MeetingDAO {
 				while (rs.next()) {
 					Meeting meeting = mapResultSetToMeeting(rs);
 
-					// Set the user-specific status based on the 'attended' flag from the join
 					if (rs.getObject("attended") != null) {
 						meeting.setUserAttendanceStatus(rs.getBoolean("attended") ? "ANGEMELDET" : "ABGEMELDET");
 					} else {
@@ -300,5 +297,26 @@ public class MeetingDAO {
 			logger.error("SQL error fetching upcoming meetings for calendar.", e);
 		}
 		return meetings;
+	}
+
+	/**
+	 * Checks if a given user is registered as attended for a specific meeting.
+	 * @param meetingId The ID of the meeting.
+	 * @param userId The ID of the user.
+	 * @return true if the user has an attendance record, false otherwise.
+	 */
+	public boolean isUserAssociatedWithMeeting(int meetingId, int userId) {
+	    String sql = "SELECT 1 FROM meeting_attendance WHERE meeting_id = ? AND user_id = ?";
+	    try (Connection conn = DatabaseManager.getConnection();
+	         PreparedStatement pstmt = conn.prepareStatement(sql)) {
+	        pstmt.setInt(1, meetingId);
+	        pstmt.setInt(2, userId);
+	        try (ResultSet rs = pstmt.executeQuery()) {
+	            return rs.next();
+	        }
+	    } catch (SQLException e) {
+	        logger.error("Error checking user association for meeting {} and user {}", meetingId, userId, e);
+	        return false;
+	    }
 	}
 }

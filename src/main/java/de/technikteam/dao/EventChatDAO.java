@@ -41,7 +41,7 @@ public class EventChatDAO {
 		List<EventChatMessage> messages = new ArrayList<>();
 		String sql = "SELECT m.*, u_del.username as deleted_by_username, u_orig.chat_color "
 				+ "FROM event_chat_messages m " + "LEFT JOIN users u_del ON m.deleted_by_user_id = u_del.id "
-				+ "JOIN users u_orig ON m.user_id = u_orig.id " + // Join to get original sender's color
+				+ "JOIN users u_orig ON m.user_id = u_orig.id " + 
 				"WHERE m.event_id = ? ORDER BY m.sent_at ASC";
 		try (Connection connection = DatabaseManager.getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
@@ -83,7 +83,7 @@ public class EventChatDAO {
 		message.setDeleted(resultSet.getBoolean("is_deleted"));
 		message.setDeletedByUserId(resultSet.getInt("deleted_by_user_id"));
 		message.setDeletedByUsername(resultSet.getString("deleted_by_username"));
-		message.setChatColor(resultSet.getString("chat_color")); // Get sender's color
+		message.setChatColor(resultSet.getString("chat_color")); 
 
 		if (resultSet.getTimestamp("deleted_at") != null) {
 			message.setDeletedAt(resultSet.getTimestamp("deleted_at").toLocalDateTime());

@@ -8,7 +8,14 @@ import jakarta.servlet.http.Part;
 
 /**
  * A utility class for common Servlet helper methods.
+ * 
+ * @deprecated This class and its methods are unreliable for multipart requests.
+ *             Modern servlet containers (Tomcat 7+) make request.getParameter()
+ *             available even for multipart requests to read simple form fields.
+ *             This class is kept for historical reference but should be removed
+ *             in the future.
  */
+@Deprecated
 public class ServletUtils {
 
 	/**

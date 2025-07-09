@@ -8,11 +8,7 @@ package de.technikteam.model;
 public class SkillRequirement {
 	private int requiredCourseId;
 	private int requiredPersons;
-
-	// Transient field for UI display, populated by a DAO join
 	private String courseName;
-
-	// --- Getters and Setters ---
 
 	public int getRequiredCourseId() {
 		return requiredCourseId;

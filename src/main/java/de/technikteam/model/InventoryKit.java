@@ -10,12 +10,10 @@ public class InventoryKit {
 	private int id;
 	private String name;
 	private String description;
-	private String location; // CHANGED: Replaced storageItemId with a simple text field
+	private String location; 
 
-	// Transient field for holding items when needed
 	private List<InventoryKitItem> items;
 
-	// --- Getters and Setters ---
 	public int getId() {
 		return id;
 	}

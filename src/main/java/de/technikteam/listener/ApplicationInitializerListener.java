@@ -26,25 +26,25 @@ public class ApplicationInitializerListener implements ServletContextListener {
 		logger.info("Application Initializer: Context is being initialized...");
 
 		try {
-			// Manually load the MySQL JDBC driver.
 			logger.info("Attempting to manually load MySQL JDBC driver...");
 			Class.forName("com.mysql.cj.jdbc.Driver");
 			logger.info("MySQL JDBC driver loaded successfully.");
 
-			// Eagerly initialize the database connection pool on startup
 			logger.info("Triggering database connection pool initialization...");
-			Class.forName("de.technikteam.dao.DatabaseManager");
+			DatabaseManager.initDataSource();
 
 		} catch (ClassNotFoundException e) {
-			logger.fatal("FATAL: MySQL JDBC driver or DatabaseManager not found in classpath. Application will fail.",
-					e);
+			logger.fatal("FATAL: MySQL JDBC driver not found in classpath. Application will fail.", e);
+			throw new RuntimeException("Failed to load JDBC driver", e);
+		} catch (Exception e) {
+			logger.fatal("FATAL: Database pool could not be initialized. Application startup aborted.", e);
+			throw new RuntimeException("Failed to initialize database pool", e);
 		}
 	}
 
 	@Override
 	public void contextDestroyed(ServletContextEvent sce) {
 		logger.info("Application Initializer: Context is being destroyed.");
-		// Properly shut down the database connection pool.
 		DatabaseManager.closeDataSource();
 	}
 }

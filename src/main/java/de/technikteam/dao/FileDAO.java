@@ -10,6 +10,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -27,7 +28,7 @@ public class FileDAO {
 
 	/**
 	 * Helper method to map a row from a ResultSet to a File object.
-	 * 
+	 *
 	 * @param rs The ResultSet to map.
 	 * @return A populated File object.
 	 * @throws SQLException If a database error occurs.
@@ -44,50 +45,83 @@ public class FileDAO {
 			file.setRequiredRole(rs.getString("required_role"));
 		}
 
-		String categoryName = rs.getString("category_name");
-		file.setCategoryName(categoryName == null ? "Ohne Kategorie" : categoryName);
+		if (DaoUtils.hasColumn(rs, "category_name")) {
+			String categoryName = rs.getString("category_name");
+			file.setCategoryName(categoryName == null ? "Ohne Kategorie" : categoryName);
+		} else {
+			file.setCategoryName("Ohne Kategorie");
+		}
 
 		return file;
 	}
 
 	/**
 	 * Fetches all file records, applying role-based filtering, and groups them by
-	 * category name.
-	 * 
+	 * category name. This implementation uses a two-query approach to be robust
+	 * against potential database join issues.
+	 *
 	 * @param user The current user, used to determine their role.
 	 * @return A Map where keys are category names and values are lists of files.
 	 */
 	public Map<String, List<File>> getAllFilesGroupedByCategory(User user) {
 		logger.debug("Fetching all files grouped by category for user role: {}", user.getRoleName());
-		List<File> files = new ArrayList<>();
 
-		String sql = "SELECT f.*, fc.name as category_name FROM files f "
-				+ "LEFT JOIN file_categories fc ON f.category_id = fc.id ";
-
-		if (!"ADMIN".equalsIgnoreCase(user.getRoleName())) {
-			sql += "WHERE f.required_role = 'NUTZER' ";
-			logger.debug("Applying 'NUTZER' role filter for file query.");
+		// 1. Fetch all categories into a map for easy lookup
+		Map<Integer, String> categoryIdToNameMap = new HashMap<>();
+		try (Connection conn = DatabaseManager.getConnection();
+				Statement stmt = conn.createStatement();
+				ResultSet rs = stmt.executeQuery("SELECT id, name FROM file_categories")) {
+			while (rs.next()) {
+				categoryIdToNameMap.put(rs.getInt("id"), rs.getString("name"));
+			}
+		} catch (SQLException e) {
+			logger.error("Could not fetch file categories for grouping.", e);
+			return new HashMap<>();
 		}
 
-		sql += "ORDER BY fc.name, f.filename";
+		// 2. Fetch all files
+		List<File> files = new ArrayList<>();
+		String sql = "SELECT * FROM files ";
+
+		if (!user.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
+			sql += "WHERE required_role = 'NUTZER' ";
+			logger.debug("Applying 'NUTZER' role filter for file query.");
+		}
+		sql += "ORDER BY filename";
 
 		try (Connection conn = DatabaseManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
+
 			while (rs.next()) {
-				files.add(mapResultSetToFile(rs));
+				// 3. Map file and set category name from the Java map
+				File file = new File();
+				file.setId(rs.getInt("id"));
+				file.setFilename(rs.getString("filename"));
+				file.setFilepath(rs.getString("filepath"));
+				file.setUploadedAt(rs.getTimestamp("uploaded_at").toLocalDateTime());
+				file.setRequiredRole(rs.getString("required_role"));
+
+				int categoryId = rs.getInt("category_id");
+				file.setCategoryId(categoryId);
+
+				String categoryName = categoryIdToNameMap.get(categoryId);
+				file.setCategoryName(categoryName != null ? categoryName : "Ohne Kategorie");
+
+				files.add(file);
 			}
-			logger.info("Fetched {} files visible to user role '{}'.", files.size(), user.getRoleName());
+			logger.info("Fetched and processed {} files visible to user role '{}'.", files.size(), user.getRoleName());
 		} catch (SQLException e) {
 			logger.error("SQL error while fetching files.", e);
 		}
 
+		// 4. Group by the now-correct category name
 		return files.stream().collect(Collectors.groupingBy(File::getCategoryName));
 	}
 
 	/**
 	 * Creates a new file metadata record in the database.
-	 * 
+	 *
 	 * @param file The File object to persist.
 	 * @return true if creation was successful, false otherwise.
 	 */
@@ -112,7 +146,7 @@ public class FileDAO {
 
 	/**
 	 * Fetches all file categories from the database, sorted by name.
-	 * 
+	 *
 	 * @return A list of FileCategory objects.
 	 */
 	public List<FileCategory> getAllCategories() {
@@ -192,7 +226,7 @@ public class FileDAO {
 
 	/**
 	 * Creates a new file category.
-	 * 
+	 *
 	 * @param categoryName The name of the new category.
 	 * @return true if successful.
 	 */
@@ -202,6 +236,9 @@ public class FileDAO {
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, categoryName);
 			return pstmt.executeUpdate() > 0;
+		} catch (SQLIntegrityConstraintViolationException e) {
+			logger.warn("Attempted to create a duplicate file category: '{}'", categoryName);
+			return false;
 		} catch (SQLException e) {
 			logger.error("SQL error creating file category '{}'", categoryName, e);
 			return false;
@@ -210,7 +247,7 @@ public class FileDAO {
 
 	/**
 	 * Updates the name of an existing file category.
-	 * 
+	 *
 	 * @param categoryId The ID of the category to update.
 	 * @param newName    The new name for the category.
 	 * @return true if successful.
@@ -231,7 +268,7 @@ public class FileDAO {
 	/**
 	 * Deletes a file category. Due to "ON DELETE SET NULL" constraint in the DB,
 	 * files in this category will have their category_id set to NULL.
-	 * 
+	 *
 	 * @param categoryId The ID of the category to delete.
 	 * @return true if successful.
 	 */
@@ -249,7 +286,7 @@ public class FileDAO {
 
 	/**
 	 * Retrieves the name of a category by its ID.
-	 * 
+	 *
 	 * @param categoryId The ID of the category.
 	 * @return The category name, or null if not found.
 	 */
@@ -272,7 +309,7 @@ public class FileDAO {
 	/**
 	 * Retrieves the content of a shared document (e.g., for the collaborative
 	 * editor).
-	 * 
+	 *
 	 * @param documentName The unique name/key of the document.
 	 * @return The document's content as a string, or an empty string if not found.
 	 */
@@ -296,25 +333,18 @@ public class FileDAO {
 	 * Updates or creates the content of a shared document using an "upsert"
 	 * operation. This ensures that the document can be saved even if it doesn't
 	 * exist yet.
-	 * 
+	 *
 	 * @param documentName The unique name/key of the document to update.
 	 * @param content      The new content to save.
 	 * @return true if the update was successful.
 	 */
 	public boolean updateDocumentContent(String documentName, String content) {
-		// DEFINITIVE FIX: Use INSERT ... ON DUPLICATE KEY UPDATE for an "upsert".
-		// This creates the document on the first save and updates it on subsequent
-		// saves.
-		// This requires a UNIQUE index on the `document_name` column.
 		String sql = "INSERT INTO shared_documents (document_name, content) VALUES (?, ?) "
 				+ "ON DUPLICATE KEY UPDATE content = VALUES(content)";
 		logger.trace("Upserting document content for name: {}", documentName);
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, documentName);
 			pstmt.setString(2, content);
-			// executeUpdate returns 1 for an insert, 2 for an update, and 0 if the value
-			// didn't change.
-			// All of these are considered successful operations in our case.
 			return pstmt.executeUpdate() >= 0;
 		} catch (SQLException e) {
 			logger.error("Error upserting document content for name: {}", documentName, e);

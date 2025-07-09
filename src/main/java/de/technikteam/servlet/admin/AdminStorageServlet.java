@@ -8,7 +8,7 @@ import de.technikteam.model.MaintenanceLogEntry;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
-import de.technikteam.util.ServletUtils;
+import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
@@ -66,14 +66,14 @@ public class AdminStorageServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
 		request.setCharacterEncoding("UTF-8");
-		String contentType = request.getContentType();
-		String action;
 
-		if (contentType != null && contentType.toLowerCase().startsWith("multipart/")) {
-			action = ServletUtils.getPartValue(request.getPart("action"));
-		} else {
-			action = request.getParameter("action");
+		if (!CSRFUtil.isTokenValid(request)) {
+			logger.warn("CSRF token validation failed for storage action.");
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
 		}
+
+		String action = request.getParameter("action");
 
 		switch (action) {
 		case "create":
@@ -89,10 +89,46 @@ public class AdminStorageServlet extends HttpServlet {
 		case "updateStatus":
 			handleStatusUpdate(request, response);
 			break;
+		case "repair":
+			handleRepair(request, response);
+			break;
 		default:
 			response.sendRedirect(request.getContextPath() + "/admin/lager");
 			break;
 		}
+	}
+
+	private void handleRepair(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		User adminUser = (User) request.getSession().getAttribute("user");
+		String returnTo = request.getParameter("returnTo");
+		try {
+			int itemId = Integer.parseInt(request.getParameter("id"));
+			int repairedQty = Integer.parseInt(request.getParameter("repaired_quantity"));
+			String notes = request.getParameter("repair_notes");
+
+			if (storageDAO.repairItems(itemId, repairedQty)) {
+				MaintenanceLogEntry log = new MaintenanceLogEntry();
+				log.setItemId(itemId);
+				log.setUserId(adminUser.getId());
+				log.setAction(repairedQty + " Stück repariert");
+				log.setNotes(notes);
+				maintenanceLogDAO.createLog(log);
+
+				AdminLogService.log(adminUser.getUsername(), "REPAIR_ITEM", String.format(
+						"%d Stück von Artikel-ID %d als repariert markiert. Notiz: %s", repairedQty, itemId, notes));
+				request.getSession().setAttribute("successMessage", "Artikel erfolgreich als repariert markiert.");
+			} else {
+				request.getSession().setAttribute("errorMessage",
+						"Reparatur konnte nicht verbucht werden (vielleicht nicht genug defekte Artikel?).");
+			}
+		} catch (NumberFormatException e) {
+			request.getSession().setAttribute("errorMessage", "Ungültige Artikel-ID oder Anzahl.");
+		} catch (SQLException e) {
+			request.getSession().setAttribute("errorMessage", "Datenbankfehler: " + e.getMessage());
+		}
+		String redirectUrl = request.getContextPath()
+				+ ("/defekte".equals(returnTo) ? "/admin/defekte" : "/admin/lager");
+		response.sendRedirect(redirectUrl);
 	}
 
 	private void handleStatusUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -147,21 +183,21 @@ public class AdminStorageServlet extends HttpServlet {
 	private void handleCreateOrUpdate(HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
 		User adminUser = (User) request.getSession().getAttribute("user");
-		boolean isCreate = "create".equals(ServletUtils.getPartValue(request.getPart("action")));
+		boolean isCreate = "create".equals(request.getParameter("action"));
 
 		try {
 			StorageItem item = new StorageItem();
-			item.setName(ServletUtils.getPartValue(request.getPart("name")));
-			item.setLocation(ServletUtils.getPartValue(request.getPart("location")));
-			item.setCabinet(ServletUtils.getPartValue(request.getPart("cabinet")));
-			item.setCompartment(ServletUtils.getPartValue(request.getPart("compartment")));
-			item.setQuantity(Integer.parseInt(ServletUtils.getPartValue(request.getPart("quantity"))));
-			item.setMaxQuantity(Integer.parseInt(ServletUtils.getPartValue(request.getPart("maxQuantity"))));
+			item.setName(request.getParameter("name"));
+			item.setLocation(request.getParameter("location"));
+			item.setCabinet(request.getParameter("cabinet"));
+			item.setCompartment(request.getParameter("compartment"));
+			item.setQuantity(Integer.parseInt(request.getParameter("quantity")));
+			item.setMaxQuantity(Integer.parseInt(request.getParameter("maxQuantity")));
 
-			String weightStr = ServletUtils.getPartValue(request.getPart("weight_kg"));
+			String weightStr = request.getParameter("weight_kg");
 			item.setWeightKg(
 					weightStr == null || weightStr.isEmpty() ? 0.0 : Double.parseDouble(weightStr.replace(',', '.')));
-			String priceStr = ServletUtils.getPartValue(request.getPart("price_eur"));
+			String priceStr = request.getParameter("price_eur");
 			item.setPriceEur(
 					priceStr == null || priceStr.isEmpty() ? 0.0 : Double.parseDouble(priceStr.replace(',', '.')));
 
@@ -169,7 +205,7 @@ public class AdminStorageServlet extends HttpServlet {
 			String imagePath = null;
 
 			if (!isCreate) {
-				int itemId = Integer.parseInt(ServletUtils.getPartValue(request.getPart("id")));
+				int itemId = Integer.parseInt(request.getParameter("id"));
 				item.setId(itemId);
 				StorageItem originalItem = storageDAO.getItemById(itemId);
 				if (originalItem != null) {

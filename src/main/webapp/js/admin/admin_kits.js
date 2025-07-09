@@ -137,7 +137,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			const row = removeBtn.closest('.dynamic-row');
 			const container = row.parentElement;
 
-			// Show confirmation modal before removing the row
 			showConfirmationModal("Diesen Artikel wirklich aus dem Kit entfernen?", () => {
 				row.remove();
 

@@ -38,7 +38,6 @@ public class StorageItemActionServlet extends HttpServlet {
 			}
 			request.setAttribute("item", item);
 			request.setAttribute("activeEvents", activeEvents);
-			// CORRECTED: Forward to the actual JSP file path.
 			request.getRequestDispatcher("/views/public/qr_action.jsp").forward(request, response);
 		} catch (NumberFormatException e) {
 			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Ungültige Artikel-ID.");

@@ -24,7 +24,8 @@
 	</div>
 </c:if>
 
-<div class="table-wrapper">
+<!-- Desktop Table View -->
+<div class="desktop-table-wrapper">
 	<table class="data-table sortable-table searchable-table">
 		<thead>
 			<tr>
@@ -39,24 +40,28 @@
 			<c:forEach var="meeting" items="${meetings}">
 				<tr>
 					<td><a
-						href="${pageContext.request.contextPath}/meeting/details?id=${meeting.id}"><c:out
+						href="${pageContext.request.contextPath}/meetingDetails?id=${meeting.id}"><c:out
 								value="${meeting.name}" /></a></td>
 					<td><c:out value="${meeting.parentCourseName}" /></td>
 					<td data-sort-value="${meeting.meetingDateTime}"><c:out
 							value="${meeting.formattedMeetingDateTimeRange}" /></td>
 					<td><c:choose>
 							<c:when test="${meeting.userAttendanceStatus == 'ANGEMELDET'}">
-								<span class="text-success">Angemeldet</span>
+								<span class="text-success"><c:out value="Angemeldet" /></span>
 							</c:when>
 							<c:when test="${meeting.userAttendanceStatus == 'ABGEMELDET'}">
-								<span class="text-danger">Abgemeldet</span>
+								<span class="text-danger"><c:out value="Abgemeldet" /></span>
 							</c:when>
-							<c:otherwise>Offen</c:otherwise>
+							<c:otherwise>
+								<c:out value="Offen" />
+							</c:otherwise>
 						</c:choose></td>
 					<td>
 						<form action="${pageContext.request.contextPath}/meeting-action"
 							method="post" style="display: flex; gap: 0.5rem;">
-							<input type="hidden" name="meetingId" value="${meeting.id}">
+							<input type="hidden" name="csrfToken"
+								value="${sessionScope.csrfToken}"> <input type="hidden"
+								name="meetingId" value="${meeting.id}">
 							<c:if test="${meeting.userAttendanceStatus != 'ANGEMELDET'}">
 								<button type="submit" name="action" value="signup"
 									class="btn btn-small btn-success">Anmelden</button>
@@ -71,6 +76,55 @@
 			</c:forEach>
 		</tbody>
 	</table>
+</div>
+
+<!-- Mobile Card View -->
+<div class="mobile-card-list searchable-table">
+	<c:forEach var="meeting" items="${meetings}">
+		<div class="list-item-card">
+			<h3 class="card-title">
+				<a
+					href="${pageContext.request.contextPath}/meetingDetails?id=${meeting.id}"><c:out
+						value="${meeting.name}" /></a>
+			</h3>
+			<div class="card-row">
+				<span>Kurs:</span> <strong><c:out
+						value="${meeting.parentCourseName}" /></strong>
+			</div>
+			<div class="card-row">
+				<span>Zeitraum:</span> <strong><c:out
+						value="${meeting.formattedMeetingDateTimeRange}" /></strong>
+			</div>
+			<div class="card-row">
+				<span>Dein Status:</span> <strong> <c:choose>
+						<c:when test="${meeting.userAttendanceStatus == 'ANGEMELDET'}">
+							<span class="text-success">Angemeldet</span>
+						</c:when>
+						<c:when test="${meeting.userAttendanceStatus == 'ABGEMELDET'}">
+							<span class="text-danger">Abgemeldet</span>
+						</c:when>
+						<c:otherwise>Offen</c:otherwise>
+					</c:choose>
+				</strong>
+			</div>
+			<div class="card-actions">
+				<form action="${pageContext.request.contextPath}/meeting-action"
+					method="post" style="display: flex; gap: 0.5rem;">
+					<input type="hidden" name="csrfToken"
+						value="${sessionScope.csrfToken}"> <input type="hidden"
+						name="meetingId" value="${meeting.id}">
+					<c:if test="${meeting.userAttendanceStatus != 'ANGEMELDET'}">
+						<button type="submit" name="action" value="signup"
+							class="btn btn-small btn-success">Anmelden</button>
+					</c:if>
+					<c:if test="${meeting.userAttendanceStatus == 'ANGEMELDET'}">
+						<button type="submit" name="action" value="signoff"
+							class="btn btn-small btn-danger">Abmelden</button>
+					</c:if>
+				</form>
+			</div>
+		</div>
+	</c:forEach>
 </div>
 
 <c:import url="/WEB-INF/jspf/table_scripts.jspf" />

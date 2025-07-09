@@ -83,9 +83,11 @@
 		<p id="modal-title" style="font-weight: bold; margin-bottom: 1rem;"></p>
 		<form action="${pageContext.request.contextPath}/admin/teilnahme"
 			method="post">
-			<input type="hidden" name="returnTo" value="matrix"> <input
-				type="hidden" name="userId" id="modal-user-id"> <input
-				type="hidden" name="meetingId" id="modal-meeting-id">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="returnTo" value="matrix"> <input type="hidden"
+				name="userId" id="modal-user-id"> <input type="hidden"
+				name="meetingId" id="modal-meeting-id">
 			<div class="form-group"
 				style="display: flex; align-items: center; gap: 1rem;">
 				<label for="modal-attended" style="margin-bottom: 0;">Teilgenommen:</label>

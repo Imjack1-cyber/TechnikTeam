@@ -39,7 +39,6 @@ public class CalendarApiServlet extends HttpServlet {
 			throws ServletException, IOException {
 		List<Map<String, String>> calendarEntries = new ArrayList<>();
 
-		// Fetch events
 		List<Event> events = eventDAO.getAllActiveAndUpcomingEvents();
 		for (Event event : events) {
 			Map<String, String> entry = new HashMap<>();
@@ -49,12 +48,11 @@ public class CalendarApiServlet extends HttpServlet {
 				entry.put("end", event.getEndDateTime().toString());
 			}
 			entry.put("url", request.getContextPath() + "/veranstaltungen/details?id=" + event.getId());
-			entry.put("backgroundColor", "#dc3545"); // Danger color for events
+			entry.put("backgroundColor", "#dc3545"); 
 			entry.put("borderColor", "#c82333");
 			calendarEntries.add(entry);
 		}
 
-		// Fetch meetings
 		List<Meeting> meetings = meetingDAO.getAllUpcomingMeetings();
 		for (Meeting meeting : meetings) {
 			Map<String, String> entry = new HashMap<>();
@@ -64,7 +62,7 @@ public class CalendarApiServlet extends HttpServlet {
 				entry.put("end", meeting.getEndDateTime().toString());
 			}
 			entry.put("url", request.getContextPath() + "/meetingDetails?id=" + meeting.getId());
-			entry.put("backgroundColor", "#007bff"); // Primary color for meetings
+			entry.put("backgroundColor", "#007bff"); 
 			entry.put("borderColor", "#0056b3");
 			calendarEntries.add(entry);
 		}

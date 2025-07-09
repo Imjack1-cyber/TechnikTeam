@@ -11,8 +11,6 @@ public class FileCategory {
 	public FileCategory() {
 	}
 
-	// --- Getters and Setters ---
-
 	public int getId() {
 		return id;
 	}

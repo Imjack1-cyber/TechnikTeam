@@ -5,6 +5,7 @@ import java.io.IOException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import de.technikteam.model.User;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -20,20 +21,19 @@ public class LogoutServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		HttpSession session = request.getSession(false);
-		String username = "Gast";
 
 		if (session != null) {
-			if (session.getAttribute("username") != null) {
-				username = (String) session.getAttribute("username");
-			}
+			User user = (User) session.getAttribute("user");
+			String username = (user != null) ? user.getUsername() : "Gast";
+
 			logger.info("Logging out user: {}. Invalidating session.", username);
 			session.invalidate();
 		} else {
-			logger.warn("Logoutservlet called but no active session found.");
+			logger.warn("LogoutServlet called but no active session found.");
 		}
 
-		request.setAttribute("username", username);
-		// CORRECTED: Forward to the actual JSP file path.
-		request.getRequestDispatcher("/views/auth/logout.jsp").forward(request, response);
+		HttpSession newSession = request.getSession(true);
+		newSession.setAttribute("successMessage", "Sie wurden erfolgreich ausgeloggt.");
+		response.sendRedirect(request.getContextPath() + "/login");
 	}
 }
