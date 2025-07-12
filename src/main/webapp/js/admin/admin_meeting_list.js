@@ -41,8 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	const addAttachmentRow = (attachment, courseId) => {
 		const li = document.createElement('li');
 		li.id = `attachment-item-${attachment.id}`;
-		// Corrected the download link to use the correct 'type' parameter.
-		li.innerHTML = `<a href="${contextPath}/download?type=meeting&id=${attachment.id}" target="_blank">${attachment.filename}</a> (Rolle: ${attachment.requiredRole})`;
+		li.innerHTML = `<a href="${contextPath}/download?id=${attachment.id}" target="_blank">${attachment.filename}</a> (Rolle: ${attachment.requiredRole})`;
 		const removeBtn = document.createElement('button');
 		removeBtn.type = 'button';
 		removeBtn.className = 'btn btn-small btn-danger-outline';
@@ -58,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					<input type="hidden" name="attachmentId" value="${attachment.id}">
 					<input type="hidden" name="courseId" value="${courseId}">
 					<input type="hidden" name="csrfToken" value="${csrfToken}">
-				`; // FIXED: Added CSRF token
+				`;
 				document.body.appendChild(deleteForm);
 				deleteForm.submit();
 			});

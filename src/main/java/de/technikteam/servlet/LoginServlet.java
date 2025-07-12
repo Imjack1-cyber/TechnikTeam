@@ -3,6 +3,7 @@ package de.technikteam.servlet;
 import de.technikteam.model.NavigationItem;
 import de.technikteam.model.User;
 import de.technikteam.util.CSRFUtil;
+import de.technikteam.util.NavigationRegistry;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -52,13 +53,12 @@ public class LoginServlet extends HttpServlet {
 		String username = request.getParameter("username");
 		String password = request.getParameter("password");
 		String sanitizedUsername = sanitizeForLogging(username);
-		HttpSession session = request.getSession();
 
 		logger.info("Login attempt for username: {}", sanitizedUsername);
 
 		if (isLockedOut(sanitizedUsername)) {
 			logger.warn("Login attempt for locked-out user: {}", sanitizedUsername);
-			session.setAttribute("errorMessage",
+			request.getSession().setAttribute("errorMessage",
 					"Ihr Konto ist aufgrund zu vieler fehlgeschlagener Versuche vorübergehend gesperrt.");
 			response.sendRedirect(request.getContextPath() + "/login");
 			return;
@@ -70,18 +70,28 @@ public class LoginServlet extends HttpServlet {
 			failedAttempts.remove(sanitizedUsername);
 			lockoutTimestamps.remove(sanitizedUsername);
 
-			session.setAttribute("user", user);
+			// Invalidate any old session to prevent session fixation
+			HttpSession oldSession = request.getSession(false);
+			if (oldSession != null) {
+				oldSession.invalidate();
+			}
 
-			CSRFUtil.storeToken(session);
+			// Create a new session for the authenticated user
+			HttpSession newSession = request.getSession(true);
+			newSession.setAttribute("user", user);
 
-			List<NavigationItem> navigationItems = buildNavigationForUser(user.getPermissions());
-			session.setAttribute("navigationItems", navigationItems);
+			CSRFUtil.storeToken(newSession);
+
+			List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(user);
+			newSession.setAttribute("navigationItems", navigationItems);
 
 			logger.info("Login successful for user: {}. Role: {}. Redirecting to home.", user.getUsername(),
 					user.getRoleName());
 			response.sendRedirect(request.getContextPath() + "/home");
 		} else {
 			handleFailedLogin(sanitizedUsername);
+			// Get or create a session to store the error message
+			HttpSession session = request.getSession(true);
 			session.setAttribute("errorMessage", "Benutzername oder Passwort ungültig.");
 			response.sendRedirect(request.getContextPath() + "/login");
 		}
@@ -108,53 +118,6 @@ public class LoginServlet extends HttpServlet {
 			lockoutTimestamps.put(username, System.currentTimeMillis());
 			failedAttempts.remove(username);
 		}
-	}
-
-	/**
-	 * Builds a filtered list of navigation items based on the user's permissions.
-	 * 
-	 * @param userPermissions The set of permissions for the current user.
-	 * @return A list of NavigationItem objects the user is allowed to see.
-	 */
-	private List<NavigationItem> buildNavigationForUser(Set<String> userPermissions) {
-		List<NavigationItem> allPossibleItems = new ArrayList<>();
-
-		allPossibleItems.add(new NavigationItem("Dashboard", "/home", "fa-home", null));
-		allPossibleItems.add(new NavigationItem("Lehrgänge", "/lehrgaenge", "fa-graduation-cap", null));
-		allPossibleItems.add(new NavigationItem("Veranstaltungen", "/veranstaltungen", "fa-calendar-check", null));
-		allPossibleItems.add(new NavigationItem("Lager", "/lager", "fa-boxes", null));
-		allPossibleItems.add(new NavigationItem("Dateien", "/dateien", "fa-folder-open", null));
-		allPossibleItems.add(new NavigationItem("Kalender", "/kalender", "fa-calendar-alt", null));
-		allPossibleItems.add(new NavigationItem("Admin Dashboard", "/admin/dashboard", "fa-tachometer-alt",
-				"ADMIN_DASHBOARD_ACCESS"));
-		allPossibleItems.add(new NavigationItem("Benutzer", "/admin/mitglieder", "fa-users-cog", "USER_READ"));
-		allPossibleItems.add(new NavigationItem("Events", "/admin/veranstaltungen", "fa-calendar-plus", "EVENT_READ"));
-		allPossibleItems.add(new NavigationItem("Lager", "/admin/lager", "fa-warehouse", "STORAGE_READ"));
-		allPossibleItems.add(new NavigationItem("Dateien", "/admin/dateien", "fa-file-upload", "FILE_READ"));
-		allPossibleItems.add(new NavigationItem("Lehrgangs-Vorlagen", "/admin/lehrgaenge", "fa-book", "COURSE_READ"));
-		allPossibleItems.add(new NavigationItem("Kit-Verwaltung", "/admin/kits", "fa-box-open", "KIT_READ"));
-		allPossibleItems.add(new NavigationItem("Defekte Artikel", "/admin/defekte", "fa-wrench", "STORAGE_READ"));
-		allPossibleItems.add(new NavigationItem("Quali-Matrix", "/admin/matrix", "fa-th-list", "QUALIFICATION_READ"));
-		allPossibleItems.add(new NavigationItem("Berichte", "/admin/berichte", "fa-chart-pie", "REPORT_READ"));
-		allPossibleItems.add(new NavigationItem("Aktions-Log", "/admin/log", "fa-clipboard-list", "LOG_READ"));
-		allPossibleItems.add(new NavigationItem("System", "/admin/system", "fa-server", "SYSTEM_READ"));
-
-		boolean hasMasterAccess = userPermissions.contains("ACCESS_ADMIN_PANEL");
-
-		boolean hasAnyAdminPermission = userPermissions.stream()
-				.anyMatch(p -> !"ACCESS_ADMIN_PANEL".equals(p) && (p.contains("_READ") || p.contains("_MANAGE")
-						|| p.contains("_UPDATE") || p.contains("_CREATE") || p.contains("_DELETE")));
-
-		return allPossibleItems.stream().filter(item -> {
-			String requiredPerm = item.getRequiredPermission();
-			if (requiredPerm == null) {
-				return true;
-			}
-			if ("ADMIN_DASHBOARD_ACCESS".equals(requiredPerm)) {
-				return hasMasterAccess || hasAnyAdminPermission;
-			}
-			return hasMasterAccess || userPermissions.contains(requiredPerm);
-		}).collect(Collectors.toList());
 	}
 
 	@Override

@@ -203,18 +203,32 @@
 	</c:forEach>
 </div>
 
-<%-- Assume event_modals.jspf contains the file input and now needs the warning message --%>
-<%-- This is a hypothetical change, as the file isn't provided, but it's crucial for the JS fix --%>
-<%--
-    <!-- Inside event_modals.jspf -->
-    <div class="form-group">
-        <label for="attachment">Anhang</label>
-        <input type="file" name="attachment" id="attachment" class="file-input" data-max-size="41943040"> <%-- 40MB --%>
-<small class="file-size-warning" style="color: red; display: none;">Datei
-	ist zu groß! (Max. 40MB)</small>
-</div>
---%>
 <jsp:include page="/WEB-INF/jspf/event_modals.jspf" />
+
+<!-- Crew Finder Modal -->
+<div class="modal-overlay" id="find-crew-modal">
+	<div class="modal-content" style="max-width: 500px;">
+		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
+		<h3 id="find-crew-modal-title">Crew Finder</h3>
+		<p>Folgende Benutzer sind qualifiziert und verfügbar. Wählen Sie
+			aus, wen Sie per Benachrichtigung einladen möchten.</p>
+		<form id="find-crew-form"
+			action="${pageContext.request.contextPath}/admin/veranstaltungen"
+			method="post">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="inviteUsers"> <input type="hidden"
+				name="eventId" id="find-crew-event-id">
+			<div id="find-crew-list"
+				style="max-height: 40vh; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; padding: 0.5rem; margin-bottom: 1rem;">
+				<!-- User list will be populated by JS -->
+			</div>
+			<button type="submit" class="btn btn-success">
+				<i class="fas fa-paper-plane"></i> Ausgewählte einladen
+			</button>
+		</form>
+	</div>
+</div>
 
 <script id="allCoursesData" type="application/json">${allCoursesJson}</script>
 <script id="allItemsData" type="application/json">${allItemsJson}</script>

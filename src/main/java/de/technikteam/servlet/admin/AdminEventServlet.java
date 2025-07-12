@@ -12,6 +12,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import de.technikteam.service.AchievementService;
+import de.technikteam.service.NotificationService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -21,16 +23,16 @@ import com.google.gson.GsonBuilder;
 import de.technikteam.config.AppConfig;
 import de.technikteam.config.LocalDateAdapter;
 import de.technikteam.config.LocalDateTimeAdapter;
+import de.technikteam.dao.AttachmentDAO;
 import de.technikteam.dao.CourseDAO;
-import de.technikteam.dao.EventAttachmentDAO;
 import de.technikteam.dao.EventCustomFieldDAO;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.InventoryKitDAO;
 import de.technikteam.dao.StorageDAO;
 import de.technikteam.dao.UserDAO;
+import de.technikteam.model.Attachment;
 import de.technikteam.model.Course;
 import de.technikteam.model.Event;
-import de.technikteam.model.EventAttachment;
 import de.technikteam.model.EventCustomField;
 import de.technikteam.model.InventoryKit;
 import de.technikteam.model.StorageItem;
@@ -55,7 +57,7 @@ public class AdminEventServlet extends HttpServlet {
 	private CourseDAO courseDAO;
 	private StorageDAO storageDAO;
 	private UserDAO userDAO;
-	private EventAttachmentDAO attachmentDAO;
+	private AttachmentDAO attachmentDAO;
 	private EventCustomFieldDAO customFieldDAO;
 	private InventoryKitDAO kitDAO;
 	private Gson gson;
@@ -66,7 +68,7 @@ public class AdminEventServlet extends HttpServlet {
 		courseDAO = new CourseDAO();
 		storageDAO = new StorageDAO();
 		userDAO = new UserDAO();
-		attachmentDAO = new EventAttachmentDAO();
+		attachmentDAO = new AttachmentDAO();
 		customFieldDAO = new EventCustomFieldDAO();
 		kitDAO = new InventoryKitDAO();
 		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
@@ -133,6 +135,9 @@ public class AdminEventServlet extends HttpServlet {
 		case "deleteAttachment":
 			handleDeleteAttachment(req, resp);
 			break;
+		case "inviteUsers":
+			handleInviteUsers(req, resp);
+			break;
 		default:
 			logger.warn("Unknown POST action received: {}", action);
 			resp.sendRedirect(req.getContextPath() + "/admin/veranstaltungen");
@@ -165,7 +170,7 @@ public class AdminEventServlet extends HttpServlet {
 			if (event != null) {
 				event.setSkillRequirements(eventDAO.getSkillRequirementsForEvent(eventId));
 				event.setReservedItems(eventDAO.getReservedItemsForEvent(eventId));
-				event.setAttachments(attachmentDAO.getAttachmentsForEvent(eventId, "ADMIN"));
+				event.setAttachments(attachmentDAO.getAttachmentsForParent("EVENT", eventId, "ADMIN"));
 				event.setCustomFields(customFieldDAO.getCustomFieldsForEvent(eventId));
 				String eventJson = gson.toJson(event);
 				resp.setContentType("application/json");
@@ -317,8 +322,9 @@ public class AdminEventServlet extends HttpServlet {
 		File targetFile = new File(uploadDir, fileName);
 		filePart.write(targetFile.getAbsolutePath());
 
-		EventAttachment attachment = new EventAttachment();
-		attachment.setEventId(eventId);
+		Attachment attachment = new Attachment();
+		attachment.setParentId(eventId);
+		attachment.setParentType("EVENT");
 		attachment.setFilename(fileName);
 		attachment.setFilepath("events/" + fileName);
 		attachment.setRequiredRole(requiredRole);
@@ -334,14 +340,14 @@ public class AdminEventServlet extends HttpServlet {
 	private void handleDeleteAttachment(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		User adminUser = (User) req.getSession().getAttribute("user");
 		int attachmentId = Integer.parseInt(req.getParameter("id"));
-		EventAttachment attachment = attachmentDAO.getAttachmentById(attachmentId);
+		Attachment attachment = attachmentDAO.getAttachmentById(attachmentId);
 
 		if (attachment == null) {
 			resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Anhang nicht gefunden.");
 			return;
 		}
 
-		Event event = eventDAO.getEventById(attachment.getEventId());
+		Event event = eventDAO.getEventById(attachment.getParentId());
 		boolean isLeader = event != null && event.getLeaderUserId() == adminUser.getId();
 		boolean hasPermission = adminUser.getPermissions().contains("EVENT_UPDATE")
 				|| adminUser.getPermissions().contains("ACCESS_ADMIN_PANEL") || isLeader;
@@ -358,8 +364,8 @@ public class AdminEventServlet extends HttpServlet {
 			physicalFile.delete();
 
 		if (attachmentDAO.deleteAttachment(attachmentId)) {
-			AdminLogService.log(adminUser.getUsername(), "DELETE_EVENT_ATTACHMENT",
-					"Anhang '" + attachment.getFilename() + "' von Event ID " + attachment.getEventId() + " gelöscht.");
+			AdminLogService.log(adminUser.getUsername(), "DELETE_ATTACHMENT", "Anhang '" + attachment.getFilename()
+					+ "' von Event ID " + attachment.getParentId() + " gelöscht.");
 			resp.setContentType("application/json");
 			resp.getWriter().write("{\"message\":\"Anhang gelöscht\"}");
 		} else {
@@ -442,6 +448,14 @@ public class AdminEventServlet extends HttpServlet {
 				String logDetails = String.format("Status für Event '%s' (ID: %d) von '%s' auf '%s' geändert.",
 						event.getName(), eventId, event.getStatus(), newStatus);
 				AdminLogService.log(adminUser.getUsername(), "UPDATE_EVENT_STATUS", logDetails);
+
+				if ("ABGESCHLOSSEN".equals(newStatus)) {
+					List<User> assignedUsers = eventDAO.getAssignedUsersForEvent(eventId);
+					for (User user : assignedUsers) {
+						AchievementService.getInstance().checkAndGrantAchievements(user, "EVENT_COMPLETED");
+					}
+				}
+
 				req.getSession().setAttribute("successMessage", "Event-Status erfolgreich aktualisiert.");
 			} else {
 				req.getSession().setAttribute("errorMessage", "Fehler beim Aktualisieren des Event-Status.");
@@ -450,6 +464,46 @@ public class AdminEventServlet extends HttpServlet {
 			logger.error("Invalid event ID format for status update.", e);
 			req.getSession().setAttribute("errorMessage", "Ungültige Event-ID.");
 		}
+		resp.sendRedirect(req.getContextPath() + "/admin/veranstaltungen");
+	}
+
+	private void handleInviteUsers(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		User adminUser = (User) req.getSession().getAttribute("user");
+		int eventId = Integer.parseInt(req.getParameter("eventId"));
+		String[] userIdsToInvite = req.getParameterValues("userIds");
+
+		Event event = eventDAO.getEventById(eventId);
+		if (event == null) {
+			resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Event not found.");
+			return;
+		}
+
+		boolean hasPermission = adminUser.getPermissions().contains("EVENT_MANAGE_ASSIGNMENTS")
+				|| adminUser.getPermissions().contains("ACCESS_ADMIN_PANEL")
+				|| adminUser.getId() == event.getLeaderUserId();
+
+		if (!hasPermission) {
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
+			return;
+		}
+
+		if (userIdsToInvite != null) {
+			for (String userIdStr : userIdsToInvite) {
+				try {
+					int userId = Integer.parseInt(userIdStr);
+					NotificationService.getInstance().sendEventInvitation(userId, event.getName(), eventId);
+				} catch (NumberFormatException e) {
+					logger.warn("Invalid user ID '{}' found when sending invitations.", userIdStr);
+				}
+			}
+			req.getSession().setAttribute("successMessage",
+					"Einladungen an " + userIdsToInvite.length + " Benutzer gesendet.");
+			AdminLogService.log(adminUser.getUsername(), "INVITE_CREW", "Einladungen für Event '" + event.getName()
+					+ "' an " + userIdsToInvite.length + " Benutzer gesendet.");
+		} else {
+			req.getSession().setAttribute("infoMessage", "Keine Benutzer zum Einladen ausgewählt.");
+		}
+
 		resp.sendRedirect(req.getContextPath() + "/admin/veranstaltungen");
 	}
 }

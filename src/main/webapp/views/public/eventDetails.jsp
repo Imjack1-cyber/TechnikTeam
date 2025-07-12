@@ -59,6 +59,8 @@
 						</c:if>
 					</div>
 
+					<div class="markdown-content" style="margin-top: 1rem;">${fn:escapeXml(task.details)}</div>
+
 					<p style="margin-top: 1rem;">
 						<strong>Zugewiesen an:</strong>
 						<c:if test="${task.requiredPersons > 0}">
@@ -154,12 +156,17 @@
 				<c:when test="${event.status == 'LAUFEND'}">
 					<div id="chat-box"
 						style="height: 300px; overflow-y: auto; border: 1px solid var(--border-color); padding: 0.5rem; margin-bottom: 1rem; background: var(--bg-color);"></div>
-					<form id="chat-form" style="display: flex; gap: 0.5rem;">
-						<input type="text" id="chat-message-input" class="form-group"
-							style="flex-grow: 1; margin: 0;"
-							placeholder="Nachricht eingeben...">
-						<button type="submit" class="btn">Senden</button>
-					</form>
+					<div style="position: relative;">
+						<form id="chat-form" style="display: flex; gap: 0.5rem;">
+							<input type="text" id="chat-message-input" class="form-group"
+								style="flex-grow: 1; margin: 0;"
+								placeholder="Nachricht eingeben... @ für Erwähnungen">
+							<button type="submit" class="btn">Senden</button>
+						</form>
+						<div id="mention-popup"
+							style="display: none; position: absolute; bottom: 100%; left: 0; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: var(--shadow-md); max-height: 150px; overflow-y: auto; z-index: 10;">
+						</div>
+					</div>
 				</c:when>
 				<c:otherwise>
 					<p class="info-message">Der Chat ist nur aktiv, während das
@@ -173,10 +180,8 @@
 <div class="dashboard-grid">
 	<div class="card">
 		<h2 class="card-title">Beschreibung</h2>
-		<p>
-			<c:out
-				value="${not empty event.description ? event.description : 'Keine Beschreibung für dieses Event vorhanden.'}" />
-		</p>
+		<div class="markdown-content">${fn:escapeXml(not empty event.description ? event.description : 'Keine Beschreibung für dieses Event vorhanden.')}
+		</div>
 	</div>
 	<div class="card">
 		<h2 class="card-title">Benötigter Personalbedarf</h2>
@@ -209,8 +214,7 @@
 				<li>Keine Anhänge für dieses Event vorhanden.</li>
 			</c:if>
 			<c:forEach var="att" items="${event.attachments}">
-				<li><a
-					href="<c:url value='/download?type=event&id=${att.id}'/>"><c:out
+				<li><a href="<c:url value='/download?id=${att.id}'/>"><c:out
 							value="${att.filename}" /></a></li>
 			</c:forEach>
 		</ul>

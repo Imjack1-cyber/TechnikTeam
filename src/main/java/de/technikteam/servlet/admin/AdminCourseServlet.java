@@ -2,6 +2,7 @@ package de.technikteam.servlet.admin;
 
 import com.google.gson.Gson;
 import de.technikteam.dao.CourseDAO;
+import de.technikteam.dao.UserQualificationsDAO;
 import de.technikteam.model.Course;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
@@ -33,11 +34,13 @@ public class AdminCourseServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminCourseServlet.class);
 	private CourseDAO courseDAO;
+	private UserQualificationsDAO userQualificationsDAO;
 	private Gson gson = new Gson();
 
 	@Override
 	public void init() {
 		courseDAO = new CourseDAO();
+		userQualificationsDAO = new UserQualificationsDAO();
 	}
 
 	@Override
@@ -66,13 +69,22 @@ public class AdminCourseServlet extends HttpServlet {
 
 		String action = req.getParameter("action");
 		logger.debug("AdminCourseServlet received POST with action: {}", action);
-		if ("delete".equals(action)) {
+
+		switch (action) {
+		case "delete":
 			handleDelete(req, resp);
-		} else if ("create".equals(action) || "update".equals(action)) {
+			break;
+		case "create":
+		case "update":
 			handleCreateOrUpdate(req, resp);
-		} else {
+			break;
+		case "grantQualifications":
+			handleGrantQualifications(req, resp);
+			break;
+		default:
 			logger.warn("Unknown POST action received: {}", action);
 			resp.sendRedirect(req.getContextPath() + "/admin/lehrgaenge");
+			break;
 		}
 	}
 
@@ -161,6 +173,34 @@ public class AdminCourseServlet extends HttpServlet {
 		} catch (NumberFormatException e) {
 			logger.error("Invalid course ID format for deletion.", e);
 			req.getSession().setAttribute("errorMessage", "Ungültige ID für Löschvorgang.");
+		}
+		resp.sendRedirect(req.getContextPath() + "/admin/lehrgaenge");
+	}
+
+	private void handleGrantQualifications(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		User adminUser = (User) req.getSession().getAttribute("user");
+		try {
+			int courseId = Integer.parseInt(req.getParameter("courseId"));
+			int minMeetings = Integer.parseInt(req.getParameter("minMeetings"));
+
+			int updatedCount = userQualificationsDAO.batchGrantQualifications(courseId, minMeetings);
+
+			if (updatedCount >= 0) {
+				Course course = courseDAO.getCourseById(courseId);
+				String courseName = course != null ? course.getName() : "ID " + courseId;
+				String logDetails = String.format(
+						"Batch-Qualifikation für '%s' an %d Benutzer vergeben (min. %d Meetings).", courseName,
+						updatedCount, minMeetings);
+				AdminLogService.log(adminUser.getUsername(), "BATCH_GRANT_QUALIFICATION", logDetails);
+				req.getSession().setAttribute("successMessage",
+						"Qualifikationen wurden erfolgreich an " + updatedCount + " Benutzer vergeben.");
+			} else {
+				req.getSession().setAttribute("errorMessage", "Qualifikationen konnten nicht vergeben werden.");
+			}
+
+		} catch (NumberFormatException e) {
+			req.getSession().setAttribute("errorMessage", "Ungültige Kurs-ID oder Anzahl der Meetings.");
+			logger.error("Error in handleGrantQualifications due to number format", e);
 		}
 		resp.sendRedirect(req.getContextPath() + "/admin/lehrgaenge");
 	}

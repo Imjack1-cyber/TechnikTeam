@@ -13,7 +13,8 @@ public class User {
 	private int classYear;
 	private String className;
 	private String email;
-	private String chatColor; 
+	private String chatColor;
+	private String theme;
 
 	public User() {
 	}
@@ -23,6 +24,26 @@ public class User {
 		this.username = username;
 		this.roleName = roleName;
 	}
+
+	/**
+	 * A central method to determine if the user has any permission that grants them
+	 * access to the admin panel. This prevents logic duplication in filters and
+	 * navigation builders.
+	 *
+	 * @return true if the user has any admin-level permission, false otherwise.
+	 */
+	public boolean hasAdminAccess() {
+		if (permissions == null) {
+			return false;
+		}
+		// A user has admin access if they have the master key OR any other specific
+		// admin-level permission.
+		return permissions.contains("ACCESS_ADMIN_PANEL") || permissions.stream()
+				.anyMatch(p -> !"ACCESS_ADMIN_PANEL".equals(p) && (p.contains("_READ") || p.contains("_MANAGE")
+						|| p.contains("_UPDATE") || p.contains("_CREATE") || p.contains("_DELETE")));
+	}
+
+	// --- Standard Getters and Setters ---
 
 	public int getId() {
 		return id;
@@ -98,11 +119,19 @@ public class User {
 
 	public String getChatColor() {
 		return chatColor;
-	} 
+	}
 
 	public void setChatColor(String chatColor) {
 		this.chatColor = chatColor;
-	} 
+	}
+
+	public String getTheme() {
+		return theme;
+	}
+
+	public void setTheme(String theme) {
+		this.theme = theme;
+	}
 
 	public String getFormattedCreatedAt() {
 		return de.technikteam.config.DateFormatter.formatDateTime(this.createdAt);

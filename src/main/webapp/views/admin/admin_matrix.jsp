@@ -16,6 +16,10 @@
 
 <c:import url="/WEB-INF/jspf/message_banner.jspf" />
 
+<div class="horizontal-scroll-hint">
+	<i class="fas fa-arrows-alt-h"></i> Tabelle ist seitlich scrollbar
+</div>
+
 <div class="table-wrapper">
 	<table class="data-table">
 		<thead>

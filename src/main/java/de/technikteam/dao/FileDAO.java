@@ -66,7 +66,6 @@ public class FileDAO {
 	public Map<String, List<File>> getAllFilesGroupedByCategory(User user) {
 		logger.debug("Fetching all files grouped by category for user role: {}", user.getRoleName());
 
-		// 1. Fetch all categories into a map for easy lookup
 		Map<Integer, String> categoryIdToNameMap = new HashMap<>();
 		try (Connection conn = DatabaseManager.getConnection();
 				Statement stmt = conn.createStatement();
@@ -79,7 +78,6 @@ public class FileDAO {
 			return new HashMap<>();
 		}
 
-		// 2. Fetch all files
 		List<File> files = new ArrayList<>();
 		String sql = "SELECT * FROM files ";
 
@@ -94,7 +92,6 @@ public class FileDAO {
 				ResultSet rs = stmt.executeQuery(sql)) {
 
 			while (rs.next()) {
-				// 3. Map file and set category name from the Java map
 				File file = new File();
 				file.setId(rs.getInt("id"));
 				file.setFilename(rs.getString("filename"));
@@ -115,7 +112,6 @@ public class FileDAO {
 			logger.error("SQL error while fetching files.", e);
 		}
 
-		// 4. Group by the now-correct category name
 		return files.stream().collect(Collectors.groupingBy(File::getCategoryName));
 	}
 
@@ -140,6 +136,46 @@ public class FileDAO {
 			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
 			logger.error("SQL error creating file record for '{}'", file.getFilename(), e);
+			return false;
+		}
+	}
+
+	/**
+	 * Updates the metadata of an existing file record, typically after a new
+	 * version is uploaded. It updates the filename and the timestamp.
+	 * 
+	 * @param file The File object with the updated data (must include ID).
+	 * @return true if the update was successful.
+	 */
+	public boolean updateFileRecord(File file) {
+		String sql = "UPDATE files SET filename = ?, filepath = ?, uploaded_at = CURRENT_TIMESTAMP WHERE id = ?";
+		logger.debug("Updating file record for ID {}", file.getId());
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setString(1, file.getFilename());
+			pstmt.setString(2, file.getFilepath());
+			pstmt.setInt(3, file.getId());
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("SQL error updating file record for ID {}", file.getId(), e);
+			return false;
+		}
+	}
+
+	/**
+	 * Updates the timestamp of a file record to the current time. Used by WOPI to
+	 * indicate a new version has been saved.
+	 * 
+	 * @param fileId The ID of the file to "touch".
+	 * @return true if the update was successful.
+	 */
+	public boolean touchFileRecord(int fileId) {
+		String sql = "UPDATE files SET uploaded_at = CURRENT_TIMESTAMP WHERE id = ?";
+		logger.debug("Touching file record for ID {}", fileId);
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, fileId);
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("SQL error touching file record for ID {}", fileId, e);
 			return false;
 		}
 	}

@@ -25,10 +25,13 @@ public class Event {
 	private List<User> assignedAttendees;
 	private List<EventTask> eventTasks;
 	private List<EventChatMessage> chatMessages;
-	private List<EventAttachment> attachments;
+	private List<Attachment> attachments;
 	private List<StorageItem> reservedItems;
 	private String leaderUsername;
-	private List<EventCustomField> customFields; 
+	private List<EventCustomField> customFields;
+
+	// Transient field for view logic
+	private boolean isUserQualified;
 
 	public Event() {
 	}
@@ -145,11 +148,11 @@ public class Event {
 		this.chatMessages = chatMessages;
 	}
 
-	public List<EventAttachment> getAttachments() {
+	public List<Attachment> getAttachments() {
 		return attachments;
 	}
 
-	public void setAttachments(List<EventAttachment> attachments) {
+	public void setAttachments(List<Attachment> attachments) {
 		this.attachments = attachments;
 	}
 
@@ -167,6 +170,14 @@ public class Event {
 
 	public void setCustomFields(List<EventCustomField> customFields) {
 		this.customFields = customFields;
+	}
+
+	public boolean isUserQualified() {
+		return isUserQualified;
+	}
+
+	public void setUserQualified(boolean isUserQualified) {
+		this.isUserQualified = isUserQualified;
 	}
 
 	public String getFormattedEventDateTime() {

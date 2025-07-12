@@ -7,7 +7,9 @@ import org.apache.logging.log4j.Logger;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * DAO for managing inventory kits and their contents.
@@ -16,11 +18,12 @@ public class InventoryKitDAO {
 	private static final Logger logger = LogManager.getLogger(InventoryKitDAO.class);
 
 	public int createKit(InventoryKit kit) {
-		String sql = "INSERT INTO inventory_kits (name, description) VALUES (?, ?)";
+		String sql = "INSERT INTO inventory_kits (name, description, location) VALUES (?, ?, ?)";
 		try (Connection conn = DatabaseManager.getConnection();
 				PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 			pstmt.setString(1, kit.getName());
 			pstmt.setString(2, kit.getDescription());
+			pstmt.setString(3, kit.getLocation());
 			int affectedRows = pstmt.executeUpdate();
 			if (affectedRows > 0) {
 				try (ResultSet rs = pstmt.getGeneratedKeys()) {
@@ -54,7 +57,8 @@ public class InventoryKitDAO {
 		kit.setId(rs.getInt("id"));
 		kit.setName(rs.getString("name"));
 		kit.setDescription(rs.getString("description"));
-		kit.setLocation(rs.getString("location")); 
+		kit.setLocation(rs.getString("location"));
+		kit.setItems(new ArrayList<>()); // Initialize item list
 		return kit;
 	}
 
@@ -84,19 +88,50 @@ public class InventoryKitDAO {
 		}
 	}
 
-	public List<InventoryKit> getAllKits() {
-		List<InventoryKit> kits = new ArrayList<>();
-		String sql = "SELECT * FROM inventory_kits ORDER BY name";
+	/**
+	 * Efficiently fetches all kits and their associated items in a single query to
+	 * avoid the N+1 problem.
+	 *
+	 * @return A list of InventoryKit objects, each populated with its list of
+	 *         items.
+	 */
+	public List<InventoryKit> getAllKitsWithItems() {
+		Map<Integer, InventoryKit> kitMap = new LinkedHashMap<>();
+		String sql = "SELECT k.id, k.name, k.description, k.location, "
+				+ "ki.item_id, ki.quantity, si.name as item_name " + "FROM inventory_kits k "
+				+ "LEFT JOIN inventory_kit_items ki ON k.id = ki.kit_id "
+				+ "LEFT JOIN storage_items si ON ki.item_id = si.id " + "ORDER BY k.name, si.name";
+
 		try (Connection conn = DatabaseManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
+
 			while (rs.next()) {
-				kits.add(mapResultSetToKit(rs));
+				int kitId = rs.getInt("id");
+				InventoryKit kit = kitMap.computeIfAbsent(kitId, id -> {
+					try {
+						return mapResultSetToKit(rs);
+					} catch (SQLException e) {
+						throw new RuntimeException(e);
+					}
+				});
+
+				if (rs.getInt("item_id") > 0) {
+					InventoryKitItem item = new InventoryKitItem();
+					item.setKitId(kitId);
+					item.setItemId(rs.getInt("item_id"));
+					item.setQuantity(rs.getInt("quantity"));
+					item.setItemName(rs.getString("item_name"));
+					kit.getItems().add(item);
+				}
 			}
 		} catch (SQLException e) {
-			logger.error("Error fetching all inventory kits", e);
+			logger.error("Error fetching all kits with their items", e);
+		} catch (RuntimeException e) {
+			// Un-wrap SQLException from the lambda
+			logger.error("Error mapping result set in kit fetching", e.getCause());
 		}
-		return kits;
+		return new ArrayList<>(kitMap.values());
 	}
 
 	public List<InventoryKitItem> getItemsForKit(int kitId) {
@@ -124,10 +159,8 @@ public class InventoryKitDAO {
 	public boolean updateKitItems(int kitId, String[] itemIds, String[] quantities) {
 		String deleteSql = "DELETE FROM inventory_kit_items WHERE kit_id = ?";
 		String insertSql = "INSERT INTO inventory_kit_items (kit_id, item_id, quantity) VALUES (?, ?, ?)";
-		Connection conn = null;
 
-		try {
-			conn = DatabaseManager.getConnection();
+		try (Connection conn = DatabaseManager.getConnection()) {
 			conn.setAutoCommit(false);
 
 			try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
@@ -153,29 +186,31 @@ public class InventoryKitDAO {
 					insertStmt.executeBatch();
 				}
 			}
-
-			conn.commit(); 
+			conn.commit();
 			logger.info("Successfully updated items for kit ID: {}", kitId);
 			return true;
 		} catch (SQLException | NumberFormatException e) {
-			logger.error("Error during transaction for updating kit items for kit ID {}. Rolling back.", kitId, e);
-			if (conn != null) {
-				try {
-					conn.rollback();
-				} catch (SQLException ex) {
-					logger.error("Failed to rollback transaction.", ex);
-				}
-			}
+			logger.error(
+					"Error during transaction for updating kit items for kit ID {}. Transaction will be rolled back.",
+					kitId, e);
+			// Rollback is handled automatically by the try-with-resources on the Connection
+			// when an exception occurs.
 			return false;
-		} finally {
-			if (conn != null) {
-				try {
-					conn.setAutoCommit(true);
-					conn.close();
-				} catch (SQLException ex) {
-					logger.error("Failed to close connection after kit item update.", ex);
-				}
-			}
 		}
+	}
+
+	public List<InventoryKit> getAllKits() {
+		List<InventoryKit> kits = new ArrayList<>();
+		String sql = "SELECT * FROM inventory_kits ORDER BY name";
+		try (Connection conn = DatabaseManager.getConnection();
+				Statement stmt = conn.createStatement();
+				ResultSet rs = stmt.executeQuery(sql)) {
+			while (rs.next()) {
+				kits.add(mapResultSetToKit(rs));
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching all inventory kits", e);
+		}
+		return kits;
 	}
 }

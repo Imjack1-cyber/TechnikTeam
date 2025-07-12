@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			removeBtn.innerHTML = '×';
 			removeBtn.onclick = () => onRemove(row);
 			row.appendChild(removeBtn);
-			container.appendChild(row);
+			container.appendChild(newRow);
 			return row;
 		};
 
@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					case 'message_updated':
 						const messageTextElement = document.getElementById(`message-text-${data.payload.messageId}`);
 						const editedMarkerElement = document.getElementById(`message-edited-marker-${data.payload.messageId}`);
-						if (messageTextElement) messageTextElement.textContent = data.payload.newText;
+						if (messageTextElement) messageTextElement.innerHTML = marked.parse(data.payload.newText, { sanitize: true });;
 						if (editedMarkerElement) editedMarkerElement.style.display = 'inline';
 						break;
 				}
@@ -297,7 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			const textElement = document.createElement('span');
 			textElement.className = 'chat-text';
 			textElement.id = `message-text-${message.id}`;
-			textElement.textContent = message.messageText;
+			textElement.innerHTML = marked.parse(message.messageText, { sanitize: true });
 
 			const timeElement = document.createElement('span');
 			timeElement.className = 'chat-timestamp';
@@ -422,6 +422,30 @@ document.addEventListener('DOMContentLoaded', () => {
 					if (messages && messages.length > 0) messages.forEach(appendMessage);
 				}).catch(error => console.error("Error fetching initial chat messages:", error));
 		};
+
+		chatInput.addEventListener('keyup', (e) => {
+			const popup = document.getElementById('mention-popup');
+			if (e.key === '@') {
+				const assignedUsers = JSON.parse(document.getElementById('allUsersData')?.textContent || '[]');
+				if (assignedUsers.length > 0) {
+					popup.innerHTML = assignedUsers.map(u => `<div class="mention-item" data-username="${u.username}">${u.username}</div>`).join('');
+					popup.style.display = 'block';
+				}
+			} else if (popup.style.display === 'block' && e.key !== 'Shift') { // Avoid closing on shift
+				popup.style.display = 'none';
+			}
+		});
+
+		document.getElementById('mention-popup').addEventListener('click', (e) => {
+			if (e.target.classList.contains('mention-item')) {
+				const username = e.target.dataset.username;
+				const text = chatInput.value;
+				const atIndex = text.lastIndexOf('@');
+				chatInput.value = text.substring(0, atIndex + 1) + username + ' ';
+				document.getElementById('mention-popup').style.display = 'none';
+				chatInput.focus();
+			}
+		});
 
 		chatForm.addEventListener('submit', (event) => {
 			event.preventDefault();

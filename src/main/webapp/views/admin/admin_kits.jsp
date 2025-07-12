@@ -28,8 +28,7 @@
 	<c:forEach var="kit" items="${kits}">
 		<div class="kit-container"
 			style="border-bottom: 1px solid var(--border-color); padding-bottom: 1.5rem; margin-bottom: 1.5rem;">
-			<div class="kit-header"
-				style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+			<div class="kit-header">
 				<div>
 					<h3>
 						<i class="fas fa-chevron-down toggle-icon"></i>
@@ -40,7 +39,7 @@
 						<c:out value="${kit.description}" />
 					</p>
 				</div>
-				<div style="display: flex; gap: 0.5rem;">
+				<div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
 					<c:set var="absoluteActionUrl"
 						value="${pageContext.request.scheme}://${pageContext.request.serverName}:${pageContext.request.serverPort}${pageContext.request.contextPath}/pack-kit?kitId=${kit.id}" />
 					<c:set var="qrApiUrl"

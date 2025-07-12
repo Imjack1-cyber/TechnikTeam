@@ -15,8 +15,7 @@
 
 <c:import url="/WEB-INF/jspf/message_banner.jspf" />
 
-<div class="dashboard-grid"
-	style="grid-template-columns: 1fr 2fr; align-items: start;">
+<div class="file-manager-layout">
 
 	<div class="card">
 		<h2>Aktionen</h2>
@@ -36,11 +35,13 @@
 
 		<hr>
 
-		<h3 style="margin-top: 1.5rem;">Datei hochladen</h3>
-		<form action="${pageContext.request.contextPath}/admin/dateien"
+		<h3 style="margin-top: 1.5rem;">Neue Datei hochladen</h3>
+		<%-- This form now correctly points to the unified AdminFileServlet --%>
+		<form action="${pageContext.request.contextPath}/admin/uploadFile"
 			method="post" enctype="multipart/form-data">
 			<input type="hidden" name="csrfToken"
-				value="${sessionScope.csrfToken}">
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="create">
 			<div class="form-group">
 				<label for="file">Datei auswählen</label> <input type="file"
 					name="file" id="file" class="file-input" data-max-size="20971520"
@@ -59,7 +60,7 @@
 			<div class="form-group">
 				<label for="requiredRole">Sichtbar für</label> <select
 					name="requiredRole" id="requiredRole">
-					<option value="NUTZER" selected>Alle Nutzer</option>
+					<option value="NUTZER" selected>Alle zugeordneten Nutzer</option>
 					<option value="ADMIN">Nur Admins</option>
 				</select>
 			</div>
@@ -90,24 +91,47 @@
 					<c:forEach var="file" items="${categoryEntry.value}">
 						<li>
 							<div class="file-info">
-								<a href="<c:url value='/download?type=file&id=${file.id}'/>"
-									title="Datei herunterladen"><c:out value="${file.filename}" /></a>
-								<small class="file-meta">(Sichtbar für: <c:out
-										value="${file.requiredRole}" />)
-								</small>
+								<c:choose>
+									<c:when
+										test="${fn:endsWith(fn:toLowerCase(file.filename), '.odt') or fn:endsWith(fn:toLowerCase(file.filename), '.ods') or fn:endsWith(fn:toLowerCase(file.filename), '.odp')}">
+										<c:url var="editorUrl" value="/editor">
+											<c:param name="fileId" value="${file.id}" />
+										</c:url>
+										<a href="${editorUrl}" title="Datei im Editor öffnen"> <i
+											class="fas fa-edit"></i> <c:out value="${file.filename}" />
+										</a>
+									</c:when>
+									<c:otherwise>
+										<a href="<c:url value='/download?id=${file.id}'/>"
+											title="Datei herunterladen"> <i class="fas fa-download"></i>
+											<c:out value="${file.filename}" />
+										</a>
+									</c:otherwise>
+								</c:choose>
+								<small class="file-meta">Sichtbar für: <c:out
+										value="${file.requiredRole}" /></small>
 							</div>
-							<form action="${pageContext.request.contextPath}/admin/dateien"
-								method="post" class="js-confirm-form"
-								data-confirm-message="Datei '${fn:escapeXml(file.filename)}' wirklich löschen?">
-								<input type="hidden" name="csrfToken"
-									value="${sessionScope.csrfToken}"> <input type="hidden"
-									name="action" value="delete"> <input type="hidden"
-									name="fileId" value="${file.id}">
-								<button type="submit" class="btn btn-small btn-danger-outline"
-									title="Löschen">
-									<i class="fas fa-trash-alt"></i>
+							<div class="file-actions"
+								style="display: flex; gap: 0.5rem; align-items: center;">
+								<button type="button"
+									class="btn btn-small btn-secondary upload-new-version-btn"
+									data-file-id="${file.id}"
+									data-file-name="${fn:escapeXml(file.filename)}">
+									<i class="fas fa-upload"></i> Neue Version
 								</button>
-							</form>
+								<form
+									action="${pageContext.request.contextPath}/admin/dateien/loeschen"
+									method="post" class="js-confirm-form"
+									data-confirm-message="Datei '${fn:escapeXml(file.filename)}' wirklich löschen?">
+									<input type="hidden" name="csrfToken"
+										value="${sessionScope.csrfToken}"> <input
+										type="hidden" name="fileId" value="${file.id}">
+									<button type="submit" class="btn btn-small btn-danger-outline"
+										title="Löschen">
+										<i class="fas fa-trash-alt"></i>
+									</button>
+								</form>
+							</div>
 						</li>
 					</c:forEach>
 				</ul>
@@ -116,5 +140,37 @@
 	</div>
 </div>
 
+<!-- Modal for uploading a new version -->
+<div class="modal-overlay" id="upload-version-modal">
+	<div class="modal-content">
+		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
+		<h3 id="upload-modal-title">Neue Version hochladen</h3>
+		<form id="upload-version-form"
+			action="${pageContext.request.contextPath}/admin/uploadFile"
+			method="post" enctype="multipart/form-data">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="update"> <input type="hidden"
+				name="fileId" id="upload-file-id">
+			<p>
+				Sie sind dabei, eine neue Version für die Datei <strong
+					id="upload-file-name"></strong> hochzuladen. Die alte Version wird
+				dabei überschrieben.
+			</p>
+			<div class="form-group">
+				<label for="new-file-version">Neue Datei auswählen (muss
+					denselben Dateityp haben)</label> <input type="file" name="file"
+					id="new-file-version" class="file-input" data-max-size="20971520"
+					required> <small class="file-size-warning">Datei
+					ist zu groß! (Max. 20 MB)</small>
+			</div>
+			<button type="submit" class="btn btn-success">
+				<i class="fas fa-cloud-upload-alt"></i> Jetzt hochladen
+			</button>
+		</form>
+	</div>
+</div>
+
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
 <script src="${pageContext.request.contextPath}/js/admin/admin_files.js"></script>
+<script src="${pageContext.request.contextPath}/js/public/dateien.js"></script>

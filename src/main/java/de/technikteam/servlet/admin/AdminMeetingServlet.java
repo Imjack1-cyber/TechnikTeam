@@ -3,13 +3,13 @@ package de.technikteam.servlet.admin;
 import de.technikteam.config.AppConfig;
 import de.technikteam.config.LocalDateAdapter;
 import de.technikteam.config.LocalDateTimeAdapter;
+import de.technikteam.dao.AttachmentDAO;
 import de.technikteam.dao.CourseDAO;
-import de.technikteam.dao.MeetingAttachmentDAO;
 import de.technikteam.dao.MeetingDAO;
 import de.technikteam.dao.UserDAO;
+import de.technikteam.model.Attachment;
 import de.technikteam.model.Course;
 import de.technikteam.model.Meeting;
-import de.technikteam.model.MeetingAttachment;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.util.CSRFUtil;
@@ -42,7 +42,7 @@ public class AdminMeetingServlet extends HttpServlet {
 	private static final Logger logger = LogManager.getLogger(AdminMeetingServlet.class);
 	private MeetingDAO meetingDAO;
 	private CourseDAO courseDAO;
-	private MeetingAttachmentDAO attachmentDAO;
+	private AttachmentDAO attachmentDAO;
 	private UserDAO userDAO;
 	private Gson gson;
 
@@ -50,7 +50,7 @@ public class AdminMeetingServlet extends HttpServlet {
 	public void init() {
 		meetingDAO = new MeetingDAO();
 		courseDAO = new CourseDAO();
-		attachmentDAO = new MeetingAttachmentDAO();
+		attachmentDAO = new AttachmentDAO();
 		userDAO = new UserDAO();
 		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
 				.registerTypeAdapter(java.time.LocalDate.class, new LocalDateAdapter()).create();
@@ -117,7 +117,7 @@ public class AdminMeetingServlet extends HttpServlet {
 			int meetingId = Integer.parseInt(req.getParameter("id"));
 			Meeting meeting = meetingDAO.getMeetingById(meetingId);
 			if (meeting != null) {
-				List<MeetingAttachment> attachments = attachmentDAO.getAttachmentsForMeeting(meetingId, "ADMIN");
+				List<Attachment> attachments = attachmentDAO.getAttachmentsForParent("MEETING", meetingId, "ADMIN");
 				Map<String, Object> responseData = new HashMap<>();
 				responseData.put("meetingData", meeting);
 				responseData.put("attachmentsData", attachments);
@@ -230,7 +230,7 @@ public class AdminMeetingServlet extends HttpServlet {
 		int courseId = Integer.parseInt(req.getParameter("courseId"));
 		logger.warn("Attempting to delete attachment ID {}", attachmentId);
 
-		MeetingAttachment attachment = attachmentDAO.getAttachmentById(attachmentId);
+		Attachment attachment = attachmentDAO.getAttachmentById(attachmentId);
 		if (attachment != null) {
 			File physicalFile = new File(AppConfig.UPLOAD_DIRECTORY, attachment.getFilepath());
 
@@ -239,8 +239,8 @@ public class AdminMeetingServlet extends HttpServlet {
 			}
 
 			if (attachmentDAO.deleteAttachment(attachmentId)) {
-				AdminLogService.log(adminUser.getUsername(), "DELETE_MEETING_ATTACHMENT", "Anhang '"
-						+ attachment.getFilename() + "' von Meeting ID " + attachment.getMeetingId() + " gelöscht.");
+				AdminLogService.log(adminUser.getUsername(), "DELETE_ATTACHMENT", "Anhang '" + attachment.getFilename()
+						+ "' von Meeting ID " + attachment.getParentId() + " gelöscht.");
 				req.getSession().setAttribute("successMessage", "Anhang gelöscht.");
 			} else {
 				req.getSession().setAttribute("errorMessage", "Anhang konnte nicht aus DB gelöscht werden.");
@@ -260,8 +260,9 @@ public class AdminMeetingServlet extends HttpServlet {
 		File targetFile = new File(uploadDir, fileName);
 		filePart.write(targetFile.getAbsolutePath());
 
-		MeetingAttachment attachment = new MeetingAttachment();
-		attachment.setMeetingId(meetingId);
+		Attachment attachment = new Attachment();
+		attachment.setParentId(meetingId);
+		attachment.setParentType("MEETING");
 		attachment.setFilename(fileName);
 		attachment.setFilepath("meetings/" + fileName);
 		attachment.setRequiredRole(requiredRole);

@@ -3,10 +3,11 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
 <c:import url="/WEB-INF/jspf/main_header.jspf">
-	<c:param name="pageTitle" value="Dateien" />
+	<c:param name="pageTitle" value="Dateien & Dokumente" />
 </c:import>
 
 <h1>Dateien & Dokumente</h1>
+<p>Hier können Sie zentrale Dokumente und Vorlagen herunterladen.</p>
 
 <c:import url="/WEB-INF/jspf/message_banner.jspf" />
 
@@ -19,23 +20,14 @@
 <c:forEach var="categoryEntry" items="${fileData}">
 	<div class="card">
 		<h2>
+			<i class="fas fa-folder"></i>
 			<c:out value="${categoryEntry.key}" />
 		</h2>
-		<ul style="list-style: none; padding-left: 0;">
+		<ul class="file-list">
 			<c:forEach var="file" items="${categoryEntry.value}" varStatus="loop">
-				<li
-					style="padding: 0.75rem 0; ${!loop.last ? 'border-bottom: 1px solid var(--border-color);' : ''}">
-					<c:choose>
-						<c:when test="${file.id == -1}">
-							<a href="${pageContext.request.contextPath}/editor-page"
-								style="font-weight: 600;"><c:out value="${file.filename}" /></a>
-						</c:when>
-						<c:otherwise>
-							<a href="<c:url value='/download?type=file&id=${file.id}'/>"><c:out
-									value="${file.filename}" /></a>
-						</c:otherwise>
-					</c:choose>
-				</li>
+				<li style="padding: 0.75rem 0;"><a
+					href="<c:url value='/download?id=${file.id}'/>"><i
+						class="fas fa-download"></i> <c:out value="${file.filename}" /></a></li>
 			</c:forEach>
 		</ul>
 	</div>

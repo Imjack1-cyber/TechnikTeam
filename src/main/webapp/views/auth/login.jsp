@@ -20,9 +20,13 @@
 					autofocus>
 			</div>
 			<div class="form-group">
-				<label for="password">Passwort</label> <input type="password"
-					id="password" name="password" required
-					autocomplete="current-password">
+				<label for="password">Passwort</label>
+				<div class="password-input-wrapper">
+					<input type="password" id="password" name="password" required
+						autocomplete="current-password"> <span id="togglePassword"
+						class="password-toggle-icon"> <i class="fas fa-eye"></i>
+					</span>
+				</div>
 			</div>
 			<button type="submit" class="btn" style="width: 100%;">Anmelden</button>
 		</form>
@@ -30,3 +34,18 @@
 </div>
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script>
+	document.addEventListener('DOMContentLoaded', () => {
+		const togglePassword = document.getElementById('togglePassword');
+		const passwordInput = document.getElementById('password');
+
+		if (togglePassword && passwordInput) {
+			togglePassword.addEventListener('click', function() {
+				const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+				passwordInput.setAttribute('type', type);
+				this.querySelector('i').classList.toggle('fa-eye');
+				this.querySelector('i').classList.toggle('fa-eye-slash');
+			});
+		}
+	});
+</script>

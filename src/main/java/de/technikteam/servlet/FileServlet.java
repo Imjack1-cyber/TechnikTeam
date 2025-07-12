@@ -19,9 +19,7 @@ import org.apache.logging.log4j.Logger;
 /**
  * Mapped to `/dateien`, this servlet handles the display of the main files and
  * documents page for users. It fetches all files the user is permitted to see,
- * grouped by category. In a unique step, it programmatically injects a
- * "virtual" file entry that links to the collaborative live editor, placing it
- * in a specific category for a seamless user experience.
+ * grouped by category.
  */
 @WebServlet("/dateien")
 public class FileServlet extends HttpServlet {
@@ -43,17 +41,8 @@ public class FileServlet extends HttpServlet {
 
 		Map<String, List<File>> fileData = fileDAO.getAllFilesGroupedByCategory(user);
 
-		File collaborativeFile = new File();
-		collaborativeFile.setId(-1); 
-		collaborativeFile.setFilename("Gemeinsamer Notizblock (Live-Editor)");
-		collaborativeFile.setFilepath(null); 
-
-		String virtualCategoryName = "Allgemeine Dokumente";
-		List<File> generalFiles = fileData.computeIfAbsent(virtualCategoryName, k -> new ArrayList<>());
-		generalFiles.add(0, collaborativeFile); 
-
 		request.setAttribute("fileData", fileData);
-		logger.debug("Forwarding file data (including virtual editor link) to dateien.jsp.");
+		logger.debug("Forwarding file data to dateien.jsp.");
 		request.getRequestDispatcher("/views/public/dateien.jsp").forward(request, response);
 	}
 }

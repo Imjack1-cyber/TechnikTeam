@@ -27,7 +27,7 @@ public class AuthenticationFilter implements Filter {
 	private static final Set<String> PUBLIC_PATHS = new HashSet<>(Arrays.asList("/login", "/logout", "/calendar.ics"));
 
 	private static final Set<String> PUBLIC_RESOURCE_PREFIXES = new HashSet<>(
-			Arrays.asList("/css", "/js", "/images", "/error", "/public"));
+			Arrays.asList("/css", "/js", "/images", "/error", "/public", "/vendor", "/wopi"));
 
 	@Override
 	public void init(FilterConfig filterConfig) throws ServletException {
@@ -44,22 +44,32 @@ public class AuthenticationFilter implements Filter {
 		HttpSession session = request.getSession(false);
 
 		String contextPath = request.getContextPath();
-		String path = request.getRequestURI().substring(contextPath.length());
+		String requestUri = request.getRequestURI();
+
+		// Strip jsessionid from the path, if present
+		String path = requestUri.substring(contextPath.length());
+		int semicolonIndex = path.indexOf(';');
+		if (semicolonIndex != -1) {
+			path = path.substring(0, semicolonIndex);
+		}
 
 		logger.trace("AuthenticationFilter processing request for path: '{}'", path);
 
 		boolean isLoggedIn = (session != null && session.getAttribute("user") != null);
 
-		boolean isPublicResource = PUBLIC_PATHS.contains(path)
-				|| PUBLIC_RESOURCE_PREFIXES.stream().anyMatch(path::startsWith);
+		// Assign to a final variable to be used in lambda, ensuring compiler
+		// compatibility
+		final String finalPath = path;
+		boolean isPublicResource = PUBLIC_PATHS.contains(finalPath)
+				|| PUBLIC_RESOURCE_PREFIXES.stream().anyMatch(prefix -> finalPath.startsWith(prefix));
 
 		if (isLoggedIn || isPublicResource) {
-			logger.trace("Access granted for path '{}'. LoggedIn: {}, IsPublic: {}", path, isLoggedIn,
+			logger.trace("Access granted for path '{}'. LoggedIn: {}, IsPublic: {}", finalPath, isLoggedIn,
 					isPublicResource);
 			chain.doFilter(request, response);
 		} else {
 			logger.warn("Unauthorized access attempt by a guest to protected path: '{}'. Redirecting to login page.",
-					path);
+					finalPath);
 			response.sendRedirect(contextPath + "/login");
 		}
 	}

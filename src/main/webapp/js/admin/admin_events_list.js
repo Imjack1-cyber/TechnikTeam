@@ -32,6 +32,8 @@ document.addEventListener('DOMContentLoaded', () => {
 	const cfContainer = document.getElementById('modal-custom-fields-container');
 	const attachmentsList = document.getElementById('modal-attachments-list');
 	const kitSelect = document.getElementById('kit-selection-modal');
+	const findCrewBtn = document.getElementById('find-crew-btn');
+	const findCrewModal = document.getElementById('find-crew-modal');
 
 	const allCourses = JSON.parse(document.getElementById('allCoursesData').textContent);
 	const allItems = JSON.parse(document.getElementById('allItemsData').textContent);
@@ -120,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	const addAttachmentRow = (id, filename, filepath) => {
 		const li = document.createElement('li'); li.id = `attachment-item-${id}`;
-		li.innerHTML = `<a href="${contextPath}/download?type=event&id=${id}" target="_blank">${filename}</a>`;
+		li.innerHTML = `<a href="${contextPath}/download?id=${id}" target="_blank">${filename}</a>`;
 		const removeBtn = document.createElement('button'); removeBtn.type = 'button'; removeBtn.className = 'btn btn-small btn-danger-outline';
 		removeBtn.innerHTML = '×';
 		removeBtn.onclick = () => {
@@ -162,6 +164,44 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 			kitSelect.value = '';
 		});
+	}
+
+	if (findCrewBtn) {
+		findCrewBtn.addEventListener('click', async () => {
+			const eventId = document.getElementById('event-modal-id').value;
+			if (!eventId) {
+				alert("Bitte speichern Sie das Event zuerst.");
+				return;
+			}
+			const crewListContainer = document.getElementById('find-crew-list');
+			crewListContainer.innerHTML = '<p>Suche nach qualifizierter Crew...</p>';
+			findCrewModal.classList.add('active');
+			try {
+				const response = await fetch(`${contextPath}/api/admin/crew-finder?eventId=${eventId}`);
+				if (!response.ok) throw new Error('Could not find crew members.');
+				const users = await response.json();
+
+				document.getElementById('find-crew-event-id').value = eventId;
+				crewListContainer.innerHTML = '';
+
+				if (users.length > 0) {
+					users.forEach(user => {
+						crewListContainer.innerHTML += `
+							<label class="checkbox-label" style="padding: 0.5rem; border-bottom: 1px solid var(--border-color);">
+								<input type="checkbox" name="userIds" value="${user.id}">
+								${user.username}
+							</label>`;
+					});
+				} else {
+					crewListContainer.innerHTML = '<p>Keine passenden und verfügbaren Benutzer gefunden.</p>';
+				}
+
+			} catch (e) {
+				console.error("Error finding crew:", e);
+				crewListContainer.innerHTML = '<p class="error-message">Fehler bei der Crew-Suche.</p>';
+			}
+		});
+		findCrewModal.querySelector('.modal-close-btn').addEventListener('click', () => findCrewModal.classList.remove('active'));
 	}
 
 	document.getElementById('modal-add-requirement-btn').addEventListener('click', () => addRequirementRow());

@@ -2,6 +2,7 @@ package de.technikteam.servlet;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import de.technikteam.dao.EventDAO;
 import de.technikteam.model.Event;
@@ -17,9 +18,8 @@ import org.apache.logging.log4j.Logger;
 /**
  * Mapped to `/veranstaltungen`, this servlet is responsible for the main event
  * listing page for a logged-in user. It fetches a list of all upcoming events
- * for which the user is qualified, along with their specific attendance status
- * for each event (e.g., ZUGEWIESEN, ANGEMELDET, OFFEN). It then passes this
- * data to `events.jsp`.
+ * and enriches each with user-specific data, such as attendance status and
+ * qualification status.
  */
 @WebServlet("/veranstaltungen")
 public class EventServlet extends HttpServlet {
@@ -37,11 +37,31 @@ public class EventServlet extends HttpServlet {
 		User user = (User) request.getSession().getAttribute("user");
 		logger.info("Fetching upcoming events for user '{}' (ID: {})", user.getUsername(), user.getId());
 
-		List<Event> events = eventDAO.getUpcomingEventsForUser(user, 0); 
+		// Fetch all active/upcoming events first
+		List<Event> allUpcomingEvents = eventDAO.getAllActiveAndUpcomingEvents();
 
-		request.setAttribute("events", events);
-		logger.debug("Found {} upcoming events for user '{}'. Forwarding to veranstaltungen.jsp.", events.size(),
-				user.getUsername());
+		// Fetch events the user is qualified for to determine signup eligibility and
+		// status
+		List<Event> qualifiedEvents = eventDAO.getUpcomingEventsForUser(user, 0);
+		List<Integer> qualifiedEventIds = qualifiedEvents.stream().map(Event::getId).collect(Collectors.toList());
+
+		// Enrich all events with user-specific data
+		for (Event event : allUpcomingEvents) {
+			// Is the user qualified?
+			event.setUserQualified(qualifiedEventIds.contains(event.getId()));
+
+			// What is the user's status for this event?
+			qualifiedEvents.stream().filter(qe -> qe.getId() == event.getId()).findFirst()
+					.ifPresent(qe -> event.setUserAttendanceStatus(qe.getUserAttendanceStatus()));
+
+			if (event.getUserAttendanceStatus() == null) {
+				event.setUserAttendanceStatus("OFFEN");
+			}
+		}
+
+		request.setAttribute("events", allUpcomingEvents);
+		logger.debug("Found {} upcoming events for user '{}'. Forwarding to veranstaltungen.jsp.",
+				allUpcomingEvents.size(), user.getUsername());
 		request.getRequestDispatcher("/views/public/events.jsp").forward(request, response);
 	}
 }

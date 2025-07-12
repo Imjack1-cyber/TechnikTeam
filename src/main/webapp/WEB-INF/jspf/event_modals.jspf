@@ -58,7 +58,8 @@
 					</div>
 				</div>
 				<div class="form-group">
-					<label for="description-modal">Beschreibung</label>
+					<label for="description-modal">Beschreibung (Markdown wird
+						unterstützt)</label>
 					<textarea id="description-modal" name="description" rows="3"></textarea>
 				</div>
 			</div>
@@ -72,6 +73,10 @@
 				<button type="button" class="btn btn-small"
 					id="modal-add-requirement-btn" style="margin-top: 1rem;">
 					<i class="fas fa-plus"></i> Bedarf hinzufügen
+				</button>
+				<button type="button" class="btn btn-info" id="find-crew-btn"
+					style="margin-top: 1rem; margin-left: 1rem;">
+					<i class="fas fa-search"></i> Crew finden
 				</button>
 			</div>
 

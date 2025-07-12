@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	const contextPath = document.body.dataset.contextPath || '';
 
+	// --- MOBILE NAVIGATION ---
 	const navToggle = document.querySelector('.mobile-nav-toggle');
 	const pageOverlay = document.querySelector('.page-overlay');
 	if (navToggle) {
@@ -20,29 +21,55 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	}
 
+	// --- ACTIVE NAV LINK HIGHLIGHTING ---
 	const currentPath = window.location.pathname;
 	document.querySelectorAll('.sidebar-nav a').forEach(link => {
-		if (link.getAttribute('href') === currentPath) {
+		const linkPath = link.getAttribute('href');
+		if (linkPath === currentPath) {
+			link.classList.add('active-nav-link');
+		} else if (currentPath.startsWith(linkPath) && linkPath !== `${contextPath}/home`) {
+			// Make parent links active, e.g., /admin/lehrgaenge for /admin/meetings
 			link.classList.add('active-nav-link');
 		}
 	});
 
 
-	const themeSwitch = document.getElementById('theme-toggle');
-	const currentTheme = localStorage.getItem('theme') || 'light';
+	// --- THEME SWITCHER (SYNCED) ---
+	const themeSwitches = document.querySelectorAll('.theme-switcher input[type="checkbox"]');
+	const currentTheme = document.documentElement.dataset.theme || localStorage.getItem('theme') || 'light';
 	document.documentElement.setAttribute('data-theme', currentTheme);
 
-	if (themeSwitch) {
-		if (currentTheme === 'dark') {
-			themeSwitch.checked = true;
-		}
-		themeSwitch.addEventListener('change', (event) => {
+	const updateSwitches = (isDark) => {
+		themeSwitches.forEach(sw => {
+			sw.checked = isDark;
+		});
+	};
+
+	updateSwitches(currentTheme === 'dark');
+
+	themeSwitches.forEach(sw => {
+		sw.addEventListener('change', (event) => {
 			const newTheme = event.target.checked ? 'dark' : 'light';
 			document.documentElement.setAttribute('data-theme', newTheme);
 			localStorage.setItem('theme', newTheme);
-		});
-	}
+			updateSwitches(event.target.checked);
 
+			// Persist to server
+			const csrfToken = document.body.dataset.csrfToken;
+			const formData = new URLSearchParams();
+			formData.append('theme', newTheme);
+			if (csrfToken) {
+				formData.append('csrfToken', csrfToken);
+			}
+
+			fetch(`${contextPath}/api/user/preferences`, {
+				method: 'POST',
+				body: formData
+			}).catch(err => console.error("Failed to sync theme with server:", err));
+		});
+	});
+
+	// --- GLOBAL CONFIRMATION MODAL ---
 	const confirmationModalElement = document.createElement('div');
 	confirmationModalElement.className = 'modal-overlay';
 	confirmationModalElement.id = 'confirmation-modal';
@@ -95,6 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	}
 
+	// --- SERVER-SENT EVENTS (SSE) NOTIFICATIONS ---
 	if (document.body.dataset.isLoggedIn === 'true' && window.EventSource) {
 		const eventSource = new EventSource(`${contextPath}/notifications`);
 		eventSource.onopen = () => console.log("SSE connection established.");
@@ -102,16 +130,11 @@ document.addEventListener('DOMContentLoaded', () => {
 			try {
 				const data = JSON.parse(event.data);
 				console.log("SSE data received:", data);
+				showBrowserNotification(data.payload);
 
-				if (data.type === 'chat_update') {
-					const chatUpdateEvent = new CustomEvent('sse_chat_update', { detail: data });
-					document.dispatchEvent(chatUpdateEvent);
-				} else {
-					showBrowserNotification(data.message || JSON.stringify(data));
-				}
 			} catch (e) {
 				console.log("SSE (plain text) message received:", event.data);
-				showBrowserNotification(event.data);
+				showBrowserNotification({ message: event.data });
 			}
 		};
 		eventSource.onerror = (err) => {
@@ -120,19 +143,50 @@ document.addEventListener('DOMContentLoaded', () => {
 		};
 	}
 
-	function showBrowserNotification(message) {
+	function showBrowserNotification(payload) {
+		const message = payload.message || 'Neue Benachrichtigung';
+		const url = payload.url;
+
 		if (!("Notification" in window)) {
 			console.warn("This browser does not support desktop notifications.");
 			return;
 		}
+
+		const showNotification = () => {
+			const notification = new Notification("Technik Team Update", {
+				body: message,
+				icon: `${contextPath}/images/favicon.ico`
+			});
+
+			if (url) {
+				notification.onclick = (event) => {
+					event.preventDefault();
+					window.open(contextPath + url, '_blank');
+				};
+			}
+		};
+
 		if (Notification.permission === "granted") {
-			new Notification("Technik Team Update", { body: message, icon: `${contextPath}/images/logo.png` });
+			showNotification();
 		} else if (Notification.permission !== "denied") {
 			Notification.requestPermission().then((permission) => {
 				if (permission === "granted") {
-					new Notification("Technik Team Update", { body: message, icon: `${contextPath}/images/logo.png` });
+					showNotification();
 				}
 			});
 		}
 	}
+
+
+	// --- GLOBAL MARKDOWN RENDERER ---
+	window.renderMarkdown = (element) => {
+		if (!element || typeof marked === 'undefined') return;
+		// Use marked's sanitizer to prevent XSS
+		const sanitizedHtml = marked.parse(element.textContent || '', { sanitize: true });
+		element.innerHTML = sanitizedHtml;
+	};
+
+	// Auto-render elements with the .markdown-content class
+	document.querySelectorAll('.markdown-content').forEach(window.renderMarkdown);
+
 });

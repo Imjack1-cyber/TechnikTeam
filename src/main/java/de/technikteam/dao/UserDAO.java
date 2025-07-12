@@ -4,7 +4,7 @@ import de.technikteam.model.User;
 import de.technikteam.util.DaoUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder; 
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -15,7 +15,7 @@ import java.util.Set;
 public class UserDAO {
 	private static final Logger logger = LogManager.getLogger(UserDAO.class);
 	private final PermissionDAO permissionDAO = new PermissionDAO();
-	private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(); 
+	private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
 	private User mapResultSetToUser(ResultSet resultSet) throws SQLException {
 		User user = new User();
@@ -23,6 +23,9 @@ public class UserDAO {
 		user.setUsername(resultSet.getString("username"));
 		user.setRoleId(resultSet.getInt("role_id"));
 		user.setChatColor(resultSet.getString("chat_color"));
+		if (DaoUtils.hasColumn(resultSet, "theme")) {
+			user.setTheme(resultSet.getString("theme"));
+		}
 		if (DaoUtils.hasColumn(resultSet, "role_name")) {
 			user.setRoleName(resultSet.getString("role_name"));
 		}
@@ -198,7 +201,7 @@ public class UserDAO {
 	public int createUser(User user, String password) {
 		String hashedPassword = passwordEncoder.encode(password);
 
-		String sql = "INSERT INTO users (username, password_hash, role_id, class_year, class_name, email) VALUES (?, ?, ?, ?, ?, ?)";
+		String sql = "INSERT INTO users (username, password_hash, role_id, class_year, class_name, email, theme) VALUES (?, ?, ?, ?, ?, ?, ?)";
 		logger.debug("Attempting to create user: {}", user.getUsername());
 		try (Connection connection = DatabaseManager.getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(sql,
@@ -210,6 +213,7 @@ public class UserDAO {
 			preparedStatement.setInt(4, user.getClassYear());
 			preparedStatement.setString(5, user.getClassName());
 			preparedStatement.setString(6, user.getEmail());
+			preparedStatement.setString(7, "light"); // Default theme
 
 			int affectedRows = preparedStatement.executeUpdate();
 
@@ -243,6 +247,19 @@ public class UserDAO {
 			return preparedStatement.executeUpdate() > 0;
 		} catch (SQLException exception) {
 			logger.error("SQL error updating user with ID: {}", user.getId(), exception);
+			return false;
+		}
+	}
+
+	public boolean updateUserTheme(int userId, String theme) {
+		String sql = "UPDATE users SET theme = ? WHERE id = ?";
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setString(1, theme);
+			preparedStatement.setInt(2, userId);
+			return preparedStatement.executeUpdate() > 0;
+		} catch (SQLException exception) {
+			logger.error("Error updating theme for user ID {}", userId, exception);
 			return false;
 		}
 	}

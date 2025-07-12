@@ -5,33 +5,36 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
 /**
- * A utility class for common Data Access Object (DAO) helper methods.
+ * A utility class providing common helper methods for Data Access Objects
+ * (DAOs).
  */
-public class DaoUtils {
+public final class DaoUtils {
 
-    /**
-     * Private constructor to prevent instantiation.
-     */
-    private DaoUtils() {
-    }
+	/**
+	 * Private constructor to prevent instantiation of this utility class.
+	 */
+	private DaoUtils() {
+	}
 
-    /**
-     * Checks if a ResultSet contains a column with the given name
-     * (case-insensitive).
-     *
-     * @param rs         The ResultSet to check.
-     * @param columnName The name of the column.
-     * @return true if the column exists, false otherwise.
-     * @throws SQLException If a database error occurs.
-     */
-    public static boolean hasColumn(ResultSet rs, String columnName) throws SQLException {
-        ResultSetMetaData rsmd = rs.getMetaData();
-        int columns = rsmd.getColumnCount();
-        for (int x = 1; x <= columns; x++) {
-            if (columnName.equalsIgnoreCase(rsmd.getColumnName(x))) {
-                return true;
-            }
-        }
-        return false;
-    }
+	/**
+	 * Checks if a ResultSet contains a column with the given name. This check is
+	 * case-insensitive. It is useful for handling optional columns from complex
+	 * JOINs without causing a SQLException.
+	 *
+	 * @param rs         The ResultSet to check.
+	 * @param columnName The name of the column to look for.
+	 * @return true if the column exists in the ResultSet metadata, false otherwise.
+	 * @throws SQLException If a database access error occurs while retrieving
+	 *                      metadata.
+	 */
+	public static boolean hasColumn(ResultSet rs, String columnName) throws SQLException {
+		ResultSetMetaData rsmd = rs.getMetaData();
+		int columnCount = rsmd.getColumnCount();
+		for (int i = 1; i <= columnCount; i++) {
+			if (columnName.equalsIgnoreCase(rsmd.getColumnName(i))) {
+				return true;
+			}
+		}
+		return false;
+	}
 }

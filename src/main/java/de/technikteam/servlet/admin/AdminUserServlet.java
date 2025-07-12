@@ -13,6 +13,7 @@ import de.technikteam.model.Role;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.util.CSRFUtil;
+import de.technikteam.util.NavigationRegistry;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -26,6 +27,7 @@ import java.io.IOException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @WebServlet("/admin/mitglieder")
 public class AdminUserServlet extends HttpServlet {
@@ -50,16 +52,16 @@ public class AdminUserServlet extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		String action = request.getParameter("action") == null ? "list" : request.getParameter("action");
 		User currentUser = (User) request.getSession().getAttribute("user");
-		Set<String> permissions = currentUser.getPermissions();
+		if (!currentUser.getPermissions().contains("USER_READ") && !currentUser.hasAdminAccess()) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return;
+		}
 
+		String action = request.getParameter("action") == null ? "list" : request.getParameter("action");
 		logger.debug("AdminUserServlet received GET with action: {}", action);
+
 		try {
-			if (!permissions.contains("USER_READ") && !permissions.contains("ACCESS_ADMIN_PANEL")) {
-				response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
-				return;
-			}
 			switch (action) {
 			case "details":
 				showUserDetails(request, response);
@@ -82,7 +84,8 @@ public class AdminUserServlet extends HttpServlet {
 	}
 
 	@Override
-	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws IOException, ServletException {
 		request.setCharacterEncoding("UTF-8");
 		String action = request.getParameter("action");
 		if (action == null) {
@@ -134,15 +137,11 @@ public class AdminUserServlet extends HttpServlet {
 		List<Role> allRoles = roleDAO.getAllRoles();
 		List<Permission> allPermissions = permissionDAO.getAllPermissions();
 
-		Map<String, List<Permission>> groupedPermissions = new LinkedHashMap<>();
-		for (Permission p : allPermissions) {
+		Map<String, List<Permission>> groupedPermissions = allPermissions.stream().collect(Collectors.groupingBy(p -> {
 			String key = p.getPermissionKey();
-			String groupName = "ALLGEMEIN";
-			if (key.contains("_")) {
-				groupName = key.substring(0, key.indexOf('_'));
-			}
-			groupedPermissions.computeIfAbsent(groupName, k -> new ArrayList<>()).add(p);
-		}
+			int underscoreIndex = key.indexOf('_');
+			return (underscoreIndex != -1) ? key.substring(0, underscoreIndex) : "ALLGEMEIN";
+		}, LinkedHashMap::new, Collectors.toList()));
 
 		logger.debug("Fetched {} users, {} roles, and {} permissions from DAOs.", userList.size(), allRoles.size(),
 				allPermissions.size());
@@ -187,16 +186,16 @@ public class AdminUserServlet extends HttpServlet {
 
 	private void handleCreateUser(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		User adminUser = (User) request.getSession().getAttribute("user");
-		if (!adminUser.getPermissions().contains("USER_CREATE")
-				&& !adminUser.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
+		if (!adminUser.getPermissions().contains("USER_CREATE") && !adminUser.hasAdminAccess()) {
 			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
 
 		String username = request.getParameter("username");
 		String pass = request.getParameter("password");
-		if (username == null || username.trim().isEmpty() || pass == null || pass.trim().isEmpty()) {
-			request.getSession().setAttribute("errorMessage", "Benutzername und Passwort dürfen nicht leer sein.");
+		if (username == null || username.trim().isEmpty() || pass == null || pass.trim().length() < 8) {
+			request.getSession().setAttribute("errorMessage",
+					"Benutzername darf nicht leer sein und Passwort muss mindestens 8 Zeichen lang sein.");
 			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
 			return;
 		}
@@ -238,14 +237,12 @@ public class AdminUserServlet extends HttpServlet {
 		HttpSession session = request.getSession();
 		User adminUser = (User) session.getAttribute("user");
 
-		if (!adminUser.getPermissions().contains("USER_UPDATE")
-				&& !adminUser.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
+		if (!adminUser.getPermissions().contains("USER_UPDATE") && !adminUser.hasAdminAccess()) {
 			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
 
 		User originalUser = userDAO.getUserById(userId);
-
 		if (originalUser == null) {
 			logger.error("Attempted to update non-existent user with ID: {}", userId);
 			request.getSession().setAttribute("errorMessage", "Fehler: Benutzer mit ID " + userId + " nicht gefunden.");
@@ -274,10 +271,13 @@ public class AdminUserServlet extends HttpServlet {
 		boolean permissionsUpdated = userDAO.updateUserPermissions(userId, permissionIds);
 
 		if (profileUpdated || permissionsUpdated) {
+			// If the admin is editing their own profile, refresh their session object
 			if (adminUser.getId() == userId) {
 				User refreshedUserInSession = userDAO.getUserById(userId);
 				refreshedUserInSession.setPermissions(userDAO.getPermissionsForUser(userId));
 				session.setAttribute("user", refreshedUserInSession);
+				session.setAttribute("navigationItems",
+						NavigationRegistry.getNavigationItemsForUser(refreshedUserInSession));
 			}
 			AdminLogService.log(adminUser.getUsername(), "UPDATE_USER",
 					"Benutzer '" + originalUser.getUsername() + "' (ID: " + userId + ") aktualisiert.");
@@ -292,8 +292,7 @@ public class AdminUserServlet extends HttpServlet {
 		int userIdToDelete = Integer.parseInt(request.getParameter("userId"));
 		User loggedInAdmin = (User) request.getSession().getAttribute("user");
 
-		if (!loggedInAdmin.getPermissions().contains("USER_DELETE")
-				&& !loggedInAdmin.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
+		if (!loggedInAdmin.getPermissions().contains("USER_DELETE") && !loggedInAdmin.hasAdminAccess()) {
 			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -311,8 +310,8 @@ public class AdminUserServlet extends HttpServlet {
 			return;
 		}
 
-		Set<String> targetPermissions = userDAO.getPermissionsForUser(userIdToDelete);
-		if (targetPermissions.contains("ACCESS_ADMIN_PANEL")
+		// Prevent a regular admin from deleting a super-admin.
+		if (userToDelete.getPermissions().contains("ACCESS_ADMIN_PANEL")
 				&& !loggedInAdmin.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
 			logger.warn("Privilege Escalation Attempt: User '{}' tried to delete super-admin '{}'",
 					loggedInAdmin.getUsername(), userToDelete.getUsername());
@@ -338,8 +337,7 @@ public class AdminUserServlet extends HttpServlet {
 
 	private void handleResetPassword(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		User adminUser = (User) request.getSession().getAttribute("user");
-		if (!adminUser.getPermissions().contains("USER_PASSWORD_RESET")
-				&& !adminUser.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
+		if (!adminUser.getPermissions().contains("USER_PASSWORD_RESET") && !adminUser.hasAdminAccess()) {
 			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -368,10 +366,7 @@ public class AdminUserServlet extends HttpServlet {
 	private String generateRandomPassword(int length) {
 		final String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 		SecureRandom random = new SecureRandom();
-		StringBuilder sb = new StringBuilder(length);
-		for (int i = 0; i < length; i++) {
-			sb.append(chars.charAt(random.nextInt(chars.length())));
-		}
-		return sb.toString();
+		return random.ints(length, 0, chars.length()).mapToObj(chars::charAt)
+				.collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
 	}
 }

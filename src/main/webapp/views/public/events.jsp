@@ -20,8 +20,7 @@
 
 <c:if test="${empty events}">
 	<div class="card">
-		<p>Für dich stehen derzeit keine Veranstaltungen an, für die du
-			qualifiziert bist.</p>
+		<p>Derzeit stehen keine Veranstaltungen an.</p>
 	</div>
 </c:if>
 
@@ -32,6 +31,7 @@
 			<tr>
 				<th class="sortable" data-sort-type="string">Veranstaltung</th>
 				<th class="sortable" data-sort-type="date">Datum & Uhrzeit</th>
+				<th class="sortable" data-sort-type="string">Event-Status</th>
 				<th class="sortable" data-sort-type="string">Dein Status</th>
 				<th>Aktion</th>
 			</tr>
@@ -44,6 +44,9 @@
 								value="${event.name}" /></a></td>
 					<td data-sort-value="${event.eventDateTime}"><c:out
 							value="${event.formattedEventDateTimeRange}" /></td>
+					<td><span
+						class="status-badge ${event.status == 'LAUFEND' ? 'status-warn' : (event.status == 'ABGESCHLOSSEN' or event.status == 'ABGESAGT') ? 'status-info' : 'status-ok'}"><c:out
+								value="${event.status}" /></span></td>
 					<td><c:choose>
 							<c:when test="${event.userAttendanceStatus == 'ZUGEWIESEN'}">
 								<strong class="text-success"><c:out value="Zugewiesen" /></strong>
@@ -58,28 +61,37 @@
 								<c:out value="Offen" />
 							</c:otherwise>
 						</c:choose></td>
-					<td><c:if test="${event.userAttendanceStatus != 'ZUGEWIESEN'}">
-							<div style="display: flex; gap: 0.5rem;">
-								<c:if
-									test="${event.userAttendanceStatus == 'OFFEN' or event.userAttendanceStatus == 'ABGEMELDET'}">
-									<button type="button"
-										class="btn btn-small btn-success signup-btn"
-										data-event-id="${event.id}"
-										data-event-name="${fn:escapeXml(event.name)}">Anmelden</button>
-								</c:if>
-								<c:if test="${event.userAttendanceStatus == 'ANGEMELDET'}">
-									<form action="${pageContext.request.contextPath}/event-action"
-										method="post" class="js-confirm-form"
-										data-confirm-message="Wirklich vom Event '${fn:escapeXml(event.name)}' abmelden?">
-										<input type="hidden" name="csrfToken"
-											value="${sessionScope.csrfToken}"> <input
-											type="hidden" name="eventId" value="${event.id}">
-										<button type="submit" name="action" value="signoff"
-											class="btn btn-small btn-danger">Abmelden</button>
-									</form>
-								</c:if>
-							</div>
-						</c:if></td>
+					<td>
+						<div style="display: flex; gap: 0.5rem;">
+							<c:if
+								test="${event.userAttendanceStatus == 'OFFEN' or event.userAttendanceStatus == 'ABGEMELDET'}">
+								<c:choose>
+									<c:when test="${event.userQualified}">
+										<button type="button"
+											class="btn btn-small btn-success signup-btn"
+											data-event-id="${event.id}"
+											data-event-name="${fn:escapeXml(event.name)}">Anmelden</button>
+									</c:when>
+									<c:otherwise>
+										<button type="button" class="btn btn-small btn-success"
+											disabled
+											title="Du erfüllst die Anforderungen für dieses Event nicht.">Anmelden</button>
+									</c:otherwise>
+								</c:choose>
+							</c:if>
+							<c:if test="${event.userAttendanceStatus == 'ANGEMELDET'}">
+								<form action="${pageContext.request.contextPath}/event-action"
+									method="post" class="js-confirm-form"
+									data-confirm-message="Wirklich vom Event '${fn:escapeXml(event.name)}' abmelden?">
+									<input type="hidden" name="csrfToken"
+										value="${sessionScope.csrfToken}"> <input
+										type="hidden" name="eventId" value="${event.id}">
+									<button type="submit" name="action" value="signoff"
+										class="btn btn-small btn-danger">Abmelden</button>
+								</form>
+							</c:if>
+						</div>
+					</td>
 				</tr>
 			</c:forEach>
 		</tbody>
@@ -100,6 +112,11 @@
 						value="${event.formattedEventDateTimeRange}" /></strong>
 			</div>
 			<div class="card-row">
+				<span>Event-Status:</span> <span><span
+					class="status-badge ${event.status == 'LAUFEND' ? 'status-warn' : (event.status == 'ABGESCHLOSSEN' or event.status == 'ABGESAGT') ? 'status-info' : 'status-ok'}"><c:out
+							value="${event.status}" /></span></span>
+			</div>
+			<div class="card-row">
 				<span>Dein Status:</span> <strong> <c:choose>
 						<c:when test="${event.userAttendanceStatus == 'ZUGEWIESEN'}">
 							<span class="text-success">Zugewiesen</span>
@@ -114,27 +131,34 @@
 					</c:choose>
 				</strong>
 			</div>
-			<c:if test="${event.userAttendanceStatus != 'ZUGEWIESEN'}">
-				<div class="card-actions">
-					<c:if
-						test="${event.userAttendanceStatus == 'OFFEN' or event.userAttendanceStatus == 'ABGEMELDET'}">
-						<button type="button" class="btn btn-small btn-success signup-btn"
-							data-event-id="${event.id}"
-							data-event-name="${fn:escapeXml(event.name)}">Anmelden</button>
-					</c:if>
-					<c:if test="${event.userAttendanceStatus == 'ANGEMELDET'}">
-						<form action="${pageContext.request.contextPath}/event-action"
-							method="post" class="js-confirm-form"
-							data-confirm-message="Wirklich vom Event '${fn:escapeXml(event.name)}' abmelden?">
-							<input type="hidden" name="csrfToken"
-								value="${sessionScope.csrfToken}"> <input type="hidden"
-								name="eventId" value="${event.id}">
-							<button type="submit" name="action" value="signoff"
-								class="btn btn-small btn-danger">Abmelden</button>
-						</form>
-					</c:if>
-				</div>
-			</c:if>
+			<div class="card-actions">
+				<c:if
+					test="${event.userAttendanceStatus == 'OFFEN' or event.userAttendanceStatus == 'ABGEMELDET'}">
+					<c:choose>
+						<c:when test="${event.userQualified}">
+							<button type="button"
+								class="btn btn-small btn-success signup-btn"
+								data-event-id="${event.id}"
+								data-event-name="${fn:escapeXml(event.name)}">Anmelden</button>
+						</c:when>
+						<c:otherwise>
+							<button type="button" class="btn btn-small btn-success" disabled
+								title="Du erfüllst die Anforderungen für dieses Event nicht.">Anmelden</button>
+						</c:otherwise>
+					</c:choose>
+				</c:if>
+				<c:if test="${event.userAttendanceStatus == 'ANGEMELDET'}">
+					<form action="${pageContext.request.contextPath}/event-action"
+						method="post" class="js-confirm-form"
+						data-confirm-message="Wirklich vom Event '${fn:escapeXml(event.name)}' abmelden?">
+						<input type="hidden" name="csrfToken"
+							value="${sessionScope.csrfToken}"> <input type="hidden"
+							name="eventId" value="${event.id}">
+						<button type="submit" name="action" value="signoff"
+							class="btn btn-small btn-danger">Abmelden</button>
+					</form>
+				</c:if>
+			</div>
 		</div>
 	</c:forEach>
 </div>

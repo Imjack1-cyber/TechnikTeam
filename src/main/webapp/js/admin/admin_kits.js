@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
 	const contextPath = document.body.dataset.contextPath || '';
 
+	// --- General Confirmations ---
 	document.querySelectorAll('.js-confirm-form').forEach(form => {
 		form.addEventListener('submit', function(e) {
 			e.preventDefault();
@@ -9,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	});
 
+	// --- Kit Create/Edit Modal ---
 	const kitModal = document.getElementById('kit-modal');
 	if (kitModal) {
 		const form = kitModal.querySelector('form');
@@ -23,17 +25,13 @@ document.addEventListener('DOMContentLoaded', () => {
 		const openModal = () => kitModal.classList.add('active');
 		const closeModal = () => kitModal.classList.remove('active');
 
-		const newKitBtn = document.getElementById('new-kit-btn');
-		if (newKitBtn) {
-			newKitBtn.addEventListener('click', () => {
-				form.reset();
-				title.textContent = 'Neues Kit anlegen';
-				actionInput.value = 'create';
-				idInput.value = '';
-				locationInput.parentElement.style.display = 'block';
-				openModal();
-			});
-		}
+		document.getElementById('new-kit-btn')?.addEventListener('click', () => {
+			form.reset();
+			title.textContent = 'Neues Kit anlegen';
+			actionInput.value = 'create';
+			idInput.value = '';
+			openModal();
+		});
 
 		document.querySelectorAll('.edit-kit-btn').forEach(btn => {
 			btn.addEventListener('click', () => {
@@ -44,30 +42,20 @@ document.addEventListener('DOMContentLoaded', () => {
 				nameInput.value = btn.dataset.kitName;
 				descInput.value = btn.dataset.kitDesc;
 				locationInput.value = btn.dataset.kitLocation || '';
-				locationInput.parentElement.style.display = 'block';
 				openModal();
 			});
 		});
 
 		if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
-		kitModal.addEventListener('click', e => { if (e.target === kitModal) closeModal(); });
+		kitModal.addEventListener('click', e => {
+			if (e.target === kitModal) closeModal();
+		});
 	}
 
-	const allItems = JSON.parse(document.getElementById('allItemsData').textContent);
+	// --- Kit Content Management (Accordion & Dynamic Rows) ---
+	const allItems = JSON.parse(document.getElementById('allItemsData').textContent || '[]');
 
-	const updateQuantityMax = (selectElement) => {
-		const quantityInput = selectElement.nextElementSibling;
-		const selectedItemId = parseInt(selectElement.value, 10);
-		const selectedItem = allItems.find(item => item.id === selectedItemId);
-		if (selectedItem) {
-			quantityInput.max = selectedItem.availableQuantity;
-			quantityInput.title = `Maximal verfügbar: ${selectedItem.availableQuantity}`;
-		} else {
-			quantityInput.removeAttribute('max');
-			quantityInput.title = '';
-		}
-	};
-
+	// Toggle accordion for each kit
 	document.querySelectorAll('.kit-header').forEach(header => {
 		header.addEventListener('click', () => {
 			const content = header.nextElementSibling;
@@ -77,14 +65,15 @@ document.addEventListener('DOMContentLoaded', () => {
 			content.style.display = isOpening ? 'block' : 'none';
 			icon.classList.toggle('fa-chevron-down', !isOpening);
 			icon.classList.toggle('fa-chevron-up', isOpening);
-
-			if (isOpening) {
-				content.querySelectorAll('select[name="itemIds"]').forEach(updateQuantityMax);
-			}
 		});
 	});
 
-	const createItemRow = () => {
+	/**
+	 * Creates a new DOM element for an item row within a kit's content form.
+	 * @param {object} item - The item to pre-populate the row with.
+	 * @returns {HTMLDivElement} The new row element.
+	 */
+	const createItemRow = (item = { id: '', quantity: 1 }) => {
 		const row = document.createElement('div');
 		row.className = 'dynamic-row';
 
@@ -92,15 +81,17 @@ document.addEventListener('DOMContentLoaded', () => {
 		select.name = 'itemIds';
 		select.className = 'form-group';
 		select.innerHTML = '<option value="">-- Artikel auswählen --</option>' +
-			allItems.map(item => `<option value="${item.id}">${item.name}</option>`).join('');
+			allItems.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
+		select.value = item.id;
 
 		const quantityInput = document.createElement('input');
 		quantityInput.type = 'number';
 		quantityInput.name = 'quantities';
-		quantityInput.value = '1';
+		quantityInput.value = item.quantity;
 		quantityInput.min = '1';
 		quantityInput.className = 'form-group';
 		quantityInput.style.maxWidth = '100px';
+		quantityInput.required = true;
 
 		const removeBtn = document.createElement('button');
 		removeBtn.type = 'button';
@@ -115,44 +106,33 @@ document.addEventListener('DOMContentLoaded', () => {
 		return row;
 	};
 
+	// Event delegation for adding/removing item rows
 	document.body.addEventListener('click', e => {
 		const addBtn = e.target.closest('.btn-add-kit-item-row');
 		const removeBtn = e.target.closest('.btn-remove-kit-item-row');
 
-		if (!addBtn && !removeBtn) {
-			return;
-		}
-
-		e.preventDefault();
-
 		if (addBtn) {
-			const containerId = addBtn.dataset.containerId;
-			const container = document.getElementById(containerId);
+			e.preventDefault();
+			const container = document.getElementById(addBtn.dataset.containerId);
 			if (container) {
 				const noItemsMsg = container.querySelector('.no-items-message');
 				if (noItemsMsg) noItemsMsg.remove();
 				container.appendChild(createItemRow());
 			}
 		} else if (removeBtn) {
+			e.preventDefault();
 			const row = removeBtn.closest('.dynamic-row');
 			const container = row.parentElement;
-
 			showConfirmationModal("Diesen Artikel wirklich aus dem Kit entfernen?", () => {
 				row.remove();
-
-				if (container && container.children.length === 0) {
+				// If the container is now empty, show the placeholder message again.
+				if (container && !container.querySelector('.dynamic-row')) {
 					const p = document.createElement('p');
 					p.className = 'no-items-message';
 					p.textContent = 'Dieses Kit ist leer. Fügen Sie einen Artikel hinzu.';
 					container.appendChild(p);
 				}
 			});
-		}
-	});
-
-	document.body.addEventListener('change', e => {
-		if (e.target.matches('select[name="itemIds"]')) {
-			updateQuantityMax(e.target);
 		}
 	});
 });

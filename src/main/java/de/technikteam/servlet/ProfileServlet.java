@@ -1,12 +1,14 @@
 package de.technikteam.servlet;
 
+import de.technikteam.dao.AchievementDAO;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.dao.UserQualificationsDAO;
+import de.technikteam.model.Achievement;
 import de.technikteam.model.Event;
 import de.technikteam.model.User;
 import de.technikteam.model.UserQualification;
-import de.technikteam.util.CSRFUtil; 
+import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -23,12 +25,14 @@ public class ProfileServlet extends HttpServlet {
 	private EventDAO eventDAO;
 	private UserQualificationsDAO qualificationsDAO;
 	private UserDAO userDAO;
+	private AchievementDAO achievementDAO;
 
 	@Override
 	public void init() {
 		eventDAO = new EventDAO();
 		qualificationsDAO = new UserQualificationsDAO();
 		userDAO = new UserDAO();
+		achievementDAO = new AchievementDAO();
 	}
 
 	@Override
@@ -42,9 +46,11 @@ public class ProfileServlet extends HttpServlet {
 
 		List<Event> eventHistory = eventDAO.getEventHistoryForUser(user.getId());
 		List<UserQualification> qualifications = qualificationsDAO.getQualificationsForUser(user.getId());
+		List<Achievement> achievements = achievementDAO.getAchievementsForUser(user.getId());
 
 		request.setAttribute("eventHistory", eventHistory);
 		request.setAttribute("qualifications", qualifications);
+		request.setAttribute("achievements", achievements);
 
 		request.getRequestDispatcher("/views/public/profile.jsp").forward(request, response);
 	}

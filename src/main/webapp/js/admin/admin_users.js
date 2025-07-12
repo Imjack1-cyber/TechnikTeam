@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	const passwordAlert = document.getElementById('password-reset-alert');
 	if (passwordAlert) {
 		const passwordElement = passwordAlert.querySelector('strong.copyable-password');
-		if (passwordElement) {
+		if (passwordElement && navigator.clipboard) {
 			navigator.clipboard.writeText(passwordElement.textContent)
 				.then(() => console.log('Password copied to clipboard'))
 				.catch(err => console.error('Failed to copy password:', err));

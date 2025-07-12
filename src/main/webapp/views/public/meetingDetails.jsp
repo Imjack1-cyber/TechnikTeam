@@ -27,10 +27,8 @@
 						value="${not empty meeting.leaderUsername ? meeting.leaderUsername : 'N/A'}" /></span></li>
 		</ul>
 		<h3 style="margin-top: 2rem;">Beschreibung</h3>
-		<p>
-			<c:out
-				value="${not empty meeting.description ? meeting.description : 'Keine Beschreibung für dieses Meeting vorhanden.'}" />
-		</p>
+		<div class="markdown-content">${fn:escapeXml(not empty meeting.description ? meeting.description : 'Keine Beschreibung für dieses Meeting vorhanden.')}
+		</div>
 	</div>
 
 	<div class="card">
@@ -40,15 +38,13 @@
 		</c:if>
 		<ul class="details-list">
 			<c:forEach var="att" items="${attachments}">
-				<li> <a
-					href="<c:url value='/download?type=meeting&id=${att.id}'/>"><c:out
+				<li><a href="<c:url value='/download?id=${att.id}'/>"><c:out
 							value="${att.filename}" /></a> <c:if
 						test="${sessionScope.user.id == meeting.leaderUserId or sessionScope.user.permissions.contains('ACCESS_ADMIN_PANEL')}">
 						<span class="text-muted">(<c:out
 								value="${att.requiredRole}" />)
 						</span>
-					</c:if>
-				</li>
+					</c:if></li>
 			</c:forEach>
 		</ul>
 	</div>

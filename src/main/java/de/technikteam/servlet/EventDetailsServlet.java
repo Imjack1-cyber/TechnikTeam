@@ -3,7 +3,7 @@ package de.technikteam.servlet;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import de.technikteam.config.LocalDateTimeAdapter;
-import de.technikteam.dao.EventAttachmentDAO;
+import de.technikteam.dao.AttachmentDAO;
 import de.technikteam.dao.EventChatDAO;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.EventTaskDAO;
@@ -33,7 +33,7 @@ public class EventDetailsServlet extends HttpServlet {
 	private EventDAO eventDAO;
 	private EventTaskDAO taskDAO;
 	private EventChatDAO chatDAO;
-	private EventAttachmentDAO attachmentDAO;
+	private AttachmentDAO attachmentDAO;
 	private StorageDAO storageDAO;
 	private InventoryKitDAO kitDAO;
 	private Gson gson;
@@ -43,7 +43,7 @@ public class EventDetailsServlet extends HttpServlet {
 		eventDAO = new EventDAO();
 		taskDAO = new EventTaskDAO();
 		chatDAO = new EventChatDAO();
-		attachmentDAO = new EventAttachmentDAO();
+		attachmentDAO = new AttachmentDAO();
 		storageDAO = new StorageDAO();
 		kitDAO = new InventoryKitDAO();
 		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
@@ -81,7 +81,7 @@ public class EventDetailsServlet extends HttpServlet {
 			boolean isUserParticipant = signedUpUsers.stream().anyMatch(u -> u.getId() == user.getId());
 			request.setAttribute("isUserParticipant", isUserParticipant);
 
-			event.setAttachments(attachmentDAO.getAttachmentsForEvent(eventId, userRoleForAttachments));
+			event.setAttachments(attachmentDAO.getAttachmentsForParent("EVENT", eventId, userRoleForAttachments));
 			event.setSkillRequirements(eventDAO.getSkillRequirementsForEvent(eventId));
 			event.setReservedItems(eventDAO.getReservedItemsForEvent(eventId));
 			event.setAssignedAttendees(assignedUsers);

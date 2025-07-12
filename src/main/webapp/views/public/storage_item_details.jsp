@@ -12,8 +12,7 @@
 	<i class="fas fa-cube"></i> Artikeldetails
 </h1>
 
-<div class="dashboard-grid"
-	style="grid-template-columns: 1fr 2fr; align-items: flex-start;">
+<div class="responsive-dashboard-grid" style="align-items: flex-start;">
 
 	<div class="card">
 		<h2 class="card-title">
@@ -78,72 +77,143 @@
 		<div id="history-tab" class="modal-tab-content active">
 			<h2 class="card-title" style="border: none; padding: 0;">Verlauf
 				/ Chronik</h2>
-			<div class="table-wrapper"
-				style="max-height: 60vh; overflow-y: auto;">
-				<table class="data-table">
-					<thead>
-						<tr>
-							<th>Wann</th>
-							<th>Aktion</th>
-							<th>Wer</th>
-							<th>Notiz</th>
-						</tr>
-					</thead>
-					<tbody>
-						<c:if test="${empty history}">
+
+			<!-- Desktop Table View -->
+			<div class="desktop-table-wrapper">
+				<div class="table-wrapper"
+					style="max-height: 60vh; overflow-y: auto;">
+					<table class="data-table">
+						<thead>
 							<tr>
-								<td colspan="4" style="text-align: center;">Kein Verlauf
-									für diesen Artikel vorhanden.</td>
+								<th>Wann</th>
+								<th>Aktion</th>
+								<th>Wer</th>
+								<th>Notiz</th>
 							</tr>
-						</c:if>
-						<c:forEach var="entry" items="${history}">
-							<tr>
-								<td><c:out
-										value="${entry.transactionTimestampLocaleString}" /></td>
-								<td><span
-									class="status-badge ${entry.quantityChange > 0 ? 'status-ok' : 'status-danger'}">${entry.quantityChange > 0 ? '+' : ''}<c:out
-											value="${entry.quantityChange}" /></span></td>
-								<td><c:out value="${entry.username}" /></td>
-								<td><c:out
-										value="${not empty entry.notes ? entry.notes : '-'}" /></td>
-							</tr>
-						</c:forEach>
-					</tbody>
-				</table>
+						</thead>
+						<tbody>
+							<c:if test="${empty history}">
+								<tr>
+									<td colspan="4" style="text-align: center;">Kein Verlauf
+										für diesen Artikel vorhanden.</td>
+								</tr>
+							</c:if>
+							<c:forEach var="entry" items="${history}">
+								<tr>
+									<td><c:out
+											value="${entry.transactionTimestampLocaleString}" /></td>
+									<td><span
+										class="status-badge ${entry.quantityChange > 0 ? 'status-ok' : 'status-danger'}">${entry.quantityChange > 0 ? '+' : ''}<c:out
+												value="${entry.quantityChange}" /></span></td>
+									<td><c:out value="${entry.username}" /></td>
+									<td><c:out
+											value="${not empty entry.notes ? entry.notes : '-'}" /></td>
+								</tr>
+							</c:forEach>
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<!-- Mobile Card View -->
+			<div class="mobile-card-list">
+				<c:if test="${empty history}">
+					<div class="list-item-card">
+						<p>Kein Verlauf für diesen Artikel vorhanden.</p>
+					</div>
+				</c:if>
+				<c:forEach var="entry" items="${history}">
+					<div class="list-item-card">
+						<h3 class="card-title">
+							<span
+								class="status-badge ${entry.quantityChange > 0 ? 'status-ok' : 'status-danger'}">
+								${entry.quantityChange > 0 ? '+' : ''}<c:out
+									value="${entry.quantityChange}" />
+							</span>
+							<c:out value="${entry.username}" />
+						</h3>
+						<div class="card-row">
+							<span>Wann:</span> <strong><c:out
+									value="${entry.transactionTimestampLocaleString}" /></strong>
+						</div>
+						<div class="card-row"
+							style="flex-direction: column; align-items: flex-start;">
+							<span>Notiz:</span>
+							<p style="margin-top: 0.25rem; font-size: 0.9em; width: 100%;">
+								<c:out value="${not empty entry.notes ? entry.notes : '-'}" />
+							</p>
+						</div>
+					</div>
+				</c:forEach>
 			</div>
 		</div>
 
 		<div id="maintenance-tab" class="modal-tab-content">
 			<h2 class="card-title" style="border: none; padding: 0;">Wartungshistorie</h2>
-			<div class="table-wrapper"
-				style="max-height: 60vh; overflow-y: auto;">
-				<table class="data-table">
-					<thead>
-						<tr>
-							<th>Datum</th>
-							<th>Aktion</th>
-							<th>Bearbeiter</th>
-							<th>Notiz</th>
-						</tr>
-					</thead>
-					<tbody>
-						<c:if test="${empty maintenanceHistory}">
+			<!-- Desktop Table View -->
+			<div class="desktop-table-wrapper">
+				<div class="table-wrapper"
+					style="max-height: 60vh; overflow-y: auto;">
+					<table class="data-table">
+						<thead>
 							<tr>
-								<td colspan="4" style="text-align: center;">Keine
-									Wartungseinträge für diesen Artikel vorhanden.</td>
+								<th>Datum</th>
+								<th>Aktion</th>
+								<th>Bearbeiter</th>
+								<th>Notiz</th>
 							</tr>
-						</c:if>
-						<c:forEach var="entry" items="${maintenanceHistory}">
-							<tr>
-								<td><c:out value="${entry.formattedLogDate}" /></td>
-								<td><c:out value="${entry.action}" /></td>
-								<td><c:out value="${entry.username}" /></td>
-								<td><c:out value="${entry.notes}" /></td>
-							</tr>
-						</c:forEach>
-					</tbody>
-				</table>
+						</thead>
+						<tbody>
+							<c:if test="${empty maintenanceHistory}">
+								<tr>
+									<td colspan="4" style="text-align: center;">Keine
+										Wartungseinträge für diesen Artikel vorhanden.</td>
+								</tr>
+							</c:if>
+							<c:forEach var="entry" items="${maintenanceHistory}">
+								<tr>
+									<td><c:out value="${entry.formattedLogDate}" /></td>
+									<td><c:out value="${entry.action}" /></td>
+									<td><c:out value="${entry.username}" /></td>
+									<td><c:out value="${entry.notes}" /></td>
+								</tr>
+							</c:forEach>
+						</tbody>
+					</table>
+				</div>
 			</div>
+
+			<!-- Mobile Card View -->
+			<div class="mobile-card-list">
+				<c:if test="${empty maintenanceHistory}">
+					<div class="list-item-card">
+						<p>Keine Wartungseinträge für diesen Artikel vorhanden.</p>
+					</div>
+				</c:if>
+				<c:forEach var="entry" items="${maintenanceHistory}">
+					<div class="list-item-card">
+						<h3 class="card-title">
+							<c:out value="${entry.action}" />
+						</h3>
+						<div class="card-row">
+							<span>Datum:</span> <strong><c:out
+									value="${entry.formattedLogDate}" /></strong>
+						</div>
+						<div class="card-row">
+							<span>Bearbeiter:</span> <strong><c:out
+									value="${entry.username}" /></strong>
+						</div>
+						<div class="card-row"
+							style="flex-direction: column; align-items: flex-start;">
+							<span>Notiz:</span>
+							<p style="margin-top: 0.25rem; font-size: 0.9em; width: 100%;">
+								<c:out value="${entry.notes}" />
+							</p>
+						</div>
+					</div>
+				</c:forEach>
+			</div>
+
 		</div>
 	</div>
 </div>

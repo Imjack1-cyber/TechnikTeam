@@ -12,9 +12,13 @@ public class File {
 	private String filename;
 	private String filepath;
 	private int categoryId;
-	private String categoryName; 
+	private String categoryName;
 	private LocalDateTime uploadedAt;
-	private String requiredRole; 
+	private String requiredRole;
+
+	public String getFormattedUploadedAt() {
+		return de.technikteam.config.DateFormatter.formatDateTime(this.uploadedAt);
+	}
 
 	public int getId() {
 		return id;

@@ -1,6 +1,6 @@
 package de.technikteam.servlet;
 
-import de.technikteam.dao.MeetingAttachmentDAO;
+import de.technikteam.dao.AttachmentDAO;
 import de.technikteam.dao.MeetingDAO;
 import de.technikteam.model.Meeting;
 import de.technikteam.model.User;
@@ -27,12 +27,12 @@ public class MeetingDetailsServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(MeetingDetailsServlet.class);
 	private MeetingDAO meetingDAO;
-	private MeetingAttachmentDAO attachmentDAO;
+	private AttachmentDAO attachmentDAO;
 
 	@Override
 	public void init() {
 		meetingDAO = new MeetingDAO();
-		attachmentDAO = new MeetingAttachmentDAO();
+		attachmentDAO = new AttachmentDAO();
 	}
 
 	@Override
@@ -80,7 +80,8 @@ public class MeetingDetailsServlet extends HttpServlet {
 						meetingId);
 			}
 
-			request.setAttribute("attachments", attachmentDAO.getAttachmentsForMeeting(meetingId, attachmentUserRole));
+			request.setAttribute("attachments",
+					attachmentDAO.getAttachmentsForParent("MEETING", meetingId, attachmentUserRole));
 			request.setAttribute("meeting", meeting);
 
 			logger.debug("Forwarding to meetingDetails.jsp for meeting '{}'", meeting.getName());

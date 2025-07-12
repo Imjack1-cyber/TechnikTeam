@@ -51,6 +51,12 @@
 							Meetings
 					</a>
 						<button type="button"
+							class="btn btn-small btn-info grant-quals-btn"
+							data-course-id="${course.id}"
+							data-course-name="${fn:escapeXml(course.name)}">
+							<i class="fas fa-user-graduate"></i> Qualis vergeben
+						</button>
+						<button type="button"
 							class="btn btn-small btn-secondary edit-course-btn"
 							data-id="${course.id}">
 							<i class="fas fa-edit"></i> Bearbeiten
@@ -94,6 +100,11 @@
 					class="btn btn-small"> <i class="fas fa-calendar-day"></i>
 					Meetings
 				</a>
+				<button type="button" class="btn btn-small btn-info grant-quals-btn"
+					data-course-id="${course.id}"
+					data-course-name="${fn:escapeXml(course.name)}">
+					<i class="fas fa-user-graduate"></i> Qualis vergeben
+				</button>
 				<button type="button"
 					class="btn btn-small btn-secondary edit-course-btn"
 					data-id="${course.id}">
@@ -146,6 +157,33 @@
 		</form>
 	</div>
 </div>
+
+<!-- MODAL FOR GRANTING QUALIFICATIONS -->
+<div class="modal-overlay" id="grant-quals-modal">
+	<div class="modal-content">
+		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
+		<h3 id="grant-quals-modal-title">Qualifikationen vergeben</h3>
+		<p>Diese Aktion vergibt den Status 'ABSOLVIERT' an alle Nutzer,
+			die eine Mindestanzahl an Meetings für diesen Lehrgang besucht haben.</p>
+		<form action="${pageContext.request.contextPath}/admin/lehrgaenge"
+			method="post" class="js-confirm-form"
+			data-confirm-message="Sind Sie sicher? Diese Aktion kann nicht rückgängig gemacht werden.">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="grantQualifications"> <input
+				type="hidden" name="courseId" id="grant-quals-course-id">
+			<div class="form-group">
+				<label for="minMeetings">Min. besuchte Meetings</label> <input
+					type="number" name="minMeetings" id="minMeetings" value="1" min="1"
+					required>
+			</div>
+			<button type="submit" class="btn btn-success">
+				<i class="fas fa-check-circle"></i> Qualifikationen jetzt vergeben
+			</button>
+		</form>
+	</div>
+</div>
+
 
 <c:import url="/WEB-INF/jspf/table_scripts.jspf" />
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />

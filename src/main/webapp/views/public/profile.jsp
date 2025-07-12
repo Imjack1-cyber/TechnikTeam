@@ -68,43 +68,107 @@
 			</table>
 		</div>
 	</div>
+
+	<div class="card" style="grid-column: 1/-1;">
+		<h2 class="card-title">Meine Abzeichen</h2>
+		<c:if test="${empty achievements}">
+			<p>Du hast noch keine Abzeichen verdient. Nimm an Events teil, um
+				sie freizuschalten!</p>
+		</c:if>
+		<div style="display: flex; flex-wrap: wrap; gap: 1rem;">
+			<c:forEach var="ach" items="${achievements}">
+				<div class="card"
+					style="flex: 1; min-width: 250px; text-align: center;">
+					<i class="fas ${ach.iconClass}"
+						style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;"></i>
+					<h4 style="margin: 0;">
+						<c:out value="${ach.name}" />
+					</h4>
+					<p style="color: var(--text-muted-color); font-size: 0.9rem;">
+						<c:out value="${ach.description}" />
+					</p>
+					<small>Verdient am: <c:out value="${ach.formattedEarnedAt}" /></small>
+				</div>
+			</c:forEach>
+		</div>
+	</div>
+
 </div>
 
 <div class="card">
 	<h2 class="card-title">Meine Event-Historie</h2>
-	<div class="table-wrapper" style="max-height: 500px; overflow-y: auto;">
-		<table class="data-table">
-			<thead>
-				<tr>
-					<th>Event</th>
-					<th>Datum</th>
-					<th>Dein Status</th>
-					<th>Feedback</th>
-				</tr>
-			</thead>
-			<tbody>
-				<c:if test="${empty eventHistory}">
+
+	<!-- Desktop Table View -->
+	<div class="desktop-table-wrapper">
+		<div class="table-wrapper"
+			style="max-height: 500px; overflow-y: auto;">
+			<table class="data-table">
+				<thead>
 					<tr>
-						<td colspan="4">Keine Event-Historie vorhanden.</td>
+						<th>Event</th>
+						<th>Datum</th>
+						<th>Dein Status</th>
+						<th>Feedback</th>
 					</tr>
-				</c:if>
-				<c:forEach var="event" items="${eventHistory}">
-					<tr>
-						<td><a
-							href="${pageContext.request.contextPath}/veranstaltungen/details?id=${event.id}"><c:out
-									value="${event.name}" /></a></td>
-						<td><c:out value="${event.formattedEventDateTime}" /> Uhr</td>
-						<td><c:out value="${event.userAttendanceStatus}" /></td>
-						<td><c:if
-								test="${event.status == 'ABGESCHLOSSEN' && event.userAttendanceStatus == 'ZUGEWIESEN'}">
-								<a
-									href="${pageContext.request.contextPath}/feedback?action=submit&eventId=${event.id}"
-									class="btn btn-small">Feedback geben</a>
-							</c:if></td>
-					</tr>
-				</c:forEach>
-			</tbody>
-		</table>
+				</thead>
+				<tbody>
+					<c:if test="${empty eventHistory}">
+						<tr>
+							<td colspan="4">Keine Event-Historie vorhanden.</td>
+						</tr>
+					</c:if>
+					<c:forEach var="event" items="${eventHistory}">
+						<tr>
+							<td><a
+								href="${pageContext.request.contextPath}/veranstaltungen/details?id=${event.id}"><c:out
+										value="${event.name}" /></a></td>
+							<td><c:out value="${event.formattedEventDateTime}" /> Uhr</td>
+							<td><c:out value="${event.userAttendanceStatus}" /></td>
+							<td><c:if
+									test="${event.status == 'ABGESCHLOSSEN' && event.userAttendanceStatus == 'ZUGEWIESEN'}">
+									<a
+										href="${pageContext.request.contextPath}/feedback?action=submit&eventId=${event.id}"
+										class="btn btn-small">Feedback geben</a>
+								</c:if></td>
+						</tr>
+					</c:forEach>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+	<!-- Mobile Card View -->
+	<div class="mobile-card-list">
+		<c:if test="${empty eventHistory}">
+			<div class="list-item-card">
+				<p>Keine Event-Historie vorhanden.</p>
+			</div>
+		</c:if>
+		<c:forEach var="event" items="${eventHistory}">
+			<div class="list-item-card">
+				<h3 class="card-title">
+					<a
+						href="${pageContext.request.contextPath}/veranstaltungen/details?id=${event.id}"><c:out
+							value="${event.name}" /></a>
+				</h3>
+				<div class="card-row">
+					<span>Datum:</span> <strong><c:out
+							value="${event.formattedEventDateTime}" /> Uhr</strong>
+				</div>
+				<div class="card-row">
+					<span>Dein Status:</span> <strong><c:out
+							value="${event.userAttendanceStatus}" /></strong>
+				</div>
+				<div class="card-actions">
+					<c:if
+						test="${event.status == 'ABGESCHLOSSEN' && event.userAttendanceStatus == 'ZUGEWIESEN'}">
+						<a
+							href="${pageContext.request.contextPath}/feedback?action=submit&eventId=${event.id}"
+							class="btn btn-small">Feedback geben</a>
+					</c:if>
+				</div>
+			</div>
+		</c:forEach>
 	</div>
 </div>
 

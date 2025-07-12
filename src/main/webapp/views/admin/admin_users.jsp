@@ -44,6 +44,12 @@
 			</tr>
 		</thead>
 		<tbody>
+			<c:if test="${empty requestScope.userList}">
+				<tr>
+					<td colspan="4" style="text-align: center;">Keine Benutzer
+						gefunden.</td>
+				</tr>
+			</c:if>
 			<c:forEach var="user" items="${requestScope.userList}">
 				<tr>
 					<td><c:out value="${user.id}" /></td>
@@ -91,6 +97,11 @@
 
 <!-- Mobile Card View -->
 <div class="mobile-card-list searchable-table">
+	<c:if test="${empty requestScope.userList}">
+		<div class="card">
+			<p>Keine Benutzer gefunden.</p>
+		</div>
+	</c:if>
 	<c:forEach var="user" items="${requestScope.userList}">
 		<div class="list-item-card">
 			<h3 class="card-title">

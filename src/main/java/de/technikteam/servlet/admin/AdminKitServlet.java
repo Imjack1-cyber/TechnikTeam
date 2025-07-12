@@ -43,12 +43,10 @@ public class AdminKitServlet extends HttpServlet {
 			return;
 		}
 
-		List<InventoryKit> kits = kitDAO.getAllKits();
-		for (InventoryKit kit : kits) {
-			kit.setItems(kitDAO.getItemsForKit(kit.getId()));
-		}
-
+		// Performance: Fetch all kits and their items in one go to prevent N+1 queries.
+		List<InventoryKit> kits = kitDAO.getAllKitsWithItems();
 		List<StorageItem> allItems = storageDAO.getAllItems();
+
 		req.setAttribute("kits", kits);
 		req.setAttribute("allItems", allItems);
 		req.setAttribute("allItemsJson", gson.toJson(allItems));
@@ -113,6 +111,7 @@ public class AdminKitServlet extends HttpServlet {
 		InventoryKit kit = new InventoryKit();
 		kit.setName(req.getParameter("name"));
 		kit.setDescription(req.getParameter("description"));
+		kit.setLocation(req.getParameter("location"));
 		int newId = kitDAO.createKit(kit);
 		if (newId > 0) {
 			AdminLogService.log(adminUser.getUsername(), "CREATE_KIT",

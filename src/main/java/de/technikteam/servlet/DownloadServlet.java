@@ -1,5 +1,19 @@
 package de.technikteam.servlet;
 
+import de.technikteam.config.AppConfig;
+import de.technikteam.dao.AttachmentDAO;
+import de.technikteam.dao.EventDAO;
+import de.technikteam.dao.MeetingDAO;
+import de.technikteam.model.Attachment;
+import de.technikteam.model.User;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -7,169 +21,177 @@ import java.io.OutputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
-import de.technikteam.dao.EventAttachmentDAO;
-import de.technikteam.dao.EventDAO;
-import de.technikteam.dao.FileDAO;
-import de.technikteam.dao.MeetingAttachmentDAO;
-import de.technikteam.dao.MeetingDAO;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import de.technikteam.config.AppConfig;
-import de.technikteam.model.User;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-
+/**
+ * Handles secure file downloads for both general files and specific entity
+ * attachments. It ensures that only authorized users can download files and
+ * protects against path traversal attacks.
+ */
 @WebServlet("/download")
 public class DownloadServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(DownloadServlet.class);
-	private FileDAO fileDAO;
+
+	private de.technikteam.dao.FileDAO fileDAO;
 	private EventDAO eventDAO;
 	private MeetingDAO meetingDAO;
-	private EventAttachmentDAO eventAttachmentDAO;
-	private MeetingAttachmentDAO meetingAttachmentDAO;
+	private AttachmentDAO attachmentDAO;
 
 	@Override
-	public void init() throws ServletException {
-		fileDAO = new FileDAO();
+	public void init() {
+		fileDAO = new de.technikteam.dao.FileDAO();
 		eventDAO = new EventDAO();
 		meetingDAO = new MeetingDAO();
-		eventAttachmentDAO = new EventAttachmentDAO();
-		meetingAttachmentDAO = new MeetingAttachmentDAO();
+		attachmentDAO = new AttachmentDAO();
 	}
 
 	@Override
-	public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
 		User user = (User) request.getSession().getAttribute("user");
 		if (user == null) {
-			response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+			response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authentication required.");
 			return;
 		}
 
-		String type = request.getParameter("type");
 		String idParam = request.getParameter("id");
-
-		if (type == null || idParam == null) {
-			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing required parameters.");
+		if (idParam == null || idParam.trim().isEmpty()) {
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing required 'id' parameter.");
 			return;
 		}
 
 		try {
 			int id = Integer.parseInt(idParam);
 			String filePathFromDb = null;
+			String filenameForDownload = null;
 			boolean isAuthorized = false;
 
-			if (user.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
-				isAuthorized = true;
+			// Unified attachments are the primary type of file to check for.
+			Attachment attachment = attachmentDAO.getAttachmentById(id);
+			if (attachment != null) {
+				filePathFromDb = attachment.getFilepath();
+				filenameForDownload = attachment.getFilename();
+				isAuthorized = isUserAuthorizedForAttachment(user, attachment);
+			} else {
+				// Fallback to checking the general 'files' table for legacy links or general
+				// documents.
+				de.technikteam.model.File dbFile = fileDAO.getFileById(id);
+				if (dbFile != null) {
+					filePathFromDb = dbFile.getFilepath();
+					filenameForDownload = dbFile.getFilename();
+					// General files are accessible if the user has admin rights or the file is
+					// marked for 'NUTZER'
+					isAuthorized = user.hasAdminAccess() || "NUTZER".equalsIgnoreCase(dbFile.getRequiredRole());
+				}
 			}
 
-			switch (type) {
-			case "event":
-				de.technikteam.model.EventAttachment eventAtt = eventAttachmentDAO.getAttachmentById(id);
-				if (eventAtt == null) {
-					logger.error("Download failed: No event attachment record found for ID {}", id);
-					response.sendError(HttpServletResponse.SC_NOT_FOUND, "Anhang in Datenbank nicht gefunden.");
-					return;
-				}
-				filePathFromDb = eventAtt.getFilepath();
-				if (!isAuthorized && "NUTZER".equalsIgnoreCase(eventAtt.getRequiredRole())) {
-					isAuthorized = eventDAO.isUserAssociatedWithEvent(eventAtt.getEventId(), user.getId());
-				}
-				break;
-			case "meeting":
-				de.technikteam.model.MeetingAttachment meetingAtt = meetingAttachmentDAO.getAttachmentById(id);
-				if (meetingAtt == null) {
-					logger.error("Download failed: No meeting attachment record found for ID {}", id);
-					response.sendError(HttpServletResponse.SC_NOT_FOUND, "Anhang in Datenbank nicht gefunden.");
-					return;
-				}
-				filePathFromDb = meetingAtt.getFilepath();
-				if (!isAuthorized && "NUTZER".equalsIgnoreCase(meetingAtt.getRequiredRole())) {
-					isAuthorized = meetingDAO.isUserAssociatedWithMeeting(meetingAtt.getMeetingId(), user.getId());
-				}
-				break;
-			case "file":
-				de.technikteam.model.File dbFile = fileDAO.getFileById(id);
-				if (dbFile == null) {
-					logger.error("Download failed: No file record found for ID {}", id);
-					response.sendError(HttpServletResponse.SC_NOT_FOUND, "Datei in Datenbank nicht gefunden.");
-					return;
-				}
-				filePathFromDb = dbFile.getFilepath();
-				if (!isAuthorized && "NUTZER".equalsIgnoreCase(dbFile.getRequiredRole())) {
-					isAuthorized = true; 
-				}
-				break;
-			default:
-				logger.warn("Invalid download type '{}' requested by user '{}'", type, user.getUsername());
-				response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid file type specified.");
+			if (filePathFromDb == null) {
+				logger.error("Download failed for user '{}': No file or attachment record found for ID {}",
+						user.getUsername(), id);
+				response.sendError(HttpServletResponse.SC_NOT_FOUND,
+						"Die angeforderte Datei wurde in der Datenbank nicht gefunden.");
 				return;
 			}
 
 			if (!isAuthorized) {
-				logger.warn("Authorization DENIED for user '{}' trying to download {} file ID {}", user.getUsername(),
-						type, id);
-				response.sendError(HttpServletResponse.SC_FORBIDDEN, "Zugriff verweigert.");
+				logger.warn("Authorization DENIED for user '{}' trying to download content with ID {}",
+						user.getUsername(), id);
+				response.sendError(HttpServletResponse.SC_FORBIDDEN,
+						"Sie haben keine Berechtigung, diese Datei herunterzuladen.");
 				return;
 			}
 
-			if (filePathFromDb == null || filePathFromDb.trim().isEmpty()) {
-				logger.error("File path from DB is null or empty for type '{}' and ID {}.", type, id);
-				response.sendError(HttpServletResponse.SC_NOT_FOUND, "Dateipfad ist ungültig.");
-				return;
-			}
-
-			File baseDir = new File(AppConfig.UPLOAD_DIRECTORY);
-			String baseDirCanonicalPath = baseDir.getCanonicalPath();
-
-			File requestedFile = new File(filePathFromDb);
-			String sanitizedFilename = requestedFile.getName();
-			File finalFile = new File(baseDir, sanitizedFilename);
-			String finalFileCanonicalPath = finalFile.getCanonicalPath();
-
-			if (!finalFileCanonicalPath.startsWith(baseDirCanonicalPath + File.separator)) {
-				logger.fatal(
-						"CRITICAL: Path Traversal Attack Detected! User: '{}' attempted to access '{}' via sanitized path '{}'",
-						user.getUsername(), finalFileCanonicalPath, sanitizedFilename);
-				response.sendError(HttpServletResponse.SC_FORBIDDEN, "Zugriff verweigert.");
-				return;
-			}
-
-			if (!finalFile.exists() || !finalFile.isFile()) {
-				logger.error("Download failed: File not found at resolved path {}", finalFile.getAbsolutePath());
-				response.sendError(HttpServletResponse.SC_NOT_FOUND, "Datei nicht gefunden.");
-				return;
-			}
-
-			response.setContentType("application/octet-stream");
-			response.setContentLengthLong(finalFile.length());
-
-			String headerKey = "Content-Disposition";
-			String headerValue = String.format("attachment; filename=\"%s\"",
-					URLEncoder.encode(finalFile.getName(), StandardCharsets.UTF_8.toString()));
-			response.setHeader(headerKey, headerValue);
-
-			logger.info("User '{}' is downloading file: {}. Size: {} bytes.", user.getUsername(),
-					finalFile.getAbsolutePath(), finalFile.length());
-
-			try (FileInputStream inStream = new FileInputStream(finalFile);
-					OutputStream outStream = response.getOutputStream()) {
-
-				byte[] buffer = new byte[4096];
-				int bytesRead;
-				while ((bytesRead = inStream.read(buffer)) != -1) {
-					outStream.write(buffer, 0, bytesRead);
-				}
-			}
+			serveFile(filePathFromDb, filenameForDownload, user, response);
 
 		} catch (NumberFormatException e) {
 			logger.warn("Invalid ID format for download: {}", idParam);
-			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Ungültige ID.");
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Die angegebene ID ist ungültig.");
+		}
+	}
+
+	/**
+	 * Determines if a user is authorized to download a specific attachment.
+	 *
+	 * @param user       The user requesting the download.
+	 * @param attachment The attachment metadata from the database.
+	 * @return true if the user is authorized, false otherwise.
+	 */
+	private boolean isUserAuthorizedForAttachment(User user, Attachment attachment) {
+		// Admins can download any attachment.
+		if (user.hasAdminAccess()) {
+			return true;
+		}
+
+		// If the attachment is public to all users, we check their association with the
+		// parent entity.
+		if ("NUTZER".equalsIgnoreCase(attachment.getRequiredRole())) {
+			if ("EVENT".equals(attachment.getParentType())) {
+				return eventDAO.isUserAssociatedWithEvent(attachment.getParentId(), user.getId());
+			} else if ("MEETING".equals(attachment.getParentType())) {
+				return meetingDAO.isUserAssociatedWithMeeting(attachment.getParentId(), user.getId());
+			}
+		}
+
+		// By default, access is denied.
+		return false;
+	}
+
+	/**
+	 * Securely serves a file from the disk to the client.
+	 *
+	 * @param relativePathFromDb The relative path of the file as stored in the
+	 *                           database.
+	 * @param originalFilename   The original filename to be sent to the client.
+	 * @param user               The user requesting the file (for logging).
+	 * @param response           The HttpServletResponse object.
+	 * @throws IOException If an I/O error occurs.
+	 */
+	private void serveFile(String relativePathFromDb, String originalFilename, User user, HttpServletResponse response)
+			throws IOException {
+		if (relativePathFromDb == null || relativePathFromDb.trim().isEmpty()) {
+			logger.error("File path from DB is null or empty for user '{}'.", user.getUsername());
+			response.sendError(HttpServletResponse.SC_NOT_FOUND, "Der Dateipfad in der Datenbank ist ungültig.");
+			return;
+		}
+
+		// Security: Prevent path traversal attacks by ensuring the resolved file path
+		// is within the allowed directory.
+		File baseDir = new File(AppConfig.UPLOAD_DIRECTORY);
+		File requestedFile = new File(baseDir, relativePathFromDb);
+
+		// Canonicalize paths to resolve any ".." or "." in the path string and get the
+		// absolute path.
+		String baseDirCanonicalPath = baseDir.getCanonicalPath();
+		String requestedFileCanonicalPath = requestedFile.getCanonicalPath();
+
+		if (!requestedFileCanonicalPath.startsWith(baseDirCanonicalPath)) {
+			logger.fatal(
+					"CRITICAL: Path Traversal Attack Detected! User: '{}' attempted to access '{}' via db path '{}'",
+					user.getUsername(), requestedFileCanonicalPath, relativePathFromDb);
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Zugriff verweigert.");
+			return;
+		}
+
+		if (!requestedFile.exists() || !requestedFile.isFile()) {
+			logger.error("Download failed for user '{}': File not found at resolved path {}", user.getUsername(),
+					requestedFile.getAbsolutePath());
+			response.sendError(HttpServletResponse.SC_NOT_FOUND, "Die Datei wurde auf dem Server nicht gefunden.");
+			return;
+		}
+
+		response.setContentType("application/octet-stream");
+		response.setContentLengthLong(requestedFile.length());
+
+		// URL-encode the filename to handle special characters, spaces, etc., according
+		// to RFC 5987.
+		String encodedFilename = URLEncoder.encode(originalFilename, StandardCharsets.UTF_8).replace("+", "%20");
+		response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFilename);
+
+		logger.info("User '{}' is downloading file: {}. Size: {} bytes.", user.getUsername(),
+				requestedFile.getAbsolutePath(), requestedFile.length());
+
+		try (FileInputStream inStream = new FileInputStream(requestedFile);
+				OutputStream outStream = response.getOutputStream()) {
+			inStream.transferTo(outStream);
 		}
 	}
 }

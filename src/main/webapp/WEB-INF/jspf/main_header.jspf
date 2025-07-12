@@ -1,11 +1,11 @@
-<%-- FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\main_header.jspf --%>
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
 <!DOCTYPE html>
-<html lang="de" data-theme="light">
+<html lang="de"
+	data-theme="${not empty sessionScope.user.theme ? sessionScope.user.theme : 'light'}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,6 +17,12 @@
 <link rel="icon"
 	href="${pageContext.request.contextPath}/images/favicon.ico"
 	type="image/x-icon">
+<script>
+	// This script runs immediately to prevent a "flash" of the wrong theme.
+	const savedTheme = localStorage.getItem('theme')
+			|| document.documentElement.dataset.theme || 'light';
+	document.documentElement.setAttribute('data-theme', savedTheme);
+</script>
 </head>
 <body data-context-path="${pageContext.request.contextPath}"
 	data-is-logged-in="${not empty sessionScope.user}"
@@ -36,9 +42,14 @@
 			</header>
 			<nav class="sidebar-nav">
 				<ul>
-					<li class="nav-section-title">Benutzerbereich</li>
+					<c:set var="userSectionDrawn" value="false" />
+					<c:set var="adminSectionDrawn" value="false" />
 					<c:forEach var="navItem" items="${sessionScope.navigationItems}">
 						<c:if test="${navItem.requiredPermission == null}">
+							<c:if test="${not userSectionDrawn}">
+								<li class="nav-section-title">Benutzerbereich</li>
+								<c:set var="userSectionDrawn" value="true" />
+							</c:if>
 							<li><a
 								href="${pageContext.request.contextPath}${navItem.url}"
 								class="${pageContext.request.requestURI eq (pageContext.request.contextPath.concat(navItem.url)) ? 'active-nav-link' : ''}">
@@ -47,35 +58,29 @@
 						</c:if>
 					</c:forEach>
 
-					<c:set var="adminSectionExists" value="${false}" />
 					<c:forEach var="navItem" items="${sessionScope.navigationItems}">
 						<c:if test="${not empty navItem.requiredPermission}">
-							<c:set var="adminSectionExists" value="${true}" />
+							<c:if test="${not adminSectionDrawn}">
+								<li class="nav-section-title">Admin-Bereich</li>
+								<c:set var="adminSectionDrawn" value="true" />
+							</c:if>
+							<li><a
+								href="${pageContext.request.contextPath}${navItem.url}"
+								class="${pageContext.request.requestURI eq (pageContext.request.contextPath.concat(navItem.url)) ? 'active-nav-link' : ''}">
+									<i class="fas ${navItem.icon} fa-fw"></i> ${navItem.label}
+							</a></li>
 						</c:if>
 					</c:forEach>
-
-					<c:if test="${adminSectionExists}">
-						<li class="nav-section-title">Admin-Bereich</li>
-						<c:forEach var="navItem" items="${sessionScope.navigationItems}">
-							<c:if test="${not empty navItem.requiredPermission}">
-								<li><a
-									href="${pageContext.request.contextPath}${navItem.url}"
-									class="${pageContext.request.requestURI eq (pageContext.request.contextPath.concat(navItem.url)) ? 'active-nav-link' : ''}">
-										<i class="fas ${navItem.icon} fa-fw"></i> ${navItem.label}
-								</a></li>
-							</c:if>
-						</c:forEach>
-					</c:if>
-
 				</ul>
 			</nav>
 			<div class="user-actions">
-				<div class="theme-switcher">
+				<div class="theme-switcher desktop-only">
 					<i class="fas fa-sun"></i> <label class="switch"> <input
-						type="checkbox" id="theme-toggle"> <span class="slider"></span>
+						type="checkbox" id="theme-toggle-desktop"> <span
+						class="slider"></span>
 					</label> <i class="fas fa-moon"></i>
 				</div>
-				<hr style="margin: 1rem 0;">
+				<hr style="margin: 1rem 0;" class="desktop-only">
 				<div class="user-info">
 					Angemeldet als: <strong>${user.username}</strong>
 				</div>
@@ -95,8 +100,15 @@
 				<span class="line line-3"></span>
 			</button>
 			<a href="${pageContext.request.contextPath}/home" class="mobile-logo">TechnikTeam</a>
-			<a href="${pageContext.request.contextPath}/profil"><i
-				class="fas fa-user-circle" style="font-size: 1.5rem;"></i></a>
+			<div class="mobile-header-right">
+				<div class="theme-switcher mobile-only">
+					<i class="fas fa-sun"></i> <label class="switch"> <input
+						type="checkbox" id="theme-toggle"> <span class="slider"></span>
+					</label> <i class="fas fa-moon"></i>
+				</div>
+				<a href="${pageContext.request.contextPath}/profil"><i
+					class="fas fa-user-circle" style="font-size: 1.5rem;"></i></a>
+			</div>
 		</header>
 		<div class="page-overlay"></div>
 	</c:if>
