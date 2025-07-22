@@ -471,6 +471,32 @@ body.nav-open .page-overlay {
 	text-decoration: underline;
 }
 
+/* Toast Notifications */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    padding: 1rem 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+    z-index: 9999;
+    transform: translateY(150%);
+    transition: transform 0.4s ease-in-out, opacity 0.4s;
+    border-left: 5px solid var(--primary-color);
+    opacity: 0;
+}
+.toast.toast-success { border-left-color: var(--success-color); }
+.toast.toast-danger { border-left-color: var(--danger-color); }
+.toast.toast-info { border-left-color: var(--info-color); }
+
+.toast.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+
 /* Forms & Inputs */
 .form-group {
 	margin-bottom: 1.25rem;
@@ -1354,28 +1380,29 @@ body.nav-open .page-overlay {
 	flex-grow: 1;
 }
 
-/* Theme Switcher Styles */
-.theme-switcher {
+/* Theme & Mode Switcher Container Styles */
+.theme-switcher, .mode-switcher {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
 	color: var(--text-muted-color);
 }
 
-.theme-switcher .switch {
+/* Generic Toggle Switch Component */
+.toggle-switch {
 	position: relative;
 	display: inline-block;
 	width: 44px;
 	height: 24px;
 }
 
-.theme-switcher .switch input {
+.toggle-switch input {
 	opacity: 0;
 	width: 0;
 	height: 0;
 }
 
-.theme-switcher .slider {
+.toggle-switch .slider {
 	position: absolute;
 	cursor: pointer;
 	top: 0;
@@ -1387,7 +1414,7 @@ body.nav-open .page-overlay {
 	border-radius: 24px;
 }
 
-.theme-switcher .slider:before {
+.toggle-switch .slider:before {
 	position: absolute;
 	content: "";
 	height: 18px;
@@ -1399,66 +1426,14 @@ body.nav-open .page-overlay {
 	border-radius: 50%;
 }
 
-.theme-switcher input:checked+.slider {
+.toggle-switch input:checked + .slider {
 	background-color: var(--primary-color);
 }
 
-.theme-switcher input:checked+.slider:before {
+.toggle-switch input:checked + .slider:before {
 	transform: translateX(20px);
 }
 
-/* Mode Switcher Styles (for editor) */
-.mode-switcher {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	color: var(--text-muted-color);
-}
-
-.mode-switcher .switch {
-	position: relative;
-	display: inline-block;
-	width: 44px;
-	height: 24px;
-}
-
-.mode-switcher .switch input {
-	opacity: 0;
-	width: 0;
-	height: 0;
-}
-
-.mode-switcher .slider {
-	position: absolute;
-	cursor: pointer;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background-color: #ccc;
-	transition: .4s;
-	border-radius: 24px;
-}
-
-.mode-switcher .slider:before {
-	position: absolute;
-	content: "";
-	height: 18px;
-	width: 18px;
-	left: 3px;
-	bottom: 3px;
-	background-color: white;
-	transition: .4s;
-	border-radius: 50%;
-}
-
-.mode-switcher input:checked+.slider {
-	background-color: var(--primary-color);
-}
-
-.mode-switcher input:checked+.slider:before {
-	transform: translateX(20px);
-}
 
 /* Editor Specific Styles */
 #editor-page-wrapper {

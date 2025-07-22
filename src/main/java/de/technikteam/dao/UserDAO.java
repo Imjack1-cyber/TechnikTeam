@@ -93,33 +93,13 @@ public class UserDAO {
 	}
 
 	public boolean updateUserPermissions(int userId, String[] permissionIds) {
-		String deleteSql = "DELETE FROM user_permissions WHERE user_id = ?";
-		String insertSql = "INSERT INTO user_permissions (user_id, permission_id) VALUES (?, ?)";
 		Connection conn = null;
-
 		try {
 			conn = DatabaseManager.getConnection();
 			conn.setAutoCommit(false);
-
-			try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
-				deleteStmt.setInt(1, userId);
-				deleteStmt.executeUpdate();
-			}
-
-			if (permissionIds != null && permissionIds.length > 0) {
-				try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
-					for (String permId : permissionIds) {
-						insertStmt.setInt(1, userId);
-						insertStmt.setInt(2, Integer.parseInt(permId));
-						insertStmt.addBatch();
-					}
-					insertStmt.executeBatch();
-				}
-			}
-
+			boolean success = updateUserPermissions(userId, permissionIds, conn);
 			conn.commit();
-			logger.info("Successfully updated permissions for user ID: {}", userId);
-			return true;
+			return success;
 		} catch (SQLException | NumberFormatException e) {
 			logger.error("Error during transaction for updating user permissions for user ID {}. Rolling back.", userId,
 					e);
@@ -141,6 +121,29 @@ public class UserDAO {
 				}
 			}
 		}
+	}
+
+	public boolean updateUserPermissions(int userId, String[] permissionIds, Connection conn) throws SQLException {
+		String deleteSql = "DELETE FROM user_permissions WHERE user_id = ?";
+		String insertSql = "INSERT INTO user_permissions (user_id, permission_id) VALUES (?, ?)";
+
+		try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
+			deleteStmt.setInt(1, userId);
+			deleteStmt.executeUpdate();
+		}
+
+		if (permissionIds != null && permissionIds.length > 0) {
+			try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
+				for (String permId : permissionIds) {
+					insertStmt.setInt(1, userId);
+					insertStmt.setInt(2, Integer.parseInt(permId));
+					insertStmt.addBatch();
+				}
+				insertStmt.executeBatch();
+			}
+		}
+		logger.info("Successfully updated permissions for user ID: {}", userId);
+		return true;
 	}
 
 	public List<User> getAllUsers() {
@@ -199,14 +202,20 @@ public class UserDAO {
 	}
 
 	public int createUser(User user, String password) {
+		logger.debug("Attempting to create user: {} (manages its own connection)", user.getUsername());
+		try (Connection connection = DatabaseManager.getConnection()) {
+			return createUser(user, password, connection);
+		} catch (SQLException exception) {
+			logger.error("SQL error creating user '{}'. Username or email might already exist.", user.getUsername(),
+					exception);
+			return 0;
+		}
+	}
+
+	public int createUser(User user, String password, Connection connection) throws SQLException {
 		String hashedPassword = passwordEncoder.encode(password);
-
 		String sql = "INSERT INTO users (username, password_hash, role_id, class_year, class_name, email, theme) VALUES (?, ?, ?, ?, ?, ?, ?)";
-		logger.debug("Attempting to create user: {}", user.getUsername());
-		try (Connection connection = DatabaseManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql,
-						Statement.RETURN_GENERATED_KEYS)) {
-
+		try (PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 			preparedStatement.setString(1, user.getUsername());
 			preparedStatement.setString(2, hashedPassword);
 			preparedStatement.setInt(3, user.getRoleId());
@@ -214,9 +223,7 @@ public class UserDAO {
 			preparedStatement.setString(5, user.getClassName());
 			preparedStatement.setString(6, user.getEmail());
 			preparedStatement.setString(7, "light"); // Default theme
-
 			int affectedRows = preparedStatement.executeUpdate();
-
 			if (affectedRows > 0) {
 				try (ResultSet generatedKeys = preparedStatement.getGeneratedKeys()) {
 					if (generatedKeys.next()) {
@@ -226,18 +233,23 @@ public class UserDAO {
 					}
 				}
 			}
-		} catch (SQLException exception) {
-			logger.error("SQL error creating user '{}'. Username or email might already exist.", user.getUsername(),
-					exception);
 		}
 		return 0;
 	}
 
 	public boolean updateUser(User user) {
-		logger.debug("Updating user with ID: {}", user.getId());
+		logger.debug("Updating user with ID: {} (manages its own connection)", user.getId());
+		try (Connection connection = DatabaseManager.getConnection()) {
+			return updateUser(user, connection);
+		} catch (SQLException exception) {
+			logger.error("SQL error updating user with ID: {}", user.getId(), exception);
+			return false;
+		}
+	}
+
+	public boolean updateUser(User user, Connection connection) throws SQLException {
 		String sql = "UPDATE users SET username = ?, role_id = ?, class_year = ?, class_name = ?, email = ? WHERE id = ?";
-		try (Connection connection = DatabaseManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+		try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 			preparedStatement.setString(1, user.getUsername());
 			preparedStatement.setInt(2, user.getRoleId());
 			preparedStatement.setInt(3, user.getClassYear());
@@ -245,9 +257,6 @@ public class UserDAO {
 			preparedStatement.setString(5, user.getEmail());
 			preparedStatement.setInt(6, user.getId());
 			return preparedStatement.executeUpdate() > 0;
-		} catch (SQLException exception) {
-			logger.error("SQL error updating user with ID: {}", user.getId(), exception);
-			return false;
 		}
 	}
 

@@ -37,6 +37,12 @@ public class AdminLogServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		User adminUser = (User) request.getSession().getAttribute("user");
+		// Ensure a user is logged in, though AdminFilter should handle this.
+		if (adminUser == null) {
+			response.sendRedirect(request.getContextPath() + "/login");
+			return;
+		}
+
 		logger.info("Admin log page requested by user '{}'.", adminUser.getUsername());
 		try {
 			List<AdminLog> logs = adminLogDAO.getAllLogs();

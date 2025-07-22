@@ -2,8 +2,10 @@ package de.technikteam.websocket;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import de.technikteam.config.Permissions;
 import de.technikteam.dao.FileDAO;
 import de.technikteam.model.User;
+import de.technikteam.util.MarkdownUtil;
 import jakarta.websocket.*;
 import jakarta.websocket.server.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
@@ -28,8 +30,8 @@ public class DocumentEditorSocket {
 	public void onOpen(Session session, @PathParam("fileId") String fileId, EndpointConfig config) throws IOException {
 		User user = (User) config.getUserProperties().get(GetHttpSessionConfigurator.USER_PROPERTY_KEY);
 
-		if (user == null || (!user.getPermissions().contains("FILE_UPDATE")
-				&& !user.getPermissions().contains("ACCESS_ADMIN_PANEL"))) {
+		if (user == null || (!user.getPermissions().contains(Permissions.FILE_UPDATE)
+				&& !user.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL))) {
 			logger.warn("Unauthorized WebSocket connection attempt for editor on file ID {}. User: {}", fileId,
 					user != null ? user.getUsername() : "GUEST");
 			session.close(new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "Permission denied."));
@@ -66,12 +68,16 @@ public class DocumentEditorSocket {
 			de.technikteam.model.File dbFile = fileDAO.getFileById(fileId);
 
 			if (dbFile != null) {
+				// Sanitize the content on the server-side to prevent stored XSS
+				String sanitizedContent = MarkdownUtil.sanitize(content);
+
 				// Persist the changes to the disk
-				if (fileDAO.updateFileContent(dbFile.getFilepath(), content)) {
+				if (fileDAO.updateFileContent(dbFile.getFilepath(), sanitizedContent)) {
 					fileDAO.touchFileRecord(fileId); // Update timestamp
 
-					// Broadcast the full content to other connected clients
-					Map<String, String> broadcastPayload = Map.of("type", "content_update", "payload", content);
+					// Broadcast the full sanitized content to other connected clients
+					Map<String, String> broadcastPayload = Map.of("type", "content_update", "payload",
+							sanitizedContent);
 					DocumentSessionManager.getInstance().broadcastExcept(fileIdStr, gson.toJson(broadcastPayload),
 							originSession);
 				} else {

@@ -114,7 +114,9 @@ document.addEventListener('DOMContentLoaded', () => {
 				classNameInput.value = user.className || '';
 				emailInput.value = user.email || '';
 				passwordInput.required = false;
-				passwordGroup.style.display = 'none';
+				passwordGroup.style.display = 'block';
+				passwordInput.placeholder = "Leer lassen, um nicht zu ändern";
+
 
 				populatePermissions(assignedPermissionIds);
 
@@ -124,6 +126,53 @@ document.addEventListener('DOMContentLoaded', () => {
 				alert('Benutzerdaten konnten nicht geladen werden.');
 			}
 		});
+	});
+
+	const appendUserToTable = (user) => {
+		const tableBody = document.querySelector('.data-table tbody');
+		const newRow = tableBody.insertRow(0); // Insert at the top
+		newRow.innerHTML = `
+            <td>${user.id}</td>
+            <td>${user.username}</td>
+            <td>${user.roleName}</td>
+            <td style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button type="button" class="btn btn-small edit-user-btn" data-fetch-url="${contextPath}/admin/mitglieder?action=getUserData&id=${user.id}">Bearbeiten</button>
+                <a href="${contextPath}/admin/mitglieder?action=details&id=${user.id}" class="btn btn-small">Details</a>
+                <!-- More buttons can be added here if needed -->
+            </td>
+        `;
+	};
+
+	form.addEventListener('submit', async (event) => {
+		event.preventDefault();
+		const action = actionInput.value;
+
+		if (action === 'update') {
+			form.submit(); // Use traditional submit for updates for now
+			return;
+		}
+
+		const formData = new FormData(form);
+		try {
+			const response = await fetch(form.action, {
+				method: 'POST',
+				headers: { 'X-Requested-With': 'XMLHttpRequest' },
+				body: formData
+			});
+
+			const result = await response.json();
+
+			if (response.ok && result.success) {
+				closeModal();
+				showToast(result.message, 'success');
+				appendUserToTable(result.newUser);
+			} else {
+				showToast(result.message, 'danger');
+			}
+		} catch (error) {
+			console.error('Error submitting form:', error);
+			showToast('Ein Netzwerkfehler ist aufgetreten.', 'danger');
+		}
 	});
 
 	closeModalBtn.addEventListener('click', closeModal);

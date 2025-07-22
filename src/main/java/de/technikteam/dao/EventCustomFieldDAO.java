@@ -13,34 +13,14 @@ public class EventCustomFieldDAO {
 	private static final Logger logger = LogManager.getLogger(EventCustomFieldDAO.class);
 
 	public void saveCustomFieldsForEvent(int eventId, List<EventCustomField> fields) {
-		String deleteSql = "DELETE FROM event_custom_fields WHERE event_id = ?";
-		String insertSql = "INSERT INTO event_custom_fields (event_id, field_name, field_type, is_required, field_options) VALUES (?, ?, ?, ?, ?)";
 		Connection connection = null;
 		try {
 			connection = DatabaseManager.getConnection();
 			connection.setAutoCommit(false);
-
-			try (PreparedStatement deleteStatement = connection.prepareStatement(deleteSql)) {
-				deleteStatement.setInt(1, eventId);
-				deleteStatement.executeUpdate();
-			}
-
-			if (fields != null && !fields.isEmpty()) {
-				try (PreparedStatement insertStatement = connection.prepareStatement(insertSql)) {
-					for (EventCustomField field : fields) {
-						insertStatement.setInt(1, eventId);
-						insertStatement.setString(2, field.getFieldName());
-						insertStatement.setString(3, field.getFieldType());
-						insertStatement.setBoolean(4, field.isRequired());
-						insertStatement.setString(5, field.getFieldOptions());
-						insertStatement.addBatch();
-					}
-					insertStatement.executeBatch();
-				}
-			}
+			saveCustomFieldsForEvent(eventId, fields, connection);
 			connection.commit();
-			logger.info("Successfully saved {} custom fields for event ID {}", fields != null ? fields.size() : 0,
-					eventId);
+			logger.info("Successfully saved {} custom fields for event ID {} (DAO managed transaction)",
+					fields != null ? fields.size() : 0, eventId);
 		} catch (SQLException e) {
 			logger.error("Error saving custom fields for event ID {}. Rolling back.", eventId, e);
 			if (connection != null)
@@ -57,6 +37,31 @@ public class EventCustomFieldDAO {
 				} catch (SQLException ex) {
 					logger.error("Failed to close connection.", ex);
 				}
+		}
+	}
+
+	public void saveCustomFieldsForEvent(int eventId, List<EventCustomField> fields, Connection conn)
+			throws SQLException {
+		String deleteSql = "DELETE FROM event_custom_fields WHERE event_id = ?";
+		String insertSql = "INSERT INTO event_custom_fields (event_id, field_name, field_type, is_required, field_options) VALUES (?, ?, ?, ?, ?)";
+
+		try (PreparedStatement deleteStatement = conn.prepareStatement(deleteSql)) {
+			deleteStatement.setInt(1, eventId);
+			deleteStatement.executeUpdate();
+		}
+
+		if (fields != null && !fields.isEmpty()) {
+			try (PreparedStatement insertStatement = conn.prepareStatement(insertSql)) {
+				for (EventCustomField field : fields) {
+					insertStatement.setInt(1, eventId);
+					insertStatement.setString(2, field.getFieldName());
+					insertStatement.setString(3, field.getFieldType());
+					insertStatement.setBoolean(4, field.isRequired());
+					insertStatement.setString(5, field.getFieldOptions());
+					insertStatement.addBatch();
+				}
+				insertStatement.executeBatch();
+			}
 		}
 	}
 

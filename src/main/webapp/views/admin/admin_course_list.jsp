@@ -14,7 +14,8 @@
 <c:import url="/WEB-INF/jspf/message_banner.jspf" />
 
 <div class="table-controls">
-	<button type="button" id="new-course-btn" class="btn btn-success">
+	<button type="button" id="new-course-btn" class="btn btn-success"
+		data-modal-target="course-modal">
 		<i class="fas fa-plus"></i> Neue Vorlage
 	</button>
 	<div class="form-group" style="margin-bottom: 0;">
@@ -53,12 +54,13 @@
 						<button type="button"
 							class="btn btn-small btn-info grant-quals-btn"
 							data-course-id="${course.id}"
-							data-course-name="${fn:escapeXml(course.name)}">
+							data-course-name="${fn:escapeXml(course.name)}"
+							data-modal-target="grant-quals-modal">
 							<i class="fas fa-user-graduate"></i> Qualis vergeben
 						</button>
 						<button type="button"
 							class="btn btn-small btn-secondary edit-course-btn"
-							data-id="${course.id}">
+							data-id="${course.id}" data-modal-target="course-modal">
 							<i class="fas fa-edit"></i> Bearbeiten
 						</button>
 						<form action="${pageContext.request.contextPath}/admin/lehrgaenge"
@@ -102,12 +104,13 @@
 				</a>
 				<button type="button" class="btn btn-small btn-info grant-quals-btn"
 					data-course-id="${course.id}"
-					data-course-name="${fn:escapeXml(course.name)}">
+					data-course-name="${fn:escapeXml(course.name)}"
+					data-modal-target="grant-quals-modal">
 					<i class="fas fa-user-graduate"></i> Qualis vergeben
 				</button>
 				<button type="button"
 					class="btn btn-small btn-secondary edit-course-btn"
-					data-id="${course.id}">
+					data-id="${course.id}" data-modal-target="course-modal">
 					<i class="fas fa-edit"></i> Bearbeiten
 				</button>
 				<form action="${pageContext.request.contextPath}/admin/lehrgaenge"
@@ -129,7 +132,8 @@
 <!-- MODAL FOR CREATE/EDIT COURSE -->
 <div class="modal-overlay" id="course-modal">
 	<div class="modal-content">
-		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
+		<button class="modal-close-btn" type="button" aria-label="Schließen"
+			data-modal-close>×</button>
 		<h3 id="course-modal-title">Lehrgangs-Vorlage</h3>
 		<form id="course-modal-form"
 			action="${pageContext.request.contextPath}/admin/lehrgaenge"
@@ -161,7 +165,8 @@
 <!-- MODAL FOR GRANTING QUALIFICATIONS -->
 <div class="modal-overlay" id="grant-quals-modal">
 	<div class="modal-content">
-		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
+		<button class="modal-close-btn" type="button" aria-label="Schließen"
+			data-modal-close>×</button>
 		<h3 id="grant-quals-modal-title">Qualifikationen vergeben</h3>
 		<p>Diese Aktion vergibt den Status 'ABSOLVIERT' an alle Nutzer,
 			die eine Mindestanzahl an Meetings für diesen Lehrgang besucht haben.</p>

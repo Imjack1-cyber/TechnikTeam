@@ -9,6 +9,10 @@
 <div style="max-width: 600px; margin: auto;">
 	<div class="card">
 		<h1>Passwort ändern</h1>
+		<p class="text-muted"
+			style="margin-top: -1rem; margin-bottom: 1.5rem;">Das neue
+			Passwort muss mindestens 10 Zeichen lang sein und Groß-,
+			Kleinbuchstaben, Zahlen und Sonderzeichen enthalten.</p>
 
 		<c:if test="${not empty successMessage}">
 			<p class="success-message">

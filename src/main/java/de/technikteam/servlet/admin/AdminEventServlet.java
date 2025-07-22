@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import de.technikteam.service.AchievementService;
+import de.technikteam.service.EventService;
 import de.technikteam.service.NotificationService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -60,6 +61,7 @@ public class AdminEventServlet extends HttpServlet {
 	private AttachmentDAO attachmentDAO;
 	private EventCustomFieldDAO customFieldDAO;
 	private InventoryKitDAO kitDAO;
+	private EventService eventService;
 	private Gson gson;
 
 	@Override
@@ -71,6 +73,7 @@ public class AdminEventServlet extends HttpServlet {
 		attachmentDAO = new AttachmentDAO();
 		customFieldDAO = new EventCustomFieldDAO();
 		kitDAO = new InventoryKitDAO();
+		eventService = new EventService();
 		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
 				.registerTypeAdapter(java.time.LocalDate.class, new LocalDateAdapter()).setPrettyPrinting().create();
 	}
@@ -246,55 +249,16 @@ public class AdminEventServlet extends HttpServlet {
 				event.setLeaderUserId(Integer.parseInt(leaderIdStr));
 			}
 
-			int eventId = 0;
 			if (isUpdate) {
-				eventId = Integer.parseInt(idParam);
+				int eventId = Integer.parseInt(idParam);
 				Event originalEvent = eventDAO.getEventById(eventId);
 				event.setId(eventId);
 				event.setStatus(originalEvent.getStatus());
-				if (eventDAO.updateEvent(event)) {
-					AdminLogService.log(adminUser.getUsername(), "UPDATE_EVENT",
-							"Event '" + event.getName() + "' (ID: " + eventId + ") aktualisiert.");
-				}
-			} else {
-				eventId = eventDAO.createEvent(event);
-				if (eventId > 0) {
-					event.setId(eventId);
-					AdminLogService.log(adminUser.getUsername(), "CREATE_EVENT",
-							"Event '" + event.getName() + "' (ID: " + eventId + ") erstellt.");
-				}
 			}
 
+			int eventId = eventService.createOrUpdateEvent(event, isUpdate, adminUser, request);
+
 			if (eventId > 0) {
-				String[] requiredCourseIds = request.getParameterValues("requiredCourseId");
-				String[] requiredPersons = request.getParameterValues("requiredPersons");
-				eventDAO.saveSkillRequirements(eventId, requiredCourseIds, requiredPersons);
-
-				String[] itemIds = request.getParameterValues("itemId");
-				String[] quantities = request.getParameterValues("itemQuantity");
-				eventDAO.saveReservations(eventId, itemIds, quantities);
-
-				String[] customFieldNames = request.getParameterValues("customFieldName");
-				String[] customFieldTypes = request.getParameterValues("customFieldType");
-				if (customFieldNames != null) {
-					List<EventCustomField> customFields = new ArrayList<>();
-					for (int i = 0; i < customFieldNames.length; i++) {
-						if (customFieldNames[i] != null && !customFieldNames[i].trim().isEmpty()) {
-							EventCustomField cf = new EventCustomField();
-							cf.setFieldName(customFieldNames[i]);
-							cf.setFieldType(customFieldTypes[i]);
-							cf.setRequired(true);
-							customFields.add(cf);
-						}
-					}
-					customFieldDAO.saveCustomFieldsForEvent(eventId, customFields);
-				}
-
-				Part filePart = request.getPart("attachment");
-				if (filePart != null && filePart.getSize() > 0) {
-					String requiredRole = request.getParameter("requiredRole");
-					handleAttachmentUpload(filePart, eventId, requiredRole, adminUser, request);
-				}
 				request.getSession().setAttribute("successMessage", "Event erfolgreich gespeichert.");
 			} else {
 				request.getSession().setAttribute("errorMessage", "Event konnte nicht gespeichert werden.");
@@ -311,30 +275,6 @@ public class AdminEventServlet extends HttpServlet {
 		}
 
 		response.sendRedirect(request.getContextPath() + "/admin/veranstaltungen");
-	}
-
-	private void handleAttachmentUpload(Part filePart, int eventId, String requiredRole, User adminUser,
-			HttpServletRequest req) throws IOException {
-		String uploadDir = AppConfig.UPLOAD_DIRECTORY + File.separator + "events";
-		new File(uploadDir).mkdirs();
-
-		String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
-		File targetFile = new File(uploadDir, fileName);
-		filePart.write(targetFile.getAbsolutePath());
-
-		Attachment attachment = new Attachment();
-		attachment.setParentId(eventId);
-		attachment.setParentType("EVENT");
-		attachment.setFilename(fileName);
-		attachment.setFilepath("events/" + fileName);
-		attachment.setRequiredRole(requiredRole);
-
-		if (attachmentDAO.addAttachment(attachment)) {
-			AdminLogService.log(adminUser.getUsername(), "ADD_EVENT_ATTACHMENT",
-					"Anhang '" + fileName + "' zu Event ID " + eventId + " hinzugefügt.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Anhang konnte nicht in DB gespeichert werden.");
-		}
 	}
 
 	private void handleDeleteAttachment(HttpServletRequest req, HttpServletResponse resp) throws IOException {

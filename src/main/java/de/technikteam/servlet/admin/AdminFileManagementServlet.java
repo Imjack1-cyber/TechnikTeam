@@ -13,6 +13,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -39,7 +40,13 @@ public class AdminFileManagementServlet extends HttpServlet {
 		logger.info("Admin file management page requested by user '{}' (Role: {})", user.getUsername(),
 				user.getRoleName());
 
-		Map<String, List<File>> groupedFiles = fileDAO.getAllFilesGroupedByCategory(user);
+		// In the admin area, we always want to show all files, so we create a temporary
+		// user object with admin rights to pass to the DAO.
+		User adminProxy = new User();
+		adminProxy.setPermissions(new HashSet<>());
+		adminProxy.getPermissions().add("ACCESS_ADMIN_PANEL");
+
+		Map<String, List<File>> groupedFiles = fileDAO.getAllFilesGroupedByCategory(adminProxy);
 		List<FileCategory> allCategories = fileDAO.getAllCategories();
 
 		request.setAttribute("groupedFiles", groupedFiles);

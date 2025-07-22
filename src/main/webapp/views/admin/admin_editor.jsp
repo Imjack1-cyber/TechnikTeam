@@ -18,7 +18,7 @@
 			<div class="editor-controls">
 				<c:if test="${editorMode eq 'edit'}">
 					<div class="mode-switcher">
-						<span>View</span> <label class="switch"> <input
+						<span>View</span> <label class="toggle-switch"> <input
 							type="checkbox" id="mode-toggle" checked> <span
 							class="slider"></span>
 						</label> <span>Edit</span>

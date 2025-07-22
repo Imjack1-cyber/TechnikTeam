@@ -46,8 +46,8 @@
 							data-item-name="${fn:escapeXml(item.name)}"
 							data-max-qty="${item.quantity}"
 							data-current-defect-qty="${item.defectiveQuantity}"
-							data-current-reason="${fn:escapeXml(item.defectReason)}">Status
-							bearbeiten</button>
+							data-current-reason="${fn:escapeXml(item.defectReason)}"
+							data-modal-target="defect-modal">Status bearbeiten</button>
 					</td>
 				</tr>
 			</c:forEach>
@@ -87,8 +87,8 @@
 					data-item-name="${fn:escapeXml(item.name)}"
 					data-max-qty="${item.quantity}"
 					data-current-defect-qty="${item.defectiveQuantity}"
-					data-current-reason="${fn:escapeXml(item.defectReason)}">Status
-					bearbeiten</button>
+					data-current-reason="${fn:escapeXml(item.defectReason)}"
+					data-modal-target="defect-modal">Status bearbeiten</button>
 			</div>
 		</div>
 	</c:forEach>
@@ -98,7 +98,8 @@
 <!-- Modal for updating defect status -->
 <div class="modal-overlay" id="defect-modal">
 	<div class="modal-content">
-		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
+		<button type="button" class="modal-close-btn" aria-label="Schließen"
+			data-modal-close>×</button>
 		<h3 id="defect-modal-title">Defekt-Status bearbeiten</h3>
 		<form action="${pageContext.request.contextPath}/admin/lager"
 			method="post">

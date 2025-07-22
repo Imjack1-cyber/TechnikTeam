@@ -1,5 +1,6 @@
 package de.technikteam.util;
 
+import de.technikteam.config.Permissions;
 import de.technikteam.model.NavigationItem;
 import de.technikteam.model.User;
 
@@ -31,19 +32,22 @@ public final class NavigationRegistry {
 
 		// Admin Section
 		ALL_ITEMS.add(new NavigationItem("Admin Dashboard", "/admin/dashboard", "fa-tachometer-alt",
-				"ADMIN_DASHBOARD_ACCESS"));
-		ALL_ITEMS.add(new NavigationItem("Benutzer", "/admin/mitglieder", "fa-users-cog", "USER_READ"));
-		ALL_ITEMS.add(new NavigationItem("Events", "/admin/veranstaltungen", "fa-calendar-plus", "EVENT_READ"));
-		ALL_ITEMS.add(new NavigationItem("Lager", "/admin/lager", "fa-warehouse", "STORAGE_READ"));
-		ALL_ITEMS.add(new NavigationItem("Dateien", "/admin/dateien", "fa-file-upload", "FILE_MANAGE"));
-		ALL_ITEMS.add(new NavigationItem("Lehrgangs-Vorlagen", "/admin/lehrgaenge", "fa-book", "COURSE_READ"));
-		ALL_ITEMS.add(new NavigationItem("Kit-Verwaltung", "/admin/kits", "fa-box-open", "KIT_READ"));
-		ALL_ITEMS.add(new NavigationItem("Abzeichen", "/admin/achievements", "fa-award", "ACHIEVEMENT_VIEW"));
-		ALL_ITEMS.add(new NavigationItem("Defekte Artikel", "/admin/defekte", "fa-wrench", "STORAGE_READ"));
-		ALL_ITEMS.add(new NavigationItem("Quali-Matrix", "/admin/matrix", "fa-th-list", "QUALIFICATION_READ"));
-		ALL_ITEMS.add(new NavigationItem("Berichte", "/admin/berichte", "fa-chart-pie", "REPORT_READ"));
-		ALL_ITEMS.add(new NavigationItem("Aktions-Log", "/admin/log", "fa-clipboard-list", "LOG_READ"));
-		ALL_ITEMS.add(new NavigationItem("System", "/admin/system", "fa-server", "SYSTEM_READ"));
+				Permissions.ADMIN_DASHBOARD_ACCESS));
+		ALL_ITEMS.add(new NavigationItem("Benutzer", "/admin/mitglieder", "fa-users-cog", Permissions.USER_READ));
+		ALL_ITEMS.add(
+				new NavigationItem("Events", "/admin/veranstaltungen", "fa-calendar-plus", Permissions.EVENT_READ));
+		ALL_ITEMS.add(new NavigationItem("Lager", "/admin/lager", "fa-warehouse", Permissions.STORAGE_READ));
+		ALL_ITEMS.add(new NavigationItem("Dateien", "/admin/dateien", "fa-file-upload", Permissions.FILE_MANAGE));
+		ALL_ITEMS
+				.add(new NavigationItem("Lehrgangs-Vorlagen", "/admin/lehrgaenge", "fa-book", Permissions.COURSE_READ));
+		ALL_ITEMS.add(new NavigationItem("Kit-Verwaltung", "/admin/kits", "fa-box-open", Permissions.KIT_READ));
+		ALL_ITEMS.add(new NavigationItem("Abzeichen", "/admin/achievements", "fa-award", Permissions.ACHIEVEMENT_VIEW));
+		ALL_ITEMS.add(new NavigationItem("Defekte Artikel", "/admin/defekte", "fa-wrench", Permissions.STORAGE_READ));
+		ALL_ITEMS
+				.add(new NavigationItem("Quali-Matrix", "/admin/matrix", "fa-th-list", Permissions.QUALIFICATION_READ));
+		ALL_ITEMS.add(new NavigationItem("Berichte", "/admin/berichte", "fa-chart-pie", Permissions.REPORT_READ));
+		ALL_ITEMS.add(new NavigationItem("Aktions-Log", "/admin/log", "fa-clipboard-list", Permissions.LOG_READ));
+		ALL_ITEMS.add(new NavigationItem("System", "/admin/system", "fa-server", Permissions.SYSTEM_READ));
 	}
 
 	private NavigationRegistry() {
@@ -72,21 +76,22 @@ public final class NavigationRegistry {
 			}
 
 			// Super-admins see all admin items
-			if (userPermissions.contains("ACCESS_ADMIN_PANEL")) {
+			if (userPermissions.contains(Permissions.ACCESS_ADMIN_PANEL)) {
 				return true;
 			}
 
 			// Special case: The "Admin Dashboard" link is visible if the user has *any*
 			// admin-level access.
-			if ("ADMIN_DASHBOARD_ACCESS".equals(requiredPerm)) {
+			if (Permissions.ADMIN_DASHBOARD_ACCESS.equals(requiredPerm)) {
 				return user.hasAdminAccess();
 			}
 
 			// Special case: The "Abzeichen" link is visible if user can perform any
 			// achievement action.
-			if ("ACHIEVEMENT_VIEW".equals(requiredPerm)) {
-				return userPermissions.contains("ACHIEVEMENT_CREATE") || userPermissions.contains("ACHIEVEMENT_UPDATE")
-						|| userPermissions.contains("ACHIEVEMENT_DELETE");
+			if (Permissions.ACHIEVEMENT_VIEW.equals(requiredPerm)) {
+				return userPermissions.contains(Permissions.ACHIEVEMENT_CREATE)
+						|| userPermissions.contains(Permissions.ACHIEVEMENT_UPDATE)
+						|| userPermissions.contains(Permissions.ACHIEVEMENT_DELETE);
 			}
 
 			// Standard permission check for all other items

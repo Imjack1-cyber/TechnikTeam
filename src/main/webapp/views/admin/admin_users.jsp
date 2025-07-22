@@ -65,7 +65,7 @@
 							test="${sessionScope.user.id != user.id}">
 							<c:if
 								test="${hasMasterAccess or userPermissions.contains('USER_PASSWORD_RESET')}">
-								<form action="<c:url value='/admin/mitglieder'/>" method="post"
+								<form action="<c:url value='/admin/action/user'/>" method="post"
 									class="js-confirm-form"
 									data-confirm-message="Passwort für '${fn:escapeXml(user.username)}' zurücksetzen? Das neue Passwort wird angezeigt.">
 									<input type="hidden" name="csrfToken"
@@ -78,7 +78,7 @@
 							</c:if>
 							<c:if
 								test="${hasMasterAccess or userPermissions.contains('USER_DELETE')}">
-								<form action="<c:url value='/admin/mitglieder'/>" method="post"
+								<form action="<c:url value='/admin/action/user'/>" method="post"
 									class="js-confirm-form"
 									data-confirm-message="Benutzer '${fn:escapeXml(user.username)}' wirklich löschen?">
 									<input type="hidden" name="csrfToken"
@@ -125,7 +125,7 @@
 				<c:if test="${sessionScope.user.id != user.id}">
 					<c:if
 						test="${hasMasterAccess or userPermissions.contains('USER_PASSWORD_RESET')}">
-						<form action="<c:url value='/admin/mitglieder'/>" method="post"
+						<form action="<c:url value='/admin/action/user'/>" method="post"
 							class="js-confirm-form"
 							data-confirm-message="Passwort für '${fn:escapeXml(user.username)}' zurücksetzen? Das neue Passwort wird angezeigt.">
 							<input type="hidden" name="csrfToken"
@@ -137,7 +137,7 @@
 					</c:if>
 					<c:if
 						test="${hasMasterAccess or userPermissions.contains('USER_DELETE')}">
-						<form action="<c:url value='/admin/mitglieder'/>" method="post"
+						<form action="<c:url value='/admin/action/user'/>" method="post"
 							class="js-confirm-form"
 							data-confirm-message="Benutzer '${fn:escapeXml(user.username)}' wirklich löschen?">
 							<input type="hidden" name="csrfToken"

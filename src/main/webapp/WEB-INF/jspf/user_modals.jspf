@@ -13,7 +13,7 @@
 		</div>
 
 		<form id="user-modal-form"
-			action="${pageContext.request.contextPath}/admin/mitglieder"
+			action="${pageContext.request.contextPath}/admin/action/user"
 			method="post">
 			<input type="hidden" name="csrfToken"
 				value="${sessionScope.csrfToken}"> <input type="hidden"
@@ -26,8 +26,11 @@
 						id="username-modal" name="username" required>
 				</div>
 				<div class="form-group" id="password-group">
-					<label for="password-modal">Passwort (mind. 8 Zeichen)</label> <input
-						type="password" id="password-modal" name="password" minlength="8">
+					<label for="password-modal">Passwort</label> <input type="password"
+						id="password-modal" name="password" minlength="10"> <small
+						class="text-muted">Muss 10+ Zeichen, Groß/Kleinbuchstaben,
+						Zahlen & Sonderzeichen enthalten. Leer lassen, um es nicht zu
+						ändern.</small>
 				</div>
 				<div class="responsive-dashboard-grid">
 					<div class="form-group">

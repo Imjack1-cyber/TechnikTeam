@@ -22,7 +22,8 @@
 <div class="table-controls">
 	<c:if
 		test="${hasMasterAccess or userPermissions.contains('ACHIEVEMENT_CREATE')}">
-		<button type="button" id="new-achievement-btn" class="btn btn-success">
+		<button type="button" id="new-achievement-btn" class="btn btn-success"
+			data-modal-target="achievement-modal">
 			<i class="fas fa-plus"></i> Neuen Erfolg anlegen
 		</button>
 	</c:if>
@@ -58,7 +59,7 @@
 							test="${hasMasterAccess or userPermissions.contains('ACHIEVEMENT_UPDATE')}">
 							<button type="button"
 								class="btn btn-small btn-secondary edit-achievement-btn"
-								data-id="${ach.id}">
+								data-id="${ach.id}" data-modal-target="achievement-modal">
 								<i class="fas fa-edit"></i> Bearbeiten
 							</button>
 						</c:if> <c:if
@@ -106,7 +107,7 @@
 					test="${hasMasterAccess or userPermissions.contains('ACHIEVEMENT_UPDATE')}">
 					<button type="button"
 						class="btn btn-small btn-secondary edit-achievement-btn"
-						data-id="${ach.id}">
+						data-id="${ach.id}" data-modal-target="achievement-modal">
 						<i class="fas fa-edit"></i> Bearbeiten
 					</button>
 				</c:if>
@@ -133,7 +134,8 @@
 <!-- Modal for Create/Edit Achievement -->
 <div class="modal-overlay" id="achievement-modal">
 	<div class="modal-content">
-		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
+		<button class="modal-close-btn" type="button" aria-label="Schließen"
+			data-modal-close>×</button>
 		<h3 id="achievement-modal-title">Erfolg verwalten</h3>
 		<form id="achievement-modal-form"
 			action="${pageContext.request.contextPath}/admin/achievements"

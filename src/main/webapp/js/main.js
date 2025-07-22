@@ -123,6 +123,59 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	}
 
+	// --- GLOBAL EVENT DELEGATION FOR MODALS & CONFIRMATIONS ---
+	document.body.addEventListener('click', (event) => {
+		// Modal Open
+		const modalOpenTrigger = event.target.closest('[data-modal-target]');
+		if (modalOpenTrigger) {
+			event.preventDefault();
+			const modalId = modalOpenTrigger.dataset.modalTarget;
+			const modal = document.getElementById(modalId);
+			if (modal) {
+				modal.classList.add('active');
+			}
+		}
+
+		// Modal Close
+		const modalCloseTrigger = event.target.closest('[data-modal-close]');
+		if (modalCloseTrigger) {
+			event.preventDefault();
+			const modal = modalCloseTrigger.closest('.modal-overlay');
+			if (modal) {
+				modal.classList.remove('active');
+			}
+		}
+	});
+
+	document.body.addEventListener('submit', (event) => {
+		const form = event.target;
+		if (form.matches('.js-confirm-form')) {
+			event.preventDefault();
+			const message = form.dataset.confirmMessage || 'Sind Sie sicher?';
+			showConfirmationModal(message, () => form.submit());
+		}
+	});
+
+	// --- GLOBAL TOAST NOTIFICATIONS ---
+	window.showToast = (message, type = 'success') => {
+		const toast = document.createElement('div');
+		toast.className = `toast toast-${type}`;
+		toast.innerHTML = `<p>${message}</p>`;
+
+		document.body.appendChild(toast);
+
+		setTimeout(() => {
+			toast.classList.add('show');
+		}, 100);
+
+		setTimeout(() => {
+			toast.classList.remove('show');
+			setTimeout(() => {
+				toast.remove();
+			}, 500);
+		}, 5000);
+	};
+
 	// --- SERVER-SENT EVENTS (SSE) NOTIFICATIONS ---
 	// Only connect if the user is logged in AND not on the editor page
 	if (document.body.dataset.isLoggedIn === 'true' && window.EventSource && currentPage !== 'editor') {

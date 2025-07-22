@@ -2,6 +2,7 @@ package de.technikteam.servlet;
 
 import java.io.IOException;
 
+import de.technikteam.util.PasswordPolicyValidator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -76,9 +77,11 @@ public class PasswordServlet extends HttpServlet {
 			return;
 		}
 
-		if (newPassword.trim().isEmpty()) {
-			logger.warn("Password change failed for {}: new password is empty.", user.getUsername());
-			session.setAttribute("errorMessage", "Das neue Passwort darf nicht leer sein.");
+		PasswordPolicyValidator.ValidationResult validationResult = PasswordPolicyValidator.validate(newPassword);
+		if (!validationResult.isValid()) {
+			logger.warn("Password change for user '{}' failed due to weak password: {}", user.getUsername(),
+					validationResult.getMessage());
+			session.setAttribute("errorMessage", validationResult.getMessage());
 			response.sendRedirect(request.getContextPath() + "/passwort");
 			return;
 		}

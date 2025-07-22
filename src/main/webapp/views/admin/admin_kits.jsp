@@ -16,7 +16,8 @@
 <c:import url="/WEB-INF/jspf/message_banner.jspf" />
 
 <div class="table-controls">
-	<button type="button" class="btn btn-success" id="new-kit-btn">
+	<button type="button" class="btn btn-success" id="new-kit-btn"
+		data-modal-target="kit-modal">
 		<i class="fas fa-plus"></i> Neues Kit anlegen
 	</button>
 </div>
@@ -50,7 +51,8 @@
 						class="btn btn-small btn-secondary edit-kit-btn"
 						data-kit-id="${kit.id}" data-kit-name="${fn:escapeXml(kit.name)}"
 						data-kit-desc="${fn:escapeXml(kit.description)}"
-						data-kit-location="${fn:escapeXml(kit.location)}">Bearbeiten</button>
+						data-kit-location="${fn:escapeXml(kit.location)}"
+						data-modal-target="kit-modal">Bearbeiten</button>
 					<form action="${pageContext.request.contextPath}/admin/kits"
 						method="post" class="js-confirm-form"
 						data-confirm-message="Kit '${fn:escapeXml(kit.name)}' wirklich löschen?">
@@ -116,7 +118,8 @@
 <!-- Modal for Create/Edit Kit -->
 <div class="modal-overlay" id="kit-modal">
 	<div class="modal-content">
-		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
+		<button class="modal-close-btn" type="button" aria-label="Schließen"
+			data-modal-close>×</button>
 		<h3>Kit verwalten</h3>
 		<form action="${pageContext.request.contextPath}/admin/kits"
 			method="post">

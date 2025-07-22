@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import de.technikteam.config.LocalDateTimeAdapter;
+import de.technikteam.config.Permissions;
 import de.technikteam.dao.EventChatDAO;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.FileDAO;
@@ -13,6 +14,7 @@ import de.technikteam.model.EventChatMessage;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.NotificationService;
+import de.technikteam.util.MarkdownUtil;
 import jakarta.websocket.*;
 import jakarta.websocket.server.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
@@ -42,19 +44,39 @@ public class EventChatSocket {
 	private static final Pattern MENTION_PATTERN = Pattern.compile("@(\\w+)");
 
 	@OnOpen
-	public void onOpen(Session session, @PathParam("eventId") String eventId, EndpointConfig config)
+	public void onOpen(Session session, @PathParam("eventId") String eventIdStr, EndpointConfig config)
 			throws IOException {
 		User user = (User) config.getUserProperties().get(GetHttpSessionConfigurator.USER_PROPERTY_KEY);
 
 		// Security: Immediately close the connection if no authenticated user is found.
 		if (user == null) {
-			logger.warn("Unauthenticated attempt to open WebSocket. Closing session.");
+			logger.warn("Unauthenticated attempt to open WebSocket for event chat [{}]. Closing session.", eventIdStr);
 			session.close(new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "Authentication required."));
 			return;
 		}
 
-		session.getUserProperties().put(GetHttpSessionConfigurator.USER_PROPERTY_KEY, user);
-		ChatSessionManager.getInstance().addSession(eventId, session);
+		try {
+			int eventId = Integer.parseInt(eventIdStr);
+
+			// Security: Verify the user is actually a participant or assigned to this
+			// event.
+			if (!eventDAO.isUserAssociatedWithEvent(eventId, user.getId())) {
+				logger.warn(
+						"Unauthorized WebSocket connection attempt for event chat [{}]. User '{}' is not associated with this event. Closing session.",
+						eventId, user.getUsername());
+				session.close(new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "Permission denied."));
+				return;
+			}
+
+			// If authorization passes, add user to session properties and register the
+			// session.
+			session.getUserProperties().put(GetHttpSessionConfigurator.USER_PROPERTY_KEY, user);
+			ChatSessionManager.getInstance().addSession(eventIdStr, session);
+
+		} catch (NumberFormatException e) {
+			logger.warn("Invalid eventId format '{}' in WebSocket onOpen. Closing session.", eventIdStr);
+			session.close(new CloseReason(CloseReason.CloseCodes.UNEXPECTED_CONDITION, "Invalid event ID format."));
+		}
 	}
 
 	@OnMessage
@@ -111,11 +133,14 @@ public class EventChatSocket {
 	 */
 	private void handleNewMessage(User user, String eventId, Map<String, Object> payload) {
 		String messageText = (String) payload.get("messageText");
+		// Server-side sanitization to prevent stored XSS
+		String sanitizedMessage = MarkdownUtil.sanitize(messageText);
+
 		EventChatMessage newMessage = new EventChatMessage();
 		newMessage.setEventId(Integer.parseInt(eventId));
 		newMessage.setUserId(user.getId());
 		newMessage.setUsername(user.getUsername());
-		newMessage.setMessageText(messageText);
+		newMessage.setMessageText(sanitizedMessage); // Use sanitized message
 
 		EventChatMessage savedMessage = chatDAO.postMessage(newMessage);
 		if (savedMessage == null) {
@@ -161,7 +186,7 @@ public class EventChatSocket {
 
 		Event event = eventDAO.getEventById(Integer.parseInt(eventId));
 		boolean isEventLeader = event != null && event.getLeaderUserId() == user.getId();
-		boolean canDeleteAsAdmin = user.getPermissions().contains("ACCESS_ADMIN_PANEL") || isEventLeader;
+		boolean canDeleteAsAdmin = user.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL) || isEventLeader;
 
 		if (chatDAO.deleteMessage(messageId, user.getId(), canDeleteAsAdmin)) {
 			int originalUserId = ((Double) payload.get("originalUserId")).intValue();
@@ -188,10 +213,12 @@ public class EventChatSocket {
 	private void handleUpdateMessage(User user, String eventId, Map<String, Object> payload) {
 		int messageId = ((Double) payload.get("messageId")).intValue();
 		String newText = (String) payload.get("newText");
+		// Server-side sanitization to prevent stored XSS
+		String sanitizedText = MarkdownUtil.sanitize(newText);
 
-		if (chatDAO.updateMessage(messageId, user.getId(), newText)) {
+		if (chatDAO.updateMessage(messageId, user.getId(), sanitizedText)) {
 			Map<String, Object> broadcastPayload = Map.of("type", "message_updated", "payload",
-					Map.of("messageId", messageId, "newText", newText));
+					Map.of("messageId", messageId, "newText", sanitizedText));
 			ChatSessionManager.getInstance().broadcast(eventId, gson.toJson(broadcastPayload));
 		} else {
 			logger.warn("User {} failed to update message {}. Not the owner or message deleted.", user.getUsername(),

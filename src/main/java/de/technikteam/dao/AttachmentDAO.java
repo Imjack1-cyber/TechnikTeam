@@ -31,20 +31,26 @@ public class AttachmentDAO {
 	}
 
 	public boolean addAttachment(Attachment attachment) {
+		logger.debug("Adding attachment '{}' to {} ID {} (manages its own connection)", attachment.getFilename(),
+				attachment.getParentType(), attachment.getParentId());
+		try (Connection conn = DatabaseManager.getConnection()) {
+			return addAttachment(attachment, conn);
+		} catch (SQLException e) {
+			logger.error("Error adding attachment to {} ID {}", attachment.getParentType(), attachment.getParentId(),
+					e);
+			return false;
+		}
+	}
+
+	public boolean addAttachment(Attachment attachment, Connection conn) throws SQLException {
 		String sql = "INSERT INTO attachments (parent_type, parent_id, filename, filepath, required_role) VALUES (?, ?, ?, ?, ?)";
-		logger.debug("Adding attachment '{}' to {} ID {}", attachment.getFilename(), attachment.getParentType(),
-				attachment.getParentId());
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, attachment.getParentType());
 			pstmt.setInt(2, attachment.getParentId());
 			pstmt.setString(3, attachment.getFilename());
 			pstmt.setString(4, attachment.getFilepath());
 			pstmt.setString(5, attachment.getRequiredRole());
 			return pstmt.executeUpdate() > 0;
-		} catch (SQLException e) {
-			logger.error("Error adding attachment to {} ID {}", attachment.getParentType(), attachment.getParentId(),
-					e);
-			return false;
 		}
 	}
 

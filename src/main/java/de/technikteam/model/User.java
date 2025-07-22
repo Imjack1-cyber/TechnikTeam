@@ -1,5 +1,7 @@
 package de.technikteam.model;
 
+import de.technikteam.config.Permissions;
+
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -39,9 +41,9 @@ public class User {
 		// A user has admin access if they have the master key OR any other specific
 		// admin-level permission that is not just for viewing or updating specific
 		// content.
-		return permissions.contains("ACCESS_ADMIN_PANEL") || permissions.stream().anyMatch(p -> !p.equals("FILE_READ")
-				&& !p.equals("FILE_UPDATE")
-				&& (p.contains("_READ") || p.contains("_MANAGE") || p.contains("_CREATE") || p.contains("_DELETE")));
+		return permissions.contains(Permissions.ACCESS_ADMIN_PANEL) || permissions.stream().anyMatch(
+				p -> !p.equals(Permissions.FILE_READ) && !p.equals(Permissions.FILE_UPDATE) && (p.contains("_READ")
+						|| p.contains("_MANAGE") || p.contains("_CREATE") || p.contains("_DELETE")));
 	}
 
 	// --- Standard Getters and Setters ---

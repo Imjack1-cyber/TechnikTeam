@@ -1,15 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
 	const contextPath = document.body.dataset.contextPath || '';
 
-	// --- General Confirmations ---
-	document.querySelectorAll('.js-confirm-form').forEach(form => {
-		form.addEventListener('submit', function(e) {
-			e.preventDefault();
-			const message = this.dataset.confirmMessage || 'Sind Sie sicher?';
-			showConfirmationModal(message, () => this.submit());
-		});
-	});
-
 	// --- Kit Create/Edit Modal ---
 	const kitModal = document.getElementById('kit-modal');
 	if (kitModal) {
@@ -20,17 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
 		const nameInput = form.querySelector('#name-modal');
 		const descInput = form.querySelector('#description-modal');
 		const locationInput = form.querySelector('#location-modal');
-		const closeModalBtn = kitModal.querySelector('.modal-close-btn');
-
-		const openModal = () => kitModal.classList.add('active');
-		const closeModal = () => kitModal.classList.remove('active');
 
 		document.getElementById('new-kit-btn')?.addEventListener('click', () => {
 			form.reset();
 			title.textContent = 'Neues Kit anlegen';
 			actionInput.value = 'create';
 			idInput.value = '';
-			openModal();
 		});
 
 		document.querySelectorAll('.edit-kit-btn').forEach(btn => {
@@ -42,13 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				nameInput.value = btn.dataset.kitName;
 				descInput.value = btn.dataset.kitDesc;
 				locationInput.value = btn.dataset.kitLocation || '';
-				openModal();
 			});
-		});
-
-		if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
-		kitModal.addEventListener('click', e => {
-			if (e.target === kitModal) closeModal();
 		});
 	}
 

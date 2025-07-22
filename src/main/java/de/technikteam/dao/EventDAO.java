@@ -127,11 +127,18 @@ public class EventDAO {
 	}
 
 	public int createEvent(Event event) {
+		logger.debug("Attempting to create new event: {} (manages its own connection)", event.getName());
+		try (Connection connection = DatabaseManager.getConnection()) {
+			return createEvent(event, connection);
+		} catch (SQLException exception) {
+			logger.error("SQL error creating event '{}'.", event.getName(), exception);
+			return 0;
+		}
+	}
+
+	public int createEvent(Event event, Connection connection) throws SQLException {
 		String sql = "INSERT INTO events (name, event_datetime, end_datetime, description, location, status, leader_user_id) VALUES (?, ?, ?, ?, ?, 'GEPLANT', ?)";
-		logger.debug("Attempting to create new event: {}", event.getName());
-		try (Connection connection = DatabaseManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql,
-						Statement.RETURN_GENERATED_KEYS)) {
+		try (PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 			preparedStatement.setString(1, event.getName());
 			preparedStatement.setTimestamp(2, Timestamp.valueOf(event.getEventDateTime()));
 			if (event.getEndDateTime() != null) {
@@ -156,17 +163,23 @@ public class EventDAO {
 					}
 				}
 			}
-		} catch (SQLException exception) {
-			logger.error("SQL error creating event '{}'.", event.getName(), exception);
 		}
 		return 0;
 	}
 
 	public boolean updateEvent(Event event) {
+		logger.debug("Attempting to update event with ID: {} (manages its own connection)", event.getId());
+		try (Connection connection = DatabaseManager.getConnection()) {
+			return updateEvent(event, connection);
+		} catch (SQLException exception) {
+			logger.error("SQL error updating event with ID: {}", event.getId(), exception);
+			return false;
+		}
+	}
+
+	public boolean updateEvent(Event event, Connection connection) throws SQLException {
 		String sql = "UPDATE events SET name = ?, event_datetime = ?, end_datetime = ?, description = ?, location = ?, status = ?, leader_user_id = ? WHERE id = ?";
-		logger.debug("Attempting to update event with ID: {}", event.getId());
-		try (Connection connection = DatabaseManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+		try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 			preparedStatement.setString(1, event.getName());
 			preparedStatement.setTimestamp(2, Timestamp.valueOf(event.getEventDateTime()));
 			if (event.getEndDateTime() != null) {
@@ -183,12 +196,8 @@ public class EventDAO {
 				preparedStatement.setNull(7, Types.INTEGER);
 			}
 			preparedStatement.setInt(8, event.getId());
-
 			return preparedStatement.executeUpdate() > 0;
-		} catch (SQLException exception) {
-			logger.error("SQL error updating event with ID: {}", event.getId(), exception);
 		}
-		return false;
 	}
 
 	public boolean deleteEvent(int eventId) {
@@ -329,33 +338,9 @@ public class EventDAO {
 	}
 
 	public void saveSkillRequirements(int eventId, String[] requiredCourseIds, String[] requiredPersons) {
-		String deleteSql = "DELETE FROM event_skill_requirements WHERE event_id = ?";
-		String insertSql = "INSERT INTO event_skill_requirements (event_id, required_course_id, required_persons) VALUES (?, ?, ?)";
-		logger.debug("Saving skill requirements for event ID: {}", eventId);
-
 		try (Connection connection = DatabaseManager.getConnection()) {
 			connection.setAutoCommit(false);
-
-			try (PreparedStatement deleteStatement = connection.prepareStatement(deleteSql)) {
-				deleteStatement.setInt(1, eventId);
-				deleteStatement.executeUpdate();
-			}
-
-			if (requiredCourseIds != null && requiredPersons != null
-					&& requiredCourseIds.length == requiredPersons.length) {
-				try (PreparedStatement insertStatement = connection.prepareStatement(insertSql)) {
-					for (int i = 0; i < requiredCourseIds.length; i++) {
-						if (requiredCourseIds[i] == null || requiredCourseIds[i].isEmpty())
-							continue;
-						insertStatement.setInt(1, eventId);
-						insertStatement.setInt(2, Integer.parseInt(requiredCourseIds[i]));
-						insertStatement.setInt(3, Integer.parseInt(requiredPersons[i]));
-						insertStatement.addBatch();
-					}
-					insertStatement.executeBatch();
-				}
-			}
-
+			saveSkillRequirements(eventId, requiredCourseIds, requiredPersons, connection);
 			connection.commit();
 			logger.info("Successfully saved skill requirements for event ID: {}", eventId);
 		} catch (SQLException | NumberFormatException exception) {
@@ -365,36 +350,66 @@ public class EventDAO {
 		}
 	}
 
-	public void saveReservations(int eventId, String[] itemIds, String[] quantities) {
-		String deleteSql = "DELETE FROM event_storage_reservations WHERE event_id = ?";
-		String insertSql = "INSERT INTO event_storage_reservations (event_id, item_id, reserved_quantity) VALUES (?, ?, ?)";
+	public void saveSkillRequirements(int eventId, String[] requiredCourseIds, String[] requiredPersons,
+			Connection connection) throws SQLException {
+		String deleteSql = "DELETE FROM event_skill_requirements WHERE event_id = ?";
+		String insertSql = "INSERT INTO event_skill_requirements (event_id, required_course_id, required_persons) VALUES (?, ?, ?)";
 
+		try (PreparedStatement deleteStatement = connection.prepareStatement(deleteSql)) {
+			deleteStatement.setInt(1, eventId);
+			deleteStatement.executeUpdate();
+		}
+
+		if (requiredCourseIds != null && requiredPersons != null
+				&& requiredCourseIds.length == requiredPersons.length) {
+			try (PreparedStatement insertStatement = connection.prepareStatement(insertSql)) {
+				for (int i = 0; i < requiredCourseIds.length; i++) {
+					if (requiredCourseIds[i] == null || requiredCourseIds[i].isEmpty())
+						continue;
+					insertStatement.setInt(1, eventId);
+					insertStatement.setInt(2, Integer.parseInt(requiredCourseIds[i]));
+					insertStatement.setInt(3, Integer.parseInt(requiredPersons[i]));
+					insertStatement.addBatch();
+				}
+				insertStatement.executeBatch();
+			}
+		}
+	}
+
+	public void saveReservations(int eventId, String[] itemIds, String[] quantities) {
 		try (Connection connection = DatabaseManager.getConnection()) {
 			connection.setAutoCommit(false);
-
-			try (PreparedStatement deleteStatement = connection.prepareStatement(deleteSql)) {
-				deleteStatement.setInt(1, eventId);
-				deleteStatement.executeUpdate();
-			}
-
-			if (itemIds != null && quantities != null && itemIds.length == quantities.length) {
-				try (PreparedStatement insertStatement = connection.prepareStatement(insertSql)) {
-					for (int i = 0; i < itemIds.length; i++) {
-						if (itemIds[i] == null || itemIds[i].isEmpty())
-							continue;
-						insertStatement.setInt(1, eventId);
-						insertStatement.setInt(2, Integer.parseInt(itemIds[i]));
-						insertStatement.setInt(3, Integer.parseInt(quantities[i]));
-						insertStatement.addBatch();
-					}
-					insertStatement.executeBatch();
-				}
-			}
+			saveReservations(eventId, itemIds, quantities, connection);
 			connection.commit();
 			logger.info("Successfully saved storage reservations for event ID: {}", eventId);
 		} catch (SQLException | NumberFormatException exception) {
 			logger.error("Error saving storage reservations for event {}. Transaction will be rolled back.", eventId,
 					exception);
+		}
+	}
+
+	public void saveReservations(int eventId, String[] itemIds, String[] quantities, Connection connection)
+			throws SQLException {
+		String deleteSql = "DELETE FROM event_storage_reservations WHERE event_id = ?";
+		String insertSql = "INSERT INTO event_storage_reservations (event_id, item_id, reserved_quantity) VALUES (?, ?, ?)";
+
+		try (PreparedStatement deleteStatement = connection.prepareStatement(deleteSql)) {
+			deleteStatement.setInt(1, eventId);
+			deleteStatement.executeUpdate();
+		}
+
+		if (itemIds != null && quantities != null && itemIds.length == quantities.length) {
+			try (PreparedStatement insertStatement = connection.prepareStatement(insertSql)) {
+				for (int i = 0; i < itemIds.length; i++) {
+					if (itemIds[i] == null || itemIds[i].isEmpty())
+						continue;
+					insertStatement.setInt(1, eventId);
+					insertStatement.setInt(2, Integer.parseInt(itemIds[i]));
+					insertStatement.setInt(3, Integer.parseInt(quantities[i]));
+					insertStatement.addBatch();
+				}
+				insertStatement.executeBatch();
+			}
 		}
 	}
 

@@ -76,7 +76,7 @@
 			</nav>
 			<div class="user-actions">
 				<div class="theme-switcher desktop-only">
-					<i class="fas fa-sun"></i> <label class="switch"> <input
+					<i class="fas fa-sun"></i> <label class="toggle-switch"> <input
 						type="checkbox" id="theme-toggle-desktop"> <span
 						class="slider"></span>
 					</label> <i class="fas fa-moon"></i>
@@ -103,7 +103,7 @@
 			<a href="${pageContext.request.contextPath}/home" class="mobile-logo">TechnikTeam</a>
 			<div class="mobile-header-right">
 				<div class="theme-switcher mobile-only">
-					<i class="fas fa-sun"></i> <label class="switch"> <input
+					<i class="fas fa-sun"></i> <label class="toggle-switch"> <input
 						type="checkbox" id="theme-toggle"> <span class="slider"></span>
 					</label> <i class="fas fa-moon"></i>
 				</div>

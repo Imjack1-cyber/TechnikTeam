@@ -19,6 +19,8 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Handles all administrative file upload actions, including creating new files
@@ -34,6 +36,10 @@ public class AdminFileServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminFileServlet.class);
 	private FileDAO fileDAO;
+
+	// Whitelist of allowed MIME types for security
+	private static final Set<String> ALLOWED_MIME_TYPES = Set.of("image/jpeg", "image/png", "image/gif",
+			"application/pdf", "text/markdown", "text/plain");
 
 	@Override
 	public void init() {
@@ -76,6 +82,16 @@ public class AdminFileServlet extends HttpServlet {
 			return;
 		}
 
+		// Security: Validate MIME type against whitelist
+		String contentType = filePart.getContentType();
+		if (!ALLOWED_MIME_TYPES.contains(contentType)) {
+			logger.warn("Upload rejected for user '{}': Disallowed MIME type '{}'.", adminUser.getUsername(),
+					contentType);
+			session.setAttribute("errorMessage", "Dateityp '" + contentType + "' ist nicht erlaubt.");
+			response.sendRedirect(request.getContextPath() + "/admin/dateien");
+			return;
+		}
+
 		if ("create".equals(action)) {
 			handleCreateUpload(request, response, adminUser, filePart);
 		} else if ("update".equals(action)) {
@@ -98,34 +114,30 @@ public class AdminFileServlet extends HttpServlet {
 			}
 
 			int categoryId = Integer.parseInt(categoryIdStr);
-			String submittedFileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
+			String originalFileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
 
-			// Security: Sanitize filename to prevent path traversal and other injection
-			// attacks.
-			String sanitizedFileName = submittedFileName.replaceAll("[^a-zA-Z0-9.\\-_ ]", "_");
-			File targetFile = new File(AppConfig.UPLOAD_DIRECTORY, sanitizedFileName);
+			// Security: Sanitize original filename for display
+			String sanitizedOriginalFileName = originalFileName.replaceAll("[^a-zA-Z0-9.\\-_ ]", "_");
 
-			// Prevent overwriting existing files on create
-			if (targetFile.exists()) {
-				session.setAttribute("errorMessage",
-						"Eine Datei mit diesem Namen existiert bereits. Bitte benennen Sie die Datei um oder laden Sie eine neue Version auf der Dateiliste hoch.");
-				response.sendRedirect(request.getContextPath() + "/admin/dateien");
-				return;
-			}
+			// Security: Generate a unique filename for storage to prevent collisions and
+			// path traversal
+			String uniqueFileName = UUID.randomUUID().toString() + "-" + sanitizedOriginalFileName;
+
+			File targetFile = new File(AppConfig.UPLOAD_DIRECTORY, uniqueFileName);
 
 			filePart.write(targetFile.getAbsolutePath());
-			logger.info("CREATE: File '{}' successfully written to disk for user '{}'.", sanitizedFileName,
-					adminUser.getUsername());
+			logger.info("CREATE: File '{}' successfully written to disk as '{}' for user '{}'.",
+					sanitizedOriginalFileName, uniqueFileName, adminUser.getUsername());
 
 			de.technikteam.model.File newDbFile = new de.technikteam.model.File();
-			newDbFile.setFilename(sanitizedFileName);
-			newDbFile.setFilepath(sanitizedFileName); // Filepath is relative to the UPLOAD_DIRECTORY
+			newDbFile.setFilename(sanitizedOriginalFileName); // Store the original, user-friendly name
+			newDbFile.setFilepath(uniqueFileName); // Store the unique, secure name for disk access
 			newDbFile.setCategoryId(categoryId);
 			newDbFile.setRequiredRole(requiredRole);
 
 			if (fileDAO.createFile(newDbFile)) {
 				AdminLogService.log(adminUser.getUsername(), "FILE_UPLOAD",
-						"Datei '" + sanitizedFileName + "' hochgeladen.");
+						"Datei '" + sanitizedOriginalFileName + "' hochgeladen.");
 				session.setAttribute("successMessage", "Datei erfolgreich hochgeladen.");
 			} else {
 				if (!targetFile.delete()) {
@@ -157,7 +169,7 @@ public class AdminFileServlet extends HttpServlet {
 				return;
 			}
 
-			// Security: Overwrite the existing file using its sanitized path from the
+			// Security: Overwrite the existing file using its unique path from the
 			// database.
 			File targetFile = new File(AppConfig.UPLOAD_DIRECTORY, dbFile.getFilepath());
 			filePart.write(targetFile.getAbsolutePath());
@@ -193,8 +205,8 @@ public class AdminFileServlet extends HttpServlet {
 			}
 
 			if (fileDAO.deleteFile(fileId)) {
-				AdminLogService.log(adminUser.getUsername(), "FILE_DELETE",
-						"Datei '" + fileToDelete.getFilename() + "' (ID: " + fileId + ") gelöscht.");
+				AdminLogService.log(adminUser.getUsername(), "FILE_DELETE", "Datei '" + fileToDelete.getFilename()
+						+ "' (ID: " + fileId + ") aus Kategorie '" + fileToDelete.getCategoryName() + "' gelöscht.");
 				session.setAttribute("successMessage", "Datei '" + fileToDelete.getFilename() + "' wurde gelöscht.");
 			} else {
 				session.setAttribute("errorMessage", "Datei konnte nicht gelöscht werden.");
