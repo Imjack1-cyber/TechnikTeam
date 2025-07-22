@@ -35,7 +35,7 @@ public final class NavigationRegistry {
 		ALL_ITEMS.add(new NavigationItem("Benutzer", "/admin/mitglieder", "fa-users-cog", "USER_READ"));
 		ALL_ITEMS.add(new NavigationItem("Events", "/admin/veranstaltungen", "fa-calendar-plus", "EVENT_READ"));
 		ALL_ITEMS.add(new NavigationItem("Lager", "/admin/lager", "fa-warehouse", "STORAGE_READ"));
-		ALL_ITEMS.add(new NavigationItem("Dateien", "/admin/dateien", "fa-file-upload", "FILE_READ"));
+		ALL_ITEMS.add(new NavigationItem("Dateien", "/admin/dateien", "fa-file-upload", "FILE_MANAGE"));
 		ALL_ITEMS.add(new NavigationItem("Lehrgangs-Vorlagen", "/admin/lehrgaenge", "fa-book", "COURSE_READ"));
 		ALL_ITEMS.add(new NavigationItem("Kit-Verwaltung", "/admin/kits", "fa-box-open", "KIT_READ"));
 		ALL_ITEMS.add(new NavigationItem("Abzeichen", "/admin/achievements", "fa-award", "ACHIEVEMENT_VIEW"));

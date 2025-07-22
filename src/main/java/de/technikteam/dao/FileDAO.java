@@ -1,5 +1,6 @@
 package de.technikteam.dao;
 
+import de.technikteam.config.AppConfig;
 import de.technikteam.model.File;
 import de.technikteam.model.FileCategory;
 import de.technikteam.model.User;
@@ -8,6 +9,10 @@ import de.technikteam.util.DaoUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -116,6 +121,25 @@ public class FileDAO {
 	}
 
 	/**
+	 * Retrieves the content of a specific physical file from the disk.
+	 * 
+	 * @param filepath The relative path of the file from the UPLOAD_DIRECTORY.
+	 * @return The file's content as a string, or an empty string if not found or an
+	 *         error occurs.
+	 */
+	public String getDocumentContentByPath(String filepath) {
+		try {
+			java.io.File physicalFile = new java.io.File(AppConfig.UPLOAD_DIRECTORY, filepath);
+			return new String(Files.readAllBytes(physicalFile.toPath()), StandardCharsets.UTF_8);
+		} catch (NoSuchFileException e) {
+			logger.error("Physical file is missing at path: {}", filepath);
+		} catch (IOException e) {
+			logger.error("Could not read file content for path {}", filepath, e);
+		}
+		return ""; // Return empty string on failure
+	}
+
+	/**
 	 * Creates a new file metadata record in the database.
 	 *
 	 * @param file The File object to persist.
@@ -141,30 +165,28 @@ public class FileDAO {
 	}
 
 	/**
-	 * Updates the metadata of an existing file record, typically after a new
-	 * version is uploaded. It updates the filename and the timestamp.
-	 * 
-	 * @param file The File object with the updated data (must include ID).
-	 * @return true if the update was successful.
+	 * Updates the content of a physical file on disk.
+	 *
+	 * @param filepath The relative path of the file from the UPLOAD_DIRECTORY.
+	 * @param content  The new content to write to the file.
+	 * @return true if writing was successful.
 	 */
-	public boolean updateFileRecord(File file) {
-		String sql = "UPDATE files SET filename = ?, filepath = ?, uploaded_at = CURRENT_TIMESTAMP WHERE id = ?";
-		logger.debug("Updating file record for ID {}", file.getId());
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setString(1, file.getFilename());
-			pstmt.setString(2, file.getFilepath());
-			pstmt.setInt(3, file.getId());
-			return pstmt.executeUpdate() > 0;
-		} catch (SQLException e) {
-			logger.error("SQL error updating file record for ID {}", file.getId(), e);
+	public boolean updateFileContent(String filepath, String content) {
+		try {
+			java.io.File targetFile = new java.io.File(AppConfig.UPLOAD_DIRECTORY, filepath);
+			Files.write(targetFile.toPath(), content.getBytes(StandardCharsets.UTF_8));
+			logger.trace("Successfully updated content for file at path: {}", filepath);
+			return true;
+		} catch (IOException e) {
+			logger.error("Failed to write updated content to file at path: {}", filepath, e);
 			return false;
 		}
 	}
 
 	/**
-	 * Updates the timestamp of a file record to the current time. Used by WOPI to
-	 * indicate a new version has been saved.
-	 * 
+	 * Updates the timestamp of a file record to the current time. Used to indicate
+	 * a new version has been saved.
+	 *
 	 * @param fileId The ID of the file to "touch".
 	 * @return true if the update was successful.
 	 */
@@ -233,22 +255,40 @@ public class FileDAO {
 	}
 
 	/**
-	 * Deletes a file record from the 'files' table in the database. Note: This
-	 * method ONLY deletes the database record. The physical file must be deleted
-	 * separately by the calling servlet.
+	 * Deletes a file record from the database AND the corresponding physical file
+	 * from the disk.
 	 *
 	 * @param fileId The ID of the file record to delete.
-	 * @return true if the database record was successfully deleted, false
-	 *         otherwise.
+	 * @return true if both the database record and the physical file were
+	 *         successfully deleted, false otherwise.
 	 */
 	public boolean deleteFile(int fileId) {
-		logger.warn("Attempting to delete file record from database with ID: {}", fileId);
+		logger.warn("Attempting to delete file record and physical file with ID: {}", fileId);
+		File dbFile = getFileById(fileId);
+		if (dbFile == null) {
+			logger.warn("Cannot delete file with ID: {}. Record not found in database.", fileId);
+			return false;
+		}
+
 		String sql = "DELETE FROM files WHERE id = ?";
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, fileId);
 			int rowsAffected = pstmt.executeUpdate();
 			if (rowsAffected > 0) {
 				logger.info("Successfully deleted file record with ID: {}", fileId);
+				// Now delete the physical file
+				try {
+					java.io.File physicalFile = new java.io.File(AppConfig.UPLOAD_DIRECTORY, dbFile.getFilepath());
+					if (Files.deleteIfExists(physicalFile.toPath())) {
+						logger.info("Successfully deleted physical file: {}", physicalFile.getAbsolutePath());
+					} else {
+						logger.warn("Physical file to delete was not found at path: {}",
+								physicalFile.getAbsolutePath());
+					}
+				} catch (IOException e) {
+					logger.error("Error deleting physical file for ID: {}", fileId, e);
+					// The DB record was deleted, but the file remains. This is an inconsistency.
+				}
 				return true;
 			} else {
 				logger.warn("Could not delete file record with ID: {}. It might not exist.", fileId);

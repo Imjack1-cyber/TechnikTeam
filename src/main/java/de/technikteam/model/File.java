@@ -15,6 +15,7 @@ public class File {
 	private String categoryName;
 	private LocalDateTime uploadedAt;
 	private String requiredRole;
+	private String content;
 
 	public String getFormattedUploadedAt() {
 		return de.technikteam.config.DateFormatter.formatDateTime(this.uploadedAt);
@@ -74,5 +75,13 @@ public class File {
 
 	public void setRequiredRole(String requiredRole) {
 		this.requiredRole = requiredRole;
+	}
+
+	public String getContent() {
+		return content;
+	}
+
+	public void setContent(String content) {
+		this.content = content;
 	}
 }

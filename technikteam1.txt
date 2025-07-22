@@ -1,197 +1,110 @@
 ﻿
 ========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\api\WopiApiServlet.java
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\api\SystemStatsApiServlet.java
 ========================================================================
 
 package de.technikteam.servlet.api;
 
 import com.google.gson.Gson;
-import de.technikteam.config.AppConfig;
-import de.technikteam.dao.FileDAO;
-import de.technikteam.util.WopiTokenManager;
-import de.technikteam.util.WopiTokenManager.TokenData;
+import de.technikteam.model.SystemStatsDTO;
+import de.technikteam.service.SystemInfoService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
-import java.text.SimpleDateFormat;
-import java.time.Instant;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TimeZone;
 
 /**
- * Implements the WOPI Host protocol to integrate with Collabora Online. This
- * servlet handles requests from the Collabora server to get file metadata,
- * download file contents, and upload updated file contents.
+ * Provides system statistics as a JSON API endpoint. This servlet is protected
+ * by the AdminFilter.
  */
-@WebServlet("/wopi/files/*")
-public class WopiApiServlet extends HttpServlet {
+@WebServlet("/api/admin/system-stats")
+public class SystemStatsApiServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(WopiApiServlet.class);
-	private FileDAO fileDAO;
+	private SystemInfoService systemInfoService;
 	private Gson gson;
 
 	@Override
-	public void init() {
-		fileDAO = new FileDAO();
+	public void init() throws ServletException {
+		systemInfoService = new SystemInfoService();
 		gson = new Gson();
 	}
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		String pathInfo = request.getPathInfo();
-		if (pathInfo == null || pathInfo.equals("/")) {
-			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing file ID.");
-			return;
-		}
+		SystemStatsDTO stats = systemInfoService.getSystemStats();
+		String jsonResponse = gson.toJson(stats);
 
-		String[] pathParts = pathInfo.substring(1).split("/");
-		String fileId = pathParts[0];
+		response.setContentType("application/json");
+		response.setCharacterEncoding("UTF-8");
+		response.getWriter().write(jsonResponse);
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\api\UserPreferencesApiServlet.java
+========================================================================
 
-		TokenData tokenData = WopiTokenManager.getInstance().validateAndGetData(request.getParameter("access_token"),
-				fileId);
-		if (tokenData == null) {
-			response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired access token.");
-			return;
-		}
+package de.technikteam.servlet.api;
 
-		de.technikteam.model.File dbFile;
-		try {
-			dbFile = fileDAO.getFileById(Integer.parseInt(fileId));
-		} catch (NumberFormatException e) {
-			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid file ID format.");
-			return;
-		}
+import de.technikteam.dao.UserDAO;
+import de.technikteam.model.User;
+import de.technikteam.util.CSRFUtil;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-		if (dbFile == null) {
-			response.sendError(HttpServletResponse.SC_NOT_FOUND, "File not found.");
-			return;
-		}
+import java.io.IOException;
+import java.util.Set;
 
-		if (pathParts.length > 1 && "contents".equals(pathParts[1])) {
-			handleGetFile(response, dbFile); // GetFile request
-		} else {
-			handleCheckFileInfo(request, response, dbFile, tokenData); // CheckFileInfo request
-		}
+@WebServlet("/api/user/preferences")
+public class UserPreferencesApiServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(UserPreferencesApiServlet.class);
+	private static final Set<String> VALID_THEMES = Set.of("light", "dark");
+	private UserDAO userDAO;
+
+	@Override
+	public void init() {
+		userDAO = new UserDAO();
 	}
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		String pathInfo = request.getPathInfo();
-		if (pathInfo == null || !pathInfo.contains("/contents")) {
-			response.sendError(HttpServletResponse.SC_NOT_IMPLEMENTED, "POST is only supported for /contents.");
+		HttpSession session = request.getSession(false);
+		if (session == null || session.getAttribute("user") == null) {
+			response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User not authenticated.");
 			return;
 		}
 
-		String fileId = pathInfo.substring(1).split("/")[0];
-
-		TokenData tokenData = WopiTokenManager.getInstance().validateAndGetData(request.getParameter("access_token"),
-				fileId);
-		if (tokenData == null) {
-			response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired access token.");
+		if (!CSRFUtil.isTokenValid(request)) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token.");
 			return;
 		}
 
-		handlePutFile(request, response, fileId);
-	}
+		User user = (User) session.getAttribute("user");
+		String theme = request.getParameter("theme");
 
-	private void handleCheckFileInfo(HttpServletRequest request, HttpServletResponse response,
-			de.technikteam.model.File dbFile, TokenData tokenData) throws IOException {
-		logger.debug("WOPI: CheckFileInfo request for file ID {}.", dbFile.getId());
-
-		java.io.File physicalFile = new java.io.File(AppConfig.UPLOAD_DIRECTORY, dbFile.getFilepath());
-
-		if (!physicalFile.exists()) {
-			logger.error("Physical file for CheckFileInfo not found at path: {}", physicalFile.getAbsolutePath());
-			response.sendError(HttpServletResponse.SC_NOT_FOUND, "Physical file not found on disk.");
+		if (theme == null || !VALID_THEMES.contains(theme)) {
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid theme value.");
 			return;
 		}
 
-		Map<String, Object> fileInfo = new HashMap<>();
-		fileInfo.put("BaseFileName", dbFile.getFilename());
-		fileInfo.put("OwnerId", "admin");
-		fileInfo.put("Size", physicalFile.length());
-		fileInfo.put("UserId", tokenData.getUsername());
-		fileInfo.put("UserFriendlyName", tokenData.getUsername());
-		fileInfo.put("UserCanWrite", true);
-		fileInfo.put("UserCanNotWriteRelative", true);
-		fileInfo.put("SupportsUpdate", true);
-		fileInfo.put("LastModifiedTime", Instant.ofEpochMilli(physicalFile.lastModified()).toString());
-
-		// ** BUG FIX: Use the origin passed from the EditorServlet **
-		// This must match the origin of the page hosting the iframe (e.g.,
-		// http://localhost:8080)
-		String postMessageOrigin = request.getParameter("origin");
-		if (postMessageOrigin == null || postMessageOrigin.isEmpty()) {
-			logger.error("WOPI: CheckFileInfo request is missing the 'origin' parameter. This is required.");
-			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing required origin parameter in WOPISrc URL.");
-			return;
-		}
-		fileInfo.put("PostMessageOrigin", postMessageOrigin);
-		logger.debug("Setting PostMessageOrigin for WOPI to: {}", postMessageOrigin);
-
-		response.setContentType("application/json");
-		response.setCharacterEncoding("UTF-8");
-		response.getWriter().write(gson.toJson(fileInfo));
-	}
-
-	private void handleGetFile(HttpServletResponse response, de.technikteam.model.File dbFile) throws IOException {
-		logger.debug("WOPI: GetFile request for file ID {}.", dbFile.getId());
-		java.io.File physicalFile = new java.io.File(AppConfig.UPLOAD_DIRECTORY, dbFile.getFilepath());
-
-		if (!physicalFile.exists()) {
-			response.sendError(HttpServletResponse.SC_NOT_FOUND, "Physical file not found.");
-			return;
-		}
-
-		response.setContentType("application/octet-stream");
-		response.setContentLengthLong(physicalFile.length());
-
-		try (InputStream in = new FileInputStream(physicalFile); OutputStream out = response.getOutputStream()) {
-			in.transferTo(out);
-		}
-	}
-
-	private void handlePutFile(HttpServletRequest request, HttpServletResponse response, String fileId)
-			throws IOException {
-		logger.info("WOPI: PutFile request for file ID {}.", fileId);
-		de.technikteam.model.File dbFile = fileDAO.getFileById(Integer.parseInt(fileId));
-		if (dbFile == null) {
-			response.sendError(HttpServletResponse.SC_NOT_FOUND, "File not found.");
-			return;
-		}
-
-		java.io.File physicalFile = new java.io.File(AppConfig.UPLOAD_DIRECTORY, dbFile.getFilepath());
-
-		try (InputStream in = request.getInputStream()) {
-			Files.copy(in, physicalFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-			logger.info("Successfully saved updated file content for file ID {}.", fileId);
-		} catch (Exception e) {
-			logger.error("Error saving updated file content for file ID {}", fileId, e);
-			response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to save file.");
-			return;
-		}
-
-		if (fileDAO.touchFileRecord(dbFile.getId())) {
-			logger.info("Successfully updated file timestamp in database for file ID {}.", fileId);
+		if (userDAO.updateUserTheme(user.getId(), theme)) {
+			user.setTheme(theme);
+			session.setAttribute("user", user); // Update user object in session
+			logger.info("Updated theme for user '{}' to '{}'.", user.getUsername(), theme);
 			response.setStatus(HttpServletResponse.SC_OK);
 		} else {
-			logger.error("Failed to update file timestamp in database for file ID {}.", fileId);
-			response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to update file metadata.");
+			logger.error("Failed to update theme for user '{}' in database.", user.getUsername());
+			response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Could not save theme preference.");
 		}
 	}
 }
@@ -403,7 +316,7 @@ public final class NavigationRegistry {
 		ALL_ITEMS.add(new NavigationItem("Benutzer", "/admin/mitglieder", "fa-users-cog", "USER_READ"));
 		ALL_ITEMS.add(new NavigationItem("Events", "/admin/veranstaltungen", "fa-calendar-plus", "EVENT_READ"));
 		ALL_ITEMS.add(new NavigationItem("Lager", "/admin/lager", "fa-warehouse", "STORAGE_READ"));
-		ALL_ITEMS.add(new NavigationItem("Dateien", "/admin/dateien", "fa-file-upload", "FILE_READ"));
+		ALL_ITEMS.add(new NavigationItem("Dateien", "/admin/dateien", "fa-file-upload", "FILE_MANAGE"));
 		ALL_ITEMS.add(new NavigationItem("Lehrgangs-Vorlagen", "/admin/lehrgaenge", "fa-book", "COURSE_READ"));
 		ALL_ITEMS.add(new NavigationItem("Kit-Verwaltung", "/admin/kits", "fa-box-open", "KIT_READ"));
 		ALL_ITEMS.add(new NavigationItem("Abzeichen", "/admin/achievements", "fa-award", "ACHIEVEMENT_VIEW"));
@@ -460,178 +373,6 @@ public final class NavigationRegistry {
 			// Standard permission check for all other items
 			return userPermissions.contains(requiredPerm);
 		}).collect(Collectors.toList());
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\util\ServletUtils.java
-========================================================================
-
-package de.technikteam.util;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.Scanner;
-import jakarta.servlet.http.Part;
-
-/**
- * A utility class for common Servlet helper methods.
- * 
- * @deprecated This class and its methods are unreliable for multipart requests.
- *             Modern servlet containers (Tomcat 7+) make request.getParameter()
- *             available even for multipart requests to read simple form fields.
- *             This class is kept for historical reference but should be removed
- *             in the future.
- */
-@Deprecated
-public class ServletUtils {
-
-	/**
-	 * Private constructor to prevent instantiation.
-	 */
-	private ServletUtils() {
-	}
-
-	/**
-	 * Extracts the string value from a `multipart/form-data` part.
-	 *
-	 * @param part The Part object to extract the value from.
-	 * @return The string value of the part, or null if the part is null.
-	 * @throws IOException if an I/O error occurs.
-	 */
-	public static String getPartValue(Part part) throws IOException {
-		if (part == null) {
-			return null;
-		}
-		try (InputStream inputStream = part.getInputStream();
-				Scanner scanner = new Scanner(inputStream, StandardCharsets.UTF_8.name())) {
-			return scanner.useDelimiter("\\A").hasNext() ? scanner.next() : "";
-		}
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\util\WopiTokenManager.java
-========================================================================
-
-package de.technikteam.util;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.time.Instant;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
-/**
- * A simple, in-memory, thread-safe manager for short-lived WOPI access tokens.
- * This is used to validate that requests from the Collabora server originate
- * from a legitimate user session in our application without relying on a shared
- * HttpSession.
- */
-public class WopiTokenManager {
-
-	private static final Logger logger = LogManager.getLogger(WopiTokenManager.class);
-	private static final WopiTokenManager INSTANCE = new WopiTokenManager();
-	private final Map<String, TokenData> tokenStore = new ConcurrentHashMap<>();
-	private final ScheduledExecutorService cleanupScheduler = Executors.newSingleThreadScheduledExecutor();
-
-	// Inner class to hold token data including its creation time
-	public static class TokenData {
-		final String fileId;
-		final String username;
-		final Instant creationTime;
-
-		TokenData(String fileId, String username) {
-			this.fileId = fileId;
-			this.username = username;
-			this.creationTime = Instant.now();
-		}
-
-		public String getUsername() {
-			return username;
-		}
-	}
-
-	private WopiTokenManager() {
-		// Schedule a task to run periodically to clean up expired tokens.
-		// Tokens live for 5 minutes.
-		cleanupScheduler.scheduleAtFixedRate(this::removeExpiredTokens, 5, 5, TimeUnit.MINUTES);
-		logger.info("WopiTokenManager initialized with a 5-minute token expiry policy.");
-	}
-
-	public static WopiTokenManager getInstance() {
-		return INSTANCE;
-	}
-
-	/**
-	 * Stores a new token with its associated file ID and username.
-	 * 
-	 * @param token    The generated access token.
-	 * @param fileId   The ID of the file the token is for.
-	 * @param username The user initiating the session.
-	 */
-	public void storeToken(String token, String fileId, String username) {
-		tokenStore.put(token, new TokenData(fileId, username));
-	}
-
-	/**
-	 * Validates a token and checks if it corresponds to the expected file ID.
-	 * 
-	 * @param token          The token from the request.
-	 * @param expectedFileId The file ID from the URL.
-	 * @return The TokenData object if the token is valid, null otherwise.
-	 */
-	public TokenData validateAndGetData(String token, String expectedFileId) {
-		if (token == null || expectedFileId == null) {
-			return null;
-		}
-		TokenData data = tokenStore.get(token);
-		if (data == null) {
-			logger.warn("Token validation failed: Token '{}' not found in store.", token);
-			return null; // Token does not exist
-		}
-
-		if (data.creationTime.isBefore(Instant.now().minusSeconds(300))) {
-			logger.warn("Token validation failed: Token for file {} has expired.", data.fileId);
-			tokenStore.remove(token); // Remove expired token
-			return null;
-		}
-
-		if (expectedFileId.equals(data.fileId)) {
-			return data;
-		} else {
-			logger.warn("Token validation failed: Token is for file '{}', but request is for file '{}'.", data.fileId,
-					expectedFileId);
-			return null;
-		}
-	}
-
-	/**
-	 * Removes tokens that are older than 5 minutes to prevent them from
-	 * accumulating in memory and being used for replay attacks.
-	 */
-	private void removeExpiredTokens() {
-		Instant fiveMinutesAgo = Instant.now().minusSeconds(300);
-		long originalSize = tokenStore.size();
-		tokenStore.entrySet().removeIf(entry -> entry.getValue().creationTime.isBefore(fiveMinutesAgo));
-		long removedCount = originalSize - tokenStore.size();
-		if (removedCount > 0) {
-			logger.info("WOPI token cleanup: Removed {} expired tokens.", removedCount);
-		}
-	}
-
-	/**
-	 * Shuts down the background cleanup thread. This must be called when the
-	 * application context is destroyed to prevent resource leaks.
-	 */
-	public void shutdown() {
-		if (cleanupScheduler != null && !cleanupScheduler.isShutdown()) {
-			cleanupScheduler.shutdownNow();
-			logger.info("WopiTokenManager cleanup scheduler has been shut down.");
-		}
 	}
 }
 ========================================================================
@@ -745,6 +486,183 @@ public final class ChatSessionManager {
 						session.getBasicRemote().sendText(message);
 					} catch (IOException e) {
 						logger.error("Error broadcasting (except self) to session {}:", session.getId(), e);
+					}
+				}
+			}
+		}
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\websocket\DocumentEditorSocket.java
+========================================================================
+
+package de.technikteam.websocket;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
+import de.technikteam.dao.FileDAO;
+import de.technikteam.model.User;
+import jakarta.websocket.*;
+import jakarta.websocket.server.PathParam;
+import jakarta.websocket.server.ServerEndpoint;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+import java.util.Map;
+
+/**
+ * WebSocket endpoint for real-time collaborative document editing. This version
+ * uses a full-text synchronization model.
+ */
+@ServerEndpoint(value = "/ws/editor/{fileId}", configurator = GetHttpSessionConfigurator.class)
+public class DocumentEditorSocket {
+
+	private static final Logger logger = LogManager.getLogger(DocumentEditorSocket.class);
+	private static final FileDAO fileDAO = new FileDAO();
+	private static final Gson gson = new Gson();
+
+	@OnOpen
+	public void onOpen(Session session, @PathParam("fileId") String fileId, EndpointConfig config) throws IOException {
+		User user = (User) config.getUserProperties().get(GetHttpSessionConfigurator.USER_PROPERTY_KEY);
+
+		if (user == null || (!user.getPermissions().contains("FILE_UPDATE")
+				&& !user.getPermissions().contains("ACCESS_ADMIN_PANEL"))) {
+			logger.warn("Unauthorized WebSocket connection attempt for editor on file ID {}. User: {}", fileId,
+					user != null ? user.getUsername() : "GUEST");
+			session.close(new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "Permission denied."));
+			return;
+		}
+
+		session.getUserProperties().put(GetHttpSessionConfigurator.USER_PROPERTY_KEY, user);
+		DocumentSessionManager.getInstance().addSession(fileId, session);
+	}
+
+	@OnMessage
+	public void onMessage(Session session, String message, @PathParam("fileId") String fileId) {
+		User user = (User) session.getUserProperties().get(GetHttpSessionConfigurator.USER_PROPERTY_KEY);
+		if (user == null)
+			return;
+
+		try {
+			Map<String, String> messageMap = gson.fromJson(message, Map.class);
+			String type = messageMap.get("type");
+			String content = messageMap.get("payload");
+
+			if ("content_update".equals(type)) {
+				handleContentUpdate(session, fileId, content);
+			}
+		} catch (JsonSyntaxException e) {
+			logger.error("Invalid JSON received from user '{}' for file ID {}: {}", user.getUsername(), fileId, message,
+					e);
+		}
+	}
+
+	private void handleContentUpdate(Session originSession, String fileIdStr, String content) {
+		try {
+			int fileId = Integer.parseInt(fileIdStr);
+			de.technikteam.model.File dbFile = fileDAO.getFileById(fileId);
+
+			if (dbFile != null) {
+				// Persist the changes to the disk
+				if (fileDAO.updateFileContent(dbFile.getFilepath(), content)) {
+					fileDAO.touchFileRecord(fileId); // Update timestamp
+
+					// Broadcast the full content to other connected clients
+					Map<String, String> broadcastPayload = Map.of("type", "content_update", "payload", content);
+					DocumentSessionManager.getInstance().broadcastExcept(fileIdStr, gson.toJson(broadcastPayload),
+							originSession);
+				} else {
+					logger.error("Failed to save file content to disk for file ID: {}", fileIdStr);
+				}
+			} else {
+				logger.warn("Received content update for non-existent file ID: {}", fileIdStr);
+			}
+		} catch (NumberFormatException e) {
+			logger.error("Invalid fileId '{}' received in WebSocket message.", fileIdStr);
+		}
+	}
+
+	@OnClose
+	public void onClose(Session session, @PathParam("fileId") String fileId) {
+		User user = (User) session.getUserProperties().get(GetHttpSessionConfigurator.USER_PROPERTY_KEY);
+		String username = (user != null) ? user.getUsername() : "[unauthenticated]";
+		logger.info("Editor WebSocket session for user '{}' on file {} closed.", username, fileId);
+		DocumentSessionManager.getInstance().removeSession(fileId, session);
+	}
+
+	@OnError
+	public void onError(Session session, Throwable throwable, @PathParam("fileId") String fileId) {
+		logger.error("WebSocket ERROR in editor for file [{}], session [{}]:", fileId, session.getId(), throwable);
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\websocket\DocumentSessionManager.java
+========================================================================
+
+package de.technikteam.websocket;
+
+import jakarta.websocket.Session;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+
+/**
+ * Manages WebSocket sessions for document-specific editing rooms using a
+ * thread-safe Singleton pattern. It maps file IDs to a set of active sessions,
+ * allowing for targeted broadcasting of document updates.
+ */
+public final class DocumentSessionManager {
+	private static final Logger logger = LogManager.getLogger(DocumentSessionManager.class);
+	private static final DocumentSessionManager INSTANCE = new DocumentSessionManager();
+
+	// A map where the key is the file ID and the value is a thread-safe set of
+	// sessions for that document.
+	private final Map<String, Set<Session>> sessionsByFile = new ConcurrentHashMap<>();
+
+	private DocumentSessionManager() {
+	}
+
+	public static DocumentSessionManager getInstance() {
+		return INSTANCE;
+	}
+
+	public void addSession(String fileId, Session session) {
+		sessionsByFile.computeIfAbsent(fileId, k -> new CopyOnWriteArraySet<>()).add(session);
+		logger.info("Editor session {} registered for file [{}].", session.getId(), fileId);
+	}
+
+	public void removeSession(String fileId, Session session) {
+		Set<Session> sessions = sessionsByFile.get(fileId);
+		if (sessions != null) {
+			sessions.remove(session);
+			logger.info("Editor session {} removed from file [{}].", session.getId(), fileId);
+			if (sessions.isEmpty()) {
+				sessionsByFile.remove(fileId);
+				logger.info("Editing room for file [{}] is now empty and has been removed.", fileId);
+			}
+		}
+	}
+
+	public int getSessionsCount(String fileId) {
+		Set<Session> sessions = sessionsByFile.get(fileId);
+		return sessions != null ? sessions.size() : 0;
+	}
+
+	public void broadcastExcept(String fileId, String message, Session excludeSession) {
+		Set<Session> sessions = sessionsByFile.get(fileId);
+		if (sessions != null) {
+			for (Session session : sessions) {
+				if (session.isOpen() && !session.getId().equals(excludeSession.getId())) {
+					try {
+						session.getBasicRemote().sendText(message);
+					} catch (IOException e) {
+						logger.error("Error broadcasting document update to session {}:", session.getId(), e);
 					}
 				}
 			}
@@ -2418,36 +2336,147 @@ body.nav-open .page-overlay {
 	transform: translateX(20px);
 }
 
+/* Mode Switcher Styles (for editor) */
+.mode-switcher {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	color: var(--text-muted-color);
+}
+
+.mode-switcher .switch {
+	position: relative;
+	display: inline-block;
+	width: 44px;
+	height: 24px;
+}
+
+.mode-switcher .switch input {
+	opacity: 0;
+	width: 0;
+	height: 0;
+}
+
+.mode-switcher .slider {
+	position: absolute;
+	cursor: pointer;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: #ccc;
+	transition: .4s;
+	border-radius: 24px;
+}
+
+.mode-switcher .slider:before {
+	position: absolute;
+	content: "";
+	height: 18px;
+	width: 18px;
+	left: 3px;
+	bottom: 3px;
+	background-color: white;
+	transition: .4s;
+	border-radius: 50%;
+}
+
+.mode-switcher input:checked+.slider {
+	background-color: var(--primary-color);
+}
+
+.mode-switcher input:checked+.slider:before {
+	transform: translateX(20px);
+}
+
 /* Editor Specific Styles */
-.editor-container {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
+#editor-page-wrapper {
+    /* Make the wrapper take up all available vertical space */
+    height: calc(100vh - var(--header-height)); /* Account for mobile header */
+    display: flex;
+    flex-direction: column;
+}
+
+@media (min-width: 992px) {
+	#editor-page-wrapper {
+		/* On desktop, the main header is gone, so just 100vh */
+		height: 100vh;
+	}
+}
+
+#editor-page-wrapper .main-content {
+    flex-grow: 1; /* Allow main-content to fill remaining height */
+    padding: 1rem; /* Consistent padding on all sides */
+    max-width: none; /* Remove max-width constraint for full flexibility */
+    margin: 0; /* Remove auto margins to allow full width */
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Important for flex container to properly shrink children */
+}
+
+#editor-page-container {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Make it fill the remaining space */
+    min-height: 0; /* Crucial for nested flex items */
+}
+
+.editor-header {
+	flex-shrink: 0;
+	margin-bottom: 1rem;
+}
+.editor-header h1 {
+	margin-bottom: 0;
+    font-size: 1.5rem;
+}
+.editor-controls {
+	display: flex;
+	align-items: center;
 	gap: 1rem;
-	height: 70vh;
-	margin-top: 1.5rem;
+	flex-wrap: wrap;
+}
+.editor-container { /* This is the flex container for editor/preview panes */
+	display: flex;
+	flex-direction: column; /* Stack vertically on mobile */
+	gap: 1.5rem; /* Space between panes */
+    flex-grow: 1; /* Allow this container to fill available height */
+    min-height: 0; /* Crucial for flex item inside a flex column */
+	padding: 1.5rem; /* Padding *inside* the card, around the panes */
+    margin: 0; /* Remove external margins */
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    background: var(--surface-color);
+    border-radius: var(--border-radius);
+}
+
+#editor, #markdown-preview {
+	flex-grow: 1; /* Allow the element to grow and fill the flex container */
+	width: 100%; /* Ensure it takes full width in mobile stack */
+	border: none; /* Border is now on .editor-container */
+	padding: 0; /* Padding is now on .editor-container */
+	background: transparent; /* Background is now on .editor-container */
+    overflow-y: auto; /* Internal scrolling within each pane */
+    
+    /* Unified typography for WYSIWYG feel */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+	font-size: 1rem;
+	line-height: 1.6;
+    color: var(--text-color);
 }
 
 #editor {
-	height: 100%;
-	resize: none;
+	resize: none; /* Disable manual resizing */
 }
 
-#markdown-preview {
-	height: 100%;
-	overflow-y: auto;
-	border: 1px solid var(--border-color);
-	padding: 1rem;
-	border-radius: var(--border-radius);
-	background-color: var(--surface-color);
+@media (min-width: 992px) {
+	.editor-container {
+		flex-direction: row; /* Desktop: side-by-side */
+	}
+	#editor, #markdown-preview {
+		flex-basis: 50%; /* Distribute space evenly */
+	}
 }
 
-@media(max-width: 992px) {
-    .editor-container {
-        grid-template-columns: 1fr;
-        height: auto;
-        min-height: 70vh;
-    }
-}
 
 /* =================================================================== */
 /*  12. MARKDOWN STYLES                                                */
@@ -2563,6 +2592,7 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\js\main.js
 document.addEventListener('DOMContentLoaded', () => {
 
 	const contextPath = document.body.dataset.contextPath || '';
+	const currentPage = document.body.dataset.page || '';
 
 	// --- MOBILE NAVIGATION ---
 	const navToggle = document.querySelector('.mobile-nav-toggle');
@@ -2681,7 +2711,8 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	// --- SERVER-SENT EVENTS (SSE) NOTIFICATIONS ---
-	if (document.body.dataset.isLoggedIn === 'true' && window.EventSource) {
+	// Only connect if the user is logged in AND not on the editor page
+	if (document.body.dataset.isLoggedIn === 'true' && window.EventSource && currentPage !== 'editor') {
 		const eventSource = new EventSource(`${contextPath}/notifications`);
 		eventSource.onopen = () => console.log("SSE connection established.");
 		eventSource.onmessage = (event) => {
@@ -3010,6 +3041,129 @@ document.addEventListener('DOMContentLoaded', () => {
 	document.addEventListener('keydown', (e) => {
 		if (e.key === "Escape" && defectModal.classList.contains('active')) closeModal();
 	});
+});
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\js\admin\admin_editor.js
+========================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+	const editorContainer = document.getElementById('editor-page-container');
+	if (!editorContainer) return;
+
+	const fileId = editorContainer.dataset.fileId;
+	const editor = document.getElementById('editor');
+	const preview = document.getElementById('markdown-preview');
+	const toggle = document.getElementById('mode-toggle');
+	const statusIndicator = document.getElementById('save-status-indicator');
+
+	let socket;
+	let debounceTimer;
+
+	// Function to render markdown content
+	const renderMarkdown = (content) => {
+		if (typeof marked !== 'undefined') {
+			preview.innerHTML = marked.parse(content, { sanitize: true });
+		}
+	};
+
+	// --- Status Indicator Logic ---
+	const showStatus = (state, message) => {
+		if (statusIndicator) {
+			statusIndicator.style.display = 'inline-block';
+			statusIndicator.className = `status-badge status-${state}`;
+			statusIndicator.textContent = message;
+		}
+	};
+
+	// --- WebSocket Connection Logic ---
+	const connect = () => {
+		const websocketProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+		const websocketUrl = `${websocketProtocol}//${window.location.host}${document.body.dataset.contextPath}/ws/editor/${fileId}`;
+
+		socket = new WebSocket(websocketUrl);
+
+		socket.onopen = () => {
+			console.log('WebSocket connection established.');
+			showStatus('ok', 'Verbunden');
+		};
+
+		socket.onmessage = (event) => {
+			const data = JSON.parse(event.data);
+			if (data.type === 'content_update') {
+				console.log('Received content update from another client.');
+
+				// Save cursor position before updating
+				const cursorStart = editor.selectionStart;
+				const cursorEnd = editor.selectionEnd;
+
+				editor.value = data.payload;
+				renderMarkdown(data.payload);
+
+				// Restore cursor position
+				editor.setSelectionRange(cursorStart, cursorEnd);
+			}
+		};
+
+		socket.onclose = () => {
+			console.warn('WebSocket connection closed.');
+			showStatus('danger', 'Getrennt');
+			setTimeout(connect, 5000); // Try to reconnect after 5 seconds
+		};
+
+		socket.onerror = (error) => {
+			console.error('WebSocket error:', error);
+			showStatus('danger', 'Verbindungsfehler');
+		};
+	};
+
+
+	// --- Event Listeners ---
+	if (editor.readOnly) {
+		renderMarkdown(editor.value);
+		return;
+	}
+
+	connect();
+	renderMarkdown(editor.value);
+
+	// Debounced function to send content updates
+	const sendContentUpdate = () => {
+		if (socket && socket.readyState === WebSocket.OPEN) {
+			const payload = {
+				type: 'content_update',
+				payload: editor.value
+			};
+			socket.send(JSON.stringify(payload));
+			showStatus('warn', 'Speichern...');
+			// Give visual feedback that saving is complete
+			setTimeout(() => {
+				if (statusIndicator.textContent === 'Speichern...') {
+					showStatus('ok', 'Gespeichert');
+				}
+			}, 1000);
+		}
+	};
+
+	// Live preview and debounced saving on input
+	editor.addEventListener('input', () => {
+		renderMarkdown(editor.value);
+		clearTimeout(debounceTimer);
+		debounceTimer = setTimeout(sendContentUpdate, 500); // Send update 500ms after user stops typing
+	});
+
+	// Event listener for the toggle switch
+	if (toggle) {
+		toggle.addEventListener('change', () => {
+			if (toggle.checked) { // Edit mode
+				editor.style.display = 'block';
+				preview.style.display = 'none';
+			} else { // View mode
+				renderMarkdown(editor.value);
+				editor.style.display = 'none';
+				preview.style.display = 'block';
+			}
+		});
+	}
 });
 ========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\js\admin\admin_events_list.js
@@ -5893,6 +6047,57 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 <script
 	src="${pageContext.request.contextPath}/js/admin/admin_defect_list.js"></script>
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\admin_editor.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle" value="Editor: ${file.filename}" />
+	<c:param name="page" value="editor" />
+</c:import>
+
+<div id="editor-page-wrapper">
+	<div id="editor-page-container" data-file-id="${file.id}">
+		<div class="editor-header">
+			<h1>
+				<i class="fas fa-file-alt"></i>
+				<c:out value="${file.filename}" />
+			</h1>
+			<div class="editor-controls">
+				<c:if test="${editorMode eq 'edit'}">
+					<div class="mode-switcher">
+						<span>View</span> <label class="switch"> <input
+							type="checkbox" id="mode-toggle" checked> <span
+							class="slider"></span>
+						</label> <span>Edit</span>
+					</div>
+				</c:if>
+				<span id="save-status-indicator" class="status-badge"
+					style="display: none;"></span>
+			</div>
+		</div>
+
+		<c:import url="/WEB-INF/jspf/message_banner.jspf" />
+
+		<div class="editor-container card">
+			<textarea id="editor" name="content"
+				style="display: ${editorMode eq 'edit' ? 'block' : 'none'};"
+				<c:if test="${editorMode ne 'edit'}">readonly</c:if>>${fn:escapeXml(fileContent)}</textarea>
+			<div id="markdown-preview" class="markdown-content"
+				style="display: ${editorMode eq 'edit' ? 'none' : 'block'};">
+			</div>
+		</div>
+	</div>
+</div>
+
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script
+	src="${pageContext.request.contextPath}/js/admin/admin_editor.js"></script>
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\admin_events_list.jsp
 ========================================================================
 
@@ -6233,24 +6438,10 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 					<c:forEach var="file" items="${categoryEntry.value}">
 						<li>
 							<div class="file-info">
-								<c:choose>
-									<c:when
-										test="${fn:endsWith(fn:toLowerCase(file.filename), '.odt') or fn:endsWith(fn:toLowerCase(file.filename), '.ods') or fn:endsWith(fn:toLowerCase(file.filename), '.odp')}">
-										<c:url var="editorUrl" value="/editor">
-											<c:param name="fileId" value="${file.id}" />
-										</c:url>
-										<a href="${editorUrl}" title="Datei im Editor öffnen"> <i
-											class="fas fa-edit"></i> <c:out value="${file.filename}" />
-										</a>
-									</c:when>
-									<c:otherwise>
-										<a href="<c:url value='/download?id=${file.id}'/>"
-											title="Datei herunterladen"> <i class="fas fa-download"></i>
-											<c:out value="${file.filename}" />
-										</a>
-									</c:otherwise>
-								</c:choose>
-								<small class="file-meta">Sichtbar für: <c:out
+								<a href="<c:url value='/download?id=${file.id}'/>"
+									title="Datei herunterladen"> <i class="fas fa-download"></i>
+									<c:out value="${file.filename}" />
+								</a> <small class="file-meta">Sichtbar für: <c:out
 										value="${file.requiredRole}" /></small>
 							</div>
 							<div class="file-actions"
@@ -6262,11 +6453,12 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 									<i class="fas fa-upload"></i> Neue Version
 								</button>
 								<form
-									action="${pageContext.request.contextPath}/admin/dateien/loeschen"
+									action="${pageContext.request.contextPath}/admin/uploadFile"
 									method="post" class="js-confirm-form"
 									data-confirm-message="Datei '${fn:escapeXml(file.filename)}' wirklich löschen?">
 									<input type="hidden" name="csrfToken"
 										value="${sessionScope.csrfToken}"> <input
+										type="hidden" name="action" value="delete"> <input
 										type="hidden" name="fileId" value="${file.id}">
 									<button type="submit" class="btn btn-small btn-danger-outline"
 										title="Löschen">
@@ -8030,54 +8222,13 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\
 	src="${pageContext.request.contextPath}/vendor/fullcalendar/locales/de.js"></script>
 <script src="${pageContext.request.contextPath}/js/public/calendar.js"></script>
 ========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\collabora_editor.jsp
-========================================================================
-
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
-	isELIgnored="false"%>
-<!DOCTYPE html>
-<html lang="de">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dokumenten-Editor - TechnikTeam</title>
-<style>
-/* Basic styles for a full-page iframe experience */
-html, body {
-	margin: 0;
-	padding: 0;
-	height: 100%;
-	overflow: hidden;
-}
-
-iframe {
-	width: 100%;
-	height: 100%;
-	border: none;
-}
-</style>
-</head>
-<body>
-	<form id="collabora-form" name="collabora-form" method="post"
-		target="collabora_iframe" action="${collaboraUrl}">
-		<input name="access_token" value="${accessToken}" type="hidden" />
-	</form>
-
-	<iframe id="collabora_iframe" name="collabora_iframe"></iframe>
-
-	<script type="text/javascript">
-		// Automatically submit the form to load the iframe with the required POST data.
-		document.getElementById('collabora-form').submit();
-	</script>
-</body>
-</html>
-========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\dateien.jsp
 ========================================================================
 
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
 <c:import url="/WEB-INF/jspf/main_header.jspf">
 	<c:param name="pageTitle" value="Dateien & Dokumente" />
@@ -8094,6 +8245,9 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\
 	</div>
 </c:if>
 
+<c:set var="canUpdateFiles"
+	value="${sessionScope.user.permissions.contains('FILE_UPDATE') or sessionScope.user.permissions.contains('ACCESS_ADMIN_PANEL')}" />
+
 <c:forEach var="categoryEntry" items="${fileData}">
 	<div class="card">
 		<h2>
@@ -8101,10 +8255,21 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\
 			<c:out value="${categoryEntry.key}" />
 		</h2>
 		<ul class="file-list">
-			<c:forEach var="file" items="${categoryEntry.value}" varStatus="loop">
-				<li style="padding: 0.75rem 0;"><a
-					href="<c:url value='/download?id=${file.id}'/>"><i
-						class="fas fa-download"></i> <c:out value="${file.filename}" /></a></li>
+			<c:forEach var="file" items="${categoryEntry.value}">
+				<li style="padding: 0.75rem 0;">
+					<div>
+						<a href="<c:url value='/download?id=${file.id}'/>"><i
+							class="fas fa-download"></i> <c:out value="${file.filename}" /></a>
+					</div> <c:if
+						test="${canUpdateFiles and fn:endsWith(fn:toLowerCase(file.filename), '.md')}">
+						<div class="file-actions">
+							<a href="<c:url value='/editor?fileId=${file.id}'/>"
+								class="btn btn-small"> <i class="fas fa-edit"></i>
+								Bearbeiten
+							</a>
+						</div>
+					</c:if>
+				</li>
 			</c:forEach>
 		</ul>
 	</div>
@@ -9980,8 +10145,10 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\
 	<span class="lightbox-close" title="Schließen">×</span> <img
 		class="lightbox-content" id="lightbox-image" alt="Großansicht">
 </div>
-<script src="${pageContext.request.contextPath}/js/main.js"></script>
+<script
+	src="${pageContext.request.contextPath}/vendor/diff-match-patch/diff_match_patch.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="${pageContext.request.contextPath}/js/main.js"></script>
 </body>
 </html>
 ========================================================================
@@ -10017,6 +10184,7 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\
 <body data-context-path="${pageContext.request.contextPath}"
 	data-is-logged-in="${not empty sessionScope.user}"
 	data-csrf-token="${sessionScope.csrfToken}"
+	data-page="${not empty param.page ? param.page : ''}"
 	data-all-permissions="${fn:escapeXml(not empty param.permissionsJson ? param.permissionsJson : '[]')}">
 
 	<c:set var="showNav"
@@ -10566,3 +10734,1873 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\
 		</form>
 	</div>
 </div>
+========================================================================
+DUMP: technik_team_db.sql
+========================================================================
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Host: 127.0.0.1
+-- Erstellungszeit: 22. Jul 2025 um 21:50
+-- Server-Version: 10.4.32-MariaDB
+-- PHP-Version: 8.2.12
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+--
+-- Datenbank: `technik_team_db`
+--
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `achievements`
+--
+
+CREATE TABLE `achievements` (
+  `id` int(11) NOT NULL,
+  `achievement_key` varchar(50) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `description` text DEFAULT NULL,
+  `icon_class` varchar(50) DEFAULT 'fa-award'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `achievements`
+--
+
+INSERT INTO `achievements` (`id`, `achievement_key`, `name`, `description`, `icon_class`) VALUES
+(1, 'EVENT_PARTICIPANT_1', 'Erster Einsatz', 'Am ersten Event teilgenommen.', 'fa-award'),
+(2, 'EVENT_PARTICIPANT_5', 'Erfahrener Techniker', 'An 5 Events teilgenommen.', 'fa-star'),
+(3, 'EVENT_PARTICIPANT_10', 'Alter Hase', 'An 10 Events teilgenommen.', 'fa-trophy'),
+(4, 'EVENT_LEADER_1', 'Teamleiter', 'Das erste Event geleitet.', 'fa-user-tie'),
+(5, 'QUALIFICATION_TON', 'Tontechniker', 'Grundlehrgang Tontechnik absolviert.', 'fa-sliders-h'),
+(6, 'QUALIFICATION_LICHT', 'Lichttechniker', 'Grundlehrgang Lichttechnik absolviert.', 'fa-lightbulb'),
+(7, 'QUALIFICATION_d', 'Der XLR', '', 'fa-award');
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `admin_logs`
+--
+
+CREATE TABLE `admin_logs` (
+  `id` int(11) NOT NULL,
+  `admin_username` varchar(50) DEFAULT NULL,
+  `action_type` varchar(255) DEFAULT NULL,
+  `details` text DEFAULT NULL,
+  `action_timestamp` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `admin_logs`
+--
+
+INSERT INTO `admin_logs` (`id`, `admin_username`, `action_type`, `details`, `action_timestamp`) VALUES
+(1, 'admin', 'RESET_PASSWORD', 'Passwort für Benutzer \'s_gross\' (ID: 3) zurückgesetzt.', '2025-06-26 10:22:31'),
+(2, 'admin', 'RESET_PASSWORD', 'Passwort für Benutzer \'j_mueller\' (ID: 2) zurückgesetzt.', '2025-06-26 10:35:49'),
+(3, 'admin', 'UPDATE_USER', 'Benutzer \'s_gross\' (ID: 3) aktualisiert. Änderungen: Benutzername von \'s_gross\' zu \'lager\', Klasse von \'null\' zu \'\'.', '2025-06-27 07:54:15'),
+(4, 'admin', 'UPDATE_USER', 'Benutzer \'j_mueller\' (ID: 2) aktualisiert. Änderungen: Benutzername von \'j_mueller\' zu \'nutzer\', Klasse von \'null\' zu \'\'.', '2025-06-27 07:54:23'),
+(5, 'admin', 'CREATE_USER', 'Benutzer \'Paul\' (ID: 4, Rolle: LAGERWART, Klasse: 7 Me) erstellt.', '2025-06-27 12:22:00'),
+(6, 'lager', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Gerüst\' erstellt.', '2025-06-27 12:22:21'),
+(7, 'lager', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Gerüst\' erstellt.', '2025-06-27 12:25:10'),
+(8, 'lager', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'Gerüst\' aktualisiert.', '2025-06-27 12:27:39'),
+(9, 'admin', 'DELETE_STORAGE_ITEM', 'Lagerartikel \'Gerüst\' (ID: 1) gelöscht.', '2025-06-27 12:28:03'),
+(10, 'admin', 'DELETE_STORAGE_ITEM', 'Lagerartikel \'Gerüst\' (ID: 2) gelöscht.', '2025-06-27 12:28:05'),
+(11, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Test\' erstellt.', '2025-06-27 12:28:31'),
+(12, 'admin', 'DELETE_STORAGE_ITEM', 'Lagerartikel \'Test\' (ID: 3) gelöscht.', '2025-06-27 12:28:40'),
+(13, 'lager', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Movingheads\' erstellt.', '2025-06-27 12:29:37'),
+(14, 'lager', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Tri leds\' erstellt.', '2025-06-27 12:33:57'),
+(15, 'lager', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Par 56\' erstellt.', '2025-06-27 12:34:56'),
+(16, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Mischpult (alt)\' erstellt.', '2025-06-27 12:44:17'),
+(17, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Strand Lighting\' erstellt.', '2025-06-27 12:45:22'),
+(18, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'DMX-Dimmer\' erstellt.', '2025-06-27 12:48:02'),
+(19, 'Paul', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'DMX Kabel \' erstellt.', '2025-06-27 12:50:24'),
+(20, 'lager', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'traversen\' erstellt.', '2025-06-27 14:08:37'),
+(21, 'lager', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'traversen\' aktualisiert.', '2025-06-27 14:09:22'),
+(22, 'lager', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'laser\' erstellt.', '2025-06-27 14:10:33'),
+(23, 'lager', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Led bars\' erstellt.', '2025-06-27 14:11:44'),
+(24, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Mikrofonstativ\' erstellt.', '2025-06-27 14:15:42'),
+(25, 'lager', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Par scheinwerfer\' erstellt.', '2025-06-27 14:18:32'),
+(26, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'XLR Kabel (normal)\' erstellt.', '2025-06-27 14:20:08'),
+(27, 'lager', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'DMX dimmer\' erstellt.', '2025-06-27 14:20:35'),
+(28, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Mehrfachstecker\' erstellt.', '2025-06-27 14:20:45'),
+(29, 'lager', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Farbfolien\' erstellt.', '2025-06-27 14:21:46'),
+(30, 'lager', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Farbfolienhalter\' erstellt.', '2025-06-27 14:23:12'),
+(31, 'lager', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Plugboxen\' erstellt.', '2025-06-27 14:23:49'),
+(32, 'lager', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Große Lampe\' erstellt.', '2025-06-27 14:24:17'),
+(33, 'lager', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'Plugboxen\' aktualisiert.', '2025-06-27 14:24:45'),
+(34, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Mikrofonklemmen\' erstellt.', '2025-06-27 14:26:07'),
+(35, 'lager', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'leuchtmittel\' erstellt.', '2025-06-27 14:26:15'),
+(36, 'lager', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'leuchtmittel\' aktualisiert.', '2025-06-27 14:26:33'),
+(37, 'lager', 'UPDATE_DEFECT_STATUS', 'Defekt-Status für Artikel-ID 10 aktualisiert: 2 defekt. Grund: ', '2025-06-27 14:26:41'),
+(38, 'lager', 'UPDATE_DEFECT_STATUS', 'Defekt-Status für Artikel-ID 10 aktualisiert: 0 defekt. Grund: ', '2025-06-27 14:26:49'),
+(39, 'lager', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'leuchtmittel\' aktualisiert.', '2025-06-27 14:27:18'),
+(40, 'lager', 'UPDATE_DEFECT_STATUS', 'Defekt-Status für Artikel-ID 24 aktualisiert: 2 defekt. Grund: ', '2025-06-27 14:27:21'),
+(41, 'lager', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Lampenstative\' erstellt.', '2025-06-27 14:28:19'),
+(42, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Mikrofonhalterung\' erstellt.', '2025-06-27 14:34:39'),
+(43, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Mikrofonständer Zubehör \' erstellt.', '2025-06-27 14:43:45'),
+(44, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'XLR 1m\' erstellt.', '2025-06-27 14:45:14'),
+(45, 'admin', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'Mehrfachstecker\' aktualisiert.', '2025-06-27 14:45:46'),
+(46, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Verlängerungskabel\' erstellt.', '2025-06-27 14:46:59'),
+(47, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Klinke (groß)\' erstellt.', '2025-06-27 14:48:06'),
+(48, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Kat 5e\' erstellt.', '2025-06-27 14:49:27'),
+(49, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Tape (schwarz)\' erstellt.', '2025-06-27 14:50:47'),
+(50, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Isolierband (mehrfarbig)\' erstellt.', '2025-06-27 14:53:27'),
+(51, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Klettband\' erstellt.', '2025-06-27 14:57:54'),
+(52, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Lan Kabel\' erstellt.', '2025-06-27 15:00:52'),
+(53, 'admin', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'Mikrofonklemmen\' aktualisiert.', '2025-06-27 15:03:17'),
+(54, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Kameramikrofon\' erstellt.', '2025-06-27 15:04:02'),
+(55, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Shotgun Mikrofon\' erstellt.', '2025-06-27 15:07:01'),
+(56, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Oberflächenmikrofon\' erstellt.', '2025-06-27 15:10:52'),
+(57, 'lager', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'DMX Kabel \' aktualisiert.', '2025-06-27 15:10:58'),
+(58, 'lager', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'DMX Kabel \' aktualisiert.', '2025-06-27 15:11:25'),
+(59, 'lager', 'DELETE_STORAGE_ITEM', 'Lagerartikel \'DMX-Dimmer\' (ID: 9) gelöscht.', '2025-06-27 15:11:57'),
+(60, 'lager', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'laser\' aktualisiert.', '2025-06-27 15:12:20'),
+(61, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Kaltgeräte Kabel\' erstellt.', '2025-06-27 15:15:26'),
+(62, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Funkzubehör\' erstellt.', '2025-06-27 15:17:17'),
+(63, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Kaltgeräte Kabel (Daisy Chain)\' erstellt.', '2025-06-27 15:18:58'),
+(64, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Kennzeichnungsringe (mehrfarbig)\' erstellt.', '2025-06-27 15:20:24'),
+(65, 'admin', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'Mikrofonklemmen (groß)\' aktualisiert.', '2025-06-27 15:25:32'),
+(66, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Mikrofonklemmen (klein)\' erstellt.', '2025-06-27 15:27:54'),
+(67, 'admin', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'Verlängerungskabel\' aktualisiert.', '2025-06-27 15:50:31'),
+(68, 'admin', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'LAN Kabel\' aktualisiert.', '2025-06-27 15:51:06'),
+(69, 'admin', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'Kaltgeräte Kabel\' aktualisiert.', '2025-06-27 15:51:34'),
+(70, 'admin', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'Klinke (groß)\' aktualisiert.', '2025-06-27 15:52:06'),
+(71, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'HDMI Kabel\' erstellt.', '2025-06-27 15:56:53'),
+(72, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Kabelmikrofon\' erstellt.', '2025-06-27 15:58:37'),
+(73, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Adapter (Klinke - VGA)\' erstellt.', '2025-06-27 16:00:13'),
+(74, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Adapterkabel (XLR - Klinke (klein))\' erstellt.', '2025-06-27 16:12:12'),
+(75, 'admin', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'Adapterkabel (2 XLR - Klinke (klein))\' aktualisiert.', '2025-06-27 16:14:00'),
+(76, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Adapterkabel (Klinke - RCA)\' erstellt.', '2025-06-27 16:18:01'),
+(77, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Adapterkabel (2 Klinke - Klinke (klein))\' erstellt.', '2025-06-27 16:18:48'),
+(78, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Adapterkabel (Klinke (klein) - Klinke)\' erstellt.', '2025-06-27 16:19:34'),
+(79, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Adapterkabel (XLR - Klinke)\' erstellt.', '2025-06-27 16:20:13'),
+(80, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Klinke (klein)\' erstellt.', '2025-06-27 16:21:07'),
+(81, 'admin', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'HDMI Kabel\' aktualisiert.', '2025-06-27 16:22:25'),
+(82, 'admin', 'UPDATE_DEFECT_STATUS', 'Defekt-Status für Artikel-ID 46 aktualisiert: 1 defekt. Grund: VGA Anschluss fehlen Pole', '2025-06-27 16:23:00'),
+(83, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Adapter (Klinke (klein) - Chinch)\' erstellt.', '2025-06-27 16:24:05'),
+(84, 'admin', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'Kaltgeräte Kabel\' aktualisiert.', '2025-06-27 16:24:44'),
+(85, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Adapter (Klinke (klein) - Klinke (groß))\' erstellt.', '2025-06-27 16:26:11'),
+(86, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Adapter (XLR (5-polig) - XLR (3-polig))\' erstellt.', '2025-06-27 16:27:29'),
+(87, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Adapter (XLR - XLR)\' erstellt.', '2025-06-27 16:28:23'),
+(88, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Adapter (Klinke (groß) - Klinke (klein))\' erstellt.', '2025-06-27 16:29:43'),
+(89, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Adapter (Klinke (klein) - Klinke (groß))\' erstellt.', '2025-06-27 16:31:38'),
+(90, 'admin', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'LAN Kabel\' aktualisiert.', '2025-06-27 16:35:15'),
+(91, 'admin', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'Mikrofonklemmen (groß)\' aktualisiert.', '2025-06-27 16:57:52'),
+(92, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Adapter (XLR (3-polig) - XLR (5-polig))\' erstellt.', '2025-06-27 17:00:12'),
+(93, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Adapter (XLR - Chinch)\' erstellt.', '2025-06-27 17:01:42'),
+(94, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Adapter (Klinke (groß) - 2 Klinke (groß))\' erstellt.', '2025-06-27 17:04:03'),
+(95, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Adapter (Klinke (groß) - Klinke (klein))\' erstellt.', '2025-06-27 17:04:54'),
+(96, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Adapter (Dell Strom)\' erstellt.', '2025-06-27 17:09:57'),
+(97, 'admin', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'Verlängerungskabel\' aktualisiert.', '2025-06-27 17:21:15'),
+(98, 'Paul', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'BNC Kabel \' erstellt.', '2025-06-28 10:08:14'),
+(99, 'Paul', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'Adapter (Klinke (klein) - Klinke (groß))\' aktualisiert.', '2025-06-28 10:08:55'),
+(100, 'Paul', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'Kaltgeräte Kabel (Daisy Chain)\' aktualisiert.', '2025-06-28 10:09:36'),
+(101, 'Paul', 'UPDATE_DEFECT_STATUS', 'Defekt-Status für Artikel-ID 41 aktualisiert: 1 defekt. Grund: Defekte Buchse ', '2025-06-28 10:10:05'),
+(102, 'Paul', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Klinke (klein) - 2x RCA (Male)\' erstellt.', '2025-06-28 10:12:26'),
+(103, 'Paul', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Doppel RCA\' erstellt.', '2025-06-28 10:13:24'),
+(104, 'Paul', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Dreifach RCA\' erstellt.', '2025-06-28 10:14:05'),
+(105, 'Paul', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'RCA\' erstellt.', '2025-06-28 10:14:43'),
+(106, 'Paul', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'DMX Kabel \' aktualisiert.', '2025-06-28 10:15:12'),
+(107, 'Paul', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Nebelmaschine (klein) \' erstellt.', '2025-06-28 10:17:40'),
+(108, 'Paul', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Nebelmaschine (groß)\' erstellt.', '2025-06-28 10:18:30'),
+(109, 'Paul', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Boden Nebelmaschine  \' erstellt.', '2025-06-28 10:20:02'),
+(110, 'Paul', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Nebelfluid (divers)\' erstellt.', '2025-06-28 10:21:42'),
+(111, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Traversenbolzen\' erstellt.', '2025-06-28 10:24:58'),
+(112, 'admin', 'UPDATE_USER', 'Benutzer \'admin\' (ID: 1) aktualisiert. Änderungen: Klasse von \'null\' zu \'\', E-Mail geändert.', '2025-06-29 10:40:05'),
+(113, 'admin', 'CREATE_COURSE', 'Lehrgangs-Vorlage \'Mit Hunden Tanzen\' (Abk.: MHT) erstellt.', '2025-06-30 16:58:09'),
+(114, 'admin', 'CREATE_MEETING', 'Meeting \'MHT\' (ID: 1) für Lehrgang \'Mit Hunden Tanzen\' geplant.', '2025-06-30 16:59:57'),
+(115, 'admin', 'ADD_MEETING_ATTACHMENT', 'Anhang \'Screenshot 2025-06-28 at 23-32-56 Berichte & Analysen - TechnikTeam.png\' zu Meeting ID 1 hinzugefügt. Sichtbar für: NUTZER.', '2025-06-30 16:59:57'),
+(116, 'admin', 'UPDATE_ATTENDANCE', 'Teilnahme für Nutzer \'admin\' (ID: 1) bei Meeting \'MHT\' (ID: 1) auf \'TEILGENOMMEN\' gesetzt. Bemerkungen: \'Tim hat mit bravo bestanden!\'.', '2025-06-30 17:01:45'),
+(117, 'admin', 'UPDATE_ATTENDANCE', 'Teilnahme für Nutzer \'Paul\' (ID: 4) bei Meeting \'MHT\' (ID: 1) auf \'TEILGENOMMEN\' gesetzt. Bemerkungen: \'\'.', '2025-06-30 17:02:23'),
+(118, 'admin', 'UPDATE_ATTENDANCE', 'Teilnahme für Nutzer \'admin\' (ID: 1) bei Meeting \'MHT\' (ID: 1) auf \'TEILGENOMMEN\' gesetzt. Bemerkungen: \'\'.', '2025-06-30 17:02:53'),
+(119, 'admin', 'UPDATE_ATTENDANCE', 'Teilnahme für Nutzer \'admin\' (ID: 1) bei Meeting \'MHT\' (ID: 1) auf \'TEILGENOMMEN\' gesetzt. Bemerkungen: \'\'.', '2025-06-30 17:04:49'),
+(120, 'admin', 'DELETE_COURSE', 'Lehrgangs-Vorlage \'Mit Hunden Tanzen\' (ID: 1) und alle zugehörigen Meetings, Anhänge und Qualifikationen gelöscht.', '2025-07-01 19:42:44'),
+(121, 'admin', 'CREATE_FILE_CATEGORY', 'Dateikategorie \'Test\' erstellt.', '2025-07-03 21:57:00'),
+(122, 'admin', 'FILE_UPLOAD', 'Datei \'Anleitung.txt\' in Kategorie \'Test\' hochgeladen. Sichtbar für: ADMIN.', '2025-07-03 21:57:15'),
+(123, 'admin', 'CREATE_EVENT', 'Event \'Test\' (ID: 1) erstellt.', '2025-07-04 17:08:38'),
+(124, 'admin', 'UPDATE_EVENT_STATUS', 'Status für Event \'Test\' (ID: 1) von \'GEPLANT\' auf \'LAUFEND\' geändert.', '2025-07-04 17:09:08'),
+(125, 'admin', 'ASSIGN_TEAM', 'Team für Event \'Test\' (ID: 1) finalisiert. 1 Benutzer zugewiesen.', '2025-07-04 17:52:56'),
+(126, 'admin', 'DELETE_CHAT_MESSAGE', 'Admin \'admin\' deleted chat message (ID: 8) in event chat (ID: 1).', '2025-07-04 20:08:37'),
+(127, 'admin', 'CREATE_KIT', 'Kit \'Test\' (ID: 1) erstellt.', '2025-07-04 20:15:47'),
+(128, 'admin', 'ADD_ITEM_TO_KIT', '1x Item ID 56 zu Kit ID 1 hinzugefügt.', '2025-07-04 20:15:53'),
+(129, 'admin', 'ADD_ITEM_TO_KIT', '1x Item ID 56 zu Kit ID 1 hinzugefügt.', '2025-07-04 20:16:00'),
+(130, 'admin', 'DELETE_CHAT_MESSAGE', 'Admin \'admin\' deleted chat message (ID: 53) in event chat (ID: 1).', '2025-07-04 20:35:23'),
+(131, 'admin', 'DELETE_CHAT_MESSAGE', 'Admin \'admin\' deleted chat message (ID: 56) in event chat (ID: 1).', '2025-07-04 20:36:44'),
+(132, 'admin', 'DELETE_CHAT_MESSAGE', 'Admin \'admin\' deleted chat message (ID: 60) in event chat (ID: 1).', '2025-07-05 07:16:51'),
+(133, 'admin', 'DELETE_CHAT_MESSAGE', 'Admin \'admin\' deleted chat message (ID: 70) in event chat (ID: 1).', '2025-07-05 07:50:19'),
+(134, 'admin', 'DELETE_CHAT_MESSAGE', 'Admin \'admin\' deleted chat message (ID: 71) in event chat (ID: 1).', '2025-07-05 07:50:27'),
+(135, 'admin', 'DELETE_CHAT_MESSAGE', 'Admin \'admin\' deleted chat message (ID: 74) in event chat (ID: 1).', '2025-07-05 08:19:56'),
+(136, 'admin', 'DELETE_USER', 'Benutzer \'lager\' (ID: 3, Rolle: LAGERWART) wurde gelöscht.', '2025-07-05 12:37:48'),
+(137, 'admin', 'ADD_ITEM_TO_KIT', '1x Item ID 56 zu Kit ID 1 hinzugefügt.', '2025-07-05 12:51:56'),
+(138, 'admin', 'UPDATE_KIT', 'Kit \'Test\' (ID: 1) aktualisiert.', '2025-07-05 12:52:11'),
+(139, 'admin', 'ADD_ITEM_TO_KIT', '1x Item ID 45 zu Kit ID 1 hinzugefügt.', '2025-07-05 12:52:24'),
+(140, 'admin', 'ADD_ITEM_TO_KIT', '1x Item ID 36 zu Kit ID 1 hinzugefügt.', '2025-07-05 12:56:36'),
+(141, 'admin', 'UPDATE_KIT_ITEMS', 'Inhalt für Kit ID 1 aktualisiert.', '2025-07-05 13:02:34'),
+(142, 'admin', 'UPDATE_KIT_ITEMS', 'Inhalt für Kit ID 1 aktualisiert.', '2025-07-05 13:11:06'),
+(143, 'admin', 'UPDATE_KIT_ITEMS', 'Inhalt für Kit ID 1 aktualisiert.', '2025-07-05 13:11:18'),
+(144, 'admin', 'UPDATE_KIT', 'Kit \'Test\' (ID: 1) aktualisiert.', '2025-07-05 13:21:00'),
+(145, 'admin', 'UPDATE_KIT_ITEMS', 'Inhalt für Kit ID 1 aktualisiert.', '2025-07-05 13:25:29'),
+(146, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'Test\' erstellt.', '2025-07-05 13:49:08'),
+(147, 'admin', 'STORAGE_TRANSACTION', '1 x \'Test\' (ID: 74) entnommen. Notiz: ', '2025-07-05 13:53:13'),
+(148, 'admin', 'STORAGE_TRANSACTION', '1 x \'Test\' (ID: 74) eingeräumt. Notiz: ', '2025-07-05 13:53:23'),
+(149, 'admin', 'STORAGE_TRANSACTION', '1 x \'Test\' (ID: 74) eingeräumt. Notiz: ', '2025-07-05 13:57:07'),
+(150, 'admin', 'STORAGE_TRANSACTION', '2 x \'Test\' (ID: 74) entnommen. Notiz: Für Event: Test', '2025-07-05 13:57:37'),
+(151, 'admin', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'Test\' aktualisiert.', '2025-07-05 14:08:52'),
+(152, 'admin', 'STORAGE_TRANSACTION', '1 x \'DMX dimmer\' (ID: 17) entnommen. Notiz: Für Event: Test', '2025-07-05 14:09:45'),
+(153, 'admin', 'STORAGE_TRANSACTION', '1 x \'DMX dimmer\' (ID: 17) eingeräumt. Notiz: ', '2025-07-05 14:13:30'),
+(154, 'admin', 'STORAGE_TRANSACTION', '1 x \'DMX dimmer\' (ID: 17) eingeräumt. Notiz: ', '2025-07-05 14:13:36'),
+(155, 'admin', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'Test\' aktualisiert.', '2025-07-05 14:15:37'),
+(156, 'admin', 'STORAGE_TRANSACTION', '1 x \'Test\' (ID: 74) entnommen. Notiz: Für Event: Test', '2025-07-05 14:15:49'),
+(157, 'admin', 'STORAGE_TRANSACTION', '1 x \'Test\' (ID: 74) eingeräumt. Notiz: ', '2025-07-05 14:15:56'),
+(158, 'admin', 'STORAGE_TRANSACTION', '1 x \'Test\' (ID: 74) entnommen. Notiz: Für Event: Test', '2025-07-05 14:16:03'),
+(159, 'admin', 'STORAGE_TRANSACTION', '1 x \'Test\' (ID: 74) entnommen. Notiz: Für Event: Test', '2025-07-05 14:16:07'),
+(160, 'admin', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'Test\' aktualisiert.', '2025-07-05 14:21:29'),
+(161, 'admin', 'STORAGE_TRANSACTION', '2 x \'Test\' (ID: 74) entnommen. Notiz: Für Event: Test', '2025-07-05 14:21:39'),
+(162, 'admin', 'STORAGE_TRANSACTION', '2 x \'Test\' (ID: 74) eingeräumt. Notiz: ', '2025-07-05 14:25:05'),
+(163, 'admin', 'STORAGE_TRANSACTION', '2 x \'Test\' (ID: 74) entnommen. Notiz: ', '2025-07-05 14:25:20'),
+(164, 'admin', 'STORAGE_TRANSACTION', '2 x \'Test\' (ID: 74) eingeräumt. Notiz: ', '2025-07-05 14:25:37'),
+(165, 'admin', 'CREATE_TASK', 'Aufgabe \'Test\' (ID: 1) für Event-ID 1 erstellt.', '2025-07-05 16:49:05'),
+(166, 'admin', 'CREATE_TASK', 'Aufgabe \'Test1\' (ID: 2) für Event-ID 1 erstellt.', '2025-07-05 16:50:21'),
+(167, 'admin', 'CREATE_TASK', 'Aufgabe \'Test\' (ID: 3) für Event-ID 1 erstellt.', '2025-07-06 19:31:07'),
+(168, 'admin', 'UPDATE_USER', 'Benutzer \'admin\' (ID: 1) aktualisiert. Änderungen: E-Mail geändert.', '2025-07-06 19:32:59'),
+(169, 'admin', 'DELETE_TASK', 'Aufgabe mit ID 1 gelöscht.', '2025-07-06 19:48:19'),
+(170, 'admin', 'UPDATE_TASK', 'Aufgabe \'Test\' (ID: 3) für Event-ID 1 aktualisiert.', '2025-07-06 19:52:42'),
+(171, 'admin', 'UPDATE_TASK', 'Aufgabe \'Test\' (ID: 3) für Event-ID 1 aktualisiert.', '2025-07-06 20:00:45'),
+(172, 'admin', 'CREATE_TASK', 'Aufgabe \'Test\' (ID: 4) für Event-ID 1 erstellt.', '2025-07-06 20:32:42'),
+(173, 'admin', 'UPDATE_TASK', 'Aufgabe \'Test\' (ID: 4) für Event-ID 1 aktualisiert.', '2025-07-06 20:32:48'),
+(174, 'admin', 'DELETE_TASK', 'Aufgabe mit ID 4 gelöscht.', '2025-07-06 20:32:53'),
+(175, 'admin', 'DELETE_STORAGE_ITEM', 'Lagerartikel \'Test\' (ID: 74) gelöscht.', '2025-07-06 21:02:54'),
+(176, 'admin', 'DELETE_TASK', 'Aufgabe mit ID 2 gelöscht.', '2025-07-06 22:24:31'),
+(177, 'admin', 'UPDATE_USER', 'Benutzer \'admin\' (ID: 1) aktualisiert.', '2025-07-08 13:52:18'),
+(178, 'admin', 'UPDATE_TASK', 'Aufgabe \'Test\' (ID: 3) für Event-ID 1 aktualisiert.', '2025-07-08 14:14:33'),
+(179, 'admin', 'DELETE_TASK', 'Aufgabe mit ID 3 gelöscht.', '2025-07-08 14:14:59'),
+(180, 'admin', 'UPDATE_USER', 'Benutzer \'admin\' (ID: 1) aktualisiert.', '2025-07-08 14:34:05'),
+(181, 'admin', 'DELETE_USER', 'Benutzer \'nutzer\' (ID: 2, Rolle: NUTZER) wurde gelöscht.', '2025-07-08 14:34:36'),
+(182, 'admin', 'DELETE_USER', 'Benutzer \'Paul\' (ID: 4, Rolle: NUTZER) wurde gelöscht.', '2025-07-08 14:34:37'),
+(183, 'admin', 'CREATE_USER', 'Benutzer \'Tim\' (ID: 6, Rolle-ID: 3, Klasse: 11 3) erstellt und Berechtigungen zugewiesen.', '2025-07-08 14:37:08'),
+(184, 'admin', 'RESET_PASSWORD', 'Passwort für Benutzer \'Tim\' (ID: 6) zurückgesetzt.', '2025-07-08 15:29:46'),
+(185, 'admin', 'FILE_DELETE', 'Datei \'Anleitung.txt\' (ID: 1) aus Kategorie \'Test\' gelöscht.', '2025-07-08 15:34:00'),
+(186, 'admin', 'FILE_UPLOAD', 'Datei \'Anleitung.txt\' in Kategorie \'Test\' hochgeladen. Sichtbar für: ADMIN.', '2025-07-08 15:37:06'),
+(187, 'admin', 'FILE_DELETE', 'Datei \'Anleitung.txt\' (ID: 2) aus Kategorie \'Test\' gelöscht.', '2025-07-08 15:39:27'),
+(188, 'admin', 'FILE_UPLOAD', 'Datei \'Anleitung.txt\' in Kategorie \'Test\' hochgeladen. Sichtbar für: ADMIN.', '2025-07-08 15:39:34'),
+(189, 'admin', 'FILE_DELETE', 'Datei \'Anleitung.txt\' (ID: 3) aus Kategorie \'Test\' gelöscht.', '2025-07-08 15:40:36'),
+(190, 'admin', 'FILE_UPLOAD', 'Datei \'Anleitung.txt\' in Kategorie \'Test\' hochgeladen. Sichtbar für: NUTZER.', '2025-07-08 15:45:15'),
+(191, 'admin', 'FILE_UPLOAD', 'Datei \'Anleitung.txt\' in Kategorie \'Test\' hochgeladen. Sichtbar für: ADMIN.', '2025-07-08 15:45:23'),
+(192, 'admin', 'FILE_UPLOAD', 'Datei \'Anleitung.txt\' in Kategorie \'Test\' hochgeladen. Sichtbar für: ADMIN.', '2025-07-08 15:47:00'),
+(193, 'admin', 'FILE_DELETE', 'Datei \'Anleitung.txt\' (ID: 6) aus Kategorie \'Test\' gelöscht.', '2025-07-08 15:49:20'),
+(194, 'admin', 'FILE_UPLOAD', 'Datei \'Anleitung.txt\' in Kategorie \'Test\' hochgeladen. Sichtbar für: ADMIN.', '2025-07-08 15:49:29'),
+(195, 'admin', 'FILE_DELETE', 'Datei \'Anleitung.txt\' (ID: 7) aus Kategorie \'Test\' gelöscht.', '2025-07-08 16:09:39'),
+(196, 'admin', 'FILE_UPLOAD', 'Datei \'Anleitung.txt\' in Kategorie \'Test\' hochgeladen. Sichtbar für: ADMIN.', '2025-07-08 16:09:53'),
+(197, 'admin', 'FILE_DELETE', 'Datei \'Anleitung.txt\' (ID: 8) aus Kategorie \'Test\' gelöscht.', '2025-07-08 16:10:00'),
+(198, 'admin', 'FILE_UPLOAD', 'Datei \'Anleitung.txt\' in Kategorie \'Test\' hochgeladen. Sichtbar für: ADMIN.', '2025-07-08 16:14:16'),
+(199, 'admin', 'FILE_DELETE', 'Datei \'Anleitung.txt\' (ID: 9) aus Kategorie \'Test\' gelöscht.', '2025-07-08 16:14:20'),
+(200, 'admin', 'FILE_UPLOAD', 'Datei \'Anleitung.txt\' in Kategorie \'Test\' hochgeladen. Sichtbar für: NUTZER.', '2025-07-08 16:33:08'),
+(201, 'admin', 'FILE_DELETE', 'Datei \'Anleitung.txt\' (ID: 10) aus Kategorie \'Test\' gelöscht.', '2025-07-08 16:33:12'),
+(202, 'admin', 'CREATE_TASK', 'Aufgabe \'Test\' (ID: 5) für Event-ID 1 erstellt.', '2025-07-08 22:40:34'),
+(203, 'admin', 'UPDATE_TASK', 'Aufgabe \'Test\' (ID: 5) für Event-ID 1 aktualisiert.', '2025-07-09 09:22:56'),
+(204, 'admin', 'UPDATE_TASK', 'Aufgabe \'Test\' (ID: 5) für Event-ID 1 aktualisiert.', '2025-07-09 09:23:09'),
+(205, 'admin', 'RESET_PASSWORD', 'Passwort für Benutzer \'Tim\' (ID: 6) zurückgesetzt.', '2025-07-09 09:24:32'),
+(206, 'admin', 'UPDATE_EVENT', 'Event \'Test\' (ID: 1) aktualisiert.', '2025-07-09 09:24:52'),
+(207, 'admin', 'FILE_UPLOAD', 'Datei \'Anleitung.txt\' in Kategorie \'Test\' hochgeladen. Sichtbar für: ADMIN.', '2025-07-09 09:25:14'),
+(208, 'admin', 'RESET_PASSWORD', 'Passwort für Benutzer \'Tim\' (ID: 6) zurückgesetzt.', '2025-07-09 10:19:22'),
+(209, 'admin', 'CREATE_TASK', 'Aufgabe \'dsvf\' (ID: 6) für Event \'Test\' (ID: 1) erstellt.', '2025-07-09 10:21:45'),
+(210, 'admin', 'UPDATE_TASK', 'Aufgabe \'dsvf\' (ID: 6) für Event \'Test\' (ID: 1) aktualisiert.', '2025-07-09 10:22:27'),
+(211, 'admin', 'UPDATE_TASK', 'Aufgabe \'dsvf\' (ID: 6) für Event \'Test\' (ID: 1) aktualisiert.', '2025-07-09 10:23:12'),
+(212, 'admin', 'STORAGE_TRANSACTION', '8 x \'DMX dimmer\' (ID: 17) eingeräumt. Notiz: ', '2025-07-09 10:24:38'),
+(213, 'admin', 'STORAGE_TRANSACTION', '8 x \'DMX dimmer\' (ID: 17) eingeräumt. Notiz: ', '2025-07-09 10:25:04'),
+(214, 'admin', 'STORAGE_TRANSACTION', '1 x \'DMX dimmer\' (ID: 17) entnommen. Notiz: ', '2025-07-09 10:25:23'),
+(215, 'admin', 'STORAGE_TRANSACTION', '21 x \'DMX dimmer\' (ID: 17) entnommen. Notiz: ', '2025-07-09 10:25:41'),
+(216, 'admin', 'STORAGE_TRANSACTION', '8 x \'Plugboxen\' (ID: 21) eingeräumt. Notiz: ', '2025-07-09 10:26:40'),
+(217, 'admin', 'CREATE_COURSE', 'Lehrgangs-Vorlage \'XLR\' (Abk.: d) erstellt.', '2025-07-09 10:29:53'),
+(218, 'admin', 'CREATE_MEETING', 'Meeting \'XLR\' (ID: 2) für Lehrgang \'XLR\' geplant.', '2025-07-09 10:30:29'),
+(219, 'admin', 'DELETE_MEETING', 'Meeting \'XLR\' (ID: 2) vom Lehrgang \'XLR\' (Kurs-ID: 2) wurde gelöscht.', '2025-07-09 10:31:29'),
+(220, 'admin', 'CREATE_MEETING', 'Meeting \'d\' (ID: 3) für Lehrgang \'XLR\' geplant.', '2025-07-09 10:31:53'),
+(221, 'admin', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'Adapter (Dell Strom)\' aktualisiert.', '2025-07-09 10:32:18'),
+(222, 'admin', 'UPDATE_STORAGE_ITEM', 'Lagerartikel \'Adapter (Dell Strom)\' aktualisiert.', '2025-07-09 10:32:32'),
+(223, 'admin', 'UPDATE_DEFECT_STATUS', 'Defekt-Status für Artikel-ID 63 aktualisiert: 1 defekt. Grund: ', '2025-07-09 10:32:41'),
+(224, 'admin', 'UPDATE_ITEM_STATUS', 'Status für Artikel-ID 63 auf \'MAINTENANCE\' gesetzt. Notiz: ', '2025-07-09 10:32:52'),
+(225, 'admin', 'UPDATE_ITEM_STATUS', 'Status für Artikel-ID 63 auf \'IN_STORAGE\' gesetzt. Notiz: ', '2025-07-09 10:32:58'),
+(226, 'admin', 'CREATE_STORAGE_ITEM', 'Lagerartikel \'besen\' erstellt.', '2025-07-09 10:33:54'),
+(227, 'admin', 'DELETE_STORAGE_ITEM', 'Lagerartikel \'besen\' (ID: 75) gelöscht.', '2025-07-09 10:34:17'),
+(228, 'admin', 'ASSIGN_TEAM', 'Team für Event \'Test\' (ID: 1) finalisiert. 1 Benutzer zugewiesen.', '2025-07-09 10:34:32'),
+(229, 'admin', 'UPDATE_EVENT', 'Event \'Test\' (ID: 1) aktualisiert.', '2025-07-09 10:34:58'),
+(230, 'admin', 'UPDATE_EVENT_STATUS', 'Status für Event \'Test\' (ID: 1) von \'LAUFEND\' auf \'ABGESCHLOSSEN\' geändert.', '2025-07-09 10:35:03'),
+(231, 'admin', 'UPDATE_EVENT', 'Event \'Test\' (ID: 1) aktualisiert.', '2025-07-09 10:35:26'),
+(232, 'admin', 'RESET_PASSWORD', 'Passwort für Benutzer \'Tim\' (ID: 6) zurückgesetzt.', '2025-07-09 10:37:04'),
+(233, 'admin', 'CREATE_EVENT', 'Event \'Tetris\' (ID: 2) erstellt.', '2025-07-09 10:38:06'),
+(234, 'admin', 'ASSIGN_TEAM', 'Team für Event \'Tetris\' (ID: 2) finalisiert. 0 Benutzer zugewiesen.', '2025-07-09 10:38:12'),
+(235, 'admin', 'UPDATE_EVENT_STATUS', 'Status für Event \'Tetris\' (ID: 2) von \'GEPLANT\' auf \'LAUFEND\' geändert.', '2025-07-09 10:38:20'),
+(236, 'admin', 'CREATE_TASK', 'Aufgabe \'dvf\' (ID: 7) für Event \'Tetris\' (ID: 2) erstellt.', '2025-07-09 10:38:52'),
+(237, 'admin', 'CREATE_FILE_CATEGORY', 'Dateikategorie \'A\' erstellt.', '2025-07-09 10:39:58'),
+(238, 'admin', 'FILE_UPLOAD', 'Datei \'Anleitung.txt\' in Kategorie \'A\' hochgeladen. Sichtbar für: NUTZER.', '2025-07-09 10:40:24'),
+(239, 'admin', 'FILE_DELETE', 'Datei \'Anleitung.txt\' (ID: 11) aus Kategorie \'Test\' gelöscht.', '2025-07-09 10:40:35'),
+(240, 'admin', 'CREATE_KIT', 'Kit \'5 Hunde Tranzen\' (ID: 2) erstellt.', '2025-07-09 10:41:22'),
+(241, 'admin', 'UPDATE_KIT', 'Kit \'Test\' (ID: 1) aktualisiert.', '2025-07-09 10:41:32'),
+(242, 'admin', 'UPDATE_KIT', 'Kit \'Test\' (ID: 1) aktualisiert.', '2025-07-09 10:41:35'),
+(243, 'admin', 'UPDATE_KIT_ITEMS', 'Inhalt für Kit ID 1 aktualisiert.', '2025-07-09 10:41:45'),
+(244, 'admin', 'UPDATE_KIT_ITEMS', 'Inhalt für Kit ID 1 aktualisiert.', '2025-07-09 10:41:53'),
+(245, 'admin', 'UPDATE_ATTENDANCE', 'Teilnahme für Nutzer \'admin\' (ID: 1) bei Meeting \'d\' (ID: 3) auf \'TEILGENOMMEN\' gesetzt. Bemerkungen: \'\'.', '2025-07-09 10:43:00'),
+(246, 'admin', 'DELETE_USER', 'Benutzer \'Tim\' (ID: 6, Rolle: NUTZER) wurde gelöscht.', '2025-07-09 10:46:44'),
+(247, 'admin', 'DELETE_TASK', 'Aufgabe \'null\' (ID: 7) von Event \'Tetris\' gelöscht.', '2025-07-09 11:50:01'),
+(248, 'admin', 'STORAGE_TRANSACTION', '6 x \'DMX dimmer\' (ID: 17) eingeräumt. Notiz: ', '2025-07-09 11:53:36'),
+(249, 'admin', 'STORAGE_TRANSACTION', '1 x \'DMX dimmer\' (ID: 17) eingeräumt. Notiz: ', '2025-07-09 11:53:43'),
+(250, 'admin', 'STORAGE_TRANSACTION', '1 x \'DMX dimmer\' (ID: 17) entnommen. Notiz: ', '2025-07-09 11:53:45'),
+(251, 'admin', 'FILE_UPLOAD', 'Datei \'Anleitung.txt\' in Kategorie \'Test\' hochgeladen. Sichtbar für: NUTZER.', '2025-07-09 11:54:42'),
+(252, 'admin', 'UPDATE_DEFECT_STATUS', 'Defekt-Status für Artikel-ID 24 aktualisiert: 3 defekt. Grund: ', '2025-07-09 11:55:49'),
+(253, 'admin', 'UPDATE_MEETING', 'Meeting \'d\' (ID: 3) für Lehrgang \'XLR\' aktualisiert.', '2025-07-09 11:56:13'),
+(254, 'admin', 'ADD_MEETING_ATTACHMENT', 'Anhang \'DatabaseManager.java\' zu Meeting ID 3 hinzugefügt. Sichtbar für: NUTZER.', '2025-07-09 11:56:14'),
+(255, 'admin', 'DELETE_MEETING', 'Meeting \'d\' (ID: 3) vom Lehrgang \'XLR\' (Kurs-ID: 2) wurde gelöscht.', '2025-07-09 11:56:16'),
+(256, 'admin', 'UPDATE_ITEM_STATUS', 'Status für Artikel-ID 63 auf \'IN_STORAGE\' gesetzt. Notiz: ', '2025-07-09 11:56:38'),
+(257, 'admin', 'UPDATE_ITEM_STATUS', 'Status für Artikel-ID 63 auf \'IN_STORAGE\' gesetzt. Notiz: ', '2025-07-09 11:56:45'),
+(258, 'admin', 'STORAGE_TRANSACTION', '1 x \'DMX dimmer\' (ID: 17) entnommen. Notiz: ', '2025-07-09 12:23:05'),
+(259, 'admin', 'STORAGE_TRANSACTION', '1 x \'DMX dimmer\' (ID: 17) eingeräumt. Notiz: ', '2025-07-09 12:23:13'),
+(260, 'admin', 'STORAGE_TRANSACTION', '1 x \'DMX Kabel \' (ID: 10) entnommen. Notiz: ', '2025-07-09 12:24:04'),
+(261, 'admin', 'STORAGE_TRANSACTION', '1 x \'DMX Kabel \' (ID: 10) eingeräumt. Notiz: ', '2025-07-09 12:24:28'),
+(262, 'admin', 'STORAGE_TRANSACTION', '1 x \'DMX Kabel \' (ID: 10) entnommen. Notiz: ', '2025-07-09 12:24:53'),
+(263, 'admin', 'STORAGE_TRANSACTION', '11 x \'DMX Kabel \' (ID: 10) entnommen. Notiz: Für Event: Tetris', '2025-07-09 12:30:44'),
+(264, 'admin', 'STORAGE_TRANSACTION', '12 x \'DMX Kabel \' (ID: 10) eingeräumt. Notiz: ', '2025-07-09 12:30:55'),
+(265, 'admin', 'FILE_UPLOAD', 'Datei \'Anleitung.txt\' in Kategorie \'Test\' hochgeladen. Sichtbar für: ADMIN.', '2025-07-09 12:31:16'),
+(266, 'admin', 'FILE_DELETE', 'Datei \'Anleitung.txt\' (ID: 12) aus Kategorie \'A\' gelöscht.', '2025-07-09 12:31:19'),
+(267, 'admin', 'FILE_DELETE', 'Datei \'Anleitung.txt\' (ID: 14) aus Kategorie \'Test\' gelöscht.', '2025-07-09 12:31:20'),
+(268, 'admin', 'FILE_DELETE', 'Datei \'Anleitung.txt\' (ID: 13) aus Kategorie \'Test\' gelöscht.', '2025-07-09 12:31:23'),
+(269, 'admin', 'UPDATE_ITEM_STATUS', 'Status für Artikel-ID 63 auf \'IN_STORAGE\' gesetzt. Notiz: ', '2025-07-09 12:38:41'),
+(270, 'admin', 'UPDATE_ITEM_STATUS', 'Status für Artikel-ID 63 auf \'MAINTENANCE\' gesetzt. Notiz: ', '2025-07-09 12:38:50'),
+(271, 'admin', 'UPDATE_ITEM_STATUS', 'Status für Artikel-ID 63 auf \'IN_STORAGE\' gesetzt. Notiz: ', '2025-07-09 12:38:53'),
+(272, 'admin', 'UPDATE_DEFECT_STATUS', 'Defekt-Status für Artikel-ID 63 aktualisiert: 0 defekt. Grund: ', '2025-07-09 12:39:02'),
+(273, 'admin', 'FILE_UPLOAD', 'Datei \'Anleitung.txt\' in Kategorie \'Test\' hochgeladen. Sichtbar für: ADMIN.', '2025-07-09 12:39:50'),
+(274, 'admin', 'FILE_UPLOAD', 'Datei \'Anleitung.txt\' in Kategorie \'Test\' hochgeladen. Sichtbar für: ADMIN.', '2025-07-09 12:44:06'),
+(275, 'admin', 'FILE_DELETE', 'Datei \'Anleitung.txt\' (ID: 16) aus Kategorie \'Test\' gelöscht.', '2025-07-09 12:44:09'),
+(276, 'admin', 'FILE_DELETE', 'Datei \'Anleitung.txt\' (ID: 15) aus Kategorie \'Test\' gelöscht.', '2025-07-09 12:44:10'),
+(277, 'admin', 'FILE_UPLOAD', 'Datei \'DatabaseManager.java\' in Kategorie \'A\' hochgeladen. Sichtbar für: NUTZER.', '2025-07-09 12:44:19'),
+(278, 'admin', 'FILE_DELETE', 'Datei \'DatabaseManager.java\' (ID: 17) aus Kategorie \'A\' gelöscht.', '2025-07-09 12:44:22'),
+(279, 'admin', 'FILE_UPLOAD', 'Datei \'Anleitung.txt\' in Kategorie \'Test\' hochgeladen. Sichtbar für: NUTZER.', '2025-07-09 12:49:43'),
+(280, 'admin', 'CREATE_USER', 'Benutzer \'Tim\' (ID: 7, Rolle-ID: 3, Klasse: 0 ) erstellt und Berechtigungen zugewiesen.', '2025-07-09 13:14:43'),
+(281, 'admin', 'RESET_PASSWORD', 'Passwort für Benutzer \'Tim\' (ID: 7) zurückgesetzt.', '2025-07-09 13:14:48'),
+(282, 'admin', 'DELETE_USER', 'Benutzer \'Tim\' (ID: 7, Rolle: NUTZER) wurde gelöscht.', '2025-07-09 13:14:50'),
+(283, 'admin', 'DELETE_KIT', 'Kit \'5 Hunde Tranzen\' (ID: 2) gelöscht.', '2025-07-09 13:31:30'),
+(284, 'admin', 'UPDATE_DEFECT_STATUS', 'Defekt-Status für Artikel-ID 24 aktualisiert: 2 defekt. Grund: ', '2025-07-09 13:31:44'),
+(285, 'admin', 'UPDATE_KIT_ITEMS', 'Inhalt für Kit ID 1 aktualisiert.', '2025-07-09 13:47:41'),
+(286, 'admin', 'CREATE_TASK', 'Aufgabe \'Tets\' (ID: 8) für Event \'Tetris\' (ID: 2) erstellt.', '2025-07-09 14:05:31'),
+(287, 'admin', 'UPDATE_EVENT_STATUS', 'Status für Event \'Tetris\' (ID: 2) von \'LAUFEND\' auf \'ABGESCHLOSSEN\' geändert.', '2025-07-09 15:32:58'),
+(288, 'admin', 'UPDATE_EVENT', 'Event \'Tetris\' (ID: 2) aktualisiert.', '2025-07-09 15:33:37'),
+(289, 'admin', 'UPDATE_EVENT', 'Event \'Tetris\' (ID: 2) aktualisiert.', '2025-07-09 15:34:03'),
+(290, 'admin', 'UPDATE_EVENT', 'Event \'Tetris\' (ID: 2) aktualisiert.', '2025-07-09 16:18:20'),
+(291, 'admin', 'UPDATE_EVENT', 'Event \'Tetris\' (ID: 2) aktualisiert.', '2025-07-09 16:18:31'),
+(292, 'admin', 'CREATE_EVENT', 'Event \'ff\' (ID: 3) erstellt.', '2025-07-09 16:19:28'),
+(293, 'admin', 'UPDATE_EVENT_STATUS', 'Status für Event \'ff\' (ID: 3) von \'GEPLANT\' auf \'LAUFEND\' geändert.', '2025-07-09 16:19:39'),
+(294, 'admin', 'INVITE_CREW', 'Einladungen für Event \'ff\' an 1 Benutzer gesendet.', '2025-07-09 16:23:53'),
+(295, 'admin', 'STORAGE_TRANSACTION', '6 x \'DMX dimmer\' (ID: 17) entnommen. Notiz: ', '2025-07-09 16:24:33'),
+(296, 'admin', 'STORAGE_TRANSACTION', '6 x \'DMX dimmer\' (ID: 17) eingeräumt. Notiz: L', '2025-07-09 16:24:51'),
+(297, 'admin', 'UPDATE_DEFECT_STATUS', 'Defekt-Status für Artikel-ID 24 aktualisiert: 15 defekt. Grund: ', '2025-07-09 16:25:53'),
+(298, 'admin', 'UPDATE_DEFECT_STATUS', 'Defekt-Status für Artikel-ID 24 aktualisiert: 0 defekt. Grund: ', '2025-07-09 16:26:12'),
+(299, 'admin', 'UPDATE_USER', 'Benutzer \'admin\' (ID: 1) aktualisiert.', '2025-07-09 16:29:08'),
+(300, 'admin', 'UPDATE_USER', 'Benutzer \'admin\' (ID: 1) aktualisiert.', '2025-07-09 16:29:38'),
+(301, 'admin', 'CREATE_USER', 'Benutzer \'Hund\' (ID: 8, Rolle-ID: 1, Klasse: 0 ) erstellt und Berechtigungen zugewiesen.', '2025-07-09 16:29:59'),
+(302, 'admin', 'UPDATE_EVENT', 'Event \'ff\' (ID: 3) aktualisiert.', '2025-07-09 16:30:32'),
+(303, 'admin', 'CREATE_MEETING', 'Meeting \'Test\' (ID: 4) für Lehrgang \'XLR\' geplant.', '2025-07-09 16:32:50'),
+(304, 'admin', 'UPDATE_COURSE', 'Lehrgangs-Vorlage \'XLR\' (ID: 2) aktualisiert. ', '2025-07-09 16:33:23'),
+(305, 'admin', 'CREATE_KIT', 'Kit \'Das Kit\' (ID: 3) erstellt.', '2025-07-09 16:33:45'),
+(306, 'admin', 'UPDATE_KIT_ITEMS', 'Inhalt für Kit ID 3 aktualisiert.', '2025-07-09 16:33:56'),
+(307, 'admin', 'UPDATE_KIT_ITEMS', 'Inhalt für Kit ID 3 aktualisiert.', '2025-07-09 16:34:26'),
+(308, 'admin', 'UPDATE_ACHIEVEMENT', 'Erfolg \'Tontechniker\' (ID: 5) aktualisiert.', '2025-07-09 16:34:50'),
+(309, 'admin', 'CREATE_ACHIEVEMENT', 'Erfolg \'Der XLR\' erstellt.', '2025-07-09 16:35:33'),
+(310, 'admin', 'UPDATE_MEETING', 'Meeting \'Test\' (ID: 4) für Lehrgang \'XLR\' aktualisiert.', '2025-07-09 16:37:19'),
+(311, 'admin', 'UPDATE_ATTENDANCE', 'Teilnahme für Nutzer \'admin\' (ID: 1) bei Meeting \'Test\' (ID: 4) auf \'TEILGENOMMEN\' gesetzt. Bemerkungen: \'\'.', '2025-07-09 16:37:47'),
+(312, 'admin', 'RESET_PASSWORD', 'Passwort für Benutzer \'Hund\' (ID: 8) zurückgesetzt.', '2025-07-09 16:46:04'),
+(313, 'admin', 'BATCH_GRANT_QUALIFICATION', 'Batch-Qualifikation für \'XLR\' an 1 Benutzer vergeben (min. 1 Meetings).', '2025-07-09 17:05:49'),
+(314, 'admin', 'RESET_PASSWORD', 'Passwort für Benutzer \'Hund\' (ID: 8) zurückgesetzt.', '2025-07-09 17:27:08'),
+(315, 'admin', 'UPDATE_KIT_ITEMS', 'Inhalt für Kit ID 1 aktualisiert.', '2025-07-09 17:49:04'),
+(316, 'admin', 'UPDATE_KIT_ITEMS', 'Inhalt für Kit ID 1 aktualisiert.', '2025-07-09 17:49:09'),
+(317, 'admin', 'RESET_PASSWORD', 'Passwort für Benutzer \'Hund\' (ID: 8) zurückgesetzt.', '2025-07-09 17:51:46'),
+(318, 'admin', 'UPDATE_KIT_ITEMS', 'Inhalt für Kit ID 1 aktualisiert.', '2025-07-09 18:09:03'),
+(319, 'admin', 'UPDATE_KIT_ITEMS', 'Inhalt für Kit ID 1 aktualisiert.', '2025-07-09 18:09:14'),
+(320, 'admin', 'UPDATE_KIT_ITEMS', 'Inhalt für Kit ID 1 aktualisiert.', '2025-07-09 18:09:21'),
+(321, 'admin', 'FILE_UPLOAD', 'Datei \'calendar.txt\' in Kategorie \'A\' hochgeladen. Sichtbar für: NUTZER.', '2025-07-10 18:00:01'),
+(322, 'admin', 'FILE_DELETE', 'Datei \'Anleitung.txt\' (ID: 18) aus Kategorie \'Test\' gelöscht.', '2025-07-10 18:45:41'),
+(323, 'admin', 'FILE_UPLOAD', 'Datei \'calendar.txt\' hochgeladen.', '2025-07-10 18:45:55'),
+(324, 'admin', 'FILE_UPLOAD', 'Datei \'re.odt\' hochgeladen.', '2025-07-10 20:16:11'),
+(325, 'admin', 'FILE_UPLOAD', 'Datei \'README.md\' hochgeladen.', '2025-07-22 15:11:38'),
+(326, 'admin', 'FILE_UPLOAD', 'Datei \'README.markdown\' hochgeladen.', '2025-07-22 17:03:10'),
+(327, 'admin', 'RESET_PASSWORD', 'Passwort für Benutzer \'Hund\' (ID: 8) zurückgesetzt.', '2025-07-22 17:03:31'),
+(328, 'admin', 'UPDATE_USER', 'Benutzer \'Hund\' (ID: 8) aktualisiert.', '2025-07-22 17:08:16'),
+(329, 'admin', 'RESET_PASSWORD', 'Passwort für Benutzer \'Hund\' (ID: 8) zurückgesetzt.', '2025-07-22 17:13:35'),
+(330, 'Hund', 'UPDATE_MARKDOWN_FILE', 'Inhalt der Datei \'README.md\' (ID: 22) aktualisiert.', '2025-07-22 17:31:28');
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `attachments`
+--
+
+CREATE TABLE `attachments` (
+  `id` int(11) NOT NULL,
+  `parent_type` enum('EVENT','MEETING') NOT NULL,
+  `parent_id` int(11) NOT NULL,
+  `filename` varchar(255) NOT NULL,
+  `filepath` varchar(255) NOT NULL,
+  `required_role` enum('NUTZER','ADMIN') NOT NULL DEFAULT 'NUTZER',
+  `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `courses`
+--
+
+CREATE TABLE `courses` (
+  `id` int(11) NOT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  `abbreviation` varchar(20) DEFAULT NULL,
+  `description` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `courses`
+--
+
+INSERT INTO `courses` (`id`, `name`, `abbreviation`, `description`) VALUES
+(2, 'XLR', 'd', '');
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `course_attendance`
+--
+
+CREATE TABLE `course_attendance` (
+  `user_id` int(11) NOT NULL,
+  `course_id` int(11) NOT NULL,
+  `signup_status` enum('ANGEMELDET','ABGEMELDET') NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `events`
+--
+
+CREATE TABLE `events` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) DEFAULT NULL,
+  `event_datetime` datetime NOT NULL,
+  `end_datetime` datetime DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `location` varchar(255) DEFAULT NULL,
+  `status` enum('GEPLANT','KOMPLETT','LAUFEND','ABGESCHLOSSEN','ABGESAGT') NOT NULL DEFAULT 'GEPLANT',
+  `leader_user_id` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `events`
+--
+
+INSERT INTO `events` (`id`, `name`, `event_datetime`, `end_datetime`, `description`, `location`, `status`, `leader_user_id`) VALUES
+(1, 'Test', '2025-07-11 12:00:00', '2025-07-11 13:30:00', 'Dies ist ein Event, dass in der Aula stattfindet. Wenn möglich trefft schon 5min vorher ein. ', 'Aula', 'ABGESCHLOSSEN', 1),
+(2, 'Tetris', '2025-07-19 18:00:00', NULL, '# Markdown syntax guide\r\n\r\n## Headers\r\n\r\n# This is a Heading h1\r\n## This is a Heading h2\r\n###### This is a Heading h6\r\n\r\n## Emphasis\r\n\r\n*This text will be italic*  \r\n_This will also be italic_\r\n\r\n**This text will be bold**  \r\n__This will also be bold__\r\n\r\n_You **can** combine them_\r\n\r\n## Lists\r\n\r\n### Unordered\r\n\r\n* Item 1\r\n* Item 2\r\n* Item 2a\r\n* Item 2b\r\n    * Item 3a\r\n    * Item 3b\r\n\r\n### Ordered\r\n\r\n1. Item 1\r\n2. Item 2\r\n3. Item 3\r\n    1. Item 3a\r\n    2. Item 3b\r\n\r\n## Images\r\n\r\n![This is an alt text.](/image/sample.webp \"This is a sample image.\")\r\n\r\n## Links\r\n\r\nYou may be using [Markdown Live Preview](https://markdownlivepreview.com/).\r\n\r\n## Blockquotes\r\n\r\n> Markdown is a lightweight markup language with plain-text-formatting syntax, created in 2004 by John Gruber with Aaron Swartz.\r\n>\r\n>> Markdown is often used to format readme files, for writing messages in online discussion forums, and to create rich text using a plain text editor.\r\n\r\n## Tables\r\n\r\n| Left columns  | Right columns |\r\n| ------------- |:-------------:|\r\n| left foo      | right foo     |\r\n| left bar      | right bar     |\r\n| left baz      | right baz     |\r\n\r\n## Blocks of code\r\n\r\n```\r\nlet message = \'Hello world\';\r\nalert(message);\r\n```\r\n\r\n## Inline code\r\n\r\nThis web site is using `markedjs/marked`.\r\n', '', 'ABGESCHLOSSEN', NULL),
+(3, 'ff', '2025-07-20 22:22:00', NULL, '', '', 'LAUFEND', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `event_assignments`
+--
+
+CREATE TABLE `event_assignments` (
+  `assignment_id` int(11) NOT NULL,
+  `event_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `event_assignments`
+--
+
+INSERT INTO `event_assignments` (`assignment_id`, `event_id`, `user_id`) VALUES
+(2, 1, 1);
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `event_attendance`
+--
+
+CREATE TABLE `event_attendance` (
+  `user_id` int(11) NOT NULL,
+  `event_id` int(11) NOT NULL,
+  `signup_status` enum('ANGEMELDET','ABGEMELDET') NOT NULL,
+  `commitment_status` enum('BESTÄTIGT','OFFEN','ZUGESAGT') NOT NULL DEFAULT 'OFFEN'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `event_attendance`
+--
+
+INSERT INTO `event_attendance` (`user_id`, `event_id`, `signup_status`, `commitment_status`) VALUES
+(1, 1, 'ANGEMELDET', 'OFFEN'),
+(1, 2, 'ANGEMELDET', 'OFFEN'),
+(1, 3, 'ANGEMELDET', 'OFFEN');
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `event_chat_messages`
+--
+
+CREATE TABLE `event_chat_messages` (
+  `id` int(11) NOT NULL,
+  `event_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `username` varchar(255) DEFAULT NULL,
+  `message_text` text DEFAULT NULL,
+  `edited` tinyint(1) NOT NULL DEFAULT 0,
+  `is_deleted` tinyint(1) NOT NULL DEFAULT 0,
+  `deleted_by_user_id` int(11) DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  `deleted_by_username` varchar(255) DEFAULT NULL,
+  `sent_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `event_chat_messages`
+--
+
+INSERT INTO `event_chat_messages` (`id`, `event_id`, `user_id`, `username`, `message_text`, `edited`, `is_deleted`, `deleted_by_user_id`, `deleted_at`, `deleted_by_username`, `sent_at`) VALUES
+(2, 1, 1, 'admin', 'Ja, die sind in Kiste C3, direkt neben dem Mischpult. Bring bitte gleich das Gaffa-Tape mit.', 0, 0, NULL, NULL, NULL, '2025-07-06 07:31:05'),
+(7, 1, 1, 'admin', 'Fokus auf den Aufbau, bitte. Pizza besprechen wir, wenn wir fertig sind..', 1, 0, NULL, NULL, NULL, '2025-07-06 07:34:45'),
+(8, 1, 1, 'admin', 'ETsttt', 1, 1, 1, NULL, NULL, '2025-07-06 20:31:07'),
+(9, 1, 1, 'admin', 'Hallo 123', 0, 0, NULL, NULL, NULL, '2025-07-09 10:23:50'),
+(10, 3, 1, 'admin', '@Tim', 0, 0, NULL, NULL, NULL, '2025-07-09 17:50:10');
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `event_custom_fields`
+--
+
+CREATE TABLE `event_custom_fields` (
+  `id` int(11) NOT NULL,
+  `event_id` int(11) NOT NULL,
+  `field_name` varchar(255) DEFAULT NULL,
+  `field_type` enum('TEXT','BOOLEAN','DROPDOWN','CHECKBOX_GROUP') NOT NULL,
+  `is_required` tinyint(1) NOT NULL DEFAULT 0,
+  `field_options` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `event_custom_field_responses`
+--
+
+CREATE TABLE `event_custom_field_responses` (
+  `id` int(11) NOT NULL,
+  `field_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `response_value` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `event_skill_requirements`
+--
+
+CREATE TABLE `event_skill_requirements` (
+  `id` int(11) NOT NULL,
+  `event_id` int(11) NOT NULL,
+  `required_course_id` int(11) NOT NULL,
+  `required_persons` int(11) NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `event_skill_requirements`
+--
+
+INSERT INTO `event_skill_requirements` (`id`, `event_id`, `required_course_id`, `required_persons`) VALUES
+(2, 1, 2, 4);
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `event_storage_reservations`
+--
+
+CREATE TABLE `event_storage_reservations` (
+  `id` int(11) NOT NULL,
+  `event_id` int(11) NOT NULL,
+  `item_id` int(11) NOT NULL,
+  `reserved_quantity` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `event_storage_reservations`
+--
+
+INSERT INTO `event_storage_reservations` (`id`, `event_id`, `item_id`, `reserved_quantity`) VALUES
+(1, 1, 56, 1);
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `event_tasks`
+--
+
+CREATE TABLE `event_tasks` (
+  `id` int(11) NOT NULL,
+  `event_id` int(11) NOT NULL,
+  `description` text NOT NULL,
+  `status` varchar(20) NOT NULL DEFAULT 'OFFEN',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `display_order` int(11) NOT NULL DEFAULT 0,
+  `required_persons` int(11) NOT NULL DEFAULT 0,
+  `details` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `event_tasks`
+--
+
+INSERT INTO `event_tasks` (`id`, `event_id`, `description`, `status`, `created_at`, `display_order`, `required_persons`, `details`) VALUES
+(5, 1, 'Test', 'OFFEN', '2025-07-08 22:40:34', 1, 1, 'Test'),
+(6, 1, 'dsvf', 'BLOCKIERT', '2025-07-09 10:21:45', 2, 33, ''),
+(8, 2, 'Tets', 'OFFEN', '2025-07-09 14:05:31', 10, 0, '');
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `event_task_assignments`
+--
+
+CREATE TABLE `event_task_assignments` (
+  `task_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `event_task_kits`
+--
+
+CREATE TABLE `event_task_kits` (
+  `task_id` int(11) NOT NULL,
+  `kit_id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `event_task_kits`
+--
+
+INSERT INTO `event_task_kits` (`task_id`, `kit_id`) VALUES
+(5, 1),
+(6, 1),
+(8, 1);
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `event_task_storage_items`
+--
+
+CREATE TABLE `event_task_storage_items` (
+  `task_id` int(11) NOT NULL,
+  `item_id` int(11) NOT NULL,
+  `quantity` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `event_task_storage_items`
+--
+
+INSERT INTO `event_task_storage_items` (`task_id`, `item_id`, `quantity`) VALUES
+(5, 51, 6),
+(6, 51, 9999),
+(6, 56, 99),
+(8, 49, 8);
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `feedback_forms`
+--
+
+CREATE TABLE `feedback_forms` (
+  `id` int(11) NOT NULL,
+  `event_id` int(11) NOT NULL,
+  `title` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `feedback_responses`
+--
+
+CREATE TABLE `feedback_responses` (
+  `id` int(11) NOT NULL,
+  `form_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `rating` int(11) NOT NULL COMMENT 'e.g., 1 to 5 stars',
+  `comments` text DEFAULT NULL,
+  `submitted_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `files`
+--
+
+CREATE TABLE `files` (
+  `id` int(11) NOT NULL,
+  `filename` varchar(255) DEFAULT NULL,
+  `filepath` varchar(512) DEFAULT NULL,
+  `category_id` int(11) DEFAULT NULL,
+  `required_role` varchar(20) DEFAULT NULL,
+  `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `files`
+--
+
+INSERT INTO `files` (`id`, `filename`, `filepath`, `category_id`, `required_role`, `uploaded_at`) VALUES
+(19, 'calendar.txt', 'calendar.txt', 3, 'NUTZER', '2025-07-10 18:00:01'),
+(20, 'calendar.txt', 'calendar.txt', 1, 'NUTZER', '2025-07-10 18:45:55'),
+(21, 're.odt', 're.odt', 1, 'NUTZER', '2025-07-10 20:16:11'),
+(22, 'README.md', 'README.md', 1, 'NUTZER', '2025-07-22 19:43:13'),
+(23, 'README.markdown', 'README.markdown', 1, 'NUTZER', '2025-07-22 17:03:10');
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `file_categories`
+--
+
+CREATE TABLE `file_categories` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `file_categories`
+--
+
+INSERT INTO `file_categories` (`id`, `name`) VALUES
+(3, 'A'),
+(1, 'Test');
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `inventory_kits`
+--
+
+CREATE TABLE `inventory_kits` (
+  `id` int(11) NOT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `location` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `inventory_kits`
+--
+
+INSERT INTO `inventory_kits` (`id`, `name`, `description`, `location`) VALUES
+(1, 'Test', 'Das ist ein Test Kit', 'Aula Foyer'),
+(3, 'Das Kit', '', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `inventory_kit_items`
+--
+
+CREATE TABLE `inventory_kit_items` (
+  `kit_id` int(11) NOT NULL,
+  `item_id` int(11) NOT NULL,
+  `quantity` int(11) NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `inventory_kit_items`
+--
+
+INSERT INTO `inventory_kit_items` (`kit_id`, `item_id`, `quantity`) VALUES
+(1, 41, 26),
+(1, 45, 10),
+(1, 46, 6),
+(1, 59, 9),
+(3, 56, 10028);
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `maintenance_log`
+--
+
+CREATE TABLE `maintenance_log` (
+  `id` int(11) NOT NULL,
+  `item_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `log_date` timestamp NOT NULL DEFAULT current_timestamp(),
+  `action` varchar(255) DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `cost` decimal(10,2) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `maintenance_log`
+--
+
+INSERT INTO `maintenance_log` (`id`, `item_id`, `user_id`, `log_date`, `action`, `notes`, `cost`) VALUES
+(1, 63, 1, '2025-07-09 10:32:52', 'Marked for Maintenance', '', 0.00),
+(2, 63, 1, '2025-07-09 10:32:58', 'Returned to Service', '', 0.00),
+(3, 63, 1, '2025-07-09 11:56:38', 'Returned to Service', '', 0.00),
+(4, 63, 1, '2025-07-09 11:56:45', 'Returned to Service', '', 0.00),
+(5, 63, 1, '2025-07-09 12:38:41', 'Returned to Service', '', 0.00),
+(6, 63, 1, '2025-07-09 12:38:50', 'Marked for Maintenance', '', 0.00),
+(7, 63, 1, '2025-07-09 12:38:53', 'Returned to Service', '', 0.00);
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `meetings`
+--
+
+CREATE TABLE `meetings` (
+  `id` int(11) NOT NULL,
+  `course_id` int(11) NOT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  `meeting_datetime` datetime NOT NULL,
+  `end_datetime` datetime DEFAULT NULL,
+  `leader_user_id` int(11) DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `location` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `meetings`
+--
+
+INSERT INTO `meetings` (`id`, `course_id`, `name`, `meeting_datetime`, `end_datetime`, `leader_user_id`, `description`, `location`) VALUES
+(4, 2, 'Test', '2025-07-25 13:14:00', NULL, 1, '', '');
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `meeting_attendance`
+--
+
+CREATE TABLE `meeting_attendance` (
+  `user_id` int(11) NOT NULL,
+  `meeting_id` int(11) NOT NULL,
+  `attended` tinyint(1) DEFAULT 0,
+  `remarks` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `meeting_attendance`
+--
+
+INSERT INTO `meeting_attendance` (`user_id`, `meeting_id`, `attended`, `remarks`) VALUES
+(1, 4, 1, '');
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `permissions`
+--
+
+CREATE TABLE `permissions` (
+  `id` int(11) NOT NULL,
+  `permission_key` varchar(100) NOT NULL COMMENT 'e.g., USER_CREATE, EVENT_DELETE',
+  `description` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `permissions`
+--
+
+INSERT INTO `permissions` (`id`, `permission_key`, `description`) VALUES
+(1, 'ACCESS_ADMIN_PANEL', 'Globaler Zugriff auf alle Admin-Funktionen. Überschreibt alle anderen Berechtigungen.'),
+(2, 'USER_CREATE', 'Kann neue Benutzer anlegen.'),
+(3, 'USER_READ', 'Kann Benutzerliste und -details einsehen.'),
+(4, 'USER_UPDATE', 'Kann Benutzerprofile und deren Berechtigungen bearbeiten.'),
+(5, 'USER_DELETE', 'Kann Benutzer löschen.'),
+(6, 'USER_PASSWORD_RESET', 'Kann Passwörter anderer Benutzer zurücksetzen.'),
+(7, 'EVENT_CREATE', 'Kann neue Events erstellen.'),
+(8, 'EVENT_READ', 'Kann die Event-Verwaltungsliste einsehen.'),
+(9, 'EVENT_UPDATE', 'Kann bestehende Events bearbeiten (Details, Personalbedarf, Material).'),
+(10, 'EVENT_DELETE', 'Kann Events löschen.'),
+(11, 'EVENT_MANAGE_ASSIGNMENTS', 'Kann Benutzer zu Events zuweisen.'),
+(12, 'EVENT_MANAGE_TASKS', 'Kann Aufgaben innerhalb eines Events erstellen, bearbeiten und löschen.'),
+(13, 'COURSE_CREATE', 'Kann neue Lehrgangs-Vorlagen erstellen.'),
+(14, 'COURSE_READ', 'Kann Lehrgangs-Vorlagen und deren Termine einsehen.'),
+(15, 'COURSE_UPDATE', 'Kann Lehrgangs-Vorlagen bearbeiten.'),
+(16, 'COURSE_DELETE', 'Kann Lehrgangs-Vorlagen löschen.'),
+(17, 'STORAGE_CREATE', 'Kann neue Lagerartikel anlegen.'),
+(18, 'STORAGE_READ', 'Kann die Lager-Verwaltungsliste einsehen.'),
+(19, 'STORAGE_UPDATE', 'Kann Lagerartikel bearbeiten, inkl. Defekt-Status.'),
+(20, 'STORAGE_DELETE', 'Kann Lagerartikel löschen.'),
+(21, 'KIT_CREATE', 'Kann neue Material-Kits/Koffer erstellen.'),
+(22, 'KIT_READ', 'Kann die Kit-Verwaltungsliste einsehen.'),
+(23, 'KIT_UPDATE', 'Kann Kits und deren Inhalte bearbeiten.'),
+(24, 'KIT_DELETE', 'Kann Kits löschen.'),
+(25, 'QUALIFICATION_READ', 'Kann die Qualifikations-Matrix einsehen.'),
+(26, 'QUALIFICATION_UPDATE', 'Kann Teilnahme und Qualifikationen in der Matrix bearbeiten.'),
+(27, 'FILE_CREATE', 'Kann Dateien hochladen und Kategorien erstellen.'),
+(28, 'FILE_READ', 'Kann die Datei-Verwaltungsseite einsehen.'),
+(29, 'FILE_DELETE', 'Kann Dateien und Kategorien löschen.'),
+(30, 'LOG_READ', 'Kann das Admin-Aktionsprotokoll einsehen.'),
+(31, 'REPORT_READ', 'Kann die Berichts- und Analyse-Seite einsehen.'),
+(32, 'SYSTEM_READ', 'Kann die Systemstatus-Seite einsehen.'),
+(33, 'ACHIEVEMENT_CREATE', 'Kann neue Erfolge und Abzeichen erstellen.'),
+(34, 'ACHIEVEMENT_UPDATE', 'Kann bestehende Erfolge und Abzeichen bearbeiten.'),
+(35, 'ACHIEVEMENT_DELETE', 'Kann Erfolge und Abzeichen löschen.'),
+(36, 'FILE_MANAGE', 'Kann die Datei-Verwaltungsseite einsehen und grundlegende Operationen durchführen.'),
+(37, 'FILE_UPDATE', 'Kann den Inhalt von Dateien (z.B. im Markdown-Editor) bearbeiten und neue Versionen hochladen.');
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `roles`
+--
+
+CREATE TABLE `roles` (
+  `id` int(11) NOT NULL,
+  `role_name` varchar(50) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `roles`
+--
+
+INSERT INTO `roles` (`id`, `role_name`) VALUES
+(1, 'ADMIN'),
+(3, 'NUTZER');
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `shared_documents`
+--
+
+CREATE TABLE `shared_documents` (
+  `id` int(11) NOT NULL,
+  `document_name` varchar(100) NOT NULL,
+  `content` text DEFAULT NULL,
+  `last_modified` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `shared_documents`
+--
+
+INSERT INTO `shared_documents` (`id`, `document_name`, `content`, `last_modified`) VALUES
+(1, 'realtime_notes', '# Markdown syntax guide\r\n\r\n## Headers\r\n\r\n# This is a Heading h1\r\n## This is a Heading h2\r\n###### This is a Heading h6\r\n\r\n## Emphasis\r\n\r\n*This text will be italic*  \r\n_This will also be italic_\r\n\r\n**This text will be bold**  \r\n__This will also be bold__\r\n\r\n_You **can** combine them_\r\n\r\n## Lists\r\n\r\n### Unordered\r\n\r\n* Item 1\r\n* Item 2\r\n* Item 2a\r\n* Item 2b\r\n    * Item 3a\r\n    * Item 3b\r\n\r\n### Ordered\r\n\r\n1. Item 1\r\n2. Item 2\r\n3. Item 3\r\n    1. Item 3a\r\n    2. Item 3b\r\n\r\n## Images\r\n\r\n![This is an alt text.](/image/sample.webp \"This is a sample image.\")\r\n\r\n## Links\r\n\r\nYou may be using [Markdown Live Preview](https://markdownlivepreview.com/).\r\n\r\n## Blockquotes\r\n\r\n> Markdown is a lightweight markup language with plain-text-formatting syntax, created in 2004 by John Gruber with Aaron Swartz.\r\n>\r\n>> Markdown is often used to format readme files, for writing messages in online discussion forums, and to create rich text using a plain text editor.\r\n\r\n## Tables\r\n\r\n| Left columns  | Right columns |\r\n| ------------- |:-------------:|\r\n| left foo      | right foo     |\r\n| left bar      | right bar     |\r\n| left baz      | right baz     |\r\n\r\n## Blocks of code\r\n\r\n```\r\nlet message = \'Hello world\';\r\nalert(message);\r\n```\r\n\r\n## Inline code\r\n\r\nThis web site is using `markedjs/marked`.', '2025-07-09 17:45:45');
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `storage_items`
+--
+
+CREATE TABLE `storage_items` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) DEFAULT NULL,
+  `location` varchar(50) DEFAULT NULL,
+  `cabinet` varchar(50) DEFAULT NULL,
+  `shelf` varchar(50) DEFAULT NULL,
+  `compartment` varchar(50) DEFAULT NULL,
+  `quantity` int(11) NOT NULL DEFAULT 1,
+  `max_quantity` int(11) NOT NULL DEFAULT 0,
+  `defective_quantity` int(11) NOT NULL DEFAULT 0,
+  `defect_reason` text DEFAULT NULL,
+  `weight_kg` decimal(10,2) DEFAULT NULL,
+  `price_eur` decimal(10,2) DEFAULT NULL,
+  `image_path` varchar(512) DEFAULT NULL,
+  `status` enum('IN_STORAGE','CHECKED_OUT','ASSIGNED_TO_EVENT','MAINTENANCE') NOT NULL DEFAULT 'IN_STORAGE',
+  `current_holder_user_id` int(11) DEFAULT NULL,
+  `assigned_event_id` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `storage_items`
+--
+
+INSERT INTO `storage_items` (`id`, `name`, `location`, `cabinet`, `shelf`, `compartment`, `quantity`, `max_quantity`, `defective_quantity`, `defect_reason`, `weight_kg`, `price_eur`, `image_path`, `status`, `current_holder_user_id`, `assigned_event_id`) VALUES
+(4, 'Movingheads', 'Oben', '1', '/', '2', 2, 4, 0, NULL, 0.00, 0.00, NULL, 'IN_STORAGE', NULL, NULL),
+(5, 'Tri leds', 'Oben', '1', '/', '2', 2, 2, 0, NULL, 0.00, 0.00, '1000014818.jpg', 'IN_STORAGE', NULL, NULL),
+(6, 'Par 56', 'Oben', '1', '/', '3', 4, 14, 0, NULL, 0.00, 0.00, '1000014819.jpg', 'IN_STORAGE', NULL, NULL),
+(7, 'Mischpult (alt)', 'Erdgeschoss', '2', '/', '4', 1, 1, 0, NULL, 0.00, 0.00, '2025-06-2714.43.484538135326788297692.jpg', 'IN_STORAGE', NULL, NULL),
+(8, 'Strand Lighting', 'Erdgeschoss', '2', '/', '4', 1, 1, 0, NULL, 0.00, 0.00, '2025-06-2714.45.122077548250905478222.jpg', 'IN_STORAGE', NULL, NULL),
+(10, 'DMX Kabel ', 'Erdgeschoss', '1', '/', '/', 12, 12, 0, '', 0.00, 0.00, 'image.jpg', 'IN_STORAGE', NULL, NULL),
+(11, 'Traversen', 'Oben', '1-3', '/', '1', 4, 0, 0, NULL, 0.00, 0.00, NULL, 'IN_STORAGE', NULL, NULL),
+(12, 'Laser', 'Oben', '1', '/', '3', 2, 0, 0, NULL, 0.00, 0.00, NULL, 'IN_STORAGE', NULL, NULL),
+(13, 'Led bars', 'Oben', '2', '/', '2', 7, 0, 0, NULL, 0.00, 0.00, NULL, 'IN_STORAGE', NULL, NULL),
+(14, 'Mikrofonstativ', 'Erdgeschoss ', '2', '/', '4', 6, 6, 0, NULL, 0.00, 0.00, '1000004426.jpg', 'IN_STORAGE', NULL, NULL),
+(15, 'Par Scheinwerfer', 'Oben', '2', '/', '3', 4, 0, 0, NULL, 0.00, 0.00, NULL, 'IN_STORAGE', NULL, NULL),
+(16, 'XLR Kabel (normal)', 'Erdgeschoss', '1', '/', 'Hängend', 19, 19, 0, NULL, 0.00, 0.00, '2025-06-2716.17.57144115011978189604.jpg', 'IN_STORAGE', NULL, NULL),
+(17, 'DMX dimmer', 'Oben', '2', '/', '2', 6, 6, 0, NULL, 0.00, 0.00, NULL, 'IN_STORAGE', NULL, NULL),
+(18, 'Mehrfachstecker', 'Erdgeschoss', '2', '/', 'Hängend', 12, 10, 0, NULL, 0.00, 0.00, '2025-06-2716.20.283964599778401908342.jpg', 'IN_STORAGE', NULL, NULL),
+(19, 'Farbfolien', 'Oben', '4', '/', '3', 0, 0, 0, NULL, 0.00, 0.00, NULL, 'IN_STORAGE', NULL, NULL),
+(20, 'Farbfolienhalter', 'Oben', '4', '/', '2', 0, 0, 0, NULL, 0.00, 0.00, NULL, 'IN_STORAGE', NULL, NULL),
+(21, 'Plugboxen', 'Oben', '5', '/', '2-4', 12, 0, 0, NULL, 0.00, 0.00, NULL, 'IN_STORAGE', NULL, NULL),
+(22, 'Große Lampe', 'Oben', '5', '/', '4', 0, 0, 0, NULL, 0.00, 0.00, NULL, 'IN_STORAGE', NULL, NULL),
+(23, 'Mikrofonklemmen (groß)', 'Erdgeschoss', '2', '/', '2', 10, 10, 0, NULL, 0.00, 0.00, '2025-06-2716.25.505575202287104074157.jpg', 'IN_STORAGE', NULL, NULL),
+(24, 'leuchtmittel', 'Oben', '/', '/', '1', 15, 0, 0, '', 0.00, 0.00, NULL, 'IN_STORAGE', NULL, NULL),
+(25, 'Lampenstative', 'Oben', 'ganz hinten', '/', '0', 4, 0, 0, NULL, 0.00, 0.00, NULL, 'IN_STORAGE', NULL, NULL),
+(26, 'Mikrofonhalterung', 'Erdgeschoss', '2', '/', '2', 2, 2, 0, NULL, 0.00, 0.00, '1000004428.jpg', 'IN_STORAGE', NULL, NULL),
+(27, 'Mikrofonständer Zubehör ', 'Erdgeschoss', '2', '/', '2', 7, 7, 0, NULL, 0.00, 0.00, '2025-06-2716.43.268863184837397618557.jpg', 'IN_STORAGE', NULL, NULL),
+(28, 'XLR 1m', 'Erdgeschoss ', '2', '/', 'Hängend', 14, 14, 0, NULL, 0.00, 0.00, '2025-06-2716.44.217215765873591130197.jpg', 'IN_STORAGE', NULL, NULL),
+(29, 'Verlängerungskabel', 'Erdgeschoss', '1', '/', 'Hängend', 17, 17, 0, NULL, 0.00, 0.00, '2025-06-2716.46.3329023597302231662.jpg', 'IN_STORAGE', NULL, NULL),
+(30, 'Klinke (groß)', 'Erdgeschoss ', '1', '/', 'Hängend', 7, 7, 0, NULL, 0.00, 0.00, '2025-06-2716.47.474256954529147799815.jpg', 'IN_STORAGE', NULL, NULL),
+(31, 'Kat 5e', 'Erdgeschoss', '1', '/', 'Hängend', 1, 1, 0, NULL, 0.00, 0.00, '2025-06-2716.48.438613619599782685040.jpg', 'IN_STORAGE', NULL, NULL),
+(32, 'Tape (schwarz)', 'Erdgeschoss', '1', '/', 'Hängend', 5, 5, 0, NULL, 0.00, 0.00, '2025-06-2716.50.189037015943349490192.jpg', 'IN_STORAGE', NULL, NULL),
+(33, 'Isolierband (mehrfarbig)', 'Erdgeschoss', '1', '/', 'Hängend', 13, 13, 0, NULL, 0.00, 0.00, '2025-06-2716.52.326139423796119518903.jpg', 'IN_STORAGE', NULL, NULL),
+(34, 'Klettband', 'Erdgeschoss', '2', '/', 'Hängend', 2, 2, 0, NULL, 0.00, 0.00, '2025-06-2716.54.436320883725802641087.jpg', 'IN_STORAGE', NULL, NULL),
+(35, 'LAN Kabel', 'Erdgeschoss', '2', '/', '1', 24, 24, 0, NULL, 0.00, 0.00, '2025-06-2717.00.06154248686898973087.jpg', 'IN_STORAGE', NULL, NULL),
+(36, 'Kameramikrofon', 'Erdgeschoss', '2', '/', '2', 1, 1, 0, NULL, 0.00, 0.00, '2025-06-2717.03.512938281413325712878.jpg', 'IN_STORAGE', NULL, NULL),
+(37, 'Shotgun Mikrofon', 'Erdgeschoss ', '2', '/', '2', 2, 2, 0, NULL, 0.00, 0.00, '2025-06-2717.06.098569123668927925595.jpg', 'IN_STORAGE', NULL, NULL),
+(38, 'Oberflächenmikrofon', 'Erdgeschoss ', '2', '/', '2', 1, 1, 0, NULL, 0.00, 0.00, '2025-06-2717.10.391795435121197552263.jpg', 'IN_STORAGE', NULL, NULL),
+(39, 'Kaltgeräte Kabel', 'Erdgeschoss ', '2', '/', '2', 77, 77, 0, NULL, 0.00, 0.00, '2025-06-2717.15.074914010989957328333.jpg', 'IN_STORAGE', NULL, NULL),
+(40, 'Funkzubehör', 'Erdgeschoss', '2', '/', '2', 2, 2, 0, NULL, 0.00, 0.00, '2025-06-2717.17.043830938027829171798.jpg', 'IN_STORAGE', NULL, NULL),
+(41, 'Kaltgeräte Kabel (Daisy Chain)', 'Erdgeschoss', '1', '/', '1', 11, 11, 1, 'Defekte Buchse ', 0.00, 0.00, '2025-06-2717.18.125709401359377594527.jpg', 'IN_STORAGE', NULL, NULL),
+(42, 'Kennzeichnungsringe (mehrfarbig)', 'Erdgeschoss ', '2', '/', '2', 7, 8, 0, NULL, 0.00, 0.00, '2025-06-2717.20.11195938865415073150.jpg', 'IN_STORAGE', NULL, NULL),
+(43, 'Mikrofonklemmen (klein)', 'Erdgeschoss ', '2', '/', '2', 13, 13, 0, NULL, 0.00, 0.00, '2025-06-2717.27.274588107262469783348.jpg', 'IN_STORAGE', NULL, NULL),
+(44, 'HDMI Kabel', 'Erdgeschoss ', '2', '/', '1', 10, 10, 0, NULL, 0.00, 0.00, '2025-06-2717.56.305143014867881008801.jpg', 'IN_STORAGE', NULL, NULL),
+(45, 'Kabelmikrofon', 'Erdgeschoss', '2', '/', '2', 2, 2, 0, NULL, 0.00, 0.00, '2025-06-2717.58.177946197060559751805.jpg', 'IN_STORAGE', NULL, NULL),
+(46, 'Adapter (Klinke - VGA)', 'Erdgeschoss', '2', '/', '2', 1, 1, 1, 'VGA Anschluss fehlen Pole', 0.00, 0.00, '2025-06-2717.59.556036963108161859221.jpg', 'IN_STORAGE', NULL, NULL),
+(47, 'Adapterkabel (2 XLR - Klinke (klein))', 'Erdgeschoss ', '2', '/', '1', 1, 1, 0, NULL, 0.00, 0.00, NULL, 'IN_STORAGE', NULL, NULL),
+(48, 'Adapterkabel (Klinke - RCA)', 'Erdgeschoss ', '2', '/', '1', 1, 1, 0, NULL, 0.00, 0.00, NULL, 'IN_STORAGE', NULL, NULL),
+(49, 'Adapterkabel (2 Klinke - Klinke (klein))', 'Erdgeschoss ', '2', '/', '1', 3, 3, 0, NULL, 0.00, 0.00, NULL, 'IN_STORAGE', NULL, NULL),
+(50, 'Adapterkabel (Klinke (klein) - Klinke)', 'Erdgeschoss ', '2', '/', '1', 2, 2, 0, NULL, 0.00, 0.00, NULL, 'IN_STORAGE', NULL, NULL),
+(51, 'Adapterkabel (XLR - Klinke)', 'Erdgeschoss ', '2', '/', '1', 9, 9, 0, NULL, 0.00, 0.00, NULL, 'IN_STORAGE', NULL, NULL),
+(52, 'Klinke (klein)', 'Erdgeschoss', '2', '/', '1', 1, 1, 0, NULL, 0.00, 0.00, NULL, 'IN_STORAGE', NULL, NULL),
+(53, 'Adapter (Klinke (klein) - Chinch)', 'Erdgeschoss ', '2', '/', '2', 2, 2, 0, NULL, 0.00, 0.00, '2025-06-2718.23.499020825943256947204.jpg', 'IN_STORAGE', NULL, NULL),
+(54, 'Adapter (Klinke (klein) - Klinke (groß))', 'Erdgeschoss ', '2', '/', '2', 2, 2, 0, NULL, 0.00, 0.00, '2025-06-2718.25.576661925063283895663.jpg', 'IN_STORAGE', NULL, NULL),
+(55, 'Adapter (XLR (5-polig) - XLR (3-polig))', 'Erdgeschoss ', '2', '/', '2', 2, 2, 0, NULL, 0.00, 0.00, '2025-06-2718.27.096864481674443203081.jpg', 'IN_STORAGE', NULL, NULL),
+(56, 'Adapter (XLR - XLR)', 'Erdgeschoss', '2', '/', '2', 1, 1, 0, NULL, 0.00, 0.00, '2025-06-2718.28.148498265326953710617.jpg', 'IN_STORAGE', NULL, NULL),
+(57, 'Adapter (Klinke (groß) - Klinke (klein))', 'Erdgeschoss ', '2', '/', '2', 2, 2, 0, NULL, 0.00, 0.00, '2025-06-2718.29.288337895956067779676.jpg', 'IN_STORAGE', NULL, NULL),
+(58, 'Adapter (Klinke (klein) - Klinke (groß))', 'Erdgeschoss ', '2', '/', '2', 8, 8, 0, NULL, 0.00, 0.00, '2025-06-2718.31.31210849178064261929.jpg', 'IN_STORAGE', NULL, NULL),
+(59, 'Adapter (XLR (3-polig) - XLR (5-polig))', 'Erdgeschoss ', '2', '/', '2', 1, 1, 0, NULL, 0.00, 0.00, '2025-06-2718.59.517877817548047227728.jpg', 'IN_STORAGE', NULL, NULL),
+(60, 'Adapter (XLR - Chinch)', 'Erdgeschoss ', '2', '/', '2', 1, 1, 0, NULL, 0.00, 0.00, '2025-06-2719.01.268681550318375427445.jpg', 'IN_STORAGE', NULL, NULL),
+(61, 'Adapter (Klinke (groß) - 2 Klinke (groß))', 'Erdgeschoss ', '2', '/', '2', 1, 1, 0, NULL, 0.00, 0.00, '2025-06-2719.03.262282293221670794195.jpg', 'IN_STORAGE', NULL, NULL),
+(62, 'Adapter (Klinke (groß) - Klinke (klein))', 'Erdgeschoss ', '2', '/', '2', 1, 1, 0, NULL, 0.00, 0.00, '2025-06-2719.04.443477670903409475836.jpg', 'IN_STORAGE', NULL, NULL),
+(63, 'Adapter (Dell Strom)', 'Erdgeschoss ', '2', '/', '2', 1, 1, 0, '', 0.00, 0.00, '2025-06-2719.09.478882073636558604076.jpg', 'IN_STORAGE', NULL, NULL),
+(64, 'BNC Kabel ', 'Erdgeschoss ', '2', '/', '1', 3, 0, 0, NULL, 0.00, 0.00, 'image.jpg', 'IN_STORAGE', NULL, NULL),
+(65, 'Klinke (klein) - 2x RCA (Male)', 'Erdgeschoss ', '2', '/', '1', 1, 1, 0, NULL, 0.00, 0.00, 'image.jpg', 'IN_STORAGE', NULL, NULL),
+(66, 'Doppel RCA', 'Erdgeschoss ', '2', '/', '1', 4, 4, 0, NULL, 0.00, 0.00, 'image.jpg', 'IN_STORAGE', NULL, NULL),
+(67, 'Dreifach RCA', 'Erdgeschoss ', '2', '/', '1', 3, 3, 0, NULL, 0.00, 0.00, 'image.jpg', 'IN_STORAGE', NULL, NULL),
+(68, 'RCA', 'Erdgeschoss ', '2', '/', '1', 1, 1, 0, NULL, 0.00, 0.00, 'image.jpg', 'IN_STORAGE', NULL, NULL),
+(69, 'Nebelmaschine (klein) ', 'Erdgeschoss ', '1', '/', '1', 1, 1, 0, NULL, 0.00, 0.00, 'image.jpg', 'IN_STORAGE', NULL, NULL),
+(70, 'Nebelmaschine (groß)', 'Erdgeschoss ', '1', '/', '0', 1, 1, 0, NULL, 0.00, 0.00, 'image.jpg', 'IN_STORAGE', NULL, NULL),
+(71, 'Boden Nebelmaschine  ', 'Erdgeschoss ', '1', '/', '0', 1, 1, 0, NULL, 0.00, 0.00, 'image.jpg', 'IN_STORAGE', NULL, NULL),
+(72, 'Nebelfluid (divers)', 'Erdgeschoss ', '1', '/', '1', 12, 12, 0, NULL, 0.00, 0.00, 'image.jpg', 'IN_STORAGE', NULL, NULL),
+(73, 'Traversenbolzen', 'Erdgeschoss ', 'Riggingkiste', '/', 'Riggingkiste', 13, 13, 0, NULL, 0.00, 0.00, '2025-06-2812.24.214632515314181386114.jpg', 'IN_STORAGE', NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `storage_log`
+--
+
+CREATE TABLE `storage_log` (
+  `id` int(11) NOT NULL,
+  `item_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `quantity_change` int(11) NOT NULL,
+  `notes` text DEFAULT NULL,
+  `event_id` int(11) DEFAULT NULL,
+  `transaction_timestamp` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `storage_log`
+--
+
+INSERT INTO `storage_log` (`id`, `item_id`, `user_id`, `quantity_change`, `notes`, `event_id`, `transaction_timestamp`) VALUES
+(5, 17, 1, -1, 'Für Event: Test', 1, '2025-07-05 14:09:45'),
+(6, 17, 1, 1, '', 1, '2025-07-05 14:13:30'),
+(7, 17, 1, 1, '', 1, '2025-07-05 14:13:36'),
+(16, 17, 1, 8, '', NULL, '2025-07-09 10:24:38'),
+(17, 17, 1, 8, '', 1, '2025-07-09 10:25:04'),
+(18, 17, 1, -1, '', NULL, '2025-07-09 10:25:23'),
+(19, 17, 1, -21, '', NULL, '2025-07-09 10:25:41'),
+(20, 21, 1, 8, '', NULL, '2025-07-09 10:26:40'),
+(21, 17, 1, 6, '', NULL, '2025-07-09 11:53:36'),
+(22, 17, 1, 1, '', NULL, '2025-07-09 11:53:43'),
+(23, 17, 1, -1, '', NULL, '2025-07-09 11:53:45'),
+(24, 17, 1, -1, '', NULL, '2025-07-09 12:23:05'),
+(25, 17, 1, 1, '', NULL, '2025-07-09 12:23:13'),
+(26, 10, 1, -1, '', NULL, '2025-07-09 12:24:04'),
+(27, 10, 1, 1, '', NULL, '2025-07-09 12:24:28'),
+(28, 10, 1, -1, '', NULL, '2025-07-09 12:24:53'),
+(29, 10, 1, -11, 'Für Event: Tetris', 2, '2025-07-09 12:30:44'),
+(30, 10, 1, 12, '', 2, '2025-07-09 12:30:55'),
+(31, 17, 1, -6, '', NULL, '2025-07-09 16:24:33'),
+(32, 17, 1, 6, 'L', 3, '2025-07-09 16:24:51');
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `users`
+--
+
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL,
+  `username` varchar(50) DEFAULT NULL,
+  `password_hash` varchar(255) DEFAULT NULL,
+  `role_id` int(11) DEFAULT NULL,
+  `class_year` int(11) DEFAULT NULL,
+  `class_name` varchar(10) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `chat_color` varchar(7) DEFAULT '#E9ECEF',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `theme` varchar(10) DEFAULT 'light'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `users`
+--
+
+INSERT INTO `users` (`id`, `username`, `password_hash`, `role_id`, `class_year`, `class_name`, `email`, `chat_color`, `created_at`, `theme`) VALUES
+(1, 'admin', '$2a$10$odf1koglTR0zdzyPbDDkzOuw2XSKu19ylygl561RQ336KpABBFccu', 1, 0, '', NULL, '#ff00ff', '2025-06-26 08:49:17', 'light'),
+(8, 'Hund', '$2a$10$swfj/iCYFuY0sDSqfktYx.LgtvXssWhpn.x/oAkaSE1UznZuu/zOe', 1, 0, '', NULL, '#E9ECEF', '2025-07-09 16:29:59', 'light');
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `user_achievements`
+--
+
+CREATE TABLE `user_achievements` (
+  `user_id` int(11) NOT NULL,
+  `achievement_id` int(11) NOT NULL,
+  `earned_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `user_passkeys`
+--
+
+CREATE TABLE `user_passkeys` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `credential_id` text NOT NULL,
+  `public_key` text NOT NULL,
+  `signature_count` bigint(20) NOT NULL,
+  `user_handle` text NOT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `user_permissions`
+--
+
+CREATE TABLE `user_permissions` (
+  `user_id` int(11) NOT NULL,
+  `permission_id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `user_permissions`
+--
+
+INSERT INTO `user_permissions` (`user_id`, `permission_id`) VALUES
+(1, 1),
+(1, 2),
+(1, 3),
+(1, 4),
+(1, 5),
+(1, 6),
+(1, 7),
+(1, 8),
+(1, 9),
+(1, 10),
+(1, 11),
+(1, 12),
+(1, 13),
+(1, 14),
+(1, 15),
+(1, 16),
+(1, 17),
+(1, 18),
+(1, 19),
+(1, 20),
+(1, 21),
+(1, 22),
+(1, 23),
+(1, 24),
+(1, 25),
+(1, 26),
+(1, 27),
+(1, 28),
+(1, 29),
+(1, 30),
+(1, 31),
+(1, 32),
+(8, 37);
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `user_qualifications`
+--
+
+CREATE TABLE `user_qualifications` (
+  `user_id` int(11) NOT NULL,
+  `course_id` int(11) NOT NULL,
+  `completion_date` date DEFAULT NULL,
+  `status` enum('BESUCHT','ABSOLVIERT') NOT NULL DEFAULT 'BESUCHT',
+  `remarks` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Daten für Tabelle `user_qualifications`
+--
+
+INSERT INTO `user_qualifications` (`user_id`, `course_id`, `completion_date`, `status`, `remarks`) VALUES
+(1, 2, '2025-07-09', 'ABSOLVIERT', 'Automatisch vergeben');
+
+--
+-- Indizes der exportierten Tabellen
+--
+
+--
+-- Indizes für die Tabelle `achievements`
+--
+ALTER TABLE `achievements`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `achievement_key` (`achievement_key`);
+
+--
+-- Indizes für die Tabelle `admin_logs`
+--
+ALTER TABLE `admin_logs`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indizes für die Tabelle `attachments`
+--
+ALTER TABLE `attachments`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_attachments_parent` (`parent_type`,`parent_id`);
+
+--
+-- Indizes für die Tabelle `courses`
+--
+ALTER TABLE `courses`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `name` (`name`),
+  ADD UNIQUE KEY `abbreviation` (`abbreviation`);
+
+--
+-- Indizes für die Tabelle `course_attendance`
+--
+ALTER TABLE `course_attendance`
+  ADD PRIMARY KEY (`user_id`,`course_id`),
+  ADD KEY `course_id` (`course_id`);
+
+--
+-- Indizes für die Tabelle `events`
+--
+ALTER TABLE `events`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_event_leader` (`leader_user_id`);
+
+--
+-- Indizes für die Tabelle `event_assignments`
+--
+ALTER TABLE `event_assignments`
+  ADD PRIMARY KEY (`assignment_id`),
+  ADD UNIQUE KEY `unique_assignment` (`event_id`,`user_id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
+-- Indizes für die Tabelle `event_attendance`
+--
+ALTER TABLE `event_attendance`
+  ADD PRIMARY KEY (`user_id`,`event_id`),
+  ADD KEY `event_id` (`event_id`);
+
+--
+-- Indizes für die Tabelle `event_chat_messages`
+--
+ALTER TABLE `event_chat_messages`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `event_id` (`event_id`),
+  ADD KEY `event_chat_messages_ibfk_2` (`user_id`);
+
+--
+-- Indizes für die Tabelle `event_custom_fields`
+--
+ALTER TABLE `event_custom_fields`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `event_id` (`event_id`);
+
+--
+-- Indizes für die Tabelle `event_custom_field_responses`
+--
+ALTER TABLE `event_custom_field_responses`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `field_id` (`field_id`,`user_id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
+-- Indizes für die Tabelle `event_skill_requirements`
+--
+ALTER TABLE `event_skill_requirements`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `event_id` (`event_id`),
+  ADD KEY `required_course_id` (`required_course_id`);
+
+--
+-- Indizes für die Tabelle `event_storage_reservations`
+--
+ALTER TABLE `event_storage_reservations`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_event_item` (`event_id`,`item_id`),
+  ADD KEY `item_id` (`item_id`);
+
+--
+-- Indizes für die Tabelle `event_tasks`
+--
+ALTER TABLE `event_tasks`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `event_id` (`event_id`);
+
+--
+-- Indizes für die Tabelle `event_task_assignments`
+--
+ALTER TABLE `event_task_assignments`
+  ADD PRIMARY KEY (`task_id`,`user_id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
+-- Indizes für die Tabelle `event_task_kits`
+--
+ALTER TABLE `event_task_kits`
+  ADD PRIMARY KEY (`task_id`,`kit_id`),
+  ADD KEY `kit_id` (`kit_id`);
+
+--
+-- Indizes für die Tabelle `event_task_storage_items`
+--
+ALTER TABLE `event_task_storage_items`
+  ADD PRIMARY KEY (`task_id`,`item_id`),
+  ADD KEY `item_id` (`item_id`);
+
+--
+-- Indizes für die Tabelle `feedback_forms`
+--
+ALTER TABLE `feedback_forms`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `event_id_unique` (`event_id`);
+
+--
+-- Indizes für die Tabelle `feedback_responses`
+--
+ALTER TABLE `feedback_responses`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `form_user_unique` (`form_id`,`user_id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
+-- Indizes für die Tabelle `files`
+--
+ALTER TABLE `files`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `category_id` (`category_id`);
+
+--
+-- Indizes für die Tabelle `file_categories`
+--
+ALTER TABLE `file_categories`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `name` (`name`);
+
+--
+-- Indizes für die Tabelle `inventory_kits`
+--
+ALTER TABLE `inventory_kits`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `name` (`name`);
+
+--
+-- Indizes für die Tabelle `inventory_kit_items`
+--
+ALTER TABLE `inventory_kit_items`
+  ADD PRIMARY KEY (`kit_id`,`item_id`),
+  ADD KEY `item_id` (`item_id`);
+
+--
+-- Indizes für die Tabelle `maintenance_log`
+--
+ALTER TABLE `maintenance_log`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `item_id` (`item_id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
+-- Indizes für die Tabelle `meetings`
+--
+ALTER TABLE `meetings`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `course_id` (`course_id`),
+  ADD KEY `fk_meeting_leader` (`leader_user_id`);
+
+--
+-- Indizes für die Tabelle `meeting_attendance`
+--
+ALTER TABLE `meeting_attendance`
+  ADD PRIMARY KEY (`user_id`,`meeting_id`),
+  ADD KEY `meeting_id` (`meeting_id`);
+
+--
+-- Indizes für die Tabelle `permissions`
+--
+ALTER TABLE `permissions`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `permission_key_unique` (`permission_key`);
+
+--
+-- Indizes für die Tabelle `roles`
+--
+ALTER TABLE `roles`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `role_name_unique` (`role_name`);
+
+--
+-- Indizes für die Tabelle `shared_documents`
+--
+ALTER TABLE `shared_documents`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `document_name` (`document_name`),
+  ADD UNIQUE KEY `idx_doc_name` (`document_name`);
+
+--
+-- Indizes für die Tabelle `storage_items`
+--
+ALTER TABLE `storage_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_holder_user` (`current_holder_user_id`),
+  ADD KEY `fk_assigned_event` (`assigned_event_id`);
+
+--
+-- Indizes für die Tabelle `storage_log`
+--
+ALTER TABLE `storage_log`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `item_id` (`item_id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `fk_log_event` (`event_id`);
+
+--
+-- Indizes für die Tabelle `users`
+--
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `username` (`username`),
+  ADD UNIQUE KEY `email` (`email`),
+  ADD KEY `fk_user_role` (`role_id`);
+
+--
+-- Indizes für die Tabelle `user_achievements`
+--
+ALTER TABLE `user_achievements`
+  ADD PRIMARY KEY (`user_id`,`achievement_id`),
+  ADD KEY `achievement_id` (`achievement_id`);
+
+--
+-- Indizes für die Tabelle `user_passkeys`
+--
+ALTER TABLE `user_passkeys`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
+-- Indizes für die Tabelle `user_permissions`
+--
+ALTER TABLE `user_permissions`
+  ADD PRIMARY KEY (`user_id`,`permission_id`),
+  ADD KEY `permission_id` (`permission_id`);
+
+--
+-- Indizes für die Tabelle `user_qualifications`
+--
+ALTER TABLE `user_qualifications`
+  ADD PRIMARY KEY (`user_id`,`course_id`),
+  ADD KEY `course_id` (`course_id`);
+
+--
+-- AUTO_INCREMENT für exportierte Tabellen
+--
+
+--
+-- AUTO_INCREMENT für Tabelle `achievements`
+--
+ALTER TABLE `achievements`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT für Tabelle `admin_logs`
+--
+ALTER TABLE `admin_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=331;
+
+--
+-- AUTO_INCREMENT für Tabelle `attachments`
+--
+ALTER TABLE `attachments`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT für Tabelle `courses`
+--
+ALTER TABLE `courses`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT für Tabelle `events`
+--
+ALTER TABLE `events`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT für Tabelle `event_assignments`
+--
+ALTER TABLE `event_assignments`
+  MODIFY `assignment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT für Tabelle `event_chat_messages`
+--
+ALTER TABLE `event_chat_messages`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT für Tabelle `event_custom_fields`
+--
+ALTER TABLE `event_custom_fields`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT für Tabelle `event_custom_field_responses`
+--
+ALTER TABLE `event_custom_field_responses`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT für Tabelle `event_skill_requirements`
+--
+ALTER TABLE `event_skill_requirements`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT für Tabelle `event_storage_reservations`
+--
+ALTER TABLE `event_storage_reservations`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT für Tabelle `event_tasks`
+--
+ALTER TABLE `event_tasks`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT für Tabelle `feedback_forms`
+--
+ALTER TABLE `feedback_forms`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT für Tabelle `feedback_responses`
+--
+ALTER TABLE `feedback_responses`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT für Tabelle `files`
+--
+ALTER TABLE `files`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
+
+--
+-- AUTO_INCREMENT für Tabelle `file_categories`
+--
+ALTER TABLE `file_categories`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT für Tabelle `inventory_kits`
+--
+ALTER TABLE `inventory_kits`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT für Tabelle `maintenance_log`
+--
+ALTER TABLE `maintenance_log`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT für Tabelle `meetings`
+--
+ALTER TABLE `meetings`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT für Tabelle `permissions`
+--
+ALTER TABLE `permissions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
+
+--
+-- AUTO_INCREMENT für Tabelle `roles`
+--
+ALTER TABLE `roles`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT für Tabelle `shared_documents`
+--
+ALTER TABLE `shared_documents`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+
+--
+-- AUTO_INCREMENT für Tabelle `storage_items`
+--
+ALTER TABLE `storage_items`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=76;
+
+--
+-- AUTO_INCREMENT für Tabelle `storage_log`
+--
+ALTER TABLE `storage_log`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
+
+--
+-- AUTO_INCREMENT für Tabelle `users`
+--
+ALTER TABLE `users`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT für Tabelle `user_passkeys`
+--
+ALTER TABLE `user_passkeys`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- Constraints der exportierten Tabellen
+--
+
+--
+-- Constraints der Tabelle `course_attendance`
+--
+ALTER TABLE `course_attendance`
+  ADD CONSTRAINT `course_attendance_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `course_attendance_ibfk_2` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `events`
+--
+ALTER TABLE `events`
+  ADD CONSTRAINT `fk_event_leader` FOREIGN KEY (`leader_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints der Tabelle `event_assignments`
+--
+ALTER TABLE `event_assignments`
+  ADD CONSTRAINT `event_assignments_ibfk_1` FOREIGN KEY (`event_id`) REFERENCES `events` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `event_assignments_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `event_attendance`
+--
+ALTER TABLE `event_attendance`
+  ADD CONSTRAINT `event_attendance_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `event_attendance_ibfk_2` FOREIGN KEY (`event_id`) REFERENCES `events` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `event_chat_messages`
+--
+ALTER TABLE `event_chat_messages`
+  ADD CONSTRAINT `event_chat_messages_ibfk_1` FOREIGN KEY (`event_id`) REFERENCES `events` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `event_chat_messages_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `event_custom_fields`
+--
+ALTER TABLE `event_custom_fields`
+  ADD CONSTRAINT `event_custom_fields_ibfk_1` FOREIGN KEY (`event_id`) REFERENCES `events` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `event_custom_field_responses`
+--
+ALTER TABLE `event_custom_field_responses`
+  ADD CONSTRAINT `event_custom_field_responses_ibfk_1` FOREIGN KEY (`field_id`) REFERENCES `event_custom_fields` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `event_custom_field_responses_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `event_skill_requirements`
+--
+ALTER TABLE `event_skill_requirements`
+  ADD CONSTRAINT `event_skill_requirements_ibfk_1` FOREIGN KEY (`event_id`) REFERENCES `events` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `event_skill_requirements_ibfk_2` FOREIGN KEY (`required_course_id`) REFERENCES `courses` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `event_storage_reservations`
+--
+ALTER TABLE `event_storage_reservations`
+  ADD CONSTRAINT `event_storage_reservations_ibfk_1` FOREIGN KEY (`event_id`) REFERENCES `events` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `event_storage_reservations_ibfk_2` FOREIGN KEY (`item_id`) REFERENCES `storage_items` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `event_tasks`
+--
+ALTER TABLE `event_tasks`
+  ADD CONSTRAINT `event_tasks_ibfk_1` FOREIGN KEY (`event_id`) REFERENCES `events` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `event_task_assignments`
+--
+ALTER TABLE `event_task_assignments`
+  ADD CONSTRAINT `event_task_assignments_ibfk_1` FOREIGN KEY (`task_id`) REFERENCES `event_tasks` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `event_task_assignments_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `event_task_kits`
+--
+ALTER TABLE `event_task_kits`
+  ADD CONSTRAINT `event_task_kits_ibfk_1` FOREIGN KEY (`task_id`) REFERENCES `event_tasks` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `event_task_kits_ibfk_2` FOREIGN KEY (`kit_id`) REFERENCES `inventory_kits` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `event_task_storage_items`
+--
+ALTER TABLE `event_task_storage_items`
+  ADD CONSTRAINT `event_task_storage_items_ibfk_1` FOREIGN KEY (`task_id`) REFERENCES `event_tasks` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `event_task_storage_items_ibfk_2` FOREIGN KEY (`item_id`) REFERENCES `storage_items` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `feedback_forms`
+--
+ALTER TABLE `feedback_forms`
+  ADD CONSTRAINT `feedback_forms_ibfk_1` FOREIGN KEY (`event_id`) REFERENCES `events` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `feedback_responses`
+--
+ALTER TABLE `feedback_responses`
+  ADD CONSTRAINT `feedback_responses_ibfk_1` FOREIGN KEY (`form_id`) REFERENCES `feedback_forms` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `feedback_responses_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `files`
+--
+ALTER TABLE `files`
+  ADD CONSTRAINT `files_ibfk_1` FOREIGN KEY (`category_id`) REFERENCES `file_categories` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints der Tabelle `inventory_kit_items`
+--
+ALTER TABLE `inventory_kit_items`
+  ADD CONSTRAINT `inventory_kit_items_ibfk_1` FOREIGN KEY (`kit_id`) REFERENCES `inventory_kits` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `inventory_kit_items_ibfk_2` FOREIGN KEY (`item_id`) REFERENCES `storage_items` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `maintenance_log`
+--
+ALTER TABLE `maintenance_log`
+  ADD CONSTRAINT `maintenance_log_ibfk_1` FOREIGN KEY (`item_id`) REFERENCES `storage_items` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `maintenance_log_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
+
+--
+-- Constraints der Tabelle `meetings`
+--
+ALTER TABLE `meetings`
+  ADD CONSTRAINT `fk_meeting_leader` FOREIGN KEY (`leader_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `meetings_ibfk_1` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `meeting_attendance`
+--
+ALTER TABLE `meeting_attendance`
+  ADD CONSTRAINT `meeting_attendance_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `meeting_attendance_ibfk_2` FOREIGN KEY (`meeting_id`) REFERENCES `meetings` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `storage_items`
+--
+ALTER TABLE `storage_items`
+  ADD CONSTRAINT `fk_assigned_event` FOREIGN KEY (`assigned_event_id`) REFERENCES `events` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_holder_user` FOREIGN KEY (`current_holder_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints der Tabelle `storage_log`
+--
+ALTER TABLE `storage_log`
+  ADD CONSTRAINT `fk_log_event` FOREIGN KEY (`event_id`) REFERENCES `events` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `storage_log_ibfk_1` FOREIGN KEY (`item_id`) REFERENCES `storage_items` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `storage_log_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `users`
+--
+ALTER TABLE `users`
+  ADD CONSTRAINT `fk_user_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints der Tabelle `user_achievements`
+--
+ALTER TABLE `user_achievements`
+  ADD CONSTRAINT `user_achievements_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `user_achievements_ibfk_2` FOREIGN KEY (`achievement_id`) REFERENCES `achievements` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `user_passkeys`
+--
+ALTER TABLE `user_passkeys`
+  ADD CONSTRAINT `user_passkeys_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `user_permissions`
+--
+ALTER TABLE `user_permissions`
+  ADD CONSTRAINT `user_permissions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `user_permissions_ibfk_2` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints der Tabelle `user_qualifications`
+--
+ALTER TABLE `user_qualifications`
+  ADD CONSTRAINT `user_qualifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `user_qualifications_ibfk_2` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`) ON DELETE CASCADE;
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

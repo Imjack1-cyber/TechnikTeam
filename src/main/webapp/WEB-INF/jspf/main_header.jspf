@@ -27,6 +27,7 @@
 <body data-context-path="${pageContext.request.contextPath}"
 	data-is-logged-in="${not empty sessionScope.user}"
 	data-csrf-token="${sessionScope.csrfToken}"
+	data-page="${not empty param.page ? param.page : ''}"
 	data-all-permissions="${fn:escapeXml(not empty param.permissionsJson ? param.permissionsJson : '[]')}">
 
 	<c:set var="showNav"

@@ -37,10 +37,11 @@ public class User {
 			return false;
 		}
 		// A user has admin access if they have the master key OR any other specific
-		// admin-level permission.
-		return permissions.contains("ACCESS_ADMIN_PANEL") || permissions.stream()
-				.anyMatch(p -> !"ACCESS_ADMIN_PANEL".equals(p) && (p.contains("_READ") || p.contains("_MANAGE")
-						|| p.contains("_UPDATE") || p.contains("_CREATE") || p.contains("_DELETE")));
+		// admin-level permission that is not just for viewing or updating specific
+		// content.
+		return permissions.contains("ACCESS_ADMIN_PANEL") || permissions.stream().anyMatch(p -> !p.equals("FILE_READ")
+				&& !p.equals("FILE_UPDATE")
+				&& (p.contains("_READ") || p.contains("_MANAGE") || p.contains("_CREATE") || p.contains("_DELETE")));
 	}
 
 	// --- Standard Getters and Setters ---

@@ -5,6 +5,7 @@
 document.addEventListener('DOMContentLoaded', () => {
 
 	const contextPath = document.body.dataset.contextPath || '';
+	const currentPage = document.body.dataset.page || '';
 
 	// --- MOBILE NAVIGATION ---
 	const navToggle = document.querySelector('.mobile-nav-toggle');
@@ -123,7 +124,8 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	// --- SERVER-SENT EVENTS (SSE) NOTIFICATIONS ---
-	if (document.body.dataset.isLoggedIn === 'true' && window.EventSource) {
+	// Only connect if the user is logged in AND not on the editor page
+	if (document.body.dataset.isLoggedIn === 'true' && window.EventSource && currentPage !== 'editor') {
 		const eventSource = new EventSource(`${contextPath}/notifications`);
 		eventSource.onopen = () => console.log("SSE connection established.");
 		eventSource.onmessage = (event) => {

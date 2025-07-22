@@ -53,6 +53,12 @@ public class AdminFileServlet extends HttpServlet {
 		}
 
 		String action = request.getParameter("action");
+
+		if ("delete".equals(action)) {
+			handleDeleteUpload(request, response, adminUser);
+			return;
+		}
+
 		Part filePart;
 		try {
 			filePart = request.getPart("file");
@@ -159,7 +165,7 @@ public class AdminFileServlet extends HttpServlet {
 					dbFile.getFilename(), fileId, adminUser.getUsername());
 
 			// Update the timestamp in the database to reflect the new version.
-			if (fileDAO.updateFileRecord(dbFile)) {
+			if (fileDAO.touchFileRecord(dbFile.getId())) {
 				AdminLogService.log(adminUser.getUsername(), "FILE_UPDATE",
 						"Neue Version für Datei '" + dbFile.getFilename() + "' hochgeladen.");
 				session.setAttribute("successMessage", "Neue Version erfolgreich hochgeladen.");
@@ -169,6 +175,33 @@ public class AdminFileServlet extends HttpServlet {
 		} catch (Exception e) {
 			logger.error("Error during file update upload.", e);
 			session.setAttribute("errorMessage", "Fehler beim Aktualisieren: " + e.getMessage());
+		}
+		response.sendRedirect(request.getContextPath() + "/admin/dateien");
+	}
+
+	private void handleDeleteUpload(HttpServletRequest request, HttpServletResponse response, User adminUser)
+			throws IOException {
+		HttpSession session = request.getSession();
+		try {
+			int fileId = Integer.parseInt(request.getParameter("fileId"));
+			de.technikteam.model.File fileToDelete = fileDAO.getFileById(fileId);
+
+			if (fileToDelete == null) {
+				session.setAttribute("errorMessage", "Datei zum Löschen nicht gefunden.");
+				response.sendRedirect(request.getContextPath() + "/admin/dateien");
+				return;
+			}
+
+			if (fileDAO.deleteFile(fileId)) {
+				AdminLogService.log(adminUser.getUsername(), "FILE_DELETE",
+						"Datei '" + fileToDelete.getFilename() + "' (ID: " + fileId + ") gelöscht.");
+				session.setAttribute("successMessage", "Datei '" + fileToDelete.getFilename() + "' wurde gelöscht.");
+			} else {
+				session.setAttribute("errorMessage", "Datei konnte nicht gelöscht werden.");
+			}
+		} catch (NumberFormatException e) {
+			logger.error("Invalid file ID for deletion", e);
+			session.setAttribute("errorMessage", "Ungültige Datei-ID.");
 		}
 		response.sendRedirect(request.getContextPath() + "/admin/dateien");
 	}

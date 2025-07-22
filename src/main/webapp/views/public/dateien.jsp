@@ -1,6 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
 <c:import url="/WEB-INF/jspf/main_header.jspf">
 	<c:param name="pageTitle" value="Dateien & Dokumente" />
@@ -17,6 +18,9 @@
 	</div>
 </c:if>
 
+<c:set var="canUpdateFiles"
+	value="${sessionScope.user.permissions.contains('FILE_UPDATE') or sessionScope.user.permissions.contains('ACCESS_ADMIN_PANEL')}" />
+
 <c:forEach var="categoryEntry" items="${fileData}">
 	<div class="card">
 		<h2>
@@ -24,10 +28,21 @@
 			<c:out value="${categoryEntry.key}" />
 		</h2>
 		<ul class="file-list">
-			<c:forEach var="file" items="${categoryEntry.value}" varStatus="loop">
-				<li style="padding: 0.75rem 0;"><a
-					href="<c:url value='/download?id=${file.id}'/>"><i
-						class="fas fa-download"></i> <c:out value="${file.filename}" /></a></li>
+			<c:forEach var="file" items="${categoryEntry.value}">
+				<li style="padding: 0.75rem 0;">
+					<div>
+						<a href="<c:url value='/download?id=${file.id}'/>"><i
+							class="fas fa-download"></i> <c:out value="${file.filename}" /></a>
+					</div> <c:if
+						test="${canUpdateFiles and fn:endsWith(fn:toLowerCase(file.filename), '.md')}">
+						<div class="file-actions">
+							<a href="<c:url value='/editor?fileId=${file.id}'/>"
+								class="btn btn-small"> <i class="fas fa-edit"></i>
+								Bearbeiten
+							</a>
+						</div>
+					</c:if>
+				</li>
 			</c:forEach>
 		</ul>
 	</div>

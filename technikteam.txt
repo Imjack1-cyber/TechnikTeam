@@ -2152,6 +2152,7 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.dao;
 
+import de.technikteam.config.AppConfig;
 import de.technikteam.model.File;
 import de.technikteam.model.FileCategory;
 import de.technikteam.model.User;
@@ -2160,6 +2161,10 @@ import de.technikteam.util.DaoUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -2268,6 +2273,25 @@ public class FileDAO {
 	}
 
 	/**
+	 * Retrieves the content of a specific physical file from the disk.
+	 * 
+	 * @param filepath The relative path of the file from the UPLOAD_DIRECTORY.
+	 * @return The file's content as a string, or an empty string if not found or an
+	 *         error occurs.
+	 */
+	public String getDocumentContentByPath(String filepath) {
+		try {
+			java.io.File physicalFile = new java.io.File(AppConfig.UPLOAD_DIRECTORY, filepath);
+			return new String(Files.readAllBytes(physicalFile.toPath()), StandardCharsets.UTF_8);
+		} catch (NoSuchFileException e) {
+			logger.error("Physical file is missing at path: {}", filepath);
+		} catch (IOException e) {
+			logger.error("Could not read file content for path {}", filepath, e);
+		}
+		return ""; // Return empty string on failure
+	}
+
+	/**
 	 * Creates a new file metadata record in the database.
 	 *
 	 * @param file The File object to persist.
@@ -2293,30 +2317,28 @@ public class FileDAO {
 	}
 
 	/**
-	 * Updates the metadata of an existing file record, typically after a new
-	 * version is uploaded. It updates the filename and the timestamp.
-	 * 
-	 * @param file The File object with the updated data (must include ID).
-	 * @return true if the update was successful.
+	 * Updates the content of a physical file on disk.
+	 *
+	 * @param filepath The relative path of the file from the UPLOAD_DIRECTORY.
+	 * @param content  The new content to write to the file.
+	 * @return true if writing was successful.
 	 */
-	public boolean updateFileRecord(File file) {
-		String sql = "UPDATE files SET filename = ?, filepath = ?, uploaded_at = CURRENT_TIMESTAMP WHERE id = ?";
-		logger.debug("Updating file record for ID {}", file.getId());
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setString(1, file.getFilename());
-			pstmt.setString(2, file.getFilepath());
-			pstmt.setInt(3, file.getId());
-			return pstmt.executeUpdate() > 0;
-		} catch (SQLException e) {
-			logger.error("SQL error updating file record for ID {}", file.getId(), e);
+	public boolean updateFileContent(String filepath, String content) {
+		try {
+			java.io.File targetFile = new java.io.File(AppConfig.UPLOAD_DIRECTORY, filepath);
+			Files.write(targetFile.toPath(), content.getBytes(StandardCharsets.UTF_8));
+			logger.trace("Successfully updated content for file at path: {}", filepath);
+			return true;
+		} catch (IOException e) {
+			logger.error("Failed to write updated content to file at path: {}", filepath, e);
 			return false;
 		}
 	}
 
 	/**
-	 * Updates the timestamp of a file record to the current time. Used by WOPI to
-	 * indicate a new version has been saved.
-	 * 
+	 * Updates the timestamp of a file record to the current time. Used to indicate
+	 * a new version has been saved.
+	 *
 	 * @param fileId The ID of the file to "touch".
 	 * @return true if the update was successful.
 	 */
@@ -2385,22 +2407,40 @@ public class FileDAO {
 	}
 
 	/**
-	 * Deletes a file record from the 'files' table in the database. Note: This
-	 * method ONLY deletes the database record. The physical file must be deleted
-	 * separately by the calling servlet.
+	 * Deletes a file record from the database AND the corresponding physical file
+	 * from the disk.
 	 *
 	 * @param fileId The ID of the file record to delete.
-	 * @return true if the database record was successfully deleted, false
-	 *         otherwise.
+	 * @return true if both the database record and the physical file were
+	 *         successfully deleted, false otherwise.
 	 */
 	public boolean deleteFile(int fileId) {
-		logger.warn("Attempting to delete file record from database with ID: {}", fileId);
+		logger.warn("Attempting to delete file record and physical file with ID: {}", fileId);
+		File dbFile = getFileById(fileId);
+		if (dbFile == null) {
+			logger.warn("Cannot delete file with ID: {}. Record not found in database.", fileId);
+			return false;
+		}
+
 		String sql = "DELETE FROM files WHERE id = ?";
 		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, fileId);
 			int rowsAffected = pstmt.executeUpdate();
 			if (rowsAffected > 0) {
 				logger.info("Successfully deleted file record with ID: {}", fileId);
+				// Now delete the physical file
+				try {
+					java.io.File physicalFile = new java.io.File(AppConfig.UPLOAD_DIRECTORY, dbFile.getFilepath());
+					if (Files.deleteIfExists(physicalFile.toPath())) {
+						logger.info("Successfully deleted physical file: {}", physicalFile.getAbsolutePath());
+					} else {
+						logger.warn("Physical file to delete was not found at path: {}",
+								physicalFile.getAbsolutePath());
+					}
+				} catch (IOException e) {
+					logger.error("Error deleting physical file for ID: {}", fileId, e);
+					// The DB record was deleted, but the file remains. This is an inconsistency.
+				}
 				return true;
 			} else {
 				logger.warn("Could not delete file record with ID: {}. It might not exist.", fileId);
@@ -4612,7 +4652,6 @@ import org.apache.logging.log4j.Logger;
 
 import com.mysql.cj.jdbc.AbandonedConnectionCleanupThread;
 
-import de.technikteam.util.WopiTokenManager;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
 import jakarta.servlet.annotation.WebListener;
@@ -4623,7 +4662,7 @@ import jakarta.servlet.annotation.WebListener;
  * primary purpose is to manually deregister the JDBC driver that was loaded by
  * this application's classloader. This prevents potential memory leaks in
  * application servers like Tomcat. It also explicitly shuts down the MySQL
- * cleanup thread and the WOPI Token Manager's thread pool.
+ * cleanup thread.
  */
 @WebListener
 public class AppContextListener implements ServletContextListener {
@@ -4638,14 +4677,6 @@ public class AppContextListener implements ServletContextListener {
 	@Override
 	public void contextDestroyed(ServletContextEvent sce) {
 		logger.info(">>>>>>>>>> TechnikTeam Application Context Being Destroyed. Cleaning up resources... <<<<<<<<<<");
-
-		try {
-			logger.info("Attempting to shut down WOPI Token Manager thread pool...");
-			WopiTokenManager.getInstance().shutdown();
-			logger.info("WOPI Token Manager shutdown signal sent.");
-		} catch (Exception e) {
-			logger.error("Error shutting down WOPI Token Manager.", e);
-		}
 
 		try {
 			logger.info("Attempting to shut down MySQL abandoned connection cleanup thread...");
@@ -5748,6 +5779,7 @@ public class File {
 	private String categoryName;
 	private LocalDateTime uploadedAt;
 	private String requiredRole;
+	private String content;
 
 	public String getFormattedUploadedAt() {
 		return de.technikteam.config.DateFormatter.formatDateTime(this.uploadedAt);
@@ -5807,6 +5839,14 @@ public class File {
 
 	public void setRequiredRole(String requiredRole) {
 		this.requiredRole = requiredRole;
+	}
+
+	public String getContent() {
+		return content;
+	}
+
+	public void setContent(String content) {
+		this.content = content;
 	}
 }
 ========================================================================
@@ -6813,10 +6853,11 @@ public class User {
 			return false;
 		}
 		// A user has admin access if they have the master key OR any other specific
-		// admin-level permission.
-		return permissions.contains("ACCESS_ADMIN_PANEL") || permissions.stream()
-				.anyMatch(p -> !"ACCESS_ADMIN_PANEL".equals(p) && (p.contains("_READ") || p.contains("_MANAGE")
-						|| p.contains("_UPDATE") || p.contains("_CREATE") || p.contains("_DELETE")));
+		// admin-level permission that is not just for viewing or updating specific
+		// content.
+		return permissions.contains("ACCESS_ADMIN_PANEL") || permissions.stream().anyMatch(p -> !p.equals("FILE_READ")
+				&& !p.equals("FILE_UPDATE")
+				&& (p.contains("_READ") || p.contains("_MANAGE") || p.contains("_CREATE") || p.contains("_DELETE")));
 	}
 
 	// --- Standard Getters and Setters ---
@@ -7651,107 +7692,6 @@ public class DownloadServlet extends HttpServlet {
 				OutputStream outStream = response.getOutputStream()) {
 			inStream.transferTo(outStream);
 		}
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\EditorServlet.java
-========================================================================
-
-package de.technikteam.servlet;
-
-import de.technikteam.config.AppConfig;
-import de.technikteam.model.User;
-import de.technikteam.util.WopiTokenManager;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.UUID;
-
-/**
- * A secure controller servlet for launching the Collabora Online editor. It
- * generates the necessary iframe URL with a secure access token.
- */
-@WebServlet("/editor")
-public class EditorServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(EditorServlet.class);
-
-	@Override
-	public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-
-		User user = (User) request.getSession().getAttribute("user");
-
-		if (user == null || !user.hasAdminAccess()) {
-			logger.warn("Non-admin user '{}' or guest attempted to access the editor.",
-					(user != null ? user.getUsername() : "GUEST"));
-			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied.");
-			return;
-		}
-
-		String fileId = request.getParameter("fileId");
-		if (fileId == null || fileId.trim().isEmpty()) {
-			logger.warn("EditorServlet called without a fileId parameter.");
-			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing fileId parameter.");
-			return;
-		}
-
-		// Generate a secure, single-use access token and store it in our dedicated
-		// token manager.
-		String accessToken = UUID.randomUUID().toString();
-		WopiTokenManager.getInstance().storeToken(accessToken, fileId, user.getUsername());
-		logger.debug("Generated and stored WOPI access token for file {} and user {}", fileId, user.getUsername());
-
-		// Capture the browser's origin. This is what Collabora needs for PostMessage.
-		String browserOrigin = String.format("%s://%s:%d", request.getScheme(), request.getServerName(),
-				request.getServerPort());
-
-		// Construct the WOPI source URL, which points to our new WOPI API servlet,
-		// and pass the browser's origin along with it.
-		String wopiSrcUrl = String.format("%s/wopi/files/%s?origin=%s", getBaseUrl(request), fileId,
-				URLEncoder.encode(browserOrigin, StandardCharsets.UTF_8));
-
-		// Construct the full Collabora URL for the iframe.
-		String collaboraUrl = String.format("%s/loleaflet.html?WOPISrc=%s", AppConfig.COLLABORA_SERVER_URL,
-				URLEncoder.encode(wopiSrcUrl, StandardCharsets.UTF_8));
-
-		// Pass the access token and the Collabora URL to the JSP.
-		request.setAttribute("collaboraUrl", collaboraUrl);
-		request.setAttribute("accessToken", accessToken);
-
-		logger.info("Forwarding user '{}' to Collabora editor for file ID {}.", user.getUsername(), fileId);
-		request.getRequestDispatcher("/views/public/collabora_editor.jsp").forward(request, response);
-	}
-
-	private String getBaseUrl(HttpServletRequest request) {
-		String scheme = request.getScheme();
-
-		// *** BUG FIX: Use the special Docker DNS name 'host.docker.internal'. ***
-		// This is the standard, reliable way for a container to reach the host machine
-		// in Docker Desktop environments (Windows/macOS).
-		String serverName = "host.docker.internal";
-
-		int serverPort = request.getServerPort();
-		String contextPath = request.getContextPath();
-
-		StringBuilder url = new StringBuilder();
-		url.append(scheme).append("://").append(serverName);
-
-		if ((serverPort != 80 && "http".equals(scheme)) || (serverPort != 443 && "https".equals(scheme))) {
-			url.append(':').append(serverPort);
-		}
-
-		url.append(contextPath);
-
-		logger.debug("Generated WOPI Base URL for Collabora callback: {}", url.toString());
-		return url.toString();
 	}
 }
 ========================================================================
@@ -8829,6 +8769,109 @@ public class LogoutServlet extends HttpServlet {
 		HttpSession newSession = request.getSession(true);
 		newSession.setAttribute("successMessage", "Sie wurden erfolgreich ausgeloggt.");
 		response.sendRedirect(request.getContextPath() + "/login");
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\MarkdownEditorServlet.java
+========================================================================
+
+package de.technikteam.servlet;
+
+import de.technikteam.config.AppConfig;
+import de.technikteam.dao.FileDAO;
+import de.technikteam.model.User;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+
+/**
+ * A secure controller servlet for launching the internal Markdown editor. It
+ * handles permissions, loads file content, and forwards to the editor UI.
+ */
+@WebServlet("/editor")
+public class MarkdownEditorServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(MarkdownEditorServlet.class);
+	private FileDAO fileDAO;
+
+	@Override
+	public void init() throws ServletException {
+		fileDAO = new FileDAO();
+	}
+
+	@Override
+	public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+
+		User user = (User) request.getSession().getAttribute("user");
+
+		String fileIdParam = request.getParameter("fileId");
+		if (fileIdParam == null || fileIdParam.trim().isEmpty()) {
+			logger.warn("EditorServlet called without a fileId parameter.");
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing fileId parameter.");
+			return;
+		}
+
+		int fileId;
+		try {
+			fileId = Integer.parseInt(fileIdParam);
+		} catch (NumberFormatException e) {
+			logger.warn("EditorServlet called with invalid fileId format: {}", fileIdParam);
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid fileId format.");
+			return;
+		}
+
+		de.technikteam.model.File dbFile = fileDAO.getFileById(fileId);
+		if (dbFile == null) {
+			logger.warn("Editor access attempted for non-existent fileId: {}", fileId);
+			response.sendError(HttpServletResponse.SC_NOT_FOUND, "File not found.");
+			return;
+		}
+
+		boolean canUpdate = user.getPermissions().contains("FILE_UPDATE")
+				|| user.getPermissions().contains("ACCESS_ADMIN_PANEL");
+		boolean canRead = user.getPermissions().contains("FILE_READ");
+
+		if (canUpdate) {
+			request.setAttribute("editorMode", "edit");
+		} else if (canRead) {
+			request.setAttribute("editorMode", "view");
+		} else {
+			logger.warn("User '{}' denied access to editor for fileId {}. Missing FILE_UPDATE or FILE_READ permission.",
+					user.getUsername(), fileId);
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied.");
+			return;
+		}
+
+		String fileContent;
+		try {
+			java.io.File physicalFile = new java.io.File(AppConfig.UPLOAD_DIRECTORY, dbFile.getFilepath());
+			fileContent = new String(Files.readAllBytes(physicalFile.toPath()), StandardCharsets.UTF_8);
+		} catch (NoSuchFileException e) {
+			logger.error("File record found in DB for ID {} but physical file is missing at path: {}", fileId,
+					dbFile.getFilepath());
+			response.sendError(HttpServletResponse.SC_NOT_FOUND, "Physical file not found on server.");
+			return;
+		} catch (IOException e) {
+			logger.error("Could not read file content for fileId {}", fileId, e);
+			response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Could not read file content.");
+			return;
+		}
+
+		request.setAttribute("file", dbFile);
+		request.setAttribute("fileContent", fileContent);
+
+		logger.info("Forwarding user '{}' to Markdown editor for file ID {}. Mode: {}", user.getUsername(), fileId,
+				request.getAttribute("editorMode"));
+		request.getRequestDispatcher("/views/admin/admin_editor.jsp").forward(request, response);
 	}
 }
 ========================================================================
@@ -11330,6 +11373,12 @@ public class AdminFileServlet extends HttpServlet {
 		}
 
 		String action = request.getParameter("action");
+
+		if ("delete".equals(action)) {
+			handleDeleteUpload(request, response, adminUser);
+			return;
+		}
+
 		Part filePart;
 		try {
 			filePart = request.getPart("file");
@@ -11436,7 +11485,7 @@ public class AdminFileServlet extends HttpServlet {
 					dbFile.getFilename(), fileId, adminUser.getUsername());
 
 			// Update the timestamp in the database to reflect the new version.
-			if (fileDAO.updateFileRecord(dbFile)) {
+			if (fileDAO.touchFileRecord(dbFile.getId())) {
 				AdminLogService.log(adminUser.getUsername(), "FILE_UPDATE",
 						"Neue Version für Datei '" + dbFile.getFilename() + "' hochgeladen.");
 				session.setAttribute("successMessage", "Neue Version erfolgreich hochgeladen.");
@@ -11446,6 +11495,33 @@ public class AdminFileServlet extends HttpServlet {
 		} catch (Exception e) {
 			logger.error("Error during file update upload.", e);
 			session.setAttribute("errorMessage", "Fehler beim Aktualisieren: " + e.getMessage());
+		}
+		response.sendRedirect(request.getContextPath() + "/admin/dateien");
+	}
+
+	private void handleDeleteUpload(HttpServletRequest request, HttpServletResponse response, User adminUser)
+			throws IOException {
+		HttpSession session = request.getSession();
+		try {
+			int fileId = Integer.parseInt(request.getParameter("fileId"));
+			de.technikteam.model.File fileToDelete = fileDAO.getFileById(fileId);
+
+			if (fileToDelete == null) {
+				session.setAttribute("errorMessage", "Datei zum Löschen nicht gefunden.");
+				response.sendRedirect(request.getContextPath() + "/admin/dateien");
+				return;
+			}
+
+			if (fileDAO.deleteFile(fileId)) {
+				AdminLogService.log(adminUser.getUsername(), "FILE_DELETE",
+						"Datei '" + fileToDelete.getFilename() + "' (ID: " + fileId + ") gelöscht.");
+				session.setAttribute("successMessage", "Datei '" + fileToDelete.getFilename() + "' wurde gelöscht.");
+			} else {
+				session.setAttribute("errorMessage", "Datei konnte nicht gelöscht werden.");
+			}
+		} catch (NumberFormatException e) {
+			logger.error("Invalid file ID for deletion", e);
+			session.setAttribute("errorMessage", "Ungültige Datei-ID.");
 		}
 		response.sendRedirect(request.getContextPath() + "/admin/dateien");
 	}
@@ -12967,56 +13043,14 @@ public class CrewFinderApiServlet extends HttpServlet {
 	}
 }
 ========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\api\SystemStatsApiServlet.java
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\api\MarkdownApiServlet.java
 ========================================================================
 
 package de.technikteam.servlet.api;
 
-import com.google.gson.Gson;
-import de.technikteam.model.SystemStatsDTO;
-import de.technikteam.service.SystemInfoService;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-
-/**
- * Provides system statistics as a JSON API endpoint. This servlet is protected
- * by the AdminFilter.
- */
-@WebServlet("/api/admin/system-stats")
-public class SystemStatsApiServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private SystemInfoService systemInfoService;
-	private Gson gson;
-
-	@Override
-	public void init() throws ServletException {
-		systemInfoService = new SystemInfoService();
-		gson = new Gson();
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		SystemStatsDTO stats = systemInfoService.getSystemStats();
-		String jsonResponse = gson.toJson(stats);
-
-		response.setContentType("application/json");
-		response.setCharacterEncoding("UTF-8");
-		response.getWriter().write(jsonResponse);
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\api\UserPreferencesApiServlet.java
-========================================================================
-
-package de.technikteam.servlet.api;
-
-import de.technikteam.dao.UserDAO;
+import de.technikteam.dao.FileDAO;
 import de.technikteam.model.User;
+import de.technikteam.service.AdminLogService;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -13028,18 +13062,16 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.util.Set;
 
-@WebServlet("/api/user/preferences")
-public class UserPreferencesApiServlet extends HttpServlet {
+@WebServlet("/api/save-markdown")
+public class MarkdownApiServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(UserPreferencesApiServlet.class);
-	private static final Set<String> VALID_THEMES = Set.of("light", "dark");
-	private UserDAO userDAO;
+	private static final Logger logger = LogManager.getLogger(MarkdownApiServlet.class);
+	private FileDAO fileDAO;
 
 	@Override
 	public void init() {
-		userDAO = new UserDAO();
+		fileDAO = new FileDAO();
 	}
 
 	@Override
@@ -13051,27 +13083,50 @@ public class UserPreferencesApiServlet extends HttpServlet {
 			return;
 		}
 
+		User user = (User) session.getAttribute("user");
+		if (!user.getPermissions().contains("FILE_UPDATE") && !user.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
+			logger.warn("User '{}' tried to save markdown file without FILE_UPDATE permission.", user.getUsername());
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
+			return;
+		}
+
 		if (!CSRFUtil.isTokenValid(request)) {
 			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token.");
 			return;
 		}
 
-		User user = (User) session.getAttribute("user");
-		String theme = request.getParameter("theme");
+		String fileIdParam = request.getParameter("fileId");
+		String content = request.getParameter("content");
 
-		if (theme == null || !VALID_THEMES.contains(theme)) {
-			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid theme value.");
+		if (fileIdParam == null || content == null) {
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing required parameters.");
 			return;
 		}
 
-		if (userDAO.updateUserTheme(user.getId(), theme)) {
-			user.setTheme(theme);
-			session.setAttribute("user", user); // Update user object in session
-			logger.info("Updated theme for user '{}' to '{}'.", user.getUsername(), theme);
-			response.setStatus(HttpServletResponse.SC_OK);
-		} else {
-			logger.error("Failed to update theme for user '{}' in database.", user.getUsername());
-			response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Could not save theme preference.");
+		try {
+			int fileId = Integer.parseInt(fileIdParam);
+			de.technikteam.model.File dbFile = fileDAO.getFileById(fileId);
+
+			if (dbFile == null) {
+				response.sendError(HttpServletResponse.SC_NOT_FOUND, "File not found.");
+				return;
+			}
+
+			boolean contentUpdated = fileDAO.updateFileContent(dbFile.getFilepath(), content);
+			boolean recordTouched = fileDAO.touchFileRecord(fileId);
+
+			if (contentUpdated && recordTouched) {
+				AdminLogService.log(user.getUsername(), "UPDATE_MARKDOWN_FILE",
+						"Inhalt der Datei '" + dbFile.getFilename() + "' (ID: " + fileId + ") aktualisiert.");
+				session.setAttribute("successMessage", "Änderungen erfolgreich gespeichert.");
+			} else {
+				session.setAttribute("errorMessage", "Fehler beim Speichern der Datei.");
+			}
+
+			response.sendRedirect(request.getContextPath() + "/editor?fileId=" + fileId);
+
+		} catch (NumberFormatException e) {
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid fileId format.");
 		}
 	}
 }

@@ -9,7 +9,6 @@ import org.apache.logging.log4j.Logger;
 
 import com.mysql.cj.jdbc.AbandonedConnectionCleanupThread;
 
-import de.technikteam.util.WopiTokenManager;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
 import jakarta.servlet.annotation.WebListener;
@@ -20,7 +19,7 @@ import jakarta.servlet.annotation.WebListener;
  * primary purpose is to manually deregister the JDBC driver that was loaded by
  * this application's classloader. This prevents potential memory leaks in
  * application servers like Tomcat. It also explicitly shuts down the MySQL
- * cleanup thread and the WOPI Token Manager's thread pool.
+ * cleanup thread.
  */
 @WebListener
 public class AppContextListener implements ServletContextListener {
@@ -35,14 +34,6 @@ public class AppContextListener implements ServletContextListener {
 	@Override
 	public void contextDestroyed(ServletContextEvent sce) {
 		logger.info(">>>>>>>>>> TechnikTeam Application Context Being Destroyed. Cleaning up resources... <<<<<<<<<<");
-
-		try {
-			logger.info("Attempting to shut down WOPI Token Manager thread pool...");
-			WopiTokenManager.getInstance().shutdown();
-			logger.info("WOPI Token Manager shutdown signal sent.");
-		} catch (Exception e) {
-			logger.error("Error shutting down WOPI Token Manager.", e);
-		}
 
 		try {
 			logger.info("Attempting to shut down MySQL abandoned connection cleanup thread...");

@@ -91,24 +91,10 @@
 					<c:forEach var="file" items="${categoryEntry.value}">
 						<li>
 							<div class="file-info">
-								<c:choose>
-									<c:when
-										test="${fn:endsWith(fn:toLowerCase(file.filename), '.odt') or fn:endsWith(fn:toLowerCase(file.filename), '.ods') or fn:endsWith(fn:toLowerCase(file.filename), '.odp')}">
-										<c:url var="editorUrl" value="/editor">
-											<c:param name="fileId" value="${file.id}" />
-										</c:url>
-										<a href="${editorUrl}" title="Datei im Editor öffnen"> <i
-											class="fas fa-edit"></i> <c:out value="${file.filename}" />
-										</a>
-									</c:when>
-									<c:otherwise>
-										<a href="<c:url value='/download?id=${file.id}'/>"
-											title="Datei herunterladen"> <i class="fas fa-download"></i>
-											<c:out value="${file.filename}" />
-										</a>
-									</c:otherwise>
-								</c:choose>
-								<small class="file-meta">Sichtbar für: <c:out
+								<a href="<c:url value='/download?id=${file.id}'/>"
+									title="Datei herunterladen"> <i class="fas fa-download"></i>
+									<c:out value="${file.filename}" />
+								</a> <small class="file-meta">Sichtbar für: <c:out
 										value="${file.requiredRole}" /></small>
 							</div>
 							<div class="file-actions"
@@ -120,11 +106,12 @@
 									<i class="fas fa-upload"></i> Neue Version
 								</button>
 								<form
-									action="${pageContext.request.contextPath}/admin/dateien/loeschen"
+									action="${pageContext.request.contextPath}/admin/uploadFile"
 									method="post" class="js-confirm-form"
 									data-confirm-message="Datei '${fn:escapeXml(file.filename)}' wirklich löschen?">
 									<input type="hidden" name="csrfToken"
 										value="${sessionScope.csrfToken}"> <input
+										type="hidden" name="action" value="delete"> <input
 										type="hidden" name="fileId" value="${file.id}">
 									<button type="submit" class="btn btn-small btn-danger-outline"
 										title="Löschen">
