@@ -13,6 +13,14 @@ document.addEventListener('DOMContentLoaded', () => {
 		return date.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 	}
 
+	function createAlertBanner(message, type = 'info') {
+		const banner = document.createElement('div');
+		banner.className = `${type}-message`; // info-message, error-message, etc.
+		const iconClass = type === 'danger' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+		banner.innerHTML = `<i class="fas ${iconClass}"></i> ${message}`;
+		return banner;
+	}
+
 	function renderUpcomingEvents(events) {
 		const header = '<h2><i class="fas fa-calendar-check"></i> Nächste Einsätze</h2>';
 		if (!events || events.length === 0) {
@@ -32,22 +40,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	function renderLowStockItems(items) {
 		const header = '<h2><i class="fas fa-battery-quarter"></i> Niedriger Lagerbestand</h2>';
+
+		let content = '';
 		if (!items || items.length === 0) {
-			lowStockContainer.innerHTML = header + '<p>Alle Artikel sind ausreichend vorhanden.</p>';
-			return;
+			content = '<p>Alle Artikel sind ausreichend vorhanden.</p>';
+		} else {
+			const list = items.map(item => {
+				const percentage = item.maxQuantity > 0 ? ((item.quantity - item.defectiveQuantity) / item.maxQuantity * 100).toFixed(0) : 0;
+				return `
+                    <li>
+                        <a href="${contextPath}/lager/details?id=${item.id}">${item.name}</a>
+                        <span class="status-badge status-warn">${percentage}%</span>
+                    </li>
+                `;
+			}).join('');
+			content = `<ul class="details-list">${list}</ul>`;
+
+			// Add an alert banner if there are low stock items
+			const alertMessage = `Es gibt ${items.length} Artikel mit niedrigem Lagerbestand. <a href="${contextPath}/admin/lager">Jetzt prüfen</a>.`;
+			const banner = createAlertBanner(alertMessage, 'danger');
+			lowStockContainer.prepend(banner);
 		}
 
-		const list = items.map(item => {
-			const percentage = item.maxQuantity > 0 ? ((item.quantity - item.defectiveQuantity) / item.maxQuantity * 100).toFixed(0) : 0;
-			return `
-                <li>
-                    <a href="${contextPath}/lager/details?id=${item.id}">${item.name}</a>
-                    <span class="status-badge status-warn">${percentage}%</span>
-                </li>
-            `;
-		}).join('');
-
-		lowStockContainer.innerHTML = header + `<ul class="details-list">${list}</ul>`;
+		lowStockContainer.innerHTML = header + content;
 	}
 
 	function renderRecentLogs(logs) {

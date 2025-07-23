@@ -217,19 +217,19 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	function handleUIUpdate(payload) {
-        console.log("Handling UI update:", payload.updateType, payload.data);
-        switch (payload.updateType) {
-            case 'user_updated':
-                updateUserInUI(payload.data);
-                break;
-            case 'user_deleted':
-                deleteUserFromUI(payload.data.userId);
-                break;
-            case 'event_status_updated':
-                updateEventStatusInUI(payload.data.eventId, payload.data.newStatus);
-                break;
-        }
-    }
+		console.log("Handling UI update:", payload.updateType, payload.data);
+		switch (payload.updateType) {
+			case 'user_updated':
+				updateUserInUI(payload.data);
+				break;
+			case 'user_deleted':
+				deleteUserFromUI(payload.data.userId);
+				break;
+			case 'event_status_updated':
+				updateEventStatusInUI(payload.data.eventId, payload.data.newStatus, payload.data);
+				break;
+		}
+	}
 
 	function updateUserInUI(user) {
 		const userElements = document.querySelectorAll(`[data-user-id="${user.id}"]`);
@@ -247,40 +247,57 @@ document.addEventListener('DOMContentLoaded', () => {
 			setTimeout(() => el.remove(), 500);
 		});
 	}
-	
+
 	function getStatusBadgeClass(status) {
-        const classMap = {
-            'LAUFEND': 'status-warn',
-            'ABGESCHLOSSEN': 'status-info',
-            'ABGESAGT': 'status-info',
-            'GEPLANT': 'status-ok',
-            'KOMPLETT': 'status-ok'
-        };
-        return classMap[status] || 'status-info';
-    }
+		const classMap = {
+			'LAUFEND': 'status-warn',
+			'ABGESCHLOSSEN': 'status-info',
+			'ABGESAGT': 'status-info',
+			'GEPLANT': 'status-ok',
+			'KOMPLETT': 'status-ok'
+		};
+		return classMap[status] || 'status-info';
+	}
 
 	function updateEventStatusInUI(eventId, newStatus) {
-        const eventElements = document.querySelectorAll(`[data-event-id="${eventId}"]`);
-        eventElements.forEach(element => {
-            const badge = element.querySelector('.status-badge');
-            if (badge) {
-                badge.textContent = newStatus;
-                badge.className = `status-badge ${getStatusBadgeClass(newStatus)}`;
-            }
+		const eventElements = document.querySelectorAll(`[data-event-id="${eventId}"]`);
+		eventElements.forEach(element => {
+			const badge = element.querySelector('.status-badge');
+			if (badge) {
+				badge.textContent = newStatus;
+				badge.className = `status-badge ${getStatusBadgeClass(newStatus)}`;
+			}
 
-			// Hide all action forms first
-            element.querySelectorAll('form[action*="updateStatus"]').forEach(form => form.style.display = 'none');
-			
-			// Show the correct one based on the new status
-            if (newStatus === 'GEPLANT' || newStatus === 'KOMPLETT') {
-                const startForm = element.querySelector('form input[name="newStatus"][value="LAUFEND"]')?.closest('form');
-                if (startForm) startForm.style.display = 'inline';
-            } else if (newStatus === 'LAUFEND') {
-                const finishForm = element.querySelector('form input[name="newStatus"][value="ABGESCHLOSSEN"]')?.closest('form');
-                if (finishForm) finishForm.style.display = 'inline';
-            }
-        });
-    }
+			const actionsContainer = element.querySelector('.event-status-actions');
+			if (actionsContainer) {
+				actionsContainer.innerHTML = '';
+
+				const csrfToken = document.body.dataset.csrfToken || '';
+				const eventNameElement = element.querySelector('a');
+				const eventName = eventNameElement ? eventNameElement.textContent.trim() : 'dieses Event';
+
+				if (newStatus === 'GEPLANT' || newStatus === 'KOMPLETT') {
+					actionsContainer.innerHTML = `
+						<form action="${contextPath}/admin/veranstaltungen" method="post" style="display: inline;" class="js-confirm-form" data-confirm-message="Event '${eventName}' wirklich starten? Der Chat wird aktiviert.">
+							<input type="hidden" name="csrfToken" value="${csrfToken}">
+							<input type="hidden" name="action" value="updateStatus">
+							<input type="hidden" name="id" value="${eventId}">
+							<input type="hidden" name="newStatus" value="LAUFEND">
+							<button type="submit" class="btn btn-small btn-warning">Starten</button>
+						</form>`;
+				} else if (newStatus === 'LAUFEND') {
+					actionsContainer.innerHTML = `
+						<form action="${contextPath}/admin/veranstaltungen" method="post" style="display: inline;" class="js-confirm-form" data-confirm-message="Event '${eventName}' wirklich abschließen?">
+							<input type="hidden" name="csrfToken" value="${csrfToken}">
+							<input type="hidden" name="action" value="updateStatus">
+							<input type="hidden" name="id" value="${eventId}">
+							<input type="hidden" name="newStatus" value="ABGESCHLOSSEN">
+							<button type="submit" class="btn btn-small" style="background-color: var(--text-muted-color);">Abschließen</button>
+						</form>`;
+				}
+			}
+		});
+	}
 
 	function showBrowserNotification(payload) {
 		const message = payload.message || 'Neue Benachrichtigung';

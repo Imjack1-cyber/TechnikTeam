@@ -65,14 +65,14 @@
 							test="${hasMasterAccess or userPermissions.contains('EVENT_UPDATE') or isLeader}">
 							<button type="button" class="btn btn-small edit-event-btn"
 								data-event-id="${event.id}">Bearbeiten</button>
-						</c:if> <c:if test="${event.status != 'ABGESCHLOSSEN'}">
-							<c:if
-								test="${hasMasterAccess or userPermissions.contains('EVENT_MANAGE_ASSIGNMENTS') or isLeader}">
-								<button type="button"
-									class="btn btn-small btn-success assign-users-btn"
-									data-event-id="${event.id}"
-									data-event-name="${fn:escapeXml(event.name)}">Zuweisen</button>
-							</c:if>
+						</c:if> <c:if
+							test="${hasMasterAccess or userPermissions.contains('EVENT_MANAGE_ASSIGNMENTS') or isLeader}">
+							<button type="button"
+								class="btn btn-small btn-success assign-users-btn"
+								data-event-id="${event.id}"
+								data-event-name="${fn:escapeXml(event.name)}">Zuweisen</button>
+						</c:if>
+						<div class="event-status-actions">
 							<c:if
 								test="${(hasMasterAccess or userPermissions.contains('EVENT_UPDATE') or isLeader) and (event.status == 'GEPLANT' || event.status == 'KOMPLETT')}">
 								<form
@@ -102,7 +102,7 @@
 										style="background-color: var(--text-muted-color);">Abschließen</button>
 								</form>
 							</c:if>
-						</c:if> <c:if
+						</div> <c:if
 							test="${hasMasterAccess or userPermissions.contains('EVENT_DELETE')}">
 							<form
 								action="${pageContext.request.contextPath}/admin/veranstaltungen"
@@ -147,14 +147,14 @@
 					<button type="button" class="btn btn-small edit-event-btn"
 						data-event-id="${event.id}">Bearbeiten</button>
 				</c:if>
-				<c:if test="${event.status != 'ABGESCHLOSSEN'}">
-					<c:if
-						test="${hasMasterAccess or userPermissions.contains('EVENT_MANAGE_ASSIGNMENTS') or isLeader}">
-						<button type="button"
-							class="btn btn-small btn-success assign-users-btn"
-							data-event-id="${event.id}"
-							data-event-name="${fn:escapeXml(event.name)}">Zuweisen</button>
-					</c:if>
+				<c:if
+					test="${hasMasterAccess or userPermissions.contains('EVENT_MANAGE_ASSIGNMENTS') or isLeader}">
+					<button type="button"
+						class="btn btn-small btn-success assign-users-btn"
+						data-event-id="${event.id}"
+						data-event-name="${fn:escapeXml(event.name)}">Zuweisen</button>
+				</c:if>
+				<div class="event-status-actions">
 					<c:if
 						test="${(hasMasterAccess or userPermissions.contains('EVENT_UPDATE') or isLeader) and (event.status == 'GEPLANT' || event.status == 'KOMPLETT')}">
 						<form
@@ -184,7 +184,7 @@
 								style="background-color: var(--text-muted-color);">Abschließen</button>
 						</form>
 					</c:if>
-				</c:if>
+				</div>
 				<c:if
 					test="${hasMasterAccess or userPermissions.contains('EVENT_DELETE')}">
 					<form

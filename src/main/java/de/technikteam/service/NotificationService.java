@@ -1,28 +1,33 @@
 package de.technikteam.service;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import de.technikteam.config.LocalDateTimeAdapter;
+import de.technikteam.model.User;
+import jakarta.servlet.AsyncContext;
+import jakarta.servlet.http.HttpServletRequest;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import com.google.gson.Gson;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import de.technikteam.model.User;
-import jakarta.servlet.AsyncContext;
-import jakarta.servlet.http.HttpServletRequest;
-
 public class NotificationService {
 	private static final Logger logger = LogManager.getLogger(NotificationService.class);
 	private static final NotificationService INSTANCE = new NotificationService();
-	private final Gson gson = new Gson();
+	private final Gson gson;
 
 	private final Map<Integer, List<AsyncContext>> contextsByUser = new ConcurrentHashMap<>();
 
 	private NotificationService() {
+		// FIX: Initialize Gson with the custom adapter to handle LocalDateTime
+		// correctly
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
 	public static NotificationService getInstance() {
@@ -46,6 +51,7 @@ public class NotificationService {
 
 	/**
 	 * Broadcasts a generic message to all connected clients.
+	 * 
 	 * @param message The plain text message to send.
 	 */
 	public void broadcastGenericMessage(String message) {
@@ -56,21 +62,17 @@ public class NotificationService {
 
 	/**
 	 * Broadcasts a specific UI update event to all connected clients.
-	 * @param type The type of UI update (e.g., "user_updated", "event_status_updated").
+	 * 
+	 * @param type    The type of UI update (e.g., "user_updated",
+	 *                "event_status_updated").
 	 * @param payload The data associated with the update.
 	 */
 	public void broadcastUIUpdate(String type, Object payload) {
 		logger.info("Broadcasting UI update of type '{}' to all clients.", type);
-		Map<String, Object> message = Map.of(
-				"type", "ui_update",
-				"payload", Map.of(
-						"updateType", type,
-						"data", payload
-				)
-		);
+		Map<String, Object> message = Map.of("type", "ui_update", "payload",
+				Map.of("updateType", type, "data", payload));
 		broadcast(gson.toJson(message));
 	}
-
 
 	public void sendNotificationToUser(int userId, Map<String, Object> payload) {
 		List<AsyncContext> userContexts = contextsByUser.get(userId);
@@ -92,6 +94,7 @@ public class NotificationService {
 
 	/**
 	 * Sends a pre-formatted JSON message to all connected clients.
+	 * 
 	 * @param jsonMessage The JSON string to broadcast.
 	 */
 	private void broadcast(String jsonMessage) {
@@ -105,8 +108,9 @@ public class NotificationService {
 			PrintWriter writer = context.getResponse().getWriter();
 			writer.write("data: " + message + "\n\n");
 			writer.flush();
-		} catch (IOException e) {
-			logger.warn("Failed to send notification to a client (likely disconnected), removing it.");
+		} catch (IOException | IllegalStateException e) {
+			logger.warn("Failed to send notification to a client (likely disconnected), removing it. Error: {}",
+					e.getMessage());
 			contextList.remove(context);
 		}
 	}

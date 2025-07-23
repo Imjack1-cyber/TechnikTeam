@@ -172,7 +172,10 @@ public class UserDAO {
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				if (resultSet.next()) {
 					logger.info("Found user '{}' with ID: {}", resultSet.getString("username"), userId);
-					return mapResultSetToUser(resultSet);
+					User user = mapResultSetToUser(resultSet);
+					// FIX: Also load permissions when fetching a single user.
+					user.setPermissions(getPermissionsForUser(userId));
+					return user;
 				}
 			}
 		} catch (SQLException exception) {

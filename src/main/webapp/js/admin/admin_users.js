@@ -1,24 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
 	const contextPath = document.body.dataset.contextPath || '';
 
-	document.querySelectorAll('.js-confirm-form').forEach(form => {
-		form.addEventListener('submit', function(event) {
-			event.preventDefault();
-			const message = this.dataset.confirmMessage || 'Sind Sie sicher?';
-			showConfirmationModal(message, () => this.submit());
-		});
-	});
-
-	const passwordAlert = document.getElementById('password-reset-alert');
-	if (passwordAlert) {
-		const passwordElement = passwordAlert.querySelector('strong.copyable-password');
-		if (passwordElement && navigator.clipboard) {
-			navigator.clipboard.writeText(passwordElement.textContent)
-				.then(() => console.log('Password copied to clipboard'))
-				.catch(err => console.error('Failed to copy password:', err));
-		}
-	}
-
 	const modal = document.getElementById('user-modal');
 	if (!modal) return;
 
@@ -83,8 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		newUserBtn.addEventListener('click', () => {
 			form.reset();
 			title.textContent = "Neuen Benutzer anlegen";
-			actionInput.value = "create"; // Keep this for logic branching
-			form.setAttribute('action', `${contextPath}/admin/action/user?action=create`); // Set explicit action URL
+			actionInput.value = "create";
 			idInput.value = "";
 			passwordInput.required = true;
 			passwordGroup.style.display = 'block';
@@ -107,8 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				const assignedPermissionIds = new Set(data.permissionIds);
 
 				title.textContent = `Benutzer bearbeiten: ${user.username}`;
-				actionInput.value = "update"; // Keep this for logic branching
-				form.setAttribute('action', `${contextPath}/admin/action/user?action=update`); // Set explicit action URL
+				actionInput.value = "update";
 				idInput.value = user.id;
 				usernameInput.value = user.username || '';
 				roleInput.value = user.roleId || '3';
@@ -116,7 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
 				classNameInput.value = user.className || '';
 				emailInput.value = user.email || '';
 
-				// Hide password field when editing a user
 				passwordInput.required = false;
 				passwordGroup.style.display = 'none';
 
@@ -125,44 +104,39 @@ document.addEventListener('DOMContentLoaded', () => {
 				modal.classList.add('active');
 			} catch (error) {
 				console.error('Failed to open edit modal:', error);
-				alert('Benutzerdaten konnten nicht geladen werden.');
+				showToast('Benutzerdaten konnten nicht geladen werden.', 'danger');
 			}
 		});
 	});
 
-	const appendUserToTable = (user) => {
-		const tableBody = document.querySelector('.data-table tbody');
-		const newRow = tableBody.insertRow(0); // Insert at the top
-		newRow.innerHTML = `
-            <td>${user.id}</td>
-            <td>${user.username}</td>
-            <td>${user.roleName}</td>
-            <td style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                <button type="button" class="btn btn-small edit-user-btn" data-fetch-url="${contextPath}/admin/mitglieder?action=getUserData&id=${user.id}">Bearbeiten</button>
-                <a href="${contextPath}/admin/mitglieder?action=details&id=${user.id}" class="btn btn-small">Details</a>
-                <!-- More buttons can be added here if needed -->
-            </td>
-        `;
+	const updateTableRow = (user) => {
+		const row = document.querySelector(`tr[data-user-id='${user.id}']`);
+		if (row) {
+			row.querySelector("td[data-field='username']").textContent = user.username;
+			row.querySelector("td[data-field='roleName']").textContent = user.roleName;
+		}
+		const card = document.querySelector(`.list-item-card[data-user-id='${user.id}']`);
+		if (card) {
+			card.querySelector("h3[data-field='username']").textContent = user.username;
+			card.querySelector("strong[data-field='roleName']").textContent = user.roleName;
+		}
 	};
+
+	const removeTableRow = (userId) => {
+		document.querySelector(`tr[data-user-id='${userId}']`)?.remove();
+		document.querySelector(`.list-item-card[data-user-id='${userId}']`)?.remove();
+	};
+
 
 	form.addEventListener('submit', async (event) => {
 		event.preventDefault();
 		const action = actionInput.value;
-		const formActionUrl = form.getAttribute('action');
-
-		// The 'update' action should now also be async.
-		if (action === 'update') {
-			// For updates, we can just submit traditionally as it's less frequent.
-			// Or implement async logic similar to 'create' if desired.
-			form.submit();
-			return;
-		}
+		const formActionUrl = `${contextPath}/admin/action/user?action=${action}`;
 
 		const formData = new FormData(form);
 		try {
 			const response = await fetch(formActionUrl, {
 				method: 'POST',
-				headers: { 'X-Requested-With': 'XMLHttpRequest' },
 				body: formData
 			});
 
@@ -171,13 +145,66 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (response.ok && result.success) {
 				closeModal();
 				showToast(result.message, 'success');
-				appendUserToTable(result.newUser);
+				if (action === 'create') {
+					// Simply reload on create to get the full new row with all buttons
+					window.location.reload();
+				} else if (action === 'update') {
+					updateTableRow(result.data);
+				}
 			} else {
 				showToast(result.message || 'Ein unbekannter Fehler ist aufgetreten.', 'danger');
 			}
 		} catch (error) {
 			console.error('Error submitting form:', error);
 			showToast('Ein Netzwerkfehler ist aufgetreten.', 'danger');
+		}
+	});
+
+	const handleAjaxFormSubmit = async (formElement) => {
+		const formData = new FormData(formElement);
+		const actionUrl = formElement.getAttribute('action');
+
+		try {
+			const response = await fetch(actionUrl, { method: 'POST', body: formData });
+			const result = await response.json();
+
+			if (response.ok && result.success) {
+				// For password resets, we want to show a persistent banner, not just a toast.
+				if (result.data && result.data.newPassword) {
+					const bannerContainer = document.querySelector('.main-content');
+					// Remove any existing banners first
+					document.querySelectorAll('.password-reset-alert, .info-message, .success-message, .error-message').forEach(el => el.remove());
+
+					const banner = document.createElement('p');
+					banner.className = 'password-reset-alert';
+					banner.id = 'password-reset-alert';
+					banner.innerHTML = `<i class="fas fa-key"></i> ${result.message}`;
+					bannerContainer.prepend(banner);
+				} else {
+					showToast(result.message, 'success');
+				}
+
+				const urlParams = new URLSearchParams(new URL(actionUrl).search);
+				const action = urlParams.get('action');
+				if (action === 'delete') {
+					removeTableRow(result.data.deletedUserId);
+				}
+			} else {
+				showToast(result.message || 'Ein Fehler ist aufgetreten.', 'danger');
+			}
+		} catch (error) {
+			console.error('Error submitting form via AJAX:', error);
+			showToast('Ein Netzwerkfehler ist aufgetreten.', 'danger');
+		}
+	};
+
+	document.body.addEventListener('submit', (event) => {
+		const form = event.target;
+		// Apply to all three types of confirmation forms
+		if (form.matches('.js-confirm-delete-form, .js-reset-password-form, .js-unlock-form')) {
+			event.preventDefault();
+			const message = form.dataset.confirmMessage || 'Sind Sie sicher?';
+			showConfirmationModal(message, () => handleAjaxFormSubmit(form));
 		}
 	});
 
