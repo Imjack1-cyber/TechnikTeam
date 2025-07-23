@@ -608,4 +608,26 @@ public class EventDAO {
 		}
 		return users;
 	}
+
+	/**
+	 * Fetches upcoming events for the admin dashboard.
+	 *
+	 * @param limit The maximum number of events to return.
+	 * @return A list of upcoming Event objects.
+	 */
+	public List<Event> getUpcomingEvents(int limit) {
+		List<Event> events = new ArrayList<>();
+		String sql = "SELECT * FROM events WHERE event_datetime > NOW() ORDER BY event_datetime ASC LIMIT ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, limit);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					events.add(mapResultSetToEvent(rs));
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching upcoming events with limit {}", limit, e);
+		}
+		return events;
+	}
 }

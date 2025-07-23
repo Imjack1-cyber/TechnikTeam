@@ -1,9 +1,7 @@
 package de.technikteam.servlet.admin.action;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.RoleDAO;
+import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.UserService;
@@ -14,24 +12,17 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
 
 public class CreateUserAction implements Action {
 
 	private final UserService userService = new UserService();
 	private final RoleDAO roleDAO = new RoleDAO();
-	private final Gson gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
-			.create();
 
 	@Override
-	public String execute(HttpServletRequest request, HttpServletResponse response)
+	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		HttpSession session = request.getSession();
 		User adminUser = (User) session.getAttribute("user");
-		boolean isAjax = "XMLHttpRequest".equals(request.getHeader("X-Requested-With"));
 
 		if (!adminUser.getPermissions().contains("USER_CREATE") && !adminUser.hasAdminAccess()) {
 			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
@@ -43,8 +34,7 @@ public class CreateUserAction implements Action {
 
 		PasswordPolicyValidator.ValidationResult validationResult = PasswordPolicyValidator.validate(pass);
 		if (!validationResult.isValid()) {
-			return handleFailure("Fehler beim Erstellen des Benutzers: " + validationResult.getMessage(), isAjax,
-					request, response);
+			return ApiResponse.error("Fehler beim Erstellen des Benutzers: " + validationResult.getMessage());
 		}
 
 		int roleId = Integer.parseInt(request.getParameter("roleId"));
@@ -76,50 +66,10 @@ public class CreateUserAction implements Action {
 					newUser.getClassName());
 			AdminLogService.log(adminUser.getUsername(), "CREATE_USER", logDetails);
 
-			return handleSuccess("Benutzer '" + newUser.getUsername() + "' erfolgreich erstellt.", newUser, isAjax,
-					request, response);
+			return ApiResponse.success("Benutzer '" + newUser.getUsername() + "' erfolgreich erstellt.", newUser);
 		} else {
-			return handleFailure(
-					"Benutzer konnte nicht erstellt werden (ggf. existiert der Name oder die E-Mail bereits).", isAjax,
-					request, response);
-		}
-	}
-
-	private String handleSuccess(String message, User newUser, boolean isAjax, HttpServletRequest request,
-			HttpServletResponse response) throws IOException {
-		if (isAjax) {
-			response.setContentType("application/json");
-			response.setCharacterEncoding("UTF-8");
-			PrintWriter out = response.getWriter();
-			Map<String, Object> jsonResponse = new HashMap<>();
-			jsonResponse.put("success", true);
-			jsonResponse.put("message", message);
-			jsonResponse.put("newUser", newUser);
-			out.print(gson.toJson(jsonResponse));
-			out.flush();
-			return null; // Null indicates the response is handled
-		} else {
-			request.getSession().setAttribute("successMessage", message);
-			return "redirect:/admin/mitglieder";
-		}
-	}
-
-	private String handleFailure(String message, boolean isAjax, HttpServletRequest request,
-			HttpServletResponse response) throws IOException {
-		if (isAjax) {
-			response.setContentType("application/json");
-			response.setCharacterEncoding("UTF-8");
-			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-			PrintWriter out = response.getWriter();
-			Map<String, Object> jsonResponse = new HashMap<>();
-			jsonResponse.put("success", false);
-			jsonResponse.put("message", message);
-			out.print(gson.toJson(jsonResponse));
-			out.flush();
-			return null;
-		} else {
-			request.getSession().setAttribute("errorMessage", message);
-			return "redirect:/admin/mitglieder";
+			return ApiResponse
+					.error("Benutzer konnte nicht erstellt werden (ggf. existiert der Name oder die E-Mail bereits).");
 		}
 	}
 }

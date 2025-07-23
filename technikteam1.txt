@@ -1,5 +1,760 @@
 ﻿
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\FrontControllerServlet.java
+========================================================================
+
+package de.technikteam.servlet.admin;
+
+import de.technikteam.servlet.admin.action.*;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * A Front Controller that centralizes request handling for administrative
+ * actions. It uses the Command pattern to delegate processing to specialized
+ * Action classes.
+ */
+@WebServlet("/admin/action/*")
+@MultipartConfig // CRITICAL FIX: This annotation ensures multipart form data is parsed before
+					// service() is called.
+public class FrontControllerServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(FrontControllerServlet.class);
+	private final Map<String, Action> actions = new HashMap<>();
+
+	@Override
+	public void init() throws ServletException {
+		logger.info("Initializing FrontControllerServlet and mapping actions...");
+		// User Actions
+		actions.put("user.create", new CreateUserAction());
+		actions.put("user.update", new UpdateUserAction());
+		actions.put("user.delete", new DeleteUserAction());
+		actions.put("user.resetPassword", new ResetPasswordAction());
+		actions.put("user.unlock", new UnlockUserAction());
+
+		logger.info("FrontControllerServlet initialized with {} actions.", actions.size());
+	}
+
+	@Override
+	protected void service(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		String pathInfo = request.getPathInfo(); // e.g., "/user"
+		String actionName = request.getParameter("action"); // e.g., "create"
+
+		if (pathInfo == null || pathInfo.equals("/") || actionName == null || actionName.isEmpty()) {
+			logger.warn("Invalid request to Front Controller: PathInfo='{}', Action='{}'", pathInfo, actionName);
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid action request.");
+			return;
+		}
+
+		String entity = pathInfo.substring(1); // "user"
+		String actionKey = entity + "." + actionName; // "user.create"
+
+		Action action = actions.get(actionKey);
+
+		if (action == null) {
+			logger.error(
+					"No action found for key: '{}'. This indicates a misconfigured form or a manual malformed request.",
+					actionKey);
+			response.sendError(HttpServletResponse.SC_NOT_FOUND, "Action not found.");
+			return;
+		}
+
+		logger.debug("Executing action for key: '{}'", actionKey);
+		String result = action.execute(request, response);
+
+		if (result != null) {
+			if (result.startsWith("redirect:")) {
+				String redirectUrl = request.getContextPath() + result.substring(9);
+				logger.debug("Redirecting to: {}", redirectUrl);
+				response.sendRedirect(redirectUrl);
+			} else {
+				logger.debug("Forwarding to: {}", result);
+				request.getRequestDispatcher(result).forward(request, response);
+			}
+		}
+		// If result is null, it means the Action class handled the response directly
+		// (e.g., sent an error).
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\MatrixServlet.java
+========================================================================
+
+package de.technikteam.servlet.admin;
+
+import de.technikteam.dao.CourseDAO;
+import de.technikteam.dao.MeetingAttendanceDAO;
+import de.technikteam.dao.MeetingDAO;
+import de.technikteam.dao.UserDAO;
+import de.technikteam.model.Course;
+import de.technikteam.model.Meeting;
+import de.technikteam.model.MeetingAttendance;
+import de.technikteam.model.User;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+/**
+ * Mapped to `/admin/matrix`, this servlet constructs the data for the
+ * comprehensive qualification and attendance matrix. It fetches all users, all
+ * course templates, all meetings for each course, and all attendance records.
+ * It then organizes this data and forwards it to `admin_matrix.jsp` for
+ * rendering a grid view that shows which users have attended which course
+ * meetings.
+ */
+@WebServlet("/admin/matrix")
+public class MatrixServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(MatrixServlet.class);
+	private UserDAO userDAO;
+	private CourseDAO courseDAO;
+	private MeetingDAO meetingDAO;
+	private MeetingAttendanceDAO meetingAttendanceDAO;
+
+	@Override
+	public void init() {
+		userDAO = new UserDAO();
+		courseDAO = new CourseDAO();
+		meetingDAO = new MeetingDAO();
+		meetingAttendanceDAO = new MeetingAttendanceDAO();
+	}
+
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+
+		logger.info("Matrix data requested. Fetching all necessary data from DAOs.");
+
+		List<User> allUsers = userDAO.getAllUsers();
+		logger.debug("Fetched {} users.", allUsers.size());
+
+		List<Course> allCourses = courseDAO.getAllCourses();
+		logger.debug("Fetched {} parent courses.", allCourses.size());
+
+		Map<Integer, List<Meeting>> meetingsByCourse = new HashMap<>();
+		for (Course course : allCourses) {
+			List<Meeting> meetings = meetingDAO.getMeetingsForCourse(course.getId());
+			meetingsByCourse.put(course.getId(), meetings);
+			logger.trace("Fetched {} meetings for course '{}' (ID: {}).", meetings.size(), course.getName(),
+					course.getId());
+		}
+
+		Map<String, MeetingAttendance> attendanceMap = meetingAttendanceDAO.getAllAttendance().stream()
+				.collect(Collectors.toMap(a -> a.getUserId() + "-" + a.getMeetingId(), Function.identity()));
+		logger.debug("Fetched and mapped {} total attendance records.", attendanceMap.size());
+
+		request.setAttribute("allUsers", allUsers);
+		request.setAttribute("allCourses", allCourses);
+		request.setAttribute("meetingsByCourse", meetingsByCourse);
+		request.setAttribute("attendanceMap", attendanceMap);
+
+		logger.info("Data generation for matrix complete. Forwarding to admin_matrix.jsp.");
+		request.getRequestDispatcher("/views/admin/admin_matrix.jsp").forward(request, response);
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\action\Action.java
+========================================================================
+
+package de.technikteam.servlet.admin.action;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.IOException;
+
+/**
+ * Represents a single, executable action within the Front Controller pattern.
+ * Each implementation handles a specific business operation.
+ */
+public interface Action {
+
+	/**
+	 * Executes the business logic for a specific action.
+	 *
+	 * @param request  The HttpServletRequest object.
+	 * @param response The HttpServletResponse object.
+	 * @return A string indicating the next view. This can be a path to a JSP for
+	 *         forwarding, or a "redirect:/path" string to indicate a client-side
+	 *         redirect.
+	 * @throws ServletException If a servlet-specific error occurs.
+	 * @throws IOException      If an I/O error occurs.
+	 */
+	String execute(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException;
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\action\CreateUserAction.java
+========================================================================
+
+package de.technikteam.servlet.admin.action;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import de.technikteam.config.LocalDateTimeAdapter;
+import de.technikteam.dao.RoleDAO;
+import de.technikteam.model.User;
+import de.technikteam.service.AdminLogService;
+import de.technikteam.service.UserService;
+import de.technikteam.util.PasswordPolicyValidator;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
+public class CreateUserAction implements Action {
+
+	private final UserService userService = new UserService();
+	private final RoleDAO roleDAO = new RoleDAO();
+	private final Gson gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+			.create();
+
+	@Override
+	public String execute(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		HttpSession session = request.getSession();
+		User adminUser = (User) session.getAttribute("user");
+		boolean isAjax = "XMLHttpRequest".equals(request.getHeader("X-Requested-With"));
+
+		if (!adminUser.getPermissions().contains("USER_CREATE") && !adminUser.hasAdminAccess()) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return null;
+		}
+
+		String username = request.getParameter("username");
+		String pass = request.getParameter("password");
+
+		PasswordPolicyValidator.ValidationResult validationResult = PasswordPolicyValidator.validate(pass);
+		if (!validationResult.isValid()) {
+			return handleFailure("Fehler beim Erstellen des Benutzers: " + validationResult.getMessage(), isAjax,
+					request, response);
+		}
+
+		int roleId = Integer.parseInt(request.getParameter("roleId"));
+		String[] permissionIds = request.getParameterValues("permissionIds");
+
+		User newUser = new User();
+		newUser.setUsername(username.trim());
+		newUser.setRoleId(roleId);
+		try {
+			newUser.setClassYear(Integer.parseInt(request.getParameter("classYear")));
+		} catch (NumberFormatException e) {
+			newUser.setClassYear(0);
+		}
+		newUser.setClassName(request.getParameter("className"));
+
+		String email = request.getParameter("email");
+		newUser.setEmail(email != null && !email.trim().isEmpty() ? email.trim() : null);
+
+		int newUserId = userService.createUserWithPermissions(newUser, pass, permissionIds);
+		if (newUserId > 0) {
+			newUser.setId(newUserId);
+			// Enrich with role name for the JSON response
+			roleDAO.getAllRoles().stream().filter(role -> role.getId() == newUser.getRoleId()).findFirst()
+					.ifPresent(role -> newUser.setRoleName(role.getRoleName()));
+
+			String logDetails = String.format(
+					"Benutzer '%s' (ID: %d, Rolle-ID: %d, Klasse: %d %s) erstellt und Berechtigungen zugewiesen.",
+					newUser.getUsername(), newUserId, newUser.getRoleId(), newUser.getClassYear(),
+					newUser.getClassName());
+			AdminLogService.log(adminUser.getUsername(), "CREATE_USER", logDetails);
+
+			return handleSuccess("Benutzer '" + newUser.getUsername() + "' erfolgreich erstellt.", newUser, isAjax,
+					request, response);
+		} else {
+			return handleFailure(
+					"Benutzer konnte nicht erstellt werden (ggf. existiert der Name oder die E-Mail bereits).", isAjax,
+					request, response);
+		}
+	}
+
+	private String handleSuccess(String message, User newUser, boolean isAjax, HttpServletRequest request,
+			HttpServletResponse response) throws IOException {
+		if (isAjax) {
+			response.setContentType("application/json");
+			response.setCharacterEncoding("UTF-8");
+			PrintWriter out = response.getWriter();
+			Map<String, Object> jsonResponse = new HashMap<>();
+			jsonResponse.put("success", true);
+			jsonResponse.put("message", message);
+			jsonResponse.put("newUser", newUser);
+			out.print(gson.toJson(jsonResponse));
+			out.flush();
+			return null; // Null indicates the response is handled
+		} else {
+			request.getSession().setAttribute("successMessage", message);
+			return "redirect:/admin/mitglieder";
+		}
+	}
+
+	private String handleFailure(String message, boolean isAjax, HttpServletRequest request,
+			HttpServletResponse response) throws IOException {
+		if (isAjax) {
+			response.setContentType("application/json");
+			response.setCharacterEncoding("UTF-8");
+			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+			PrintWriter out = response.getWriter();
+			Map<String, Object> jsonResponse = new HashMap<>();
+			jsonResponse.put("success", false);
+			jsonResponse.put("message", message);
+			out.print(gson.toJson(jsonResponse));
+			out.flush();
+			return null; // Null indicates the response is handled
+		} else {
+			request.getSession().setAttribute("errorMessage", message);
+			return "redirect:/admin/mitglieder";
+		}
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\action\DeleteUserAction.java
+========================================================================
+
+package de.technikteam.servlet.admin.action;
+
+import de.technikteam.dao.UserDAO;
+import de.technikteam.model.User;
+import de.technikteam.service.AdminLogService;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
+import java.io.IOException;
+
+public class DeleteUserAction implements Action {
+	private final UserDAO userDAO = new UserDAO();
+
+	@Override
+	public String execute(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		HttpSession session = request.getSession();
+		int userIdToDelete = Integer.parseInt(request.getParameter("userId"));
+		User loggedInAdmin = (User) session.getAttribute("user");
+
+		if (!loggedInAdmin.getPermissions().contains("USER_DELETE") && !loggedInAdmin.hasAdminAccess()) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return null;
+		}
+
+		if (loggedInAdmin.getId() == userIdToDelete) {
+			session.setAttribute("errorMessage", "Sie können sich nicht selbst löschen.");
+			return "redirect:/admin/mitglieder";
+		}
+
+		User userToDelete = userDAO.getUserById(userIdToDelete);
+		if (userToDelete == null) {
+			session.setAttribute("errorMessage", "Benutzer mit ID " + userIdToDelete + " nicht gefunden.");
+			return "redirect:/admin/mitglieder";
+		}
+
+		if (userToDelete.getPermissions().contains("ACCESS_ADMIN_PANEL")
+				&& !loggedInAdmin.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
+			session.setAttribute("errorMessage", "Sie haben keine Berechtigung, einen Haupt-Administrator zu löschen.");
+			return "redirect:/admin/mitglieder";
+		}
+
+		String deletedUsername = userToDelete.getUsername();
+		String deletedRoleName = userToDelete.getRoleName();
+
+		if (userDAO.deleteUser(userIdToDelete)) {
+			String logDetails = String.format("Benutzer '%s' (ID: %d, Rolle: %s) wurde gelöscht.", deletedUsername,
+					userIdToDelete, deletedRoleName);
+			AdminLogService.log(loggedInAdmin.getUsername(), "DELETE_USER", logDetails);
+			session.setAttribute("successMessage", "Benutzer erfolgreich gelöscht.");
+		} else {
+			session.setAttribute("errorMessage", "Benutzer konnte nicht gelöscht werden.");
+		}
+
+		return "redirect:/admin/mitglieder";
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\action\ResetPasswordAction.java
+========================================================================
+
+package de.technikteam.servlet.admin.action;
+
+import de.technikteam.dao.UserDAO;
+import de.technikteam.model.User;
+import de.technikteam.service.AdminLogService;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
+import java.io.IOException;
+import java.security.SecureRandom;
+import java.util.stream.Collectors;
+
+public class ResetPasswordAction implements Action {
+
+    private final UserDAO userDAO = new UserDAO();
+
+    @Override
+    public String execute(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        HttpSession session = request.getSession();
+        User adminUser = (User) session.getAttribute("user");
+
+        if (!adminUser.getPermissions().contains("USER_PASSWORD_RESET") && !adminUser.hasAdminAccess()) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+            return null;
+        }
+
+        int userId = Integer.parseInt(request.getParameter("userId"));
+        User userToReset = userDAO.getUserById(userId);
+
+        if (userToReset == null) {
+            session.setAttribute("errorMessage", "Benutzer zum Zurücksetzen nicht gefunden.");
+        } else {
+            String newPassword = generateRandomPassword(12);
+            if (userDAO.changePassword(userId, newPassword)) {
+                String logDetails = String.format("Passwort für Benutzer '%s' (ID: %d) zurückgesetzt.",
+                        userToReset.getUsername(), userId);
+                AdminLogService.log(adminUser.getUsername(), "RESET_PASSWORD", logDetails);
+
+                session.setAttribute("passwordResetUser", userToReset.getUsername());
+                session.setAttribute("passwordResetNewPassword", newPassword);
+            } else {
+                session.setAttribute("errorMessage", "Passwort konnte nicht zurückgesetzt werden.");
+            }
+        }
+
+        return "redirect:/admin/mitglieder";
+    }
+
+    private String generateRandomPassword(int length) {
+        final String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        SecureRandom random = new SecureRandom();
+        return random.ints(length, 0, chars.length()).mapToObj(chars::charAt)
+                .collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
+    }
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\action\UnlockUserAction.java
+========================================================================
+
+package de.technikteam.servlet.admin.action;
+
+import de.technikteam.model.User;
+import de.technikteam.service.AdminLogService;
+import de.technikteam.servlet.LoginServlet;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
+import java.io.IOException;
+
+public class UnlockUserAction implements Action {
+
+	@Override
+	public String execute(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		HttpSession session = request.getSession();
+		User adminUser = (User) session.getAttribute("user");
+
+		if (!adminUser.hasAdminAccess()) { // Only admins can unlock
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return null;
+		}
+
+		String usernameToUnlock = request.getParameter("username");
+		if (usernameToUnlock != null && !usernameToUnlock.isEmpty()) {
+			LoginServlet.LoginAttemptManager.clearLoginAttempts(usernameToUnlock);
+			AdminLogService.log(adminUser.getUsername(), "UNLOCK_USER_ACCOUNT",
+					"Benutzerkonto '" + usernameToUnlock + "' manuell entsperrt.");
+			session.setAttribute("successMessage",
+					"Benutzerkonto '" + usernameToUnlock + "' wurde erfolgreich entsperrt.");
+		} else {
+			session.setAttribute("errorMessage", "Benutzername zum Entsperren wurde nicht angegeben.");
+		}
+
+		return "redirect:/admin/mitglieder";
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\action\UpdateUserAction.java
+========================================================================
+
+package de.technikteam.servlet.admin.action;
+
+import de.technikteam.dao.UserDAO;
+import de.technikteam.model.User;
+import de.technikteam.service.AdminLogService;
+import de.technikteam.service.UserService;
+import de.technikteam.util.NavigationRegistry;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
+import java.io.IOException;
+
+public class UpdateUserAction implements Action {
+	private final UserDAO userDAO = new UserDAO();
+	private final UserService userService = new UserService();
+
+	@Override
+	public String execute(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		HttpSession session = request.getSession();
+		int userId = Integer.parseInt(request.getParameter("userId"));
+		User adminUser = (User) session.getAttribute("user");
+
+		if (!adminUser.getPermissions().contains("USER_UPDATE") && !adminUser.hasAdminAccess()) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return null;
+		}
+
+		User originalUser = userDAO.getUserById(userId);
+		if (originalUser == null) {
+			session.setAttribute("errorMessage", "Fehler: Benutzer mit ID " + userId + " nicht gefunden.");
+			return "redirect:/admin/mitglieder";
+		}
+
+		int roleId = Integer.parseInt(request.getParameter("roleId"));
+		String[] permissionIds = request.getParameterValues("permissionIds");
+
+		User updatedUser = new User();
+		updatedUser.setId(userId);
+		updatedUser.setUsername(request.getParameter("username").trim());
+		updatedUser.setRoleId(roleId);
+		updatedUser.setClassName(request.getParameter("className"));
+
+		String email = request.getParameter("email");
+		updatedUser.setEmail(email != null && !email.trim().isEmpty() ? email.trim() : null);
+
+		try {
+			updatedUser.setClassYear(Integer.parseInt(request.getParameter("classYear")));
+		} catch (NumberFormatException e) {
+			updatedUser.setClassYear(0);
+		}
+
+		boolean success = userService.updateUserWithPermissions(updatedUser, permissionIds);
+
+		if (success) {
+			if (adminUser.getId() == userId) {
+				User refreshedUserInSession = userDAO.getUserById(userId);
+				refreshedUserInSession.setPermissions(userDAO.getPermissionsForUser(userId));
+				session.setAttribute("user", refreshedUserInSession);
+				session.setAttribute("navigationItems",
+						NavigationRegistry.getNavigationItemsForUser(refreshedUserInSession));
+			}
+			AdminLogService.log(adminUser.getUsername(), "UPDATE_USER",
+					"Benutzer '" + originalUser.getUsername() + "' (ID: " + userId + ") aktualisiert.");
+			session.setAttribute("successMessage", "Benutzerdaten erfolgreich aktualisiert.");
+		} else {
+			session.setAttribute("infoMessage",
+					"Keine Änderungen an den Benutzerdaten vorgenommen oder ein Fehler ist aufgetreten.");
+		}
+
+		return "redirect:/admin/mitglieder";
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\api\CrewFinderApiServlet.java
+========================================================================
+
+package de.technikteam.servlet.admin.api;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import de.technikteam.config.LocalDateTimeAdapter;
+import de.technikteam.dao.EventDAO;
+import de.technikteam.model.Event;
+import de.technikteam.model.User;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * An API endpoint for finding qualified and available users for a specific
+ * event. This is used by the "Crew Finder" feature in the event management
+ * modal.
+ */
+@WebServlet("/api/admin/crew-finder")
+public class CrewFinderApiServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(CrewFinderApiServlet.class);
+	private EventDAO eventDAO;
+	private Gson gson;
+
+	@Override
+	public void init() {
+		eventDAO = new EventDAO();
+		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+	}
+
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		User currentUser = (User) request.getSession().getAttribute("user");
+		String eventIdParam = request.getParameter("eventId");
+
+		if (eventIdParam == null || eventIdParam.trim().isEmpty()) {
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing eventId parameter.");
+			return;
+		}
+
+		try {
+			int eventId = Integer.parseInt(eventIdParam);
+			Event event = eventDAO.getEventById(eventId);
+			if (event == null) {
+				response.sendError(HttpServletResponse.SC_NOT_FOUND, "Event not found.");
+				return;
+			}
+
+			// Security: User must have general assignment rights OR be the leader of this
+			// specific event.
+			boolean hasPermission = currentUser.getPermissions().contains("EVENT_MANAGE_ASSIGNMENTS")
+					|| currentUser.getPermissions().contains("ACCESS_ADMIN_PANEL")
+					|| currentUser.getId() == event.getLeaderUserId();
+
+			if (!hasPermission) {
+				logger.warn("User '{}' tried to find crew for event {} without permission.", currentUser.getUsername(),
+						eventId);
+				response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
+				return;
+			}
+
+			List<User> qualifiedUsers = eventDAO.getQualifiedAndAvailableUsersForEvent(eventId);
+			logger.info("Found {} qualified and available users for event ID {}.", qualifiedUsers.size(), eventId);
+
+			response.setContentType("application/json");
+			response.setCharacterEncoding("UTF-8");
+			response.getWriter().write(gson.toJson(qualifiedUsers));
+
+		} catch (NumberFormatException e) {
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid eventId format.");
+		}
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\api\MarkdownApiServlet.java
+========================================================================
+
+package de.technikteam.servlet.api;
+
+import de.technikteam.dao.FileDAO;
+import de.technikteam.model.User;
+import de.technikteam.service.AdminLogService;
+import de.technikteam.util.CSRFUtil;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+
+@WebServlet("/api/save-markdown")
+public class MarkdownApiServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(MarkdownApiServlet.class);
+	private FileDAO fileDAO;
+
+	@Override
+	public void init() {
+		fileDAO = new FileDAO();
+	}
+
+	@Override
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		HttpSession session = request.getSession(false);
+		if (session == null || session.getAttribute("user") == null) {
+			response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User not authenticated.");
+			return;
+		}
+
+		User user = (User) session.getAttribute("user");
+		if (!user.getPermissions().contains("FILE_UPDATE") && !user.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
+			logger.warn("User '{}' tried to save markdown file without FILE_UPDATE permission.", user.getUsername());
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
+			return;
+		}
+
+		if (!CSRFUtil.isTokenValid(request)) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token.");
+			return;
+		}
+
+		String fileIdParam = request.getParameter("fileId");
+		String content = request.getParameter("content");
+
+		if (fileIdParam == null || content == null) {
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing required parameters.");
+			return;
+		}
+
+		try {
+			int fileId = Integer.parseInt(fileIdParam);
+			de.technikteam.model.File dbFile = fileDAO.getFileById(fileId);
+
+			if (dbFile == null) {
+				response.sendError(HttpServletResponse.SC_NOT_FOUND, "File not found.");
+				return;
+			}
+
+			boolean contentUpdated = fileDAO.updateFileContent(dbFile.getFilepath(), content);
+			boolean recordTouched = fileDAO.touchFileRecord(fileId);
+
+			if (contentUpdated && recordTouched) {
+				AdminLogService.log(user.getUsername(), "UPDATE_MARKDOWN_FILE",
+						"Inhalt der Datei '" + dbFile.getFilename() + "' (ID: " + fileId + ") aktualisiert.");
+				session.setAttribute("successMessage", "Änderungen erfolgreich gespeichert.");
+			} else {
+				session.setAttribute("errorMessage", "Fehler beim Speichern der Datei.");
+			}
+
+			response.sendRedirect(request.getContextPath() + "/editor?fileId=" + fileId);
+
+		} catch (NumberFormatException e) {
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid fileId format.");
+		}
+	}
+}
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\api\SystemStatsApiServlet.java
 ========================================================================
 
@@ -276,11 +1031,72 @@ public final class DaoUtils {
 	}
 }
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\util\MarkdownUtil.java
+========================================================================
+
+package de.technikteam.util;
+
+import java.util.regex.Pattern;
+
+/**
+ * A utility class for sanitizing user-provided Markdown content to prevent
+ * Cross-Site Scripting (XSS) attacks. It strips dangerous HTML tags and
+ * attributes before the content is stored or rendered.
+ */
+public final class MarkdownUtil {
+
+    // Pattern to find and remove <script>...</script> blocks, case-insensitive and multiline.
+    private static final Pattern SCRIPT_PATTERN = Pattern.compile("<script.*?>.*?</script>",
+            Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL);
+
+    // Pattern to find and remove attributes like onclick, onmouseover, etc.
+    private static final Pattern ON_ATTRIBUTE_PATTERN = Pattern.compile("\\s(on\\w+)\\s*=\\s*(\"[^\"]*\"|'[^']*'|[^\\s>]+)",
+            Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
+
+    // Pattern to find and remove href/src attributes with "javascript:..." URIs.
+    private static final Pattern JAVASCRIPT_URI_PATTERN = Pattern.compile("(href|src)\\s*=\\s*(\"|')\\s*javascript:",
+            Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
+
+    /**
+     * Private constructor to prevent instantiation of this utility class.
+     */
+    private MarkdownUtil() {
+    }
+
+    /**
+     * Sanitizes a string containing Markdown and potentially malicious HTML. This
+     * method should be called on any user-supplied content before it is stored in
+     * the database or broadcast to other clients.
+     *
+     * @param markdown The raw Markdown string from the user.
+     * @return A sanitized string with dangerous HTML elements and attributes removed.
+     */
+    public static String sanitize(String markdown) {
+        if (markdown == null || markdown.isEmpty()) {
+            return markdown;
+        }
+
+        String sanitized = markdown;
+
+        // Remove <script> tags completely
+        sanitized = SCRIPT_PATTERN.matcher(sanitized).replaceAll("");
+
+        // Remove on... attributes (onclick, onmouseover, etc.)
+        sanitized = ON_ATTRIBUTE_PATTERN.matcher(sanitized).replaceAll("");
+
+        // Remove javascript:... in href/src attributes
+        sanitized = JAVASCRIPT_URI_PATTERN.matcher(sanitized).replaceAll("$1='#'");
+
+        return sanitized;
+    }
+}
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\util\NavigationRegistry.java
 ========================================================================
 
 package de.technikteam.util;
 
+import de.technikteam.config.Permissions;
 import de.technikteam.model.NavigationItem;
 import de.technikteam.model.User;
 
@@ -312,19 +1128,22 @@ public final class NavigationRegistry {
 
 		// Admin Section
 		ALL_ITEMS.add(new NavigationItem("Admin Dashboard", "/admin/dashboard", "fa-tachometer-alt",
-				"ADMIN_DASHBOARD_ACCESS"));
-		ALL_ITEMS.add(new NavigationItem("Benutzer", "/admin/mitglieder", "fa-users-cog", "USER_READ"));
-		ALL_ITEMS.add(new NavigationItem("Events", "/admin/veranstaltungen", "fa-calendar-plus", "EVENT_READ"));
-		ALL_ITEMS.add(new NavigationItem("Lager", "/admin/lager", "fa-warehouse", "STORAGE_READ"));
-		ALL_ITEMS.add(new NavigationItem("Dateien", "/admin/dateien", "fa-file-upload", "FILE_MANAGE"));
-		ALL_ITEMS.add(new NavigationItem("Lehrgangs-Vorlagen", "/admin/lehrgaenge", "fa-book", "COURSE_READ"));
-		ALL_ITEMS.add(new NavigationItem("Kit-Verwaltung", "/admin/kits", "fa-box-open", "KIT_READ"));
-		ALL_ITEMS.add(new NavigationItem("Abzeichen", "/admin/achievements", "fa-award", "ACHIEVEMENT_VIEW"));
-		ALL_ITEMS.add(new NavigationItem("Defekte Artikel", "/admin/defekte", "fa-wrench", "STORAGE_READ"));
-		ALL_ITEMS.add(new NavigationItem("Quali-Matrix", "/admin/matrix", "fa-th-list", "QUALIFICATION_READ"));
-		ALL_ITEMS.add(new NavigationItem("Berichte", "/admin/berichte", "fa-chart-pie", "REPORT_READ"));
-		ALL_ITEMS.add(new NavigationItem("Aktions-Log", "/admin/log", "fa-clipboard-list", "LOG_READ"));
-		ALL_ITEMS.add(new NavigationItem("System", "/admin/system", "fa-server", "SYSTEM_READ"));
+				Permissions.ADMIN_DASHBOARD_ACCESS));
+		ALL_ITEMS.add(new NavigationItem("Benutzer", "/admin/mitglieder", "fa-users-cog", Permissions.USER_READ));
+		ALL_ITEMS.add(
+				new NavigationItem("Events", "/admin/veranstaltungen", "fa-calendar-plus", Permissions.EVENT_READ));
+		ALL_ITEMS.add(new NavigationItem("Lager", "/admin/lager", "fa-warehouse", Permissions.STORAGE_READ));
+		ALL_ITEMS.add(new NavigationItem("Dateien", "/admin/dateien", "fa-file-upload", Permissions.FILE_MANAGE));
+		ALL_ITEMS
+				.add(new NavigationItem("Lehrgangs-Vorlagen", "/admin/lehrgaenge", "fa-book", Permissions.COURSE_READ));
+		ALL_ITEMS.add(new NavigationItem("Kit-Verwaltung", "/admin/kits", "fa-box-open", Permissions.KIT_READ));
+		ALL_ITEMS.add(new NavigationItem("Abzeichen", "/admin/achievements", "fa-award", Permissions.ACHIEVEMENT_VIEW));
+		ALL_ITEMS.add(new NavigationItem("Defekte Artikel", "/admin/defekte", "fa-wrench", Permissions.STORAGE_READ));
+		ALL_ITEMS
+				.add(new NavigationItem("Quali-Matrix", "/admin/matrix", "fa-th-list", Permissions.QUALIFICATION_READ));
+		ALL_ITEMS.add(new NavigationItem("Berichte", "/admin/berichte", "fa-chart-pie", Permissions.REPORT_READ));
+		ALL_ITEMS.add(new NavigationItem("Aktions-Log", "/admin/log", "fa-clipboard-list", Permissions.LOG_READ));
+		ALL_ITEMS.add(new NavigationItem("System", "/admin/system", "fa-server", Permissions.SYSTEM_READ));
 	}
 
 	private NavigationRegistry() {
@@ -353,26 +1172,112 @@ public final class NavigationRegistry {
 			}
 
 			// Super-admins see all admin items
-			if (userPermissions.contains("ACCESS_ADMIN_PANEL")) {
+			if (userPermissions.contains(Permissions.ACCESS_ADMIN_PANEL)) {
 				return true;
 			}
 
 			// Special case: The "Admin Dashboard" link is visible if the user has *any*
 			// admin-level access.
-			if ("ADMIN_DASHBOARD_ACCESS".equals(requiredPerm)) {
+			if (Permissions.ADMIN_DASHBOARD_ACCESS.equals(requiredPerm)) {
 				return user.hasAdminAccess();
 			}
 
 			// Special case: The "Abzeichen" link is visible if user can perform any
 			// achievement action.
-			if ("ACHIEVEMENT_VIEW".equals(requiredPerm)) {
-				return userPermissions.contains("ACHIEVEMENT_CREATE") || userPermissions.contains("ACHIEVEMENT_UPDATE")
-						|| userPermissions.contains("ACHIEVEMENT_DELETE");
+			if (Permissions.ACHIEVEMENT_VIEW.equals(requiredPerm)) {
+				return userPermissions.contains(Permissions.ACHIEVEMENT_CREATE)
+						|| userPermissions.contains(Permissions.ACHIEVEMENT_UPDATE)
+						|| userPermissions.contains(Permissions.ACHIEVEMENT_DELETE);
 			}
 
 			// Standard permission check for all other items
 			return userPermissions.contains(requiredPerm);
 		}).collect(Collectors.toList());
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\util\PasswordPolicyValidator.java
+========================================================================
+
+package de.technikteam.util;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
+
+/**
+ * A utility class to enforce a consistent, server-side password policy.
+ */
+public final class PasswordPolicyValidator {
+
+	private static final int MIN_LENGTH = 10;
+	private static final Pattern HAS_UPPERCASE = Pattern.compile("[A-Z]");
+	private static final Pattern HAS_LOWERCASE = Pattern.compile("[a-z]");
+	private static final Pattern HAS_DIGIT = Pattern.compile("[0-9]");
+	private static final Pattern HAS_SPECIAL_CHAR = Pattern.compile("[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?]");
+
+	/**
+	 * Private constructor to prevent instantiation of this utility class.
+	 */
+	private PasswordPolicyValidator() {
+	}
+
+	/**
+	 * A simple record to hold the result of a password validation check.
+	 */
+	public static class ValidationResult {
+		private final boolean isValid;
+		private final String message;
+
+		public ValidationResult(boolean isValid, String message) {
+			this.isValid = isValid;
+			this.message = message;
+		}
+
+		public boolean isValid() {
+			return isValid;
+		}
+
+		public String getMessage() {
+			return message;
+		}
+	}
+
+	/**
+	 * Validates a password against the application's defined security policy.
+	 *
+	 * @param password The password to validate.
+	 * @return A {@link ValidationResult} object containing the result and a
+	 *         descriptive message.
+	 */
+	public static ValidationResult validate(String password) {
+		if (password == null || password.trim().isEmpty()) {
+			return new ValidationResult(false, "Das Passwort darf nicht leer sein.");
+		}
+
+		List<String> errors = new ArrayList<>();
+
+		if (password.length() < MIN_LENGTH) {
+			errors.add("mindestens " + MIN_LENGTH + " Zeichen lang sein");
+		}
+		if (!HAS_UPPERCASE.matcher(password).find()) {
+			errors.add("mindestens einen Großbuchstaben enthalten");
+		}
+		if (!HAS_LOWERCASE.matcher(password).find()) {
+			errors.add("mindestens einen Kleinbuchstaben enthalten");
+		}
+		if (!HAS_DIGIT.matcher(password).find()) {
+			errors.add("mindestens eine Ziffer enthalten");
+		}
+		if (!HAS_SPECIAL_CHAR.matcher(password).find()) {
+			errors.add("mindestens ein Sonderzeichen enthalten");
+		}
+
+		if (errors.isEmpty()) {
+			return new ValidationResult(true, "Passwort ist gültig.");
+		} else {
+			return new ValidationResult(false, "Das Passwort muss " + String.join(", ", errors) + ".");
+		}
 	}
 }
 ========================================================================
@@ -500,8 +1405,10 @@ package de.technikteam.websocket;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import de.technikteam.config.Permissions;
 import de.technikteam.dao.FileDAO;
 import de.technikteam.model.User;
+import de.technikteam.util.MarkdownUtil;
 import jakarta.websocket.*;
 import jakarta.websocket.server.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
@@ -526,8 +1433,8 @@ public class DocumentEditorSocket {
 	public void onOpen(Session session, @PathParam("fileId") String fileId, EndpointConfig config) throws IOException {
 		User user = (User) config.getUserProperties().get(GetHttpSessionConfigurator.USER_PROPERTY_KEY);
 
-		if (user == null || (!user.getPermissions().contains("FILE_UPDATE")
-				&& !user.getPermissions().contains("ACCESS_ADMIN_PANEL"))) {
+		if (user == null || (!user.getPermissions().contains(Permissions.FILE_UPDATE)
+				&& !user.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL))) {
 			logger.warn("Unauthorized WebSocket connection attempt for editor on file ID {}. User: {}", fileId,
 					user != null ? user.getUsername() : "GUEST");
 			session.close(new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "Permission denied."));
@@ -564,12 +1471,16 @@ public class DocumentEditorSocket {
 			de.technikteam.model.File dbFile = fileDAO.getFileById(fileId);
 
 			if (dbFile != null) {
+				// Sanitize the content on the server-side to prevent stored XSS
+				String sanitizedContent = MarkdownUtil.sanitize(content);
+
 				// Persist the changes to the disk
-				if (fileDAO.updateFileContent(dbFile.getFilepath(), content)) {
+				if (fileDAO.updateFileContent(dbFile.getFilepath(), sanitizedContent)) {
 					fileDAO.touchFileRecord(fileId); // Update timestamp
 
-					// Broadcast the full content to other connected clients
-					Map<String, String> broadcastPayload = Map.of("type", "content_update", "payload", content);
+					// Broadcast the full sanitized content to other connected clients
+					Map<String, String> broadcastPayload = Map.of("type", "content_update", "payload",
+							sanitizedContent);
 					DocumentSessionManager.getInstance().broadcastExcept(fileIdStr, gson.toJson(broadcastPayload),
 							originSession);
 				} else {
@@ -679,6 +1590,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import de.technikteam.config.LocalDateTimeAdapter;
+import de.technikteam.config.Permissions;
 import de.technikteam.dao.EventChatDAO;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.FileDAO;
@@ -688,6 +1600,7 @@ import de.technikteam.model.EventChatMessage;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.NotificationService;
+import de.technikteam.util.MarkdownUtil;
 import jakarta.websocket.*;
 import jakarta.websocket.server.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
@@ -717,19 +1630,39 @@ public class EventChatSocket {
 	private static final Pattern MENTION_PATTERN = Pattern.compile("@(\\w+)");
 
 	@OnOpen
-	public void onOpen(Session session, @PathParam("eventId") String eventId, EndpointConfig config)
+	public void onOpen(Session session, @PathParam("eventId") String eventIdStr, EndpointConfig config)
 			throws IOException {
 		User user = (User) config.getUserProperties().get(GetHttpSessionConfigurator.USER_PROPERTY_KEY);
 
 		// Security: Immediately close the connection if no authenticated user is found.
 		if (user == null) {
-			logger.warn("Unauthenticated attempt to open WebSocket. Closing session.");
+			logger.warn("Unauthenticated attempt to open WebSocket for event chat [{}]. Closing session.", eventIdStr);
 			session.close(new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "Authentication required."));
 			return;
 		}
 
-		session.getUserProperties().put(GetHttpSessionConfigurator.USER_PROPERTY_KEY, user);
-		ChatSessionManager.getInstance().addSession(eventId, session);
+		try {
+			int eventId = Integer.parseInt(eventIdStr);
+
+			// Security: Verify the user is actually a participant or assigned to this
+			// event.
+			if (!eventDAO.isUserAssociatedWithEvent(eventId, user.getId())) {
+				logger.warn(
+						"Unauthorized WebSocket connection attempt for event chat [{}]. User '{}' is not associated with this event. Closing session.",
+						eventId, user.getUsername());
+				session.close(new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "Permission denied."));
+				return;
+			}
+
+			// If authorization passes, add user to session properties and register the
+			// session.
+			session.getUserProperties().put(GetHttpSessionConfigurator.USER_PROPERTY_KEY, user);
+			ChatSessionManager.getInstance().addSession(eventIdStr, session);
+
+		} catch (NumberFormatException e) {
+			logger.warn("Invalid eventId format '{}' in WebSocket onOpen. Closing session.", eventIdStr);
+			session.close(new CloseReason(CloseReason.CloseCodes.UNEXPECTED_CONDITION, "Invalid event ID format."));
+		}
 	}
 
 	@OnMessage
@@ -786,11 +1719,14 @@ public class EventChatSocket {
 	 */
 	private void handleNewMessage(User user, String eventId, Map<String, Object> payload) {
 		String messageText = (String) payload.get("messageText");
+		// Server-side sanitization to prevent stored XSS
+		String sanitizedMessage = MarkdownUtil.sanitize(messageText);
+
 		EventChatMessage newMessage = new EventChatMessage();
 		newMessage.setEventId(Integer.parseInt(eventId));
 		newMessage.setUserId(user.getId());
 		newMessage.setUsername(user.getUsername());
-		newMessage.setMessageText(messageText);
+		newMessage.setMessageText(sanitizedMessage); // Use sanitized message
 
 		EventChatMessage savedMessage = chatDAO.postMessage(newMessage);
 		if (savedMessage == null) {
@@ -836,7 +1772,7 @@ public class EventChatSocket {
 
 		Event event = eventDAO.getEventById(Integer.parseInt(eventId));
 		boolean isEventLeader = event != null && event.getLeaderUserId() == user.getId();
-		boolean canDeleteAsAdmin = user.getPermissions().contains("ACCESS_ADMIN_PANEL") || isEventLeader;
+		boolean canDeleteAsAdmin = user.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL) || isEventLeader;
 
 		if (chatDAO.deleteMessage(messageId, user.getId(), canDeleteAsAdmin)) {
 			int originalUserId = ((Double) payload.get("originalUserId")).intValue();
@@ -863,10 +1799,12 @@ public class EventChatSocket {
 	private void handleUpdateMessage(User user, String eventId, Map<String, Object> payload) {
 		int messageId = ((Double) payload.get("messageId")).intValue();
 		String newText = (String) payload.get("newText");
+		// Server-side sanitization to prevent stored XSS
+		String sanitizedText = MarkdownUtil.sanitize(newText);
 
-		if (chatDAO.updateMessage(messageId, user.getId(), newText)) {
+		if (chatDAO.updateMessage(messageId, user.getId(), sanitizedText)) {
 			Map<String, Object> broadcastPayload = Map.of("type", "message_updated", "payload",
-					Map.of("messageId", messageId, "newText", newText));
+					Map.of("messageId", messageId, "newText", sanitizedText));
 			ChatSessionManager.getInstance().broadcast(eventId, gson.toJson(broadcastPayload));
 		} else {
 			logger.warn("User {} failed to update message {}. Not the owner or message deleted.", user.getUsername(),
@@ -1399,6 +2337,32 @@ body.nav-open .page-overlay {
 	cursor: pointer;
 	text-decoration: underline;
 }
+
+/* Toast Notifications */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    padding: 1rem 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+    z-index: 9999;
+    transform: translateY(150%);
+    transition: transform 0.4s ease-in-out, opacity 0.4s;
+    border-left: 5px solid var(--primary-color);
+    opacity: 0;
+}
+.toast.toast-success { border-left-color: var(--success-color); }
+.toast.toast-danger { border-left-color: var(--danger-color); }
+.toast.toast-info { border-left-color: var(--info-color); }
+
+.toast.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
 
 /* Forms & Inputs */
 .form-group {
@@ -2283,28 +3247,29 @@ body.nav-open .page-overlay {
 	flex-grow: 1;
 }
 
-/* Theme Switcher Styles */
-.theme-switcher {
+/* Theme & Mode Switcher Container Styles */
+.theme-switcher, .mode-switcher {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
 	color: var(--text-muted-color);
 }
 
-.theme-switcher .switch {
+/* Generic Toggle Switch Component */
+.toggle-switch {
 	position: relative;
 	display: inline-block;
 	width: 44px;
 	height: 24px;
 }
 
-.theme-switcher .switch input {
+.toggle-switch input {
 	opacity: 0;
 	width: 0;
 	height: 0;
 }
 
-.theme-switcher .slider {
+.toggle-switch .slider {
 	position: absolute;
 	cursor: pointer;
 	top: 0;
@@ -2316,7 +3281,7 @@ body.nav-open .page-overlay {
 	border-radius: 24px;
 }
 
-.theme-switcher .slider:before {
+.toggle-switch .slider:before {
 	position: absolute;
 	content: "";
 	height: 18px;
@@ -2328,66 +3293,14 @@ body.nav-open .page-overlay {
 	border-radius: 50%;
 }
 
-.theme-switcher input:checked+.slider {
+.toggle-switch input:checked + .slider {
 	background-color: var(--primary-color);
 }
 
-.theme-switcher input:checked+.slider:before {
+.toggle-switch input:checked + .slider:before {
 	transform: translateX(20px);
 }
 
-/* Mode Switcher Styles (for editor) */
-.mode-switcher {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	color: var(--text-muted-color);
-}
-
-.mode-switcher .switch {
-	position: relative;
-	display: inline-block;
-	width: 44px;
-	height: 24px;
-}
-
-.mode-switcher .switch input {
-	opacity: 0;
-	width: 0;
-	height: 0;
-}
-
-.mode-switcher .slider {
-	position: absolute;
-	cursor: pointer;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background-color: #ccc;
-	transition: .4s;
-	border-radius: 24px;
-}
-
-.mode-switcher .slider:before {
-	position: absolute;
-	content: "";
-	height: 18px;
-	width: 18px;
-	left: 3px;
-	bottom: 3px;
-	background-color: white;
-	transition: .4s;
-	border-radius: 50%;
-}
-
-.mode-switcher input:checked+.slider {
-	background-color: var(--primary-color);
-}
-
-.mode-switcher input:checked+.slider:before {
-	transform: translateX(20px);
-}
 
 /* Editor Specific Styles */
 #editor-page-wrapper {
@@ -2594,6 +3507,22 @@ document.addEventListener('DOMContentLoaded', () => {
 	const contextPath = document.body.dataset.contextPath || '';
 	const currentPage = document.body.dataset.page || '';
 
+	// --- GLOBAL PASSWORD VISIBILITY TOGGLE ---
+	document.body.addEventListener('click', (event) => {
+		const toggle = event.target.closest('.password-toggle-icon');
+		if (toggle) {
+			const wrapper = toggle.closest('.password-input-wrapper');
+			const input = wrapper.querySelector('input[type="password"], input[type="text"]');
+			const icon = toggle.querySelector('i');
+			if (input) {
+				const isPassword = input.getAttribute('type') === 'password';
+				input.setAttribute('type', isPassword ? 'text' : 'password');
+				icon.classList.toggle('fa-eye', !isPassword);
+				icon.classList.toggle('fa-eye-slash', isPassword);
+			}
+		}
+	});
+
 	// --- MOBILE NAVIGATION ---
 	const navToggle = document.querySelector('.mobile-nav-toggle');
 	const pageOverlay = document.querySelector('.page-overlay');
@@ -2710,6 +3639,59 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	}
 
+	// --- GLOBAL EVENT DELEGATION FOR MODALS & CONFIRMATIONS ---
+	document.body.addEventListener('click', (event) => {
+		// Modal Open
+		const modalOpenTrigger = event.target.closest('[data-modal-target]');
+		if (modalOpenTrigger) {
+			event.preventDefault();
+			const modalId = modalOpenTrigger.dataset.modalTarget;
+			const modal = document.getElementById(modalId);
+			if (modal) {
+				modal.classList.add('active');
+			}
+		}
+
+		// Modal Close
+		const modalCloseTrigger = event.target.closest('[data-modal-close]');
+		if (modalCloseTrigger) {
+			event.preventDefault();
+			const modal = modalCloseTrigger.closest('.modal-overlay');
+			if (modal) {
+				modal.classList.remove('active');
+			}
+		}
+	});
+
+	document.body.addEventListener('submit', (event) => {
+		const form = event.target;
+		if (form.matches('.js-confirm-form')) {
+			event.preventDefault();
+			const message = form.dataset.confirmMessage || 'Sind Sie sicher?';
+			showConfirmationModal(message, () => form.submit());
+		}
+	});
+
+	// --- GLOBAL TOAST NOTIFICATIONS ---
+	window.showToast = (message, type = 'success') => {
+		const toast = document.createElement('div');
+		toast.className = `toast toast-${type}`;
+		toast.innerHTML = `<p>${message}</p>`;
+
+		document.body.appendChild(toast);
+
+		setTimeout(() => {
+			toast.classList.add('show');
+		}, 100);
+
+		setTimeout(() => {
+			toast.classList.remove('show');
+			setTimeout(() => {
+				toast.remove();
+			}, 500);
+		}, 5000);
+	};
+
 	// --- SERVER-SENT EVENTS (SSE) NOTIFICATIONS ---
 	// Only connect if the user is logged in AND not on the editor page
 	if (document.body.dataset.isLoggedIn === 'true' && window.EventSource && currentPage !== 'editor') {
@@ -2795,7 +3777,6 @@ document.addEventListener('DOMContentLoaded', () => {
 	const nameInput = document.getElementById('name-modal');
 	const iconInput = document.getElementById('icon-modal');
 	const descInput = document.getElementById('description-modal');
-	const closeModalBtn = modal.querySelector('.modal-close-btn');
 
 	// --- Key Builder Elements for Creating New Achievements ---
 	const keyBuilderGroup = document.getElementById('key-builder-group');
@@ -2835,12 +3816,9 @@ document.addEventListener('DOMContentLoaded', () => {
 		hiddenKeyInput.value = generatedKey;
 	};
 
-	keyTypeSelect.addEventListener('change', updateKey);
-	keyValueInput.addEventListener('input', updateKey);
-	keyCourseSelect.addEventListener('change', updateKey);
-
-	const closeModal = () => modal.classList.remove('active');
-	const openModal = () => modal.classList.add('active');
+	if (keyTypeSelect) keyTypeSelect.addEventListener('change', updateKey);
+	if (keyValueInput) keyValueInput.addEventListener('input', updateKey);
+	if (keyCourseSelect) keyCourseSelect.addEventListener('change', updateKey);
 
 	// --- Event Listeners for Buttons ---
 	document.getElementById('new-achievement-btn').addEventListener('click', () => {
@@ -2850,7 +3828,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		idInput.value = '';
 		keyBuilderGroup.style.display = 'block'; // Show key builder for new achievements
 		updateKey(); // Initialize/reset the key builder state
-		openModal();
 	});
 
 	document.querySelectorAll('.edit-achievement-btn').forEach(btn => {
@@ -2870,7 +3847,6 @@ document.addEventListener('DOMContentLoaded', () => {
 				descInput.value = data.description || '';
 				keyBuilderGroup.style.display = 'none'; // Hide key builder on edit, as the key is immutable
 
-				openModal();
 			} catch (error) {
 				console.error('Failed to open edit modal:', error);
 				alert("Fehler: Die Daten für diesen Erfolg konnten nicht geladen werden.");
@@ -2878,22 +3854,12 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	});
 
-	// --- Confirmation for Delete Forms ---
-	document.querySelectorAll('.js-confirm-form').forEach(form => {
-		form.addEventListener('submit', function(e) {
-			e.preventDefault();
-			const message = this.dataset.confirmMessage || 'Sind Sie sicher?';
-			showConfirmationModal(message, () => this.submit());
-		});
-	});
-
-	// --- Modal Closing Listeners ---
-	if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
+	// --- Generic Modal Closing ---
 	modal.addEventListener('click', (e) => {
-		if (e.target === modal) closeModal();
+		if (e.target === modal) modal.classList.remove('active');
 	});
 	document.addEventListener('keydown', (e) => {
-		if (e.key === 'Escape' && modal.classList.contains('active')) closeModal();
+		if (e.key === 'Escape' && modal.classList.contains('active')) modal.classList.remove('active');
 	});
 });
 ========================================================================
@@ -2902,15 +3868,6 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\js\admin\admi
 
 document.addEventListener('DOMContentLoaded', () => {
 	const contextPath = document.body.dataset.contextPath || '';
-
-	// --- Confirmation for Delete Forms ---
-	document.querySelectorAll('.js-confirm-form').forEach(form => {
-		form.addEventListener('submit', function(e) {
-			e.preventDefault();
-			const message = this.dataset.confirmMessage || 'Sind Sie sicher?';
-			showConfirmationModal(message, () => this.submit());
-		});
-	});
 
 	// --- Edit/Create Modal Logic ---
 	const courseModal = document.getElementById('course-modal');
@@ -2922,53 +3879,35 @@ document.addEventListener('DOMContentLoaded', () => {
 		const nameInput = document.getElementById('name-modal');
 		const abbrInput = document.getElementById('abbreviation-modal');
 		const descInput = document.getElementById('description-modal');
-		const closeModalBtn = courseModal.querySelector('.modal-close-btn');
 
-		const closeModal = () => courseModal.classList.remove('active');
-
-		const openCreateModal = () => {
+		document.getElementById('new-course-btn')?.addEventListener('click', () => {
 			form.reset();
 			title.textContent = "Neue Lehrgangs-Vorlage anlegen";
 			actionInput.value = "create";
 			idInput.value = "";
-			courseModal.classList.add('active');
-		};
-
-		const openEditModal = async (btn) => {
-			form.reset();
-			title.textContent = "Lehrgangs-Vorlage bearbeiten";
-			actionInput.value = "update";
-			const courseId = btn.dataset.id;
-			idInput.value = courseId;
-
-			try {
-				const response = await fetch(`${contextPath}/admin/lehrgaenge?action=getCourseData&id=${courseId}`);
-				if (!response.ok) throw new Error('Could not fetch course data');
-				const data = await response.json();
-
-				nameInput.value = data.name || '';
-				abbrInput.value = data.abbreviation || '';
-				descInput.value = data.description || '';
-
-				courseModal.classList.add('active');
-			} catch (error) {
-				console.error("Failed to open edit modal:", error);
-				alert("Fehler beim Laden der Vorlagen-Daten.");
-			}
-		};
-
-		const newCourseBtn = document.getElementById('new-course-btn');
-		if (newCourseBtn) {
-			newCourseBtn.addEventListener('click', openCreateModal);
-		}
-
-		document.querySelectorAll('.edit-course-btn').forEach(btn => {
-			btn.addEventListener('click', (e) => openEditModal(e.currentTarget));
 		});
 
-		if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
-		courseModal.addEventListener('click', (e) => {
-			if (e.target === courseModal) closeModal();
+		document.querySelectorAll('.edit-course-btn').forEach(btn => {
+			btn.addEventListener('click', async (e) => {
+				form.reset();
+				title.textContent = "Lehrgangs-Vorlage bearbeiten";
+				actionInput.value = "update";
+				const courseId = e.currentTarget.dataset.id;
+				idInput.value = courseId;
+
+				try {
+					const response = await fetch(`${contextPath}/admin/lehrgaenge?action=getCourseData&id=${courseId}`);
+					if (!response.ok) throw new Error('Could not fetch course data');
+					const data = await response.json();
+
+					nameInput.value = data.name || '';
+					abbrInput.value = data.abbreviation || '';
+					descInput.value = data.description || '';
+				} catch (error) {
+					console.error("Failed to open edit modal:", error);
+					alert("Fehler beim Laden der Vorlagen-Daten.");
+				}
+			});
 		});
 	}
 
@@ -2977,30 +3916,15 @@ document.addEventListener('DOMContentLoaded', () => {
 	if (grantQualsModal) {
 		const modalTitle = document.getElementById('grant-quals-modal-title');
 		const courseIdInput = document.getElementById('grant-quals-course-id');
-		const closeBtn = grantQualsModal.querySelector('.modal-close-btn');
 
 		document.querySelectorAll('.grant-quals-btn').forEach(btn => {
 			btn.addEventListener('click', (e) => {
 				const button = e.currentTarget;
 				modalTitle.textContent = `Qualifikationen für "${button.dataset.courseName}" vergeben`;
 				courseIdInput.value = button.dataset.courseId;
-				grantQualsModal.classList.add('active');
 			});
 		});
-
-		if (closeBtn) closeBtn.addEventListener('click', () => grantQualsModal.classList.remove('active'));
-		grantQualsModal.addEventListener('click', (e) => {
-			if (e.target === grantQualsModal) grantQualsModal.classList.remove('active');
-		});
 	}
-
-	// --- Global Escape Key Listener for Modals ---
-	document.addEventListener('keydown', (e) => {
-		if (e.key === 'Escape') {
-			if (courseModal?.classList.contains('active')) courseModal.classList.remove('active');
-			if (grantQualsModal?.classList.contains('active')) grantQualsModal.classList.remove('active');
-		}
-	});
 });
 ========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\js\admin\admin_defect_list.js
@@ -3014,7 +3938,6 @@ document.addEventListener('DOMContentLoaded', () => {
 	const itemIdInput = document.getElementById('defect-item-id');
 	const defectQtyInput = document.getElementById('defective_quantity');
 	const reasonInput = document.getElementById('defect_reason');
-	const closeModalBtn = defectModal.querySelector('.modal-close-btn');
 
 	/**
 	 * Attaches an event listener to all "Status bearbeiten" buttons to open the defect modal.
@@ -3027,19 +3950,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			defectQtyInput.value = btn.dataset.currentDefectQty;
 			defectQtyInput.max = btn.dataset.maxQty; // Set max value to prevent invalid input
 			reasonInput.value = btn.dataset.currentReason;
-			defectModal.classList.add('active');
 		});
-	});
-
-	const closeModal = () => defectModal.classList.remove('active');
-
-	// --- Modal Closing Listeners ---
-	if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
-	defectModal.addEventListener('click', (e) => {
-		if (e.target === defectModal) closeModal();
-	});
-	document.addEventListener('keydown', (e) => {
-		if (e.key === "Escape" && defectModal.classList.contains('active')) closeModal();
 	});
 });
 ========================================================================
@@ -3456,15 +4367,6 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\js\admin\admi
 document.addEventListener('DOMContentLoaded', () => {
 	const contextPath = document.body.dataset.contextPath || '';
 
-	// --- General Confirmations ---
-	document.querySelectorAll('.js-confirm-form').forEach(form => {
-		form.addEventListener('submit', function(e) {
-			e.preventDefault();
-			const message = this.dataset.confirmMessage || 'Sind Sie sicher?';
-			showConfirmationModal(message, () => this.submit());
-		});
-	});
-
 	// --- Kit Create/Edit Modal ---
 	const kitModal = document.getElementById('kit-modal');
 	if (kitModal) {
@@ -3475,17 +4377,12 @@ document.addEventListener('DOMContentLoaded', () => {
 		const nameInput = form.querySelector('#name-modal');
 		const descInput = form.querySelector('#description-modal');
 		const locationInput = form.querySelector('#location-modal');
-		const closeModalBtn = kitModal.querySelector('.modal-close-btn');
-
-		const openModal = () => kitModal.classList.add('active');
-		const closeModal = () => kitModal.classList.remove('active');
 
 		document.getElementById('new-kit-btn')?.addEventListener('click', () => {
 			form.reset();
 			title.textContent = 'Neues Kit anlegen';
 			actionInput.value = 'create';
 			idInput.value = '';
-			openModal();
 		});
 
 		document.querySelectorAll('.edit-kit-btn').forEach(btn => {
@@ -3497,13 +4394,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				nameInput.value = btn.dataset.kitName;
 				descInput.value = btn.dataset.kitDesc;
 				locationInput.value = btn.dataset.kitLocation || '';
-				openModal();
 			});
-		});
-
-		if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
-		kitModal.addEventListener('click', e => {
-			if (e.target === kitModal) closeModal();
 		});
 	}
 
@@ -4283,7 +5174,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		newUserBtn.addEventListener('click', () => {
 			form.reset();
 			title.textContent = "Neuen Benutzer anlegen";
-			actionInput.value = "create";
+			actionInput.value = "create"; // Keep this for logic branching
+			form.setAttribute('action', `${contextPath}/admin/action/user?action=create`); // Set explicit action URL
 			idInput.value = "";
 			passwordInput.required = true;
 			passwordGroup.style.display = 'block';
@@ -4306,13 +5198,16 @@ document.addEventListener('DOMContentLoaded', () => {
 				const assignedPermissionIds = new Set(data.permissionIds);
 
 				title.textContent = `Benutzer bearbeiten: ${user.username}`;
-				actionInput.value = "update";
+				actionInput.value = "update"; // Keep this for logic branching
+				form.setAttribute('action', `${contextPath}/admin/action/user?action=update`); // Set explicit action URL
 				idInput.value = user.id;
 				usernameInput.value = user.username || '';
 				roleInput.value = user.roleId || '3';
 				classYearInput.value = user.classYear || '';
 				classNameInput.value = user.className || '';
 				emailInput.value = user.email || '';
+
+				// Hide password field when editing a user
 				passwordInput.required = false;
 				passwordGroup.style.display = 'none';
 
@@ -4324,6 +5219,57 @@ document.addEventListener('DOMContentLoaded', () => {
 				alert('Benutzerdaten konnten nicht geladen werden.');
 			}
 		});
+	});
+
+	const appendUserToTable = (user) => {
+		const tableBody = document.querySelector('.data-table tbody');
+		const newRow = tableBody.insertRow(0); // Insert at the top
+		newRow.innerHTML = `
+            <td>${user.id}</td>
+            <td>${user.username}</td>
+            <td>${user.roleName}</td>
+            <td style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button type="button" class="btn btn-small edit-user-btn" data-fetch-url="${contextPath}/admin/mitglieder?action=getUserData&id=${user.id}">Bearbeiten</button>
+                <a href="${contextPath}/admin/mitglieder?action=details&id=${user.id}" class="btn btn-small">Details</a>
+                <!-- More buttons can be added here if needed -->
+            </td>
+        `;
+	};
+
+	form.addEventListener('submit', async (event) => {
+		event.preventDefault();
+		const action = actionInput.value;
+		const formActionUrl = form.getAttribute('action');
+
+		// The 'update' action should now also be async.
+		if (action === 'update') {
+			// For updates, we can just submit traditionally as it's less frequent.
+			// Or implement async logic similar to 'create' if desired.
+			form.submit();
+			return;
+		}
+
+		const formData = new FormData(form);
+		try {
+			const response = await fetch(formActionUrl, {
+				method: 'POST',
+				headers: { 'X-Requested-With': 'XMLHttpRequest' },
+				body: formData
+			});
+
+			const result = await response.json();
+
+			if (response.ok && result.success) {
+				closeModal();
+				showToast(result.message, 'success');
+				appendUserToTable(result.newUser);
+			} else {
+				showToast(result.message || 'Ein unbekannter Fehler ist aufgetreten.', 'danger');
+			}
+		} catch (error) {
+			console.error('Error submitting form:', error);
+			showToast('Ein Netzwerkfehler ist aufgetreten.', 'danger');
+		}
 	});
 
 	closeModalBtn.addEventListener('click', closeModal);
@@ -4347,16 +5293,27 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\js\auth\login
 ========================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
-	const togglePassword = document.getElementById('togglePassword');
-	const passwordInput = document.getElementById('password');
+	const lockoutTimer = document.getElementById('lockout-timer');
+	if (lockoutTimer) {
+		const endTime = parseInt(lockoutTimer.dataset.endTime, 10);
+		const lockoutLevel = parseInt(lockoutTimer.dataset.lockoutLevel, 10);
 
-	if (togglePassword && passwordInput) {
-		togglePassword.addEventListener('click', function() {
-			const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-			passwordInput.setAttribute('type', type);
-			this.querySelector('i').classList.toggle('fa-eye');
-			this.querySelector('i').classList.toggle('fa-eye-slash');
-		});
+		const durations = [60, 120, 300, 600, 1800]; // in seconds
+		const duration = durations[Math.min(lockoutLevel, durations.length - 1)];
+
+		const intervalId = setInterval(() => {
+			const now = Date.now();
+			const remainingSeconds = Math.max(0, Math.round((endTime + (duration * 1000) - now) / 1000));
+
+			if (remainingSeconds <= 0) {
+				clearInterval(intervalId);
+				window.location.reload(); // Reload the page to clear the lockout message
+			} else {
+				const minutes = Math.floor(remainingSeconds / 60);
+				const seconds = remainingSeconds % 60;
+				lockoutTimer.textContent = `Bitte versuchen Sie es in ${minutes} Minute(n) und ${seconds.toString().padStart(2, '0')} Sekunde(n) erneut.`;
+			}
+		}, 1000);
 	}
 });
 ========================================================================
@@ -5447,7 +6404,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 <div class="table-controls">
 	<c:if
 		test="${hasMasterAccess or userPermissions.contains('ACHIEVEMENT_CREATE')}">
-		<button type="button" id="new-achievement-btn" class="btn btn-success">
+		<button type="button" id="new-achievement-btn" class="btn btn-success"
+			data-modal-target="achievement-modal">
 			<i class="fas fa-plus"></i> Neuen Erfolg anlegen
 		</button>
 	</c:if>
@@ -5483,7 +6441,7 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 							test="${hasMasterAccess or userPermissions.contains('ACHIEVEMENT_UPDATE')}">
 							<button type="button"
 								class="btn btn-small btn-secondary edit-achievement-btn"
-								data-id="${ach.id}">
+								data-id="${ach.id}" data-modal-target="achievement-modal">
 								<i class="fas fa-edit"></i> Bearbeiten
 							</button>
 						</c:if> <c:if
@@ -5531,7 +6489,7 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 					test="${hasMasterAccess or userPermissions.contains('ACHIEVEMENT_UPDATE')}">
 					<button type="button"
 						class="btn btn-small btn-secondary edit-achievement-btn"
-						data-id="${ach.id}">
+						data-id="${ach.id}" data-modal-target="achievement-modal">
 						<i class="fas fa-edit"></i> Bearbeiten
 					</button>
 				</c:if>
@@ -5558,7 +6516,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 <!-- Modal for Create/Edit Achievement -->
 <div class="modal-overlay" id="achievement-modal">
 	<div class="modal-content">
-		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
+		<button class="modal-close-btn" type="button" aria-label="Schließen"
+			data-modal-close>×</button>
 		<h3 id="achievement-modal-title">Erfolg verwalten</h3>
 		<form id="achievement-modal-form"
 			action="${pageContext.request.contextPath}/admin/achievements"
@@ -5655,7 +6614,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 <c:import url="/WEB-INF/jspf/message_banner.jspf" />
 
 <div class="table-controls">
-	<button type="button" id="new-course-btn" class="btn btn-success">
+	<button type="button" id="new-course-btn" class="btn btn-success"
+		data-modal-target="course-modal">
 		<i class="fas fa-plus"></i> Neue Vorlage
 	</button>
 	<div class="form-group" style="margin-bottom: 0;">
@@ -5694,12 +6654,13 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 						<button type="button"
 							class="btn btn-small btn-info grant-quals-btn"
 							data-course-id="${course.id}"
-							data-course-name="${fn:escapeXml(course.name)}">
+							data-course-name="${fn:escapeXml(course.name)}"
+							data-modal-target="grant-quals-modal">
 							<i class="fas fa-user-graduate"></i> Qualis vergeben
 						</button>
 						<button type="button"
 							class="btn btn-small btn-secondary edit-course-btn"
-							data-id="${course.id}">
+							data-id="${course.id}" data-modal-target="course-modal">
 							<i class="fas fa-edit"></i> Bearbeiten
 						</button>
 						<form action="${pageContext.request.contextPath}/admin/lehrgaenge"
@@ -5743,12 +6704,13 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 				</a>
 				<button type="button" class="btn btn-small btn-info grant-quals-btn"
 					data-course-id="${course.id}"
-					data-course-name="${fn:escapeXml(course.name)}">
+					data-course-name="${fn:escapeXml(course.name)}"
+					data-modal-target="grant-quals-modal">
 					<i class="fas fa-user-graduate"></i> Qualis vergeben
 				</button>
 				<button type="button"
 					class="btn btn-small btn-secondary edit-course-btn"
-					data-id="${course.id}">
+					data-id="${course.id}" data-modal-target="course-modal">
 					<i class="fas fa-edit"></i> Bearbeiten
 				</button>
 				<form action="${pageContext.request.contextPath}/admin/lehrgaenge"
@@ -5770,7 +6732,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 <!-- MODAL FOR CREATE/EDIT COURSE -->
 <div class="modal-overlay" id="course-modal">
 	<div class="modal-content">
-		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
+		<button class="modal-close-btn" type="button" aria-label="Schließen"
+			data-modal-close>×</button>
 		<h3 id="course-modal-title">Lehrgangs-Vorlage</h3>
 		<form id="course-modal-form"
 			action="${pageContext.request.contextPath}/admin/lehrgaenge"
@@ -5802,7 +6765,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 <!-- MODAL FOR GRANTING QUALIFICATIONS -->
 <div class="modal-overlay" id="grant-quals-modal">
 	<div class="modal-content">
-		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
+		<button class="modal-close-btn" type="button" aria-label="Schließen"
+			data-modal-close>×</button>
 		<h3 id="grant-quals-modal-title">Qualifikationen vergeben</h3>
 		<p>Diese Aktion vergibt den Status 'ABSOLVIERT' an alle Nutzer,
 			die eine Mindestanzahl an Meetings für diesen Lehrgang besucht haben.</p>
@@ -5966,8 +6930,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 							data-item-name="${fn:escapeXml(item.name)}"
 							data-max-qty="${item.quantity}"
 							data-current-defect-qty="${item.defectiveQuantity}"
-							data-current-reason="${fn:escapeXml(item.defectReason)}">Status
-							bearbeiten</button>
+							data-current-reason="${fn:escapeXml(item.defectReason)}"
+							data-modal-target="defect-modal">Status bearbeiten</button>
 					</td>
 				</tr>
 			</c:forEach>
@@ -6007,8 +6971,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 					data-item-name="${fn:escapeXml(item.name)}"
 					data-max-qty="${item.quantity}"
 					data-current-defect-qty="${item.defectiveQuantity}"
-					data-current-reason="${fn:escapeXml(item.defectReason)}">Status
-					bearbeiten</button>
+					data-current-reason="${fn:escapeXml(item.defectReason)}"
+					data-modal-target="defect-modal">Status bearbeiten</button>
 			</div>
 		</div>
 	</c:forEach>
@@ -6018,7 +6982,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 <!-- Modal for updating defect status -->
 <div class="modal-overlay" id="defect-modal">
 	<div class="modal-content">
-		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
+		<button type="button" class="modal-close-btn" aria-label="Schließen"
+			data-modal-close>×</button>
 		<h3 id="defect-modal-title">Defekt-Status bearbeiten</h3>
 		<form action="${pageContext.request.contextPath}/admin/lager"
 			method="post">
@@ -6070,7 +7035,7 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 			<div class="editor-controls">
 				<c:if test="${editorMode eq 'edit'}">
 					<div class="mode-switcher">
-						<span>View</span> <label class="switch"> <input
+						<span>View</span> <label class="toggle-switch"> <input
 							type="checkbox" id="mode-toggle" checked> <span
 							class="slider"></span>
 						</label> <span>Edit</span>
@@ -6530,7 +7495,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 <c:import url="/WEB-INF/jspf/message_banner.jspf" />
 
 <div class="table-controls">
-	<button type="button" class="btn btn-success" id="new-kit-btn">
+	<button type="button" class="btn btn-success" id="new-kit-btn"
+		data-modal-target="kit-modal">
 		<i class="fas fa-plus"></i> Neues Kit anlegen
 	</button>
 </div>
@@ -6564,7 +7530,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 						class="btn btn-small btn-secondary edit-kit-btn"
 						data-kit-id="${kit.id}" data-kit-name="${fn:escapeXml(kit.name)}"
 						data-kit-desc="${fn:escapeXml(kit.description)}"
-						data-kit-location="${fn:escapeXml(kit.location)}">Bearbeiten</button>
+						data-kit-location="${fn:escapeXml(kit.location)}"
+						data-modal-target="kit-modal">Bearbeiten</button>
 					<form action="${pageContext.request.contextPath}/admin/kits"
 						method="post" class="js-confirm-form"
 						data-confirm-message="Kit '${fn:escapeXml(kit.name)}' wirklich löschen?">
@@ -6630,7 +7597,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 <!-- Modal for Create/Edit Kit -->
 <div class="modal-overlay" id="kit-modal">
 	<div class="modal-content">
-		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
+		<button class="modal-close-btn" type="button" aria-label="Schließen"
+			data-modal-close>×</button>
 		<h3>Kit verwalten</h3>
 		<form action="${pageContext.request.contextPath}/admin/kits"
 			method="post">
@@ -7474,16 +8442,23 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 								data-fetch-url="<c:url value='/admin/mitglieder?action=getUserData&id=${user.id}'/>">Bearbeiten</button>
 						</c:if> <a
 						href="<c:url value='/admin/mitglieder?action=details&id=${user.id}'/>"
-						class="btn btn-small">Details</a> <c:if
-							test="${sessionScope.user.id != user.id}">
+						class="btn btn-small">Details</a>
+						<form action="<c:url value='/admin/action/user?action=unlock'/>"
+							method="post" class="js-confirm-form"
+							data-confirm-message="Die Login-Sperre für '${fn:escapeXml(user.username)}' wirklich aufheben?">
+							<input type="hidden" name="csrfToken"
+								value="${sessionScope.csrfToken}"> <input type="hidden"
+								name="username" value="${user.username}">
+							<button type="submit" class="btn btn-small btn-info">Entsperren</button>
+						</form> <c:if test="${sessionScope.user.id != user.id}">
 							<c:if
 								test="${hasMasterAccess or userPermissions.contains('USER_PASSWORD_RESET')}">
-								<form action="<c:url value='/admin/mitglieder'/>" method="post"
-									class="js-confirm-form"
+								<form
+									action="<c:url value='/admin/action/user?action=resetPassword'/>"
+									method="post" class="js-confirm-form"
 									data-confirm-message="Passwort für '${fn:escapeXml(user.username)}' zurücksetzen? Das neue Passwort wird angezeigt.">
 									<input type="hidden" name="csrfToken"
 										value="${sessionScope.csrfToken}"> <input
-										type="hidden" name="action" value="resetPassword"><input
 										type="hidden" name="userId" value="${user.id}">
 									<button type="submit" class="btn btn-small btn-warning">Passwort
 										Reset</button>
@@ -7491,12 +8466,11 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 							</c:if>
 							<c:if
 								test="${hasMasterAccess or userPermissions.contains('USER_DELETE')}">
-								<form action="<c:url value='/admin/mitglieder'/>" method="post"
-									class="js-confirm-form"
+								<form action="<c:url value='/admin/action/user?action=delete'/>"
+									method="post" class="js-confirm-form"
 									data-confirm-message="Benutzer '${fn:escapeXml(user.username)}' wirklich löschen?">
 									<input type="hidden" name="csrfToken"
 										value="${sessionScope.csrfToken}"> <input
-										type="hidden" name="action" value="delete"><input
 										type="hidden" name="userId" value="${user.id}">
 									<button type="submit" class="btn btn-small btn-danger">Löschen</button>
 								</form>
@@ -7535,27 +8509,34 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 				<a
 					href="<c:url value='/admin/mitglieder?action=details&id=${user.id}'/>"
 					class="btn btn-small">Details</a>
+				<form action="<c:url value='/admin/action/user?action=unlock'/>"
+					method="post" class="js-confirm-form"
+					data-confirm-message="Die Login-Sperre für '${fn:escapeXml(user.username)}' wirklich aufheben?">
+					<input type="hidden" name="csrfToken"
+						value="${sessionScope.csrfToken}"> <input type="hidden"
+						name="username" value="${user.username}">
+					<button type="submit" class="btn btn-small btn-info">Entsperren</button>
+				</form>
 				<c:if test="${sessionScope.user.id != user.id}">
 					<c:if
 						test="${hasMasterAccess or userPermissions.contains('USER_PASSWORD_RESET')}">
-						<form action="<c:url value='/admin/mitglieder'/>" method="post"
-							class="js-confirm-form"
+						<form
+							action="<c:url value='/admin/action/user?action=resetPassword'/>"
+							method="post" class="js-confirm-form"
 							data-confirm-message="Passwort für '${fn:escapeXml(user.username)}' zurücksetzen? Das neue Passwort wird angezeigt.">
 							<input type="hidden" name="csrfToken"
 								value="${sessionScope.csrfToken}"> <input type="hidden"
-								name="action" value="resetPassword"> <input
-								type="hidden" name="userId" value="${user.id}">
+								name="userId" value="${user.id}">
 							<button type="submit" class="btn btn-small btn-warning">Reset</button>
 						</form>
 					</c:if>
 					<c:if
 						test="${hasMasterAccess or userPermissions.contains('USER_DELETE')}">
-						<form action="<c:url value='/admin/mitglieder'/>" method="post"
-							class="js-confirm-form"
+						<form action="<c:url value='/admin/action/user?action=delete'/>"
+							method="post" class="js-confirm-form"
 							data-confirm-message="Benutzer '${fn:escapeXml(user.username)}' wirklich löschen?">
 							<input type="hidden" name="csrfToken"
 								value="${sessionScope.csrfToken}"> <input type="hidden"
-								name="action" value="delete"> <input type="hidden"
 								name="userId" value="${user.id}">
 							<button type="submit" class="btn btn-small btn-danger">Löschen</button>
 						</form>
@@ -7780,42 +8761,41 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\auth\lo
 			<i class="fas fa-bolt"></i> TechnikTeam
 		</h1>
 		<c:import url="/WEB-INF/jspf/message_banner.jspf" />
+
+		<c:if test="${not empty sessionScope.lockoutEndTime}">
+			<div class="error-message" id="lockout-timer"
+				data-end-time="${sessionScope.lockoutEndTime}"
+				data-lockout-level="${sessionScope.lockoutLevel}">Lade
+				Timer...</div>
+			<c:remove var="lockoutEndTime" scope="session" />
+			<c:remove var="lockoutLevel" scope="session" />
+		</c:if>
+
 		<form action="<c:url value='/login'/>" method="post">
 			<div class="form-group">
 				<label for="username">Benutzername</label> <input type="text"
-					id="username" name="username" required autocomplete="username"
-					autofocus>
+					id="username" name="username"
+					value="<c:out value='${failedUsername}'/>" required
+					autocomplete="username" autofocus>
+				<c:remove var="failedUsername" scope="session" />
 			</div>
 			<div class="form-group">
 				<label for="password">Passwort</label>
 				<div class="password-input-wrapper">
 					<input type="password" id="password" name="password" required
-						autocomplete="current-password"> <span id="togglePassword"
+						autocomplete="current-password"> <span
 						class="password-toggle-icon"> <i class="fas fa-eye"></i>
 					</span>
 				</div>
 			</div>
-			<button type="submit" class="btn" style="width: 100%;">Anmelden</button>
+			<button type="submit" class="btn" style="width: 100%;"
+				${not empty sessionScope.lockoutEndTime ? 'disabled' : ''}>Anmelden</button>
 		</form>
 	</div>
 </div>
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
-<script>
-	document.addEventListener('DOMContentLoaded', () => {
-		const togglePassword = document.getElementById('togglePassword');
-		const passwordInput = document.getElementById('password');
-
-		if (togglePassword && passwordInput) {
-			togglePassword.addEventListener('click', function() {
-				const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-				passwordInput.setAttribute('type', type);
-				this.querySelector('i').classList.toggle('fa-eye');
-				this.querySelector('i').classList.toggle('fa-eye-slash');
-			});
-		}
-	});
-</script>
+<script src="${pageContext.request.contextPath}/js/auth/login.js"></script>
 ========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\auth\logout.jsp
 ========================================================================
@@ -9321,6 +10301,10 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\
 <div style="max-width: 600px; margin: auto;">
 	<div class="card">
 		<h1>Passwort ändern</h1>
+		<p class="text-muted"
+			style="margin-top: -1rem; margin-bottom: 1.5rem;">Das neue
+			Passwort muss mindestens 10 Zeichen lang sein und Groß-,
+			Kleinbuchstaben, Zahlen und Sonderzeichen enthalten.</p>
 
 		<c:if test="${not empty successMessage}">
 			<p class="success-message">
@@ -9338,19 +10322,31 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\
 			<input type="hidden" name="csrfToken"
 				value="${sessionScope.csrfToken}">
 			<div class="form-group">
-				<label for="currentPassword">Aktuelles Passwort</label> <input
-					type="password" id="currentPassword" name="currentPassword"
-					required autocomplete="current-password">
+				<label for="currentPassword">Aktuelles Passwort</label>
+				<div class="password-input-wrapper">
+					<input type="password" id="currentPassword" name="currentPassword"
+						required autocomplete="current-password"> <span
+						class="password-toggle-icon"> <i class="fas fa-eye"></i>
+					</span>
+				</div>
 			</div>
 			<div class="form-group">
-				<label for="newPassword">Neues Passwort</label> <input
-					type="password" id="newPassword" name="newPassword" required
-					autocomplete="new-password">
+				<label for="newPassword">Neues Passwort</label>
+				<div class="password-input-wrapper">
+					<input type="password" id="newPassword" name="newPassword" required
+						autocomplete="new-password"> <span
+						class="password-toggle-icon"> <i class="fas fa-eye"></i>
+					</span>
+				</div>
 			</div>
 			<div class="form-group">
-				<label for="confirmPassword">Neues Passwort bestätigen</label> <input
-					type="password" id="confirmPassword" name="confirmPassword"
-					required autocomplete="new-password">
+				<label for="confirmPassword">Neues Passwort bestätigen</label>
+				<div class="password-input-wrapper">
+					<input type="password" id="confirmPassword" name="confirmPassword"
+						required autocomplete="new-password"> <span
+						class="password-toggle-icon"> <i class="fas fa-eye"></i>
+					</span>
+				</div>
 			</div>
 			<button type="submit" class="btn">Passwort speichern</button>
 		</form>
@@ -9402,6 +10398,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\
 						title="Wähle deine Chat-Farbe">
 					<button type="submit" class="btn btn-small">Speichern</button>
 				</form></li>
+			<li><a href="${pageContext.request.contextPath}/passwort"
+				class="btn btn-secondary">Passwort ändern</a></li>
 		</ul>
 	</div>
 
@@ -10233,7 +11231,7 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\
 			</nav>
 			<div class="user-actions">
 				<div class="theme-switcher desktop-only">
-					<i class="fas fa-sun"></i> <label class="switch"> <input
+					<i class="fas fa-sun"></i> <label class="toggle-switch"> <input
 						type="checkbox" id="theme-toggle-desktop"> <span
 						class="slider"></span>
 					</label> <i class="fas fa-moon"></i>
@@ -10260,7 +11258,7 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\
 			<a href="${pageContext.request.contextPath}/home" class="mobile-logo">TechnikTeam</a>
 			<div class="mobile-header-right">
 				<div class="theme-switcher mobile-only">
-					<i class="fas fa-sun"></i> <label class="switch"> <input
+					<i class="fas fa-sun"></i> <label class="toggle-switch"> <input
 						type="checkbox" id="theme-toggle"> <span class="slider"></span>
 					</label> <i class="fas fa-moon"></i>
 				</div>
@@ -10676,7 +11674,7 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\
 		</div>
 
 		<form id="user-modal-form"
-			action="${pageContext.request.contextPath}/admin/mitglieder"
+			action="${pageContext.request.contextPath}/admin/action/user"
 			method="post">
 			<input type="hidden" name="csrfToken"
 				value="${sessionScope.csrfToken}"> <input type="hidden"
@@ -10689,8 +11687,16 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\
 						id="username-modal" name="username" required>
 				</div>
 				<div class="form-group" id="password-group">
-					<label for="password-modal">Passwort (mind. 8 Zeichen)</label> <input
-						type="password" id="password-modal" name="password" minlength="8">
+					<label for="password-modal">Passwort</label>
+					<div class="password-input-wrapper">
+						<input type="password" id="password-modal" name="password"
+							minlength="10"> <span class="password-toggle-icon">
+							<i class="fas fa-eye"></i>
+						</span>
+					</div>
+					<small class="text-muted">Muss 10+ Zeichen,
+						Groß/Kleinbuchstaben, Zahlen & Sonderzeichen enthalten. Leer
+						lassen, um es nicht zu ändern.</small>
 				</div>
 				<div class="responsive-dashboard-grid">
 					<div class="form-group">
@@ -10742,7 +11748,7 @@ DUMP: technik_team_db.sql
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Erstellungszeit: 22. Jul 2025 um 21:50
+-- Erstellungszeit: 23. Jul 2025 um 15:37
 -- Server-Version: 10.4.32-MariaDB
 -- PHP-Version: 8.2.12
 
@@ -11135,7 +12141,17 @@ INSERT INTO `admin_logs` (`id`, `admin_username`, `action_type`, `details`, `act
 (327, 'admin', 'RESET_PASSWORD', 'Passwort für Benutzer \'Hund\' (ID: 8) zurückgesetzt.', '2025-07-22 17:03:31'),
 (328, 'admin', 'UPDATE_USER', 'Benutzer \'Hund\' (ID: 8) aktualisiert.', '2025-07-22 17:08:16'),
 (329, 'admin', 'RESET_PASSWORD', 'Passwort für Benutzer \'Hund\' (ID: 8) zurückgesetzt.', '2025-07-22 17:13:35'),
-(330, 'Hund', 'UPDATE_MARKDOWN_FILE', 'Inhalt der Datei \'README.md\' (ID: 22) aktualisiert.', '2025-07-22 17:31:28');
+(330, 'Hund', 'UPDATE_MARKDOWN_FILE', 'Inhalt der Datei \'README.md\' (ID: 22) aktualisiert.', '2025-07-22 17:31:28'),
+(331, 'admin', 'UPDATE_EVENT', 'Event \'ff\' (ID: 3) aktualisiert.', '2025-07-23 10:35:11'),
+(332, 'admin', 'ASSIGN_TEAM', 'Team für Event \'ff\' (ID: 3) finalisiert. 1 Benutzer zugewiesen.', '2025-07-23 10:36:06'),
+(333, 'admin', 'RESET_PASSWORD', 'Passwort für Benutzer \'Hund\' (ID: 8) zurückgesetzt.', '2025-07-23 10:40:45'),
+(334, 'admin', 'RESET_PASSWORD', 'Passwort für Benutzer \'Hund\' (ID: 8) zurückgesetzt.', '2025-07-23 10:40:50'),
+(335, 'admin', 'UPDATE_ACHIEVEMENT', 'Erfolg \'Alter Hase\' (ID: 3) aktualisiert.', '2025-07-23 10:43:09'),
+(336, 'admin', 'DELETE_KIT', 'Kit \'Test\' (ID: 1) gelöscht.', '2025-07-23 10:43:30'),
+(337, 'admin', 'FILE_UPLOAD', 'Datei \'test.pdf\' hochgeladen.', '2025-07-23 10:47:46'),
+(338, 'admin', 'FILE_DELETE', 'Datei \'README.markdown\' (ID: 23) aus Kategorie \'Ohne Kategorie\' gelöscht.', '2025-07-23 10:50:10'),
+(339, 'admin', 'CREATE_USER', 'Benutzer \'Paul\' (ID: 9, Rolle-ID: 3, Klasse: 0 ) erstellt und Berechtigungen zugewiesen.', '2025-07-23 12:54:50'),
+(340, 'admin', 'UNLOCK_USER_ACCOUNT', 'Benutzerkonto \'Paul\' manuell entsperrt.', '2025-07-23 13:31:39');
 
 -- --------------------------------------------------------
 
@@ -11209,7 +12225,7 @@ CREATE TABLE `events` (
 INSERT INTO `events` (`id`, `name`, `event_datetime`, `end_datetime`, `description`, `location`, `status`, `leader_user_id`) VALUES
 (1, 'Test', '2025-07-11 12:00:00', '2025-07-11 13:30:00', 'Dies ist ein Event, dass in der Aula stattfindet. Wenn möglich trefft schon 5min vorher ein. ', 'Aula', 'ABGESCHLOSSEN', 1),
 (2, 'Tetris', '2025-07-19 18:00:00', NULL, '# Markdown syntax guide\r\n\r\n## Headers\r\n\r\n# This is a Heading h1\r\n## This is a Heading h2\r\n###### This is a Heading h6\r\n\r\n## Emphasis\r\n\r\n*This text will be italic*  \r\n_This will also be italic_\r\n\r\n**This text will be bold**  \r\n__This will also be bold__\r\n\r\n_You **can** combine them_\r\n\r\n## Lists\r\n\r\n### Unordered\r\n\r\n* Item 1\r\n* Item 2\r\n* Item 2a\r\n* Item 2b\r\n    * Item 3a\r\n    * Item 3b\r\n\r\n### Ordered\r\n\r\n1. Item 1\r\n2. Item 2\r\n3. Item 3\r\n    1. Item 3a\r\n    2. Item 3b\r\n\r\n## Images\r\n\r\n![This is an alt text.](/image/sample.webp \"This is a sample image.\")\r\n\r\n## Links\r\n\r\nYou may be using [Markdown Live Preview](https://markdownlivepreview.com/).\r\n\r\n## Blockquotes\r\n\r\n> Markdown is a lightweight markup language with plain-text-formatting syntax, created in 2004 by John Gruber with Aaron Swartz.\r\n>\r\n>> Markdown is often used to format readme files, for writing messages in online discussion forums, and to create rich text using a plain text editor.\r\n\r\n## Tables\r\n\r\n| Left columns  | Right columns |\r\n| ------------- |:-------------:|\r\n| left foo      | right foo     |\r\n| left bar      | right bar     |\r\n| left baz      | right baz     |\r\n\r\n## Blocks of code\r\n\r\n```\r\nlet message = \'Hello world\';\r\nalert(message);\r\n```\r\n\r\n## Inline code\r\n\r\nThis web site is using `markedjs/marked`.\r\n', '', 'ABGESCHLOSSEN', NULL),
-(3, 'ff', '2025-07-20 22:22:00', NULL, '', '', 'LAUFEND', NULL);
+(3, 'ff', '2025-07-26 22:22:00', NULL, '', '', 'LAUFEND', NULL);
 
 -- --------------------------------------------------------
 
@@ -11228,7 +12244,8 @@ CREATE TABLE `event_assignments` (
 --
 
 INSERT INTO `event_assignments` (`assignment_id`, `event_id`, `user_id`) VALUES
-(2, 1, 1);
+(2, 1, 1),
+(3, 3, 8);
 
 -- --------------------------------------------------------
 
@@ -11250,7 +12267,8 @@ CREATE TABLE `event_attendance` (
 INSERT INTO `event_attendance` (`user_id`, `event_id`, `signup_status`, `commitment_status`) VALUES
 (1, 1, 'ANGEMELDET', 'OFFEN'),
 (1, 2, 'ANGEMELDET', 'OFFEN'),
-(1, 3, 'ANGEMELDET', 'OFFEN');
+(1, 3, 'ANGEMELDET', 'OFFEN'),
+(8, 3, 'ANGEMELDET', 'OFFEN');
 
 -- --------------------------------------------------------
 
@@ -11281,7 +12299,10 @@ INSERT INTO `event_chat_messages` (`id`, `event_id`, `user_id`, `username`, `mes
 (7, 1, 1, 'admin', 'Fokus auf den Aufbau, bitte. Pizza besprechen wir, wenn wir fertig sind..', 1, 0, NULL, NULL, NULL, '2025-07-06 07:34:45'),
 (8, 1, 1, 'admin', 'ETsttt', 1, 1, 1, NULL, NULL, '2025-07-06 20:31:07'),
 (9, 1, 1, 'admin', 'Hallo 123', 0, 0, NULL, NULL, NULL, '2025-07-09 10:23:50'),
-(10, 3, 1, 'admin', '@Tim', 0, 0, NULL, NULL, NULL, '2025-07-09 17:50:10');
+(10, 3, 1, 'admin', '@Tim', 0, 0, NULL, NULL, NULL, '2025-07-09 17:50:10'),
+(11, 3, 1, 'admin', 'Hello ', 0, 0, NULL, NULL, NULL, '2025-07-23 10:36:39'),
+(12, 3, 1, 'admin', 'This is <b>bold</b> text.', 0, 0, NULL, NULL, NULL, '2025-07-23 10:36:49'),
+(13, 3, 1, 'admin', '<img src=x image\')>', 0, 0, NULL, NULL, NULL, '2025-07-23 10:37:07');
 
 -- --------------------------------------------------------
 
@@ -11399,15 +12420,6 @@ CREATE TABLE `event_task_kits` (
   `kit_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Daten für Tabelle `event_task_kits`
---
-
-INSERT INTO `event_task_kits` (`task_id`, `kit_id`) VALUES
-(5, 1),
-(6, 1),
-(8, 1);
-
 -- --------------------------------------------------------
 
 --
@@ -11481,8 +12493,8 @@ INSERT INTO `files` (`id`, `filename`, `filepath`, `category_id`, `required_role
 (19, 'calendar.txt', 'calendar.txt', 3, 'NUTZER', '2025-07-10 18:00:01'),
 (20, 'calendar.txt', 'calendar.txt', 1, 'NUTZER', '2025-07-10 18:45:55'),
 (21, 're.odt', 're.odt', 1, 'NUTZER', '2025-07-10 20:16:11'),
-(22, 'README.md', 'README.md', 1, 'NUTZER', '2025-07-22 19:43:13'),
-(23, 'README.markdown', 'README.markdown', 1, 'NUTZER', '2025-07-22 17:03:10');
+(22, 'README.md', 'README.md', 1, 'NUTZER', '2025-07-23 10:38:33'),
+(24, 'test.pdf', '753d2245-3069-46a7-ad30-f3ca064ce1e1-test.pdf', 1, 'NUTZER', '2025-07-23 10:47:46');
 
 -- --------------------------------------------------------
 
@@ -11521,7 +12533,6 @@ CREATE TABLE `inventory_kits` (
 --
 
 INSERT INTO `inventory_kits` (`id`, `name`, `description`, `location`) VALUES
-(1, 'Test', 'Das ist ein Test Kit', 'Aula Foyer'),
 (3, 'Das Kit', '', NULL);
 
 -- --------------------------------------------------------
@@ -11541,10 +12552,6 @@ CREATE TABLE `inventory_kit_items` (
 --
 
 INSERT INTO `inventory_kit_items` (`kit_id`, `item_id`, `quantity`) VALUES
-(1, 41, 26),
-(1, 45, 10),
-(1, 46, 6),
-(1, 59, 9),
 (3, 56, 10028);
 
 -- --------------------------------------------------------
@@ -11881,7 +12888,8 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`id`, `username`, `password_hash`, `role_id`, `class_year`, `class_name`, `email`, `chat_color`, `created_at`, `theme`) VALUES
 (1, 'admin', '$2a$10$odf1koglTR0zdzyPbDDkzOuw2XSKu19ylygl561RQ336KpABBFccu', 1, 0, '', NULL, '#ff00ff', '2025-06-26 08:49:17', 'light'),
-(8, 'Hund', '$2a$10$swfj/iCYFuY0sDSqfktYx.LgtvXssWhpn.x/oAkaSE1UznZuu/zOe', 1, 0, '', NULL, '#E9ECEF', '2025-07-09 16:29:59', 'light');
+(8, 'Hund', '$2a$10$zcIQRMOube/en/O.2mZJFuyrFR7RUJPeuI4q8mdCOFdsOI/QmvI5a', 1, 0, '', NULL, '#E9ECEF', '2025-07-09 16:29:59', 'light'),
+(9, 'Paul', '$2a$10$126nt7n3eJzkDxmKXtCpnueqK6t.usPit3kJD6eXNLo5gXv79qudm', 3, 0, '', NULL, '#E9ECEF', '2025-07-23 12:54:50', 'light');
 
 -- --------------------------------------------------------
 
@@ -11960,7 +12968,8 @@ INSERT INTO `user_permissions` (`user_id`, `permission_id`) VALUES
 (1, 30),
 (1, 31),
 (1, 32),
-(8, 37);
+(8, 37),
+(9, 1);
 
 -- --------------------------------------------------------
 
@@ -12267,7 +13276,7 @@ ALTER TABLE `achievements`
 -- AUTO_INCREMENT für Tabelle `admin_logs`
 --
 ALTER TABLE `admin_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=331;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=341;
 
 --
 -- AUTO_INCREMENT für Tabelle `attachments`
@@ -12291,13 +13300,13 @@ ALTER TABLE `events`
 -- AUTO_INCREMENT für Tabelle `event_assignments`
 --
 ALTER TABLE `event_assignments`
-  MODIFY `assignment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `assignment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT für Tabelle `event_chat_messages`
 --
 ALTER TABLE `event_chat_messages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT für Tabelle `event_custom_fields`
@@ -12345,7 +13354,7 @@ ALTER TABLE `feedback_responses`
 -- AUTO_INCREMENT für Tabelle `files`
 --
 ALTER TABLE `files`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT für Tabelle `file_categories`
@@ -12375,7 +13384,7 @@ ALTER TABLE `meetings`
 -- AUTO_INCREMENT für Tabelle `permissions`
 --
 ALTER TABLE `permissions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
 
 --
 -- AUTO_INCREMENT für Tabelle `roles`
@@ -12405,7 +13414,7 @@ ALTER TABLE `storage_log`
 -- AUTO_INCREMENT für Tabelle `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT für Tabelle `user_passkeys`

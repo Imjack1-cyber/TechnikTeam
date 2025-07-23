@@ -1,6 +1,7 @@
 package de.technikteam.servlet.admin.action;
 
 import de.technikteam.dao.UserDAO;
+import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import jakarta.servlet.ServletException;
@@ -9,12 +10,13 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
+import java.util.Map;
 
 public class DeleteUserAction implements Action {
 	private final UserDAO userDAO = new UserDAO();
 
 	@Override
-	public String execute(HttpServletRequest request, HttpServletResponse response)
+	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		HttpSession session = request.getSession();
 		int userIdToDelete = Integer.parseInt(request.getParameter("userId"));
@@ -26,20 +28,17 @@ public class DeleteUserAction implements Action {
 		}
 
 		if (loggedInAdmin.getId() == userIdToDelete) {
-			session.setAttribute("errorMessage", "Sie können sich nicht selbst löschen.");
-			return "redirect:/admin/mitglieder";
+			return ApiResponse.error("Sie können sich nicht selbst löschen.");
 		}
 
 		User userToDelete = userDAO.getUserById(userIdToDelete);
 		if (userToDelete == null) {
-			session.setAttribute("errorMessage", "Benutzer mit ID " + userIdToDelete + " nicht gefunden.");
-			return "redirect:/admin/mitglieder";
+			return ApiResponse.error("Benutzer mit ID " + userIdToDelete + " nicht gefunden.");
 		}
 
 		if (userToDelete.getPermissions().contains("ACCESS_ADMIN_PANEL")
 				&& !loggedInAdmin.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
-			session.setAttribute("errorMessage", "Sie haben keine Berechtigung, einen Haupt-Administrator zu löschen.");
-			return "redirect:/admin/mitglieder";
+			return ApiResponse.error("Sie haben keine Berechtigung, einen Haupt-Administrator zu löschen.");
 		}
 
 		String deletedUsername = userToDelete.getUsername();
@@ -49,11 +48,9 @@ public class DeleteUserAction implements Action {
 			String logDetails = String.format("Benutzer '%s' (ID: %d, Rolle: %s) wurde gelöscht.", deletedUsername,
 					userIdToDelete, deletedRoleName);
 			AdminLogService.log(loggedInAdmin.getUsername(), "DELETE_USER", logDetails);
-			session.setAttribute("successMessage", "Benutzer erfolgreich gelöscht.");
+			return ApiResponse.success("Benutzer erfolgreich gelöscht.", Map.of("deletedUserId", userIdToDelete));
 		} else {
-			session.setAttribute("errorMessage", "Benutzer konnte nicht gelöscht werden.");
+			return ApiResponse.error("Benutzer konnte nicht gelöscht werden.");
 		}
-
-		return "redirect:/admin/mitglieder";
 	}
 }

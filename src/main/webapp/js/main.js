@@ -7,6 +7,22 @@ document.addEventListener('DOMContentLoaded', () => {
 	const contextPath = document.body.dataset.contextPath || '';
 	const currentPage = document.body.dataset.page || '';
 
+	// --- GLOBAL PASSWORD VISIBILITY TOGGLE ---
+	document.body.addEventListener('click', (event) => {
+		const toggle = event.target.closest('.password-toggle-icon');
+		if (toggle) {
+			const wrapper = toggle.closest('.password-input-wrapper');
+			const input = wrapper.querySelector('input[type="password"], input[type="text"]');
+			const icon = toggle.querySelector('i');
+			if (input) {
+				const isPassword = input.getAttribute('type') === 'password';
+				input.setAttribute('type', isPassword ? 'text' : 'password');
+				icon.classList.toggle('fa-eye', !isPassword);
+				icon.classList.toggle('fa-eye-slash', isPassword);
+			}
+		}
+	});
+
 	// --- MOBILE NAVIGATION ---
 	const navToggle = document.querySelector('.mobile-nav-toggle');
 	const pageOverlay = document.querySelector('.page-overlay');

@@ -19,6 +19,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -40,6 +41,10 @@ public class AdminFileServlet extends HttpServlet {
 	// Whitelist of allowed MIME types for security
 	private static final Set<String> ALLOWED_MIME_TYPES = Set.of("image/jpeg", "image/png", "image/gif",
 			"application/pdf", "text/markdown", "text/plain");
+
+	private static final Map<String, String> MIME_TYPE_FRIENDLY_NAMES = Map.of("image/jpeg", "JPEG Bild", "image/png",
+			"PNG Bild", "image/gif", "GIF Bild", "application/pdf", "PDF Dokument", "text/markdown", "Markdown Text",
+			"text/plain", "Textdatei");
 
 	@Override
 	public void init() {
@@ -85,9 +90,11 @@ public class AdminFileServlet extends HttpServlet {
 		// Security: Validate MIME type against whitelist
 		String contentType = filePart.getContentType();
 		if (!ALLOWED_MIME_TYPES.contains(contentType)) {
+			String friendlyName = MIME_TYPE_FRIENDLY_NAMES.getOrDefault(contentType, contentType);
 			logger.warn("Upload rejected for user '{}': Disallowed MIME type '{}'.", adminUser.getUsername(),
 					contentType);
-			session.setAttribute("errorMessage", "Dateityp '" + contentType + "' ist nicht erlaubt.");
+			session.setAttribute("errorMessage", "Dateityp '" + friendlyName
+					+ "' ist nicht erlaubt. Erlaubte Typen sind: Bilder, PDF, Text/Markdown.");
 			response.sendRedirect(request.getContextPath() + "/admin/dateien");
 			return;
 		}

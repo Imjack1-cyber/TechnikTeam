@@ -38,6 +38,8 @@
 						title="Wähle deine Chat-Farbe">
 					<button type="submit" class="btn btn-small">Speichern</button>
 				</form></li>
+			<li><a href="${pageContext.request.contextPath}/passwort"
+				class="btn btn-secondary">Passwort ändern</a></li>
 		</ul>
 	</div>
 

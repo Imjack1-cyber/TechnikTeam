@@ -1,6 +1,7 @@
 package de.technikteam.servlet.admin.action;
 
 import de.technikteam.dao.UserDAO;
+import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import jakarta.servlet.ServletException;
@@ -10,6 +11,7 @@ import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
 import java.security.SecureRandom;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class ResetPasswordAction implements Action {
@@ -17,7 +19,7 @@ public class ResetPasswordAction implements Action {
     private final UserDAO userDAO = new UserDAO();
 
     @Override
-    public String execute(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    public ApiResponse execute(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         HttpSession session = request.getSession();
         User adminUser = (User) session.getAttribute("user");
 
@@ -30,7 +32,7 @@ public class ResetPasswordAction implements Action {
         User userToReset = userDAO.getUserById(userId);
 
         if (userToReset == null) {
-            session.setAttribute("errorMessage", "Benutzer zum Zurücksetzen nicht gefunden.");
+            return ApiResponse.error("Benutzer zum Zurücksetzen nicht gefunden.");
         } else {
             String newPassword = generateRandomPassword(12);
             if (userDAO.changePassword(userId, newPassword)) {
@@ -38,14 +40,14 @@ public class ResetPasswordAction implements Action {
                         userToReset.getUsername(), userId);
                 AdminLogService.log(adminUser.getUsername(), "RESET_PASSWORD", logDetails);
 
-                session.setAttribute("passwordResetUser", userToReset.getUsername());
-                session.setAttribute("passwordResetNewPassword", newPassword);
+                return ApiResponse.success(
+                        "Passwort für " + userToReset.getUsername() + " zurückgesetzt auf: " + newPassword,
+                        Map.of("username", userToReset.getUsername(), "newPassword", newPassword)
+                );
             } else {
-                session.setAttribute("errorMessage", "Passwort konnte nicht zurückgesetzt werden.");
+                return ApiResponse.error("Passwort konnte nicht zurückgesetzt werden.");
             }
         }
-
-        return "redirect:/admin/mitglieder";
     }
 
     private String generateRandomPassword(int length) {

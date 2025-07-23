@@ -83,7 +83,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		newUserBtn.addEventListener('click', () => {
 			form.reset();
 			title.textContent = "Neuen Benutzer anlegen";
-			actionInput.value = "create";
+			actionInput.value = "create"; // Keep this for logic branching
+			form.setAttribute('action', `${contextPath}/admin/action/user?action=create`); // Set explicit action URL
 			idInput.value = "";
 			passwordInput.required = true;
 			passwordGroup.style.display = 'block';
@@ -106,17 +107,18 @@ document.addEventListener('DOMContentLoaded', () => {
 				const assignedPermissionIds = new Set(data.permissionIds);
 
 				title.textContent = `Benutzer bearbeiten: ${user.username}`;
-				actionInput.value = "update";
+				actionInput.value = "update"; // Keep this for logic branching
+				form.setAttribute('action', `${contextPath}/admin/action/user?action=update`); // Set explicit action URL
 				idInput.value = user.id;
 				usernameInput.value = user.username || '';
 				roleInput.value = user.roleId || '3';
 				classYearInput.value = user.classYear || '';
 				classNameInput.value = user.className || '';
 				emailInput.value = user.email || '';
-				passwordInput.required = false;
-				passwordGroup.style.display = 'block';
-				passwordInput.placeholder = "Leer lassen, um nicht zu ändern";
 
+				// Hide password field when editing a user
+				passwordInput.required = false;
+				passwordGroup.style.display = 'none';
 
 				populatePermissions(assignedPermissionIds);
 
@@ -146,15 +148,19 @@ document.addEventListener('DOMContentLoaded', () => {
 	form.addEventListener('submit', async (event) => {
 		event.preventDefault();
 		const action = actionInput.value;
+		const formActionUrl = form.getAttribute('action');
 
+		// The 'update' action should now also be async.
 		if (action === 'update') {
-			form.submit(); // Use traditional submit for updates for now
+			// For updates, we can just submit traditionally as it's less frequent.
+			// Or implement async logic similar to 'create' if desired.
+			form.submit();
 			return;
 		}
 
 		const formData = new FormData(form);
 		try {
-			const response = await fetch(form.action, {
+			const response = await fetch(formActionUrl, {
 				method: 'POST',
 				headers: { 'X-Requested-With': 'XMLHttpRequest' },
 				body: formData
@@ -167,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				showToast(result.message, 'success');
 				appendUserToTable(result.newUser);
 			} else {
-				showToast(result.message, 'danger');
+				showToast(result.message || 'Ein unbekannter Fehler ist aufgetreten.', 'danger');
 			}
 		} catch (error) {
 			console.error('Error submitting form:', error);

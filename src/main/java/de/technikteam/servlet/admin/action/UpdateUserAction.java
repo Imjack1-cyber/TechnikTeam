@@ -1,6 +1,8 @@
 package de.technikteam.servlet.admin.action;
 
+import de.technikteam.dao.RoleDAO;
 import de.technikteam.dao.UserDAO;
+import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.UserService;
@@ -14,10 +16,11 @@ import java.io.IOException;
 
 public class UpdateUserAction implements Action {
 	private final UserDAO userDAO = new UserDAO();
+	private final RoleDAO roleDAO = new RoleDAO();
 	private final UserService userService = new UserService();
 
 	@Override
-	public String execute(HttpServletRequest request, HttpServletResponse response)
+	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		HttpSession session = request.getSession();
 		int userId = Integer.parseInt(request.getParameter("userId"));
@@ -30,8 +33,7 @@ public class UpdateUserAction implements Action {
 
 		User originalUser = userDAO.getUserById(userId);
 		if (originalUser == null) {
-			session.setAttribute("errorMessage", "Fehler: Benutzer mit ID " + userId + " nicht gefunden.");
-			return "redirect:/admin/mitglieder";
+			return ApiResponse.error("Fehler: Benutzer mit ID " + userId + " nicht gefunden.");
 		}
 
 		int roleId = Integer.parseInt(request.getParameter("roleId"));
@@ -55,21 +57,25 @@ public class UpdateUserAction implements Action {
 		boolean success = userService.updateUserWithPermissions(updatedUser, permissionIds);
 
 		if (success) {
+			User refreshedUser = userDAO.getUserById(userId);
+
+			// Enrich with role name for the JSON response
+			roleDAO.getAllRoles().stream().filter(role -> role.getId() == refreshedUser.getRoleId()).findFirst()
+					.ifPresent(role -> refreshedUser.setRoleName(role.getRoleName()));
+
+
 			if (adminUser.getId() == userId) {
-				User refreshedUserInSession = userDAO.getUserById(userId);
-				refreshedUserInSession.setPermissions(userDAO.getPermissionsForUser(userId));
-				session.setAttribute("user", refreshedUserInSession);
+				refreshedUser.setPermissions(userDAO.getPermissionsForUser(userId));
+				session.setAttribute("user", refreshedUser);
 				session.setAttribute("navigationItems",
-						NavigationRegistry.getNavigationItemsForUser(refreshedUserInSession));
+						NavigationRegistry.getNavigationItemsForUser(refreshedUser));
 			}
 			AdminLogService.log(adminUser.getUsername(), "UPDATE_USER",
 					"Benutzer '" + originalUser.getUsername() + "' (ID: " + userId + ") aktualisiert.");
-			session.setAttribute("successMessage", "Benutzerdaten erfolgreich aktualisiert.");
-		} else {
-			session.setAttribute("infoMessage",
-					"Keine Änderungen an den Benutzerdaten vorgenommen oder ein Fehler ist aufgetreten.");
-		}
 
-		return "redirect:/admin/mitglieder";
+			return ApiResponse.success("Benutzerdaten erfolgreich aktualisiert.", refreshedUser);
+		} else {
+			return ApiResponse.error("Keine Änderungen an den Benutzerdaten vorgenommen oder ein Fehler ist aufgetreten.");
+		}
 	}
 }

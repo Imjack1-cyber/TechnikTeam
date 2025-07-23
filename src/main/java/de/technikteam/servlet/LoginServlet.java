@@ -14,14 +14,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
-import java.util.Set;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import java.util.concurrent.TimeUnit;
 
 import de.technikteam.dao.UserDAO;
 
@@ -31,10 +27,64 @@ public class LoginServlet extends HttpServlet {
 	private static final Logger logger = LogManager.getLogger(LoginServlet.class);
 	private UserDAO userDAO;
 
-	private static final int MAX_ATTEMPTS = 5;
-	private static final long LOCKOUT_TIME_MS = 15 * 60 * 1000;
-	private static final Map<String, Integer> failedAttempts = new ConcurrentHashMap<>();
-	private static final Map<String, Long> lockoutTimestamps = new ConcurrentHashMap<>();
+	// Manages login throttling and lockout state.
+	public static class LoginAttemptManager {
+		private static final int MAX_ATTEMPTS = 5;
+		private static final long[] LOCKOUT_DURATIONS_MS = { TimeUnit.MINUTES.toMillis(1), // 1 minute
+				TimeUnit.MINUTES.toMillis(2), // 2 minutes
+				TimeUnit.MINUTES.toMillis(5), // 5 minutes
+				TimeUnit.MINUTES.toMillis(10), // 10 minutes
+				TimeUnit.MINUTES.toMillis(30) // 30 minutes
+		};
+
+		private static final Map<String, Integer> failedAttempts = new ConcurrentHashMap<>();
+		private static final Map<String, Long> lockoutTimestamps = new ConcurrentHashMap<>();
+		private static final Map<String, Integer> lockoutLevel = new ConcurrentHashMap<>();
+
+		public static long getLockoutEndTime(String username) {
+			return lockoutTimestamps.getOrDefault(username, 0L);
+		}
+
+		public static int getLockoutLevel(String username) {
+			return lockoutLevel.getOrDefault(username, 0);
+		}
+
+		public static boolean isLockedOut(String username) {
+			Long lockoutTime = lockoutTimestamps.get(username);
+			if (lockoutTime == null) {
+				return false;
+			}
+			int currentLevel = lockoutLevel.getOrDefault(username, 0);
+			long duration = LOCKOUT_DURATIONS_MS[Math.min(currentLevel, LOCKOUT_DURATIONS_MS.length - 1)];
+
+			if (System.currentTimeMillis() - lockoutTime > duration) {
+				// No need to clear here, a successful login will do that.
+				return false;
+			}
+			return true;
+		}
+
+		public static void recordFailedLogin(String username) {
+			int attempts = failedAttempts.compute(username, (k, v) -> (v == null) ? 1 : v + 1);
+			logger.warn("Failed login attempt #{} for user: {}", attempts, username);
+
+			if (attempts >= MAX_ATTEMPTS) {
+				int currentLevel = lockoutLevel.compute(username, (k, v) -> (v == null) ? 0 : v + 1);
+				long duration = LOCKOUT_DURATIONS_MS[Math.min(currentLevel, LOCKOUT_DURATIONS_MS.length - 1)];
+				logger.warn("Locking out user {} for {} minutes due to {} failed login attempts.", username,
+						TimeUnit.MILLISECONDS.toMinutes(duration), attempts);
+				lockoutTimestamps.put(username, System.currentTimeMillis());
+				failedAttempts.remove(username);
+			}
+		}
+
+		public static void clearLoginAttempts(String username) {
+			failedAttempts.remove(username);
+			lockoutTimestamps.remove(username);
+			lockoutLevel.remove(username);
+			logger.info("Login throttling state cleared for user: {}", username);
+		}
+	}
 
 	@Override
 	public void init() {
@@ -53,13 +103,16 @@ public class LoginServlet extends HttpServlet {
 		String username = request.getParameter("username");
 		String password = request.getParameter("password");
 		String sanitizedUsername = sanitizeForLogging(username);
+		HttpSession session = request.getSession(true);
 
-		logger.info("Login attempt for username: {}", sanitizedUsername);
-
-		if (isLockedOut(sanitizedUsername)) {
-			logger.warn("Login attempt for locked-out user: {}", sanitizedUsername);
-			request.getSession().setAttribute("errorMessage",
+		if (LoginAttemptManager.isLockedOut(sanitizedUsername)) {
+			long endTime = LoginAttemptManager.getLockoutEndTime(sanitizedUsername);
+			int level = LoginAttemptManager.getLockoutLevel(sanitizedUsername);
+			session.setAttribute("errorMessage",
 					"Ihr Konto ist aufgrund zu vieler fehlgeschlagener Versuche vorübergehend gesperrt.");
+			session.setAttribute("lockoutEndTime", endTime);
+			session.setAttribute("lockoutLevel", level);
+			session.setAttribute("failedUsername", username);
 			response.sendRedirect(request.getContextPath() + "/login");
 			return;
 		}
@@ -67,16 +120,9 @@ public class LoginServlet extends HttpServlet {
 		User user = userDAO.validateUser(username, password);
 
 		if (user != null) {
-			failedAttempts.remove(sanitizedUsername);
-			lockoutTimestamps.remove(sanitizedUsername);
+			LoginAttemptManager.clearLoginAttempts(sanitizedUsername);
 
-			// Invalidate any old session to prevent session fixation
-			HttpSession oldSession = request.getSession(false);
-			if (oldSession != null) {
-				oldSession.invalidate();
-			}
-
-			// Create a new session for the authenticated user
+			session.invalidate();
 			HttpSession newSession = request.getSession(true);
 			newSession.setAttribute("user", user);
 
@@ -89,34 +135,19 @@ public class LoginServlet extends HttpServlet {
 					user.getRoleName());
 			response.sendRedirect(request.getContextPath() + "/home");
 		} else {
-			handleFailedLogin(sanitizedUsername);
-			// Get or create a session to store the error message
-			HttpSession session = request.getSession(true);
+			handleFailedLogin(sanitizedUsername, request); // FIX: Pass the request object
 			session.setAttribute("errorMessage", "Benutzername oder Passwort ungültig.");
+			session.setAttribute("failedUsername", username); // Keep username in field
 			response.sendRedirect(request.getContextPath() + "/login");
 		}
 	}
 
-	private boolean isLockedOut(String username) {
-		Long lockoutTime = lockoutTimestamps.get(username);
-		if (lockoutTime == null) {
-			return false;
-		}
-		if (System.currentTimeMillis() - lockoutTime > LOCKOUT_TIME_MS) {
-			lockoutTimestamps.remove(username);
-			failedAttempts.remove(username);
-			return false;
-		}
-		return true;
-	}
-
-	private void handleFailedLogin(String username) {
-		int attempts = failedAttempts.compute(username, (k, v) -> (v == null) ? 1 : v + 1);
-
-		if (attempts >= MAX_ATTEMPTS) {
-			logger.warn("Locking out user {} due to {} failed login attempts.", username, attempts);
-			lockoutTimestamps.put(username, System.currentTimeMillis());
-			failedAttempts.remove(username);
+	private void handleFailedLogin(String username, HttpServletRequest request) { // FIX: Accept the request object
+		LoginAttemptManager.recordFailedLogin(username);
+		if (LoginAttemptManager.isLockedOut(username)) {
+			HttpSession session = request.getSession();
+			session.setAttribute("lockoutEndTime", LoginAttemptManager.getLockoutEndTime(username));
+			session.setAttribute("lockoutLevel", LoginAttemptManager.getLockoutLevel(username));
 		}
 	}
 

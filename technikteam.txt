@@ -168,6 +168,84 @@ public class LocalDateTimeAdapter extends TypeAdapter<LocalDateTime> {
     }
 }
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\config\Permissions.java
+========================================================================
+
+package de.technikteam.config;
+
+/**
+ * A central repository for all permission key constants used throughout the
+ * application. This prevents the use of "magic strings" for permission checks,
+ * reducing typos and making the code more maintainable and readable.
+ */
+public final class Permissions {
+
+	private Permissions() {
+		// Private constructor to prevent instantiation
+	}
+
+	// --- GLOBAL ---
+	public static final String ACCESS_ADMIN_PANEL = "ACCESS_ADMIN_PANEL";
+
+	// --- USER MANAGEMENT ---
+	public static final String USER_CREATE = "USER_CREATE";
+	public static final String USER_READ = "USER_READ";
+	public static final String USER_UPDATE = "USER_UPDATE";
+	public static final String USER_DELETE = "USER_DELETE";
+	public static final String USER_PASSWORD_RESET = "USER_PASSWORD_RESET";
+
+	// --- EVENT MANAGEMENT ---
+	public static final String EVENT_CREATE = "EVENT_CREATE";
+	public static final String EVENT_READ = "EVENT_READ";
+	public static final String EVENT_UPDATE = "EVENT_UPDATE";
+	public static final String EVENT_DELETE = "EVENT_DELETE";
+	public static final String EVENT_MANAGE_ASSIGNMENTS = "EVENT_MANAGE_ASSIGNMENTS";
+	public static final String EVENT_MANAGE_TASKS = "EVENT_MANAGE_TASKS";
+
+	// --- COURSE & MEETING MANAGEMENT ---
+	public static final String COURSE_CREATE = "COURSE_CREATE";
+	public static final String COURSE_READ = "COURSE_READ";
+	public static final String COURSE_UPDATE = "COURSE_UPDATE";
+	public static final String COURSE_DELETE = "COURSE_DELETE";
+
+	// --- STORAGE & INVENTORY ---
+	public static final String STORAGE_CREATE = "STORAGE_CREATE";
+	public static final String STORAGE_READ = "STORAGE_READ";
+	public static final String STORAGE_UPDATE = "STORAGE_UPDATE";
+	public static final String STORAGE_DELETE = "STORAGE_DELETE";
+
+	// --- KIT MANAGEMENT ---
+	public static final String KIT_CREATE = "KIT_CREATE";
+	public static final String KIT_READ = "KIT_READ";
+	public static final String KIT_UPDATE = "KIT_UPDATE";
+	public static final String KIT_DELETE = "KIT_DELETE";
+
+	// --- QUALIFICATIONS ---
+	public static final String QUALIFICATION_READ = "QUALIFICATION_READ";
+	public static final String QUALIFICATION_UPDATE = "QUALIFICATION_UPDATE";
+
+	// --- FILE MANAGEMENT ---
+	public static final String FILE_CREATE = "FILE_CREATE";
+	public static final String FILE_READ = "FILE_READ";
+	public static final String FILE_UPDATE = "FILE_UPDATE";
+	public static final String FILE_DELETE = "FILE_DELETE";
+	public static final String FILE_MANAGE = "FILE_MANAGE";
+
+	// --- SYSTEM & REPORTING ---
+	public static final String LOG_READ = "LOG_READ";
+	public static final String REPORT_READ = "REPORT_READ";
+	public static final String SYSTEM_READ = "SYSTEM_READ";
+
+	// --- ACHIEVEMENTS ---
+	public static final String ACHIEVEMENT_CREATE = "ACHIEVEMENT_CREATE";
+	public static final String ACHIEVEMENT_UPDATE = "ACHIEVEMENT_UPDATE";
+	public static final String ACHIEVEMENT_DELETE = "ACHIEVEMENT_DELETE";
+	public static final String ACHIEVEMENT_VIEW = "ACHIEVEMENT_VIEW"; // Special key for navigation
+
+	// --- NAVIGATION-SPECIFIC ---
+	public static final String ADMIN_DASHBOARD_ACCESS = "ADMIN_DASHBOARD_ACCESS";
+}
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\dao\AchievementDAO.java
 ========================================================================
 
@@ -437,20 +515,26 @@ public class AttachmentDAO {
 	}
 
 	public boolean addAttachment(Attachment attachment) {
+		logger.debug("Adding attachment '{}' to {} ID {} (manages its own connection)", attachment.getFilename(),
+				attachment.getParentType(), attachment.getParentId());
+		try (Connection conn = DatabaseManager.getConnection()) {
+			return addAttachment(attachment, conn);
+		} catch (SQLException e) {
+			logger.error("Error adding attachment to {} ID {}", attachment.getParentType(), attachment.getParentId(),
+					e);
+			return false;
+		}
+	}
+
+	public boolean addAttachment(Attachment attachment, Connection conn) throws SQLException {
 		String sql = "INSERT INTO attachments (parent_type, parent_id, filename, filepath, required_role) VALUES (?, ?, ?, ?, ?)";
-		logger.debug("Adding attachment '{}' to {} ID {}", attachment.getFilename(), attachment.getParentType(),
-				attachment.getParentId());
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, attachment.getParentType());
 			pstmt.setInt(2, attachment.getParentId());
 			pstmt.setString(3, attachment.getFilename());
 			pstmt.setString(4, attachment.getFilepath());
 			pstmt.setString(5, attachment.getRequiredRole());
 			return pstmt.executeUpdate() > 0;
-		} catch (SQLException e) {
-			logger.error("Error adding attachment to {} ID {}", attachment.getParentType(), attachment.getParentId(),
-					e);
-			return false;
 		}
 	}
 
@@ -943,34 +1027,14 @@ public class EventCustomFieldDAO {
 	private static final Logger logger = LogManager.getLogger(EventCustomFieldDAO.class);
 
 	public void saveCustomFieldsForEvent(int eventId, List<EventCustomField> fields) {
-		String deleteSql = "DELETE FROM event_custom_fields WHERE event_id = ?";
-		String insertSql = "INSERT INTO event_custom_fields (event_id, field_name, field_type, is_required, field_options) VALUES (?, ?, ?, ?, ?)";
 		Connection connection = null;
 		try {
 			connection = DatabaseManager.getConnection();
 			connection.setAutoCommit(false);
-
-			try (PreparedStatement deleteStatement = connection.prepareStatement(deleteSql)) {
-				deleteStatement.setInt(1, eventId);
-				deleteStatement.executeUpdate();
-			}
-
-			if (fields != null && !fields.isEmpty()) {
-				try (PreparedStatement insertStatement = connection.prepareStatement(insertSql)) {
-					for (EventCustomField field : fields) {
-						insertStatement.setInt(1, eventId);
-						insertStatement.setString(2, field.getFieldName());
-						insertStatement.setString(3, field.getFieldType());
-						insertStatement.setBoolean(4, field.isRequired());
-						insertStatement.setString(5, field.getFieldOptions());
-						insertStatement.addBatch();
-					}
-					insertStatement.executeBatch();
-				}
-			}
+			saveCustomFieldsForEvent(eventId, fields, connection);
 			connection.commit();
-			logger.info("Successfully saved {} custom fields for event ID {}", fields != null ? fields.size() : 0,
-					eventId);
+			logger.info("Successfully saved {} custom fields for event ID {} (DAO managed transaction)",
+					fields != null ? fields.size() : 0, eventId);
 		} catch (SQLException e) {
 			logger.error("Error saving custom fields for event ID {}. Rolling back.", eventId, e);
 			if (connection != null)
@@ -987,6 +1051,31 @@ public class EventCustomFieldDAO {
 				} catch (SQLException ex) {
 					logger.error("Failed to close connection.", ex);
 				}
+		}
+	}
+
+	public void saveCustomFieldsForEvent(int eventId, List<EventCustomField> fields, Connection conn)
+			throws SQLException {
+		String deleteSql = "DELETE FROM event_custom_fields WHERE event_id = ?";
+		String insertSql = "INSERT INTO event_custom_fields (event_id, field_name, field_type, is_required, field_options) VALUES (?, ?, ?, ?, ?)";
+
+		try (PreparedStatement deleteStatement = conn.prepareStatement(deleteSql)) {
+			deleteStatement.setInt(1, eventId);
+			deleteStatement.executeUpdate();
+		}
+
+		if (fields != null && !fields.isEmpty()) {
+			try (PreparedStatement insertStatement = conn.prepareStatement(insertSql)) {
+				for (EventCustomField field : fields) {
+					insertStatement.setInt(1, eventId);
+					insertStatement.setString(2, field.getFieldName());
+					insertStatement.setString(3, field.getFieldType());
+					insertStatement.setBoolean(4, field.isRequired());
+					insertStatement.setString(5, field.getFieldOptions());
+					insertStatement.addBatch();
+				}
+				insertStatement.executeBatch();
+			}
 		}
 	}
 
@@ -1162,11 +1251,18 @@ public class EventDAO {
 	}
 
 	public int createEvent(Event event) {
+		logger.debug("Attempting to create new event: {} (manages its own connection)", event.getName());
+		try (Connection connection = DatabaseManager.getConnection()) {
+			return createEvent(event, connection);
+		} catch (SQLException exception) {
+			logger.error("SQL error creating event '{}'.", event.getName(), exception);
+			return 0;
+		}
+	}
+
+	public int createEvent(Event event, Connection connection) throws SQLException {
 		String sql = "INSERT INTO events (name, event_datetime, end_datetime, description, location, status, leader_user_id) VALUES (?, ?, ?, ?, ?, 'GEPLANT', ?)";
-		logger.debug("Attempting to create new event: {}", event.getName());
-		try (Connection connection = DatabaseManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql,
-						Statement.RETURN_GENERATED_KEYS)) {
+		try (PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 			preparedStatement.setString(1, event.getName());
 			preparedStatement.setTimestamp(2, Timestamp.valueOf(event.getEventDateTime()));
 			if (event.getEndDateTime() != null) {
@@ -1191,17 +1287,23 @@ public class EventDAO {
 					}
 				}
 			}
-		} catch (SQLException exception) {
-			logger.error("SQL error creating event '{}'.", event.getName(), exception);
 		}
 		return 0;
 	}
 
 	public boolean updateEvent(Event event) {
+		logger.debug("Attempting to update event with ID: {} (manages its own connection)", event.getId());
+		try (Connection connection = DatabaseManager.getConnection()) {
+			return updateEvent(event, connection);
+		} catch (SQLException exception) {
+			logger.error("SQL error updating event with ID: {}", event.getId(), exception);
+			return false;
+		}
+	}
+
+	public boolean updateEvent(Event event, Connection connection) throws SQLException {
 		String sql = "UPDATE events SET name = ?, event_datetime = ?, end_datetime = ?, description = ?, location = ?, status = ?, leader_user_id = ? WHERE id = ?";
-		logger.debug("Attempting to update event with ID: {}", event.getId());
-		try (Connection connection = DatabaseManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+		try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 			preparedStatement.setString(1, event.getName());
 			preparedStatement.setTimestamp(2, Timestamp.valueOf(event.getEventDateTime()));
 			if (event.getEndDateTime() != null) {
@@ -1218,12 +1320,8 @@ public class EventDAO {
 				preparedStatement.setNull(7, Types.INTEGER);
 			}
 			preparedStatement.setInt(8, event.getId());
-
 			return preparedStatement.executeUpdate() > 0;
-		} catch (SQLException exception) {
-			logger.error("SQL error updating event with ID: {}", event.getId(), exception);
 		}
-		return false;
 	}
 
 	public boolean deleteEvent(int eventId) {
@@ -1364,33 +1462,9 @@ public class EventDAO {
 	}
 
 	public void saveSkillRequirements(int eventId, String[] requiredCourseIds, String[] requiredPersons) {
-		String deleteSql = "DELETE FROM event_skill_requirements WHERE event_id = ?";
-		String insertSql = "INSERT INTO event_skill_requirements (event_id, required_course_id, required_persons) VALUES (?, ?, ?)";
-		logger.debug("Saving skill requirements for event ID: {}", eventId);
-
 		try (Connection connection = DatabaseManager.getConnection()) {
 			connection.setAutoCommit(false);
-
-			try (PreparedStatement deleteStatement = connection.prepareStatement(deleteSql)) {
-				deleteStatement.setInt(1, eventId);
-				deleteStatement.executeUpdate();
-			}
-
-			if (requiredCourseIds != null && requiredPersons != null
-					&& requiredCourseIds.length == requiredPersons.length) {
-				try (PreparedStatement insertStatement = connection.prepareStatement(insertSql)) {
-					for (int i = 0; i < requiredCourseIds.length; i++) {
-						if (requiredCourseIds[i] == null || requiredCourseIds[i].isEmpty())
-							continue;
-						insertStatement.setInt(1, eventId);
-						insertStatement.setInt(2, Integer.parseInt(requiredCourseIds[i]));
-						insertStatement.setInt(3, Integer.parseInt(requiredPersons[i]));
-						insertStatement.addBatch();
-					}
-					insertStatement.executeBatch();
-				}
-			}
-
+			saveSkillRequirements(eventId, requiredCourseIds, requiredPersons, connection);
 			connection.commit();
 			logger.info("Successfully saved skill requirements for event ID: {}", eventId);
 		} catch (SQLException | NumberFormatException exception) {
@@ -1400,36 +1474,66 @@ public class EventDAO {
 		}
 	}
 
-	public void saveReservations(int eventId, String[] itemIds, String[] quantities) {
-		String deleteSql = "DELETE FROM event_storage_reservations WHERE event_id = ?";
-		String insertSql = "INSERT INTO event_storage_reservations (event_id, item_id, reserved_quantity) VALUES (?, ?, ?)";
+	public void saveSkillRequirements(int eventId, String[] requiredCourseIds, String[] requiredPersons,
+			Connection connection) throws SQLException {
+		String deleteSql = "DELETE FROM event_skill_requirements WHERE event_id = ?";
+		String insertSql = "INSERT INTO event_skill_requirements (event_id, required_course_id, required_persons) VALUES (?, ?, ?)";
 
+		try (PreparedStatement deleteStatement = connection.prepareStatement(deleteSql)) {
+			deleteStatement.setInt(1, eventId);
+			deleteStatement.executeUpdate();
+		}
+
+		if (requiredCourseIds != null && requiredPersons != null
+				&& requiredCourseIds.length == requiredPersons.length) {
+			try (PreparedStatement insertStatement = connection.prepareStatement(insertSql)) {
+				for (int i = 0; i < requiredCourseIds.length; i++) {
+					if (requiredCourseIds[i] == null || requiredCourseIds[i].isEmpty())
+						continue;
+					insertStatement.setInt(1, eventId);
+					insertStatement.setInt(2, Integer.parseInt(requiredCourseIds[i]));
+					insertStatement.setInt(3, Integer.parseInt(requiredPersons[i]));
+					insertStatement.addBatch();
+				}
+				insertStatement.executeBatch();
+			}
+		}
+	}
+
+	public void saveReservations(int eventId, String[] itemIds, String[] quantities) {
 		try (Connection connection = DatabaseManager.getConnection()) {
 			connection.setAutoCommit(false);
-
-			try (PreparedStatement deleteStatement = connection.prepareStatement(deleteSql)) {
-				deleteStatement.setInt(1, eventId);
-				deleteStatement.executeUpdate();
-			}
-
-			if (itemIds != null && quantities != null && itemIds.length == quantities.length) {
-				try (PreparedStatement insertStatement = connection.prepareStatement(insertSql)) {
-					for (int i = 0; i < itemIds.length; i++) {
-						if (itemIds[i] == null || itemIds[i].isEmpty())
-							continue;
-						insertStatement.setInt(1, eventId);
-						insertStatement.setInt(2, Integer.parseInt(itemIds[i]));
-						insertStatement.setInt(3, Integer.parseInt(quantities[i]));
-						insertStatement.addBatch();
-					}
-					insertStatement.executeBatch();
-				}
-			}
+			saveReservations(eventId, itemIds, quantities, connection);
 			connection.commit();
 			logger.info("Successfully saved storage reservations for event ID: {}", eventId);
 		} catch (SQLException | NumberFormatException exception) {
 			logger.error("Error saving storage reservations for event {}. Transaction will be rolled back.", eventId,
 					exception);
+		}
+	}
+
+	public void saveReservations(int eventId, String[] itemIds, String[] quantities, Connection connection)
+			throws SQLException {
+		String deleteSql = "DELETE FROM event_storage_reservations WHERE event_id = ?";
+		String insertSql = "INSERT INTO event_storage_reservations (event_id, item_id, reserved_quantity) VALUES (?, ?, ?)";
+
+		try (PreparedStatement deleteStatement = connection.prepareStatement(deleteSql)) {
+			deleteStatement.setInt(1, eventId);
+			deleteStatement.executeUpdate();
+		}
+
+		if (itemIds != null && quantities != null && itemIds.length == quantities.length) {
+			try (PreparedStatement insertStatement = connection.prepareStatement(insertSql)) {
+				for (int i = 0; i < itemIds.length; i++) {
+					if (itemIds[i] == null || itemIds[i].isEmpty())
+						continue;
+					insertStatement.setInt(1, eventId);
+					insertStatement.setInt(2, Integer.parseInt(itemIds[i]));
+					insertStatement.setInt(3, Integer.parseInt(quantities[i]));
+					insertStatement.addBatch();
+				}
+				insertStatement.executeBatch();
+			}
 		}
 	}
 
@@ -4003,33 +4107,13 @@ public class UserDAO {
 	}
 
 	public boolean updateUserPermissions(int userId, String[] permissionIds) {
-		String deleteSql = "DELETE FROM user_permissions WHERE user_id = ?";
-		String insertSql = "INSERT INTO user_permissions (user_id, permission_id) VALUES (?, ?)";
 		Connection conn = null;
-
 		try {
 			conn = DatabaseManager.getConnection();
 			conn.setAutoCommit(false);
-
-			try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
-				deleteStmt.setInt(1, userId);
-				deleteStmt.executeUpdate();
-			}
-
-			if (permissionIds != null && permissionIds.length > 0) {
-				try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
-					for (String permId : permissionIds) {
-						insertStmt.setInt(1, userId);
-						insertStmt.setInt(2, Integer.parseInt(permId));
-						insertStmt.addBatch();
-					}
-					insertStmt.executeBatch();
-				}
-			}
-
+			boolean success = updateUserPermissions(userId, permissionIds, conn);
 			conn.commit();
-			logger.info("Successfully updated permissions for user ID: {}", userId);
-			return true;
+			return success;
 		} catch (SQLException | NumberFormatException e) {
 			logger.error("Error during transaction for updating user permissions for user ID {}. Rolling back.", userId,
 					e);
@@ -4051,6 +4135,29 @@ public class UserDAO {
 				}
 			}
 		}
+	}
+
+	public boolean updateUserPermissions(int userId, String[] permissionIds, Connection conn) throws SQLException {
+		String deleteSql = "DELETE FROM user_permissions WHERE user_id = ?";
+		String insertSql = "INSERT INTO user_permissions (user_id, permission_id) VALUES (?, ?)";
+
+		try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
+			deleteStmt.setInt(1, userId);
+			deleteStmt.executeUpdate();
+		}
+
+		if (permissionIds != null && permissionIds.length > 0) {
+			try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
+				for (String permId : permissionIds) {
+					insertStmt.setInt(1, userId);
+					insertStmt.setInt(2, Integer.parseInt(permId));
+					insertStmt.addBatch();
+				}
+				insertStmt.executeBatch();
+			}
+		}
+		logger.info("Successfully updated permissions for user ID: {}", userId);
+		return true;
 	}
 
 	public List<User> getAllUsers() {
@@ -4109,14 +4216,20 @@ public class UserDAO {
 	}
 
 	public int createUser(User user, String password) {
+		logger.debug("Attempting to create user: {} (manages its own connection)", user.getUsername());
+		try (Connection connection = DatabaseManager.getConnection()) {
+			return createUser(user, password, connection);
+		} catch (SQLException exception) {
+			logger.error("SQL error creating user '{}'. Username or email might already exist.", user.getUsername(),
+					exception);
+			return 0;
+		}
+	}
+
+	public int createUser(User user, String password, Connection connection) throws SQLException {
 		String hashedPassword = passwordEncoder.encode(password);
-
 		String sql = "INSERT INTO users (username, password_hash, role_id, class_year, class_name, email, theme) VALUES (?, ?, ?, ?, ?, ?, ?)";
-		logger.debug("Attempting to create user: {}", user.getUsername());
-		try (Connection connection = DatabaseManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql,
-						Statement.RETURN_GENERATED_KEYS)) {
-
+		try (PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 			preparedStatement.setString(1, user.getUsername());
 			preparedStatement.setString(2, hashedPassword);
 			preparedStatement.setInt(3, user.getRoleId());
@@ -4124,9 +4237,7 @@ public class UserDAO {
 			preparedStatement.setString(5, user.getClassName());
 			preparedStatement.setString(6, user.getEmail());
 			preparedStatement.setString(7, "light"); // Default theme
-
 			int affectedRows = preparedStatement.executeUpdate();
-
 			if (affectedRows > 0) {
 				try (ResultSet generatedKeys = preparedStatement.getGeneratedKeys()) {
 					if (generatedKeys.next()) {
@@ -4136,18 +4247,23 @@ public class UserDAO {
 					}
 				}
 			}
-		} catch (SQLException exception) {
-			logger.error("SQL error creating user '{}'. Username or email might already exist.", user.getUsername(),
-					exception);
 		}
 		return 0;
 	}
 
 	public boolean updateUser(User user) {
-		logger.debug("Updating user with ID: {}", user.getId());
+		logger.debug("Updating user with ID: {} (manages its own connection)", user.getId());
+		try (Connection connection = DatabaseManager.getConnection()) {
+			return updateUser(user, connection);
+		} catch (SQLException exception) {
+			logger.error("SQL error updating user with ID: {}", user.getId(), exception);
+			return false;
+		}
+	}
+
+	public boolean updateUser(User user, Connection connection) throws SQLException {
 		String sql = "UPDATE users SET username = ?, role_id = ?, class_year = ?, class_name = ?, email = ? WHERE id = ?";
-		try (Connection connection = DatabaseManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+		try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 			preparedStatement.setString(1, user.getUsername());
 			preparedStatement.setInt(2, user.getRoleId());
 			preparedStatement.setInt(3, user.getClassYear());
@@ -4155,9 +4271,6 @@ public class UserDAO {
 			preparedStatement.setString(5, user.getEmail());
 			preparedStatement.setInt(6, user.getId());
 			return preparedStatement.executeUpdate() > 0;
-		} catch (SQLException exception) {
-			logger.error("SQL error updating user with ID: {}", user.getId(), exception);
-			return false;
 		}
 	}
 
@@ -6816,6 +6929,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.model;
 
+import de.technikteam.config.Permissions;
+
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -6855,9 +6970,9 @@ public class User {
 		// A user has admin access if they have the master key OR any other specific
 		// admin-level permission that is not just for viewing or updating specific
 		// content.
-		return permissions.contains("ACCESS_ADMIN_PANEL") || permissions.stream().anyMatch(p -> !p.equals("FILE_READ")
-				&& !p.equals("FILE_UPDATE")
-				&& (p.contains("_READ") || p.contains("_MANAGE") || p.contains("_CREATE") || p.contains("_DELETE")));
+		return permissions.contains(Permissions.ACCESS_ADMIN_PANEL) || permissions.stream().anyMatch(
+				p -> !p.equals(Permissions.FILE_READ) && !p.equals(Permissions.FILE_UPDATE) && (p.contains("_READ")
+						|| p.contains("_MANAGE") || p.contains("_CREATE") || p.contains("_DELETE")));
 	}
 
 	// --- Standard Getters and Setters ---
@@ -7156,6 +7271,163 @@ public class AdminLogService {
 	}
 }
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\service\EventService.java
+========================================================================
+
+package de.technikteam.service;
+
+import de.technikteam.config.AppConfig;
+import de.technikteam.dao.*;
+import de.technikteam.model.*;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.Part;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Service layer for handling complex business logic related to Events,
+ * including transactional operations that span multiple DAOs.
+ */
+public class EventService {
+    private static final Logger logger = LogManager.getLogger(EventService.class);
+
+    private final EventDAO eventDAO;
+    private final AttachmentDAO attachmentDAO;
+    private final EventCustomFieldDAO customFieldDAO;
+
+    public EventService() {
+        this.eventDAO = new EventDAO();
+        this.attachmentDAO = new AttachmentDAO();
+        this.customFieldDAO = new EventCustomFieldDAO();
+    }
+
+    /**
+     * Creates or updates an event and all its related entities within a single database transaction.
+     *
+     * @param event The event object to save.
+     * @param isUpdate A flag indicating if this is a new event or an update.
+     * @param adminUser The admin performing the action.
+     * @param request The servlet request containing all parameters and parts.
+     * @return The ID of the saved event, or 0 on failure.
+     */
+    public int createOrUpdateEvent(Event event, boolean isUpdate, User adminUser, HttpServletRequest request) {
+        Connection conn = null;
+        try {
+            conn = DatabaseManager.getConnection();
+            conn.setAutoCommit(false);
+
+            int eventId;
+            if (isUpdate) {
+                if (eventDAO.updateEvent(event, conn)) {
+                    eventId = event.getId();
+                    AdminLogService.log(adminUser.getUsername(), "UPDATE_EVENT",
+                            "Event '" + event.getName() + "' (ID: " + eventId + ") aktualisiert.");
+                } else {
+                    throw new SQLException("Failed to update the core event record.");
+                }
+            } else {
+                eventId = eventDAO.createEvent(event, conn);
+                if (eventId > 0) {
+                    event.setId(eventId);
+                    AdminLogService.log(adminUser.getUsername(), "CREATE_EVENT",
+                            "Event '" + event.getName() + "' (ID: " + eventId + ") erstellt.");
+                } else {
+                    throw new SQLException("Failed to create the core event record.");
+                }
+            }
+
+            // Handle associated data within the same transaction
+            String[] requiredCourseIds = request.getParameterValues("requiredCourseId");
+            String[] requiredPersons = request.getParameterValues("requiredPersons");
+            eventDAO.saveSkillRequirements(eventId, requiredCourseIds, requiredPersons, conn);
+
+            String[] itemIds = request.getParameterValues("itemId");
+            String[] quantities = request.getParameterValues("itemQuantity");
+            eventDAO.saveReservations(eventId, itemIds, quantities, conn);
+
+            String[] customFieldNames = request.getParameterValues("customFieldName");
+            String[] customFieldTypes = request.getParameterValues("customFieldType");
+            if (customFieldNames != null) {
+                List<EventCustomField> customFields = new ArrayList<>();
+                for (int i = 0; i < customFieldNames.length; i++) {
+                    if (customFieldNames[i] != null && !customFieldNames[i].trim().isEmpty()) {
+                        EventCustomField cf = new EventCustomField();
+                        cf.setFieldName(customFieldNames[i]);
+                        cf.setFieldType(customFieldTypes[i]);
+                        cf.setRequired(true);
+                        customFields.add(cf);
+                    }
+                }
+                customFieldDAO.saveCustomFieldsForEvent(eventId, customFields, conn);
+            }
+
+            Part filePart = request.getPart("attachment");
+            if (filePart != null && filePart.getSize() > 0) {
+                String requiredRole = request.getParameter("requiredRole");
+                handleAttachmentUpload(filePart, eventId, requiredRole, adminUser, request, conn);
+            }
+
+            conn.commit();
+            logger.info("Transaction for event ID {} committed successfully.", eventId);
+            return eventId;
+
+        } catch (Exception e) {
+            logger.error("Error in event service transaction. Rolling back.", e);
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                    logger.info("Transaction rolled back successfully.");
+                } catch (SQLException ex) {
+                    logger.error("Failed to rollback transaction.", ex);
+                }
+            }
+            return 0;
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException ex) {
+                    logger.error("Failed to close connection.", ex);
+                }
+            }
+        }
+    }
+
+    private void handleAttachmentUpload(Part filePart, int eventId, String requiredRole, User adminUser, HttpServletRequest req, Connection conn) throws IOException, SQLException {
+        String uploadDir = AppConfig.UPLOAD_DIRECTORY + File.separator + "events";
+        new File(uploadDir).mkdirs();
+
+        String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
+        File targetFile = new File(uploadDir, fileName);
+        filePart.write(targetFile.getAbsolutePath());
+
+        Attachment attachment = new Attachment();
+        attachment.setParentId(eventId);
+        attachment.setParentType("EVENT");
+        attachment.setFilename(fileName);
+        attachment.setFilepath("events/" + fileName);
+        attachment.setRequiredRole(requiredRole);
+
+        if (attachmentDAO.addAttachment(attachment, conn)) {
+            AdminLogService.log(adminUser.getUsername(), "ADD_EVENT_ATTACHMENT",
+                    "Anhang '" + fileName + "' zu Event ID " + eventId + " hinzugefügt.");
+        } else {
+            req.getSession().setAttribute("errorMessage", "Anhang konnte nicht in DB gespeichert werden.");
+            throw new SQLException("Failed to save attachment to database.");
+        }
+    }
+}
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\service\NotificationService.java
 ========================================================================
 
@@ -7325,6 +7597,123 @@ public class SystemInfoService {
 			return -1;
 		}
 	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\service\UserService.java
+========================================================================
+
+package de.technikteam.service;
+
+import de.technikteam.dao.DatabaseManager;
+import de.technikteam.dao.UserDAO;
+import de.technikteam.model.User;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import java.sql.Connection;
+import java.sql.SQLException;
+
+/**
+ * Service layer for handling complex business logic related to Users,
+ * including transactional operations that span multiple DAO calls.
+ */
+public class UserService {
+    private static final Logger logger = LogManager.getLogger(UserService.class);
+    private final UserDAO userDAO;
+
+    public UserService() {
+        this.userDAO = new UserDAO();
+    }
+
+    /**
+     * Creates a new user and assigns permissions in a single database transaction.
+     *
+     * @param user          The User object to create.
+     * @param password      The plain-text password for the new user.
+     * @param permissionIds An array of permission IDs to assign to the user.
+     * @return The ID of the newly created user, or 0 on failure.
+     */
+    public int createUserWithPermissions(User user, String password, String[] permissionIds) {
+        Connection conn = null;
+        try {
+            conn = DatabaseManager.getConnection();
+            conn.setAutoCommit(false);
+
+            int newUserId = userDAO.createUser(user, password, conn);
+            if (newUserId > 0) {
+                userDAO.updateUserPermissions(newUserId, permissionIds, conn);
+                conn.commit();
+                logger.info("Transaction for creating user '{}' committed successfully.", user.getUsername());
+                return newUserId;
+            } else {
+                throw new SQLException("User creation returned an invalid ID.");
+            }
+        } catch (Exception e) {
+            logger.error("Error in create user transaction for username '{}'. Rolling back.", user.getUsername(), e);
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                    logger.info("Transaction rolled back successfully.");
+                } catch (SQLException ex) {
+                    logger.error("Failed to rollback transaction.", ex);
+                }
+            }
+            return 0;
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException ex) {
+                    logger.error("Failed to close connection.", ex);
+                }
+            }
+        }
+    }
+
+    /**
+     * Updates a user's profile information and their permissions in a single transaction.
+     *
+     * @param user           The User object with updated profile data.
+     * @param permissionIds  The complete new set of permission IDs for the user.
+     * @return true if both operations were successful, false otherwise.
+     */
+    public boolean updateUserWithPermissions(User user, String[] permissionIds) {
+        Connection conn = null;
+        boolean profileUpdated = false;
+        boolean permissionsUpdated = false;
+        try {
+            conn = DatabaseManager.getConnection();
+            conn.setAutoCommit(false);
+
+            profileUpdated = userDAO.updateUser(user, conn);
+            permissionsUpdated = userDAO.updateUserPermissions(user.getId(), permissionIds, conn);
+
+            conn.commit();
+            logger.info("Transaction for updating user '{}' committed successfully.", user.getUsername());
+            return profileUpdated || permissionsUpdated;
+
+        } catch (Exception e) {
+            logger.error("Error in update user transaction for user '{}'. Rolling back.", user.getUsername(), e);
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                    logger.info("Transaction rolled back successfully.");
+                } catch (SQLException ex) {
+                    logger.error("Failed to rollback transaction.", ex);
+                }
+            }
+            return false;
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException ex) {
+                    logger.error("Failed to close connection.", ex);
+                }
+            }
+        }
+    }
 }
 ========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\CalendarApiServlet.java
@@ -8616,14 +9005,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
-import java.util.Set;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import java.util.concurrent.TimeUnit;
 
 import de.technikteam.dao.UserDAO;
 
@@ -8633,10 +9018,64 @@ public class LoginServlet extends HttpServlet {
 	private static final Logger logger = LogManager.getLogger(LoginServlet.class);
 	private UserDAO userDAO;
 
-	private static final int MAX_ATTEMPTS = 5;
-	private static final long LOCKOUT_TIME_MS = 15 * 60 * 1000;
-	private static final Map<String, Integer> failedAttempts = new ConcurrentHashMap<>();
-	private static final Map<String, Long> lockoutTimestamps = new ConcurrentHashMap<>();
+	// Manages login throttling and lockout state.
+	public static class LoginAttemptManager {
+		private static final int MAX_ATTEMPTS = 5;
+		private static final long[] LOCKOUT_DURATIONS_MS = { TimeUnit.MINUTES.toMillis(1), // 1 minute
+				TimeUnit.MINUTES.toMillis(2), // 2 minutes
+				TimeUnit.MINUTES.toMillis(5), // 5 minutes
+				TimeUnit.MINUTES.toMillis(10), // 10 minutes
+				TimeUnit.MINUTES.toMillis(30) // 30 minutes
+		};
+
+		private static final Map<String, Integer> failedAttempts = new ConcurrentHashMap<>();
+		private static final Map<String, Long> lockoutTimestamps = new ConcurrentHashMap<>();
+		private static final Map<String, Integer> lockoutLevel = new ConcurrentHashMap<>();
+
+		public static long getLockoutEndTime(String username) {
+			return lockoutTimestamps.getOrDefault(username, 0L);
+		}
+
+		public static int getLockoutLevel(String username) {
+			return lockoutLevel.getOrDefault(username, 0);
+		}
+
+		public static boolean isLockedOut(String username) {
+			Long lockoutTime = lockoutTimestamps.get(username);
+			if (lockoutTime == null) {
+				return false;
+			}
+			int currentLevel = lockoutLevel.getOrDefault(username, 0);
+			long duration = LOCKOUT_DURATIONS_MS[Math.min(currentLevel, LOCKOUT_DURATIONS_MS.length - 1)];
+
+			if (System.currentTimeMillis() - lockoutTime > duration) {
+				// No need to clear here, a successful login will do that.
+				return false;
+			}
+			return true;
+		}
+
+		public static void recordFailedLogin(String username) {
+			int attempts = failedAttempts.compute(username, (k, v) -> (v == null) ? 1 : v + 1);
+			logger.warn("Failed login attempt #{} for user: {}", attempts, username);
+
+			if (attempts >= MAX_ATTEMPTS) {
+				int currentLevel = lockoutLevel.compute(username, (k, v) -> (v == null) ? 0 : v + 1);
+				long duration = LOCKOUT_DURATIONS_MS[Math.min(currentLevel, LOCKOUT_DURATIONS_MS.length - 1)];
+				logger.warn("Locking out user {} for {} minutes due to {} failed login attempts.", username,
+						TimeUnit.MILLISECONDS.toMinutes(duration), attempts);
+				lockoutTimestamps.put(username, System.currentTimeMillis());
+				failedAttempts.remove(username);
+			}
+		}
+
+		public static void clearLoginAttempts(String username) {
+			failedAttempts.remove(username);
+			lockoutTimestamps.remove(username);
+			lockoutLevel.remove(username);
+			logger.info("Login throttling state cleared for user: {}", username);
+		}
+	}
 
 	@Override
 	public void init() {
@@ -8655,13 +9094,16 @@ public class LoginServlet extends HttpServlet {
 		String username = request.getParameter("username");
 		String password = request.getParameter("password");
 		String sanitizedUsername = sanitizeForLogging(username);
+		HttpSession session = request.getSession(true);
 
-		logger.info("Login attempt for username: {}", sanitizedUsername);
-
-		if (isLockedOut(sanitizedUsername)) {
-			logger.warn("Login attempt for locked-out user: {}", sanitizedUsername);
-			request.getSession().setAttribute("errorMessage",
+		if (LoginAttemptManager.isLockedOut(sanitizedUsername)) {
+			long endTime = LoginAttemptManager.getLockoutEndTime(sanitizedUsername);
+			int level = LoginAttemptManager.getLockoutLevel(sanitizedUsername);
+			session.setAttribute("errorMessage",
 					"Ihr Konto ist aufgrund zu vieler fehlgeschlagener Versuche vorübergehend gesperrt.");
+			session.setAttribute("lockoutEndTime", endTime);
+			session.setAttribute("lockoutLevel", level);
+			session.setAttribute("failedUsername", username);
 			response.sendRedirect(request.getContextPath() + "/login");
 			return;
 		}
@@ -8669,16 +9111,9 @@ public class LoginServlet extends HttpServlet {
 		User user = userDAO.validateUser(username, password);
 
 		if (user != null) {
-			failedAttempts.remove(sanitizedUsername);
-			lockoutTimestamps.remove(sanitizedUsername);
+			LoginAttemptManager.clearLoginAttempts(sanitizedUsername);
 
-			// Invalidate any old session to prevent session fixation
-			HttpSession oldSession = request.getSession(false);
-			if (oldSession != null) {
-				oldSession.invalidate();
-			}
-
-			// Create a new session for the authenticated user
+			session.invalidate();
 			HttpSession newSession = request.getSession(true);
 			newSession.setAttribute("user", user);
 
@@ -8691,34 +9126,19 @@ public class LoginServlet extends HttpServlet {
 					user.getRoleName());
 			response.sendRedirect(request.getContextPath() + "/home");
 		} else {
-			handleFailedLogin(sanitizedUsername);
-			// Get or create a session to store the error message
-			HttpSession session = request.getSession(true);
+			handleFailedLogin(sanitizedUsername, request); // FIX: Pass the request object
 			session.setAttribute("errorMessage", "Benutzername oder Passwort ungültig.");
+			session.setAttribute("failedUsername", username); // Keep username in field
 			response.sendRedirect(request.getContextPath() + "/login");
 		}
 	}
 
-	private boolean isLockedOut(String username) {
-		Long lockoutTime = lockoutTimestamps.get(username);
-		if (lockoutTime == null) {
-			return false;
-		}
-		if (System.currentTimeMillis() - lockoutTime > LOCKOUT_TIME_MS) {
-			lockoutTimestamps.remove(username);
-			failedAttempts.remove(username);
-			return false;
-		}
-		return true;
-	}
-
-	private void handleFailedLogin(String username) {
-		int attempts = failedAttempts.compute(username, (k, v) -> (v == null) ? 1 : v + 1);
-
-		if (attempts >= MAX_ATTEMPTS) {
-			logger.warn("Locking out user {} due to {} failed login attempts.", username, attempts);
-			lockoutTimestamps.put(username, System.currentTimeMillis());
-			failedAttempts.remove(username);
+	private void handleFailedLogin(String username, HttpServletRequest request) { // FIX: Accept the request object
+		LoginAttemptManager.recordFailedLogin(username);
+		if (LoginAttemptManager.isLockedOut(username)) {
+			HttpSession session = request.getSession();
+			session.setAttribute("lockoutEndTime", LoginAttemptManager.getLockoutEndTime(username));
+			session.setAttribute("lockoutLevel", LoginAttemptManager.getLockoutLevel(username));
 		}
 	}
 
@@ -9228,6 +9648,7 @@ package de.technikteam.servlet;
 
 import java.io.IOException;
 
+import de.technikteam.util.PasswordPolicyValidator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -9302,9 +9723,11 @@ public class PasswordServlet extends HttpServlet {
 			return;
 		}
 
-		if (newPassword.trim().isEmpty()) {
-			logger.warn("Password change failed for {}: new password is empty.", user.getUsername());
-			session.setAttribute("errorMessage", "Das neue Passwort darf nicht leer sein.");
+		PasswordPolicyValidator.ValidationResult validationResult = PasswordPolicyValidator.validate(newPassword);
+		if (!validationResult.isValid()) {
+			logger.warn("Password change for user '{}' failed due to weak password: {}", user.getUsername(),
+					validationResult.getMessage());
+			session.setAttribute("errorMessage", validationResult.getMessage());
 			response.sendRedirect(request.getContextPath() + "/passwort");
 			return;
 		}
@@ -10625,6 +11048,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import de.technikteam.service.AchievementService;
+import de.technikteam.service.EventService;
 import de.technikteam.service.NotificationService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -10672,6 +11096,7 @@ public class AdminEventServlet extends HttpServlet {
 	private AttachmentDAO attachmentDAO;
 	private EventCustomFieldDAO customFieldDAO;
 	private InventoryKitDAO kitDAO;
+	private EventService eventService;
 	private Gson gson;
 
 	@Override
@@ -10683,6 +11108,7 @@ public class AdminEventServlet extends HttpServlet {
 		attachmentDAO = new AttachmentDAO();
 		customFieldDAO = new EventCustomFieldDAO();
 		kitDAO = new InventoryKitDAO();
+		eventService = new EventService();
 		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
 				.registerTypeAdapter(java.time.LocalDate.class, new LocalDateAdapter()).setPrettyPrinting().create();
 	}
@@ -10858,55 +11284,16 @@ public class AdminEventServlet extends HttpServlet {
 				event.setLeaderUserId(Integer.parseInt(leaderIdStr));
 			}
 
-			int eventId = 0;
 			if (isUpdate) {
-				eventId = Integer.parseInt(idParam);
+				int eventId = Integer.parseInt(idParam);
 				Event originalEvent = eventDAO.getEventById(eventId);
 				event.setId(eventId);
 				event.setStatus(originalEvent.getStatus());
-				if (eventDAO.updateEvent(event)) {
-					AdminLogService.log(adminUser.getUsername(), "UPDATE_EVENT",
-							"Event '" + event.getName() + "' (ID: " + eventId + ") aktualisiert.");
-				}
-			} else {
-				eventId = eventDAO.createEvent(event);
-				if (eventId > 0) {
-					event.setId(eventId);
-					AdminLogService.log(adminUser.getUsername(), "CREATE_EVENT",
-							"Event '" + event.getName() + "' (ID: " + eventId + ") erstellt.");
-				}
 			}
 
+			int eventId = eventService.createOrUpdateEvent(event, isUpdate, adminUser, request);
+
 			if (eventId > 0) {
-				String[] requiredCourseIds = request.getParameterValues("requiredCourseId");
-				String[] requiredPersons = request.getParameterValues("requiredPersons");
-				eventDAO.saveSkillRequirements(eventId, requiredCourseIds, requiredPersons);
-
-				String[] itemIds = request.getParameterValues("itemId");
-				String[] quantities = request.getParameterValues("itemQuantity");
-				eventDAO.saveReservations(eventId, itemIds, quantities);
-
-				String[] customFieldNames = request.getParameterValues("customFieldName");
-				String[] customFieldTypes = request.getParameterValues("customFieldType");
-				if (customFieldNames != null) {
-					List<EventCustomField> customFields = new ArrayList<>();
-					for (int i = 0; i < customFieldNames.length; i++) {
-						if (customFieldNames[i] != null && !customFieldNames[i].trim().isEmpty()) {
-							EventCustomField cf = new EventCustomField();
-							cf.setFieldName(customFieldNames[i]);
-							cf.setFieldType(customFieldTypes[i]);
-							cf.setRequired(true);
-							customFields.add(cf);
-						}
-					}
-					customFieldDAO.saveCustomFieldsForEvent(eventId, customFields);
-				}
-
-				Part filePart = request.getPart("attachment");
-				if (filePart != null && filePart.getSize() > 0) {
-					String requiredRole = request.getParameter("requiredRole");
-					handleAttachmentUpload(filePart, eventId, requiredRole, adminUser, request);
-				}
 				request.getSession().setAttribute("successMessage", "Event erfolgreich gespeichert.");
 			} else {
 				request.getSession().setAttribute("errorMessage", "Event konnte nicht gespeichert werden.");
@@ -10923,30 +11310,6 @@ public class AdminEventServlet extends HttpServlet {
 		}
 
 		response.sendRedirect(request.getContextPath() + "/admin/veranstaltungen");
-	}
-
-	private void handleAttachmentUpload(Part filePart, int eventId, String requiredRole, User adminUser,
-			HttpServletRequest req) throws IOException {
-		String uploadDir = AppConfig.UPLOAD_DIRECTORY + File.separator + "events";
-		new File(uploadDir).mkdirs();
-
-		String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
-		File targetFile = new File(uploadDir, fileName);
-		filePart.write(targetFile.getAbsolutePath());
-
-		Attachment attachment = new Attachment();
-		attachment.setParentId(eventId);
-		attachment.setParentType("EVENT");
-		attachment.setFilename(fileName);
-		attachment.setFilepath("events/" + fileName);
-		attachment.setRequiredRole(requiredRole);
-
-		if (attachmentDAO.addAttachment(attachment)) {
-			AdminLogService.log(adminUser.getUsername(), "ADD_EVENT_ATTACHMENT",
-					"Anhang '" + fileName + "' zu Event ID " + eventId + " hinzugefügt.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Anhang konnte nicht in DB gespeichert werden.");
-		}
 	}
 
 	private void handleDeleteAttachment(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -11278,6 +11641,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -11304,7 +11668,13 @@ public class AdminFileManagementServlet extends HttpServlet {
 		logger.info("Admin file management page requested by user '{}' (Role: {})", user.getUsername(),
 				user.getRoleName());
 
-		Map<String, List<File>> groupedFiles = fileDAO.getAllFilesGroupedByCategory(user);
+		// In the admin area, we always want to show all files, so we create a temporary
+		// user object with admin rights to pass to the DAO.
+		User adminProxy = new User();
+		adminProxy.setPermissions(new HashSet<>());
+		adminProxy.getPermissions().add("ACCESS_ADMIN_PANEL");
+
+		Map<String, List<File>> groupedFiles = fileDAO.getAllFilesGroupedByCategory(adminProxy);
 		List<FileCategory> allCategories = fileDAO.getAllCategories();
 
 		request.setAttribute("groupedFiles", groupedFiles);
@@ -11339,6 +11709,9 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Handles all administrative file upload actions, including creating new files
@@ -11354,6 +11727,14 @@ public class AdminFileServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminFileServlet.class);
 	private FileDAO fileDAO;
+
+	// Whitelist of allowed MIME types for security
+	private static final Set<String> ALLOWED_MIME_TYPES = Set.of("image/jpeg", "image/png", "image/gif",
+			"application/pdf", "text/markdown", "text/plain");
+
+	private static final Map<String, String> MIME_TYPE_FRIENDLY_NAMES = Map.of("image/jpeg", "JPEG Bild", "image/png",
+			"PNG Bild", "image/gif", "GIF Bild", "application/pdf", "PDF Dokument", "text/markdown", "Markdown Text",
+			"text/plain", "Textdatei");
 
 	@Override
 	public void init() {
@@ -11396,6 +11777,18 @@ public class AdminFileServlet extends HttpServlet {
 			return;
 		}
 
+		// Security: Validate MIME type against whitelist
+		String contentType = filePart.getContentType();
+		if (!ALLOWED_MIME_TYPES.contains(contentType)) {
+			String friendlyName = MIME_TYPE_FRIENDLY_NAMES.getOrDefault(contentType, contentType);
+			logger.warn("Upload rejected for user '{}': Disallowed MIME type '{}'.", adminUser.getUsername(),
+					contentType);
+			session.setAttribute("errorMessage", "Dateityp '" + friendlyName
+					+ "' ist nicht erlaubt. Erlaubte Typen sind: Bilder, PDF, Text/Markdown.");
+			response.sendRedirect(request.getContextPath() + "/admin/dateien");
+			return;
+		}
+
 		if ("create".equals(action)) {
 			handleCreateUpload(request, response, adminUser, filePart);
 		} else if ("update".equals(action)) {
@@ -11418,34 +11811,30 @@ public class AdminFileServlet extends HttpServlet {
 			}
 
 			int categoryId = Integer.parseInt(categoryIdStr);
-			String submittedFileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
+			String originalFileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
 
-			// Security: Sanitize filename to prevent path traversal and other injection
-			// attacks.
-			String sanitizedFileName = submittedFileName.replaceAll("[^a-zA-Z0-9.\\-_ ]", "_");
-			File targetFile = new File(AppConfig.UPLOAD_DIRECTORY, sanitizedFileName);
+			// Security: Sanitize original filename for display
+			String sanitizedOriginalFileName = originalFileName.replaceAll("[^a-zA-Z0-9.\\-_ ]", "_");
 
-			// Prevent overwriting existing files on create
-			if (targetFile.exists()) {
-				session.setAttribute("errorMessage",
-						"Eine Datei mit diesem Namen existiert bereits. Bitte benennen Sie die Datei um oder laden Sie eine neue Version auf der Dateiliste hoch.");
-				response.sendRedirect(request.getContextPath() + "/admin/dateien");
-				return;
-			}
+			// Security: Generate a unique filename for storage to prevent collisions and
+			// path traversal
+			String uniqueFileName = UUID.randomUUID().toString() + "-" + sanitizedOriginalFileName;
+
+			File targetFile = new File(AppConfig.UPLOAD_DIRECTORY, uniqueFileName);
 
 			filePart.write(targetFile.getAbsolutePath());
-			logger.info("CREATE: File '{}' successfully written to disk for user '{}'.", sanitizedFileName,
-					adminUser.getUsername());
+			logger.info("CREATE: File '{}' successfully written to disk as '{}' for user '{}'.",
+					sanitizedOriginalFileName, uniqueFileName, adminUser.getUsername());
 
 			de.technikteam.model.File newDbFile = new de.technikteam.model.File();
-			newDbFile.setFilename(sanitizedFileName);
-			newDbFile.setFilepath(sanitizedFileName); // Filepath is relative to the UPLOAD_DIRECTORY
+			newDbFile.setFilename(sanitizedOriginalFileName); // Store the original, user-friendly name
+			newDbFile.setFilepath(uniqueFileName); // Store the unique, secure name for disk access
 			newDbFile.setCategoryId(categoryId);
 			newDbFile.setRequiredRole(requiredRole);
 
 			if (fileDAO.createFile(newDbFile)) {
 				AdminLogService.log(adminUser.getUsername(), "FILE_UPLOAD",
-						"Datei '" + sanitizedFileName + "' hochgeladen.");
+						"Datei '" + sanitizedOriginalFileName + "' hochgeladen.");
 				session.setAttribute("successMessage", "Datei erfolgreich hochgeladen.");
 			} else {
 				if (!targetFile.delete()) {
@@ -11477,7 +11866,7 @@ public class AdminFileServlet extends HttpServlet {
 				return;
 			}
 
-			// Security: Overwrite the existing file using its sanitized path from the
+			// Security: Overwrite the existing file using its unique path from the
 			// database.
 			File targetFile = new File(AppConfig.UPLOAD_DIRECTORY, dbFile.getFilepath());
 			filePart.write(targetFile.getAbsolutePath());
@@ -11513,8 +11902,8 @@ public class AdminFileServlet extends HttpServlet {
 			}
 
 			if (fileDAO.deleteFile(fileId)) {
-				AdminLogService.log(adminUser.getUsername(), "FILE_DELETE",
-						"Datei '" + fileToDelete.getFilename() + "' (ID: " + fileId + ") gelöscht.");
+				AdminLogService.log(adminUser.getUsername(), "FILE_DELETE", "Datei '" + fileToDelete.getFilename()
+						+ "' (ID: " + fileId + ") aus Kategorie '" + fileToDelete.getCategoryName() + "' gelöscht.");
 				session.setAttribute("successMessage", "Datei '" + fileToDelete.getFilename() + "' wurde gelöscht.");
 			} else {
 				session.setAttribute("errorMessage", "Datei konnte nicht gelöscht werden.");
@@ -11739,6 +12128,12 @@ public class AdminLogServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		User adminUser = (User) request.getSession().getAttribute("user");
+		// Ensure a user is logged in, though AdminFilter should handle this.
+		if (adminUser == null) {
+			response.sendRedirect(request.getContextPath() + "/login");
+			return;
+		}
+
 		logger.info("Admin log page requested by user '{}'.", adminUser.getUsername());
 		try {
 			List<AdminLog> logs = adminLogDAO.getAllLogs();
@@ -12585,48 +12980,10 @@ public class AdminUserServlet extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
-		request.setCharacterEncoding("UTF-8");
-		String action = request.getParameter("action");
-		if (action == null) {
-			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
-			return;
-		}
-
-		if (!CSRFUtil.isTokenValid(request)) {
-			logger.warn("CSRF token validation failed for action '{}'.", action);
-			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid or missing CSRF token.");
-			return;
-		}
-
-		try {
-			switch (action) {
-			case "create":
-				handleCreateUser(request, response);
-				break;
-			case "update":
-				handleUpdateUser(request, response);
-				break;
-			case "delete":
-				handleDeleteUser(request, response);
-				break;
-			case "resetPassword":
-				handleResetPassword(request, response);
-				break;
-			default:
-				logger.warn("Unknown POST action received: {}", action);
-				response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
-				break;
-			}
-		} catch (NumberFormatException e) {
-			logger.warn("Invalid ID format in POST request: {}", e.getMessage());
-			request.getSession().setAttribute("errorMessage", "Fehler: Ungültige ID übermittelt.");
-			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
-		} catch (Exception e) {
-			logger.error("Error in AdminUserServlet doPost", e);
-			request.getSession().setAttribute("errorMessage",
-					"Ein schwerwiegender Fehler ist aufgetreten: " + e.getMessage());
-			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
-		}
+		// All POST actions are now handled by the FrontControllerServlet
+		logger.warn(
+				"Received POST request on AdminUserServlet, which should be handled by FrontControllerServlet. Redirecting.");
+		response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
 	}
 
 	private void listUsers(HttpServletRequest request, HttpServletResponse response)
@@ -12681,452 +13038,5 @@ public class AdminUserServlet extends HttpServlet {
 		request.setAttribute("userToView", user);
 		request.setAttribute("eventHistory", eventHistory);
 		request.getRequestDispatcher("/views/admin/admin_user_details.jsp").forward(request, response);
-	}
-
-	private void handleCreateUser(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		if (!adminUser.getPermissions().contains("USER_CREATE") && !adminUser.hasAdminAccess()) {
-			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
-			return;
-		}
-
-		String username = request.getParameter("username");
-		String pass = request.getParameter("password");
-		if (username == null || username.trim().isEmpty() || pass == null || pass.trim().length() < 8) {
-			request.getSession().setAttribute("errorMessage",
-					"Benutzername darf nicht leer sein und Passwort muss mindestens 8 Zeichen lang sein.");
-			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
-			return;
-		}
-		int roleId = Integer.parseInt(request.getParameter("roleId"));
-		String[] permissionIds = request.getParameterValues("permissionIds");
-
-		User newUser = new User();
-		newUser.setUsername(username.trim());
-		newUser.setRoleId(roleId);
-		try {
-			newUser.setClassYear(Integer.parseInt(request.getParameter("classYear")));
-		} catch (NumberFormatException e) {
-			newUser.setClassYear(0);
-		}
-		newUser.setClassName(request.getParameter("className"));
-
-		String email = request.getParameter("email");
-		newUser.setEmail(email != null && !email.trim().isEmpty() ? email.trim() : null);
-
-		int newUserId = userDAO.createUser(newUser, pass);
-		if (newUserId > 0) {
-			userDAO.updateUserPermissions(newUserId, permissionIds);
-			String logDetails = String.format(
-					"Benutzer '%s' (ID: %d, Rolle-ID: %d, Klasse: %d %s) erstellt und Berechtigungen zugewiesen.",
-					newUser.getUsername(), newUserId, newUser.getRoleId(), newUser.getClassYear(),
-					newUser.getClassName());
-			AdminLogService.log(adminUser.getUsername(), "CREATE_USER", logDetails);
-			request.getSession().setAttribute("successMessage",
-					"Benutzer '" + newUser.getUsername() + "' erfolgreich erstellt.");
-		} else {
-			request.getSession().setAttribute("errorMessage",
-					"Benutzer konnte nicht erstellt werden (ggf. existiert der Name oder die E-Mail bereits).");
-		}
-		response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
-	}
-
-	private void handleUpdateUser(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		int userId = Integer.parseInt(request.getParameter("userId"));
-		HttpSession session = request.getSession();
-		User adminUser = (User) session.getAttribute("user");
-
-		if (!adminUser.getPermissions().contains("USER_UPDATE") && !adminUser.hasAdminAccess()) {
-			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
-			return;
-		}
-
-		User originalUser = userDAO.getUserById(userId);
-		if (originalUser == null) {
-			logger.error("Attempted to update non-existent user with ID: {}", userId);
-			request.getSession().setAttribute("errorMessage", "Fehler: Benutzer mit ID " + userId + " nicht gefunden.");
-			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
-			return;
-		}
-		int roleId = Integer.parseInt(request.getParameter("roleId"));
-		String[] permissionIds = request.getParameterValues("permissionIds");
-
-		User updatedUser = new User();
-		updatedUser.setId(userId);
-		updatedUser.setUsername(request.getParameter("username").trim());
-		updatedUser.setRoleId(roleId);
-		updatedUser.setClassName(request.getParameter("className"));
-
-		String email = request.getParameter("email");
-		updatedUser.setEmail(email != null && !email.trim().isEmpty() ? email.trim() : null);
-
-		try {
-			updatedUser.setClassYear(Integer.parseInt(request.getParameter("classYear")));
-		} catch (NumberFormatException e) {
-			updatedUser.setClassYear(0);
-		}
-
-		boolean profileUpdated = userDAO.updateUser(updatedUser);
-		boolean permissionsUpdated = userDAO.updateUserPermissions(userId, permissionIds);
-
-		if (profileUpdated || permissionsUpdated) {
-			// If the admin is editing their own profile, refresh their session object
-			if (adminUser.getId() == userId) {
-				User refreshedUserInSession = userDAO.getUserById(userId);
-				refreshedUserInSession.setPermissions(userDAO.getPermissionsForUser(userId));
-				session.setAttribute("user", refreshedUserInSession);
-				session.setAttribute("navigationItems",
-						NavigationRegistry.getNavigationItemsForUser(refreshedUserInSession));
-			}
-			AdminLogService.log(adminUser.getUsername(), "UPDATE_USER",
-					"Benutzer '" + originalUser.getUsername() + "' (ID: " + userId + ") aktualisiert.");
-			request.getSession().setAttribute("successMessage", "Benutzerdaten erfolgreich aktualisiert.");
-		} else {
-			request.getSession().setAttribute("infoMessage", "Keine Änderungen an den Benutzerdaten vorgenommen.");
-		}
-		response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
-	}
-
-	private void handleDeleteUser(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		int userIdToDelete = Integer.parseInt(request.getParameter("userId"));
-		User loggedInAdmin = (User) request.getSession().getAttribute("user");
-
-		if (!loggedInAdmin.getPermissions().contains("USER_DELETE") && !loggedInAdmin.hasAdminAccess()) {
-			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
-			return;
-		}
-
-		if (loggedInAdmin.getId() == userIdToDelete) {
-			request.getSession().setAttribute("errorMessage", "Sie können sich nicht selbst löschen.");
-			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
-			return;
-		}
-
-		User userToDelete = userDAO.getUserById(userIdToDelete);
-		if (userToDelete == null) {
-			request.getSession().setAttribute("errorMessage", "Benutzer mit ID " + userIdToDelete + " nicht gefunden.");
-			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
-			return;
-		}
-
-		// Prevent a regular admin from deleting a super-admin.
-		if (userToDelete.getPermissions().contains("ACCESS_ADMIN_PANEL")
-				&& !loggedInAdmin.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
-			logger.warn("Privilege Escalation Attempt: User '{}' tried to delete super-admin '{}'",
-					loggedInAdmin.getUsername(), userToDelete.getUsername());
-			request.getSession().setAttribute("errorMessage",
-					"Sie haben keine Berechtigung, einen Haupt-Administrator zu löschen.");
-			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
-			return;
-		}
-
-		String deletedUsername = userToDelete.getUsername();
-		String deletedRoleName = userToDelete.getRoleName();
-
-		if (userDAO.deleteUser(userIdToDelete)) {
-			String logDetails = String.format("Benutzer '%s' (ID: %d, Rolle: %s) wurde gelöscht.", deletedUsername,
-					userIdToDelete, deletedRoleName);
-			AdminLogService.log(loggedInAdmin.getUsername(), "DELETE_USER", logDetails);
-			request.getSession().setAttribute("successMessage", "Benutzer erfolgreich gelöscht.");
-		} else {
-			request.getSession().setAttribute("errorMessage", "Benutzer konnte nicht gelöscht werden.");
-		}
-		response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
-	}
-
-	private void handleResetPassword(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		if (!adminUser.getPermissions().contains("USER_PASSWORD_RESET") && !adminUser.hasAdminAccess()) {
-			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
-			return;
-		}
-
-		int userId = Integer.parseInt(request.getParameter("userId"));
-		User userToReset = userDAO.getUserById(userId);
-
-		if (userToReset == null) {
-			request.getSession().setAttribute("errorMessage", "Benutzer zum Zurücksetzen nicht gefunden.");
-		} else {
-			String newPassword = generateRandomPassword(12);
-			if (userDAO.changePassword(userId, newPassword)) {
-				String logDetails = String.format("Passwort für Benutzer '%s' (ID: %d) zurückgesetzt.",
-						userToReset.getUsername(), userId);
-				AdminLogService.log(adminUser.getUsername(), "RESET_PASSWORD", logDetails);
-
-				request.getSession().setAttribute("passwordResetUser", userToReset.getUsername());
-				request.getSession().setAttribute("passwordResetNewPassword", newPassword);
-			} else {
-				request.getSession().setAttribute("errorMessage", "Passwort konnte nicht zurückgesetzt werden.");
-			}
-		}
-		response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
-	}
-
-	private String generateRandomPassword(int length) {
-		final String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-		SecureRandom random = new SecureRandom();
-		return random.ints(length, 0, chars.length()).mapToObj(chars::charAt)
-				.collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\MatrixServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import de.technikteam.dao.CourseDAO;
-import de.technikteam.dao.MeetingAttendanceDAO;
-import de.technikteam.dao.MeetingDAO;
-import de.technikteam.dao.UserDAO;
-import de.technikteam.model.Course;
-import de.technikteam.model.Meeting;
-import de.technikteam.model.MeetingAttendance;
-import de.technikteam.model.User;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-/**
- * Mapped to `/admin/matrix`, this servlet constructs the data for the
- * comprehensive qualification and attendance matrix. It fetches all users, all
- * course templates, all meetings for each course, and all attendance records.
- * It then organizes this data and forwards it to `admin_matrix.jsp` for
- * rendering a grid view that shows which users have attended which course
- * meetings.
- */
-@WebServlet("/admin/matrix")
-public class MatrixServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(MatrixServlet.class);
-	private UserDAO userDAO;
-	private CourseDAO courseDAO;
-	private MeetingDAO meetingDAO;
-	private MeetingAttendanceDAO meetingAttendanceDAO;
-
-	@Override
-	public void init() {
-		userDAO = new UserDAO();
-		courseDAO = new CourseDAO();
-		meetingDAO = new MeetingDAO();
-		meetingAttendanceDAO = new MeetingAttendanceDAO();
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-
-		logger.info("Matrix data requested. Fetching all necessary data from DAOs.");
-
-		List<User> allUsers = userDAO.getAllUsers();
-		logger.debug("Fetched {} users.", allUsers.size());
-
-		List<Course> allCourses = courseDAO.getAllCourses();
-		logger.debug("Fetched {} parent courses.", allCourses.size());
-
-		Map<Integer, List<Meeting>> meetingsByCourse = new HashMap<>();
-		for (Course course : allCourses) {
-			List<Meeting> meetings = meetingDAO.getMeetingsForCourse(course.getId());
-			meetingsByCourse.put(course.getId(), meetings);
-			logger.trace("Fetched {} meetings for course '{}' (ID: {}).", meetings.size(), course.getName(),
-					course.getId());
-		}
-
-		Map<String, MeetingAttendance> attendanceMap = meetingAttendanceDAO.getAllAttendance().stream()
-				.collect(Collectors.toMap(a -> a.getUserId() + "-" + a.getMeetingId(), Function.identity()));
-		logger.debug("Fetched and mapped {} total attendance records.", attendanceMap.size());
-
-		request.setAttribute("allUsers", allUsers);
-		request.setAttribute("allCourses", allCourses);
-		request.setAttribute("meetingsByCourse", meetingsByCourse);
-		request.setAttribute("attendanceMap", attendanceMap);
-
-		logger.info("Data generation for matrix complete. Forwarding to admin_matrix.jsp.");
-		request.getRequestDispatcher("/views/admin/admin_matrix.jsp").forward(request, response);
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\api\CrewFinderApiServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin.api;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import de.technikteam.config.LocalDateTimeAdapter;
-import de.technikteam.dao.EventDAO;
-import de.technikteam.model.Event;
-import de.technikteam.model.User;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.IOException;
-import java.time.LocalDateTime;
-import java.util.List;
-
-/**
- * An API endpoint for finding qualified and available users for a specific
- * event. This is used by the "Crew Finder" feature in the event management
- * modal.
- */
-@WebServlet("/api/admin/crew-finder")
-public class CrewFinderApiServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(CrewFinderApiServlet.class);
-	private EventDAO eventDAO;
-	private Gson gson;
-
-	@Override
-	public void init() {
-		eventDAO = new EventDAO();
-		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		User currentUser = (User) request.getSession().getAttribute("user");
-		String eventIdParam = request.getParameter("eventId");
-
-		if (eventIdParam == null || eventIdParam.trim().isEmpty()) {
-			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing eventId parameter.");
-			return;
-		}
-
-		try {
-			int eventId = Integer.parseInt(eventIdParam);
-			Event event = eventDAO.getEventById(eventId);
-			if (event == null) {
-				response.sendError(HttpServletResponse.SC_NOT_FOUND, "Event not found.");
-				return;
-			}
-
-			// Security: User must have general assignment rights OR be the leader of this
-			// specific event.
-			boolean hasPermission = currentUser.getPermissions().contains("EVENT_MANAGE_ASSIGNMENTS")
-					|| currentUser.getPermissions().contains("ACCESS_ADMIN_PANEL")
-					|| currentUser.getId() == event.getLeaderUserId();
-
-			if (!hasPermission) {
-				logger.warn("User '{}' tried to find crew for event {} without permission.", currentUser.getUsername(),
-						eventId);
-				response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
-				return;
-			}
-
-			List<User> qualifiedUsers = eventDAO.getQualifiedAndAvailableUsersForEvent(eventId);
-			logger.info("Found {} qualified and available users for event ID {}.", qualifiedUsers.size(), eventId);
-
-			response.setContentType("application/json");
-			response.setCharacterEncoding("UTF-8");
-			response.getWriter().write(gson.toJson(qualifiedUsers));
-
-		} catch (NumberFormatException e) {
-			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid eventId format.");
-		}
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\api\MarkdownApiServlet.java
-========================================================================
-
-package de.technikteam.servlet.api;
-
-import de.technikteam.dao.FileDAO;
-import de.technikteam.model.User;
-import de.technikteam.service.AdminLogService;
-import de.technikteam.util.CSRFUtil;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.IOException;
-
-@WebServlet("/api/save-markdown")
-public class MarkdownApiServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(MarkdownApiServlet.class);
-	private FileDAO fileDAO;
-
-	@Override
-	public void init() {
-		fileDAO = new FileDAO();
-	}
-
-	@Override
-	protected void doPost(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		HttpSession session = request.getSession(false);
-		if (session == null || session.getAttribute("user") == null) {
-			response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User not authenticated.");
-			return;
-		}
-
-		User user = (User) session.getAttribute("user");
-		if (!user.getPermissions().contains("FILE_UPDATE") && !user.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
-			logger.warn("User '{}' tried to save markdown file without FILE_UPDATE permission.", user.getUsername());
-			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
-			return;
-		}
-
-		if (!CSRFUtil.isTokenValid(request)) {
-			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token.");
-			return;
-		}
-
-		String fileIdParam = request.getParameter("fileId");
-		String content = request.getParameter("content");
-
-		if (fileIdParam == null || content == null) {
-			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing required parameters.");
-			return;
-		}
-
-		try {
-			int fileId = Integer.parseInt(fileIdParam);
-			de.technikteam.model.File dbFile = fileDAO.getFileById(fileId);
-
-			if (dbFile == null) {
-				response.sendError(HttpServletResponse.SC_NOT_FOUND, "File not found.");
-				return;
-			}
-
-			boolean contentUpdated = fileDAO.updateFileContent(dbFile.getFilepath(), content);
-			boolean recordTouched = fileDAO.touchFileRecord(fileId);
-
-			if (contentUpdated && recordTouched) {
-				AdminLogService.log(user.getUsername(), "UPDATE_MARKDOWN_FILE",
-						"Inhalt der Datei '" + dbFile.getFilename() + "' (ID: " + fileId + ") aktualisiert.");
-				session.setAttribute("successMessage", "Änderungen erfolgreich gespeichert.");
-			} else {
-				session.setAttribute("errorMessage", "Fehler beim Speichern der Datei.");
-			}
-
-			response.sendRedirect(request.getContextPath() + "/editor?fileId=" + fileId);
-
-		} catch (NumberFormatException e) {
-			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid fileId format.");
-		}
 	}
 }

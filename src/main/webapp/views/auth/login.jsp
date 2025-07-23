@@ -13,39 +13,38 @@
 			<i class="fas fa-bolt"></i> TechnikTeam
 		</h1>
 		<c:import url="/WEB-INF/jspf/message_banner.jspf" />
+
+		<c:if test="${not empty sessionScope.lockoutEndTime}">
+			<div class="error-message" id="lockout-timer"
+				data-end-time="${sessionScope.lockoutEndTime}"
+				data-lockout-level="${sessionScope.lockoutLevel}">Lade
+				Timer...</div>
+			<c:remove var="lockoutEndTime" scope="session" />
+			<c:remove var="lockoutLevel" scope="session" />
+		</c:if>
+
 		<form action="<c:url value='/login'/>" method="post">
 			<div class="form-group">
 				<label for="username">Benutzername</label> <input type="text"
-					id="username" name="username" required autocomplete="username"
-					autofocus>
+					id="username" name="username"
+					value="<c:out value='${failedUsername}'/>" required
+					autocomplete="username" autofocus>
+				<c:remove var="failedUsername" scope="session" />
 			</div>
 			<div class="form-group">
 				<label for="password">Passwort</label>
 				<div class="password-input-wrapper">
 					<input type="password" id="password" name="password" required
-						autocomplete="current-password"> <span id="togglePassword"
+						autocomplete="current-password"> <span
 						class="password-toggle-icon"> <i class="fas fa-eye"></i>
 					</span>
 				</div>
 			</div>
-			<button type="submit" class="btn" style="width: 100%;">Anmelden</button>
+			<button type="submit" class="btn" style="width: 100%;"
+				${not empty sessionScope.lockoutEndTime ? 'disabled' : ''}>Anmelden</button>
 		</form>
 	</div>
 </div>
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
-<script>
-	document.addEventListener('DOMContentLoaded', () => {
-		const togglePassword = document.getElementById('togglePassword');
-		const passwordInput = document.getElementById('password');
-
-		if (togglePassword && passwordInput) {
-			togglePassword.addEventListener('click', function() {
-				const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-				passwordInput.setAttribute('type', type);
-				this.querySelector('i').classList.toggle('fa-eye');
-				this.querySelector('i').classList.toggle('fa-eye-slash');
-			});
-		}
-	});
-</script>
+<script src="${pageContext.request.contextPath}/js/auth/login.js"></script>

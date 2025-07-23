@@ -215,4 +215,27 @@ public class StorageDAO {
 			return false;
 		}
 	}
+
+	/**
+	 * Fetches items where the available quantity is critically low (less than 25%
+	 * of max quantity).
+	 *
+	 * @param limit The maximum number of items to return.
+	 * @return A list of low-stock StorageItem objects.
+	 */
+	public List<StorageItem> getLowStockItems(int limit) {
+		List<StorageItem> items = new ArrayList<>();
+		String sql = "SELECT * FROM storage_items WHERE (quantity - defective_quantity) < (max_quantity * 0.25) AND max_quantity > 0 ORDER BY (quantity - defective_quantity) / max_quantity ASC LIMIT ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, limit);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					items.add(mapResultSetToStorageItem(rs));
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("SQL error while fetching low stock items.", e);
+		}
+		return items;
+	}
 }

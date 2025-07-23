@@ -51,26 +51,33 @@
 				</tr>
 			</c:if>
 			<c:forEach var="user" items="${requestScope.userList}">
-				<tr>
-					<td><c:out value="${user.id}" /></td>
-					<td><c:out value="${user.username}" /></td>
-					<td><c:out value="${user.roleName}" /></td>
+				<tr data-user-id="${user.id}">
+					<td data-field="id"><c:out value="${user.id}" /></td>
+					<td data-field="username"><c:out value="${user.username}" /></td>
+					<td data-field="roleName"><c:out value="${user.roleName}" /></td>
 					<td style="display: flex; gap: 0.5rem; flex-wrap: wrap;"><c:if
 							test="${hasMasterAccess or userPermissions.contains('USER_UPDATE')}">
 							<button type="button" class="btn btn-small edit-user-btn"
 								data-fetch-url="<c:url value='/admin/mitglieder?action=getUserData&id=${user.id}'/>">Bearbeiten</button>
 						</c:if> <a
 						href="<c:url value='/admin/mitglieder?action=details&id=${user.id}'/>"
-						class="btn btn-small">Details</a> <c:if
-							test="${sessionScope.user.id != user.id}">
+						class="btn btn-small">Details</a>
+						<form action="<c:url value='/admin/action/user?action=unlock'/>"
+							method="post" class="js-unlock-form"
+							data-confirm-message="Die Login-Sperre für '${fn:escapeXml(user.username)}' wirklich aufheben?">
+							<input type="hidden" name="csrfToken"
+								value="${sessionScope.csrfToken}"> <input type="hidden"
+								name="username" value="${user.username}">
+							<button type="submit" class="btn btn-small btn-info">Entsperren</button>
+						</form> <c:if test="${sessionScope.user.id != user.id}">
 							<c:if
 								test="${hasMasterAccess or userPermissions.contains('USER_PASSWORD_RESET')}">
-								<form action="<c:url value='/admin/action/user'/>" method="post"
-									class="js-confirm-form"
-									data-confirm-message="Passwort für '${fn:escapeXml(user.username)}' zurücksetzen? Das neue Passwort wird angezeigt.">
+								<form
+									action="<c:url value='/admin/action/user?action=resetPassword'/>"
+									method="post" class="js-reset-password-form"
+									data-confirm-message="Passwort für '${fn:escapeXml(user.username)}' zurücksetzen? Das neue Passwort wird als Nachricht angezeigt.">
 									<input type="hidden" name="csrfToken"
 										value="${sessionScope.csrfToken}"> <input
-										type="hidden" name="action" value="resetPassword"><input
 										type="hidden" name="userId" value="${user.id}">
 									<button type="submit" class="btn btn-small btn-warning">Passwort
 										Reset</button>
@@ -78,12 +85,11 @@
 							</c:if>
 							<c:if
 								test="${hasMasterAccess or userPermissions.contains('USER_DELETE')}">
-								<form action="<c:url value='/admin/action/user'/>" method="post"
-									class="js-confirm-form"
+								<form action="<c:url value='/admin/action/user?action=delete'/>"
+									method="post" class="js-confirm-delete-form"
 									data-confirm-message="Benutzer '${fn:escapeXml(user.username)}' wirklich löschen?">
 									<input type="hidden" name="csrfToken"
 										value="${sessionScope.csrfToken}"> <input
-										type="hidden" name="action" value="delete"><input
 										type="hidden" name="userId" value="${user.id}">
 									<button type="submit" class="btn btn-small btn-danger">Löschen</button>
 								</form>
@@ -103,15 +109,15 @@
 		</div>
 	</c:if>
 	<c:forEach var="user" items="${requestScope.userList}">
-		<div class="list-item-card">
-			<h3 class="card-title">
+		<div class="list-item-card" data-user-id="${user.id}">
+			<h3 class="card-title" data-field="username">
 				<c:out value="${user.username}" />
 			</h3>
 			<div class="card-row">
-				<span>Rolle:</span> <strong><c:out value="${user.roleName}" /></strong>
+				<span>Rolle:</span> <strong data-field="roleName"><c:out value="${user.roleName}" /></strong>
 			</div>
 			<div class="card-row">
-				<span>ID:</span> <strong><c:out value="${user.id}" /></strong>
+				<span>ID:</span> <strong data-field="id"><c:out value="${user.id}" /></strong>
 			</div>
 			<div class="card-actions">
 				<c:if
@@ -122,27 +128,34 @@
 				<a
 					href="<c:url value='/admin/mitglieder?action=details&id=${user.id}'/>"
 					class="btn btn-small">Details</a>
+				<form action="<c:url value='/admin/action/user?action=unlock'/>"
+					method="post" class="js-unlock-form"
+					data-confirm-message="Die Login-Sperre für '${fn:escapeXml(user.username)}' wirklich aufheben?">
+					<input type="hidden" name="csrfToken"
+						value="${sessionScope.csrfToken}"> <input type="hidden"
+						name="username" value="${user.username}">
+					<button type="submit" class="btn btn-small btn-info">Entsperren</button>
+				</form>
 				<c:if test="${sessionScope.user.id != user.id}">
 					<c:if
 						test="${hasMasterAccess or userPermissions.contains('USER_PASSWORD_RESET')}">
-						<form action="<c:url value='/admin/action/user'/>" method="post"
-							class="js-confirm-form"
-							data-confirm-message="Passwort für '${fn:escapeXml(user.username)}' zurücksetzen? Das neue Passwort wird angezeigt.">
+						<form
+							action="<c:url value='/admin/action/user?action=resetPassword'/>"
+							method="post" class="js-reset-password-form"
+							data-confirm-message="Passwort für '${fn:escapeXml(user.username)}' zurücksetzen? Das neue Passwort wird als Nachricht angezeigt.">
 							<input type="hidden" name="csrfToken"
 								value="${sessionScope.csrfToken}"> <input type="hidden"
-								name="action" value="resetPassword"> <input
-								type="hidden" name="userId" value="${user.id}">
+								name="userId" value="${user.id}">
 							<button type="submit" class="btn btn-small btn-warning">Reset</button>
 						</form>
 					</c:if>
 					<c:if
 						test="${hasMasterAccess or userPermissions.contains('USER_DELETE')}">
-						<form action="<c:url value='/admin/action/user'/>" method="post"
-							class="js-confirm-form"
+						<form action="<c:url value='/admin/action/user?action=delete'/>"
+							method="post" class="js-confirm-delete-form"
 							data-confirm-message="Benutzer '${fn:escapeXml(user.username)}' wirklich löschen?">
 							<input type="hidden" name="csrfToken"
 								value="${sessionScope.csrfToken}"> <input type="hidden"
-								name="action" value="delete"> <input type="hidden"
 								name="userId" value="${user.id}">
 							<button type="submit" class="btn btn-small btn-danger">Löschen</button>
 						</form>

@@ -70,4 +70,32 @@ public class AdminLogDAO {
 		}
 		return logs;
 	}
+
+	/**
+	 * Fetches the most recent log entries from the database.
+	 *
+	 * @param limit The maximum number of log entries to return.
+	 * @return A list of AdminLog objects.
+	 */
+	public List<AdminLog> getRecentLogs(int limit) {
+		List<AdminLog> logs = new ArrayList<>();
+		String sql = "SELECT id, admin_username, action_type, details, action_timestamp FROM admin_logs ORDER BY action_timestamp DESC LIMIT ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, limit);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					AdminLog logEntry = new AdminLog();
+					logEntry.setId(rs.getInt("id"));
+					logEntry.setAdminUsername(rs.getString("admin_username"));
+					logEntry.setActionType(rs.getString("action_type"));
+					logEntry.setDetails(rs.getString("details"));
+					logEntry.setActionTimestamp(rs.getTimestamp("action_timestamp").toLocalDateTime());
+					logs.add(logEntry);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Failed to fetch recent admin logs from the database.", e);
+		}
+		return logs;
+	}
 }
