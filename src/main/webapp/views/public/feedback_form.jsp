@@ -16,7 +16,9 @@
 
 		<form action="${pageContext.request.contextPath}/feedback"
 			method="post">
-			<input type="hidden" name="action" value="submitResponse"> <input
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="submitEventFeedbackResponse"> <input
 				type="hidden" name="formId" value="${form.id}">
 
 			<div class="form-group">

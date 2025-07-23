@@ -202,7 +202,13 @@ document.addEventListener('DOMContentLoaded', () => {
 				console.log("SSE data received:", data);
 				if (data.type === 'ui_update') {
 					handleUIUpdate(data.payload);
-				} else {
+				} else if (data.type === 'logout_notification') {
+                    // Special handler for forced logout
+                    showToast(data.payload.message, 'info');
+                    setTimeout(() => {
+                        window.location.href = `${contextPath}/logout`;
+                    }, 4000);
+                } else {
 					showBrowserNotification(data.payload);
 				}
 			} catch (e) {
@@ -217,19 +223,25 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	function handleUIUpdate(payload) {
-		console.log("Handling UI update:", payload.updateType, payload.data);
-		switch (payload.updateType) {
-			case 'user_updated':
-				updateUserInUI(payload.data);
-				break;
-			case 'user_deleted':
-				deleteUserFromUI(payload.data.userId);
-				break;
-			case 'event_status_updated':
-				updateEventStatusInUI(payload.data.eventId, payload.data.newStatus, payload.data);
-				break;
-		}
-	}
+        console.log("Handling UI update:", payload.updateType, payload.data);
+        switch (payload.updateType) {
+            case 'user_updated':
+                updateUserInUI(payload.data);
+                break;
+            case 'user_deleted':
+                deleteUserFromUI(payload.data.userId);
+                break;
+            case 'event_status_updated':
+                updateEventStatusInUI(payload.data.eventId, payload.data.newStatus);
+                break;
+            case 'feedback_status_updated':
+                updateFeedbackStatusInUI(payload.data.submissionId, payload.data.newStatus);
+                break;
+            case 'feedback_deleted':
+                deleteFeedbackFromUI(payload.data.submissionId);
+                break;
+        }
+    }
 
 	function updateUserInUI(user) {
 		const userElements = document.querySelectorAll(`[data-user-id="${user.id}"]`);
@@ -247,17 +259,18 @@ document.addEventListener('DOMContentLoaded', () => {
 			setTimeout(() => el.remove(), 500);
 		});
 	}
-
-	function getStatusBadgeClass(status) {
-		const classMap = {
-			'LAUFEND': 'status-warn',
-			'ABGESCHLOSSEN': 'status-info',
-			'ABGESAGT': 'status-info',
-			'GEPLANT': 'status-ok',
-			'KOMPLETT': 'status-ok'
-		};
-		return classMap[status] || 'status-info';
-	}
+	
+	function getStatusBadgeClass(status, prefix = 'status-') {
+        const classMap = {
+            'LAUFEND': 'warn',
+            'ABGESCHLOSSEN': 'info', 'ABGESAGT': 'info',
+            'GEPLANT': 'ok', 'KOMPLETT': 'ok',
+            // Feedback statuses
+            'NEW': 'info', 'VIEWED': 'info', 'PLANNED': 'warn',
+            'COMPLETED': 'ok', 'REJECTED': 'danger'
+        };
+        return prefix + (classMap[status] || 'info');
+    }
 
 	function updateEventStatusInUI(eventId, newStatus) {
 		const eventElements = document.querySelectorAll(`[data-event-id="${eventId}"]`);
@@ -267,15 +280,15 @@ document.addEventListener('DOMContentLoaded', () => {
 				badge.textContent = newStatus;
 				badge.className = `status-badge ${getStatusBadgeClass(newStatus)}`;
 			}
-
+	
 			const actionsContainer = element.querySelector('.event-status-actions');
 			if (actionsContainer) {
 				actionsContainer.innerHTML = '';
-
+	
 				const csrfToken = document.body.dataset.csrfToken || '';
 				const eventNameElement = element.querySelector('a');
 				const eventName = eventNameElement ? eventNameElement.textContent.trim() : 'dieses Event';
-
+	
 				if (newStatus === 'GEPLANT' || newStatus === 'KOMPLETT') {
 					actionsContainer.innerHTML = `
 						<form action="${contextPath}/admin/veranstaltungen" method="post" style="display: inline;" class="js-confirm-form" data-confirm-message="Event '${eventName}' wirklich starten? Der Chat wird aktiviert.">
@@ -297,7 +310,66 @@ document.addEventListener('DOMContentLoaded', () => {
 				}
 			}
 		});
-	}
+	}	
+
+    function updateFeedbackStatusInUI(submissionId, newStatus) {
+        const card = document.querySelector(`[data-submission-id="${submissionId}"]`);
+        if (!card) return;
+
+        const badge = card.querySelector('.status-badge');
+        if (badge) {
+            badge.textContent = newStatus;
+            badge.className = `status-badge ${getStatusBadgeClass(newStatus)}`;
+        }
+
+        const statusSelect = card.querySelector('select[name="status"]');
+        if (statusSelect) {
+            statusSelect.value = newStatus;
+        }
+
+        const deleteForm = card.querySelector('.js-feedback-delete-form');
+        if (newStatus === 'COMPLETED' || newStatus === 'REJECTED') {
+            if (!deleteForm) { // Add delete form if it doesn't exist
+                const actionsContainer = card.querySelector('.card-actions');
+                const newForm = document.createElement('form');
+                newForm.className = 'js-feedback-delete-form';
+                newForm.action = `${contextPath}/admin/action/feedback?action=delete`;
+                newForm.method = 'POST';
+                newForm.innerHTML = `
+                    <input type="hidden" name="csrfToken" value="${document.body.dataset.csrfToken}">
+                    <input type="hidden" name="submissionId" value="${submissionId}">
+                    <button type="submit" class="btn btn-small btn-danger-outline">Löschen</button>
+                `;
+                actionsContainer.appendChild(newForm);
+                // Re-attach event listener for the new form
+                 newForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    showConfirmationModal('Diesen Feedback-Eintrag wirklich endgültig löschen?', async () => {
+                        const formData = new FormData(newForm);
+                        const response = await fetch(newForm.action, { method: 'POST', body: formData });
+                        const result = await response.json();
+                        if (response.ok && result.success) {
+                            showToast(result.message, 'success');
+                        } else {
+                            showToast(result.message || 'Eintrag konnte nicht gelöscht werden.', 'danger');
+                        }
+                    });
+                });
+            }
+        } else {
+            // Remove delete form if it exists and status is not COMPLETED/REJECTED
+            deleteForm?.remove();
+        }
+    }
+
+    function deleteFeedbackFromUI(submissionId) {
+        const card = document.querySelector(`[data-submission-id="${submissionId}"]`);
+        if (card) {
+            card.style.transition = 'opacity 0.5s';
+            card.style.opacity = '0';
+            setTimeout(() => card.remove(), 500);
+        }
+    }
 
 	function showBrowserNotification(payload) {
 		const message = payload.message || 'Neue Benachrichtigung';

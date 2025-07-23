@@ -520,6 +520,12 @@ body.nav-open .page-overlay {
 	transition: border-color 0.2s, box-shadow 0.2s;
 }
 
+fieldset {
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
 [data-theme="dark"] .form-group textarea,
 [data-theme="dark"] #editor {
     color: var(--text-color);
@@ -676,6 +682,15 @@ body.nav-open .page-overlay {
 	border-bottom: 1px solid var(--border-color);
 	white-space: nowrap;
 	vertical-align: middle;
+}
+
+/* FIX for admin requests table */
+.data-table pre {
+    white-space: pre-wrap;
+    word-break: break-all;
+    background-color: var(--bg-color);
+    padding: 0.5rem;
+    border-radius: 4px;
 }
 
 .data-table thead th {

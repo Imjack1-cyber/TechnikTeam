@@ -1,12 +1,14 @@
 package de.technikteam.servlet;
 
 import de.technikteam.dao.EventDAO;
-import de.technikteam.dao.FeedbackDAO;
+import de.technikteam.dao.EventFeedbackDAO;
+import de.technikteam.dao.FeedbackSubmissionDAO;
 import de.technikteam.model.Event;
 import de.technikteam.model.FeedbackForm;
 import de.technikteam.model.FeedbackResponse;
+import de.technikteam.model.FeedbackSubmission;
 import de.technikteam.model.User;
-import de.technikteam.service.AdminLogService;
+import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -18,12 +20,14 @@ import java.util.List;
 @WebServlet("/feedback")
 public class FeedbackServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private FeedbackDAO feedbackDAO;
+	private EventFeedbackDAO eventFeedbackDAO;
+	private FeedbackSubmissionDAO submissionDAO;
 	private EventDAO eventDAO;
 
 	@Override
 	public void init() {
-		feedbackDAO = new FeedbackDAO();
+		eventFeedbackDAO = new EventFeedbackDAO();
+		submissionDAO = new FeedbackSubmissionDAO();
 		eventDAO = new EventDAO();
 	}
 
@@ -31,72 +35,103 @@ public class FeedbackServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		User user = (User) request.getSession().getAttribute("user");
-		String action = request.getParameter("action") == null ? "list" : request.getParameter("action");
+		String action = request.getParameter("action");
 
-		try {
-			switch (action) {
-			case "submit":
-				showSubmitForm(request, response, user);
-				break;
-			case "view":
-				viewFeedbackResults(request, response);
-				break;
-			default:
-				response.sendRedirect(request.getContextPath() + "/profil");
-				break;
-			}
-		} catch (Exception e) {
-			throw new ServletException(e);
+		// This part handles the old functionality for event-specific feedback
+		if ("submitEventFeedback".equals(action)) {
+			showSubmitEventFeedbackForm(request, response, user);
+			return;
 		}
+
+		// The default GET request shows the new general feedback form
+		request.getRequestDispatcher("/views/public/feedback.jsp").forward(request, response);
 	}
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		User user = (User) request.getSession().getAttribute("user");
-		String action = request.getParameter("action");
-
-		if ("createForm".equals(action)) {
-			int eventId = Integer.parseInt(request.getParameter("eventId"));
-			Event event = eventDAO.getEventById(eventId);
-			FeedbackForm form = new FeedbackForm();
-			form.setEventId(eventId);
-			form.setTitle("Feedback für Event: " + (event != null ? event.getName() : "Unbekannt"));
-			feedbackDAO.createFeedbackForm(form);
-			AdminLogService.log(user.getUsername(), "CREATE_FEEDBACK_FORM",
-					"Feedback-Formular für Event-ID " + eventId + " erstellt.");
-			response.sendRedirect(request.getContextPath() + "/admin/veranstaltungen");
-
-		} else if ("submitResponse".equals(action)) {
-			int formId = Integer.parseInt(request.getParameter("formId"));
-			int rating = Integer.parseInt(request.getParameter("rating"));
-			String comments = request.getParameter("comments");
-
-			FeedbackResponse feedbackResponse = new FeedbackResponse();
-			feedbackResponse.setFormId(formId);
-			feedbackResponse.setUserId(user.getId());
-			feedbackResponse.setRating(rating);
-			feedbackResponse.setComments(comments);
-
-			feedbackDAO.saveFeedbackResponse(feedbackResponse);
-			request.getSession().setAttribute("successMessage", "Vielen Dank für dein Feedback!");
-			response.sendRedirect(request.getContextPath() + "/profil");
-		}
-	}
-
-	private void showSubmitForm(HttpServletRequest request, HttpServletResponse response, User user)
-			throws ServletException, IOException {
-		int eventId = Integer.parseInt(request.getParameter("eventId"));
-		Event event = eventDAO.getEventById(eventId);
-		FeedbackForm form = feedbackDAO.getFeedbackFormForEvent(eventId);
-
-		if (form == null) {
-			request.getSession().setAttribute("errorMessage", "Für dieses Event wurde noch kein Feedback angefordert.");
-			response.sendRedirect(request.getContextPath() + "/profil");
+		if (user == null) {
+			response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
 			return;
 		}
 
-		if (feedbackDAO.hasUserSubmittedFeedback(form.getId(), user.getId())) {
+		if (!CSRFUtil.isTokenValid(request)) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
+
+		String action = request.getParameter("action");
+
+		if ("submitGeneralFeedback".equals(action)) {
+			handleGeneralFeedback(request, response, user);
+		} else if ("submitEventFeedbackResponse".equals(action)) {
+			handleEventFeedbackResponse(request, response, user);
+		} else {
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unknown action");
+		}
+	}
+
+	private void handleGeneralFeedback(HttpServletRequest request, HttpServletResponse response, User user)
+			throws ServletException, IOException {
+		String subject = request.getParameter("subject");
+		String content = request.getParameter("content");
+
+		if (subject == null || subject.trim().isEmpty() || content == null || content.trim().isEmpty()) {
+			request.setAttribute("errorMessage", "Betreff und Inhalt dürfen nicht leer sein.");
+			request.getRequestDispatcher("/views/public/feedback.jsp").forward(request, response);
+			return;
+		}
+
+		FeedbackSubmission submission = new FeedbackSubmission();
+		submission.setUserId(user.getId());
+		submission.setSubject(subject);
+		submission.setContent(content);
+
+		if (submissionDAO.createSubmission(submission)) {
+			request.getSession().setAttribute("successMessage",
+					"Vielen Dank! Dein Feedback wurde erfolgreich übermittelt.");
+			response.sendRedirect(request.getContextPath() + "/home");
+		} else {
+			request.setAttribute("errorMessage",
+					"Dein Feedback konnte nicht übermittelt werden. Bitte versuche es später erneut.");
+			request.getRequestDispatcher("/views/public/feedback.jsp").forward(request, response);
+		}
+	}
+
+	private void handleEventFeedbackResponse(HttpServletRequest request, HttpServletResponse response, User user)
+			throws IOException {
+		int formId = Integer.parseInt(request.getParameter("formId"));
+		int rating = Integer.parseInt(request.getParameter("rating"));
+		String comments = request.getParameter("comments");
+
+		FeedbackResponse feedbackResponse = new FeedbackResponse();
+		feedbackResponse.setFormId(formId);
+		feedbackResponse.setUserId(user.getId());
+		feedbackResponse.setRating(rating);
+		feedbackResponse.setComments(comments);
+
+		eventFeedbackDAO.saveFeedbackResponse(feedbackResponse);
+		request.getSession().setAttribute("successMessage", "Vielen Dank für dein Feedback!");
+		response.sendRedirect(request.getContextPath() + "/profil");
+	}
+
+	private void showSubmitEventFeedbackForm(HttpServletRequest request, HttpServletResponse response, User user)
+			throws ServletException, IOException {
+		int eventId = Integer.parseInt(request.getParameter("eventId"));
+		Event event = eventDAO.getEventById(eventId);
+		FeedbackForm form = eventFeedbackDAO.getFeedbackFormForEvent(eventId);
+
+		if (form == null) {
+			// For now, let's auto-create a form if one doesn't exist to simplify the flow
+			form = new FeedbackForm();
+			form.setEventId(eventId);
+			form.setTitle("Feedback für Event: " + (event != null ? event.getName() : "Unbekannt"));
+			int formId = eventFeedbackDAO.createFeedbackForm(form);
+			form.setId(formId);
+		}
+
+		if (eventFeedbackDAO.hasUserSubmittedFeedback(form.getId(), user.getId())) {
 			request.getSession().setAttribute("infoMessage", "Du hast bereits Feedback für dieses Event abgegeben.");
 			response.sendRedirect(request.getContextPath() + "/profil");
 			return;
@@ -105,20 +140,5 @@ public class FeedbackServlet extends HttpServlet {
 		request.setAttribute("event", event);
 		request.setAttribute("form", form);
 		request.getRequestDispatcher("/views/public/feedback_form.jsp").forward(request, response);
-	}
-
-	private void viewFeedbackResults(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		int eventId = Integer.parseInt(request.getParameter("eventId"));
-		Event event = eventDAO.getEventById(eventId);
-		FeedbackForm form = feedbackDAO.getFeedbackFormForEvent(eventId);
-
-		if (form != null) {
-			List<FeedbackResponse> responses = feedbackDAO.getResponsesForForm(form.getId());
-			request.setAttribute("responses", responses);
-		}
-
-		request.setAttribute("event", event);
-		request.getRequestDispatcher("/views/public/feedback_results.jsp").forward(request, response);
 	}
 }

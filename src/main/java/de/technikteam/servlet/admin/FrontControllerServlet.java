@@ -43,9 +43,15 @@ public class FrontControllerServlet extends HttpServlet {
 		actions.put("user.resetPassword", new ResetPasswordAction());
 		actions.put("user.unlock", new UnlockUserAction());
 
-		gson = new GsonBuilder()
-				.registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
-				.create();
+		// Profile Change Request Actions
+		actions.put("request.approve", new ApproveChangeAction());
+		actions.put("request.deny", new DenyChangeAction());
+
+		// Feedback Actions
+		actions.put("feedback.updateStatus", new UpdateFeedbackStatusAction());
+		actions.put("feedback.delete", new DeleteFeedbackAction());
+
+		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 
 		logger.info("FrontControllerServlet initialized with {} actions.", actions.size());
 	}

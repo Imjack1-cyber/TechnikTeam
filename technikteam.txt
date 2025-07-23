@@ -477,6 +477,34 @@ public class AdminLogDAO {
 		}
 		return logs;
 	}
+
+	/**
+	 * Fetches the most recent log entries from the database.
+	 *
+	 * @param limit The maximum number of log entries to return.
+	 * @return A list of AdminLog objects.
+	 */
+	public List<AdminLog> getRecentLogs(int limit) {
+		List<AdminLog> logs = new ArrayList<>();
+		String sql = "SELECT id, admin_username, action_type, details, action_timestamp FROM admin_logs ORDER BY action_timestamp DESC LIMIT ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, limit);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					AdminLog logEntry = new AdminLog();
+					logEntry.setId(rs.getInt("id"));
+					logEntry.setAdminUsername(rs.getString("admin_username"));
+					logEntry.setActionType(rs.getString("action_type"));
+					logEntry.setDetails(rs.getString("details"));
+					logEntry.setActionTimestamp(rs.getTimestamp("action_timestamp").toLocalDateTime());
+					logs.add(logEntry);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Failed to fetch recent admin logs from the database.", e);
+		}
+		return logs;
+	}
 }
 ========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\dao\AttachmentDAO.java
@@ -1176,16 +1204,26 @@ public class EventDAO {
 
 	public List<Event> getEventHistoryForUser(int userId) {
 		List<Event> history = new ArrayList<>();
-		String sql = "SELECT e.*, ea.signup_status FROM events e "
-				+ "JOIN event_attendance ea ON e.id = ea.event_id WHERE ea.user_id = ? ORDER BY e.event_datetime DESC";
+		// FIX V3: A definitive, simplified query.
+		String sql = "SELECT e.*, " + "COALESCE( "
+				+ "  (SELECT 'ZUGEWIESEN' FROM event_assignments WHERE event_id = e.id AND user_id = ?), "
+				+ "  (SELECT signup_status FROM event_attendance WHERE event_id = e.id AND user_id = ?), "
+				+ "  'OFFEN' " + ") AS user_status " + "FROM events e " + "WHERE EXISTS ( "
+				+ "  SELECT 1 FROM event_attendance WHERE event_id = e.id AND user_id = ? " + "  UNION "
+				+ "  SELECT 1 FROM event_assignments WHERE event_id = e.id AND user_id = ? " + ") "
+				+ "ORDER BY e.event_datetime DESC";
+
 		logger.debug("Fetching event history for user ID: {}", userId);
 		try (Connection connection = DatabaseManager.getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 			preparedStatement.setInt(1, userId);
+			preparedStatement.setInt(2, userId);
+			preparedStatement.setInt(3, userId);
+			preparedStatement.setInt(4, userId);
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				while (resultSet.next()) {
 					Event event = mapResultSetToEvent(resultSet);
-					event.setUserAttendanceStatus(resultSet.getString("signup_status"));
+					event.setUserAttendanceStatus(resultSet.getString("user_status"));
 					history.add(event);
 				}
 			}
@@ -1732,6 +1770,146 @@ public class EventDAO {
 		}
 		return users;
 	}
+
+	/**
+	 * Fetches upcoming events for the admin dashboard.
+	 *
+	 * @param limit The maximum number of events to return.
+	 * @return A list of upcoming Event objects.
+	 */
+	public List<Event> getUpcomingEvents(int limit) {
+		List<Event> events = new ArrayList<>();
+		String sql = "SELECT * FROM events WHERE event_datetime > NOW() ORDER BY event_datetime ASC LIMIT ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, limit);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					events.add(mapResultSetToEvent(rs));
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching upcoming events with limit {}", limit, e);
+		}
+		return events;
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\dao\EventFeedbackDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import de.technikteam.model.FeedbackForm;
+import de.technikteam.model.FeedbackResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Manages feedback specific to Events.
+ */
+public class EventFeedbackDAO {
+	private static final Logger logger = LogManager.getLogger(EventFeedbackDAO.class);
+
+	public int createFeedbackForm(FeedbackForm form) {
+		String sql = "INSERT INTO feedback_forms (event_id, title) VALUES (?, ?)";
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql,
+						Statement.RETURN_GENERATED_KEYS)) {
+			preparedStatement.setInt(1, form.getEventId());
+			preparedStatement.setString(2, form.getTitle());
+			int affectedRows = preparedStatement.executeUpdate();
+			if (affectedRows > 0) {
+				try (ResultSet resultSet = preparedStatement.getGeneratedKeys()) {
+					if (resultSet.next()) {
+						return resultSet.getInt(1);
+					}
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error creating feedback form for event {}", form.getEventId(), e);
+		}
+		return 0;
+	}
+
+	public boolean saveFeedbackResponse(FeedbackResponse response) {
+		String sql = "INSERT INTO feedback_responses (form_id, user_id, rating, comments) VALUES (?, ?, ?, ?) "
+				+ "ON DUPLICATE KEY UPDATE rating = VALUES(rating), comments = VALUES(comments)";
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, response.getFormId());
+			preparedStatement.setInt(2, response.getUserId());
+			preparedStatement.setInt(3, response.getRating());
+			preparedStatement.setString(4, response.getComments());
+			return preparedStatement.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("Error saving feedback response for form_id {}", response.getFormId(), e);
+		}
+		return false;
+	}
+
+	public FeedbackForm getFeedbackFormForEvent(int eventId) {
+		String sql = "SELECT * FROM feedback_forms WHERE event_id = ?";
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, eventId);
+			try (ResultSet resultSet = preparedStatement.executeQuery()) {
+				if (resultSet.next()) {
+					FeedbackForm form = new FeedbackForm();
+					form.setId(resultSet.getInt("id"));
+					form.setEventId(resultSet.getInt("event_id"));
+					form.setTitle(resultSet.getString("title"));
+					form.setCreatedAt(resultSet.getTimestamp("created_at").toLocalDateTime());
+					return form;
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching feedback form for event ID {}", eventId, e);
+		}
+		return null;
+	}
+
+	public List<FeedbackResponse> getResponsesForForm(int formId) {
+		List<FeedbackResponse> responses = new ArrayList<>();
+		String sql = "SELECT fr.*, u.username FROM feedback_responses fr JOIN users u ON fr.user_id = u.id WHERE fr.form_id = ?";
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, formId);
+			try (ResultSet resultSet = preparedStatement.executeQuery()) {
+				while (resultSet.next()) {
+					FeedbackResponse response = new FeedbackResponse();
+					response.setId(resultSet.getInt("id"));
+					response.setFormId(resultSet.getInt("form_id"));
+					response.setUserId(resultSet.getInt("user_id"));
+					response.setUsername(resultSet.getString("username"));
+					response.setRating(resultSet.getInt("rating"));
+					response.setComments(resultSet.getString("comments"));
+					response.setSubmittedAt(resultSet.getTimestamp("submitted_at").toLocalDateTime());
+					responses.add(response);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching responses for form ID {}", formId, e);
+		}
+		return responses;
+	}
+
+	public boolean hasUserSubmittedFeedback(int formId, int userId) {
+		String sql = "SELECT 1 FROM feedback_responses WHERE form_id = ? AND user_id = ?";
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, formId);
+			preparedStatement.setInt(2, userId);
+			try (ResultSet resultSet = preparedStatement.executeQuery()) {
+				return resultSet.next();
+			}
+		} catch (SQLException e) {
+			logger.error("Error checking user feedback submission status.", e);
+		}
+		return false;
+	}
 }
 ========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\dao\EventTaskDAO.java
@@ -2136,118 +2314,104 @@ public class EventTaskDAO {
 	}
 }
 ========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\dao\FeedbackDAO.java
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\dao\FeedbackSubmissionDAO.java
 ========================================================================
 
 package de.technikteam.dao;
 
-import de.technikteam.model.FeedbackForm;
-import de.technikteam.model.FeedbackResponse;
+import de.technikteam.model.FeedbackSubmission;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FeedbackDAO {
-	private static final Logger logger = LogManager.getLogger(FeedbackDAO.class);
+/**
+ * DAO for managing user feedback submissions.
+ */
+public class FeedbackSubmissionDAO {
+	private static final Logger logger = LogManager.getLogger(FeedbackSubmissionDAO.class);
 
-	public int createFeedbackForm(FeedbackForm form) {
-		String sql = "INSERT INTO feedback_forms (event_id, title) VALUES (?, ?)";
-		try (Connection connection = DatabaseManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql,
-						Statement.RETURN_GENERATED_KEYS)) {
-			preparedStatement.setInt(1, form.getEventId());
-			preparedStatement.setString(2, form.getTitle());
-			int affectedRows = preparedStatement.executeUpdate();
-			if (affectedRows > 0) {
-				try (ResultSet resultSet = preparedStatement.getGeneratedKeys()) {
-					if (resultSet.next()) {
-						return resultSet.getInt(1);
-					}
+	public boolean createSubmission(FeedbackSubmission submission) {
+		String sql = "INSERT INTO feedback_submissions (user_id, subject, content) VALUES (?, ?, ?)";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, submission.getUserId());
+			pstmt.setString(2, submission.getSubject());
+			pstmt.setString(3, submission.getContent());
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("Error creating feedback submission for user {}", submission.getUserId(), e);
+			return false;
+		}
+	}
+
+	public List<FeedbackSubmission> getAllSubmissions() {
+		List<FeedbackSubmission> submissions = new ArrayList<>();
+		String sql = "SELECT fs.*, u.username FROM feedback_submissions fs " + "JOIN users u ON fs.user_id = u.id "
+				+ "ORDER BY FIELD(fs.status, 'NEW', 'VIEWED', 'PLANNED', 'COMPLETED', 'REJECTED'), fs.submitted_at DESC";
+		try (Connection conn = DatabaseManager.getConnection();
+				Statement stmt = conn.createStatement();
+				ResultSet rs = stmt.executeQuery(sql)) {
+			while (rs.next()) {
+				submissions.add(mapResultSetToSubmission(rs));
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching all feedback submissions", e);
+		}
+		return submissions;
+	}
+
+	public List<FeedbackSubmission> getSubmissionsByUserId(int userId) {
+		List<FeedbackSubmission> submissions = new ArrayList<>();
+		String sql = "SELECT fs.*, u.username FROM feedback_submissions fs " + "JOIN users u ON fs.user_id = u.id "
+				+ "WHERE fs.user_id = ? ORDER BY fs.submitted_at DESC";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, userId);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					submissions.add(mapResultSetToSubmission(rs));
 				}
 			}
 		} catch (SQLException e) {
-			logger.error("Error creating feedback form for event {}", form.getEventId(), e);
+			logger.error("Error fetching feedback submissions for user {}", userId, e);
 		}
-		return 0;
+		return submissions;
 	}
 
-	public boolean saveFeedbackResponse(FeedbackResponse response) {
-		String sql = "INSERT INTO feedback_responses (form_id, user_id, rating, comments) VALUES (?, ?, ?, ?) "
-				+ "ON DUPLICATE KEY UPDATE rating = VALUES(rating), comments = VALUES(comments)";
-		try (Connection connection = DatabaseManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-			preparedStatement.setInt(1, response.getFormId());
-			preparedStatement.setInt(2, response.getUserId());
-			preparedStatement.setInt(3, response.getRating());
-			preparedStatement.setString(4, response.getComments());
-			return preparedStatement.executeUpdate() > 0;
+	public boolean updateStatus(int submissionId, String newStatus) {
+		String sql = "UPDATE feedback_submissions SET status = ? WHERE id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setString(1, newStatus);
+			pstmt.setInt(2, submissionId);
+			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
-			logger.error("Error saving feedback response for form_id {}", response.getFormId(), e);
+			logger.error("Error updating status for submission {}", submissionId, e);
+			return false;
 		}
-		return false;
 	}
 
-	public FeedbackForm getFeedbackFormForEvent(int eventId) {
-		String sql = "SELECT * FROM feedback_forms WHERE event_id = ?";
-		try (Connection connection = DatabaseManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-			preparedStatement.setInt(1, eventId);
-			try (ResultSet resultSet = preparedStatement.executeQuery()) {
-				if (resultSet.next()) {
-					FeedbackForm form = new FeedbackForm();
-					form.setId(resultSet.getInt("id"));
-					form.setEventId(resultSet.getInt("event_id"));
-					form.setTitle(resultSet.getString("title"));
-					form.setCreatedAt(resultSet.getTimestamp("created_at").toLocalDateTime());
-					return form;
-				}
-			}
+	public boolean deleteSubmission(int submissionId) {
+		String sql = "DELETE FROM feedback_submissions WHERE id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, submissionId);
+			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
-			logger.error("Error fetching feedback form for event ID {}", eventId, e);
+			logger.error("Error deleting submission {}", submissionId, e);
+			return false;
 		}
-		return null;
 	}
 
-	public List<FeedbackResponse> getResponsesForForm(int formId) {
-		List<FeedbackResponse> responses = new ArrayList<>();
-		String sql = "SELECT fr.*, u.username FROM feedback_responses fr JOIN users u ON fr.user_id = u.id WHERE fr.form_id = ?";
-		try (Connection connection = DatabaseManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-			preparedStatement.setInt(1, formId);
-			try (ResultSet resultSet = preparedStatement.executeQuery()) {
-				while (resultSet.next()) {
-					FeedbackResponse response = new FeedbackResponse();
-					response.setId(resultSet.getInt("id"));
-					response.setFormId(resultSet.getInt("form_id"));
-					response.setUserId(resultSet.getInt("user_id"));
-					response.setUsername(resultSet.getString("username")); 
-					response.setRating(resultSet.getInt("rating"));
-					response.setComments(resultSet.getString("comments"));
-					response.setSubmittedAt(resultSet.getTimestamp("submitted_at").toLocalDateTime());
-					responses.add(response);
-				}
-			}
-		} catch (SQLException e) {
-			logger.error("Error fetching responses for form ID {}", formId, e);
-		}
-		return responses;
-	}
-
-	public boolean hasUserSubmittedFeedback(int formId, int userId) {
-		String sql = "SELECT 1 FROM feedback_responses WHERE form_id = ? AND user_id = ?";
-		try (Connection connection = DatabaseManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-			preparedStatement.setInt(1, formId);
-			preparedStatement.setInt(2, userId);
-			try (ResultSet resultSet = preparedStatement.executeQuery()) {
-				return resultSet.next();
-			}
-		} catch (SQLException e) {
-			logger.error("Error checking user feedback submission status.", e);
-		}
-		return false;
+	private FeedbackSubmission mapResultSetToSubmission(ResultSet rs) throws SQLException {
+		FeedbackSubmission sub = new FeedbackSubmission();
+		sub.setId(rs.getInt("id"));
+		sub.setUserId(rs.getInt("user_id"));
+		sub.setUsername(rs.getString("username"));
+		sub.setSubject(rs.getString("subject"));
+		sub.setContent(rs.getString("content"));
+		sub.setSubmittedAt(rs.getTimestamp("submitted_at").toLocalDateTime());
+		sub.setStatus(rs.getString("status"));
+		return sub;
 	}
 }
 ========================================================================
@@ -3394,6 +3558,118 @@ public class MeetingDAO {
 	}
 }
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\dao\PasskeyDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import de.technikteam.model.PasskeyCredential;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Data Access Object for handling all CRUD operations for the user_passkeys table.
+ */
+public class PasskeyDAO {
+    private static final Logger logger = LogManager.getLogger(PasskeyDAO.class);
+
+    public boolean saveCredential(PasskeyCredential credential) {
+        String sql = "INSERT INTO user_passkeys (user_id, name, user_handle, credential_id, public_key, signature_count) VALUES (?, ?, ?, ?, ?, ?)";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, credential.getUserId());
+            pstmt.setString(2, credential.getName());
+            pstmt.setString(3, credential.getUserHandle());
+            pstmt.setString(4, credential.getCredentialId());
+            pstmt.setString(5, credential.getPublicKey());
+            pstmt.setLong(6, credential.getSignatureCount());
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            logger.error("Error saving passkey credential for user {}", credential.getUserId(), e);
+            return false;
+        }
+    }
+
+    public List<PasskeyCredential> getCredentialsByUserId(int userId) {
+        List<PasskeyCredential> credentials = new ArrayList<>();
+        String sql = "SELECT * FROM user_passkeys WHERE user_id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, userId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    credentials.add(mapResultSetToCredential(rs));
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Error retrieving passkey credentials for user {}", userId, e);
+        }
+        return credentials;
+    }
+
+    public Optional<PasskeyCredential> getCredentialById(String credentialId) {
+        String sql = "SELECT * FROM user_passkeys WHERE credential_id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, credentialId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapResultSetToCredential(rs));
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Error retrieving credential by ID", e);
+        }
+        return Optional.empty();
+    }
+    
+    public boolean deleteCredential(int credentialDbId, int userId) {
+        String sql = "DELETE FROM user_passkeys WHERE id = ? AND user_id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, credentialDbId);
+            pstmt.setInt(2, userId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            logger.error("Error deleting credential ID {} for user {}", credentialDbId, userId, e);
+            return false;
+        }
+    }
+
+
+    public boolean updateSignatureCount(String credentialId, long newSignatureCount) {
+        String sql = "UPDATE user_passkeys SET signature_count = ? WHERE credential_id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setLong(1, newSignatureCount);
+            pstmt.setString(2, credentialId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            logger.error("Error updating signature count for credential", e);
+            return false;
+        }
+    }
+
+
+    private PasskeyCredential mapResultSetToCredential(ResultSet rs) throws SQLException {
+        return new PasskeyCredential(
+                rs.getInt("id"),
+                rs.getInt("user_id"),
+                rs.getString("name"),
+                rs.getString("user_handle"),
+                rs.getString("credential_id"),
+                rs.getString("public_key"),
+                rs.getLong("signature_count"),
+                rs.getTimestamp("created_at").toLocalDateTime()
+        );
+    }
+}
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\dao\PermissionDAO.java
 ========================================================================
 
@@ -3445,6 +3721,118 @@ public class PermissionDAO {
 			logger.error("Error fetching permission IDs for user {}", userId, e);
 		}
 		return permissionIds;
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\dao\ProfileChangeRequestDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import de.technikteam.model.ProfileChangeRequest;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class ProfileChangeRequestDAO {
+	private static final Logger logger = LogManager.getLogger(ProfileChangeRequestDAO.class);
+
+	public boolean createRequest(ProfileChangeRequest request) {
+		String sql = "INSERT INTO profile_change_requests (user_id, requested_changes, status) VALUES (?, ?, 'PENDING')";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, request.getUserId());
+			pstmt.setString(2, request.getRequestedChanges());
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("Error creating profile change request for user {}", request.getUserId(), e);
+			return false;
+		}
+	}
+
+	public ProfileChangeRequest getRequestById(int id) {
+		String sql = "SELECT pcr.*, u.username as username, a.username as admin_username "
+				+ "FROM profile_change_requests pcr " + "JOIN users u ON pcr.user_id = u.id "
+				+ "LEFT JOIN users a ON pcr.reviewed_by_admin_id = a.id " + "WHERE pcr.id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, id);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				if (rs.next()) {
+					return mapResultSetToRequest(rs);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching request by ID {}", id, e);
+		}
+		return null;
+	}
+
+	public List<ProfileChangeRequest> getPendingRequests() {
+		List<ProfileChangeRequest> requests = new ArrayList<>();
+		String sql = "SELECT pcr.*, u.username as username FROM profile_change_requests pcr "
+				+ "JOIN users u ON pcr.user_id = u.id " + "WHERE pcr.status = 'PENDING' ORDER BY pcr.requested_at ASC";
+		try (Connection conn = DatabaseManager.getConnection();
+				Statement stmt = conn.createStatement();
+				ResultSet rs = stmt.executeQuery(sql)) {
+			while (rs.next()) {
+				requests.add(mapResultSetToRequest(rs));
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching pending requests", e);
+		}
+		return requests;
+	}
+
+	public boolean hasPendingRequest(int userId) {
+		String sql = "SELECT 1 FROM profile_change_requests WHERE user_id = ? AND status = 'PENDING'";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, userId);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				return rs.next();
+			}
+		} catch (SQLException e) {
+			logger.error("Error checking for pending request for user {}", userId, e);
+			return false;
+		}
+	}
+
+	public boolean updateRequestStatus(int requestId, String status, int adminId) {
+		String sql = "UPDATE profile_change_requests SET status = ?, reviewed_by_admin_id = ?, reviewed_at = NOW() WHERE id = ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setString(1, status);
+			pstmt.setInt(2, adminId);
+			pstmt.setInt(3, requestId);
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("Error updating status for request {}", requestId, e);
+			return false;
+		}
+	}
+
+	private ProfileChangeRequest mapResultSetToRequest(ResultSet rs) throws SQLException {
+		ProfileChangeRequest request = new ProfileChangeRequest();
+		request.setId(rs.getInt("id"));
+		request.setUserId(rs.getInt("user_id"));
+		request.setRequestedChanges(rs.getString("requested_changes"));
+		request.setStatus(rs.getString("status"));
+		request.setRequestedAt(rs.getTimestamp("requested_at").toLocalDateTime());
+
+		if (rs.getObject("reviewed_by_admin_id") != null) {
+			request.setReviewedByAdminId(rs.getInt("reviewed_by_admin_id"));
+		}
+		if (rs.getTimestamp("reviewed_at") != null) {
+			request.setReviewedAt(rs.getTimestamp("reviewed_at").toLocalDateTime());
+		}
+		// Joined columns
+		if (rs.getMetaData().getColumnCount() > 7) { // Simple check if joins were present
+			request.setUsername(rs.getString("username"));
+			if (rs.getMetaData().getColumnCount() > 8) {
+				request.setReviewedByAdminName(rs.getString("admin_username"));
+			}
+		}
+		return request;
 	}
 }
 ========================================================================
@@ -3916,6 +4304,29 @@ public class StorageDAO {
 			return false;
 		}
 	}
+
+	/**
+	 * Fetches items where the available quantity is critically low (less than 25%
+	 * of max quantity).
+	 *
+	 * @param limit The maximum number of items to return.
+	 * @return A list of low-stock StorageItem objects.
+	 */
+	public List<StorageItem> getLowStockItems(int limit) {
+		List<StorageItem> items = new ArrayList<>();
+		String sql = "SELECT * FROM storage_items WHERE (quantity - defective_quantity) < (max_quantity * 0.25) AND max_quantity > 0 ORDER BY (quantity - defective_quantity) / max_quantity ASC LIMIT ?";
+		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, limit);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					items.add(mapResultSetToStorageItem(rs));
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("SQL error while fetching low stock items.", e);
+		}
+		return items;
+	}
 }
 ========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\dao\StorageLogDAO.java
@@ -4186,7 +4597,10 @@ public class UserDAO {
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				if (resultSet.next()) {
 					logger.info("Found user '{}' with ID: {}", resultSet.getString("username"), userId);
-					return mapResultSetToUser(resultSet);
+					User user = mapResultSetToUser(resultSet);
+					// FIX: Also load permissions when fetching a single user.
+					user.setPermissions(getPermissionsForUser(userId));
+					return user;
 				}
 			}
 		} catch (SQLException exception) {
@@ -4640,8 +5054,9 @@ public class AuthenticationFilter implements Filter {
 
 	private static final Set<String> PUBLIC_PATHS = new HashSet<>(Arrays.asList("/login", "/logout", "/calendar.ics"));
 
+	// Added /api/auth to allow pre-login access for passkeys
 	private static final Set<String> PUBLIC_RESOURCE_PREFIXES = new HashSet<>(
-			Arrays.asList("/css", "/js", "/images", "/error", "/public", "/vendor", "/wopi"));
+			Arrays.asList("/css", "/js", "/images", "/error", "/public", "/vendor", "/wopi", "/api/auth"));
 
 	@Override
 	public void init(FilterConfig filterConfig) throws ServletException {
@@ -4871,6 +5286,34 @@ public class ApplicationInitializerListener implements ServletContextListener {
 	}
 }
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\listener\SessionListener.java
+========================================================================
+
+package de.technikteam.listener;
+
+import de.technikteam.servlet.http.SessionManager;
+import jakarta.servlet.annotation.WebListener;
+import jakarta.servlet.http.HttpSessionEvent;
+import jakarta.servlet.http.HttpSessionListener;
+
+/**
+ * Listens for HttpSession creation and destruction to keep the SessionManager
+ * up to date.
+ */
+@WebListener
+public class SessionListener implements HttpSessionListener {
+
+	@Override
+	public void sessionCreated(HttpSessionEvent se) {
+		SessionManager.addSession(se.getSession());
+	}
+
+	@Override
+	public void sessionDestroyed(HttpSessionEvent se) {
+		SessionManager.removeSession(se.getSession());
+	}
+}
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\model\Achievement.java
 ========================================================================
 
@@ -5017,6 +5460,77 @@ public class AdminLog {
 	}
 }
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\model\ApiResponse.java
+========================================================================
+
+package de.technikteam.model;
+
+/**
+ * A generic Data Transfer Object for standardizing API responses from the server.
+ * It provides a consistent structure for success/failure status, a message, and optional data payload.
+ */
+public class ApiResponse {
+    private final boolean success;
+    private final String message;
+    private final Object data;
+
+    public ApiResponse(boolean success, String message, Object data) {
+        this.success = success;
+        this.message = message;
+        this.data = data;
+    }
+
+    /**
+     * Creates a success response with a message and data.
+     * @param message A descriptive success message.
+     * @param data The data payload to send back to the client.
+     * @return A new ApiResponse object.
+     */
+    public static ApiResponse success(String message, Object data) {
+        return new ApiResponse(true, message, data);
+    }
+
+    /**
+     * Creates a success response with only a message.
+     * @param message A descriptive success message.
+     * @return A new ApiResponse object.
+     */
+    public static ApiResponse success(String message) {
+        return new ApiResponse(true, message, null);
+    }
+
+    /**
+     * Creates an error response with a message.
+     * @param message A descriptive error message.
+     * @return A new ApiResponse object.
+     */
+    public static ApiResponse error(String message) {
+        return new ApiResponse(false, message, null);
+    }
+    
+    /**
+     * Creates an error response with a message and additional data.
+     * @param message A descriptive error message.
+     * @param data Additional context about the error.
+     * @return A new ApiResponse object.
+     */
+    public static ApiResponse error(String message, Object data) {
+        return new ApiResponse(false, message, data);
+    }
+
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public Object getData() {
+        return data;
+    }
+}
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\model\Attachment.java
 ========================================================================
 
@@ -5145,6 +5659,58 @@ public class Course {
 
 	public void setDescription(String description) {
 		this.description = description;
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\model\DashboardDataDTO.java
+========================================================================
+
+package de.technikteam.model;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * A Data Transfer Object to encapsulate all data required for the dynamic admin
+ * dashboard.
+ */
+public class DashboardDataDTO {
+	private List<Event> upcomingEvents;
+	private List<StorageItem> lowStockItems;
+	private List<AdminLog> recentLogs;
+	private List<Map<String, Object>> eventTrendData;
+
+	// Getters and Setters
+	public List<Event> getUpcomingEvents() {
+		return upcomingEvents;
+	}
+
+	public void setUpcomingEvents(List<Event> upcomingEvents) {
+		this.upcomingEvents = upcomingEvents;
+	}
+
+	public List<StorageItem> getLowStockItems() {
+		return lowStockItems;
+	}
+
+	public void setLowStockItems(List<StorageItem> lowStockItems) {
+		this.lowStockItems = lowStockItems;
+	}
+
+	public List<AdminLog> getRecentLogs() {
+		return recentLogs;
+	}
+
+	public void setRecentLogs(List<AdminLog> recentLogs) {
+		this.recentLogs = recentLogs;
+	}
+
+	public List<Map<String, Object>> getEventTrendData() {
+		return eventTrendData;
+	}
+
+	public void setEventTrendData(List<Map<String, Object>> eventTrendData) {
+		this.eventTrendData = eventTrendData;
 	}
 }
 ========================================================================
@@ -5872,6 +6438,89 @@ public class FeedbackResponse {
 	}
 }
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\model\FeedbackSubmission.java
+========================================================================
+
+package de.technikteam.model;
+
+import de.technikteam.config.DateFormatter;
+import java.time.LocalDateTime;
+
+/**
+ * Represents a single feedback submission from a user. Corresponds to the
+ * `feedback_submissions` table.
+ */
+public class FeedbackSubmission {
+	private int id;
+	private int userId;
+	private String username; // For display
+	private String subject;
+	private String content;
+	private LocalDateTime submittedAt;
+	private String status;
+
+	public String getFormattedSubmittedAt() {
+		return DateFormatter.formatDateTime(this.submittedAt);
+	}
+
+	// Standard Getters and Setters
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	public int getUserId() {
+		return userId;
+	}
+
+	public void setUserId(int userId) {
+		this.userId = userId;
+	}
+
+	public String getUsername() {
+		return username;
+	}
+
+	public void setUsername(String username) {
+		this.username = username;
+	}
+
+	public String getSubject() {
+		return subject;
+	}
+
+	public void setSubject(String subject) {
+		this.subject = subject;
+	}
+
+	public String getContent() {
+		return content;
+	}
+
+	public void setContent(String content) {
+		this.content = content;
+	}
+
+	public LocalDateTime getSubmittedAt() {
+		return submittedAt;
+	}
+
+	public void setSubmittedAt(LocalDateTime submittedAt) {
+		this.submittedAt = submittedAt;
+	}
+
+	public String getStatus() {
+		return status;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
+	}
+}
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\model\File.java
 ========================================================================
 
@@ -6459,6 +7108,107 @@ public class ParticipationHistory {
 	}
 }
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\model\PasskeyCredential.java
+========================================================================
+
+package de.technikteam.model;
+
+import java.time.LocalDateTime;
+
+/**
+ * Represents a single Passkey/WebAuthn credential from the user_passkeys table.
+ */
+public class PasskeyCredential {
+	private int id;
+	private int userId;
+	private String name;
+	private String userHandle;
+	private String credentialId;
+	private String publicKey;
+	private long signatureCount;
+	private LocalDateTime createdAt;
+
+	public PasskeyCredential(int id, int userId, String name, String userHandle, String credentialId, String publicKey,
+			long signatureCount, LocalDateTime createdAt) {
+		this.id = id;
+		this.userId = userId;
+		this.name = name;
+		this.userHandle = userHandle;
+		this.credentialId = credentialId;
+		this.publicKey = publicKey;
+		this.signatureCount = signatureCount;
+		this.createdAt = createdAt;
+	}
+
+	public PasskeyCredential() {
+	}
+
+	// Getters and setters
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	public int getUserId() {
+		return userId;
+	}
+
+	public void setUserId(int userId) {
+		this.userId = userId;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public String getUserHandle() {
+		return userHandle;
+	}
+
+	public void setUserHandle(String userHandle) {
+		this.userHandle = userHandle;
+	}
+
+	public String getCredentialId() {
+		return credentialId;
+	}
+
+	public void setCredentialId(String credentialId) {
+		this.credentialId = credentialId;
+	}
+
+	public String getPublicKey() {
+		return publicKey;
+	}
+
+	public void setPublicKey(String publicKey) {
+		this.publicKey = publicKey;
+	}
+
+	public long getSignatureCount() {
+		return signatureCount;
+	}
+
+	public void setSignatureCount(long signatureCount) {
+		this.signatureCount = signatureCount;
+	}
+
+	public LocalDateTime getCreatedAt() {
+		return createdAt;
+	}
+
+	public void setCreatedAt(LocalDateTime createdAt) {
+		this.createdAt = createdAt;
+	}
+}
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\model\Permission.java
 ========================================================================
 
@@ -6495,6 +7245,102 @@ public class Permission {
 
 	public void setDescription(String description) {
 		this.description = description;
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\model\ProfileChangeRequest.java
+========================================================================
+
+package de.technikteam.model;
+
+import java.time.LocalDateTime;
+
+/**
+ * Represents a single request from a user to change their profile data.
+ * Corresponds to the `profile_change_requests` table.
+ */
+public class ProfileChangeRequest {
+	private int id;
+	private int userId;
+	private String username; // For display purposes
+	private String requestedChanges; // JSON string
+	private String status;
+	private LocalDateTime requestedAt;
+	private Integer reviewedByAdminId;
+	private String reviewedByAdminName; // For display purposes
+	private LocalDateTime reviewedAt;
+
+	// Getters and Setters
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	public int getUserId() {
+		return userId;
+	}
+
+	public void setUserId(int userId) {
+		this.userId = userId;
+	}
+
+	public String getUsername() {
+		return username;
+	}
+
+	public void setUsername(String username) {
+		this.username = username;
+	}
+
+	public String getRequestedChanges() {
+		return requestedChanges;
+	}
+
+	public void setRequestedChanges(String requestedChanges) {
+		this.requestedChanges = requestedChanges;
+	}
+
+	public String getStatus() {
+		return status;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
+	}
+
+	public LocalDateTime getRequestedAt() {
+		return requestedAt;
+	}
+
+	public void setRequestedAt(LocalDateTime requestedAt) {
+		this.requestedAt = requestedAt;
+	}
+
+	public Integer getReviewedByAdminId() {
+		return reviewedByAdminId;
+	}
+
+	public void setReviewedByAdminId(Integer reviewedByAdminId) {
+		this.reviewedByAdminId = reviewedByAdminId;
+	}
+
+	public String getReviewedByAdminName() {
+		return reviewedByAdminName;
+	}
+
+	public void setReviewedByAdminName(String reviewedByAdminName) {
+		this.reviewedByAdminName = reviewedByAdminName;
+	}
+
+	public LocalDateTime getReviewedAt() {
+		return reviewedAt;
+	}
+
+	public void setReviewedAt(LocalDateTime reviewedAt) {
+		this.reviewedAt = reviewedAt;
 	}
 }
 ========================================================================
@@ -7206,6 +8052,42 @@ public class AchievementService {
 	}
 }
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\service\AdminDashboardService.java
+========================================================================
+
+package de.technikteam.service;
+
+import de.technikteam.dao.AdminLogDAO;
+import de.technikteam.dao.EventDAO;
+import de.technikteam.dao.ReportDAO;
+import de.technikteam.dao.StorageDAO;
+import de.technikteam.model.DashboardDataDTO;
+
+/**
+ * A service class that aggregates data from multiple DAOs to populate the
+ * DashboardDataDTO for the admin dashboard API.
+ */
+public class AdminDashboardService {
+	private final EventDAO eventDAO = new EventDAO();
+	private final StorageDAO storageDAO = new StorageDAO();
+	private final AdminLogDAO adminLogDAO = new AdminLogDAO();
+	private final ReportDAO reportDAO = new ReportDAO();
+
+	private static final int WIDGET_LIMIT = 5;
+	private static final int TREND_MONTHS = 12;
+
+	public DashboardDataDTO getDashboardData() {
+		DashboardDataDTO dto = new DashboardDataDTO();
+
+		dto.setUpcomingEvents(eventDAO.getUpcomingEvents(WIDGET_LIMIT));
+		dto.setLowStockItems(storageDAO.getLowStockItems(WIDGET_LIMIT));
+		dto.setRecentLogs(adminLogDAO.getRecentLogs(WIDGET_LIMIT));
+		dto.setEventTrendData(reportDAO.getEventCountByMonth(TREND_MONTHS));
+
+		return dto;
+	}
+}
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\service\AdminLogService.java
 ========================================================================
 
@@ -7433,29 +8315,34 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.service;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import de.technikteam.config.LocalDateTimeAdapter;
+import de.technikteam.model.User;
+import jakarta.servlet.AsyncContext;
+import jakarta.servlet.http.HttpServletRequest;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import com.google.gson.Gson;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import de.technikteam.model.User;
-import jakarta.servlet.AsyncContext;
-import jakarta.servlet.http.HttpServletRequest;
-
 public class NotificationService {
 	private static final Logger logger = LogManager.getLogger(NotificationService.class);
 	private static final NotificationService INSTANCE = new NotificationService();
-	private final Gson gson = new Gson();
+	private final Gson gson;
 
 	private final Map<Integer, List<AsyncContext>> contextsByUser = new ConcurrentHashMap<>();
 
 	private NotificationService() {
+		// FIX: Initialize Gson with the custom adapter to handle LocalDateTime
+		// correctly
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
 	public static NotificationService getInstance() {
@@ -7477,13 +8364,29 @@ public class NotificationService {
 				user.getId(), contextsByUser.get(user.getId()).size());
 	}
 
-	public void sendNotification(String message) {
-		logger.info("Broadcasting notification to all clients: {}", message);
+	/**
+	 * Broadcasts a generic message to all connected clients.
+	 * 
+	 * @param message The plain text message to send.
+	 */
+	public void broadcastGenericMessage(String message) {
+		logger.info("Broadcasting generic notification to all clients: {}", message);
 		Map<String, Object> payload = Map.of("type", "generic", "payload", Map.of("message", message));
-		String jsonMessage = gson.toJson(payload);
-		contextsByUser.values().forEach(contextList -> {
-			contextList.forEach(context -> sendMessageToContext(context, jsonMessage, contextList));
-		});
+		broadcast(gson.toJson(payload));
+	}
+
+	/**
+	 * Broadcasts a specific UI update event to all connected clients.
+	 * 
+	 * @param type    The type of UI update (e.g., "user_updated",
+	 *                "event_status_updated").
+	 * @param payload The data associated with the update.
+	 */
+	public void broadcastUIUpdate(String type, Object payload) {
+		logger.info("Broadcasting UI update of type '{}' to all clients.", type);
+		Map<String, Object> message = Map.of("type", "ui_update", "payload",
+				Map.of("updateType", type, "data", payload));
+		broadcast(gson.toJson(message));
 	}
 
 	public void sendNotificationToUser(int userId, Map<String, Object> payload) {
@@ -7504,15 +8407,141 @@ public class NotificationService {
 		sendNotificationToUser(userId, payload);
 	}
 
+	/**
+	 * Sends a pre-formatted JSON message to all connected clients.
+	 * 
+	 * @param jsonMessage The JSON string to broadcast.
+	 */
+	private void broadcast(String jsonMessage) {
+		contextsByUser.values().forEach(contextList -> {
+			contextList.forEach(context -> sendMessageToContext(context, jsonMessage, contextList));
+		});
+	}
+
 	private void sendMessageToContext(AsyncContext context, String message, List<AsyncContext> contextList) {
 		try {
 			PrintWriter writer = context.getResponse().getWriter();
 			writer.write("data: " + message + "\n\n");
 			writer.flush();
-		} catch (IOException e) {
-			logger.warn("Failed to send notification to a client (likely disconnected), removing it.");
+		} catch (IOException | IllegalStateException e) {
+			logger.warn("Failed to send notification to a client (likely disconnected), removing it. Error: {}",
+					e.getMessage());
 			contextList.remove(context);
 		}
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\service\PasskeyService.java
+========================================================================
+
+package de.technikteam.service;
+
+import de.technikteam.dao.PasskeyDAO;
+import de.technikteam.dao.UserDAO;
+import de.technikteam.model.User;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import java.util.UUID;
+
+/**
+ * SIMULATED Passkey Service. This class simulates the interaction with a real
+ * WebAuthn library (like Yubico's). In a real-world scenario, this class would
+ * contain complex cryptographic operations. For this exercise, it contains
+ * placeholder logic that mimics the flow but does not perform actual
+ * cryptographic validation.
+ */
+public class PasskeyService {
+	private static final Logger logger = LogManager.getLogger(PasskeyService.class);
+	private final PasskeyDAO passkeyDAO = new PasskeyDAO();
+	private final UserDAO userDAO = new UserDAO();
+
+	/**
+	 * Simulates starting the registration process. Generates a unique challenge and
+	 * user handle.
+	 * 
+	 * @param user The user who is registering a new passkey.
+	 * @return A simulated JSON string representing the challenge.
+	 */
+	public String startRegistration(User user) {
+		logger.info("Simulating passkey registration start for user '{}'", user.getUsername());
+		String challenge = generateChallenge();
+		String userHandle = UUID.randomUUID().toString();
+		// In a real implementation, we would store this challenge in the session with a
+		// timestamp.
+		return String.format(
+				"{\"challenge\": \"%s\", \"rp\": {\"name\": \"TechnikTeam\", \"id\": \"localhost\"}, \"user\": {\"id\": \"%s\", \"name\": \"%s\", \"displayName\": \"%s\"}, \"pubKeyCredParams\": [{\"type\": \"public-key\", \"alg\": -7}]}",
+				challenge, userHandle, user.getUsername(), user.getUsername());
+	}
+
+	/**
+	 * Simulates finishing the registration process. In a real implementation, this
+	 * would verify the client's response against the stored challenge.
+	 * 
+	 * @param userId         The ID of the user.
+	 * @param credentialData A JSON string from the client.
+	 * @param deviceName     A friendly name for the new credential.
+	 * @return true if the simulated verification is successful.
+	 */
+	public boolean finishRegistration(int userId, String credentialData, String deviceName) {
+		logger.info("Simulating passkey registration finish for user ID {}. Device: '{}'", userId, deviceName);
+		// SIMULATION: Assume validation is always successful.
+		// A real implementation would parse 'credentialData', verify signatures, and
+		// check the challenge.
+
+		// SIMULATION: Create a placeholder credential to save.
+		de.technikteam.model.PasskeyCredential credential = new de.technikteam.model.PasskeyCredential();
+		credential.setUserId(userId);
+		credential.setName(deviceName);
+		credential.setUserHandle(UUID.randomUUID().toString()); // In real life, this comes from startRegistration
+		credential.setCredentialId(generateChallenge()); // Unique ID for the key
+		credential.setPublicKey("simulated-public-key-" + UUID.randomUUID());
+		credential.setSignatureCount(0);
+
+		return passkeyDAO.saveCredential(credential);
+	}
+
+	/**
+	 * Simulates starting the authentication (login) process.
+	 * 
+	 * @param username The username attempting to log in.
+	 * @return A simulated JSON string representing the authentication challenge.
+	 */
+	public String startAuthentication(String username) {
+		logger.info("Simulating passkey authentication start for user '{}'", username);
+		// A real implementation would fetch all known credential IDs for this user to
+		// send to the client.
+		String challenge = generateChallenge();
+		return String.format("{\"challenge\": \"%s\", \"allowCredentials\": [], \"rpId\": \"localhost\"}", challenge);
+	}
+
+	/**
+	 * Simulates finishing the authentication process. In a real implementation,
+	 * this verifies the client's signature.
+	 * 
+	 * @param credentialData JSON data from the client.
+	 * @return The User object if authentication is successful, otherwise null.
+	 */
+	public User finishAuthentication(String credentialData) {
+		logger.info("Simulating passkey authentication finish.");
+		// SIMULATION: Assume validation is always successful and find ANY user to log
+		// in.
+		// A real implementation would parse the credentialId from 'credentialData',
+		// look it up in the DB,
+		// retrieve the public key and signature count, and perform cryptographic
+		// verification.
+
+		// For this simulation, we'll just grab the first admin user to demonstrate the
+		// login flow.
+		User user = userDAO.getUserById(1);
+		if (user != null) {
+			user.setPermissions(userDAO.getPermissionsForUser(user.getId()));
+			logger.info("Simulated passkey login successful for user '{}'", user.getUsername());
+		}
+		return user;
+	}
+
+	private String generateChallenge() {
+		return UUID.randomUUID().toString().replace("-", "");
 	}
 }
 ========================================================================
@@ -8512,12 +9541,14 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 package de.technikteam.servlet;
 
 import de.technikteam.dao.EventDAO;
-import de.technikteam.dao.FeedbackDAO;
+import de.technikteam.dao.EventFeedbackDAO;
+import de.technikteam.dao.FeedbackSubmissionDAO;
 import de.technikteam.model.Event;
 import de.technikteam.model.FeedbackForm;
 import de.technikteam.model.FeedbackResponse;
+import de.technikteam.model.FeedbackSubmission;
 import de.technikteam.model.User;
-import de.technikteam.service.AdminLogService;
+import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -8529,12 +9560,14 @@ import java.util.List;
 @WebServlet("/feedback")
 public class FeedbackServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private FeedbackDAO feedbackDAO;
+	private EventFeedbackDAO eventFeedbackDAO;
+	private FeedbackSubmissionDAO submissionDAO;
 	private EventDAO eventDAO;
 
 	@Override
 	public void init() {
-		feedbackDAO = new FeedbackDAO();
+		eventFeedbackDAO = new EventFeedbackDAO();
+		submissionDAO = new FeedbackSubmissionDAO();
 		eventDAO = new EventDAO();
 	}
 
@@ -8542,72 +9575,103 @@ public class FeedbackServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		User user = (User) request.getSession().getAttribute("user");
-		String action = request.getParameter("action") == null ? "list" : request.getParameter("action");
+		String action = request.getParameter("action");
 
-		try {
-			switch (action) {
-			case "submit":
-				showSubmitForm(request, response, user);
-				break;
-			case "view":
-				viewFeedbackResults(request, response);
-				break;
-			default:
-				response.sendRedirect(request.getContextPath() + "/profil");
-				break;
-			}
-		} catch (Exception e) {
-			throw new ServletException(e);
+		// This part handles the old functionality for event-specific feedback
+		if ("submitEventFeedback".equals(action)) {
+			showSubmitEventFeedbackForm(request, response, user);
+			return;
 		}
+
+		// The default GET request shows the new general feedback form
+		request.getRequestDispatcher("/views/public/feedback.jsp").forward(request, response);
 	}
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		User user = (User) request.getSession().getAttribute("user");
-		String action = request.getParameter("action");
-
-		if ("createForm".equals(action)) {
-			int eventId = Integer.parseInt(request.getParameter("eventId"));
-			Event event = eventDAO.getEventById(eventId);
-			FeedbackForm form = new FeedbackForm();
-			form.setEventId(eventId);
-			form.setTitle("Feedback für Event: " + (event != null ? event.getName() : "Unbekannt"));
-			feedbackDAO.createFeedbackForm(form);
-			AdminLogService.log(user.getUsername(), "CREATE_FEEDBACK_FORM",
-					"Feedback-Formular für Event-ID " + eventId + " erstellt.");
-			response.sendRedirect(request.getContextPath() + "/admin/veranstaltungen");
-
-		} else if ("submitResponse".equals(action)) {
-			int formId = Integer.parseInt(request.getParameter("formId"));
-			int rating = Integer.parseInt(request.getParameter("rating"));
-			String comments = request.getParameter("comments");
-
-			FeedbackResponse feedbackResponse = new FeedbackResponse();
-			feedbackResponse.setFormId(formId);
-			feedbackResponse.setUserId(user.getId());
-			feedbackResponse.setRating(rating);
-			feedbackResponse.setComments(comments);
-
-			feedbackDAO.saveFeedbackResponse(feedbackResponse);
-			request.getSession().setAttribute("successMessage", "Vielen Dank für dein Feedback!");
-			response.sendRedirect(request.getContextPath() + "/profil");
-		}
-	}
-
-	private void showSubmitForm(HttpServletRequest request, HttpServletResponse response, User user)
-			throws ServletException, IOException {
-		int eventId = Integer.parseInt(request.getParameter("eventId"));
-		Event event = eventDAO.getEventById(eventId);
-		FeedbackForm form = feedbackDAO.getFeedbackFormForEvent(eventId);
-
-		if (form == null) {
-			request.getSession().setAttribute("errorMessage", "Für dieses Event wurde noch kein Feedback angefordert.");
-			response.sendRedirect(request.getContextPath() + "/profil");
+		if (user == null) {
+			response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
 			return;
 		}
 
-		if (feedbackDAO.hasUserSubmittedFeedback(form.getId(), user.getId())) {
+		if (!CSRFUtil.isTokenValid(request)) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
+
+		String action = request.getParameter("action");
+
+		if ("submitGeneralFeedback".equals(action)) {
+			handleGeneralFeedback(request, response, user);
+		} else if ("submitEventFeedbackResponse".equals(action)) {
+			handleEventFeedbackResponse(request, response, user);
+		} else {
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unknown action");
+		}
+	}
+
+	private void handleGeneralFeedback(HttpServletRequest request, HttpServletResponse response, User user)
+			throws ServletException, IOException {
+		String subject = request.getParameter("subject");
+		String content = request.getParameter("content");
+
+		if (subject == null || subject.trim().isEmpty() || content == null || content.trim().isEmpty()) {
+			request.setAttribute("errorMessage", "Betreff und Inhalt dürfen nicht leer sein.");
+			request.getRequestDispatcher("/views/public/feedback.jsp").forward(request, response);
+			return;
+		}
+
+		FeedbackSubmission submission = new FeedbackSubmission();
+		submission.setUserId(user.getId());
+		submission.setSubject(subject);
+		submission.setContent(content);
+
+		if (submissionDAO.createSubmission(submission)) {
+			request.getSession().setAttribute("successMessage",
+					"Vielen Dank! Dein Feedback wurde erfolgreich übermittelt.");
+			response.sendRedirect(request.getContextPath() + "/home");
+		} else {
+			request.setAttribute("errorMessage",
+					"Dein Feedback konnte nicht übermittelt werden. Bitte versuche es später erneut.");
+			request.getRequestDispatcher("/views/public/feedback.jsp").forward(request, response);
+		}
+	}
+
+	private void handleEventFeedbackResponse(HttpServletRequest request, HttpServletResponse response, User user)
+			throws IOException {
+		int formId = Integer.parseInt(request.getParameter("formId"));
+		int rating = Integer.parseInt(request.getParameter("rating"));
+		String comments = request.getParameter("comments");
+
+		FeedbackResponse feedbackResponse = new FeedbackResponse();
+		feedbackResponse.setFormId(formId);
+		feedbackResponse.setUserId(user.getId());
+		feedbackResponse.setRating(rating);
+		feedbackResponse.setComments(comments);
+
+		eventFeedbackDAO.saveFeedbackResponse(feedbackResponse);
+		request.getSession().setAttribute("successMessage", "Vielen Dank für dein Feedback!");
+		response.sendRedirect(request.getContextPath() + "/profil");
+	}
+
+	private void showSubmitEventFeedbackForm(HttpServletRequest request, HttpServletResponse response, User user)
+			throws ServletException, IOException {
+		int eventId = Integer.parseInt(request.getParameter("eventId"));
+		Event event = eventDAO.getEventById(eventId);
+		FeedbackForm form = eventFeedbackDAO.getFeedbackFormForEvent(eventId);
+
+		if (form == null) {
+			// For now, let's auto-create a form if one doesn't exist to simplify the flow
+			form = new FeedbackForm();
+			form.setEventId(eventId);
+			form.setTitle("Feedback für Event: " + (event != null ? event.getName() : "Unbekannt"));
+			int formId = eventFeedbackDAO.createFeedbackForm(form);
+			form.setId(formId);
+		}
+
+		if (eventFeedbackDAO.hasUserSubmittedFeedback(form.getId(), user.getId())) {
 			request.getSession().setAttribute("infoMessage", "Du hast bereits Feedback für dieses Event abgegeben.");
 			response.sendRedirect(request.getContextPath() + "/profil");
 			return;
@@ -8616,21 +9680,6 @@ public class FeedbackServlet extends HttpServlet {
 		request.setAttribute("event", event);
 		request.setAttribute("form", form);
 		request.getRequestDispatcher("/views/public/feedback_form.jsp").forward(request, response);
-	}
-
-	private void viewFeedbackResults(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		int eventId = Integer.parseInt(request.getParameter("eventId"));
-		Event event = eventDAO.getEventById(eventId);
-		FeedbackForm form = feedbackDAO.getFeedbackFormForEvent(eventId);
-
-		if (form != null) {
-			List<FeedbackResponse> responses = feedbackDAO.getResponsesForForm(form.getId());
-			request.setAttribute("responses", responses);
-		}
-
-		request.setAttribute("event", event);
-		request.getRequestDispatcher("/views/public/feedback_results.jsp").forward(request, response);
 	}
 }
 ========================================================================
@@ -9522,6 +10571,48 @@ public class MeetingServlet extends HttpServlet {
 	}
 }
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\MyFeedbackServlet.java
+========================================================================
+
+package de.technikteam.servlet;
+
+import de.technikteam.dao.FeedbackSubmissionDAO;
+import de.technikteam.model.FeedbackSubmission;
+import de.technikteam.model.User;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.IOException;
+import java.util.List;
+
+@WebServlet("/my-feedback")
+public class MyFeedbackServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private FeedbackSubmissionDAO submissionDAO;
+
+	@Override
+	public void init() {
+		submissionDAO = new FeedbackSubmissionDAO();
+	}
+
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		User user = (User) request.getSession().getAttribute("user");
+		if (user == null) {
+			response.sendRedirect(request.getContextPath() + "/login");
+			return;
+		}
+
+		List<FeedbackSubmission> mySubmissions = submissionDAO.getSubmissionsByUserId(user.getId());
+		request.setAttribute("mySubmissions", mySubmissions);
+		request.getRequestDispatcher("/views/public/my_feedback.jsp").forward(request, response);
+	}
+}
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\NotificationServlet.java
 ========================================================================
 
@@ -9750,14 +10841,9 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.servlet;
 
-import de.technikteam.dao.AchievementDAO;
-import de.technikteam.dao.EventDAO;
-import de.technikteam.dao.UserDAO;
-import de.technikteam.dao.UserQualificationsDAO;
-import de.technikteam.model.Achievement;
-import de.technikteam.model.Event;
-import de.technikteam.model.User;
-import de.technikteam.model.UserQualification;
+import com.google.gson.Gson;
+import de.technikteam.dao.*;
+import de.technikteam.model.*;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -9765,17 +10851,26 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 @WebServlet("/profil")
 public class ProfileServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(ProfileServlet.class);
 	private EventDAO eventDAO;
 	private UserQualificationsDAO qualificationsDAO;
 	private UserDAO userDAO;
 	private AchievementDAO achievementDAO;
+	private PasskeyDAO passkeyDAO;
+	private ProfileChangeRequestDAO requestDAO;
+	private final Gson gson = new Gson();
 
 	@Override
 	public void init() {
@@ -9783,6 +10878,8 @@ public class ProfileServlet extends HttpServlet {
 		qualificationsDAO = new UserQualificationsDAO();
 		userDAO = new UserDAO();
 		achievementDAO = new AchievementDAO();
+		passkeyDAO = new PasskeyDAO();
+		requestDAO = new ProfileChangeRequestDAO();
 	}
 
 	@Override
@@ -9797,10 +10894,14 @@ public class ProfileServlet extends HttpServlet {
 		List<Event> eventHistory = eventDAO.getEventHistoryForUser(user.getId());
 		List<UserQualification> qualifications = qualificationsDAO.getQualificationsForUser(user.getId());
 		List<Achievement> achievements = achievementDAO.getAchievementsForUser(user.getId());
+		List<PasskeyCredential> passkeys = passkeyDAO.getCredentialsByUserId(user.getId());
+		boolean hasPendingRequest = requestDAO.hasPendingRequest(user.getId());
 
 		request.setAttribute("eventHistory", eventHistory);
 		request.setAttribute("qualifications", qualifications);
 		request.setAttribute("achievements", achievements);
+		request.setAttribute("passkeys", passkeys);
+		request.setAttribute("hasPendingRequest", hasPendingRequest);
 
 		request.getRequestDispatcher("/views/public/profile.jsp").forward(request, response);
 	}
@@ -9810,22 +10911,105 @@ public class ProfileServlet extends HttpServlet {
 			throws ServletException, IOException {
 		HttpSession session = request.getSession();
 		User user = (User) session.getAttribute("user");
+		String action = request.getParameter("action");
 
 		if (!CSRFUtil.isTokenValid(request)) {
+			logger.warn("CSRF token validation failed for profile action '{}' by user '{}'", action,
+					user.getUsername());
 			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
 			return;
 		}
 
-		String chatColor = request.getParameter("chatColor");
+		switch (action != null ? action : "") {
+		case "deletePasskey":
+			handleDeletePasskey(request, response, user);
+			break;
+		case "updateChatColor":
+			handleUpdateChatColor(request, response, user);
+			break;
+		case "requestProfileChange":
+			handleProfileChangeRequest(request, response, user);
+			break;
+		default:
+			logger.warn("Unknown POST action '{}' received for /profil", action);
+			response.sendRedirect(request.getContextPath() + "/profil");
+			break;
+		}
+	}
 
+	private void handleProfileChangeRequest(HttpServletRequest request, HttpServletResponse response, User currentUser)
+			throws IOException {
+		response.setContentType("application/json");
+		response.setCharacterEncoding("UTF-8");
+
+		Map<String, String> changes = new HashMap<>();
+
+		String newEmail = request.getParameter("email");
+		if (!Objects.equals(currentUser.getEmail(), newEmail)) {
+			changes.put("email", newEmail);
+		}
+
+		int newClassYear = 0;
+		try {
+			String classYearParam = request.getParameter("classYear");
+			if (classYearParam != null && !classYearParam.isEmpty()) {
+				newClassYear = Integer.parseInt(classYearParam);
+			}
+		} catch (NumberFormatException e) {
+			// keep 0
+		}
+		if (currentUser.getClassYear() != newClassYear) {
+			changes.put("classYear", String.valueOf(newClassYear));
+		}
+
+		String newClassName = request.getParameter("className");
+		if (!Objects.equals(currentUser.getClassName(), newClassName)) {
+			changes.put("className", newClassName);
+		}
+
+		if (changes.isEmpty()) {
+			response.getWriter().write(gson.toJson(ApiResponse.error("Keine Änderungen festgestellt.")));
+			return;
+		}
+
+		ProfileChangeRequest pcr = new ProfileChangeRequest();
+		pcr.setUserId(currentUser.getId());
+		pcr.setRequestedChanges(gson.toJson(changes));
+
+		if (requestDAO.createRequest(pcr)) {
+			response.getWriter().write(gson.toJson(ApiResponse.success("Änderungsantrag erfolgreich eingereicht.")));
+		} else {
+			response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+			response.getWriter().write(gson.toJson(ApiResponse.error("Antrag konnte nicht gespeichert werden.")));
+		}
+	}
+
+	private void handleUpdateChatColor(HttpServletRequest request, HttpServletResponse response, User user)
+			throws IOException {
+		String chatColor = request.getParameter("chatColor");
 		if (user != null && chatColor != null) {
 			if (userDAO.updateUserChatColor(user.getId(), chatColor)) {
 				user.setChatColor(chatColor);
-				session.setAttribute("user", user);
-				session.setAttribute("successMessage", "Chat-Farbe erfolgreich gespeichert!");
+				request.getSession().setAttribute("user", user);
+				request.getSession().setAttribute("successMessage", "Chat-Farbe erfolgreich gespeichert!");
 			} else {
-				session.setAttribute("errorMessage", "Farbe konnte nicht gespeichert werden.");
+				request.getSession().setAttribute("errorMessage", "Farbe konnte nicht gespeichert werden.");
 			}
+		}
+		response.sendRedirect(request.getContextPath() + "/profil");
+	}
+
+	private void handleDeletePasskey(HttpServletRequest request, HttpServletResponse response, User user)
+			throws IOException {
+		try {
+			int credentialDbId = Integer.parseInt(request.getParameter("credentialId"));
+			if (passkeyDAO.deleteCredential(credentialDbId, user.getId())) {
+				request.getSession().setAttribute("successMessage", "Passkey erfolgreich entfernt.");
+			} else {
+				request.getSession().setAttribute("errorMessage", "Passkey konnte nicht entfernt werden.");
+			}
+		} catch (NumberFormatException e) {
+			request.getSession().setAttribute("errorMessage", "Ungültige Passkey-ID.");
 		}
 		response.sendRedirect(request.getContextPath() + "/profil");
 	}
@@ -10725,6 +11909,58 @@ public class AdminAttendanceServlet extends HttpServlet {
 	}
 }
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminChangeRequestServlet.java
+========================================================================
+
+package de.technikteam.servlet.admin;
+
+import de.technikteam.dao.ProfileChangeRequestDAO;
+import de.technikteam.dao.UserDAO;
+import de.technikteam.model.ProfileChangeRequest;
+import de.technikteam.model.User;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@WebServlet("/admin/requests")
+public class AdminChangeRequestServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private ProfileChangeRequestDAO requestDAO;
+	private UserDAO userDAO;
+
+	@Override
+	public void init() {
+		requestDAO = new ProfileChangeRequestDAO();
+		userDAO = new UserDAO();
+	}
+
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		User user = (User) request.getSession().getAttribute("user");
+		if (!user.getPermissions().contains("USER_UPDATE") && !user.hasAdminAccess()) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return;
+		}
+
+		List<ProfileChangeRequest> pendingRequests = requestDAO.getPendingRequests();
+
+		// Fetch original user data to show a diff
+		for (ProfileChangeRequest req : pendingRequests) {
+			User originalUser = userDAO.getUserById(req.getUserId());
+			req.getRequestedChanges(); // This is just a placeholder for more complex logic in JSP
+		}
+
+		request.setAttribute("pendingRequests", pendingRequests);
+		request.getRequestDispatcher("/views/admin/admin_requests.jsp").forward(request, response);
+	}
+}
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminCourseServlet.java
 ========================================================================
 
@@ -10948,8 +12184,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import de.technikteam.dao.StatisticsDAO;
-import de.technikteam.dao.StorageDAO; 
-import de.technikteam.model.StorageItem; 
+import de.technikteam.dao.StorageDAO;
+import de.technikteam.model.StorageItem;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -10958,37 +12194,23 @@ import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Mapped to `/admin/dashboard`, this servlet serves as the entry point for the
- * main administrative dashboard. It uses the `StatisticsDAO` to fetch key
- * metrics like the total user count and the number of active events. It then
- * forwards this data to `admin_dashboard.jsp` for display.
+ * main administrative dashboard. It simply forwards to the JSP, which then uses
+ * JavaScript to fetch its data dynamically.
  */
 @WebServlet("/admin/dashboard")
 public class AdminDashboardServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminDashboardServlet.class);
-	private StatisticsDAO statisticsDAO;
-	private StorageDAO storageDAO;
 
 	@Override
 	public void init() {
-		statisticsDAO = new StatisticsDAO();
-		storageDAO = new StorageDAO(); 
+		// DAOs are no longer needed here as data is fetched via API.
 	}
 
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		logger.info("Admin dashboard requested. Fetching statistics.");
+		logger.info("Admin dashboard page requested. Forwarding to JSP for dynamic data loading.");
 
-		int userCount = statisticsDAO.getUserCount();
-		int activeEventCount = statisticsDAO.getActiveEventCount();
-		List<StorageItem> defectiveItems = storageDAO.getDefectiveItems(); 
-
-		request.setAttribute("userCount", userCount);
-		request.setAttribute("activeEventCount", activeEventCount);
-		request.setAttribute("defectiveItems", defectiveItems); 
-
-		logger.debug("Forwarding to admin_dashboard.jsp with userCount={}, activeEventCount={}, defectiveItems={}",
-				userCount, activeEventCount, defectiveItems.size());
 		request.getRequestDispatcher("/views/admin/admin_dashboard.jsp").forward(request, response);
 	}
 }
@@ -11430,6 +12652,9 @@ public class AdminEventServlet extends HttpServlet {
 						AchievementService.getInstance().checkAndGrantAchievements(user, "EVENT_COMPLETED");
 					}
 				}
+				
+				// Broadcast UI update to all clients
+                NotificationService.getInstance().broadcastUIUpdate("event_status_updated", Map.of("eventId", eventId, "newStatus", newStatus));
 
 				req.getSession().setAttribute("successMessage", "Event-Status erfolgreich aktualisiert.");
 			} else {
@@ -11480,6 +12705,48 @@ public class AdminEventServlet extends HttpServlet {
 		}
 
 		resp.sendRedirect(req.getContextPath() + "/admin/veranstaltungen");
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminFeedbackServlet.java
+========================================================================
+
+package de.technikteam.servlet.admin;
+
+import de.technikteam.dao.FeedbackSubmissionDAO;
+import de.technikteam.model.FeedbackSubmission;
+import de.technikteam.model.User;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.IOException;
+import java.util.List;
+
+@WebServlet("/admin/feedback")
+public class AdminFeedbackServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private FeedbackSubmissionDAO submissionDAO;
+
+	@Override
+	public void init() {
+		submissionDAO = new FeedbackSubmissionDAO();
+	}
+
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		User user = (User) request.getSession().getAttribute("user");
+		if (!user.hasAdminAccess()) { // General admin access check
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return;
+		}
+
+		List<FeedbackSubmission> submissions = submissionDAO.getAllSubmissions();
+		request.setAttribute("submissions", submissions);
+		request.getRequestDispatcher("/views/admin/admin_feedback.jsp").forward(request, response);
 	}
 }
 ========================================================================
@@ -11913,1130 +13180,5 @@ public class AdminFileServlet extends HttpServlet {
 			session.setAttribute("errorMessage", "Ungültige Datei-ID.");
 		}
 		response.sendRedirect(request.getContextPath() + "/admin/dateien");
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminKitServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import com.google.gson.Gson;
-import de.technikteam.dao.InventoryKitDAO;
-import de.technikteam.dao.StorageDAO;
-import de.technikteam.model.InventoryKit;
-import de.technikteam.model.InventoryKitItem;
-import de.technikteam.model.StorageItem;
-import de.technikteam.model.User;
-import de.technikteam.service.AdminLogService;
-import de.technikteam.util.CSRFUtil;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.IOException;
-import java.util.List;
-
-@WebServlet("/admin/kits")
-public class AdminKitServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminKitServlet.class);
-	private InventoryKitDAO kitDAO;
-	private StorageDAO storageDAO;
-	private Gson gson = new Gson();
-
-	@Override
-	public void init() {
-		kitDAO = new InventoryKitDAO();
-		storageDAO = new StorageDAO();
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		String action = req.getParameter("action");
-
-		if ("getKitItems".equals(action)) {
-			getKitItemsAsJson(req, resp);
-			return;
-		}
-
-		// Performance: Fetch all kits and their items in one go to prevent N+1 queries.
-		List<InventoryKit> kits = kitDAO.getAllKitsWithItems();
-		List<StorageItem> allItems = storageDAO.getAllItems();
-
-		req.setAttribute("kits", kits);
-		req.setAttribute("allItems", allItems);
-		req.setAttribute("allItemsJson", gson.toJson(allItems));
-
-		req.getRequestDispatcher("/views/admin/admin_kits.jsp").forward(req, resp);
-	}
-
-	private void getKitItemsAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		try {
-			int kitId = Integer.parseInt(req.getParameter("id"));
-			List<InventoryKitItem> items = kitDAO.getItemsForKit(kitId);
-			String jsonResponse = gson.toJson(items);
-			resp.setContentType("application/json");
-			resp.setCharacterEncoding("UTF-8");
-			resp.getWriter().write(jsonResponse);
-		} catch (NumberFormatException e) {
-			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid kit ID.");
-		}
-	}
-
-	@Override
-	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		req.setCharacterEncoding("UTF-8");
-
-		if (!CSRFUtil.isTokenValid(req)) {
-			logger.warn("CSRF token validation failed for kit action.");
-			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
-			return;
-		}
-
-		User adminUser = (User) req.getSession().getAttribute("user");
-		String action = req.getParameter("action");
-		logger.debug("AdminKitServlet received POST with action: {}", action);
-
-		try {
-			switch (action) {
-			case "create":
-				handleCreateKit(req, adminUser);
-				break;
-			case "update":
-				handleUpdateKit(req, adminUser);
-				break;
-			case "delete":
-				handleDeleteKit(req, adminUser);
-				break;
-			case "updateKitItems":
-				handleUpdateKitItems(req, adminUser);
-				break;
-			default:
-				logger.warn("Unknown kit action: {}", action);
-				break;
-			}
-		} catch (Exception e) {
-			logger.error("Error processing kit action '{}'", action, e);
-			req.getSession().setAttribute("errorMessage", "Ein Fehler ist aufgetreten: " + e.getMessage());
-		}
-
-		resp.sendRedirect(req.getContextPath() + "/admin/kits");
-	}
-
-	private void handleCreateKit(HttpServletRequest req, User adminUser) {
-		InventoryKit kit = new InventoryKit();
-		kit.setName(req.getParameter("name"));
-		kit.setDescription(req.getParameter("description"));
-		kit.setLocation(req.getParameter("location"));
-		int newId = kitDAO.createKit(kit);
-		if (newId > 0) {
-			AdminLogService.log(adminUser.getUsername(), "CREATE_KIT",
-					"Kit '" + kit.getName() + "' (ID: " + newId + ") erstellt.");
-			req.getSession().setAttribute("successMessage", "Kit erfolgreich erstellt.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Kit konnte nicht erstellt werden.");
-		}
-	}
-
-	private void handleUpdateKit(HttpServletRequest req, User adminUser) {
-		InventoryKit kit = new InventoryKit();
-		kit.setId(Integer.parseInt(req.getParameter("id")));
-		kit.setName(req.getParameter("name"));
-		kit.setDescription(req.getParameter("description"));
-		kit.setLocation(req.getParameter("location"));
-
-		if (kitDAO.updateKit(kit)) {
-			AdminLogService.log(adminUser.getUsername(), "UPDATE_KIT",
-					"Kit '" + kit.getName() + "' (ID: " + kit.getId() + ") aktualisiert.");
-			req.getSession().setAttribute("successMessage", "Kit erfolgreich aktualisiert.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Kit konnte nicht aktualisiert werden.");
-		}
-	}
-
-	private void handleDeleteKit(HttpServletRequest req, User adminUser) {
-		int kitId = Integer.parseInt(req.getParameter("id"));
-		InventoryKit kit = kitDAO.getKitById(kitId);
-		if (kitDAO.deleteKit(kitId)) {
-			AdminLogService.log(adminUser.getUsername(), "DELETE_KIT",
-					"Kit '" + (kit != null ? kit.getName() : "N/A") + "' (ID: " + kitId + ") gelöscht.");
-			req.getSession().setAttribute("successMessage", "Kit erfolgreich gelöscht.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Kit konnte nicht gelöscht werden.");
-		}
-	}
-
-	private void handleUpdateKitItems(HttpServletRequest req, User adminUser) {
-		int kitId = Integer.parseInt(req.getParameter("kitId"));
-		String[] itemIds = req.getParameterValues("itemIds");
-		String[] quantities = req.getParameterValues("quantities");
-
-		if (kitDAO.updateKitItems(kitId, itemIds, quantities)) {
-			AdminLogService.log(adminUser.getUsername(), "UPDATE_KIT_ITEMS",
-					"Inhalt für Kit ID " + kitId + " aktualisiert.");
-			req.getSession().setAttribute("successMessage", "Kit-Inhalt erfolgreich gespeichert.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Fehler beim Speichern des Kit-Inhalts.");
-		}
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminLogServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import java.io.IOException;
-import java.util.List;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import de.technikteam.dao.AdminLogDAO;
-import de.technikteam.model.AdminLog;
-import de.technikteam.model.User;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-
-/**
- * Mapped to `/admin/log`, this servlet retrieves all entries from the
- * administrative action log using the `AdminLogDAO`. It then passes the
- * complete list of logs to `admin_log.jsp` for display and filtering on the
- * client side.
- */
-@WebServlet("/admin/log")
-public class AdminLogServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminLogServlet.class);
-	private AdminLogDAO adminLogDAO;
-
-	@Override
-	public void init() {
-		adminLogDAO = new AdminLogDAO();
-		logger.info("AdminLogServlet has been initialized.");
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		// Ensure a user is logged in, though AdminFilter should handle this.
-		if (adminUser == null) {
-			response.sendRedirect(request.getContextPath() + "/login");
-			return;
-		}
-
-		logger.info("Admin log page requested by user '{}'.", adminUser.getUsername());
-		try {
-			List<AdminLog> logs = adminLogDAO.getAllLogs();
-			request.setAttribute("logs", logs);
-			logger.info("Fetched {} log entries. Forwarding to JSP.", logs.size());
-			request.getRequestDispatcher("/views/admin/admin_log.jsp").forward(request, response);
-		} catch (Exception e) {
-			logger.error("A critical error occurred in AdminLogServlet doGet()", e);
-			response.sendRedirect(request.getContextPath() + "/error500");
-		}
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminMeetingServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import de.technikteam.config.AppConfig;
-import de.technikteam.config.LocalDateAdapter;
-import de.technikteam.config.LocalDateTimeAdapter;
-import de.technikteam.dao.AttachmentDAO;
-import de.technikteam.dao.CourseDAO;
-import de.technikteam.dao.MeetingDAO;
-import de.technikteam.dao.UserDAO;
-import de.technikteam.model.Attachment;
-import de.technikteam.model.Course;
-import de.technikteam.model.Meeting;
-import de.technikteam.model.User;
-import de.technikteam.service.AdminLogService;
-import de.technikteam.util.CSRFUtil;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.MultipartConfig;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.Part;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Paths;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeParseException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-@WebServlet("/admin/meetings")
-@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 20, maxRequestSize = 1024 * 1024 * 50)
-public class AdminMeetingServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminMeetingServlet.class);
-	private MeetingDAO meetingDAO;
-	private CourseDAO courseDAO;
-	private AttachmentDAO attachmentDAO;
-	private UserDAO userDAO;
-	private Gson gson;
-
-	@Override
-	public void init() {
-		meetingDAO = new MeetingDAO();
-		courseDAO = new CourseDAO();
-		attachmentDAO = new AttachmentDAO();
-		userDAO = new UserDAO();
-		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
-				.registerTypeAdapter(java.time.LocalDate.class, new LocalDateAdapter()).create();
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		String action = req.getParameter("action");
-		if ("getMeetingData".equals(action)) {
-			getMeetingDataAsJson(req, resp);
-		} else {
-			listMeetings(req, resp);
-		}
-	}
-
-	@Override
-	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
-		req.setCharacterEncoding("UTF-8");
-
-		if (!CSRFUtil.isTokenValid(req)) {
-			logger.warn("CSRF token validation failed for meeting action.");
-			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
-			return;
-		}
-
-		String action = req.getParameter("action");
-
-		logger.debug("AdminMeetingServlet received POST with action: {}", action);
-
-		switch (action) {
-		case "create":
-		case "update":
-			handleCreateOrUpdate(req, resp);
-			break;
-		case "delete":
-			handleDelete(req, resp);
-			break;
-		case "deleteAttachment":
-			handleDeleteAttachment(req, resp);
-			break;
-		default:
-			logger.warn("Unknown action received in doPost: {}", action);
-			resp.sendRedirect(req.getContextPath() + "/admin/meetings");
-			break;
-		}
-	}
-
-	private void listMeetings(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		int courseId = Integer.parseInt(req.getParameter("courseId"));
-		logger.info("Listing all meetings for course ID: {}", courseId);
-		Course parentCourse = courseDAO.getCourseById(courseId);
-		List<Meeting> meetings = meetingDAO.getMeetingsForCourse(courseId);
-		List<User> allUsers = userDAO.getAllUsers();
-
-		req.setAttribute("parentCourse", parentCourse);
-		req.setAttribute("meetings", meetings);
-		req.setAttribute("allUsers", allUsers);
-
-		req.getRequestDispatcher("/views/admin/admin_meeting_list.jsp").forward(req, resp);
-	}
-
-	private void getMeetingDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		try {
-			int meetingId = Integer.parseInt(req.getParameter("id"));
-			Meeting meeting = meetingDAO.getMeetingById(meetingId);
-			if (meeting != null) {
-				List<Attachment> attachments = attachmentDAO.getAttachmentsForParent("MEETING", meetingId, "ADMIN");
-				Map<String, Object> responseData = new HashMap<>();
-				responseData.put("meetingData", meeting);
-				responseData.put("attachmentsData", attachments);
-
-				String jsonResponse = gson.toJson(responseData);
-				resp.setContentType("application/json");
-				resp.setCharacterEncoding("UTF-8");
-				resp.getWriter().write(jsonResponse);
-			} else {
-				resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Meeting nicht gefunden");
-			}
-		} catch (NumberFormatException e) {
-			logger.error("Invalid ID for getting meeting data as JSON", e);
-			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Ungültige Meeting-ID");
-		}
-	}
-
-	private void handleCreateOrUpdate(HttpServletRequest req, HttpServletResponse resp)
-			throws IOException, ServletException {
-		User adminUser = (User) req.getSession().getAttribute("user");
-		String action = req.getParameter("action");
-		boolean isUpdate = "update".equals(action);
-		int courseId = Integer.parseInt(req.getParameter("courseId"));
-		int meetingId = 0;
-
-		try {
-			Meeting meeting = new Meeting();
-			meeting.setCourseId(courseId);
-			meeting.setName(req.getParameter("name"));
-			meeting.setDescription(req.getParameter("description"));
-			meeting.setLocation(req.getParameter("location"));
-
-			String leaderIdStr = req.getParameter("leaderUserId");
-			if (leaderIdStr != null && !leaderIdStr.isEmpty()) {
-				meeting.setLeaderUserId(Integer.parseInt(leaderIdStr));
-			}
-
-			String startDateTimeStr = req.getParameter("meetingDateTime");
-			if (startDateTimeStr != null && !startDateTimeStr.isEmpty()) {
-				meeting.setMeetingDateTime(LocalDateTime.parse(startDateTimeStr));
-			}
-			String endDateTimeStr = req.getParameter("endDateTime");
-			if (endDateTimeStr != null && !endDateTimeStr.isEmpty()) {
-				meeting.setEndDateTime(LocalDateTime.parse(endDateTimeStr));
-			}
-
-			Course parentCourse = courseDAO.getCourseById(courseId);
-			String parentCourseName = (parentCourse != null) ? parentCourse.getName() : "N/A";
-
-			if (isUpdate) {
-				meetingId = Integer.parseInt(req.getParameter("id"));
-				meeting.setId(meetingId);
-				if (meetingDAO.updateMeeting(meeting)) {
-					AdminLogService.log(adminUser.getUsername(), "UPDATE_MEETING", "Meeting '" + meeting.getName()
-							+ "' (ID: " + meetingId + ") für Lehrgang '" + parentCourseName + "' aktualisiert.");
-					req.getSession().setAttribute("successMessage", "Meeting erfolgreich aktualisiert.");
-				}
-			} else {
-				meetingId = meetingDAO.createMeeting(meeting);
-				if (meetingId > 0) {
-					AdminLogService.log(adminUser.getUsername(), "CREATE_MEETING", "Meeting '" + meeting.getName()
-							+ "' (ID: " + meetingId + ") für Lehrgang '" + parentCourseName + "' geplant.");
-					req.getSession().setAttribute("successMessage", "Neues Meeting erfolgreich geplant.");
-				}
-			}
-
-			Part filePart = req.getPart("attachment");
-			if (filePart != null && filePart.getSize() > 0 && meetingId > 0) {
-				String requiredRole = req.getParameter("requiredRole");
-				handleAttachmentUpload(filePart, meetingId, requiredRole, adminUser, req);
-			}
-
-		} catch (DateTimeParseException | NumberFormatException e) {
-			logger.error("Invalid data format in meeting form.", e);
-			req.getSession().setAttribute("errorMessage", "Ungültiges Datenformat.");
-		} catch (Exception e) {
-			logger.error("Error creating/updating meeting.", e);
-			req.getSession().setAttribute("errorMessage", "Fehler: " + e.getMessage());
-		}
-
-		resp.sendRedirect(req.getContextPath() + "/admin/meetings?courseId=" + courseId);
-	}
-
-	private void handleDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		int courseId = Integer.parseInt(req.getParameter("courseId"));
-		int meetingId = Integer.parseInt(req.getParameter("meetingId"));
-		User adminUser = (User) req.getSession().getAttribute("user");
-		logger.warn("Attempting to delete meeting ID {} from course ID {}", meetingId, courseId);
-
-		Meeting meeting = meetingDAO.getMeetingById(meetingId);
-		if (meetingDAO.deleteMeeting(meetingId)) {
-			String meetingName = (meeting != null) ? meeting.getName() : "N/A";
-			String courseName = (meeting != null && meeting.getParentCourseName() != null)
-					? meeting.getParentCourseName()
-					: "N/A";
-			String logDetails = String.format("Meeting '%s' (ID: %d) vom Lehrgang '%s' (Kurs-ID: %d) wurde gelöscht.",
-					meetingName, meetingId, courseName, courseId);
-			AdminLogService.log(adminUser.getUsername(), "DELETE_MEETING", logDetails);
-			req.getSession().setAttribute("successMessage", "Meeting erfolgreich gelöscht.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Meeting konnte nicht gelöscht werden.");
-		}
-
-		resp.sendRedirect(req.getContextPath() + "/admin/meetings?courseId=" + courseId);
-	}
-
-	private void handleDeleteAttachment(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		User adminUser = (User) req.getSession().getAttribute("user");
-		int attachmentId = Integer.parseInt(req.getParameter("attachmentId"));
-		int courseId = Integer.parseInt(req.getParameter("courseId"));
-		logger.warn("Attempting to delete attachment ID {}", attachmentId);
-
-		Attachment attachment = attachmentDAO.getAttachmentById(attachmentId);
-		if (attachment != null) {
-			File physicalFile = new File(AppConfig.UPLOAD_DIRECTORY, attachment.getFilepath());
-
-			if (physicalFile.exists()) {
-				physicalFile.delete();
-			}
-
-			if (attachmentDAO.deleteAttachment(attachmentId)) {
-				AdminLogService.log(adminUser.getUsername(), "DELETE_ATTACHMENT", "Anhang '" + attachment.getFilename()
-						+ "' von Meeting ID " + attachment.getParentId() + " gelöscht.");
-				req.getSession().setAttribute("successMessage", "Anhang gelöscht.");
-			} else {
-				req.getSession().setAttribute("errorMessage", "Anhang konnte nicht aus DB gelöscht werden.");
-			}
-		} else {
-			req.getSession().setAttribute("errorMessage", "Anhang nicht gefunden.");
-		}
-		resp.sendRedirect(req.getContextPath() + "/admin/meetings?courseId=" + courseId);
-	}
-
-	private void handleAttachmentUpload(Part filePart, int meetingId, String requiredRole, User adminUser,
-			HttpServletRequest req) throws IOException {
-		String uploadDir = AppConfig.UPLOAD_DIRECTORY + File.separator + "meetings";
-		new File(uploadDir).mkdirs();
-
-		String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
-		File targetFile = new File(uploadDir, fileName);
-		filePart.write(targetFile.getAbsolutePath());
-
-		Attachment attachment = new Attachment();
-		attachment.setParentId(meetingId);
-		attachment.setParentType("MEETING");
-		attachment.setFilename(fileName);
-		attachment.setFilepath("meetings/" + fileName);
-		attachment.setRequiredRole(requiredRole);
-		if (attachmentDAO.addAttachment(attachment)) {
-			logger.info("Attachment '{}' uploaded for meeting ID {} by '{}'", fileName, meetingId,
-					adminUser.getUsername());
-			String logDetails = String.format("Anhang '%s' zu Meeting ID %d hinzugefügt. Sichtbar für: %s.", fileName,
-					meetingId, requiredRole);
-			AdminLogService.log(adminUser.getUsername(), "ADD_MEETING_ATTACHMENT", logDetails);
-		} else {
-			req.getSession().setAttribute("errorMessage", "Anhang konnte nicht in DB gespeichert werden.");
-		}
-	}
-
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminReportServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import com.google.gson.Gson;
-import de.technikteam.dao.ReportDAO;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-@WebServlet("/admin/berichte")
-public class AdminReportServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminReportServlet.class);
-	private ReportDAO reportDAO;
-	private Gson gson = new Gson();
-
-	@Override
-	public void init() {
-		reportDAO = new ReportDAO();
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		String reportType = request.getParameter("report");
-		String exportType = request.getParameter("export");
-
-		if (reportType != null && !reportType.isEmpty()) {
-			handleSpecificReport(request, response, reportType, exportType);
-			return;
-		}
-
-		logger.debug("Serving main reports dashboard.");
-
-		List<Map<String, Object>> eventTrendData = reportDAO.getEventCountByMonth(12);
-		List<Map<String, Object>> userActivityData = reportDAO.getUserParticipationStats(10);
-
-		request.setAttribute("eventTrendDataJson", gson.toJson(eventTrendData));
-		request.setAttribute("userActivityDataJson", gson.toJson(userActivityData));
-
-		request.setAttribute("totalInventoryValue", reportDAO.getTotalInventoryValue());
-		request.getRequestDispatcher("/views/admin/admin_reports.jsp").forward(request, response);
-	}
-
-	private void handleSpecificReport(HttpServletRequest request, HttpServletResponse response, String reportType,
-			String exportType) throws IOException, ServletException {
-		List<Map<String, Object>> reportData = null;
-		String reportTitle = "";
-		String jspPath = "/views/admin/report_display.jsp";
-
-		switch (reportType) {
-		case "user_activity":
-			reportData = reportDAO.getUserActivityStats();
-			reportTitle = "Benutzeraktivitäts-Bericht";
-			break;
-		case "event_participation":
-			reportData = reportDAO.getEventParticipationSummary();
-			reportTitle = "Event-Teilnahme-Bericht";
-			break;
-		case "inventory_usage":
-			reportData = reportDAO.getInventoryUsageFrequency();
-			reportTitle = "Lagernutzungs-Bericht";
-			break;
-		default:
-			logger.warn("Unknown report type requested: {}", reportType);
-			response.sendError(HttpServletResponse.SC_NOT_FOUND, "Unbekannter Berichtstyp.");
-			return;
-		}
-
-		if ("csv".equalsIgnoreCase(exportType)) {
-			logger.info("Exporting report '{}' to CSV.", reportType);
-			exportToCsv(response, reportData, reportType + "_report.csv");
-		} else {
-			logger.debug("Forwarding data for report '{}' to JSP.", reportType);
-			request.setAttribute("reportData", reportData);
-			request.setAttribute("reportTitle", reportTitle);
-			request.getRequestDispatcher(jspPath).forward(request, response);
-		}
-	}
-
-	private void exportToCsv(HttpServletResponse response, List<Map<String, Object>> data, String filename)
-			throws IOException {
-		response.setContentType("text/csv");
-		response.setCharacterEncoding("UTF-8");
-		response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
-
-		if (data == null || data.isEmpty()) {
-			response.getWriter().write("No data available to export.");
-			return;
-		}
-
-		try (PrintWriter writer = response.getWriter()) {
-			String header = String.join(",", data.get(0).keySet());
-			writer.println(header);
-
-			for (Map<String, Object> row : data) {
-				String line = row.values().stream().map(this::escapeCsvField).collect(Collectors.joining(","));
-				writer.println(line);
-			}
-		}
-	}
-
-	private String escapeCsvField(Object field) {
-		if (field == null) {
-			return "";
-		}
-		String fieldStr = field.toString();
-		if (fieldStr.contains(",") || fieldStr.contains("\"") || fieldStr.contains("\n")) {
-			return "\"" + fieldStr.replace("\"", "\"\"") + "\"";
-		}
-		return fieldStr;
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminStorageServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import com.google.gson.Gson;
-import de.technikteam.config.AppConfig;
-import de.technikteam.dao.MaintenanceLogDAO;
-import de.technikteam.dao.StorageDAO;
-import de.technikteam.model.MaintenanceLogEntry;
-import de.technikteam.model.StorageItem;
-import de.technikteam.model.User;
-import de.technikteam.service.AdminLogService;
-import de.technikteam.util.CSRFUtil;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.MultipartConfig;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.Part;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Paths;
-import java.sql.SQLException;
-import java.util.List;
-import java.util.Map;
-
-@WebServlet("/admin/lager")
-@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 5, maxRequestSize = 1024 * 1024 * 10)
-public class AdminStorageServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminStorageServlet.class.getName());
-	private StorageDAO storageDAO;
-	private MaintenanceLogDAO maintenanceLogDAO;
-	private Gson gson = new Gson();
-
-	@Override
-	public void init() {
-		storageDAO = new StorageDAO();
-		maintenanceLogDAO = new MaintenanceLogDAO();
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		String action = request.getParameter("action");
-		if ("getItemData".equals(action)) {
-			getItemDataAsJson(request, response);
-			return;
-		}
-
-		try {
-			logger.info("Listing all storage items for admin view.");
-			List<StorageItem> storageList = storageDAO.getAllItems();
-			request.setAttribute("storageList", storageList);
-			request.getRequestDispatcher("/views/admin/admin_storage_list.jsp").forward(request, response);
-		} catch (Exception e) {
-			logger.error("Error in doGet of AdminStorageServlet", e);
-			request.getSession().setAttribute("errorMessage", "Ein Fehler ist aufgetreten: " + e.getMessage());
-			response.sendRedirect(request.getContextPath() + "/admin/dashboard");
-		}
-	}
-
-	@Override
-	protected void doPost(HttpServletRequest request, HttpServletResponse response)
-			throws IOException, ServletException {
-		request.setCharacterEncoding("UTF-8");
-
-		if (!CSRFUtil.isTokenValid(request)) {
-			logger.warn("CSRF token validation failed for storage action.");
-			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
-			return;
-		}
-
-		String action = request.getParameter("action");
-
-		switch (action) {
-		case "create":
-		case "update":
-			handleCreateOrUpdate(request, response);
-			break;
-		case "delete":
-			handleDelete(request, response);
-			break;
-		case "updateDefect":
-			handleDefectUpdate(request, response);
-			break;
-		case "updateStatus":
-			handleStatusUpdate(request, response);
-			break;
-		case "repair":
-			handleRepair(request, response);
-			break;
-		default:
-			response.sendRedirect(request.getContextPath() + "/admin/lager");
-			break;
-		}
-	}
-
-	private void handleRepair(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		String returnTo = request.getParameter("returnTo");
-		try {
-			int itemId = Integer.parseInt(request.getParameter("id"));
-			int repairedQty = Integer.parseInt(request.getParameter("repaired_quantity"));
-			String notes = request.getParameter("repair_notes");
-
-			if (storageDAO.repairItems(itemId, repairedQty)) {
-				MaintenanceLogEntry log = new MaintenanceLogEntry();
-				log.setItemId(itemId);
-				log.setUserId(adminUser.getId());
-				log.setAction(repairedQty + " Stück repariert");
-				log.setNotes(notes);
-				maintenanceLogDAO.createLog(log);
-
-				AdminLogService.log(adminUser.getUsername(), "REPAIR_ITEM", String.format(
-						"%d Stück von Artikel-ID %d als repariert markiert. Notiz: %s", repairedQty, itemId, notes));
-				request.getSession().setAttribute("successMessage", "Artikel erfolgreich als repariert markiert.");
-			} else {
-				request.getSession().setAttribute("errorMessage",
-						"Reparatur konnte nicht verbucht werden (vielleicht nicht genug defekte Artikel?).");
-			}
-		} catch (NumberFormatException e) {
-			request.getSession().setAttribute("errorMessage", "Ungültige Artikel-ID oder Anzahl.");
-		} catch (SQLException e) {
-			request.getSession().setAttribute("errorMessage", "Datenbankfehler: " + e.getMessage());
-		}
-		String redirectUrl = request.getContextPath()
-				+ ("/defekte".equals(returnTo) ? "/admin/defekte" : "/admin/lager");
-		response.sendRedirect(redirectUrl);
-	}
-
-	private void handleStatusUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		try {
-			int itemId = Integer.parseInt(request.getParameter("id"));
-			String newStatus = request.getParameter("status");
-			String notes = request.getParameter("notes");
-
-			storageDAO.updateItemStatus(itemId, newStatus);
-
-			MaintenanceLogEntry log = new MaintenanceLogEntry();
-			log.setItemId(itemId);
-			log.setUserId(adminUser.getId());
-			log.setNotes(notes);
-
-			String logAction;
-			if ("MAINTENANCE".equals(newStatus)) {
-				logAction = "Marked for Maintenance";
-			} else {
-				logAction = "Returned to Service";
-			}
-			log.setAction(logAction);
-
-			maintenanceLogDAO.createLog(log);
-			AdminLogService.log(adminUser.getUsername(), "UPDATE_ITEM_STATUS",
-					"Status für Artikel-ID " + itemId + " auf '" + newStatus + "' gesetzt. Notiz: " + notes);
-			request.getSession().setAttribute("successMessage", "Artikelstatus erfolgreich aktualisiert.");
-		} catch (Exception e) {
-			logger.error("Error updating item status", e);
-			request.getSession().setAttribute("errorMessage", "Fehler beim Aktualisieren des Status.");
-		}
-		response.sendRedirect(request.getContextPath() + "/admin/lager");
-	}
-
-	private void getItemDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		try {
-			int itemId = Integer.parseInt(req.getParameter("id"));
-			StorageItem item = storageDAO.getItemById(itemId);
-			if (item != null) {
-				resp.setContentType("application/json");
-				resp.setCharacterEncoding("UTF-8");
-				resp.getWriter().write(gson.toJson(item));
-			} else {
-				resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Item not found");
-			}
-		} catch (NumberFormatException e) {
-			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid item ID");
-		}
-	}
-
-	private void handleCreateOrUpdate(HttpServletRequest request, HttpServletResponse response)
-			throws IOException, ServletException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		boolean isCreate = "create".equals(request.getParameter("action"));
-
-		try {
-			StorageItem item = new StorageItem();
-			item.setName(request.getParameter("name"));
-			item.setLocation(request.getParameter("location"));
-			item.setCabinet(request.getParameter("cabinet"));
-			item.setCompartment(request.getParameter("compartment"));
-			item.setQuantity(Integer.parseInt(request.getParameter("quantity")));
-			item.setMaxQuantity(Integer.parseInt(request.getParameter("maxQuantity")));
-
-			String weightStr = request.getParameter("weight_kg");
-			item.setWeightKg(
-					weightStr == null || weightStr.isEmpty() ? 0.0 : Double.parseDouble(weightStr.replace(',', '.')));
-			String priceStr = request.getParameter("price_eur");
-			item.setPriceEur(
-					priceStr == null || priceStr.isEmpty() ? 0.0 : Double.parseDouble(priceStr.replace(',', '.')));
-
-			Part filePart = request.getPart("imageFile");
-			String imagePath = null;
-
-			if (!isCreate) {
-				int itemId = Integer.parseInt(request.getParameter("id"));
-				item.setId(itemId);
-				StorageItem originalItem = storageDAO.getItemById(itemId);
-				if (originalItem != null) {
-					imagePath = originalItem.getImagePath();
-					item.setDefectiveQuantity(originalItem.getDefectiveQuantity());
-					item.setDefectReason(originalItem.getDefectReason());
-					item.setStatus(originalItem.getStatus());
-				}
-			}
-
-			if (filePart != null && filePart.getSize() > 0) {
-				String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
-				if (!fileName.isEmpty()) {
-					File imageUploadDir = new File(AppConfig.UPLOAD_DIRECTORY, "images");
-					if (!imageUploadDir.exists())
-						imageUploadDir.mkdirs();
-					File targetFile = new File(imageUploadDir, fileName);
-					filePart.write(targetFile.getAbsolutePath());
-					imagePath = fileName;
-				}
-			}
-			item.setImagePath(imagePath);
-
-			boolean success = isCreate ? storageDAO.createItem(item) : storageDAO.updateItem(item);
-
-			if (success) {
-				String logDetails = String.format("Lagerartikel '%s' %s.", item.getName(),
-						isCreate ? "erstellt" : "aktualisiert");
-				AdminLogService.log(adminUser.getUsername(), isCreate ? "CREATE_STORAGE_ITEM" : "UPDATE_STORAGE_ITEM",
-						logDetails);
-				request.getSession().setAttribute("successMessage",
-						"Artikel '" + item.getName() + "' erfolgreich gespeichert.");
-			} else {
-				request.getSession().setAttribute("errorMessage", "Operation am Artikel fehlgeschlagen.");
-			}
-		} catch (Exception e) {
-			logger.error("Error creating/updating storage item.", e);
-			request.getSession().setAttribute("errorMessage", "Fehler: " + e.getMessage());
-		}
-		response.sendRedirect(request.getContextPath() + "/admin/lager");
-	}
-
-	private void handleDefectUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		String returnTo = request.getParameter("returnTo");
-		try {
-			int itemId = Integer.parseInt(request.getParameter("id"));
-			int defectiveQty = Integer.parseInt(request.getParameter("defective_quantity"));
-			String reason = request.getParameter("defect_reason");
-
-			if (storageDAO.updateDefectiveStatus(itemId, defectiveQty, reason)) {
-				AdminLogService.log(adminUser.getUsername(), "UPDATE_DEFECT_STATUS",
-						String.format("Defekt-Status für Artikel-ID %d aktualisiert: %d defekt. Grund: %s", itemId,
-								defectiveQty, reason));
-				request.getSession().setAttribute("successMessage", "Defekt-Status aktualisiert.");
-			} else {
-				request.getSession().setAttribute("errorMessage",
-						"Defekt-Status konnte nicht aktualisiert werden (vielleicht nicht genug Bestand?).");
-			}
-		} catch (NumberFormatException e) {
-			request.getSession().setAttribute("errorMessage", "Ungültige Artikel-ID oder Anzahl.");
-		} catch (SQLException e) {
-			request.getSession().setAttribute("errorMessage", "Datenbankfehler: " + e.getMessage());
-		}
-
-		String redirectUrl = request.getContextPath()
-				+ ("/defekte".equals(returnTo) ? "/admin/defekte" : "/admin/lager");
-		response.sendRedirect(redirectUrl);
-	}
-
-	private void handleDelete(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		try {
-			int itemId = Integer.parseInt(request.getParameter("id"));
-			StorageItem item = storageDAO.getItemById(itemId);
-			if (item != null && item.getImagePath() != null && !item.getImagePath().isEmpty()) {
-				File imageDir = new File(AppConfig.UPLOAD_DIRECTORY, "images");
-				File imageFile = new File(imageDir, item.getImagePath());
-				if (imageFile.exists() && !imageFile.delete()) {
-					logger.warn("Could not delete physical image file: {}", imageFile.getAbsolutePath());
-				}
-			}
-			if (storageDAO.deleteItem(itemId)) {
-				AdminLogService.log(adminUser.getUsername(), "DELETE_STORAGE_ITEM", String.format(
-						"Lagerartikel '%s' (ID: %d) gelöscht.", (item != null ? item.getName() : "N/A"), itemId));
-				request.getSession().setAttribute("successMessage", "Artikel erfolgreich gelöscht.");
-			} else {
-				request.getSession().setAttribute("errorMessage", "Artikel konnte nicht gelöscht werden.");
-			}
-		} catch (NumberFormatException e) {
-			request.getSession().setAttribute("errorMessage", "Ungültige Artikel-ID.");
-		}
-		response.sendRedirect(request.getContextPath() + "/admin/lager");
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminSystemServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-
-/**
- * Forwards to the system status dashboard page.
- */
-@WebServlet("/admin/system")
-public class AdminSystemServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		request.getRequestDispatcher("/views/admin/admin_system.jsp").forward(request, response);
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminUserServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import de.technikteam.config.LocalDateTimeAdapter;
-import de.technikteam.dao.EventDAO;
-import de.technikteam.dao.PermissionDAO;
-import de.technikteam.dao.RoleDAO;
-import de.technikteam.dao.UserDAO;
-import de.technikteam.model.Event;
-import de.technikteam.model.Permission;
-import de.technikteam.model.Role;
-import de.technikteam.model.User;
-import de.technikteam.service.AdminLogService;
-import de.technikteam.util.CSRFUtil;
-import de.technikteam.util.NavigationRegistry;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.IOException;
-import java.security.SecureRandom;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
-
-@WebServlet("/admin/mitglieder")
-public class AdminUserServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminUserServlet.class);
-
-	private UserDAO userDAO;
-	private EventDAO eventDAO;
-	private RoleDAO roleDAO;
-	private PermissionDAO permissionDAO;
-	private Gson gson;
-
-	@Override
-	public void init() {
-		userDAO = new UserDAO();
-		eventDAO = new EventDAO();
-		roleDAO = new RoleDAO();
-		permissionDAO = new PermissionDAO();
-		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		User currentUser = (User) request.getSession().getAttribute("user");
-		if (!currentUser.getPermissions().contains("USER_READ") && !currentUser.hasAdminAccess()) {
-			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
-			return;
-		}
-
-		String action = request.getParameter("action") == null ? "list" : request.getParameter("action");
-		logger.debug("AdminUserServlet received GET with action: {}", action);
-
-		try {
-			switch (action) {
-			case "details":
-				showUserDetails(request, response);
-				break;
-			case "getUserData":
-				getUserDataAsJson(request, response);
-				break;
-			default:
-				listUsers(request, response);
-				break;
-			}
-		} catch (NumberFormatException e) {
-			logger.warn("Invalid ID format in GET request: {}", e.getMessage());
-			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Ungültige ID angegeben.");
-		} catch (Exception e) {
-			logger.error("Error in AdminUserServlet doGet", e);
-			request.getSession().setAttribute("errorMessage", "Ein Fehler ist aufgetreten: " + e.getMessage());
-			response.sendRedirect(request.getContextPath() + "/admin/dashboard");
-		}
-	}
-
-	@Override
-	protected void doPost(HttpServletRequest request, HttpServletResponse response)
-			throws IOException, ServletException {
-		// All POST actions are now handled by the FrontControllerServlet
-		logger.warn(
-				"Received POST request on AdminUserServlet, which should be handled by FrontControllerServlet. Redirecting.");
-		response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
-	}
-
-	private void listUsers(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		logger.info("Executing listUsers method.");
-		List<User> userList = userDAO.getAllUsers();
-		List<Role> allRoles = roleDAO.getAllRoles();
-		List<Permission> allPermissions = permissionDAO.getAllPermissions();
-
-		Map<String, List<Permission>> groupedPermissions = allPermissions.stream().collect(Collectors.groupingBy(p -> {
-			String key = p.getPermissionKey();
-			int underscoreIndex = key.indexOf('_');
-			return (underscoreIndex != -1) ? key.substring(0, underscoreIndex) : "ALLGEMEIN";
-		}, LinkedHashMap::new, Collectors.toList()));
-
-		logger.debug("Fetched {} users, {} roles, and {} permissions from DAOs.", userList.size(), allRoles.size(),
-				allPermissions.size());
-		request.setAttribute("userList", userList);
-		request.setAttribute("allRoles", allRoles);
-		request.setAttribute("groupedPermissionsJson", gson.toJson(groupedPermissions));
-		request.getRequestDispatcher("/views/admin/admin_users.jsp").forward(request, response);
-	}
-
-	private void getUserDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		int userId = Integer.parseInt(req.getParameter("id"));
-		User user = userDAO.getUserById(userId);
-		if (user != null) {
-			Set<Integer> permissionIds = permissionDAO.getPermissionIdsForUser(userId);
-			Map<String, Object> responseData = new HashMap<>();
-			responseData.put("user", user);
-			responseData.put("permissionIds", permissionIds);
-
-			String userJson = gson.toJson(responseData);
-			resp.setContentType("application/json");
-			resp.setCharacterEncoding("UTF-8");
-			resp.getWriter().write(userJson);
-		} else {
-			resp.sendError(HttpServletResponse.SC_NOT_FOUND, "User not found");
-		}
-	}
-
-	private void showUserDetails(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		int userId = Integer.parseInt(request.getParameter("id"));
-		User user = userDAO.getUserById(userId);
-		if (user == null) {
-			request.getSession().setAttribute("errorMessage", "Benutzer nicht gefunden.");
-			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
-			return;
-		}
-		List<Event> eventHistory = eventDAO.getEventHistoryForUser(userId);
-		request.setAttribute("userToView", user);
-		request.setAttribute("eventHistory", eventHistory);
-		request.getRequestDispatcher("/views/admin/admin_user_details.jsp").forward(request, response);
 	}
 }

@@ -8,8 +8,11 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FeedbackDAO {
-	private static final Logger logger = LogManager.getLogger(FeedbackDAO.class);
+/**
+ * Manages feedback specific to Events.
+ */
+public class EventFeedbackDAO {
+	private static final Logger logger = LogManager.getLogger(EventFeedbackDAO.class);
 
 	public int createFeedbackForm(FeedbackForm form) {
 		String sql = "INSERT INTO feedback_forms (event_id, title) VALUES (?, ?)";
@@ -81,7 +84,7 @@ public class FeedbackDAO {
 					response.setId(resultSet.getInt("id"));
 					response.setFormId(resultSet.getInt("form_id"));
 					response.setUserId(resultSet.getInt("user_id"));
-					response.setUsername(resultSet.getString("username")); 
+					response.setUsername(resultSet.getString("username"));
 					response.setRating(resultSet.getInt("rating"));
 					response.setComments(resultSet.getString("comments"));
 					response.setSubmittedAt(resultSet.getTimestamp("submitted_at").toLocalDateTime());

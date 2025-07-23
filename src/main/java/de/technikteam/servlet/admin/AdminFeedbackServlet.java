@@ -1,0 +1,38 @@
+package de.technikteam.servlet.admin;
+
+import de.technikteam.dao.FeedbackSubmissionDAO;
+import de.technikteam.model.FeedbackSubmission;
+import de.technikteam.model.User;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.IOException;
+import java.util.List;
+
+@WebServlet("/admin/feedback")
+public class AdminFeedbackServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private FeedbackSubmissionDAO submissionDAO;
+
+	@Override
+	public void init() {
+		submissionDAO = new FeedbackSubmissionDAO();
+	}
+
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		User user = (User) request.getSession().getAttribute("user");
+		if (!user.hasAdminAccess()) { // General admin access check
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return;
+		}
+
+		List<FeedbackSubmission> submissions = submissionDAO.getAllSubmissions();
+		request.setAttribute("submissions", submissions);
+		request.getRequestDispatcher("/views/admin/admin_feedback.jsp").forward(request, response);
+	}
+}

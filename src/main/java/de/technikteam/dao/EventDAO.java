@@ -52,16 +52,26 @@ public class EventDAO {
 
 	public List<Event> getEventHistoryForUser(int userId) {
 		List<Event> history = new ArrayList<>();
-		String sql = "SELECT e.*, ea.signup_status FROM events e "
-				+ "JOIN event_attendance ea ON e.id = ea.event_id WHERE ea.user_id = ? ORDER BY e.event_datetime DESC";
+		// FIX V3: A definitive, simplified query.
+		String sql = "SELECT e.*, " + "COALESCE( "
+				+ "  (SELECT 'ZUGEWIESEN' FROM event_assignments WHERE event_id = e.id AND user_id = ?), "
+				+ "  (SELECT signup_status FROM event_attendance WHERE event_id = e.id AND user_id = ?), "
+				+ "  'OFFEN' " + ") AS user_status " + "FROM events e " + "WHERE EXISTS ( "
+				+ "  SELECT 1 FROM event_attendance WHERE event_id = e.id AND user_id = ? " + "  UNION "
+				+ "  SELECT 1 FROM event_assignments WHERE event_id = e.id AND user_id = ? " + ") "
+				+ "ORDER BY e.event_datetime DESC";
+
 		logger.debug("Fetching event history for user ID: {}", userId);
 		try (Connection connection = DatabaseManager.getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 			preparedStatement.setInt(1, userId);
+			preparedStatement.setInt(2, userId);
+			preparedStatement.setInt(3, userId);
+			preparedStatement.setInt(4, userId);
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				while (resultSet.next()) {
 					Event event = mapResultSetToEvent(resultSet);
-					event.setUserAttendanceStatus(resultSet.getString("signup_status"));
+					event.setUserAttendanceStatus(resultSet.getString("user_status"));
 					history.add(event);
 				}
 			}

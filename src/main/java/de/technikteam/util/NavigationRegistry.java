@@ -29,11 +29,14 @@ public final class NavigationRegistry {
 		ALL_ITEMS.add(new NavigationItem("Lager", "/lager", "fa-boxes", null));
 		ALL_ITEMS.add(new NavigationItem("Dateien", "/dateien", "fa-folder-open", null));
 		ALL_ITEMS.add(new NavigationItem("Kalender", "/kalender", "fa-calendar-alt", null));
+		ALL_ITEMS.add(new NavigationItem("Mein Feedback", "/my-feedback", "fa-comment-dots", null));
+		ALL_ITEMS.add(new NavigationItem("Feedback geben", "/feedback", "fa-lightbulb", null));
 
 		// Admin Section
 		ALL_ITEMS.add(new NavigationItem("Admin Dashboard", "/admin/dashboard", "fa-tachometer-alt",
 				Permissions.ADMIN_DASHBOARD_ACCESS));
 		ALL_ITEMS.add(new NavigationItem("Benutzer", "/admin/mitglieder", "fa-users-cog", Permissions.USER_READ));
+		ALL_ITEMS.add(new NavigationItem("Anträge", "/admin/requests", "fa-inbox", Permissions.USER_UPDATE));
 		ALL_ITEMS.add(
 				new NavigationItem("Events", "/admin/veranstaltungen", "fa-calendar-plus", Permissions.EVENT_READ));
 		ALL_ITEMS.add(new NavigationItem("Lager", "/admin/lager", "fa-warehouse", Permissions.STORAGE_READ));
@@ -41,6 +44,8 @@ public final class NavigationRegistry {
 		ALL_ITEMS
 				.add(new NavigationItem("Lehrgangs-Vorlagen", "/admin/lehrgaenge", "fa-book", Permissions.COURSE_READ));
 		ALL_ITEMS.add(new NavigationItem("Kit-Verwaltung", "/admin/kits", "fa-box-open", Permissions.KIT_READ));
+		ALL_ITEMS
+				.add(new NavigationItem("Feedback", "/admin/feedback", "fa-inbox", Permissions.ADMIN_DASHBOARD_ACCESS));
 		ALL_ITEMS.add(new NavigationItem("Abzeichen", "/admin/achievements", "fa-award", Permissions.ACHIEVEMENT_VIEW));
 		ALL_ITEMS.add(new NavigationItem("Defekte Artikel", "/admin/defekte", "fa-wrench", Permissions.STORAGE_READ));
 		ALL_ITEMS

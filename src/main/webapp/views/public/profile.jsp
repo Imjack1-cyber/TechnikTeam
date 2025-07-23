@@ -17,23 +17,66 @@
 <div class="responsive-dashboard-grid">
 	<div class="card">
 		<h2 class="card-title">Stammdaten</h2>
+
+		<c:if test="${hasPendingRequest}">
+			<div class="info-message">
+				<i class="fas fa-info-circle"></i> Sie haben eine ausstehende
+				Profiländerung, die von einem Administrator geprüft wird.
+			</div>
+		</c:if>
+
+		<form id="profile-form"
+			action="${pageContext.request.contextPath}/profil" method="post">
+			<input type="hidden" name="action" value="requestProfileChange">
+
+			<ul class="details-list">
+				<li><strong>Benutzername:</strong> <input type="text"
+					name="username" class="form-group"
+					style="display: inline-block; width: auto; background-color: var(--bg-color); border-color: transparent;"
+					value="${fn:escapeXml(sessionScope.user.username)}" readonly>
+				</li>
+				<li><strong>Jahrgang:</strong> <input type="number"
+					name="classYear" class="form-group editable-field"
+					style="display: inline-block; width: auto;"
+					value="${sessionScope.user.classYear}"
+					data-original="${sessionScope.user.classYear}" readonly></li>
+				<li><strong>Klasse:</strong> <input type="text"
+					name="className" class="form-group editable-field"
+					style="display: inline-block; width: auto;"
+					value="${fn:escapeXml(sessionScope.user.className)}"
+					data-original="${fn:escapeXml(sessionScope.user.className)}"
+					readonly></li>
+				<li><strong>E-Mail:</strong> <input type="email" name="email"
+					class="form-group editable-field"
+					style="display: inline-block; width: auto;"
+					value="${fn:escapeXml(sessionScope.user.email)}"
+					data-original="${fn:escapeXml(sessionScope.user.email)}" readonly>
+				</li>
+			</ul>
+
+			<div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+				<c:if test="${!hasPendingRequest}">
+					<button type="button" id="edit-profile-btn"
+						class="btn btn-secondary">Profil bearbeiten</button>
+					<button type="submit" id="submit-profile-btn"
+						class="btn btn-success" style="display: none;">Antrag
+						einreichen</button>
+					<button type="button" id="cancel-edit-btn" class="btn"
+						style="background-color: var(--text-muted-color); display: none;">Abbrechen</button>
+				</c:if>
+			</div>
+		</form>
+
+		<hr style="margin: 1.5rem 0;">
+
 		<ul class="details-list">
-			<li><strong>Benutzername:</strong> <span><c:out
-						value="${sessionScope.user.username}" /></span></li>
-			<li><strong>Rolle:</strong> <span><c:out
-						value="${sessionScope.user.roleName}" /></span></li>
-			<li><strong>Jahrgang:</strong> <span><c:out
-						value="${sessionScope.user.classYear}" /></span></li>
-			<li><strong>Klasse:</strong> <span><c:out
-						value="${sessionScope.user.className}" /></span></li>
-			<li><strong>E-Mail:</strong> <span><c:out
-						value="${not empty sessionScope.user.email ? sessionScope.user.email : 'Nicht hinterlegt'}" /></span></li>
 			<li style="align-items: center; gap: 1rem;"><strong>Chat-Farbe:</strong>
-				<form action="${pageContext.request.contextPath}/profil"
-					method="post"
+				<form id="chat-color-form"
+					action="${pageContext.request.contextPath}/profil" method="post"
 					style="display: flex; align-items: center; gap: 0.5rem;">
 					<input type="hidden" name="csrfToken"
-						value="${sessionScope.csrfToken}"> <input type="color"
+						value="${sessionScope.csrfToken}"> <input type="hidden"
+						name="action" value="updateChatColor"> <input type="color"
 						name="chatColor"
 						value="<c:out value='${not empty sessionScope.user.chatColor ? sessionScope.user.chatColor : "#E9ECEF"}'/>"
 						title="Wähle deine Chat-Farbe">
@@ -137,8 +180,6 @@
 
 <div class="card">
 	<h2 class="card-title">Meine Event-Historie</h2>
-
-	<!-- Desktop Table View -->
 	<div class="desktop-table-wrapper">
 		<div class="table-wrapper"
 			style="max-height: 500px; overflow-y: auto;">
@@ -167,7 +208,7 @@
 							<td><c:if
 									test="${event.status == 'ABGESCHLOSSEN' && event.userAttendanceStatus == 'ZUGEWIESEN'}">
 									<a
-										href="${pageContext.request.contextPath}/feedback?action=submit&eventId=${event.id}"
+										href="${pageContext.request.contextPath}/feedback?action=submitEventFeedback&eventId=${event.id}"
 										class="btn btn-small">Feedback geben</a>
 								</c:if></td>
 						</tr>
@@ -176,8 +217,6 @@
 			</table>
 		</div>
 	</div>
-
-	<!-- Mobile Card View -->
 	<div class="mobile-card-list">
 		<c:if test="${empty eventHistory}">
 			<div class="list-item-card">
@@ -203,7 +242,7 @@
 					<c:if
 						test="${event.status == 'ABGESCHLOSSEN' && event.userAttendanceStatus == 'ZUGEWIESEN'}">
 						<a
-							href="${pageContext.request.contextPath}/feedback?action=submit&eventId=${event.id}"
+							href="${pageContext.request.contextPath}/feedback?action=submitEventFeedback&eventId=${event.id}"
 							class="btn btn-small">Feedback geben</a>
 					</c:if>
 				</div>
@@ -214,3 +253,4 @@
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
 <script src="${pageContext.request.contextPath}/js/auth/passkey_auth.js"></script>
+<script src="${pageContext.request.contextPath}/js/public/profile.js"></script>

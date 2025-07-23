@@ -1,0 +1,1466 @@
+﻿
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\profile.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle" value="Mein Profil" />
+</c:import>
+
+<h1>Mein Profil</h1>
+<p>Hier finden Sie eine Übersicht Ihrer Daten, Qualifikationen und
+	Aktivitäten.</p>
+
+<c:import url="/WEB-INF/jspf/message_banner.jspf" />
+
+<div class="responsive-dashboard-grid">
+	<div class="card">
+		<h2 class="card-title">Stammdaten</h2>
+
+		<c:if test="${hasPendingRequest}">
+			<div class="info-message">
+				<i class="fas fa-info-circle"></i> Sie haben eine ausstehende
+				Profiländerung, die von einem Administrator geprüft wird.
+			</div>
+		</c:if>
+
+		<form id="profile-form"
+			action="${pageContext.request.contextPath}/profil" method="post">
+			<input type="hidden" name="action" value="requestProfileChange">
+
+			<ul class="details-list">
+				<li><strong>Benutzername:</strong> <input type="text"
+					name="username" class="form-group"
+					style="display: inline-block; width: auto; background-color: var(--bg-color); border-color: transparent;"
+					value="${fn:escapeXml(sessionScope.user.username)}" readonly>
+				</li>
+				<li><strong>Jahrgang:</strong> <input type="number"
+					name="classYear" class="form-group editable-field"
+					style="display: inline-block; width: auto;"
+					value="${sessionScope.user.classYear}"
+					data-original="${sessionScope.user.classYear}" readonly></li>
+				<li><strong>Klasse:</strong> <input type="text"
+					name="className" class="form-group editable-field"
+					style="display: inline-block; width: auto;"
+					value="${fn:escapeXml(sessionScope.user.className)}"
+					data-original="${fn:escapeXml(sessionScope.user.className)}"
+					readonly></li>
+				<li><strong>E-Mail:</strong> <input type="email" name="email"
+					class="form-group editable-field"
+					style="display: inline-block; width: auto;"
+					value="${fn:escapeXml(sessionScope.user.email)}"
+					data-original="${fn:escapeXml(sessionScope.user.email)}" readonly>
+				</li>
+			</ul>
+
+			<div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+				<c:if test="${!hasPendingRequest}">
+					<button type="button" id="edit-profile-btn"
+						class="btn btn-secondary">Profil bearbeiten</button>
+					<button type="submit" id="submit-profile-btn"
+						class="btn btn-success" style="display: none;">Antrag
+						einreichen</button>
+					<button type="button" id="cancel-edit-btn" class="btn"
+						style="background-color: var(--text-muted-color); display: none;">Abbrechen</button>
+				</c:if>
+			</div>
+		</form>
+
+		<hr style="margin: 1.5rem 0;">
+
+		<ul class="details-list">
+			<li style="align-items: center; gap: 1rem;"><strong>Chat-Farbe:</strong>
+				<form id="chat-color-form"
+					action="${pageContext.request.contextPath}/profil" method="post"
+					style="display: flex; align-items: center; gap: 0.5rem;">
+					<input type="hidden" name="csrfToken"
+						value="${sessionScope.csrfToken}"> <input type="hidden"
+						name="action" value="updateChatColor"> <input type="color"
+						name="chatColor"
+						value="<c:out value='${not empty sessionScope.user.chatColor ? sessionScope.user.chatColor : "#E9ECEF"}'/>"
+						title="Wähle deine Chat-Farbe">
+					<button type="submit" class="btn btn-small">Speichern</button>
+				</form></li>
+			<li><a href="${pageContext.request.contextPath}/passwort"
+				class="btn btn-secondary">Passwort ändern</a></li>
+		</ul>
+	</div>
+
+	<div class="card">
+		<h2 class="card-title">Sicherheit (Passkeys)</h2>
+		<p>Registrieren Sie Geräte für einen passwortlosen Login.</p>
+		<button id="register-passkey-btn" class="btn btn-success"
+			style="margin-bottom: 1rem;">
+			<i class="fas fa-plus-circle"></i> Neues Gerät registrieren
+		</button>
+
+		<h3 style="margin-top: 1.5rem; font-size: 1.1rem;">Registrierte
+			Geräte</h3>
+		<ul class="details-list">
+			<c:if test="${empty passkeys}">
+				<li>Keine Passkeys registriert.</li>
+			</c:if>
+			<c:forEach var="key" items="${passkeys}">
+				<li><span> <i class="fas fa-key"></i> <c:out
+							value="${key.name}" /> <small
+						style="display: block; color: var(--text-muted-color);">
+							Registriert am: <fmt:parseDate value="${key.createdAt}"
+								pattern="yyyy-MM-dd'T'HH:mm:ss" var="parsedDate" type="both" />
+							<fmt:formatDate value="${parsedDate}" type="both"
+								dateStyle="medium" timeStyle="short" />
+					</small>
+				</span>
+					<form action="${pageContext.request.contextPath}/profil"
+						method="post" style="display: inline;">
+						<input type="hidden" name="csrfToken"
+							value="${sessionScope.csrfToken}"> <input type="hidden"
+							name="action" value="deletePasskey"> <input type="hidden"
+							name="credentialId" value="${key.id}">
+						<button type="submit"
+							class="btn btn-small btn-danger-outline delete-passkey-btn">Entfernen</button>
+					</form></li>
+			</c:forEach>
+		</ul>
+	</div>
+
+	<div class="card">
+		<h2 class="card-title">Meine Qualifikationen</h2>
+		<div class="table-wrapper"
+			style="max-height: 400px; overflow-y: auto;">
+			<table class="data-table">
+				<thead>
+					<tr>
+						<th>Lehrgang</th>
+						<th>Status</th>
+					</tr>
+				</thead>
+				<tbody>
+					<c:if test="${empty qualifications}">
+						<tr>
+							<td colspan="2">Keine Qualifikationen erworben.</td>
+						</tr>
+					</c:if>
+					<c:forEach var="qual" items="${qualifications}">
+						<tr>
+							<td><c:out value="${qual.courseName}" /></td>
+							<td><c:out value="${qual.status}" /></td>
+						</tr>
+					</c:forEach>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+	<div class="card" style="grid-column: 1/-1;">
+		<h2 class="card-title">Meine Abzeichen</h2>
+		<c:if test="${empty achievements}">
+			<p>Du hast noch keine Abzeichen verdient. Nimm an Events teil, um
+				sie freizuschalten!</p>
+		</c:if>
+		<div style="display: flex; flex-wrap: wrap; gap: 1rem;">
+			<c:forEach var="ach" items="${achievements}">
+				<div class="card"
+					style="flex: 1; min-width: 250px; text-align: center;">
+					<i class="fas ${ach.iconClass}"
+						style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;"></i>
+					<h4 style="margin: 0;">
+						<c:out value="${ach.name}" />
+					</h4>
+					<p style="color: var(--text-muted-color); font-size: 0.9rem;">
+						<c:out value="${ach.description}" />
+					</p>
+					<small>Verdient am: <c:out value="${ach.formattedEarnedAt}" /></small>
+				</div>
+			</c:forEach>
+		</div>
+	</div>
+
+</div>
+
+<div class="card">
+	<h2 class="card-title">Meine Event-Historie</h2>
+	<div class="desktop-table-wrapper">
+		<div class="table-wrapper"
+			style="max-height: 500px; overflow-y: auto;">
+			<table class="data-table">
+				<thead>
+					<tr>
+						<th>Event</th>
+						<th>Datum</th>
+						<th>Dein Status</th>
+						<th>Feedback</th>
+					</tr>
+				</thead>
+				<tbody>
+					<c:if test="${empty eventHistory}">
+						<tr>
+							<td colspan="4">Keine Event-Historie vorhanden.</td>
+						</tr>
+					</c:if>
+					<c:forEach var="event" items="${eventHistory}">
+						<tr>
+							<td><a
+								href="${pageContext.request.contextPath}/veranstaltungen/details?id=${event.id}"><c:out
+										value="${event.name}" /></a></td>
+							<td><c:out value="${event.formattedEventDateTime}" /> Uhr</td>
+							<td><c:out value="${event.userAttendanceStatus}" /></td>
+							<td><c:if
+									test="${event.status == 'ABGESCHLOSSEN' && event.userAttendanceStatus == 'ZUGEWIESEN'}">
+									<a
+										href="${pageContext.request.contextPath}/feedback?action=submitEventFeedback&eventId=${event.id}"
+										class="btn btn-small">Feedback geben</a>
+								</c:if></td>
+						</tr>
+					</c:forEach>
+				</tbody>
+			</table>
+		</div>
+	</div>
+	<div class="mobile-card-list">
+		<c:if test="${empty eventHistory}">
+			<div class="list-item-card">
+				<p>Keine Event-Historie vorhanden.</p>
+			</div>
+		</c:if>
+		<c:forEach var="event" items="${eventHistory}">
+			<div class="list-item-card">
+				<h3 class="card-title">
+					<a
+						href="${pageContext.request.contextPath}/veranstaltungen/details?id=${event.id}"><c:out
+							value="${event.name}" /></a>
+				</h3>
+				<div class="card-row">
+					<span>Datum:</span> <strong><c:out
+							value="${event.formattedEventDateTime}" /> Uhr</strong>
+				</div>
+				<div class="card-row">
+					<span>Dein Status:</span> <strong><c:out
+							value="${event.userAttendanceStatus}" /></strong>
+				</div>
+				<div class="card-actions">
+					<c:if
+						test="${event.status == 'ABGESCHLOSSEN' && event.userAttendanceStatus == 'ZUGEWIESEN'}">
+						<a
+							href="${pageContext.request.contextPath}/feedback?action=submitEventFeedback&eventId=${event.id}"
+							class="btn btn-small">Feedback geben</a>
+					</c:if>
+				</div>
+			</div>
+		</c:forEach>
+	</div>
+</div>
+
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script src="${pageContext.request.contextPath}/js/auth/passkey_auth.js"></script>
+<script src="${pageContext.request.contextPath}/js/public/profile.js"></script>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\qr_action.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lager-Aktion: <c:out value="${item.name}" /></title>
+<link rel="stylesheet"
+	href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<link rel="stylesheet"
+	href="${pageContext.request.contextPath}/css/style.css">
+
+<script>
+	// This script runs immediately to prevent a "flash" of the wrong theme.
+	const savedTheme = localStorage.getItem('theme') || 'light';
+	document.documentElement.setAttribute('data-theme', savedTheme);
+</script>
+
+</head>
+<body class="qr-action-body">
+
+	<div class="qr-action-container card">
+		<p>Aktion für:</p>
+		<h1 class="qr-action-item-name">
+			<c:out value="${item.name}" />
+		</h1>
+		<p class="details-subtitle"
+			style="margin-top: -1rem; margin-bottom: 2rem;">Bestand:
+			${item.quantity} / ${item.maxQuantity} (Verfügbar:
+			${item.availableQuantity})</p>
+
+
+		<c:if test="${not empty sessionScope.successMessage}">
+			<p class="success-message" style="margin-top: 1rem;">${sessionScope.successMessage}</p>
+			<c:remove var="successMessage" scope="session" />
+		</c:if>
+		<c:if test="${not empty sessionScope.errorMessage}">
+			<p class="error-message" style="margin-top: 1rem;">${sessionScope.errorMessage}</p>
+			<c:remove var="errorMessage" scope="session" />
+		</c:if>
+
+		<form action="${pageContext.request.contextPath}/lager/transaktion"
+			method="post" data-available-qty="${item.availableQuantity}"
+			data-total-qty="${item.quantity}" data-max-qty="${item.maxQuantity}">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="itemId" value="${item.id}"> <input type="hidden"
+				name="redirectUrl"
+				value="${pageContext.request.contextPath}/lager/aktionen?id=${item.id}">
+
+			<div class="form-group">
+				<label for="quantity">Anzahl</label> <input type="number"
+					name="quantity" id="quantity" value="1" min="1" required>
+			</div>
+
+			<div class="form-group">
+				<label for="notes">Notiz (optional, z.B. für welches Event)</label>
+				<input type="text" name="notes" id="notes"
+					placeholder="z.B. für Event XYZ">
+			</div>
+			<div class="form-group">
+				<label for="eventId">Zuweisen zu Event (optional)</label> <select
+					name="eventId" id="eventId">
+					<option value="">Kein Event</option>
+					<c:forEach var="event" items="${activeEvents}">
+						<option value="${event.id}">${event.name}</option>
+					</c:forEach>
+				</select>
+			</div>
+
+			<div class="qr-action-buttons">
+				<button type="submit" name="type" value="checkout" id="checkout-btn"
+					class="btn btn-danger qr-action-btn"
+					${item.availableQuantity <= 0 ? 'disabled' : ''}>
+					<i class="fas fa-sign-out-alt"></i> Entnehmen
+				</button>
+				<button type="submit" name="type" value="checkin" id="checkin-btn"
+					class="btn btn-success qr-action-btn"
+					${item.maxQuantity > 0 && item.quantity >= item.maxQuantity ? 'disabled' : ''}>
+					<i class="fas fa-sign-in-alt"></i> Einräumen
+				</button>
+			</div>
+		</form>
+	</div>
+
+	<script src="${pageContext.request.contextPath}/js/public/qr_action.js"></script>
+</body>
+</html>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\storage_item_details.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle"
+		value="Artikeldetails: ${fn:escapeXml(item.name)}" />
+</c:import>
+
+<h1>
+	<i class="fas fa-cube"></i> Artikeldetails
+</h1>
+
+<div class="responsive-dashboard-grid" style="align-items: flex-start;">
+
+	<div class="card">
+		<h2 class="card-title">
+			<c:out value="${item.name}" />
+		</h2>
+		<c:if test="${not empty item.imagePath}">
+			<a
+				href="${pageContext.request.contextPath}/image?file=${item.imagePath}"
+				class="lightbox-trigger"> <img
+				src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
+				alt="<c:out value='${item.name}'/>"
+				style="width: 100%; border-radius: var(--border-radius); margin-bottom: 1rem; cursor: zoom-in;">
+			</a>
+		</c:if>
+		<ul class="details-list">
+			<li><strong>Allg. Status:</strong> <span
+				class="status-badge ${item.availabilityStatusCssClass}"><c:out
+						value="${item.availabilityStatus}" /></span></li>
+			<li><strong>Verfügbar:</strong> <span><c:out
+						value="${item.availableQuantity}" /> / <c:out
+						value="${item.quantity}" /></span></li>
+			<li><strong>Defekt:</strong> <span><c:out
+						value="${item.defectiveQuantity}" /></span></li>
+			<li><strong>Tracking-Status:</strong> <span> <c:choose>
+						<c:when test="${item.status == 'CHECKED_OUT'}">
+							<span class="status-badge status-warn"><c:out
+									value="Entnommen" /></span>
+						</c:when>
+						<c:when test="${item.status == 'MAINTENANCE'}">
+							<span class="status-badge status-info"><c:out
+									value="Wartung" /></span>
+						</c:when>
+						<c:otherwise>
+							<span class="status-badge status-ok"><c:out
+									value="Im Lager" /></span>
+						</c:otherwise>
+					</c:choose>
+			</span></li>
+			<c:if test="${not empty item.currentHolderUsername}">
+				<li><strong>Aktueller Inhaber:</strong> <span><c:out
+							value="${item.currentHolderUsername}" /></span></li>
+			</c:if>
+			<li><strong>Ort:</strong> <span><c:out
+						value="${item.location}" /></span></li>
+			<li><strong>Schrank:</strong> <span><c:out
+						value="${not empty item.cabinet ? item.cabinet : 'N/A'}" /></span></li>
+			<li><strong>Fach:</strong> <span><c:out
+						value="${not empty item.compartment ? item.compartment : 'N/A'}" /></span></li>
+		</ul>
+		<div style="margin-top: 2rem;">
+			<a href="<c:url value='/lager'/>" class="btn btn-small"><i
+				class="fas fa-arrow-left"></i> Zur Lagerübersicht</a>
+		</div>
+	</div>
+
+	<div class="card">
+		<div class="modal-tabs">
+			<button class="modal-tab-button active" data-tab="history-tab">Verlauf</button>
+			<button class="modal-tab-button" data-tab="maintenance-tab">Wartungshistorie</button>
+		</div>
+
+		<div id="history-tab" class="modal-tab-content active">
+			<h2 class="card-title" style="border: none; padding: 0;">Verlauf
+				/ Chronik</h2>
+
+			<!-- Desktop Table View -->
+			<div class="desktop-table-wrapper">
+				<div class="table-wrapper"
+					style="max-height: 60vh; overflow-y: auto;">
+					<table class="data-table">
+						<thead>
+							<tr>
+								<th>Wann</th>
+								<th>Aktion</th>
+								<th>Wer</th>
+								<th>Notiz</th>
+							</tr>
+						</thead>
+						<tbody>
+							<c:if test="${empty history}">
+								<tr>
+									<td colspan="4" style="text-align: center;">Kein Verlauf
+										für diesen Artikel vorhanden.</td>
+								</tr>
+							</c:if>
+							<c:forEach var="entry" items="${history}">
+								<tr>
+									<td><c:out
+											value="${entry.transactionTimestampLocaleString}" /></td>
+									<td><span
+										class="status-badge ${entry.quantityChange > 0 ? 'status-ok' : 'status-danger'}">${entry.quantityChange > 0 ? '+' : ''}<c:out
+												value="${entry.quantityChange}" /></span></td>
+									<td><c:out value="${entry.username}" /></td>
+									<td><c:out
+											value="${not empty entry.notes ? entry.notes : '-'}" /></td>
+								</tr>
+							</c:forEach>
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<!-- Mobile Card View -->
+			<div class="mobile-card-list">
+				<c:if test="${empty history}">
+					<div class="list-item-card">
+						<p>Kein Verlauf für diesen Artikel vorhanden.</p>
+					</div>
+				</c:if>
+				<c:forEach var="entry" items="${history}">
+					<div class="list-item-card">
+						<h3 class="card-title">
+							<span
+								class="status-badge ${entry.quantityChange > 0 ? 'status-ok' : 'status-danger'}">
+								${entry.quantityChange > 0 ? '+' : ''}<c:out
+									value="${entry.quantityChange}" />
+							</span>
+							<c:out value="${entry.username}" />
+						</h3>
+						<div class="card-row">
+							<span>Wann:</span> <strong><c:out
+									value="${entry.transactionTimestampLocaleString}" /></strong>
+						</div>
+						<div class="card-row"
+							style="flex-direction: column; align-items: flex-start;">
+							<span>Notiz:</span>
+							<p style="margin-top: 0.25rem; font-size: 0.9em; width: 100%;">
+								<c:out value="${not empty entry.notes ? entry.notes : '-'}" />
+							</p>
+						</div>
+					</div>
+				</c:forEach>
+			</div>
+		</div>
+
+		<div id="maintenance-tab" class="modal-tab-content">
+			<h2 class="card-title" style="border: none; padding: 0;">Wartungshistorie</h2>
+			<!-- Desktop Table View -->
+			<div class="desktop-table-wrapper">
+				<div class="table-wrapper"
+					style="max-height: 60vh; overflow-y: auto;">
+					<table class="data-table">
+						<thead>
+							<tr>
+								<th>Datum</th>
+								<th>Aktion</th>
+								<th>Bearbeiter</th>
+								<th>Notiz</th>
+							</tr>
+						</thead>
+						<tbody>
+							<c:if test="${empty maintenanceHistory}">
+								<tr>
+									<td colspan="4" style="text-align: center;">Keine
+										Wartungseinträge für diesen Artikel vorhanden.</td>
+								</tr>
+							</c:if>
+							<c:forEach var="entry" items="${maintenanceHistory}">
+								<tr>
+									<td><c:out value="${entry.formattedLogDate}" /></td>
+									<td><c:out value="${entry.action}" /></td>
+									<td><c:out value="${entry.username}" /></td>
+									<td><c:out value="${entry.notes}" /></td>
+								</tr>
+							</c:forEach>
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<!-- Mobile Card View -->
+			<div class="mobile-card-list">
+				<c:if test="${empty maintenanceHistory}">
+					<div class="list-item-card">
+						<p>Keine Wartungseinträge für diesen Artikel vorhanden.</p>
+					</div>
+				</c:if>
+				<c:forEach var="entry" items="${maintenanceHistory}">
+					<div class="list-item-card">
+						<h3 class="card-title">
+							<c:out value="${entry.action}" />
+						</h3>
+						<div class="card-row">
+							<span>Datum:</span> <strong><c:out
+									value="${entry.formattedLogDate}" /></strong>
+						</div>
+						<div class="card-row">
+							<span>Bearbeiter:</span> <strong><c:out
+									value="${entry.username}" /></strong>
+						</div>
+						<div class="card-row"
+							style="flex-direction: column; align-items: flex-start;">
+							<span>Notiz:</span>
+							<p style="margin-top: 0.25rem; font-size: 0.9em; width: 100%;">
+								<c:out value="${entry.notes}" />
+							</p>
+						</div>
+					</div>
+				</c:forEach>
+			</div>
+
+		</div>
+	</div>
+</div>
+
+
+<div id="lightbox" class="lightbox-overlay">
+	<span class="lightbox-close" title="Schließen">×</span> <img
+		class="lightbox-content" id="lightbox-image" alt="Großansicht">
+</div>
+
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script
+	src="${pageContext.request.contextPath}/js/public/storage_item_details.js"></script>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\web.xml
+========================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd"
+	version="5.0">
+
+	<display-name>TechnikTeam Web Application</display-name>
+
+	<session-config>
+		<session-timeout>30</session-timeout>
+		<cookie-config>
+			<http-only>true</http-only>
+			<!-- For production, secure should be true. Kept as-is for local dev compatibility. -->
+			<secure>false</secure>
+		</cookie-config>
+	</session-config>
+
+	<welcome-file-list>
+		<welcome-file>/views/auth/login.jsp</welcome-file>
+	</welcome-file-list>
+
+	<jsp-config>
+		<jsp-property-group>
+			<url-pattern>*.jsp</url-pattern>
+			<url-pattern>*.jspf</url-pattern>
+			<el-ignored>false</el-ignored>
+		</jsp-property-group>
+	</jsp-config>
+
+	<!-- Custom Error Pages -->
+	<error-page>
+		<error-code>400</error-code>
+		<location>/views/error/error400.jsp</location>
+	</error-page>
+	<error-page>
+		<error-code>401</error-code>
+		<location>/views/error/error401.jsp</location>
+	</error-page>
+	<error-page>
+		<error-code>403</error-code>
+		<location>/views/error/error403.jsp</location>
+	</error-page>
+	<error-page>
+		<error-code>404</error-code>
+		<location>/views/error/error404.jsp</location>
+	</error-page>
+	<error-page>
+		<error-code>500</error-code>
+		<location>/views/error/error500.jsp</location>
+	</error-page>
+	<error-page>
+		<error-code>503</error-code>
+		<location>/views/error/error503.jsp</location>
+	</error-page>
+	<error-page>
+		<exception-type>java.lang.Throwable</exception-type>
+		<location>/views/error/error500.jsp</location>
+	</error-page>
+	<error-page>
+		<location>/views/error/error_generic.jsp</location>
+	</error-page>
+
+</web-app>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\common_modals.jspf
+========================================================================
+
+<%@ page pageEncoding="UTF-8"%>
+<!-- The confirmation modal is dynamically created and added to the body by main.js -->
+<!-- This file is a placeholder for any other future global modals. -->
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\error_footer.jspf
+========================================================================
+
+<%@ page pageEncoding="UTF-8"%>
+    </div>
+</main>
+<script src="${pageContext.request.contextPath}/js/main.js"></script>
+</body>
+</html>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\error_header.jspf
+========================================================================
+
+<%@ page pageEncoding="UTF-8" isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<!DOCTYPE html>
+<html lang="de" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><c:out value="${param.pageTitle}" /> - TechnikTeam</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
+</head>
+<body data-context-path="${pageContext.request.contextPath}">
+<main class="main-content-wrapper no-sidebar">
+    <div class="main-content">
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\event_modals.jspf
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<!-- Event Create/Edit Modal -->
+<div class="modal-overlay" id="event-modal">
+	<div class="modal-content" style="max-width: 800px;">
+		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
+		<h3 id="event-modal-title">Event verwalten</h3>
+
+		<div class="modal-tabs">
+			<button class="modal-tab-button active" data-tab="general">Allgemein</button>
+			<button class="modal-tab-button" data-tab="requirements">Bedarf</button>
+			<button class="modal-tab-button" data-tab="reservations">Material</button>
+			<button class="modal-tab-button" data-tab="attachments">Anhänge</button>
+			<button class="modal-tab-button" data-tab="custom-fields">Anmeldefelder</button>
+		</div>
+
+		<form id="event-modal-form"
+			action="${pageContext.request.contextPath}/admin/veranstaltungen"
+			method="post" enctype="multipart/form-data">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" id="event-modal-action"> <input type="hidden"
+				name="id" id="event-modal-id">
+
+			<!-- General Tab -->
+			<div class="modal-tab-content active" id="general">
+				<div class="form-group">
+					<label for="name-modal">Name des Events</label> <input type="text"
+						id="name-modal" name="name" required>
+				</div>
+				<div class="responsive-dashboard-grid">
+					<div class="form-group">
+						<label for="eventDateTime-modal">Beginn</label> <input
+							type="datetime-local" id="eventDateTime-modal"
+							name="eventDateTime" required>
+					</div>
+					<div class="form-group">
+						<label for="endDateTime-modal">Ende (optional)</label> <input
+							type="datetime-local" id="endDateTime-modal" name="endDateTime">
+					</div>
+				</div>
+				<div class="responsive-dashboard-grid">
+					<div class="form-group">
+						<label for="location-modal">Ort</label> <input type="text"
+							id="location-modal" name="location">
+					</div>
+					<div class="form-group">
+						<label for="leaderUserId-modal">Event-Leitung</label> <select
+							name="leaderUserId" id="leaderUserId-modal">
+							<option value="">(Keine)</option>
+							<c:forEach var="user" items="${allUsers}">
+								<option value="${user.id}"><c:out
+										value="${user.username}" /></option>
+							</c:forEach>
+						</select>
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="description-modal">Beschreibung (Markdown wird
+						unterstützt)</label>
+					<textarea id="description-modal" name="description" rows="3"></textarea>
+				</div>
+			</div>
+
+			<!-- Requirements Tab -->
+			<div class="modal-tab-content" id="requirements">
+				<h4>Personalbedarf</h4>
+				<p>Legen Sie fest, welche Qualifikationen für dieses Event
+					benötigt werden.</p>
+				<div id="modal-requirements-container"></div>
+				<button type="button" class="btn btn-small"
+					id="modal-add-requirement-btn" style="margin-top: 1rem;">
+					<i class="fas fa-plus"></i> Bedarf hinzufügen
+				</button>
+				<button type="button" class="btn btn-info" id="find-crew-btn"
+					style="margin-top: 1rem; margin-left: 1rem;">
+					<i class="fas fa-search"></i> Crew finden
+				</button>
+			</div>
+
+			<!-- Reservations Tab -->
+			<div class="modal-tab-content" id="reservations">
+				<h4>Materialreservierung</h4>
+				<p>Reservieren Sie Material aus dem Lager für dieses Event.</p>
+				<div class="form-group">
+					<label for="kit-selection-modal">Aus Kit hinzufügen</label> <select
+						id="kit-selection-modal">
+						<option value="">-- Kit auswählen --</option>
+						<c:forEach var="kit" items="${allKits}">
+							<option value="${kit.id}"><c:out value="${kit.name}" /></option>
+						</c:forEach>
+					</select>
+				</div>
+				<div id="modal-reservations-container"></div>
+				<button type="button" class="btn btn-small"
+					id="modal-add-reservation-btn" style="margin-top: 1rem;">
+					<i class="fas fa-plus"></i> Material hinzufügen
+				</button>
+			</div>
+
+			<!-- Attachments Tab -->
+			<div class="modal-tab-content" id="attachments">
+				<h4>Anhänge</h4>
+				<ul id="modal-attachments-list" class="details-list"></ul>
+				<div class="form-group">
+					<label for="attachment-modal">Neuen Anhang hochladen</label> <input
+						type="file" name="attachment" id="attachment-modal">
+				</div>
+				<div class="form-group">
+					<label for="requiredRole-modal">Sichtbar für</label> <select
+						name="requiredRole" id="requiredRole-modal">
+						<option value="NUTZER" selected>Alle Nutzer</option>
+						<option value="ADMIN">Nur Admins</option>
+					</select>
+				</div>
+			</div>
+
+			<!-- Custom Fields Tab -->
+			<div class="modal-tab-content" id="custom-fields">
+				<h4>Zusätzliche Anmeldefelder</h4>
+				<p>Fügen Sie benutzerdefinierte Felder hinzu, die bei der
+					Anmeldung abgefragt werden (z.B. T-Shirt Größe, Allergien etc.).</p>
+				<div id="modal-custom-fields-container"></div>
+				<button type="button" class="btn btn-small"
+					id="modal-add-custom-field-btn" style="margin-top: 1rem;">
+					<i class="fas fa-plus"></i> Feld hinzufügen
+				</button>
+			</div>
+
+			<div style="margin-top: 1.5rem;">
+				<button type="submit" class="btn btn-success">
+					<i class="fas fa-save"></i> Event speichern
+				</button>
+			</div>
+		</form>
+	</div>
+</div>
+
+<!-- User Assignment Modal -->
+<div class="modal-overlay" id="assign-users-modal">
+	<div class="modal-content" style="max-width: 500px;">
+		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
+		<h3 id="assign-users-modal-title">Team zuweisen</h3>
+		<form id="assign-users-form"
+			action="${pageContext.request.contextPath}/admin/veranstaltungen"
+			method="post">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="assignUsers"> <input type="hidden"
+				name="eventId" value="">
+			<div id="user-checkboxes-container"
+				style="max-height: 40vh; overflow-y: auto;">
+				<!-- Checkboxes populated by JS -->
+			</div>
+			<button type="submit" class="btn btn-success"
+				style="margin-top: 1rem;">
+				<i class="fas fa-users"></i> Team finalisieren
+			</button>
+		</form>
+	</div>
+</div>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\main_footer.jspf
+========================================================================
+
+<%@ page pageEncoding="UTF-8"%>
+</main>
+</div>
+<div id="lightbox" class="lightbox-overlay">
+	<span class="lightbox-close" title="Schließen">×</span> <img
+		class="lightbox-content" id="lightbox-image" alt="Großansicht">
+</div>
+<script
+	src="${pageContext.request.contextPath}/vendor/diff-match-patch/diff_match_patch.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="${pageContext.request.contextPath}/js/main.js"></script>
+</body>
+</html>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\main_header.jspf
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+
+<!DOCTYPE html>
+<html lang="de"
+	data-theme="${not empty sessionScope.user.theme ? sessionScope.user.theme : 'light'}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${param.pageTitle}-TechnikTeam</title>
+<link rel="stylesheet"
+	href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<link rel="stylesheet"
+	href="${pageContext.request.contextPath}/css/style.css">
+<link rel="icon"
+	href="${pageContext.request.contextPath}/images/favicon.ico"
+	type="image/x-icon">
+<script>
+	// This script runs immediately to prevent a "flash" of the wrong theme.
+	const savedTheme = localStorage.getItem('theme')
+			|| document.documentElement.dataset.theme || 'light';
+	document.documentElement.setAttribute('data-theme', savedTheme);
+</script>
+</head>
+<body data-context-path="${pageContext.request.contextPath}"
+	data-is-logged-in="${not empty sessionScope.user}"
+	data-csrf-token="${sessionScope.csrfToken}"
+	data-page="${not empty param.page ? param.page : ''}"
+	data-all-permissions="${fn:escapeXml(not empty param.permissionsJson ? param.permissionsJson : '[]')}">
+
+	<c:set var="showNav"
+		value="${empty param.showNav or param.showNav == 'true'}" />
+	<c:if test="${showNav}">
+		<c:set var="user" value="${sessionScope.user}" />
+
+		<aside class="sidebar">
+			<header class="sidebar-header">
+				<a href="${pageContext.request.contextPath}/home" class="logo">
+					<i class="fas fa-bolt"></i> TechnikTeam
+				</a>
+			</header>
+			<nav class="sidebar-nav">
+				<ul>
+					<c:set var="userSectionDrawn" value="false" />
+					<c:set var="adminSectionDrawn" value="false" />
+					<c:forEach var="navItem" items="${sessionScope.navigationItems}">
+						<c:if test="${navItem.requiredPermission == null}">
+							<c:if test="${not userSectionDrawn}">
+								<li class="nav-section-title">Benutzerbereich</li>
+								<c:set var="userSectionDrawn" value="true" />
+							</c:if>
+							<li><a
+								href="${pageContext.request.contextPath}${navItem.url}"
+								class="${pageContext.request.requestURI eq (pageContext.request.contextPath.concat(navItem.url)) ? 'active-nav-link' : ''}">
+									<i class="fas ${navItem.icon} fa-fw"></i> ${navItem.label}
+							</a></li>
+						</c:if>
+					</c:forEach>
+
+					<c:forEach var="navItem" items="${sessionScope.navigationItems}">
+						<c:if test="${not empty navItem.requiredPermission}">
+							<c:if test="${not adminSectionDrawn}">
+								<li class="nav-section-title">Admin-Bereich</li>
+								<c:set var="adminSectionDrawn" value="true" />
+							</c:if>
+							<li><a
+								href="${pageContext.request.contextPath}${navItem.url}"
+								class="${pageContext.request.requestURI eq (pageContext.request.contextPath.concat(navItem.url)) ? 'active-nav-link' : ''}">
+									<i class="fas ${navItem.icon} fa-fw"></i> ${navItem.label}
+							</a></li>
+						</c:if>
+					</c:forEach>
+				</ul>
+			</nav>
+			<div class="user-actions">
+				<div class="theme-switcher desktop-only">
+					<i class="fas fa-sun"></i> <label class="toggle-switch"> <input
+						type="checkbox" id="theme-toggle-desktop"> <span
+						class="slider"></span>
+					</label> <i class="fas fa-moon"></i>
+				</div>
+				<hr style="margin: 1rem 0;" class="desktop-only">
+				<div class="user-info">
+					Angemeldet als: <strong>${user.username}</strong>
+				</div>
+				<div class="sidebar-controls">
+					<a href="${pageContext.request.contextPath}/profil"
+						class="btn btn-secondary btn-small" style="flex-grow: 1;">Profil</a>
+					<a href="${pageContext.request.contextPath}/logout"
+						id="logout-link" class="btn btn-danger-outline btn-small"
+						style="flex-grow: 1;">Logout</a>
+				</div>
+			</div>
+		</aside>
+
+		<header class="mobile-header">
+			<button class="mobile-nav-toggle" aria-label="Navigation umschalten">
+				<span class="line line-1"></span> <span class="line line-2"></span>
+				<span class="line line-3"></span>
+			</button>
+			<a href="${pageContext.request.contextPath}/home" class="mobile-logo">TechnikTeam</a>
+			<div class="mobile-header-right">
+				<div class="theme-switcher mobile-only">
+					<i class="fas fa-sun"></i> <label class="toggle-switch"> <input
+						type="checkbox" id="theme-toggle"> <span class="slider"></span>
+					</label> <i class="fas fa-moon"></i>
+				</div>
+				<a href="${pageContext.request.contextPath}/profil"><i
+					class="fas fa-user-circle" style="font-size: 1.5rem;"></i></a>
+			</div>
+		</header>
+		<div class="page-overlay"></div>
+	</c:if>
+
+	<div class="main-content-wrapper">
+		<main class="main-content">
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\message_banner.jspf
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<c:if test="${not empty sessionScope.successMessage}">
+	<p class="success-message">
+		<i class="fas fa-check-circle"></i>
+		<c:out value="${sessionScope.successMessage}" />
+	</p>
+	<c:remove var="successMessage" scope="session" />
+</c:if>
+
+<c:if test="${not empty sessionScope.errorMessage}">
+	<p class="error-message">
+		<i class="fas fa-exclamation-triangle"></i>
+		<c:out value="${sessionScope.errorMessage}" />
+	</p>
+	<c:remove var="errorMessage" scope="session" />
+</c:if>
+
+<c:if test="${not empty sessionScope.infoMessage}">
+	<p class="info-message">
+		<i class="fas fa-info-circle"></i>
+		<c:out value="${sessionScope.infoMessage}" />
+	</p>
+	<c:remove var="infoMessage" scope="session" />
+</c:if>
+
+<c:if
+	test="${not empty sessionScope.passwordResetUser and not empty sessionScope.passwordResetNewPassword}">
+	<p class="password-reset-alert" id="password-reset-alert"
+		style="word-wrap: break-word;">
+		<i class="fas fa-key"></i> Passwort für '<strong><c:out
+				value="${sessionScope.passwordResetUser}" /></strong>' wurde zurückgesetzt
+		auf: <strong class="copyable-password"
+			title="In Zwischenablage kopieren"><c:out
+				value="${sessionScope.passwordResetNewPassword}" /></strong> (wurde in die
+		Zwischenablage kopiert).
+	</p>
+	<c:remove var="passwordResetUser" scope="session" />
+	<c:remove var="passwordResetNewPassword" scope="session" />
+</c:if>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\storage_modals.jspf
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<!-- Transaction Modal -->
+<div class="modal-overlay" id="transaction-modal">
+	<div class="modal-content" style="max-width: 450px;">
+		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
+		<h3 id="transaction-modal-title">Aktion</h3>
+		<form id="transaction-form"
+			action="${pageContext.request.contextPath}/lager/transaktion"
+			method="post">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="itemId" id="transaction-item-id">
+			<div class="form-group">
+				<label for="transaction-quantity">Anzahl</label> <input
+					type="number" name="quantity" id="transaction-quantity" value="1"
+					min="1" required>
+			</div>
+			<div class="form-group">
+				<label for="transaction-notes">Notiz (optional)</label> <input
+					type="text" name="notes" id="transaction-notes"
+					placeholder="z.B. für Event XYZ">
+			</div>
+			<div class="form-group">
+				<label for="transaction-eventId">Zuweisen zu Event
+					(optional)</label> <select name="eventId" id="transaction-eventId">
+					<option value="">Kein Event</option>
+					<c:if test="${not empty activeEvents}">
+						<c:forEach var="event" items="${activeEvents}">
+							<option value="${event.id}">${event.name}</option>
+						</c:forEach>
+					</c:if>
+				</select>
+			</div>
+			<div
+				style="display: flex; justify-content: space-between; gap: 1rem;">
+				<button type="submit" name="type" value="checkout"
+					class="btn btn-danger" style="flex-grow: 1;">Entnehmen</button>
+				<button type="submit" name="type" value="checkin"
+					class="btn btn-success" style="flex-grow: 1;">Einräumen</button>
+			</div>
+		</form>
+	</div>
+</div>
+
+<!-- Maintenance Modal -->
+<div class="modal-overlay" id="maintenance-modal">
+	<div class="modal-content" style="max-width: 450px;">
+		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
+		<h3 id="maintenance-modal-title">Wartungs-Status</h3>
+		<form action="${pageContext.request.contextPath}/admin/lager"
+			method="post">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="updateStatus"> <input type="hidden"
+				name="id" id="maintenance-item-id">
+			<div class="form-group">
+				<label for="maintenance-status">Neuer Status</label> <select
+					name="status" id="maintenance-status">
+					<option value="IN_STORAGE">Zurück in den Bestand</option>
+					<option value="MAINTENANCE">Zur Wartung</option>
+				</select>
+			</div>
+			<div class="form-group">
+				<label for="maintenance-notes">Notiz (z.B. was wurde
+					gemacht?)</label>
+				<textarea name="notes" id="maintenance-notes" rows="3"></textarea>
+			</div>
+			<button type="submit" class="btn">Speichern</button>
+		</form>
+	</div>
+</div>
+
+<!-- Defect Modal -->
+<div class="modal-overlay" id="defect-modal">
+	<div class="modal-content" style="max-width: 450px;">
+		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
+		<h3>Defekt-Status bearbeiten</h3>
+		<form action="${pageContext.request.contextPath}/admin/lager"
+			method="post">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="updateDefect"> <input type="hidden"
+				name="id" id="defect-item-id">
+			<div class="form-group">
+				<label for="defective_quantity">Anzahl defekter Artikel</label> <input
+					type="number" name="defective_quantity" id="defective_quantity"
+					min="0" required>
+			</div>
+			<div class="form-group">
+				<label for="defect_reason">Grund (optional)</label>
+				<textarea name="defect_reason" id="defect_reason" rows="3"></textarea>
+			</div>
+			<button type="submit" class="btn">
+				<i class="fas fa-save"></i> Speichern
+			</button>
+		</form>
+	</div>
+</div>
+
+<!-- Item Create/Edit Modal -->
+<div class="modal-overlay" id="item-modal">
+	<div class="modal-content" style="max-width: 700px;">
+		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
+		<h3>Lagerartikel</h3>
+		<form action="${pageContext.request.contextPath}/admin/lager"
+			method="post" enctype="multipart/form-data">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value=""> <input type="hidden" name="id"
+				value="">
+
+			<div class="form-group">
+				<label for="name-modal">Name</label> <input type="text"
+					id="name-modal" name="name" required>
+			</div>
+			<div class="responsive-dashboard-grid">
+				<div class="form-group">
+					<label for="location-modal">Ort</label> <input type="text"
+						id="location-modal" name="location">
+				</div>
+				<div class="form-group">
+					<label for="cabinet-modal">Schrank (optional)</label> <input
+						type="text" id="cabinet-modal" name="cabinet">
+				</div>
+				<div class="form-group">
+					<label for="compartment-modal">Fach (optional)</label> <input
+						type="text" id="compartment-modal" name="compartment">
+				</div>
+			</div>
+			<div class="responsive-dashboard-grid">
+				<div class="form-group">
+					<label for="quantity-modal">Menge im Bestand</label> <input
+						type="number" id="quantity-modal" name="quantity" min="0" required>
+				</div>
+				<div class="form-group">
+					<label for="maxQuantity-modal">Max. Menge (für Status)</label> <input
+						type="number" id="maxQuantity-modal" name="maxQuantity" min="0"
+						required>
+				</div>
+			</div>
+			<div class="responsive-dashboard-grid">
+				<div class="form-group">
+					<label for="weight_kg-modal">Gewicht (kg)</label> <input
+						type="text" id="weight_kg-modal" name="weight_kg"
+						placeholder="z.B. 1.25">
+				</div>
+				<div class="form-group">
+					<label for="price_eur-modal">Preis (€)</label> <input type="text"
+						id="price_eur-modal" name="price_eur" placeholder="z.B. 49.99">
+				</div>
+			</div>
+			<div class="form-group">
+				<label for="imageFile-modal">Bild (optional)</label> <input
+					type="file" name="imageFile" id="imageFile-modal" accept="image/*">
+			</div>
+			<button type="submit" class="btn">
+				<i class="fas fa-save"></i> Speichern
+			</button>
+		</form>
+	</div>
+</div>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\table_scripts.jspf
+========================================================================
+
+<%@ page pageEncoding="UTF-8"%>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- TABLE FILTERING LOGIC ---
+    const filterInput = document.getElementById('table-filter');
+    if (filterInput) {
+        const searchableLists = document.querySelectorAll('.searchable-list');
+        const searchableTables = document.querySelectorAll('.searchable-table');
+
+        filterInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            
+            searchableLists.forEach(list => {
+                const items = list.querySelectorAll('[data-searchable-content]');
+                items.forEach(item => {
+                    const content = item.dataset.searchableContent.toLowerCase();
+                    item.style.display = content.includes(searchTerm) ? '' : 'none';
+                });
+            });
+
+            searchableTables.forEach(table => {
+                const rows = table.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    const content = row.textContent.toLowerCase();
+                    row.style.display = content.includes(searchTerm) ? '' : 'none';
+                });
+            });
+        });
+    }
+
+    // --- TABLE SORTING LOGIC ---
+    document.querySelectorAll('.sortable-table').forEach(table => {
+        const headers = table.querySelectorAll('th.sortable');
+        const tbody = table.querySelector('tbody');
+
+        headers.forEach((header, index) => {
+            header.addEventListener('click', () => {
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                const isAscending = !header.classList.contains('sorted-asc');
+                const sortType = header.dataset.sortType || 'string';
+
+                headers.forEach(h => h.classList.remove('sorted-asc', 'sorted-desc'));
+                
+                header.classList.toggle('sorted-asc', isAscending);
+                header.classList.toggle('sorted-desc', !isAscending);
+
+                rows.sort((a, b) => {
+                    let valA = a.children[index].dataset.sortValue || a.children[index].textContent.trim();
+                    let valB = b.children[index].dataset.sortValue || b.children[index].textContent.trim();
+                    
+                    if (sortType === 'number') {
+                        valA = parseFloat(valA) || 0;
+                        valB = parseFloat(valB) || 0;
+                    }
+
+                    if (valA < valB) return isAscending ? -1 : 1;
+                    if (valA > valB) return isAscending ? 1 : -1;
+                    return 0;
+                });
+
+                tbody.append(...rows);
+            });
+        });
+    });
+});
+</script>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\task_modal.jspf
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<div class="modal-overlay" id="task-modal">
+	<div class="modal-content" style="max-width: 800px;">
+		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
+		<h3 id="task-modal-title">Aufgabe verwalten</h3>
+		<form id="task-modal-form"
+			action="${pageContext.request.contextPath}/task-action" method="post">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="save"> <input type="hidden"
+				name="eventId" value="${event.id}"> <input type="hidden"
+				id="task-id-modal" name="taskId">
+
+			<div class="form-group">
+				<label for="task-description-modal">Beschreibung</label> <input
+					type="text" id="task-description-modal" name="description" required>
+			</div>
+
+			<div class="form-group">
+				<label for="task-details-modal">Zusätzliche Details /
+					Anleitung (optional)</label>
+				<textarea id="task-details-modal" name="details" rows="3"></textarea>
+			</div>
+
+			<div class="form-group">
+				<label for="task-display-order-modal">Anzeigereihenfolge</label> <input
+					type="number" id="task-display-order-modal" name="displayOrder"
+					value="10" required>
+			</div>
+
+			<div class="form-group" id="task-status-group" style="display: none;">
+				<label for="task-status-modal">Status</label> <select
+					id="task-status-modal" name="status">
+					<option value="OFFEN">Offen</option>
+					<option value="IN_ARBEIT">In Arbeit</option>
+					<option value="ERLEDIGT">Erledigt</option>
+					<option value="BLOCKIERT">Blockiert</option>
+				</select>
+			</div>
+
+			<div class="card"
+				style="margin: 1.5rem 0; background-color: var(--bg-color);">
+				<h4 class="card-title">Zuweisung</h4>
+				<div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+					<label> <input type="radio" name="assignmentType"
+						value="direct" checked> Direkte Zuweisung
+					</label> <label> <input type="radio" name="assignmentType"
+						value="pool"> Offener Pool
+					</label>
+				</div>
+				<div id="direct-assignment-fields">
+					<p>Wählen Sie die Benutzer aus, die dieser Aufgabe direkt
+						zugewiesen sind.</p>
+					<div id="task-user-checkboxes"
+						style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color); padding: 0.5rem; border-radius: 6px;">
+						<!-- Checkboxes are populated by JS -->
+					</div>
+				</div>
+				<div id="pool-assignment-fields" style="display: none;">
+					<div class="form-group">
+						<label for="task-required-persons-modal">Benötigte
+							Personen</label> <input type="number" id="task-required-persons-modal"
+							name="requiredPersons" value="1" min="1">
+					</div>
+				</div>
+			</div>
+
+			<div class="card"
+				style="margin: 1.5rem 0; background-color: var(--bg-color);">
+				<h4 class="card-title">Material & Kits</h4>
+				<div id="task-items-container"></div>
+				<button type="button" class="btn btn-small" id="add-task-item-btn">
+					<i class="fas fa-plus"></i> Material hinzufügen
+				</button>
+				<div id="task-kits-container" style="margin-top: 1rem;"></div>
+				<button type="button" class="btn btn-small" id="add-task-kit-btn"
+					style="margin-top: 0.5rem;">
+					<i class="fas fa-plus"></i> Kit hinzufügen
+				</button>
+			</div>
+
+			<div style="display: flex; justify-content: space-between;">
+				<button type="submit" class="btn btn-success">
+					<i class="fas fa-save"></i> Aufgabe Speichern
+				</button>
+				<button type="button" class="btn btn-danger" id="delete-task-btn"
+					style="display: none;">
+					<i class="fas fa-trash"></i> Aufgabe Löschen
+				</button>
+			</div>
+		</form>
+	</div>
+</div>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\user_modals.jspf
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<div class="modal-overlay" id="user-modal">
+	<div class="modal-content" style="max-width: 800px;">
+		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
+		<h3 id="user-modal-title">Benutzer</h3>
+
+		<div class="modal-tabs">
+			<button class="modal-tab-button active" data-tab="general-tab">Allgemein</button>
+			<button class="modal-tab-button" data-tab="permissions-tab">Berechtigungen</button>
+		</div>
+
+		<form id="user-modal-form"
+			action="${pageContext.request.contextPath}/admin/action/user"
+			method="post">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				id="user-modal-action" name="action"> <input type="hidden"
+				id="userId-modal" name="userId">
+
+			<div class="modal-tab-content active" id="general-tab">
+				<div class="form-group">
+					<label for="username-modal">Benutzername</label> <input type="text"
+						id="username-modal" name="username" required>
+				</div>
+				<div class="form-group" id="password-group">
+					<label for="password-modal">Passwort</label>
+					<div class="password-input-wrapper">
+						<input type="password" id="password-modal" name="password"
+							minlength="10"> <span class="password-toggle-icon">
+							<i class="fas fa-eye"></i>
+						</span>
+					</div>
+					<small class="text-muted">Muss 10+ Zeichen,
+						Groß/Kleinbuchstaben, Zahlen & Sonderzeichen enthalten. Leer
+						lassen, um es nicht zu ändern.</small>
+				</div>
+				<div class="responsive-dashboard-grid">
+					<div class="form-group">
+						<label for="role-modal">Rolle</label> <select name="roleId"
+							id="role-modal" required>
+							<c:forEach var="role" items="${allRoles}">
+								<option value="${role.id}"><c:out
+										value="${role.roleName}" /></option>
+							</c:forEach>
+						</select>
+					</div>
+					<div class="form-group">
+						<label for="classYear-modal">Jahrgang</label> <input type="number"
+							id="classYear-modal" name="classYear" placeholder="z.B. 2023">
+					</div>
+					<div class="form-group">
+						<label for="className-modal">Klasse</label> <input type="text"
+							id="className-modal" name="className" placeholder="z.B. 10b">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="email-modal">E-Mail (optional)</label> <input
+						type="email" id="email-modal" name="email">
+				</div>
+			</div>
+
+			<div class="modal-tab-content" id="permissions-tab">
+				<h4>Individuelle Berechtigungen</h4>
+				<p>Diese Berechtigungen gelten zusätzlich zu denen, die eine
+					Rolle evtl. standardmäßig hat. Hier können granulare Rechte
+					vergeben werden.</p>
+				<div id="permissions-checkbox-container"
+					style="max-height: 40vh; overflow-y: auto; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius);">
+					<!-- Checkboxes will be populated by JS -->
+				</div>
+			</div>
+
+			<button type="submit" class="btn" style="margin-top: 1.5rem;">
+				<i class="fas fa-save"></i> Benutzer speichern
+			</button>
+		</form>
+	</div>
+</div>
