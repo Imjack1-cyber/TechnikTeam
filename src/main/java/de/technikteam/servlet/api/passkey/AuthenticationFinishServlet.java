@@ -1,6 +1,8 @@
 package de.technikteam.servlet.api.passkey;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.NavigationItem;
 import de.technikteam.model.User;
@@ -15,6 +17,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,7 +25,12 @@ import java.util.stream.Collectors;
 public class AuthenticationFinishServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private final PasskeyService passkeyService = new PasskeyService();
-	private final Gson gson = new Gson();
+	private Gson gson;
+
+	@Override
+	public void init() throws ServletException {
+		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+	}
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)

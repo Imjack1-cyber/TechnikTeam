@@ -26,8 +26,9 @@ public class AuthenticationFilter implements Filter {
 
 	private static final Set<String> PUBLIC_PATHS = new HashSet<>(Arrays.asList("/login", "/logout", "/calendar.ics"));
 
+	// Added /api/auth to allow pre-login access for passkeys
 	private static final Set<String> PUBLIC_RESOURCE_PREFIXES = new HashSet<>(
-			Arrays.asList("/css", "/js", "/images", "/error", "/public", "/vendor", "/wopi"));
+			Arrays.asList("/css", "/js", "/images", "/error", "/public", "/vendor", "/wopi", "/api/auth"));
 
 	@Override
 	public void init(FilterConfig filterConfig) throws ServletException {
