@@ -53,7 +53,7 @@
 			<c:forEach var="event" items="${eventList}">
 				<c:set var="isLeader"
 					value="${sessionScope.user.id == event.leaderUserId}" />
-				<tr>
+				<tr data-event-id="${event.id}">
 					<td><a
 						href="${pageContext.request.contextPath}/veranstaltungen/details?id=${event.id}"><c:out
 								value="${event.name}" /></a></td>
@@ -126,7 +126,7 @@
 	<c:forEach var="event" items="${eventList}">
 		<c:set var="isLeader"
 			value="${sessionScope.user.id == event.leaderUserId}" />
-		<div class="list-item-card">
+		<div class="list-item-card" data-event-id="${event.id}">
 			<h3 class="card-title">
 				<a
 					href="${pageContext.request.contextPath}/veranstaltungen/details?id=${event.id}"><c:out

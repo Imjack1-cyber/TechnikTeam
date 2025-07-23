@@ -395,6 +395,9 @@ public class AdminEventServlet extends HttpServlet {
 						AchievementService.getInstance().checkAndGrantAchievements(user, "EVENT_COMPLETED");
 					}
 				}
+				
+				// Broadcast UI update to all clients
+                NotificationService.getInstance().broadcastUIUpdate("event_status_updated", Map.of("eventId", eventId, "newStatus", newStatus));
 
 				req.getSession().setAttribute("successMessage", "Event-Status erfolgreich aktualisiert.");
 			} else {

@@ -5,6 +5,7 @@ import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
+import de.technikteam.service.NotificationService;
 import de.technikteam.service.UserService;
 import de.technikteam.util.NavigationRegistry;
 import jakarta.servlet.ServletException;
@@ -72,6 +73,9 @@ public class UpdateUserAction implements Action {
 			}
 			AdminLogService.log(adminUser.getUsername(), "UPDATE_USER",
 					"Benutzer '" + originalUser.getUsername() + "' (ID: " + userId + ") aktualisiert.");
+
+			// Broadcast UI update to all clients
+			NotificationService.getInstance().broadcastUIUpdate("user_updated", refreshedUser);
 
 			return ApiResponse.success("Benutzerdaten erfolgreich aktualisiert.", refreshedUser);
 		} else {

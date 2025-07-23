@@ -192,8 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		}, 5000);
 	};
 
-	// --- SERVER-SENT EVENTS (SSE) NOTIFICATIONS ---
-	// Only connect if the user is logged in AND not on the editor page
+	// --- SERVER-SENT EVENTS (SSE) NOTIFICATIONS & UI UPDATES ---
 	if (document.body.dataset.isLoggedIn === 'true' && window.EventSource && currentPage !== 'editor') {
 		const eventSource = new EventSource(`${contextPath}/notifications`);
 		eventSource.onopen = () => console.log("SSE connection established.");
@@ -201,8 +200,11 @@ document.addEventListener('DOMContentLoaded', () => {
 			try {
 				const data = JSON.parse(event.data);
 				console.log("SSE data received:", data);
-				showBrowserNotification(data.payload);
-
+				if (data.type === 'ui_update') {
+					handleUIUpdate(data.payload);
+				} else {
+					showBrowserNotification(data.payload);
+				}
 			} catch (e) {
 				console.log("SSE (plain text) message received:", event.data);
 				showBrowserNotification({ message: event.data });
@@ -213,6 +215,72 @@ document.addEventListener('DOMContentLoaded', () => {
 			eventSource.close();
 		};
 	}
+
+	function handleUIUpdate(payload) {
+        console.log("Handling UI update:", payload.updateType, payload.data);
+        switch (payload.updateType) {
+            case 'user_updated':
+                updateUserInUI(payload.data);
+                break;
+            case 'user_deleted':
+                deleteUserFromUI(payload.data.userId);
+                break;
+            case 'event_status_updated':
+                updateEventStatusInUI(payload.data.eventId, payload.data.newStatus);
+                break;
+        }
+    }
+
+	function updateUserInUI(user) {
+		const userElements = document.querySelectorAll(`[data-user-id="${user.id}"]`);
+		userElements.forEach(el => {
+			el.querySelector('[data-field="username"]').textContent = user.username;
+			el.querySelector('[data-field="roleName"]').textContent = user.roleName;
+		});
+	}
+
+	function deleteUserFromUI(userId) {
+		const userElements = document.querySelectorAll(`[data-user-id="${userId}"]`);
+		userElements.forEach(el => {
+			el.style.transition = 'opacity 0.5s';
+			el.style.opacity = '0';
+			setTimeout(() => el.remove(), 500);
+		});
+	}
+	
+	function getStatusBadgeClass(status) {
+        const classMap = {
+            'LAUFEND': 'status-warn',
+            'ABGESCHLOSSEN': 'status-info',
+            'ABGESAGT': 'status-info',
+            'GEPLANT': 'status-ok',
+            'KOMPLETT': 'status-ok'
+        };
+        return classMap[status] || 'status-info';
+    }
+
+	function updateEventStatusInUI(eventId, newStatus) {
+        const eventElements = document.querySelectorAll(`[data-event-id="${eventId}"]`);
+        eventElements.forEach(element => {
+            const badge = element.querySelector('.status-badge');
+            if (badge) {
+                badge.textContent = newStatus;
+                badge.className = `status-badge ${getStatusBadgeClass(newStatus)}`;
+            }
+
+			// Hide all action forms first
+            element.querySelectorAll('form[action*="updateStatus"]').forEach(form => form.style.display = 'none');
+			
+			// Show the correct one based on the new status
+            if (newStatus === 'GEPLANT' || newStatus === 'KOMPLETT') {
+                const startForm = element.querySelector('form input[name="newStatus"][value="LAUFEND"]')?.closest('form');
+                if (startForm) startForm.style.display = 'inline';
+            } else if (newStatus === 'LAUFEND') {
+                const finishForm = element.querySelector('form input[name="newStatus"][value="ABGESCHLOSSEN"]')?.closest('form');
+                if (finishForm) finishForm.style.display = 'inline';
+            }
+        });
+    }
 
 	function showBrowserNotification(payload) {
 		const message = payload.message || 'Neue Benachrichtigung';

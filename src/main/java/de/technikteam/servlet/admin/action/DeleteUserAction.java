@@ -4,6 +4,7 @@ import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
+import de.technikteam.service.NotificationService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -48,6 +49,10 @@ public class DeleteUserAction implements Action {
 			String logDetails = String.format("Benutzer '%s' (ID: %d, Rolle: %s) wurde gelöscht.", deletedUsername,
 					userIdToDelete, deletedRoleName);
 			AdminLogService.log(loggedInAdmin.getUsername(), "DELETE_USER", logDetails);
+
+			// Broadcast UI update to all clients
+			NotificationService.getInstance().broadcastUIUpdate("user_deleted", Map.of("userId", userIdToDelete));
+
 			return ApiResponse.success("Benutzer erfolgreich gelöscht.", Map.of("deletedUserId", userIdToDelete));
 		} else {
 			return ApiResponse.error("Benutzer konnte nicht gelöscht werden.");

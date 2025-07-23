@@ -44,14 +44,33 @@ public class NotificationService {
 				user.getId(), contextsByUser.get(user.getId()).size());
 	}
 
-	public void sendNotification(String message) {
-		logger.info("Broadcasting notification to all clients: {}", message);
+	/**
+	 * Broadcasts a generic message to all connected clients.
+	 * @param message The plain text message to send.
+	 */
+	public void broadcastGenericMessage(String message) {
+		logger.info("Broadcasting generic notification to all clients: {}", message);
 		Map<String, Object> payload = Map.of("type", "generic", "payload", Map.of("message", message));
-		String jsonMessage = gson.toJson(payload);
-		contextsByUser.values().forEach(contextList -> {
-			contextList.forEach(context -> sendMessageToContext(context, jsonMessage, contextList));
-		});
+		broadcast(gson.toJson(payload));
 	}
+
+	/**
+	 * Broadcasts a specific UI update event to all connected clients.
+	 * @param type The type of UI update (e.g., "user_updated", "event_status_updated").
+	 * @param payload The data associated with the update.
+	 */
+	public void broadcastUIUpdate(String type, Object payload) {
+		logger.info("Broadcasting UI update of type '{}' to all clients.", type);
+		Map<String, Object> message = Map.of(
+				"type", "ui_update",
+				"payload", Map.of(
+						"updateType", type,
+						"data", payload
+				)
+		);
+		broadcast(gson.toJson(message));
+	}
+
 
 	public void sendNotificationToUser(int userId, Map<String, Object> payload) {
 		List<AsyncContext> userContexts = contextsByUser.get(userId);
@@ -69,6 +88,16 @@ public class NotificationService {
 		Map<String, Object> payload = Map.of("type", "event_invitation", "payload",
 				Map.of("message", message, "url", "/veranstaltungen/details?id=" + eventId));
 		sendNotificationToUser(userId, payload);
+	}
+
+	/**
+	 * Sends a pre-formatted JSON message to all connected clients.
+	 * @param jsonMessage The JSON string to broadcast.
+	 */
+	private void broadcast(String jsonMessage) {
+		contextsByUser.values().forEach(contextList -> {
+			contextList.forEach(context -> sendMessageToContext(context, jsonMessage, contextList));
+		});
 	}
 
 	private void sendMessageToContext(AsyncContext context, String message, List<AsyncContext> contextList) {
