@@ -40,11 +40,16 @@
 					</span>
 				</div>
 			</div>
-			<button type="submit" class="btn" style="width: 100%;"
+			<button type="submit" class="btn" style="width: 100%; margin-bottom: 0.75rem;"
 				${not empty sessionScope.lockoutEndTime ? 'disabled' : ''}>Anmelden</button>
+			<button type="button" id="login-passkey-btn" class="btn btn-secondary" style="width: 100%;"
+				${not empty sessionScope.lockoutEndTime ? 'disabled' : ''}>
+				<i class="fas fa-fingerprint"></i> Mit Passkey anmelden
+			</button>
 		</form>
 	</div>
 </div>
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
 <script src="${pageContext.request.contextPath}/js/auth/login.js"></script>
+<script src="${pageContext.request.contextPath}/js/auth/passkey_auth.js"></script>

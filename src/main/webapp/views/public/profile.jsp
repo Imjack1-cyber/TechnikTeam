@@ -2,6 +2,7 @@
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt"%>
 
 <c:import url="/WEB-INF/jspf/main_header.jspf">
 	<c:param name="pageTitle" value="Mein Profil" />
@@ -40,6 +41,43 @@
 				</form></li>
 			<li><a href="${pageContext.request.contextPath}/passwort"
 				class="btn btn-secondary">Passwort ändern</a></li>
+		</ul>
+	</div>
+
+	<div class="card">
+		<h2 class="card-title">Sicherheit (Passkeys)</h2>
+		<p>Registrieren Sie Geräte für einen passwortlosen Login.</p>
+		<button id="register-passkey-btn" class="btn btn-success"
+			style="margin-bottom: 1rem;">
+			<i class="fas fa-plus-circle"></i> Neues Gerät registrieren
+		</button>
+
+		<h3 style="margin-top: 1.5rem; font-size: 1.1rem;">Registrierte
+			Geräte</h3>
+		<ul class="details-list">
+			<c:if test="${empty passkeys}">
+				<li>Keine Passkeys registriert.</li>
+			</c:if>
+			<c:forEach var="key" items="${passkeys}">
+				<li><span> <i class="fas fa-key"></i> <c:out
+							value="${key.name}" /> <small
+						style="display: block; color: var(--text-muted-color);">
+							Registriert am: <fmt:parseDate value="${key.createdAt}"
+								pattern="yyyy-MM-dd'T'HH:mm:ss" var="parsedDate" type="both" />
+							<fmt:formatDate value="${parsedDate}" type="both"
+								dateStyle="medium" timeStyle="short" />
+					</small>
+				</span>
+					<form action="${pageContext.request.contextPath}/profil"
+						method="post" style="display: inline;">
+						<input type="hidden" name="csrfToken"
+							value="${sessionScope.csrfToken}"> <input type="hidden"
+							name="action" value="deletePasskey"> <input type="hidden"
+							name="credentialId" value="${key.id}">
+						<button type="submit"
+							class="btn btn-small btn-danger-outline delete-passkey-btn">Entfernen</button>
+					</form></li>
+			</c:forEach>
 		</ul>
 	</div>
 
@@ -175,3 +213,4 @@
 </div>
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script src="${pageContext.request.contextPath}/js/auth/passkey_auth.js"></script>
