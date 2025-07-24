@@ -1,5 +1,7 @@
 package de.technikteam.servlet.admin.action;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.ProfileChangeRequestDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.ProfileChangeRequest;
@@ -12,8 +14,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
 
+@Singleton
 public class DenyChangeAction implements Action {
-	private final ProfileChangeRequestDAO requestDAO = new ProfileChangeRequestDAO();
+	private final ProfileChangeRequestDAO requestDAO;
+	private final AdminLogService adminLogService;
+
+	@Inject
+	public DenyChangeAction(ProfileChangeRequestDAO requestDAO, AdminLogService adminLogService) {
+		this.requestDAO = requestDAO;
+		this.adminLogService = adminLogService;
+	}
 
 	@Override
 	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
@@ -32,7 +42,7 @@ public class DenyChangeAction implements Action {
 			}
 
 			if (requestDAO.updateRequestStatus(requestId, "DENIED", adminUser.getId())) {
-				AdminLogService.log(adminUser.getUsername(), "PROFILE_CHANGE_DENIED", "Profiländerung für Benutzer-ID "
+				adminLogService.log(adminUser.getUsername(), "PROFILE_CHANGE_DENIED", "Profiländerung für Benutzer-ID "
 						+ req.getUserId() + " (Request ID: " + requestId + ") abgelehnt.");
 				return ApiResponse.success("Änderungsanfrage abgelehnt.", Map.of("requestId", requestId));
 			} else {

@@ -1,5 +1,7 @@
 package de.technikteam.dao;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.model.MaintenanceLogEntry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -8,15 +10,19 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * DAO for managing maintenance log entries in the `maintenance_log` table.
- */
+@Singleton
 public class MaintenanceLogDAO {
 	private static final Logger logger = LogManager.getLogger(MaintenanceLogDAO.class);
+	private final DatabaseManager dbManager;
+
+	@Inject
+	public MaintenanceLogDAO(DatabaseManager dbManager) {
+		this.dbManager = dbManager;
+	}
 
 	public boolean createLog(MaintenanceLogEntry log) {
 		String sql = "INSERT INTO maintenance_log (item_id, user_id, action, notes, cost) VALUES (?, ?, ?, ?, ?)";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, log.getItemId());
 			pstmt.setInt(2, log.getUserId());
 			pstmt.setString(3, log.getAction());
@@ -31,9 +37,8 @@ public class MaintenanceLogDAO {
 
 	public List<MaintenanceLogEntry> getHistoryForItem(int itemId) {
 		List<MaintenanceLogEntry> history = new ArrayList<>();
-		String sql = "SELECT ml.*, u.username FROM maintenance_log ml " + "JOIN users u ON ml.user_id = u.id "
-				+ "WHERE ml.item_id = ? ORDER BY ml.log_date DESC";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		String sql = "SELECT ml.*, u.username FROM maintenance_log ml JOIN users u ON ml.user_id = u.id WHERE ml.item_id = ? ORDER BY ml.log_date DESC";
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, itemId);
 			try (ResultSet rs = pstmt.executeQuery()) {
 				while (rs.next()) {

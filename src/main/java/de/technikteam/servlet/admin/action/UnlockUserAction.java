@@ -1,5 +1,7 @@
 package de.technikteam.servlet.admin.action;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
@@ -12,7 +14,15 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.Map;
 
+@Singleton
 public class UnlockUserAction implements Action {
+
+	private final AdminLogService adminLogService;
+
+	@Inject
+	public UnlockUserAction(AdminLogService adminLogService) {
+		this.adminLogService = adminLogService;
+	}
 
 	@Override
 	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
@@ -28,7 +38,7 @@ public class UnlockUserAction implements Action {
 		String usernameToUnlock = request.getParameter("username");
 		if (usernameToUnlock != null && !usernameToUnlock.isEmpty()) {
 			LoginServlet.LoginAttemptManager.clearLoginAttempts(usernameToUnlock);
-			AdminLogService.log(adminUser.getUsername(), "UNLOCK_USER_ACCOUNT",
+			adminLogService.log(adminUser.getUsername(), "UNLOCK_USER_ACCOUNT",
 					"Benutzerkonto '" + usernameToUnlock + "' manuell entsperrt.");
 			return ApiResponse.success("Benutzerkonto '" + usernameToUnlock + "' wurde erfolgreich entsperrt.",
 					Map.of("unlockedUsername", usernameToUnlock));

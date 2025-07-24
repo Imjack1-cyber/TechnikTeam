@@ -1,5 +1,7 @@
 package de.technikteam.dao;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.model.EventCustomField;
 import de.technikteam.model.EventCustomFieldResponse;
 import org.apache.logging.log4j.LogManager;
@@ -9,47 +11,24 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+@Singleton
 public class EventCustomFieldDAO {
 	private static final Logger logger = LogManager.getLogger(EventCustomFieldDAO.class);
+	private final DatabaseManager dbManager;
 
-	public void saveCustomFieldsForEvent(int eventId, List<EventCustomField> fields) {
-		Connection connection = null;
-		try {
-			connection = DatabaseManager.getConnection();
-			connection.setAutoCommit(false);
-			saveCustomFieldsForEvent(eventId, fields, connection);
-			connection.commit();
-			logger.info("Successfully saved {} custom fields for event ID {} (DAO managed transaction)",
-					fields != null ? fields.size() : 0, eventId);
-		} catch (SQLException e) {
-			logger.error("Error saving custom fields for event ID {}. Rolling back.", eventId, e);
-			if (connection != null)
-				try {
-					connection.rollback();
-				} catch (SQLException ex) {
-					logger.error("Rollback failed.", ex);
-				}
-		} finally {
-			if (connection != null)
-				try {
-					connection.setAutoCommit(true);
-					connection.close();
-				} catch (SQLException ex) {
-					logger.error("Failed to close connection.", ex);
-				}
-		}
+	@Inject
+	public EventCustomFieldDAO(DatabaseManager dbManager) {
+		this.dbManager = dbManager;
 	}
 
 	public void saveCustomFieldsForEvent(int eventId, List<EventCustomField> fields, Connection conn)
 			throws SQLException {
 		String deleteSql = "DELETE FROM event_custom_fields WHERE event_id = ?";
 		String insertSql = "INSERT INTO event_custom_fields (event_id, field_name, field_type, is_required, field_options) VALUES (?, ?, ?, ?, ?)";
-
 		try (PreparedStatement deleteStatement = conn.prepareStatement(deleteSql)) {
 			deleteStatement.setInt(1, eventId);
 			deleteStatement.executeUpdate();
 		}
-
 		if (fields != null && !fields.isEmpty()) {
 			try (PreparedStatement insertStatement = conn.prepareStatement(insertSql)) {
 				for (EventCustomField field : fields) {
@@ -68,7 +47,7 @@ public class EventCustomFieldDAO {
 	public List<EventCustomField> getCustomFieldsForEvent(int eventId) {
 		List<EventCustomField> fields = new ArrayList<>();
 		String sql = "SELECT * FROM event_custom_fields WHERE event_id = ? ORDER BY id";
-		try (Connection connection = DatabaseManager.getConnection();
+		try (Connection connection = dbManager.getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 			preparedStatement.setInt(1, eventId);
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
@@ -90,9 +69,8 @@ public class EventCustomFieldDAO {
 	}
 
 	public void saveResponse(EventCustomFieldResponse response) {
-		String sql = "INSERT INTO event_custom_field_responses (field_id, user_id, response_value) VALUES (?, ?, ?) "
-				+ "ON DUPLICATE KEY UPDATE response_value = VALUES(response_value)";
-		try (Connection connection = DatabaseManager.getConnection();
+		String sql = "INSERT INTO event_custom_field_responses (field_id, user_id, response_value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE response_value = VALUES(response_value)";
+		try (Connection connection = dbManager.getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 			preparedStatement.setInt(1, response.getFieldId());
 			preparedStatement.setInt(2, response.getUserId());

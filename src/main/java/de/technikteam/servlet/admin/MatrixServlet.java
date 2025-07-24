@@ -1,5 +1,7 @@
 package de.technikteam.servlet.admin;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.CourseDAO;
 import de.technikteam.dao.MeetingAttendanceDAO;
 import de.technikteam.dao.MeetingDAO;
@@ -9,7 +11,6 @@ import de.technikteam.model.Meeting;
 import de.technikteam.model.MeetingAttendance;
 import de.technikteam.model.User;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,35 +24,27 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/**
- * Mapped to `/admin/matrix`, this servlet constructs the data for the
- * comprehensive qualification and attendance matrix. It fetches all users, all
- * course templates, all meetings for each course, and all attendance records.
- * It then organizes this data and forwards it to `admin_matrix.jsp` for
- * rendering a grid view that shows which users have attended which course
- * meetings.
- */
-@WebServlet("/admin/matrix")
+@Singleton
 public class MatrixServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(MatrixServlet.class);
-	private UserDAO userDAO;
-	private CourseDAO courseDAO;
-	private MeetingDAO meetingDAO;
-	private MeetingAttendanceDAO meetingAttendanceDAO;
+	private final UserDAO userDAO;
+	private final CourseDAO courseDAO;
+	private final MeetingDAO meetingDAO;
+	private final MeetingAttendanceDAO meetingAttendanceDAO;
 
-	@Override
-	public void init() {
-		userDAO = new UserDAO();
-		courseDAO = new CourseDAO();
-		meetingDAO = new MeetingDAO();
-		meetingAttendanceDAO = new MeetingAttendanceDAO();
+	@Inject
+	public MatrixServlet(UserDAO userDAO, CourseDAO courseDAO, MeetingDAO meetingDAO,
+			MeetingAttendanceDAO meetingAttendanceDAO) {
+		this.userDAO = userDAO;
+		this.courseDAO = courseDAO;
+		this.meetingDAO = meetingDAO;
+		this.meetingAttendanceDAO = meetingAttendanceDAO;
 	}
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-
 		logger.info("Matrix data requested. Fetching all necessary data from DAOs.");
 
 		List<User> allUsers = userDAO.getAllUsers();

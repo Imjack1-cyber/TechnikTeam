@@ -1,11 +1,12 @@
 package de.technikteam.dao;
 
-import de.technikteam.config.AppConfig;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.model.File;
 import de.technikteam.model.FileCategory;
 import de.technikteam.model.User;
+import de.technikteam.service.ConfigurationService;
 import de.technikteam.util.DaoUtils;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -20,24 +21,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * This DAO manages metadata of uploaded files stored in the `files` and
- * `file_categories` tables. It handles creating, reading, and deleting file
- * records and categories. It includes role-based filtering to control file
- * visibility and logic to group files by category for display in the UI. It
- * also provides methods to manage a simple key-value content store in the
- * `shared_documents` table.
- */
+@Singleton
 public class FileDAO {
 	private static final Logger logger = LogManager.getLogger(FileDAO.class);
+	private final DatabaseManager dbManager;
+	private final ConfigurationService configService;
 
-	/**
-	 * Helper method to map a row from a ResultSet to a File object.
-	 *
-	 * @param rs The ResultSet to map.
-	 * @return A populated File object.
-	 * @throws SQLException If a database error occurs.
-	 */
+	@Inject
+	public FileDAO(DatabaseManager dbManager, ConfigurationService configService) {
+		this.dbManager = dbManager;
+		this.configService = configService;
+	}
+
 	private File mapResultSetToFile(ResultSet rs) throws SQLException {
 		File file = new File();
 		file.setId(rs.getInt("id"));
@@ -56,23 +51,12 @@ public class FileDAO {
 		} else {
 			file.setCategoryName("Ohne Kategorie");
 		}
-
 		return file;
 	}
 
-	/**
-	 * Fetches all file records, applying role-based filtering, and groups them by
-	 * category name. This implementation uses a two-query approach to be robust
-	 * against potential database join issues.
-	 *
-	 * @param user The current user, used to determine their role.
-	 * @return A Map where keys are category names and values are lists of files.
-	 */
 	public Map<String, List<File>> getAllFilesGroupedByCategory(User user) {
-		logger.debug("Fetching all files grouped by category for user role: {}", user.getRoleName());
-
 		Map<Integer, String> categoryIdToNameMap = new HashMap<>();
-		try (Connection conn = DatabaseManager.getConnection();
+		try (Connection conn = dbManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery("SELECT id, name FROM file_categories")) {
 			while (rs.next()) {
@@ -85,17 +69,14 @@ public class FileDAO {
 
 		List<File> files = new ArrayList<>();
 		String sql = "SELECT * FROM files ";
-
 		if (!user.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
 			sql += "WHERE required_role = 'NUTZER' ";
-			logger.debug("Applying 'NUTZER' role filter for file query.");
 		}
 		sql += "ORDER BY filename";
 
-		try (Connection conn = DatabaseManager.getConnection();
+		try (Connection conn = dbManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
-
 			while (rs.next()) {
 				File file = new File();
 				file.setId(rs.getInt("id"));
@@ -103,52 +84,33 @@ public class FileDAO {
 				file.setFilepath(rs.getString("filepath"));
 				file.setUploadedAt(rs.getTimestamp("uploaded_at").toLocalDateTime());
 				file.setRequiredRole(rs.getString("required_role"));
-
 				int categoryId = rs.getInt("category_id");
 				file.setCategoryId(categoryId);
-
 				String categoryName = categoryIdToNameMap.get(categoryId);
 				file.setCategoryName(categoryName != null ? categoryName : "Ohne Kategorie");
-
 				files.add(file);
 			}
-			logger.info("Fetched and processed {} files visible to user role '{}'.", files.size(), user.getRoleName());
 		} catch (SQLException e) {
 			logger.error("SQL error while fetching files.", e);
 		}
-
 		return files.stream().collect(Collectors.groupingBy(File::getCategoryName));
 	}
 
-	/**
-	 * Retrieves the content of a specific physical file from the disk.
-	 * 
-	 * @param filepath The relative path of the file from the UPLOAD_DIRECTORY.
-	 * @return The file's content as a string, or an empty string if not found or an
-	 *         error occurs.
-	 */
 	public String getDocumentContentByPath(String filepath) {
 		try {
-			java.io.File physicalFile = new java.io.File(AppConfig.UPLOAD_DIRECTORY, filepath);
+			java.io.File physicalFile = new java.io.File(configService.getProperty("upload.directory"), filepath);
 			return new String(Files.readAllBytes(physicalFile.toPath()), StandardCharsets.UTF_8);
 		} catch (NoSuchFileException e) {
 			logger.error("Physical file is missing at path: {}", filepath);
 		} catch (IOException e) {
 			logger.error("Could not read file content for path {}", filepath, e);
 		}
-		return ""; // Return empty string on failure
+		return "";
 	}
 
-	/**
-	 * Creates a new file metadata record in the database.
-	 *
-	 * @param file The File object to persist.
-	 * @return true if creation was successful, false otherwise.
-	 */
 	public boolean createFile(File file) {
 		String sql = "INSERT INTO files (filename, filepath, category_id, required_role) VALUES (?, ?, ?, ?)";
-		logger.debug("Creating file record for '{}' with role '{}'", file.getFilename(), file.getRequiredRole());
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, file.getFilename());
 			pstmt.setString(2, file.getFilepath());
 			if (file.getCategoryId() > 0) {
@@ -164,18 +126,10 @@ public class FileDAO {
 		}
 	}
 
-	/**
-	 * Updates the content of a physical file on disk.
-	 *
-	 * @param filepath The relative path of the file from the UPLOAD_DIRECTORY.
-	 * @param content  The new content to write to the file.
-	 * @return true if writing was successful.
-	 */
 	public boolean updateFileContent(String filepath, String content) {
 		try {
-			java.io.File targetFile = new java.io.File(AppConfig.UPLOAD_DIRECTORY, filepath);
+			java.io.File targetFile = new java.io.File(configService.getProperty("upload.directory"), filepath);
 			Files.write(targetFile.toPath(), content.getBytes(StandardCharsets.UTF_8));
-			logger.trace("Successfully updated content for file at path: {}", filepath);
 			return true;
 		} catch (IOException e) {
 			logger.error("Failed to write updated content to file at path: {}", filepath, e);
@@ -183,17 +137,9 @@ public class FileDAO {
 		}
 	}
 
-	/**
-	 * Updates the timestamp of a file record to the current time. Used to indicate
-	 * a new version has been saved.
-	 *
-	 * @param fileId The ID of the file to "touch".
-	 * @return true if the update was successful.
-	 */
 	public boolean touchFileRecord(int fileId) {
 		String sql = "UPDATE files SET uploaded_at = CURRENT_TIMESTAMP WHERE id = ?";
-		logger.debug("Touching file record for ID {}", fileId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, fileId);
 			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
@@ -202,16 +148,10 @@ public class FileDAO {
 		}
 	}
 
-	/**
-	 * Fetches all file categories from the database, sorted by name.
-	 *
-	 * @return A list of FileCategory objects.
-	 */
 	public List<FileCategory> getAllCategories() {
 		List<FileCategory> categories = new ArrayList<>();
 		String sql = "SELECT * FROM file_categories ORDER BY name";
-		logger.debug("Fetching all file categories.");
-		try (Connection conn = DatabaseManager.getConnection();
+		try (Connection conn = dbManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
 			while (rs.next()) {
@@ -220,78 +160,46 @@ public class FileDAO {
 				cat.setName(rs.getString("name"));
 				categories.add(cat);
 			}
-			logger.info("Fetched {} file categories.", categories.size());
 		} catch (SQLException e) {
 			logger.error("SQL error fetching file categories.", e);
 		}
 		return categories;
 	}
 
-	/**
-	 * Retrieves a single file's metadata by its ID.
-	 *
-	 * @param fileId The ID of the file to retrieve.
-	 * @return A File object populated with data, or null if not found.
-	 */
 	public File getFileById(int fileId) {
-		logger.debug("Fetching file by ID: {}", fileId);
-		String sql = "SELECT f.*, fc.name as category_name " + "FROM files f "
-				+ "LEFT JOIN file_categories fc ON f.category_id = fc.id " + "WHERE f.id = ?";
-
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		String sql = "SELECT f.*, fc.name as category_name FROM files f LEFT JOIN file_categories fc ON f.category_id = fc.id WHERE f.id = ?";
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, fileId);
 			try (ResultSet rs = pstmt.executeQuery()) {
 				if (rs.next()) {
-					logger.info("Found file with ID: {}", fileId);
 					return mapResultSetToFile(rs);
 				}
 			}
 		} catch (SQLException e) {
 			logger.error("SQL error while fetching file with ID: {}", fileId, e);
 		}
-
-		logger.warn("No file found with ID: {}", fileId);
 		return null;
 	}
 
-	/**
-	 * Deletes a file record from the database AND the corresponding physical file
-	 * from the disk.
-	 *
-	 * @param fileId The ID of the file record to delete.
-	 * @return true if both the database record and the physical file were
-	 *         successfully deleted, false otherwise.
-	 */
 	public boolean deleteFile(int fileId) {
-		logger.warn("Attempting to delete file record and physical file with ID: {}", fileId);
 		File dbFile = getFileById(fileId);
 		if (dbFile == null) {
-			logger.warn("Cannot delete file with ID: {}. Record not found in database.", fileId);
 			return false;
 		}
-
 		String sql = "DELETE FROM files WHERE id = ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, fileId);
 			int rowsAffected = pstmt.executeUpdate();
 			if (rowsAffected > 0) {
-				logger.info("Successfully deleted file record with ID: {}", fileId);
-				// Now delete the physical file
 				try {
-					java.io.File physicalFile = new java.io.File(AppConfig.UPLOAD_DIRECTORY, dbFile.getFilepath());
-					if (Files.deleteIfExists(physicalFile.toPath())) {
-						logger.info("Successfully deleted physical file: {}", physicalFile.getAbsolutePath());
-					} else {
-						logger.warn("Physical file to delete was not found at path: {}",
-								physicalFile.getAbsolutePath());
-					}
+					java.io.File physicalFile = new java.io.File(configService.getProperty("upload.directory"),
+							dbFile.getFilepath());
+					Files.deleteIfExists(physicalFile.toPath());
 				} catch (IOException e) {
 					logger.error("Error deleting physical file for ID: {}", fileId, e);
-					// The DB record was deleted, but the file remains. This is an inconsistency.
 				}
 				return true;
 			} else {
-				logger.warn("Could not delete file record with ID: {}. It might not exist.", fileId);
 				return false;
 			}
 		} catch (SQLException e) {
@@ -300,16 +208,9 @@ public class FileDAO {
 		}
 	}
 
-	/**
-	 * Creates a new file category.
-	 *
-	 * @param categoryName The name of the new category.
-	 * @return true if successful.
-	 */
 	public boolean createCategory(String categoryName) {
-		logger.info("Creating new file category: {}", categoryName);
 		String sql = "INSERT INTO file_categories (name) VALUES (?)";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, categoryName);
 			return pstmt.executeUpdate() > 0;
 		} catch (SQLIntegrityConstraintViolationException e) {
@@ -321,17 +222,9 @@ public class FileDAO {
 		}
 	}
 
-	/**
-	 * Updates the name of an existing file category.
-	 *
-	 * @param categoryId The ID of the category to update.
-	 * @param newName    The new name for the category.
-	 * @return true if successful.
-	 */
 	public boolean updateCategory(int categoryId, String newName) {
 		String sql = "UPDATE file_categories SET name = ? WHERE id = ?";
-		logger.debug("Updating category ID {} to new name '{}'", categoryId, newName);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, newName);
 			pstmt.setInt(2, categoryId);
 			return pstmt.executeUpdate() > 0;
@@ -341,17 +234,9 @@ public class FileDAO {
 		}
 	}
 
-	/**
-	 * Deletes a file category. Due to "ON DELETE SET NULL" constraint in the DB,
-	 * files in this category will have their category_id set to NULL.
-	 *
-	 * @param categoryId The ID of the category to delete.
-	 * @return true if successful.
-	 */
 	public boolean deleteCategory(int categoryId) {
-		logger.warn("Attempting to delete category ID: {}", categoryId);
 		String sql = "DELETE FROM file_categories WHERE id = ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, categoryId);
 			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
@@ -360,16 +245,9 @@ public class FileDAO {
 		}
 	}
 
-	/**
-	 * Retrieves the name of a category by its ID.
-	 *
-	 * @param categoryId The ID of the category.
-	 * @return The category name, or null if not found.
-	 */
 	public String getCategoryNameById(int categoryId) {
 		String sql = "SELECT name FROM file_categories WHERE id = ?";
-		logger.debug("Fetching category name for ID: {}", categoryId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, categoryId);
 			try (ResultSet rs = pstmt.executeQuery()) {
 				if (rs.next()) {
@@ -382,17 +260,9 @@ public class FileDAO {
 		return null;
 	}
 
-	/**
-	 * Retrieves the content of a shared document (e.g., for the collaborative
-	 * editor).
-	 *
-	 * @param documentName The unique name/key of the document.
-	 * @return The document's content as a string, or an empty string if not found.
-	 */
 	public String getDocumentContent(String documentName) {
 		String sql = "SELECT content FROM shared_documents WHERE document_name = ?";
-		logger.trace("Fetching document content for name: {}", documentName);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, documentName);
 			try (ResultSet rs = pstmt.executeQuery()) {
 				if (rs.next()) {
@@ -405,20 +275,9 @@ public class FileDAO {
 		return "";
 	}
 
-	/**
-	 * Updates or creates the content of a shared document using an "upsert"
-	 * operation. This ensures that the document can be saved even if it doesn't
-	 * exist yet.
-	 *
-	 * @param documentName The unique name/key of the document to update.
-	 * @param content      The new content to save.
-	 * @return true if the update was successful.
-	 */
 	public boolean updateDocumentContent(String documentName, String content) {
-		String sql = "INSERT INTO shared_documents (document_name, content) VALUES (?, ?) "
-				+ "ON DUPLICATE KEY UPDATE content = VALUES(content)";
-		logger.trace("Upserting document content for name: {}", documentName);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		String sql = "INSERT INTO shared_documents (document_name, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)";
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, documentName);
 			pstmt.setString(2, content);
 			return pstmt.executeUpdate() >= 0;

@@ -2,11 +2,12 @@ package de.technikteam.servlet.api;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.model.DashboardDataDTO;
 import de.technikteam.service.AdminDashboardService;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -14,20 +15,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.LocalDateTime;
 
-/**
- * API endpoint to provide all necessary data for the interactive admin
- * dashboard. This servlet is protected by the AdminFilter.
- */
-@WebServlet("/api/admin/dashboard-data")
+@Singleton
 public class AdminDashboardApiServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private AdminDashboardService dashboardService;
-	private Gson gson;
+	private final AdminDashboardService dashboardService;
+	private final Gson gson;
 
-	@Override
-	public void init() throws ServletException {
-		dashboardService = new AdminDashboardService();
-		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+	@Inject
+	public AdminDashboardApiServlet(AdminDashboardService dashboardService) {
+		this.dashboardService = dashboardService;
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
 	@Override

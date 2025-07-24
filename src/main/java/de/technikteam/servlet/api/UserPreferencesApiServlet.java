@@ -1,10 +1,11 @@
 package de.technikteam.servlet.api;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.User;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -15,16 +16,16 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.util.Set;
 
-@WebServlet("/api/user/preferences")
+@Singleton
 public class UserPreferencesApiServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(UserPreferencesApiServlet.class);
 	private static final Set<String> VALID_THEMES = Set.of("light", "dark");
-	private UserDAO userDAO;
+	private final UserDAO userDAO;
 
-	@Override
-	public void init() {
-		userDAO = new UserDAO();
+	@Inject
+	public UserPreferencesApiServlet(UserDAO userDAO) {
+		this.userDAO = userDAO;
 	}
 
 	@Override
@@ -51,7 +52,7 @@ public class UserPreferencesApiServlet extends HttpServlet {
 
 		if (userDAO.updateUserTheme(user.getId(), theme)) {
 			user.setTheme(theme);
-			session.setAttribute("user", user); // Update user object in session
+			session.setAttribute("user", user);
 			logger.info("Updated theme for user '{}' to '{}'.", user.getUsername(), theme);
 			response.setStatus(HttpServletResponse.SC_OK);
 		} else {

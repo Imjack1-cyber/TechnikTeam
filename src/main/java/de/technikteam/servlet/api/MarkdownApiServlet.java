@@ -1,11 +1,12 @@
 package de.technikteam.servlet.api;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.FileDAO;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -15,15 +16,17 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 
-@WebServlet("/api/save-markdown")
+@Singleton
 public class MarkdownApiServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(MarkdownApiServlet.class);
-	private FileDAO fileDAO;
+	private final FileDAO fileDAO;
+	private final AdminLogService adminLogService;
 
-	@Override
-	public void init() {
-		fileDAO = new FileDAO();
+	@Inject
+	public MarkdownApiServlet(FileDAO fileDAO, AdminLogService adminLogService) {
+		this.fileDAO = fileDAO;
+		this.adminLogService = adminLogService;
 	}
 
 	@Override
@@ -68,7 +71,7 @@ public class MarkdownApiServlet extends HttpServlet {
 			boolean recordTouched = fileDAO.touchFileRecord(fileId);
 
 			if (contentUpdated && recordTouched) {
-				AdminLogService.log(user.getUsername(), "UPDATE_MARKDOWN_FILE",
+				adminLogService.log(user.getUsername(), "UPDATE_MARKDOWN_FILE",
 						"Inhalt der Datei '" + dbFile.getFilename() + "' (ID: " + fileId + ") aktualisiert.");
 				session.setAttribute("successMessage", "Änderungen erfolgreich gespeichert.");
 			} else {

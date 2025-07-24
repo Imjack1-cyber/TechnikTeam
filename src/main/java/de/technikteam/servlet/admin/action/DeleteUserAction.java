@@ -1,5 +1,7 @@
 package de.technikteam.servlet.admin.action;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
@@ -13,8 +15,16 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.Map;
 
+@Singleton
 public class DeleteUserAction implements Action {
-	private final UserDAO userDAO = new UserDAO();
+	private final UserDAO userDAO;
+	private final AdminLogService adminLogService;
+
+	@Inject
+	public DeleteUserAction(UserDAO userDAO, AdminLogService adminLogService) {
+		this.userDAO = userDAO;
+		this.adminLogService = adminLogService;
+	}
 
 	@Override
 	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
@@ -48,9 +58,8 @@ public class DeleteUserAction implements Action {
 		if (userDAO.deleteUser(userIdToDelete)) {
 			String logDetails = String.format("Benutzer '%s' (ID: %d, Rolle: %s) wurde gelöscht.", deletedUsername,
 					userIdToDelete, deletedRoleName);
-			AdminLogService.log(loggedInAdmin.getUsername(), "DELETE_USER", logDetails);
+			adminLogService.log(loggedInAdmin.getUsername(), "DELETE_USER", logDetails);
 
-			// Broadcast UI update to all clients
 			NotificationService.getInstance().broadcastUIUpdate("user_deleted", Map.of("userId", userIdToDelete));
 
 			return ApiResponse.success("Benutzer erfolgreich gelöscht.", Map.of("deletedUserId", userIdToDelete));

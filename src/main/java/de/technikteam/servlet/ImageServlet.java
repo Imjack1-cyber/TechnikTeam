@@ -1,5 +1,17 @@
 package de.technikteam.servlet;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+import de.technikteam.model.User;
+import de.technikteam.service.ConfigurationService;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -7,30 +19,16 @@ import java.io.OutputStream;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 
-import de.technikteam.model.User;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import de.technikteam.config.AppConfig;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
-
-/**
- * Mapped to `/image`, this servlet acts as a secure proxy to serve images. It
- * prevents direct filesystem access by taking a `file` parameter, locating the
- * image within a designated `images` subdirectory in the main upload path, and
- * then streaming it to the browser. It sets the `Content-Disposition: inline`
- * header so the image is displayed directly on the web page rather than
- * downloaded.
- */
-@WebServlet("/image")
+@Singleton
 public class ImageServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(ImageServlet.class);
+	private final ConfigurationService configService;
+
+	@Inject
+	public ImageServlet(ConfigurationService configService) {
+		this.configService = configService;
+	}
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -57,7 +55,7 @@ public class ImageServlet extends HttpServlet {
 			return;
 		}
 
-		File imageUploadDir = new File(AppConfig.UPLOAD_DIRECTORY, "images");
+		File imageUploadDir = new File(configService.getProperty("upload.directory"), "images");
 		String imageDirCanonicalPath = imageUploadDir.getCanonicalPath();
 
 		File imageFile = new File(imageUploadDir, filename);
@@ -85,7 +83,6 @@ public class ImageServlet extends HttpServlet {
 
 		response.setContentType(contentType);
 		response.setContentLengthLong(imageFile.length());
-
 		response.setHeader("Content-Disposition", "inline; filename=\"" + imageFile.getName() + "\"");
 
 		logger.debug("Serving image: {} with content type {}", imageFile.getAbsolutePath(), contentType);

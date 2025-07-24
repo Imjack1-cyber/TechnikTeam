@@ -1,29 +1,27 @@
 package de.technikteam.servlet.api;
 
 import com.google.gson.Gson;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.model.SystemStatsDTO;
 import de.technikteam.service.SystemInfoService;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
 
-/**
- * Provides system statistics as a JSON API endpoint. This servlet is protected
- * by the AdminFilter.
- */
-@WebServlet("/api/admin/system-stats")
+@Singleton
 public class SystemStatsApiServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private SystemInfoService systemInfoService;
-	private Gson gson;
+	private final SystemInfoService systemInfoService;
+	private final Gson gson;
 
-	@Override
-	public void init() throws ServletException {
-		systemInfoService = new SystemInfoService();
-		gson = new Gson();
+	@Inject
+	public SystemStatsApiServlet(SystemInfoService systemInfoService) {
+		this.systemInfoService = systemInfoService;
+		this.gson = new Gson();
 	}
 
 	@Override

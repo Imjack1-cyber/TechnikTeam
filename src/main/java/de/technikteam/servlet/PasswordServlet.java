@@ -1,45 +1,41 @@
 package de.technikteam.servlet;
 
-import java.io.IOException;
-
-import de.technikteam.util.PasswordPolicyValidator;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.User;
 import de.technikteam.util.CSRFUtil;
+import de.technikteam.util.PasswordPolicyValidator;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-/**
- * Mapped to `/passwort`, this servlet allows a logged-in user to change their
- * own password. It handles GET requests by displaying the change form
- * (`passwort.jsp`) and POST requests by processing the password change. This
- * includes validating the user's current password and ensuring the new password
- * confirmation matches before updating the database via `UserDAO`.
- */
-@WebServlet("/passwort")
+import java.io.IOException;
+
+@Singleton
 public class PasswordServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(PasswordServlet.class);
-	private UserDAO userDAO;
+	private final UserDAO userDAO;
 
-	public void init() {
-		userDAO = new UserDAO();
-		logger.info("PasswordServlet initialized.");
+	@Inject
+	public PasswordServlet(UserDAO userDAO) {
+		this.userDAO = userDAO;
+		logger.info("PasswordServlet initialized with injected UserDAO.");
 	}
 
+	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		logger.debug("GET request received, showing password change form.");
 		request.getRequestDispatcher("/views/public/passwort.jsp").forward(request, response);
 	}
 
+	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		HttpSession session = request.getSession(false);

@@ -1,5 +1,7 @@
 package de.technikteam.service;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.AchievementDAO;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.model.Event;
@@ -9,18 +11,17 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.List;
 
+@Singleton
 public class AchievementService {
 	private static final Logger logger = LogManager.getLogger(AchievementService.class);
-	private static final AchievementService INSTANCE = new AchievementService();
 
-	private final AchievementDAO achievementDAO = new AchievementDAO();
-	private final EventDAO eventDAO = new EventDAO();
+	private final AchievementDAO achievementDAO;
+	private final EventDAO eventDAO;
 
-	private AchievementService() {
-	}
-
-	public static AchievementService getInstance() {
-		return INSTANCE;
+	@Inject
+	public AchievementService(AchievementDAO achievementDAO, EventDAO eventDAO) {
+		this.achievementDAO = achievementDAO;
+		this.eventDAO = eventDAO;
 	}
 
 	public void checkAndGrantAchievements(User user, String triggerType) {

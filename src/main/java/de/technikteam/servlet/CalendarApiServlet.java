@@ -2,13 +2,14 @@ package de.technikteam.servlet;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.MeetingDAO;
 import de.technikteam.model.Event;
 import de.technikteam.model.Meeting;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -20,18 +21,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@WebServlet("/api/calendar/entries")
+@Singleton
 public class CalendarApiServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private EventDAO eventDAO;
-	private MeetingDAO meetingDAO;
-	private Gson gson;
+	private final EventDAO eventDAO;
+	private final MeetingDAO meetingDAO;
+	private final Gson gson;
 
-	@Override
-	public void init() {
-		eventDAO = new EventDAO();
-		meetingDAO = new MeetingDAO();
-		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+	@Inject
+	public CalendarApiServlet(EventDAO eventDAO, MeetingDAO meetingDAO) {
+		this.eventDAO = eventDAO;
+		this.meetingDAO = meetingDAO;
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
 	@Override
@@ -48,7 +49,7 @@ public class CalendarApiServlet extends HttpServlet {
 				entry.put("end", event.getEndDateTime().toString());
 			}
 			entry.put("url", request.getContextPath() + "/veranstaltungen/details?id=" + event.getId());
-			entry.put("backgroundColor", "#dc3545"); 
+			entry.put("backgroundColor", "#dc3545");
 			entry.put("borderColor", "#c82333");
 			calendarEntries.add(entry);
 		}
@@ -62,7 +63,7 @@ public class CalendarApiServlet extends HttpServlet {
 				entry.put("end", meeting.getEndDateTime().toString());
 			}
 			entry.put("url", request.getContextPath() + "/meetingDetails?id=" + meeting.getId());
-			entry.put("backgroundColor", "#007bff"); 
+			entry.put("backgroundColor", "#007bff");
 			entry.put("borderColor", "#0056b3");
 			calendarEntries.add(entry);
 		}

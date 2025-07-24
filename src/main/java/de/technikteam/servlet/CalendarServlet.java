@@ -1,11 +1,12 @@
 package de.technikteam.servlet;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.MeetingDAO;
 import de.technikteam.model.Event;
 import de.technikteam.model.Meeting;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -14,30 +15,22 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
-/**
- * This servlet handles the request for the main calendar page. It fetches all
- * upcoming events and meetings, combines and sorts them, groups them by month,
- * and then forwards the data to the calendar.jsp page for rendering in a custom
- * list view.
- */
-@WebServlet("/kalender")
+@Singleton
 public class CalendarServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private EventDAO eventDAO;
-	private MeetingDAO meetingDAO;
+	private final EventDAO eventDAO;
+	private final MeetingDAO meetingDAO;
 
-	@Override
-	public void init() {
-		eventDAO = new EventDAO();
-		meetingDAO = new MeetingDAO();
+	@Inject
+	public CalendarServlet(EventDAO eventDAO, MeetingDAO meetingDAO) {
+		this.eventDAO = eventDAO;
+		this.meetingDAO = meetingDAO;
 	}
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-
 		List<Event> events = eventDAO.getAllActiveAndUpcomingEvents();
 		List<Meeting> meetings = meetingDAO.getAllUpcomingMeetings();
 

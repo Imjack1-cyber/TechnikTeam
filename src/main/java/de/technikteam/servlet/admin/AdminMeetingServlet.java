@@ -1,6 +1,9 @@
 package de.technikteam.servlet.admin;
 
-import de.technikteam.config.AppConfig;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.config.LocalDateAdapter;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.AttachmentDAO;
@@ -12,19 +15,16 @@ import de.technikteam.model.Course;
 import de.technikteam.model.Meeting;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
+import de.technikteam.service.ConfigurationService;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,24 +35,30 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@WebServlet("/admin/meetings")
+@Singleton
 @MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 20, maxRequestSize = 1024 * 1024 * 50)
 public class AdminMeetingServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminMeetingServlet.class);
-	private MeetingDAO meetingDAO;
-	private CourseDAO courseDAO;
-	private AttachmentDAO attachmentDAO;
-	private UserDAO userDAO;
-	private Gson gson;
 
-	@Override
-	public void init() {
-		meetingDAO = new MeetingDAO();
-		courseDAO = new CourseDAO();
-		attachmentDAO = new AttachmentDAO();
-		userDAO = new UserDAO();
-		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+	private final MeetingDAO meetingDAO;
+	private final CourseDAO courseDAO;
+	private final AttachmentDAO attachmentDAO;
+	private final UserDAO userDAO;
+	private final AdminLogService adminLogService;
+	private final ConfigurationService configService;
+	private final Gson gson;
+
+	@Inject
+	public AdminMeetingServlet(MeetingDAO meetingDAO, CourseDAO courseDAO, AttachmentDAO attachmentDAO, UserDAO userDAO,
+			AdminLogService adminLogService, ConfigurationService configService) {
+		this.meetingDAO = meetingDAO;
+		this.courseDAO = courseDAO;
+		this.attachmentDAO = attachmentDAO;
+		this.userDAO = userDAO;
+		this.adminLogService = adminLogService;
+		this.configService = configService;
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
 				.registerTypeAdapter(java.time.LocalDate.class, new LocalDateAdapter()).create();
 	}
 
@@ -69,17 +75,11 @@ public class AdminMeetingServlet extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		req.setCharacterEncoding("UTF-8");
-
 		if (!CSRFUtil.isTokenValid(req)) {
-			logger.warn("CSRF token validation failed for meeting action.");
 			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
 			return;
 		}
-
 		String action = req.getParameter("action");
-
-		logger.debug("AdminMeetingServlet received POST with action: {}", action);
-
 		switch (action) {
 		case "create":
 		case "update":
@@ -92,7 +92,6 @@ public class AdminMeetingServlet extends HttpServlet {
 			handleDeleteAttachment(req, resp);
 			break;
 		default:
-			logger.warn("Unknown action received in doPost: {}", action);
 			resp.sendRedirect(req.getContextPath() + "/admin/meetings");
 			break;
 		}
@@ -100,15 +99,12 @@ public class AdminMeetingServlet extends HttpServlet {
 
 	private void listMeetings(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		int courseId = Integer.parseInt(req.getParameter("courseId"));
-		logger.info("Listing all meetings for course ID: {}", courseId);
 		Course parentCourse = courseDAO.getCourseById(courseId);
 		List<Meeting> meetings = meetingDAO.getMeetingsForCourse(courseId);
 		List<User> allUsers = userDAO.getAllUsers();
-
 		req.setAttribute("parentCourse", parentCourse);
 		req.setAttribute("meetings", meetings);
 		req.setAttribute("allUsers", allUsers);
-
 		req.getRequestDispatcher("/views/admin/admin_meeting_list.jsp").forward(req, resp);
 	}
 
@@ -121,7 +117,6 @@ public class AdminMeetingServlet extends HttpServlet {
 				Map<String, Object> responseData = new HashMap<>();
 				responseData.put("meetingData", meeting);
 				responseData.put("attachmentsData", attachments);
-
 				String jsonResponse = gson.toJson(responseData);
 				resp.setContentType("application/json");
 				resp.setCharacterEncoding("UTF-8");
@@ -130,7 +125,6 @@ public class AdminMeetingServlet extends HttpServlet {
 				resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Meeting nicht gefunden");
 			}
 		} catch (NumberFormatException e) {
-			logger.error("Invalid ID for getting meeting data as JSON", e);
 			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Ungültige Meeting-ID");
 		}
 	}
@@ -154,7 +148,6 @@ public class AdminMeetingServlet extends HttpServlet {
 			if (leaderIdStr != null && !leaderIdStr.isEmpty()) {
 				meeting.setLeaderUserId(Integer.parseInt(leaderIdStr));
 			}
-
 			String startDateTimeStr = req.getParameter("meetingDateTime");
 			if (startDateTimeStr != null && !startDateTimeStr.isEmpty()) {
 				meeting.setMeetingDateTime(LocalDateTime.parse(startDateTimeStr));
@@ -171,16 +164,20 @@ public class AdminMeetingServlet extends HttpServlet {
 				meetingId = Integer.parseInt(req.getParameter("id"));
 				meeting.setId(meetingId);
 				if (meetingDAO.updateMeeting(meeting)) {
-					AdminLogService.log(adminUser.getUsername(), "UPDATE_MEETING", "Meeting '" + meeting.getName()
+					adminLogService.log(adminUser.getUsername(), "UPDATE_MEETING", "Meeting '" + meeting.getName()
 							+ "' (ID: " + meetingId + ") für Lehrgang '" + parentCourseName + "' aktualisiert.");
 					req.getSession().setAttribute("successMessage", "Meeting erfolgreich aktualisiert.");
+				} else {
+					req.getSession().setAttribute("errorMessage", "Fehler beim Aktualisieren des Meetings.");
 				}
 			} else {
 				meetingId = meetingDAO.createMeeting(meeting);
 				if (meetingId > 0) {
-					AdminLogService.log(adminUser.getUsername(), "CREATE_MEETING", "Meeting '" + meeting.getName()
+					adminLogService.log(adminUser.getUsername(), "CREATE_MEETING", "Meeting '" + meeting.getName()
 							+ "' (ID: " + meetingId + ") für Lehrgang '" + parentCourseName + "' geplant.");
 					req.getSession().setAttribute("successMessage", "Neues Meeting erfolgreich geplant.");
+				} else {
+					req.getSession().setAttribute("errorMessage", "Fehler beim Erstellen des Meetings.");
 				}
 			}
 
@@ -189,15 +186,12 @@ public class AdminMeetingServlet extends HttpServlet {
 				String requiredRole = req.getParameter("requiredRole");
 				handleAttachmentUpload(filePart, meetingId, requiredRole, adminUser, req);
 			}
-
 		} catch (DateTimeParseException | NumberFormatException e) {
-			logger.error("Invalid data format in meeting form.", e);
 			req.getSession().setAttribute("errorMessage", "Ungültiges Datenformat.");
 		} catch (Exception e) {
 			logger.error("Error creating/updating meeting.", e);
 			req.getSession().setAttribute("errorMessage", "Fehler: " + e.getMessage());
 		}
-
 		resp.sendRedirect(req.getContextPath() + "/admin/meetings?courseId=" + courseId);
 	}
 
@@ -205,8 +199,6 @@ public class AdminMeetingServlet extends HttpServlet {
 		int courseId = Integer.parseInt(req.getParameter("courseId"));
 		int meetingId = Integer.parseInt(req.getParameter("meetingId"));
 		User adminUser = (User) req.getSession().getAttribute("user");
-		logger.warn("Attempting to delete meeting ID {} from course ID {}", meetingId, courseId);
-
 		Meeting meeting = meetingDAO.getMeetingById(meetingId);
 		if (meetingDAO.deleteMeeting(meetingId)) {
 			String meetingName = (meeting != null) ? meeting.getName() : "N/A";
@@ -215,12 +207,11 @@ public class AdminMeetingServlet extends HttpServlet {
 					: "N/A";
 			String logDetails = String.format("Meeting '%s' (ID: %d) vom Lehrgang '%s' (Kurs-ID: %d) wurde gelöscht.",
 					meetingName, meetingId, courseName, courseId);
-			AdminLogService.log(adminUser.getUsername(), "DELETE_MEETING", logDetails);
+			adminLogService.log(adminUser.getUsername(), "DELETE_MEETING", logDetails);
 			req.getSession().setAttribute("successMessage", "Meeting erfolgreich gelöscht.");
 		} else {
 			req.getSession().setAttribute("errorMessage", "Meeting konnte nicht gelöscht werden.");
 		}
-
 		resp.sendRedirect(req.getContextPath() + "/admin/meetings?courseId=" + courseId);
 	}
 
@@ -228,18 +219,14 @@ public class AdminMeetingServlet extends HttpServlet {
 		User adminUser = (User) req.getSession().getAttribute("user");
 		int attachmentId = Integer.parseInt(req.getParameter("attachmentId"));
 		int courseId = Integer.parseInt(req.getParameter("courseId"));
-		logger.warn("Attempting to delete attachment ID {}", attachmentId);
-
 		Attachment attachment = attachmentDAO.getAttachmentById(attachmentId);
 		if (attachment != null) {
-			File physicalFile = new File(AppConfig.UPLOAD_DIRECTORY, attachment.getFilepath());
-
+			File physicalFile = new File(configService.getProperty("upload.directory"), attachment.getFilepath());
 			if (physicalFile.exists()) {
 				physicalFile.delete();
 			}
-
 			if (attachmentDAO.deleteAttachment(attachmentId)) {
-				AdminLogService.log(adminUser.getUsername(), "DELETE_ATTACHMENT", "Anhang '" + attachment.getFilename()
+				adminLogService.log(adminUser.getUsername(), "DELETE_ATTACHMENT", "Anhang '" + attachment.getFilename()
 						+ "' von Meeting ID " + attachment.getParentId() + " gelöscht.");
 				req.getSession().setAttribute("successMessage", "Anhang gelöscht.");
 			} else {
@@ -253,13 +240,11 @@ public class AdminMeetingServlet extends HttpServlet {
 
 	private void handleAttachmentUpload(Part filePart, int meetingId, String requiredRole, User adminUser,
 			HttpServletRequest req) throws IOException {
-		String uploadDir = AppConfig.UPLOAD_DIRECTORY + File.separator + "meetings";
+		String uploadDir = configService.getProperty("upload.directory") + File.separator + "meetings";
 		new File(uploadDir).mkdirs();
-
 		String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
 		File targetFile = new File(uploadDir, fileName);
 		filePart.write(targetFile.getAbsolutePath());
-
 		Attachment attachment = new Attachment();
 		attachment.setParentId(meetingId);
 		attachment.setParentType("MEETING");
@@ -267,14 +252,11 @@ public class AdminMeetingServlet extends HttpServlet {
 		attachment.setFilepath("meetings/" + fileName);
 		attachment.setRequiredRole(requiredRole);
 		if (attachmentDAO.addAttachment(attachment)) {
-			logger.info("Attachment '{}' uploaded for meeting ID {} by '{}'", fileName, meetingId,
-					adminUser.getUsername());
 			String logDetails = String.format("Anhang '%s' zu Meeting ID %d hinzugefügt. Sichtbar für: %s.", fileName,
 					meetingId, requiredRole);
-			AdminLogService.log(adminUser.getUsername(), "ADD_MEETING_ATTACHMENT", logDetails);
+			adminLogService.log(adminUser.getUsername(), "ADD_MEETING_ATTACHMENT", logDetails);
 		} else {
 			req.getSession().setAttribute("errorMessage", "Anhang konnte nicht in DB gespeichert werden.");
 		}
 	}
-
 }

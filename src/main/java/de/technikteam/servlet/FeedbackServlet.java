@@ -1,5 +1,7 @@
 package de.technikteam.servlet;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.EventFeedbackDAO;
 import de.technikteam.dao.FeedbackSubmissionDAO;
@@ -10,25 +12,24 @@ import de.technikteam.model.FeedbackSubmission;
 import de.technikteam.model.User;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.List;
 
-@WebServlet("/feedback")
+import java.io.IOException;
+
+@Singleton
 public class FeedbackServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private EventFeedbackDAO eventFeedbackDAO;
-	private FeedbackSubmissionDAO submissionDAO;
-	private EventDAO eventDAO;
+	private final EventFeedbackDAO eventFeedbackDAO;
+	private final FeedbackSubmissionDAO submissionDAO;
+	private final EventDAO eventDAO;
 
-	@Override
-	public void init() {
-		eventFeedbackDAO = new EventFeedbackDAO();
-		submissionDAO = new FeedbackSubmissionDAO();
-		eventDAO = new EventDAO();
+	@Inject
+	public FeedbackServlet(EventFeedbackDAO eventFeedbackDAO, FeedbackSubmissionDAO submissionDAO, EventDAO eventDAO) {
+		this.eventFeedbackDAO = eventFeedbackDAO;
+		this.submissionDAO = submissionDAO;
+		this.eventDAO = eventDAO;
 	}
 
 	@Override
@@ -37,13 +38,11 @@ public class FeedbackServlet extends HttpServlet {
 		User user = (User) request.getSession().getAttribute("user");
 		String action = request.getParameter("action");
 
-		// This part handles the old functionality for event-specific feedback
 		if ("submitEventFeedback".equals(action)) {
 			showSubmitEventFeedbackForm(request, response, user);
 			return;
 		}
 
-		// The default GET request shows the new general feedback form
 		request.getRequestDispatcher("/views/public/feedback.jsp").forward(request, response);
 	}
 
@@ -62,7 +61,6 @@ public class FeedbackServlet extends HttpServlet {
 		}
 
 		String action = request.getParameter("action");
-
 		if ("submitGeneralFeedback".equals(action)) {
 			handleGeneralFeedback(request, response, user);
 		} else if ("submitEventFeedbackResponse".equals(action)) {
@@ -123,7 +121,6 @@ public class FeedbackServlet extends HttpServlet {
 		FeedbackForm form = eventFeedbackDAO.getFeedbackFormForEvent(eventId);
 
 		if (form == null) {
-			// For now, let's auto-create a form if one doesn't exist to simplify the flow
 			form = new FeedbackForm();
 			form.setEventId(eventId);
 			form.setTitle("Feedback für Event: " + (event != null ? event.getName() : "Unbekannt"));

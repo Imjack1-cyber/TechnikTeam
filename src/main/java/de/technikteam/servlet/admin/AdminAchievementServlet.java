@@ -2,6 +2,8 @@ package de.technikteam.servlet.admin;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.AchievementDAO;
 import de.technikteam.dao.CourseDAO;
@@ -11,7 +13,6 @@ import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,19 +24,22 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
-@WebServlet("/admin/achievements")
+@Singleton
 public class AdminAchievementServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminAchievementServlet.class);
-	private AchievementDAO achievementDAO;
-	private CourseDAO courseDAO;
-	private Gson gson;
+	private final AchievementDAO achievementDAO;
+	private final CourseDAO courseDAO;
+	private final AdminLogService adminLogService;
+	private final Gson gson;
 
-	@Override
-	public void init() {
-		achievementDAO = new AchievementDAO();
-		courseDAO = new CourseDAO();
-		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+	@Inject
+	public AdminAchievementServlet(AchievementDAO achievementDAO, CourseDAO courseDAO,
+			AdminLogService adminLogService) {
+		this.achievementDAO = achievementDAO;
+		this.courseDAO = courseDAO;
+		this.adminLogService = adminLogService;
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
 	@Override
@@ -73,8 +77,6 @@ public class AdminAchievementServlet extends HttpServlet {
 			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
 			return;
 		}
-
-		Set<String> permissions = adminUser.getPermissions();
 
 		String action = request.getParameter("action");
 		switch (action) {
@@ -127,20 +129,19 @@ public class AdminAchievementServlet extends HttpServlet {
 		if (isUpdate) {
 			achievement.setId(Integer.parseInt(idParam));
 			if (achievementDAO.updateAchievement(achievement)) {
-				AdminLogService.log(adminUser.getUsername(), "UPDATE_ACHIEVEMENT",
+				adminLogService.log(adminUser.getUsername(), "UPDATE_ACHIEVEMENT",
 						"Erfolg '" + achievement.getName() + "' (ID: " + achievement.getId() + ") aktualisiert.");
 				request.getSession().setAttribute("successMessage", "Erfolg erfolgreich aktualisiert.");
 			} else {
 				request.getSession().setAttribute("errorMessage", "Fehler beim Aktualisieren des Erfolgs.");
 			}
 		} else {
-			// Read the generated key from the hidden input
 			achievement.setAchievementKey(request.getParameter("achievement_key"));
 			if (achievement.getAchievementKey() == null || achievement.getAchievementKey().trim().isEmpty()) {
 				request.getSession().setAttribute("errorMessage",
 						"Fehler: Der programmatische Key darf nicht leer sein.");
 			} else if (achievementDAO.createAchievement(achievement)) {
-				AdminLogService.log(adminUser.getUsername(), "CREATE_ACHIEVEMENT",
+				adminLogService.log(adminUser.getUsername(), "CREATE_ACHIEVEMENT",
 						"Erfolg '" + achievement.getName() + "' erstellt.");
 				request.getSession().setAttribute("successMessage", "Neuer Erfolg erfolgreich erstellt.");
 			} else {
@@ -153,17 +154,15 @@ public class AdminAchievementServlet extends HttpServlet {
 
 	private void handleDelete(HttpServletRequest request, HttpServletResponse response, User adminUser)
 			throws IOException {
-		if (!adminUser.getPermissions().contains("ACHIEVEMENT_DELETE")
-				&& !adminUser.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
+		if (!adminUser.getPermissions().contains("ACHIEVEMENT_DELETE") && !adminUser.hasAdminAccess()) {
 			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
-
 		try {
 			int id = Integer.parseInt(request.getParameter("id"));
 			Achievement achievement = achievementDAO.getAchievementById(id);
 			if (achievementDAO.deleteAchievement(id)) {
-				AdminLogService.log(adminUser.getUsername(), "DELETE_ACHIEVEMENT", "Erfolg '"
+				adminLogService.log(adminUser.getUsername(), "DELETE_ACHIEVEMENT", "Erfolg '"
 						+ (achievement != null ? achievement.getName() : "N/A") + "' (ID: " + id + ") gelöscht.");
 				request.getSession().setAttribute("successMessage", "Erfolg erfolgreich gelöscht.");
 			} else {

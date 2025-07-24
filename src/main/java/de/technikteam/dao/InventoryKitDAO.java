@@ -1,5 +1,7 @@
 package de.technikteam.dao;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.model.InventoryKit;
 import de.technikteam.model.InventoryKitItem;
 import org.apache.logging.log4j.LogManager;
@@ -11,15 +13,19 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * DAO for managing inventory kits and their contents.
- */
+@Singleton
 public class InventoryKitDAO {
 	private static final Logger logger = LogManager.getLogger(InventoryKitDAO.class);
+	private final DatabaseManager dbManager;
+
+	@Inject
+	public InventoryKitDAO(DatabaseManager dbManager) {
+		this.dbManager = dbManager;
+	}
 
 	public int createKit(InventoryKit kit) {
 		String sql = "INSERT INTO inventory_kits (name, description, location) VALUES (?, ?, ?)";
-		try (Connection conn = DatabaseManager.getConnection();
+		try (Connection conn = dbManager.getConnection();
 				PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 			pstmt.setString(1, kit.getName());
 			pstmt.setString(2, kit.getDescription());
@@ -40,7 +46,7 @@ public class InventoryKitDAO {
 
 	public boolean updateKit(InventoryKit kit) {
 		String sql = "UPDATE inventory_kits SET name = ?, description = ?, location = ? WHERE id = ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, kit.getName());
 			pstmt.setString(2, kit.getDescription());
 			pstmt.setString(3, kit.getLocation());
@@ -58,13 +64,13 @@ public class InventoryKitDAO {
 		kit.setName(rs.getString("name"));
 		kit.setDescription(rs.getString("description"));
 		kit.setLocation(rs.getString("location"));
-		kit.setItems(new ArrayList<>()); // Initialize item list
+		kit.setItems(new ArrayList<>());
 		return kit;
 	}
 
 	public InventoryKit getKitById(int kitId) {
 		String sql = "SELECT * FROM inventory_kits WHERE id = ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, kitId);
 			try (ResultSet rs = pstmt.executeQuery()) {
 				if (rs.next()) {
@@ -79,7 +85,7 @@ public class InventoryKitDAO {
 
 	public boolean deleteKit(int kitId) {
 		String sql = "DELETE FROM inventory_kits WHERE id = ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, kitId);
 			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
@@ -88,24 +94,12 @@ public class InventoryKitDAO {
 		}
 	}
 
-	/**
-	 * Efficiently fetches all kits and their associated items in a single query to
-	 * avoid the N+1 problem.
-	 *
-	 * @return A list of InventoryKit objects, each populated with its list of
-	 *         items.
-	 */
 	public List<InventoryKit> getAllKitsWithItems() {
 		Map<Integer, InventoryKit> kitMap = new LinkedHashMap<>();
-		String sql = "SELECT k.id, k.name, k.description, k.location, "
-				+ "ki.item_id, ki.quantity, si.name as item_name " + "FROM inventory_kits k "
-				+ "LEFT JOIN inventory_kit_items ki ON k.id = ki.kit_id "
-				+ "LEFT JOIN storage_items si ON ki.item_id = si.id " + "ORDER BY k.name, si.name";
-
-		try (Connection conn = DatabaseManager.getConnection();
+		String sql = "SELECT k.id, k.name, k.description, k.location, ki.item_id, ki.quantity, si.name as item_name FROM inventory_kits k LEFT JOIN inventory_kit_items ki ON k.id = ki.kit_id LEFT JOIN storage_items si ON ki.item_id = si.id ORDER BY k.name, si.name";
+		try (Connection conn = dbManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
-
 			while (rs.next()) {
 				int kitId = rs.getInt("id");
 				InventoryKit kit = kitMap.computeIfAbsent(kitId, id -> {
@@ -115,7 +109,6 @@ public class InventoryKitDAO {
 						throw new RuntimeException(e);
 					}
 				});
-
 				if (rs.getInt("item_id") > 0) {
 					InventoryKitItem item = new InventoryKitItem();
 					item.setKitId(kitId);
@@ -127,18 +120,14 @@ public class InventoryKitDAO {
 			}
 		} catch (SQLException e) {
 			logger.error("Error fetching all kits with their items", e);
-		} catch (RuntimeException e) {
-			// Un-wrap SQLException from the lambda
-			logger.error("Error mapping result set in kit fetching", e.getCause());
 		}
 		return new ArrayList<>(kitMap.values());
 	}
 
 	public List<InventoryKitItem> getItemsForKit(int kitId) {
 		List<InventoryKitItem> items = new ArrayList<>();
-		String sql = "SELECT iki.*, si.name as item_name FROM inventory_kit_items iki "
-				+ "JOIN storage_items si ON iki.item_id = si.id " + "WHERE iki.kit_id = ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		String sql = "SELECT iki.*, si.name as item_name FROM inventory_kit_items iki JOIN storage_items si ON iki.item_id = si.id WHERE iki.kit_id = ?";
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, kitId);
 			try (ResultSet rs = pstmt.executeQuery()) {
 				while (rs.next()) {
@@ -159,21 +148,17 @@ public class InventoryKitDAO {
 	public boolean updateKitItems(int kitId, String[] itemIds, String[] quantities) {
 		String deleteSql = "DELETE FROM inventory_kit_items WHERE kit_id = ?";
 		String insertSql = "INSERT INTO inventory_kit_items (kit_id, item_id, quantity) VALUES (?, ?, ?)";
-
-		try (Connection conn = DatabaseManager.getConnection()) {
+		try (Connection conn = dbManager.getConnection()) {
 			conn.setAutoCommit(false);
-
 			try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
 				deleteStmt.setInt(1, kitId);
 				deleteStmt.executeUpdate();
 			}
-
 			if (itemIds != null && quantities != null && itemIds.length == quantities.length) {
 				try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
 					for (int i = 0; i < itemIds.length; i++) {
-						if (itemIds[i] == null || itemIds[i].isEmpty()) {
+						if (itemIds[i] == null || itemIds[i].isEmpty())
 							continue;
-						}
 						int itemId = Integer.parseInt(itemIds[i]);
 						int quantity = Integer.parseInt(quantities[i]);
 						if (quantity > 0) {
@@ -187,14 +172,9 @@ public class InventoryKitDAO {
 				}
 			}
 			conn.commit();
-			logger.info("Successfully updated items for kit ID: {}", kitId);
 			return true;
 		} catch (SQLException | NumberFormatException e) {
-			logger.error(
-					"Error during transaction for updating kit items for kit ID {}. Transaction will be rolled back.",
-					kitId, e);
-			// Rollback is handled automatically by the try-with-resources on the Connection
-			// when an exception occurs.
+			logger.error("Error during transaction for updating kit items for kit ID {}", kitId, e);
 			return false;
 		}
 	}
@@ -202,7 +182,7 @@ public class InventoryKitDAO {
 	public List<InventoryKit> getAllKits() {
 		List<InventoryKit> kits = new ArrayList<>();
 		String sql = "SELECT * FROM inventory_kits ORDER BY name";
-		try (Connection conn = DatabaseManager.getConnection();
+		try (Connection conn = dbManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
 			while (rs.next()) {

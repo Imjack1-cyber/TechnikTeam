@@ -1,5 +1,7 @@
 package de.technikteam.servlet.admin.action;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
@@ -14,46 +16,54 @@ import java.security.SecureRandom;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Singleton
 public class ResetPasswordAction implements Action {
 
-    private final UserDAO userDAO = new UserDAO();
+	private final UserDAO userDAO;
+	private final AdminLogService adminLogService;
 
-    @Override
-    public ApiResponse execute(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        HttpSession session = request.getSession();
-        User adminUser = (User) session.getAttribute("user");
+	@Inject
+	public ResetPasswordAction(UserDAO userDAO, AdminLogService adminLogService) {
+		this.userDAO = userDAO;
+		this.adminLogService = adminLogService;
+	}
 
-        if (!adminUser.getPermissions().contains("USER_PASSWORD_RESET") && !adminUser.hasAdminAccess()) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
-            return null;
-        }
+	@Override
+	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		HttpSession session = request.getSession();
+		User adminUser = (User) session.getAttribute("user");
 
-        int userId = Integer.parseInt(request.getParameter("userId"));
-        User userToReset = userDAO.getUserById(userId);
+		if (!adminUser.getPermissions().contains("USER_PASSWORD_RESET") && !adminUser.hasAdminAccess()) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return null;
+		}
 
-        if (userToReset == null) {
-            return ApiResponse.error("Benutzer zum Zurücksetzen nicht gefunden.");
-        } else {
-            String newPassword = generateRandomPassword(12);
-            if (userDAO.changePassword(userId, newPassword)) {
-                String logDetails = String.format("Passwort für Benutzer '%s' (ID: %d) zurückgesetzt.",
-                        userToReset.getUsername(), userId);
-                AdminLogService.log(adminUser.getUsername(), "RESET_PASSWORD", logDetails);
+		int userId = Integer.parseInt(request.getParameter("userId"));
+		User userToReset = userDAO.getUserById(userId);
 
-                return ApiResponse.success(
-                        "Passwort für " + userToReset.getUsername() + " zurückgesetzt auf: " + newPassword,
-                        Map.of("username", userToReset.getUsername(), "newPassword", newPassword)
-                );
-            } else {
-                return ApiResponse.error("Passwort konnte nicht zurückgesetzt werden.");
-            }
-        }
-    }
+		if (userToReset == null) {
+			return ApiResponse.error("Benutzer zum Zurücksetzen nicht gefunden.");
+		} else {
+			String newPassword = generateRandomPassword(12);
+			if (userDAO.changePassword(userId, newPassword)) {
+				String logDetails = String.format("Passwort für Benutzer '%s' (ID: %d) zurückgesetzt.",
+						userToReset.getUsername(), userId);
+				adminLogService.log(adminUser.getUsername(), "RESET_PASSWORD", logDetails);
 
-    private String generateRandomPassword(int length) {
-        final String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        SecureRandom random = new SecureRandom();
-        return random.ints(length, 0, chars.length()).mapToObj(chars::charAt)
-                .collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
-    }
+				return ApiResponse.success(
+						"Passwort für " + userToReset.getUsername() + " zurückgesetzt auf: " + newPassword,
+						Map.of("username", userToReset.getUsername(), "newPassword", newPassword));
+			} else {
+				return ApiResponse.error("Passwort konnte nicht zurückgesetzt werden.");
+			}
+		}
+	}
+
+	private String generateRandomPassword(int length) {
+		final String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()";
+		SecureRandom random = new SecureRandom();
+		return random.ints(length, 0, chars.length()).mapToObj(chars::charAt)
+				.collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
+	}
 }

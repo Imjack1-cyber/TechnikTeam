@@ -1,9 +1,10 @@
 package de.technikteam.servlet.admin.action;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.RoleDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
-import de.technikteam.service.AdminLogService;
 import de.technikteam.service.UserService;
 import de.technikteam.util.PasswordPolicyValidator;
 import jakarta.servlet.ServletException;
@@ -13,10 +14,17 @@ import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
 
+@Singleton
 public class CreateUserAction implements Action {
 
-	private final UserService userService = new UserService();
-	private final RoleDAO roleDAO = new RoleDAO();
+	private final UserService userService;
+	private final RoleDAO roleDAO;
+
+	@Inject
+	public CreateUserAction(UserService userService, RoleDAO roleDAO) {
+		this.userService = userService;
+		this.roleDAO = roleDAO;
+	}
 
 	@Override
 	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
@@ -53,18 +61,12 @@ public class CreateUserAction implements Action {
 		String email = request.getParameter("email");
 		newUser.setEmail(email != null && !email.trim().isEmpty() ? email.trim() : null);
 
-		int newUserId = userService.createUserWithPermissions(newUser, pass, permissionIds);
+		int newUserId = userService.createUserWithPermissions(newUser, pass, permissionIds, adminUser.getUsername());
 		if (newUserId > 0) {
 			newUser.setId(newUserId);
 			// Enrich with role name for the JSON response
 			roleDAO.getAllRoles().stream().filter(role -> role.getId() == newUser.getRoleId()).findFirst()
 					.ifPresent(role -> newUser.setRoleName(role.getRoleName()));
-
-			String logDetails = String.format(
-					"Benutzer '%s' (ID: %d, Rolle-ID: %d, Klasse: %d %s) erstellt und Berechtigungen zugewiesen.",
-					newUser.getUsername(), newUserId, newUser.getRoleId(), newUser.getClassYear(),
-					newUser.getClassName());
-			AdminLogService.log(adminUser.getUsername(), "CREATE_USER", logDetails);
 
 			return ApiResponse.success("Benutzer '" + newUser.getUsername() + "' erfolgreich erstellt.", newUser);
 		} else {

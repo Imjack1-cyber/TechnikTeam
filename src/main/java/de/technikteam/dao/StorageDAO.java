@@ -1,5 +1,7 @@
 package de.technikteam.dao;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.model.StorageItem;
 import de.technikteam.util.DaoUtils;
 import org.apache.logging.log4j.LogManager;
@@ -11,21 +13,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * DAO for managing inventory in the `storage_items` table.
- */
+@Singleton
 public class StorageDAO {
-	private static final Logger logger = LogManager.getLogger(StorageDAO.class.getName());
+	private static final Logger logger = LogManager.getLogger(StorageDAO.class);
+	private final DatabaseManager dbManager;
+
+	@Inject
+	public StorageDAO(DatabaseManager dbManager) {
+		this.dbManager = dbManager;
+	}
 
 	public Map<String, List<StorageItem>> getAllItemsGroupedByLocation() {
-		return getAllItems().stream().collect(Collectors.groupingBy(item -> item.getLocation().trim()));
+		return getAllItems().stream().collect(
+				Collectors.groupingBy(item -> item.getLocation() != null ? item.getLocation().trim() : "Unbekannt"));
 	}
 
 	public List<StorageItem> getAllItems() {
 		List<StorageItem> items = new ArrayList<>();
-		String sql = "SELECT si.*, u.username as holder_username " + "FROM storage_items si "
-				+ "LEFT JOIN users u ON si.current_holder_user_id = u.id " + "ORDER BY si.name";
-		try (Connection conn = DatabaseManager.getConnection();
+		String sql = "SELECT si.*, u.username as holder_username FROM storage_items si LEFT JOIN users u ON si.current_holder_user_id = u.id ORDER BY si.name";
+		try (Connection conn = dbManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
 			while (rs.next()) {
@@ -40,7 +46,7 @@ public class StorageDAO {
 	public List<StorageItem> getDefectiveItems() {
 		List<StorageItem> items = new ArrayList<>();
 		String sql = "SELECT * FROM storage_items WHERE defective_quantity > 0 ORDER BY location, name";
-		try (Connection conn = DatabaseManager.getConnection();
+		try (Connection conn = dbManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
 			while (rs.next()) {
@@ -76,23 +82,30 @@ public class StorageDAO {
 	}
 
 	public StorageItem getItemById(int itemId) {
-		String sql = "SELECT si.*, u.username as holder_username " + "FROM storage_items si "
-				+ "LEFT JOIN users u ON si.current_holder_user_id = u.id " + "WHERE si.id = ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, itemId);
-			ResultSet rs = pstmt.executeQuery();
-			if (rs.next()) {
-				return mapResultSetToStorageItem(rs);
-			}
+		try (Connection conn = dbManager.getConnection()) {
+			return getItemById(itemId, conn);
 		} catch (SQLException e) {
 			logger.error("SQL error fetching storage item by ID: {}", itemId, e);
 		}
 		return null;
 	}
 
+	public StorageItem getItemById(int itemId, Connection conn) throws SQLException {
+		String sql = "SELECT si.*, u.username as holder_username FROM storage_items si LEFT JOIN users u ON si.current_holder_user_id = u.id WHERE si.id = ?";
+		try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, itemId);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				if (rs.next()) {
+					return mapResultSetToStorageItem(rs);
+				}
+			}
+		}
+		return null;
+	}
+
 	public boolean createItem(StorageItem item) {
 		String sql = "INSERT INTO storage_items (name, location, cabinet, compartment, quantity, max_quantity, weight_kg, price_eur, image_path, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'IN_STORAGE')";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, item.getName());
 			pstmt.setString(2, item.getLocation());
 			pstmt.setString(3, item.getCabinet());
@@ -111,7 +124,7 @@ public class StorageDAO {
 
 	public boolean updateItem(StorageItem item) {
 		String sql = "UPDATE storage_items SET name=?, location=?, cabinet=?, compartment=?, quantity=?, max_quantity=?, defective_quantity=?, defect_reason=?, weight_kg=?, price_eur=?, image_path=?, status=?, current_holder_user_id=?, assigned_event_id=? WHERE id=?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, item.getName());
 			pstmt.setString(2, item.getLocation());
 			pstmt.setString(3, item.getCabinet());
@@ -140,11 +153,10 @@ public class StorageDAO {
 		}
 	}
 
-	public boolean performCheckout(int itemId, int quantity, int userId, Integer eventId) throws SQLException {
-		String sql = "UPDATE storage_items "
-				+ "SET quantity = quantity - ?, status = 'CHECKED_OUT', current_holder_user_id = ?, assigned_event_id = ? "
-				+ "WHERE id = ? AND (quantity - defective_quantity) >= ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+	public boolean performCheckout(int itemId, int quantity, int userId, Integer eventId, Connection conn)
+			throws SQLException {
+		String sql = "UPDATE storage_items SET quantity = quantity - ?, status = 'CHECKED_OUT', current_holder_user_id = ?, assigned_event_id = ? WHERE id = ? AND (quantity - defective_quantity) >= ?";
+		try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, quantity);
 			pstmt.setInt(2, userId);
 			if (eventId != null) {
@@ -158,44 +170,46 @@ public class StorageDAO {
 		}
 	}
 
-	public boolean performCheckin(int itemId, int quantity) throws SQLException {
-		String sql = "UPDATE storage_items "
-				+ "SET quantity = quantity + ?, status = 'IN_STORAGE', current_holder_user_id = NULL, assigned_event_id = NULL "
-				+ "WHERE id = ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+	public boolean performCheckin(int itemId, int quantity, Connection conn) throws SQLException {
+		String sql = "UPDATE storage_items SET quantity = quantity + ?, status = 'IN_STORAGE', current_holder_user_id = NULL, assigned_event_id = NULL WHERE id = ?";
+		try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, quantity);
 			pstmt.setInt(2, itemId);
 			return pstmt.executeUpdate() > 0;
 		}
 	}
 
-	public boolean updateDefectiveStatus(int itemId, int defectiveQty, String reason) throws SQLException {
+	public boolean updateDefectiveStatus(int itemId, int defectiveQty, String reason) {
 		String sql = "UPDATE storage_items SET defective_quantity = ?, defect_reason = ? WHERE id = ? AND ? <= quantity";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, defectiveQty);
 			pstmt.setString(2, reason);
 			pstmt.setInt(3, itemId);
 			pstmt.setInt(4, defectiveQty);
 			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("SQL error updating defect status for item {}", itemId, e);
+			return false;
 		}
 	}
 
-	public boolean repairItems(int itemId, int repairedQuantity) throws SQLException {
-		String sql = "UPDATE storage_items "
-				+ "SET defective_quantity = defective_quantity - ?, status = CASE WHEN (defective_quantity - ?) <= 0 THEN 'IN_STORAGE' ELSE status END "
-				+ "WHERE id = ? AND defective_quantity >= ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+	public boolean repairItems(int itemId, int repairedQuantity) {
+		String sql = "UPDATE storage_items SET defective_quantity = defective_quantity - ?, status = CASE WHEN (defective_quantity - ?) <= 0 THEN 'IN_STORAGE' ELSE status END WHERE id = ? AND defective_quantity >= ?";
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, repairedQuantity);
 			pstmt.setInt(2, repairedQuantity);
 			pstmt.setInt(3, itemId);
 			pstmt.setInt(4, repairedQuantity);
 			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("SQL error repairing items for item ID {}", itemId, e);
+			return false;
 		}
 	}
 
 	public boolean deleteItem(int itemId) {
 		String sql = "DELETE FROM storage_items WHERE id = ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, itemId);
 			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
@@ -206,7 +220,7 @@ public class StorageDAO {
 
 	public boolean updateItemStatus(int itemId, String status) {
 		String sql = "UPDATE storage_items SET status = ? WHERE id = ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, status);
 			pstmt.setInt(2, itemId);
 			return pstmt.executeUpdate() > 0;
@@ -216,17 +230,10 @@ public class StorageDAO {
 		}
 	}
 
-	/**
-	 * Fetches items where the available quantity is critically low (less than 25%
-	 * of max quantity).
-	 *
-	 * @param limit The maximum number of items to return.
-	 * @return A list of low-stock StorageItem objects.
-	 */
 	public List<StorageItem> getLowStockItems(int limit) {
 		List<StorageItem> items = new ArrayList<>();
 		String sql = "SELECT * FROM storage_items WHERE (quantity - defective_quantity) < (max_quantity * 0.25) AND max_quantity > 0 ORDER BY (quantity - defective_quantity) / max_quantity ASC LIMIT ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, limit);
 			try (ResultSet rs = pstmt.executeQuery()) {
 				while (rs.next()) {

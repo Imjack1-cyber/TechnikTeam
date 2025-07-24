@@ -1,6 +1,7 @@
 package de.technikteam.dao;
 
-import de.technikteam.model.ParticipationHistory;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import java.sql.*;
@@ -9,16 +10,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Singleton
 public class ReportDAO {
 	private static final Logger logger = LogManager.getLogger(ReportDAO.class);
+	private final DatabaseManager dbManager;
+
+	@Inject
+	public ReportDAO(DatabaseManager dbManager) {
+		this.dbManager = dbManager;
+	}
 
 	public List<Map<String, Object>> getEventParticipationSummary() {
 		List<Map<String, Object>> summary = new ArrayList<>();
 		String sql = "SELECT e.name AS event_name, COUNT(ea.user_id) AS participant_count " + "FROM events e "
 				+ "LEFT JOIN event_assignments ea ON e.id = ea.event_id " + "GROUP BY e.id, e.name "
 				+ "ORDER BY participant_count DESC, e.event_datetime DESC";
-		logger.debug("Executing event participation summary query.");
-		try (Connection conn = DatabaseManager.getConnection();
+		try (Connection conn = dbManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
 			while (rs.next()) {
@@ -40,8 +47,7 @@ public class ReportDAO {
 				+ "LEFT JOIN event_attendance ea ON u.id = ea.user_id AND ea.signup_status = 'ANGEMELDET' "
 				+ "LEFT JOIN meeting_attendance ma ON u.id = ma.user_id AND ma.attended = 1 "
 				+ "GROUP BY u.id, u.username " + "ORDER BY events_signed_up DESC, meetings_attended DESC";
-		logger.debug("Executing user activity stats query.");
-		try (Connection conn = DatabaseManager.getConnection();
+		try (Connection conn = dbManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
 			while (rs.next()) {
@@ -63,8 +69,7 @@ public class ReportDAO {
 				+ "FROM storage_items si " + "JOIN storage_log sl ON si.id = sl.item_id "
 				+ "WHERE sl.quantity_change < 0 " + "GROUP BY si.id, si.name "
 				+ "ORDER BY total_quantity_checked_out DESC";
-		logger.debug("Executing inventory usage frequency query.");
-		try (Connection conn = DatabaseManager.getConnection();
+		try (Connection conn = dbManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
 			while (rs.next()) {
@@ -81,8 +86,7 @@ public class ReportDAO {
 
 	public double getTotalInventoryValue() {
 		String sql = "SELECT SUM(quantity * price_eur) AS total_value FROM storage_items";
-		logger.debug("Executing total inventory value query.");
-		try (Connection conn = DatabaseManager.getConnection();
+		try (Connection conn = dbManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
 			if (rs.next()) {
@@ -99,7 +103,7 @@ public class ReportDAO {
 		String sql = "SELECT CONCAT(YEAR(event_datetime), '-', LPAD(MONTH(event_datetime), 2, '0')) AS month, COUNT(*) AS count "
 				+ "FROM events " + "WHERE event_datetime >= DATE_SUB(NOW(), INTERVAL ? MONTH) "
 				+ "GROUP BY YEAR(event_datetime), MONTH(event_datetime) " + "ORDER BY month ASC";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, months);
 			try (ResultSet rs = pstmt.executeQuery()) {
 				while (rs.next()) {
@@ -120,7 +124,7 @@ public class ReportDAO {
 		String sql = "SELECT u.username, COUNT(ea.user_id) as participation_count " + "FROM event_assignments ea "
 				+ "JOIN users u ON ea.user_id = u.id " + "GROUP BY u.id, u.username "
 				+ "ORDER BY participation_count DESC " + "LIMIT ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, limit);
 			try (ResultSet rs = pstmt.executeQuery()) {
 				while (rs.next()) {

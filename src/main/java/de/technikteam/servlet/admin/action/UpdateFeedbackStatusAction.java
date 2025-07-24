@@ -1,5 +1,7 @@
 package de.technikteam.servlet.admin.action;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.FeedbackSubmissionDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
@@ -12,8 +14,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
 
+@Singleton
 public class UpdateFeedbackStatusAction implements Action {
-	private final FeedbackSubmissionDAO submissionDAO = new FeedbackSubmissionDAO();
+	private final FeedbackSubmissionDAO submissionDAO;
+	private final AdminLogService adminLogService;
+
+	@Inject
+	public UpdateFeedbackStatusAction(FeedbackSubmissionDAO submissionDAO, AdminLogService adminLogService) {
+		this.submissionDAO = submissionDAO;
+		this.adminLogService = adminLogService;
+	}
 
 	@Override
 	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
@@ -29,10 +39,9 @@ public class UpdateFeedbackStatusAction implements Action {
 			String newStatus = request.getParameter("status");
 
 			if (submissionDAO.updateStatus(submissionId, newStatus)) {
-				AdminLogService.log(adminUser.getUsername(), "UPDATE_FEEDBACK_STATUS",
+				adminLogService.log(adminUser.getUsername(), "UPDATE_FEEDBACK_STATUS",
 						"Status für Feedback ID " + submissionId + " auf '" + newStatus + "' gesetzt.");
 
-				// Broadcast the UI update to all connected admins
 				NotificationService.getInstance().broadcastUIUpdate("feedback_status_updated",
 						Map.of("submissionId", submissionId, "newStatus", newStatus));
 

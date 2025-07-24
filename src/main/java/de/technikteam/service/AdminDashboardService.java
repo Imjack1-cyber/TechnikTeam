@@ -1,32 +1,44 @@
 package de.technikteam.service;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.AdminLogDAO;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.ReportDAO;
 import de.technikteam.dao.StorageDAO;
+import de.technikteam.model.AdminLog;
 import de.technikteam.model.DashboardDataDTO;
+import de.technikteam.model.Event;
+import de.technikteam.model.StorageItem;
 
-/**
- * A service class that aggregates data from multiple DAOs to populate the
- * DashboardDataDTO for the admin dashboard API.
- */
+import java.util.List;
+import java.util.Map;
+
+@Singleton
 public class AdminDashboardService {
-	private final EventDAO eventDAO = new EventDAO();
-	private final StorageDAO storageDAO = new StorageDAO();
-	private final AdminLogDAO adminLogDAO = new AdminLogDAO();
-	private final ReportDAO reportDAO = new ReportDAO();
+	private final EventDAO eventDAO;
+	private final StorageDAO storageDAO;
+	private final AdminLogDAO adminLogDAO;
+	private final ReportDAO reportDAO;
 
 	private static final int WIDGET_LIMIT = 5;
 	private static final int TREND_MONTHS = 12;
 
+	@Inject
+	public AdminDashboardService(EventDAO eventDAO, StorageDAO storageDAO, AdminLogDAO adminLogDAO,
+			ReportDAO reportDAO) {
+		this.eventDAO = eventDAO;
+		this.storageDAO = storageDAO;
+		this.adminLogDAO = adminLogDAO;
+		this.reportDAO = reportDAO;
+	}
+
 	public DashboardDataDTO getDashboardData() {
 		DashboardDataDTO dto = new DashboardDataDTO();
-
 		dto.setUpcomingEvents(eventDAO.getUpcomingEvents(WIDGET_LIMIT));
 		dto.setLowStockItems(storageDAO.getLowStockItems(WIDGET_LIMIT));
 		dto.setRecentLogs(adminLogDAO.getRecentLogs(WIDGET_LIMIT));
 		dto.setEventTrendData(reportDAO.getEventCountByMonth(TREND_MONTHS));
-
 		return dto;
 	}
 }

@@ -1,10 +1,11 @@
 package de.technikteam.servlet;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.MeetingDAO;
 import de.technikteam.model.Meeting;
 import de.technikteam.model.User;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -14,22 +15,15 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.util.List;
 
-/**
- * Mapped to `/lehrgaenge`, this servlet is responsible for the main
- * course/meeting listing page for a logged-in user. It fetches a list of all
- * upcoming meetings and enriches each one with the user's specific attendance
- * status (e.g., ANGEMELDET, ABGEMELDET, OFFEN). This data is then passed to
- * `lehrgaenge.jsp` for rendering.
- */
-@WebServlet("/lehrgaenge")
+@Singleton
 public class MeetingServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(MeetingServlet.class);
-	private MeetingDAO meetingDAO;
+	private final MeetingDAO meetingDAO;
 
-	@Override
-	public void init() {
-		meetingDAO = new MeetingDAO();
+	@Inject
+	public MeetingServlet(MeetingDAO meetingDAO) {
+		this.meetingDAO = meetingDAO;
 	}
 
 	@Override

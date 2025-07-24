@@ -2,6 +2,8 @@ package de.technikteam.servlet.admin.action;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.ProfileChangeRequestDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
@@ -18,10 +20,19 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.Map;
 
+@Singleton
 public class ApproveChangeAction implements Action {
-	private final ProfileChangeRequestDAO requestDAO = new ProfileChangeRequestDAO();
-	private final UserDAO userDAO = new UserDAO();
+	private final ProfileChangeRequestDAO requestDAO;
+	private final UserDAO userDAO;
+	private final AdminLogService adminLogService;
 	private final Gson gson = new Gson();
+
+	@Inject
+	public ApproveChangeAction(ProfileChangeRequestDAO requestDAO, UserDAO userDAO, AdminLogService adminLogService) {
+		this.requestDAO = requestDAO;
+		this.userDAO = userDAO;
+		this.adminLogService = adminLogService;
+	}
 
 	@Override
 	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
@@ -45,16 +56,12 @@ public class ApproveChangeAction implements Action {
 				return ApiResponse.error("Der zugehörige Benutzer existiert nicht mehr. Anfrage abgelehnt.");
 			}
 
-			// Apply changes from JSON
 			Type type = new TypeToken<Map<String, String>>() {
 			}.getType();
 			Map<String, String> changes = gson.fromJson(req.getRequestedChanges(), type);
 
 			changes.forEach((field, value) -> {
 				switch (field) {
-				case "username":
-					userToUpdate.setUsername(value);
-					break;
 				case "email":
 					userToUpdate.setEmail(value);
 					break;
@@ -67,19 +74,18 @@ public class ApproveChangeAction implements Action {
 				}
 			});
 
+			// CORRECTED: Call the version of updateUser that does not require a Connection
+			// object.
 			if (userDAO.updateUser(userToUpdate)
 					&& requestDAO.updateRequestStatus(requestId, "APPROVED", adminUser.getId())) {
-				AdminLogService.log(adminUser.getUsername(), "PROFILE_CHANGE_APPROVED", "Profiländerung für '"
+				adminLogService.log(adminUser.getUsername(), "PROFILE_CHANGE_APPROVED", "Profiländerung für '"
 						+ userToUpdate.getUsername() + "' (Request ID: " + requestId + ") genehmigt.");
 
-				// Notify the user BEFORE invalidating their session.
 				String notificationMessage = "Ihre Profiländerung wurde genehmigt. Sie werden zur Sicherheit abgemeldet. Bitte loggen Sie sich erneut ein.";
 				Map<String, Object> payload = Map.of("type", "logout_notification", "payload",
 						Map.of("message", notificationMessage));
 				NotificationService.getInstance().sendNotificationToUser(userToUpdate.getId(), payload);
 
-				// Invalidate the user's session to force them to log in again and see the
-				// changes.
 				SessionManager.invalidateSessionsForUser(userToUpdate.getId());
 
 				return ApiResponse.success("Änderungsanfrage genehmigt.", Map.of("requestId", requestId));

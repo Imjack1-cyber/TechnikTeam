@@ -1,16 +1,63 @@
-# Maven
-/target/
+# ===================================================================
+# Standard Maven and Java Artifacts
+# ===================================================================
+# Compiled class files
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+
+# ===================================================================
+# Local Environment & Secrets
+# ===================================================================
+# Local configuration file. A template (e.g., config.properties.template) should be committed instead.
+src/main/resources/config.properties
 
 # Log files
 *.log
+logs/
 
-# IDE files (optional but good practice)
-.idea/
-.vscode/
-*.iml
-
+# Local user-uploaded content. This directory should be created manually
+# or by the application on the server, but its contents should never be committed.
 /resources/uploads/
-src/main/java/de/technikteam/dao/DatabaseManager.java
-target/m2e-wtp/web-resources/META-INF/maven/de.technikteam/TechnikTeam/pom.properties
-target/classes/de/technikteam/dao/DatabaseManager.class
+
+# ===================================================================
+# IDE and System Files
+# ===================================================================
+# Eclipse
+.classpath
+.project
+.settings/
+.m2e/
+.apt_generated/
+.factorypath
+.springBeans
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+
+# NetBeans
+/nbproject/private/
+/build/
+/nbbuild/
+/dist/
+/nbdist/
+.nb-gradle/
+
+# Visual Studio Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# ===================================================================
+# Obsolete/Legacy Files (from previous versions of the project)
+# ===================================================================
+# The old properties file should not be in the repository.
 src/main/resources/db.properties

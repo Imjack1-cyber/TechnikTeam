@@ -1,47 +1,40 @@
 package de.technikteam.servlet;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.MeetingDAO;
 import de.technikteam.model.Event;
 import de.technikteam.model.Meeting;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import net.fortuna.ical4j.data.CalendarOutputter;
 import net.fortuna.ical4j.model.Calendar;
-import net.fortuna.ical4j.model.component.VEvent;
-import net.fortuna.ical4j.model.property.Description;
-import net.fortuna.ical4j.model.property.DtEnd;
-import net.fortuna.ical4j.model.property.DtStart;
-import net.fortuna.ical4j.model.property.Location;
-import net.fortuna.ical4j.model.property.ProdId;
-import net.fortuna.ical4j.model.property.Summary;
-import net.fortuna.ical4j.model.property.Url;
-import net.fortuna.ical4j.model.property.Version;
-import net.fortuna.ical4j.util.RandomUidGenerator;
 import net.fortuna.ical4j.model.DateTime;
+import net.fortuna.ical4j.model.component.VEvent;
+import net.fortuna.ical4j.model.property.*;
+import net.fortuna.ical4j.util.RandomUidGenerator;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.List;
 
-@WebServlet("/calendar.ics")
+@Singleton
 public class IcalServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private EventDAO eventDAO;
-	private MeetingDAO meetingDAO;
+	private final EventDAO eventDAO;
+	private final MeetingDAO meetingDAO;
 
-	@Override
-	public void init() {
-		eventDAO = new EventDAO();
-		meetingDAO = new MeetingDAO();
+	@Inject
+	public IcalServlet(EventDAO eventDAO, MeetingDAO meetingDAO) {
+		this.eventDAO = eventDAO;
+		this.meetingDAO = meetingDAO;
 	}
 
 	@Override
@@ -80,7 +73,8 @@ public class IcalServlet extends HttpServlet {
 				if (event.getLocation() != null)
 					vEvent.getProperties().add(new Location(event.getLocation()));
 				try {
-					vEvent.getProperties().add(new Url(new URI(baseUrl + "/eventDetails?id=" + event.getId())));
+					vEvent.getProperties()
+							.add(new Url(new URI(baseUrl + "/veranstaltungen/details?id=" + event.getId())));
 				} catch (URISyntaxException ignored) {
 				}
 				calendar.getComponents().add(vEvent);

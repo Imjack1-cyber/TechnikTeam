@@ -1,10 +1,11 @@
 package de.technikteam.servlet;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.MeetingAttendanceDAO;
 import de.technikteam.model.User;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -13,22 +14,15 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 
-/**
- * Mapped to `/meeting-action`, this servlet processes POST requests from the
- * main course/meeting listing page (`lehrgaenge.jsp`). It allows a logged-in
- * user to either sign up for (`signup`) or sign off from (`signoff`) a specific
- * meeting by updating the `meeting_attendance` table via the
- * `MeetingAttendanceDAO`.
- */
-@WebServlet("/meeting-action")
+@Singleton
 public class MeetingActionServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(MeetingActionServlet.class);
-	private MeetingAttendanceDAO attendanceDAO;
+	private final MeetingAttendanceDAO attendanceDAO;
 
-	@Override
-	public void init() {
-		attendanceDAO = new MeetingAttendanceDAO();
+	@Inject
+	public MeetingActionServlet(MeetingAttendanceDAO attendanceDAO) {
+		this.attendanceDAO = attendanceDAO;
 	}
 
 	@Override

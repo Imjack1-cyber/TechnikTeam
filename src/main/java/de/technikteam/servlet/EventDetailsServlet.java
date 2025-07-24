@@ -2,17 +2,13 @@ package de.technikteam.servlet;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.config.LocalDateTimeAdapter;
-import de.technikteam.dao.AttachmentDAO;
-import de.technikteam.dao.EventChatDAO;
-import de.technikteam.dao.EventDAO;
-import de.technikteam.dao.EventTaskDAO;
-import de.technikteam.dao.InventoryKitDAO;
-import de.technikteam.dao.StorageDAO;
+import de.technikteam.dao.*;
 import de.technikteam.model.Event;
 import de.technikteam.model.User;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,27 +22,28 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@WebServlet("/veranstaltungen/details")
+@Singleton
 public class EventDetailsServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(EventDetailsServlet.class);
-	private EventDAO eventDAO;
-	private EventTaskDAO taskDAO;
-	private EventChatDAO chatDAO;
-	private AttachmentDAO attachmentDAO;
-	private StorageDAO storageDAO;
-	private InventoryKitDAO kitDAO;
-	private Gson gson;
+	private final EventDAO eventDAO;
+	private final EventTaskDAO taskDAO;
+	private final EventChatDAO chatDAO;
+	private final AttachmentDAO attachmentDAO;
+	private final StorageDAO storageDAO;
+	private final InventoryKitDAO kitDAO;
+	private final Gson gson;
 
-	@Override
-	public void init() {
-		eventDAO = new EventDAO();
-		taskDAO = new EventTaskDAO();
-		chatDAO = new EventChatDAO();
-		attachmentDAO = new AttachmentDAO();
-		storageDAO = new StorageDAO();
-		kitDAO = new InventoryKitDAO();
-		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+	@Inject
+	public EventDetailsServlet(EventDAO eventDAO, EventTaskDAO taskDAO, EventChatDAO chatDAO,
+			AttachmentDAO attachmentDAO, StorageDAO storageDAO, InventoryKitDAO kitDAO) {
+		this.eventDAO = eventDAO;
+		this.taskDAO = taskDAO;
+		this.chatDAO = chatDAO;
+		this.attachmentDAO = attachmentDAO;
+		this.storageDAO = storageDAO;
+		this.kitDAO = kitDAO;
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
 	@Override
@@ -55,26 +52,21 @@ public class EventDetailsServlet extends HttpServlet {
 		User user = (User) request.getSession().getAttribute("user");
 		try {
 			int eventId = Integer.parseInt(request.getParameter("id"));
-			logger.info("Event details requested for ID: {} by user '{}'", eventId, user.getUsername());
 			Event event = eventDAO.getEventById(eventId);
 
 			if (event == null) {
-				logger.warn("Event with ID {} not found. Redirecting to 404.", eventId);
 				response.sendError(HttpServletResponse.SC_NOT_FOUND, "Event nicht gefunden.");
 				return;
 			}
 
-			boolean isGlobalAdmin = user.getPermissions().contains("EVENT_MANAGE_TASKS")
-					|| user.getPermissions().contains("ACCESS_ADMIN_PANEL");
+			boolean isGlobalAdmin = user.getPermissions().contains("EVENT_MANAGE_TASKS") || user.hasAdminAccess();
 			boolean isEventLeader = user.getId() == event.getLeaderUserId();
 			boolean hasTaskManagementPermission = isGlobalAdmin || isEventLeader;
 			request.setAttribute("hasTaskManagementPermission", hasTaskManagementPermission);
 
 			String userRoleForAttachments = (hasTaskManagementPermission) ? "ADMIN" : "NUTZER";
-
 			List<User> assignedUsers = eventDAO.getAssignedUsersForEvent(eventId);
-			Set<Integer> assignedUserIds = assignedUsers.stream().map(User::getId).collect(Collectors.toSet());
-			boolean isUserAssigned = assignedUserIds.contains(user.getId());
+			boolean isUserAssigned = assignedUsers.stream().anyMatch(u -> u.getId() == user.getId());
 			request.setAttribute("isUserAssigned", isUserAssigned);
 
 			List<User> signedUpUsers = eventDAO.getSignedUpUsersForEvent(eventId);
@@ -94,28 +86,17 @@ public class EventDetailsServlet extends HttpServlet {
 			}
 
 			request.setAttribute("event", event);
-
 			if (hasTaskManagementPermission) {
 				request.setAttribute("assignedUsersJson", gson.toJson(assignedUsers));
 				request.setAttribute("allItemsJson", gson.toJson(storageDAO.getAllItems()));
 				request.setAttribute("allKitsJson", gson.toJson(kitDAO.getAllKits()));
 				request.setAttribute("tasksJson", gson.toJson(event.getEventTasks()));
-			} else {
-				request.setAttribute("assignedUsersJson", "[]");
-				request.setAttribute("allItemsJson", "[]");
-				request.setAttribute("allKitsJson", "[]");
-				request.setAttribute("tasksJson", "[]");
 			}
 
-			logger.debug("Forwarding to eventDetails.jsp for event '{}'", event.getName());
 			request.getRequestDispatcher("/views/public/eventDetails.jsp").forward(request, response);
 
 		} catch (NumberFormatException e) {
-			logger.error("Invalid event ID format in request.", e);
 			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Ungültige Event-ID.");
-		} catch (Exception e) {
-			logger.error("An unexpected error occurred while fetching event details.", e);
-			response.sendRedirect(request.getContextPath() + "/error500");
 		}
 	}
 }

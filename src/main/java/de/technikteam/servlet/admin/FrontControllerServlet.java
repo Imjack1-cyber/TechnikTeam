@@ -2,12 +2,13 @@ package de.technikteam.servlet.admin;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.servlet.admin.action.*;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -20,63 +21,52 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * A Front Controller that centralizes request handling for administrative
- * actions. It uses the Command pattern to delegate processing to specialized
- * Action classes and returns a standardized JSON ApiResponse.
- */
-@WebServlet("/admin/action/*")
+@Singleton
 @MultipartConfig
 public class FrontControllerServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(FrontControllerServlet.class);
 	private final Map<String, Action> actions = new HashMap<>();
-	private Gson gson;
+	private final Gson gson;
 
-	@Override
-	public void init() throws ServletException {
-		logger.info("Initializing FrontControllerServlet and mapping actions...");
-		// User Actions
-		actions.put("user.create", new CreateUserAction());
-		actions.put("user.update", new UpdateUserAction());
-		actions.put("user.delete", new DeleteUserAction());
-		actions.put("user.resetPassword", new ResetPasswordAction());
-		actions.put("user.unlock", new UnlockUserAction());
+	@Inject
+	public FrontControllerServlet(CreateUserAction createUserAction, UpdateUserAction updateUserAction,
+			DeleteUserAction deleteUserAction, ResetPasswordAction resetPasswordAction,
+			UnlockUserAction unlockUserAction, ApproveChangeAction approveChangeAction,
+			DenyChangeAction denyChangeAction, UpdateFeedbackStatusAction updateFeedbackStatusAction,
+			DeleteFeedbackAction deleteFeedbackAction) {
 
-		// Profile Change Request Actions
-		actions.put("request.approve", new ApproveChangeAction());
-		actions.put("request.deny", new DenyChangeAction());
+		actions.put("user.create", createUserAction);
+		actions.put("user.update", updateUserAction);
+		actions.put("user.delete", deleteUserAction);
+		actions.put("user.resetPassword", resetPasswordAction);
+		actions.put("user.unlock", unlockUserAction);
+		actions.put("request.approve", approveChangeAction);
+		actions.put("request.deny", denyChangeAction);
+		actions.put("feedback.updateStatus", updateFeedbackStatusAction);
+		actions.put("feedback.delete", deleteFeedbackAction);
 
-		// Feedback Actions
-		actions.put("feedback.updateStatus", new UpdateFeedbackStatusAction());
-		actions.put("feedback.delete", new DeleteFeedbackAction());
-
-		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
-
-		logger.info("FrontControllerServlet initialized with {} actions.", actions.size());
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
 	@Override
-	protected void service(HttpServletRequest request, HttpServletResponse response)
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		String pathInfo = request.getPathInfo(); // e.g., "/user"
-		String actionName = request.getParameter("action"); // e.g., "create"
+		String pathInfo = request.getPathInfo();
+		String actionName = request.getParameter("action");
 
 		if (pathInfo == null || pathInfo.equals("/") || actionName == null || actionName.isEmpty()) {
-			logger.warn("Invalid request to Front Controller: PathInfo='{}', Action='{}'", pathInfo, actionName);
 			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid action request.");
 			return;
 		}
 
-		String entity = pathInfo.substring(1); // "user"
-		String actionKey = entity + "." + actionName; // "user.create"
+		String entity = pathInfo.substring(1);
+		String actionKey = entity + "." + actionName;
 
 		Action action = actions.get(actionKey);
 
 		if (action == null) {
-			logger.error(
-					"No action found for key: '{}'. This indicates a misconfigured form or a manual malformed request.",
-					actionKey);
+			logger.error("No action found for key: '{}'", actionKey);
 			response.sendError(HttpServletResponse.SC_NOT_FOUND, "Action not found.");
 			return;
 		}
@@ -85,19 +75,15 @@ public class FrontControllerServlet extends HttpServlet {
 		ApiResponse apiResponse = action.execute(request, response);
 
 		if (apiResponse == null) {
-			// Action handled the response directly (e.g., file download, error, etc.)
 			return;
 		}
 
-		// Set HTTP status code based on success
 		if (apiResponse.isSuccess()) {
 			response.setStatus(HttpServletResponse.SC_OK);
 		} else {
-			// Use a generic bad request for client-side errors, could be refined
 			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
 		}
 
-		// Serialize ApiResponse to JSON and send it
 		response.setContentType("application/json");
 		response.setCharacterEncoding("UTF-8");
 		try (PrintWriter out = response.getWriter()) {

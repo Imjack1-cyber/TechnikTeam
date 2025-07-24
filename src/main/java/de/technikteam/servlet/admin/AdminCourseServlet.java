@@ -1,6 +1,8 @@
 package de.technikteam.servlet.admin;
 
 import com.google.gson.Gson;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.CourseDAO;
 import de.technikteam.dao.UserQualificationsDAO;
 import de.technikteam.model.Course;
@@ -8,39 +10,31 @@ import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * 
- * Mapped to /admin/lehrgaenge, this servlet manages the parent course
- * templates.
- * 
- * It handles listing all course templates, and processing the creation, update,
- * 
- * and deletion of these templates, which are now managed via modal dialogs on
- * 
- * the list page.
- */
-@WebServlet("/admin/lehrgaenge")
+@Singleton
 public class AdminCourseServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminCourseServlet.class);
-	private CourseDAO courseDAO;
-	private UserQualificationsDAO userQualificationsDAO;
-	private Gson gson = new Gson();
+	private final CourseDAO courseDAO;
+	private final UserQualificationsDAO userQualificationsDAO;
+	private final AdminLogService adminLogService;
+	private final Gson gson = new Gson();
 
-	@Override
-	public void init() {
-		courseDAO = new CourseDAO();
-		userQualificationsDAO = new UserQualificationsDAO();
+	@Inject
+	public AdminCourseServlet(CourseDAO courseDAO, UserQualificationsDAO userQualificationsDAO,
+			AdminLogService adminLogService) {
+		this.courseDAO = courseDAO;
+		this.userQualificationsDAO = userQualificationsDAO;
+		this.adminLogService = adminLogService;
 	}
 
 	@Override
@@ -50,8 +44,6 @@ public class AdminCourseServlet extends HttpServlet {
 			getCourseDataAsJson(req, resp);
 			return;
 		}
-
-		logger.info("Listing all course templates for admin view.");
 		List<Course> courseList = courseDAO.getAllCourses();
 		req.setAttribute("courseList", courseList);
 		req.getRequestDispatcher("/views/admin/admin_course_list.jsp").forward(req, resp);
@@ -60,16 +52,11 @@ public class AdminCourseServlet extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		req.setCharacterEncoding("UTF-8");
-
 		if (!CSRFUtil.isTokenValid(req)) {
-			logger.warn("CSRF token validation failed for course action.");
 			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
 			return;
 		}
-
 		String action = req.getParameter("action");
-		logger.debug("AdminCourseServlet received POST with action: {}", action);
-
 		switch (action) {
 		case "delete":
 			handleDelete(req, resp);
@@ -82,7 +69,6 @@ public class AdminCourseServlet extends HttpServlet {
 			handleGrantQualifications(req, resp);
 			break;
 		default:
-			logger.warn("Unknown POST action received: {}", action);
 			resp.sendRedirect(req.getContextPath() + "/admin/lehrgaenge");
 			break;
 		}
@@ -113,39 +99,22 @@ public class AdminCourseServlet extends HttpServlet {
 		course.setAbbreviation(request.getParameter("abbreviation"));
 		course.setDescription(request.getParameter("description"));
 
-		boolean success;
 		if (idParam != null && !idParam.isEmpty()) {
 			course.setId(Integer.parseInt(idParam));
-			logger.info("Attempting to update course: {}", course.getName());
 			Course originalCourse = courseDAO.getCourseById(course.getId());
-			success = courseDAO.updateCourse(course);
-			if (success && originalCourse != null) {
-				StringBuilder changes = new StringBuilder();
-				if (!Objects.equals(originalCourse.getName(), course.getName())) {
-					changes.append(String.format("Name: '%s' -> '%s'. ", originalCourse.getName(), course.getName()));
-				}
-				if (!Objects.equals(originalCourse.getAbbreviation(), course.getAbbreviation())) {
-					changes.append(String.format("Abk.: '%s' -> '%s'. ", originalCourse.getAbbreviation(),
-							course.getAbbreviation()));
-				}
-				String logDetails = String.format("Lehrgangs-Vorlage '%s' (ID: %d) aktualisiert. %s",
-						originalCourse.getName(), course.getId(), changes.toString());
-				AdminLogService.log(adminUser.getUsername(), "UPDATE_COURSE", logDetails);
-				request.getSession().setAttribute("successMessage", "Lehrgangs-Vorlage erfolgreich aktualisiert.");
-			} else if (success) {
-				AdminLogService.log(adminUser.getUsername(), "UPDATE_COURSE",
-						"Lehrgangs-Vorlage (ID: " + course.getId() + ") aktualisiert.");
+			if (courseDAO.updateCourse(course) && originalCourse != null) {
+				String logDetails = String.format("Lehrgangs-Vorlage '%s' (ID: %d) aktualisiert. ",
+						originalCourse.getName(), course.getId());
+				adminLogService.log(adminUser.getUsername(), "UPDATE_COURSE", logDetails);
 				request.getSession().setAttribute("successMessage", "Lehrgangs-Vorlage erfolgreich aktualisiert.");
 			} else {
 				request.getSession().setAttribute("errorMessage", "Fehler beim Aktualisieren der Vorlage.");
 			}
 		} else {
-			logger.info("Attempting to create new course: {}", course.getName());
-			success = courseDAO.createCourse(course);
-			if (success) {
+			if (courseDAO.createCourse(course)) {
 				String logDetails = String.format("Lehrgangs-Vorlage '%s' (Abk.: %s) erstellt.", course.getName(),
 						course.getAbbreviation());
-				AdminLogService.log(adminUser.getUsername(), "CREATE_COURSE", logDetails);
+				adminLogService.log(adminUser.getUsername(), "CREATE_COURSE", logDetails);
 				request.getSession().setAttribute("successMessage", "Neue Lehrgangs-Vorlage erfolgreich erstellt.");
 			} else {
 				request.getSession().setAttribute("errorMessage", "Fehler beim Erstellen der Vorlage.");
@@ -158,12 +127,10 @@ public class AdminCourseServlet extends HttpServlet {
 		User adminUser = (User) req.getSession().getAttribute("user");
 		try {
 			int courseId = Integer.parseInt(req.getParameter("id"));
-			logger.warn("Attempting to delete course with ID: {}", courseId);
 			Course courseToDelete = courseDAO.getCourseById(courseId);
 			String courseName = (courseToDelete != null) ? courseToDelete.getName() : "N/A";
-
 			if (courseDAO.deleteCourse(courseId)) {
-				AdminLogService.log(adminUser.getUsername(), "DELETE_COURSE",
+				adminLogService.log(adminUser.getUsername(), "DELETE_COURSE",
 						"Lehrgangs-Vorlage '" + courseName + "' (ID: " + courseId
 								+ ") und alle zugehörigen Meetings, Anhänge und Qualifikationen gelöscht.");
 				req.getSession().setAttribute("successMessage", "Lehrgangs-Vorlage erfolgreich gelöscht.");
@@ -171,7 +138,6 @@ public class AdminCourseServlet extends HttpServlet {
 				req.getSession().setAttribute("errorMessage", "Vorlage konnte nicht gelöscht werden.");
 			}
 		} catch (NumberFormatException e) {
-			logger.error("Invalid course ID format for deletion.", e);
 			req.getSession().setAttribute("errorMessage", "Ungültige ID für Löschvorgang.");
 		}
 		resp.sendRedirect(req.getContextPath() + "/admin/lehrgaenge");
@@ -182,25 +148,21 @@ public class AdminCourseServlet extends HttpServlet {
 		try {
 			int courseId = Integer.parseInt(req.getParameter("courseId"));
 			int minMeetings = Integer.parseInt(req.getParameter("minMeetings"));
-
 			int updatedCount = userQualificationsDAO.batchGrantQualifications(courseId, minMeetings);
-
 			if (updatedCount >= 0) {
 				Course course = courseDAO.getCourseById(courseId);
 				String courseName = course != null ? course.getName() : "ID " + courseId;
 				String logDetails = String.format(
 						"Batch-Qualifikation für '%s' an %d Benutzer vergeben (min. %d Meetings).", courseName,
 						updatedCount, minMeetings);
-				AdminLogService.log(adminUser.getUsername(), "BATCH_GRANT_QUALIFICATION", logDetails);
+				adminLogService.log(adminUser.getUsername(), "BATCH_GRANT_QUALIFICATION", logDetails);
 				req.getSession().setAttribute("successMessage",
 						"Qualifikationen wurden erfolgreich an " + updatedCount + " Benutzer vergeben.");
 			} else {
 				req.getSession().setAttribute("errorMessage", "Qualifikationen konnten nicht vergeben werden.");
 			}
-
 		} catch (NumberFormatException e) {
 			req.getSession().setAttribute("errorMessage", "Ungültige Kurs-ID oder Anzahl der Meetings.");
-			logger.error("Error in handleGrantQualifications due to number format", e);
 		}
 		resp.sendRedirect(req.getContextPath() + "/admin/lehrgaenge");
 	}

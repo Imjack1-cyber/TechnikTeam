@@ -6,17 +6,39 @@
 
 	<display-name>TechnikTeam Web Application</display-name>
 
+	<listener>
+		<listener-class>de.technikteam.listener.ApplicationInitializerListener</listener-class>
+	</listener>
+	<listener>
+		<listener-class>de.technikteam.config.GuiceConfig</listener-class>
+	</listener>
+	<listener>
+		<listener-class>de.technikteam.listener.AppContextListener</listener-class>
+	</listener>
+	<listener>
+		<listener-class>de.technikteam.listener.SessionListener</listener-class>
+	</listener>
+
+	<filter>
+		<filter-name>guiceFilter</filter-name>
+		<filter-class>com.google.inject.servlet.GuiceFilter</filter-class>
+		<async-supported>true</async-supported>
+	</filter>
+	<filter-mapping>
+		<filter-name>guiceFilter</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+
 	<session-config>
 		<session-timeout>30</session-timeout>
 		<cookie-config>
 			<http-only>true</http-only>
-			<!-- For production, secure should be true. Kept as-is for local dev compatibility. -->
 			<secure>false</secure>
 		</cookie-config>
 	</session-config>
 
 	<welcome-file-list>
-		<welcome-file>/views/auth/login.jsp</welcome-file>
+		<welcome-file>/</welcome-file>
 	</welcome-file-list>
 
 	<jsp-config>
@@ -27,7 +49,6 @@
 		</jsp-property-group>
 	</jsp-config>
 
-	<!-- Custom Error Pages -->
 	<error-page>
 		<error-code>400</error-code>
 		<location>/views/error/error400.jsp</location>
@@ -56,8 +77,4 @@
 		<exception-type>java.lang.Throwable</exception-type>
 		<location>/views/error/error500.jsp</location>
 	</error-page>
-	<error-page>
-		<location>/views/error/error_generic.jsp</location>
-	</error-page>
-
 </web-app>

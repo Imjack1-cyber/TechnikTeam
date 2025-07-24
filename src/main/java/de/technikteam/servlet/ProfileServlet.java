@@ -1,11 +1,12 @@
 package de.technikteam.servlet;
 
 import com.google.gson.Gson;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.*;
 import de.technikteam.model.*;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -19,26 +20,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-@WebServlet("/profil")
+@Singleton
 public class ProfileServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(ProfileServlet.class);
-	private EventDAO eventDAO;
-	private UserQualificationsDAO qualificationsDAO;
-	private UserDAO userDAO;
-	private AchievementDAO achievementDAO;
-	private PasskeyDAO passkeyDAO;
-	private ProfileChangeRequestDAO requestDAO;
+	private final EventDAO eventDAO;
+	private final UserQualificationsDAO qualificationsDAO;
+	private final UserDAO userDAO;
+	private final AchievementDAO achievementDAO;
+	private final PasskeyDAO passkeyDAO;
+	private final ProfileChangeRequestDAO requestDAO;
 	private final Gson gson = new Gson();
 
-	@Override
-	public void init() {
-		eventDAO = new EventDAO();
-		qualificationsDAO = new UserQualificationsDAO();
-		userDAO = new UserDAO();
-		achievementDAO = new AchievementDAO();
-		passkeyDAO = new PasskeyDAO();
-		requestDAO = new ProfileChangeRequestDAO();
+	@Inject
+	public ProfileServlet(EventDAO eventDAO, UserQualificationsDAO qualificationsDAO, UserDAO userDAO,
+			AchievementDAO achievementDAO, PasskeyDAO passkeyDAO, ProfileChangeRequestDAO requestDAO) {
+		this.eventDAO = eventDAO;
+		this.qualificationsDAO = qualificationsDAO;
+		this.userDAO = userDAO;
+		this.achievementDAO = achievementDAO;
+		this.passkeyDAO = passkeyDAO;
+		this.requestDAO = requestDAO;
 	}
 
 	@Override
@@ -102,7 +104,6 @@ public class ProfileServlet extends HttpServlet {
 		response.setCharacterEncoding("UTF-8");
 
 		Map<String, String> changes = new HashMap<>();
-
 		String newEmail = request.getParameter("email");
 		if (!Objects.equals(currentUser.getEmail(), newEmail)) {
 			changes.put("email", newEmail);
@@ -115,8 +116,7 @@ public class ProfileServlet extends HttpServlet {
 				newClassYear = Integer.parseInt(classYearParam);
 			}
 		} catch (NumberFormatException e) {
-			// keep 0
-		}
+			/* keep 0 */ }
 		if (currentUser.getClassYear() != newClassYear) {
 			changes.put("classYear", String.valueOf(newClassYear));
 		}

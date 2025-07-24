@@ -1,124 +1,78 @@
 package de.technikteam.dao;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Timestamp;
-import java.sql.Types;
-import java.util.ArrayList;
-import java.util.List;
-
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+import de.technikteam.model.Meeting;
+import de.technikteam.model.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import de.technikteam.model.Meeting;
-import de.technikteam.model.User;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
-/**
- * Data Access Object for all Meeting-related database operations. It handles
- * CRUD for individual, schedulable course meetings stored in the `meetings`
- * table. It's distinct from CourseDAO, which manages the parent course
- * templates.
- */
+@Singleton
 public class MeetingDAO {
 	private static final Logger logger = LogManager.getLogger(MeetingDAO.class);
+	private final DatabaseManager dbManager;
 
-	/**
-	 * Creates a new meeting in the database, linked to a parent course.
-	 * 
-	 * @param meeting The Meeting object to create.
-	 * @return The ID of the newly created meeting, or 0 on failure.
-	 */
+	@Inject
+	public MeetingDAO(DatabaseManager dbManager) {
+		this.dbManager = dbManager;
+	}
+
 	public int createMeeting(Meeting meeting) {
 		String sql = "INSERT INTO meetings (course_id, name, meeting_datetime, end_datetime, leader_user_id, description, location) VALUES (?, ?, ?, ?, ?, ?, ?)";
-		logger.debug("Attempting to create meeting '{}' for course ID {}", meeting.getName(), meeting.getCourseId());
-		try (Connection conn = DatabaseManager.getConnection();
+		try (Connection conn = dbManager.getConnection();
 				PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
 			pstmt.setInt(1, meeting.getCourseId());
 			pstmt.setString(2, meeting.getName());
 			pstmt.setTimestamp(3, Timestamp.valueOf(meeting.getMeetingDateTime()));
-			if (meeting.getEndDateTime() != null) {
+			if (meeting.getEndDateTime() != null)
 				pstmt.setTimestamp(4, Timestamp.valueOf(meeting.getEndDateTime()));
-			} else {
+			else
 				pstmt.setNull(4, Types.TIMESTAMP);
-			}
-			if (meeting.getLeaderUserId() > 0) {
+			if (meeting.getLeaderUserId() > 0)
 				pstmt.setInt(5, meeting.getLeaderUserId());
-			} else {
+			else
 				pstmt.setNull(5, Types.INTEGER);
-			}
 			pstmt.setString(6, meeting.getDescription());
 			pstmt.setString(7, meeting.getLocation());
-
 			int affectedRows = pstmt.executeUpdate();
 			if (affectedRows > 0) {
 				try (ResultSet rs = pstmt.getGeneratedKeys()) {
-					if (rs.next()) {
-						int newId = rs.getInt(1);
-						logger.info("Successfully created meeting '{}' with new ID {}", meeting.getName(), newId);
-						return newId;
-					}
+					if (rs.next())
+						return rs.getInt(1);
 				}
 			}
 		} catch (SQLException e) {
 			logger.error("SQL error creating meeting: {}", meeting.getName(), e);
 		}
-		return 0; 
+		return 0;
 	}
 
-	/**
-	 * Fetches a single meeting by its ID, joining with the courses and users tables
-	 * to get the parent course name and leader's username.
-	 * 
-	 * @param meetingId The ID of the meeting to retrieve.
-	 * @return A Meeting object, or null if not found.
-	 */
 	public Meeting getMeetingById(int meetingId) {
-		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username " + "FROM meetings m "
-				+ "JOIN courses c ON m.course_id = c.id "
-				+ "LEFT JOIN users u ON m.leader_user_id = u.id WHERE m.id = ?";
-		logger.debug("Fetching meeting by ID: {}", meetingId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
+		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id WHERE m.id = ?";
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, meetingId);
 			try (ResultSet rs = pstmt.executeQuery()) {
-				if (rs.next()) {
-					logger.info("Found meeting with ID: {}", meetingId);
+				if (rs.next())
 					return mapResultSetToMeeting(rs);
-				}
 			}
 		} catch (SQLException e) {
 			logger.error("SQL error fetching meeting by ID: {}", meetingId, e);
 		}
-		logger.warn("No meeting found with ID: {}", meetingId);
 		return null;
 	}
 
-	/**
-	 * Fetches all scheduled meetings that belong to a specific parent course.
-	 * Crucial for building the qualification matrix view.
-	 * 
-	 * @param courseId The ID of the parent course.
-	 * @return A list of Meeting objects, sorted by date.
-	 */
 	public List<Meeting> getMeetingsForCourse(int courseId) {
 		List<Meeting> meetings = new ArrayList<>();
-		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username "
-				+ "FROM meetings m JOIN courses c ON m.course_id = c.id "
-				+ "LEFT JOIN users u ON m.leader_user_id = u.id "
-				+ "WHERE m.course_id = ? ORDER BY meeting_datetime ASC";
-		logger.debug("Fetching all meetings for course ID: {}", courseId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
+		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id WHERE m.course_id = ? ORDER BY meeting_datetime ASC";
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, courseId);
 			try (ResultSet rs = pstmt.executeQuery()) {
-				while (rs.next()) {
+				while (rs.next())
 					meetings.add(mapResultSetToMeeting(rs));
-				}
-				logger.info("Found {} meetings for course ID: {}", meetings.size(), courseId);
 			}
 		} catch (SQLException e) {
 			logger.error("SQL error fetching meetings for course ID: {}", courseId, e);
@@ -126,140 +80,78 @@ public class MeetingDAO {
 		return meetings;
 	}
 
-	/**
-	 * Fetches all meetings from the database, typically for an admin list view.
-	 * Includes the parent course name and leader's username.
-	 * 
-	 * @return A list of all Meeting objects.
-	 */
 	public List<Meeting> getAllMeetings() {
 		List<Meeting> meetings = new ArrayList<>();
-		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username " + "FROM meetings m "
-				+ "JOIN courses c ON m.course_id = c.id " + "LEFT JOIN users u ON m.leader_user_id = u.id "
-				+ "ORDER BY m.meeting_datetime DESC";
-		logger.debug("Fetching all meetings from the database.");
-		try (Connection conn = DatabaseManager.getConnection();
+		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id ORDER BY m.meeting_datetime DESC";
+		try (Connection conn = dbManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
-
-			while (rs.next()) {
+			while (rs.next())
 				meetings.add(mapResultSetToMeeting(rs));
-			}
-			logger.info("Fetched a total of {} meetings.", meetings.size());
 		} catch (SQLException e) {
 			logger.error("SQL error fetching all meetings.", e);
 		}
 		return meetings;
 	}
 
-	/**
-	 * Helper method to map a row from a ResultSet to a Meeting object.
-	 * 
-	 * @param rs The ResultSet to map.
-	 * @return A populated Meeting object.
-	 * @throws SQLException If a database error occurs.
-	 */
 	private Meeting mapResultSetToMeeting(ResultSet rs) throws SQLException {
 		Meeting meeting = new Meeting();
 		meeting.setId(rs.getInt("id"));
 		meeting.setCourseId(rs.getInt("course_id"));
 		meeting.setName(rs.getString("name"));
 		meeting.setMeetingDateTime(rs.getTimestamp("meeting_datetime").toLocalDateTime());
-		if (rs.getTimestamp("end_datetime") != null) {
+		if (rs.getTimestamp("end_datetime") != null)
 			meeting.setEndDateTime(rs.getTimestamp("end_datetime").toLocalDateTime());
-		}
 		meeting.setLeaderUserId(rs.getInt("leader_user_id"));
 		meeting.setDescription(rs.getString("description"));
 		meeting.setLocation(rs.getString("location"));
 		meeting.setParentCourseName(rs.getString("parent_course_name"));
 		meeting.setLeaderUsername(rs.getString("leader_username"));
-
 		return meeting;
 	}
 
-	/**
-	 * Updates an existing meeting in the database.
-	 * 
-	 * @param meeting The Meeting object with updated data.
-	 * @return true if the update was successful.
-	 */
 	public boolean updateMeeting(Meeting meeting) {
 		String sql = "UPDATE meetings SET name = ?, meeting_datetime = ?, end_datetime = ?, leader_user_id = ?, description = ?, location = ? WHERE id = ?";
-		logger.debug("Attempting to update meeting ID: {}", meeting.getId());
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, meeting.getName());
 			pstmt.setTimestamp(2, Timestamp.valueOf(meeting.getMeetingDateTime()));
-			if (meeting.getEndDateTime() != null) {
+			if (meeting.getEndDateTime() != null)
 				pstmt.setTimestamp(3, Timestamp.valueOf(meeting.getEndDateTime()));
-			} else {
+			else
 				pstmt.setNull(3, Types.TIMESTAMP);
-			}
-			if (meeting.getLeaderUserId() > 0) {
+			if (meeting.getLeaderUserId() > 0)
 				pstmt.setInt(4, meeting.getLeaderUserId());
-			} else {
+			else
 				pstmt.setNull(4, Types.INTEGER);
-			}
 			pstmt.setString(5, meeting.getDescription());
 			pstmt.setString(6, meeting.getLocation());
 			pstmt.setInt(7, meeting.getId());
-
-			boolean success = pstmt.executeUpdate() > 0;
-			if (success)
-				logger.info("Successfully updated meeting with ID: {}", meeting.getId());
-			return success;
-
+			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
 			logger.error("SQL error updating meeting ID: {}", meeting.getId(), e);
 			return false;
 		}
 	}
 
-	/**
-	 * Deletes a meeting from the database.
-	 * 
-	 * @param meetingId The ID of the meeting to delete.
-	 * @return true if deletion was successful.
-	 */
 	public boolean deleteMeeting(int meetingId) {
 		String sql = "DELETE FROM meetings WHERE id = ?";
-		logger.warn("Attempting to delete meeting with ID: {}", meetingId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, meetingId);
-			boolean success = pstmt.executeUpdate() > 0;
-			if (success)
-				logger.info("Successfully deleted meeting with ID: {}", meetingId);
-			return success;
+			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
 			logger.error("SQL error deleting meeting ID: {}", meetingId, e);
 			return false;
 		}
 	}
 
-	/**
-	 * Fetches all upcoming meetings, enriched with the attendance status for a
-	 * specific user (ANGEMELDET, ABGEMELDET, OFFEN).
-	 * 
-	 * @param user The currently logged-in user.
-	 * @return A list of upcoming Meeting objects with user-specific status.
-	 */
 	public List<Meeting> getUpcomingMeetingsForUser(User user) {
 		List<Meeting> meetings = new ArrayList<>();
-		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username, ma.attended "
-				+ "FROM meetings m " + "JOIN courses c ON m.course_id = c.id "
-				+ "LEFT JOIN users u ON m.leader_user_id = u.id "
-				+ "LEFT JOIN meeting_attendance ma ON m.id = ma.meeting_id AND ma.user_id = ? "
-				+ "WHERE m.meeting_datetime >= NOW() ORDER BY m.meeting_datetime ASC";
-
-		logger.debug("Fetching upcoming meetings for user ID: {}", user.getId());
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
+		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username, ma.attended FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id LEFT JOIN meeting_attendance ma ON m.id = ma.meeting_id AND ma.user_id = ? WHERE m.meeting_datetime >= NOW() ORDER BY m.meeting_datetime ASC";
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, user.getId());
 			try (ResultSet rs = pstmt.executeQuery()) {
 				while (rs.next()) {
 					Meeting meeting = mapResultSetToMeeting(rs);
-
 					if (rs.getObject("attended") != null) {
 						meeting.setUserAttendanceStatus(rs.getBoolean("attended") ? "ANGEMELDET" : "ABGEMELDET");
 					} else {
@@ -267,7 +159,6 @@ public class MeetingDAO {
 					}
 					meetings.add(meeting);
 				}
-				logger.info("Found {} upcoming meetings for user ID: {}", meetings.size(), user.getId());
 			}
 		} catch (SQLException e) {
 			logger.error("SQL error fetching upcoming meetings for user {}", user.getId(), e);
@@ -275,19 +166,10 @@ public class MeetingDAO {
 		return meetings;
 	}
 
-	/**
-	 * Fetches all upcoming meetings. This is a simplified query for use in the
-	 * calendar/iCal feeds.
-	 * 
-	 * @return A list of all relevant Meeting objects.
-	 */
 	public List<Meeting> getAllUpcomingMeetings() {
 		List<Meeting> meetings = new ArrayList<>();
-		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username " + "FROM meetings m "
-				+ "JOIN courses c ON m.course_id = c.id " + "LEFT JOIN users u ON m.leader_user_id = u.id "
-				+ "WHERE m.meeting_datetime >= NOW() - INTERVAL 1 DAY ORDER BY m.meeting_datetime ASC";
-		logger.debug("Fetching all upcoming meetings for calendar feed.");
-		try (Connection conn = DatabaseManager.getConnection();
+		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id WHERE m.meeting_datetime >= NOW() - INTERVAL 1 DAY ORDER BY m.meeting_datetime ASC";
+		try (Connection conn = dbManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
 			while (rs.next()) {
@@ -299,24 +181,17 @@ public class MeetingDAO {
 		return meetings;
 	}
 
-	/**
-	 * Checks if a given user is registered as attended for a specific meeting.
-	 * @param meetingId The ID of the meeting.
-	 * @param userId The ID of the user.
-	 * @return true if the user has an attendance record, false otherwise.
-	 */
 	public boolean isUserAssociatedWithMeeting(int meetingId, int userId) {
-	    String sql = "SELECT 1 FROM meeting_attendance WHERE meeting_id = ? AND user_id = ?";
-	    try (Connection conn = DatabaseManager.getConnection();
-	         PreparedStatement pstmt = conn.prepareStatement(sql)) {
-	        pstmt.setInt(1, meetingId);
-	        pstmt.setInt(2, userId);
-	        try (ResultSet rs = pstmt.executeQuery()) {
-	            return rs.next();
-	        }
-	    } catch (SQLException e) {
-	        logger.error("Error checking user association for meeting {} and user {}", meetingId, userId, e);
-	        return false;
-	    }
+		String sql = "SELECT 1 FROM meeting_attendance WHERE meeting_id = ? AND user_id = ?";
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, meetingId);
+			pstmt.setInt(2, userId);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				return rs.next();
+			}
+		} catch (SQLException e) {
+			logger.error("Error checking user association for meeting {} and user {}", meetingId, userId, e);
+			return false;
+		}
 	}
 }

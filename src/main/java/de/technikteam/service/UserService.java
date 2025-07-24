@@ -1,113 +1,80 @@
 package de.technikteam.service;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.DatabaseManager;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 
-/**
- * Service layer for handling complex business logic related to Users,
- * including transactional operations that span multiple DAO calls.
- */
+@Singleton
 public class UserService {
-    private static final Logger logger = LogManager.getLogger(UserService.class);
-    private final UserDAO userDAO;
+	private static final Logger logger = LogManager.getLogger(UserService.class);
 
-    public UserService() {
-        this.userDAO = new UserDAO();
-    }
+	private final DatabaseManager dbManager;
+	private final UserDAO userDAO;
+	private final AdminLogService adminLogService;
 
-    /**
-     * Creates a new user and assigns permissions in a single database transaction.
-     *
-     * @param user          The User object to create.
-     * @param password      The plain-text password for the new user.
-     * @param permissionIds An array of permission IDs to assign to the user.
-     * @return The ID of the newly created user, or 0 on failure.
-     */
-    public int createUserWithPermissions(User user, String password, String[] permissionIds) {
-        Connection conn = null;
-        try {
-            conn = DatabaseManager.getConnection();
-            conn.setAutoCommit(false);
+	@Inject
+	public UserService(DatabaseManager dbManager, UserDAO userDAO, AdminLogService adminLogService) {
+		this.dbManager = dbManager;
+		this.userDAO = userDAO;
+		this.adminLogService = adminLogService;
+	}
 
-            int newUserId = userDAO.createUser(user, password, conn);
-            if (newUserId > 0) {
-                userDAO.updateUserPermissions(newUserId, permissionIds, conn);
-                conn.commit();
-                logger.info("Transaction for creating user '{}' committed successfully.", user.getUsername());
-                return newUserId;
-            } else {
-                throw new SQLException("User creation returned an invalid ID.");
-            }
-        } catch (Exception e) {
-            logger.error("Error in create user transaction for username '{}'. Rolling back.", user.getUsername(), e);
-            if (conn != null) {
-                try {
-                    conn.rollback();
-                    logger.info("Transaction rolled back successfully.");
-                } catch (SQLException ex) {
-                    logger.error("Failed to rollback transaction.", ex);
-                }
-            }
-            return 0;
-        } finally {
-            if (conn != null) {
-                try {
-                    conn.setAutoCommit(true);
-                    conn.close();
-                } catch (SQLException ex) {
-                    logger.error("Failed to close connection.", ex);
-                }
-            }
-        }
-    }
+	public int createUserWithPermissions(User user, String password, String[] permissionIds, String adminUsername) {
+		try (Connection conn = dbManager.getConnection()) {
+			conn.setAutoCommit(false);
+			try {
+				int newUserId = userDAO.createUser(user, password, conn);
+				if (newUserId > 0) {
+					userDAO.updateUserPermissions(newUserId, permissionIds, conn);
+					conn.commit();
+					logger.info("Transaction for creating user '{}' committed successfully.", user.getUsername());
 
-    /**
-     * Updates a user's profile information and their permissions in a single transaction.
-     *
-     * @param user           The User object with updated profile data.
-     * @param permissionIds  The complete new set of permission IDs for the user.
-     * @return true if both operations were successful, false otherwise.
-     */
-    public boolean updateUserWithPermissions(User user, String[] permissionIds) {
-        Connection conn = null;
-        boolean profileUpdated = false;
-        boolean permissionsUpdated = false;
-        try {
-            conn = DatabaseManager.getConnection();
-            conn.setAutoCommit(false);
+					String logDetails = String.format(
+							"Benutzer '%s' (ID: %d, Rolle-ID: %d, Klasse: %s) erstellt und Berechtigungen zugewiesen.",
+							user.getUsername(), newUserId, user.getRoleId(), user.getClassName());
+					adminLogService.log(adminUsername, "CREATE_USER", logDetails);
 
-            profileUpdated = userDAO.updateUser(user, conn);
-            permissionsUpdated = userDAO.updateUserPermissions(user.getId(), permissionIds, conn);
+					return newUserId;
+				} else {
+					throw new SQLException("User creation returned an invalid ID.");
+				}
+			} catch (Exception e) {
+				conn.rollback();
+				logger.error("Transaction rolled back for createUserWithPermissions for username '{}'.",
+						user.getUsername(), e);
+				return 0;
+			}
+		} catch (SQLException e) {
+			logger.error("Failed to get connection for createUserWithPermissions.", e);
+			return 0;
+		}
+	}
 
-            conn.commit();
-            logger.info("Transaction for updating user '{}' committed successfully.", user.getUsername());
-            return profileUpdated || permissionsUpdated;
-
-        } catch (Exception e) {
-            logger.error("Error in update user transaction for user '{}'. Rolling back.", user.getUsername(), e);
-            if (conn != null) {
-                try {
-                    conn.rollback();
-                    logger.info("Transaction rolled back successfully.");
-                } catch (SQLException ex) {
-                    logger.error("Failed to rollback transaction.", ex);
-                }
-            }
-            return false;
-        } finally {
-            if (conn != null) {
-                try {
-                    conn.setAutoCommit(true);
-                    conn.close();
-                } catch (SQLException ex) {
-                    logger.error("Failed to close connection.", ex);
-                }
-            }
-        }
-    }
+	public boolean updateUserWithPermissions(User user, String[] permissionIds) {
+		try (Connection conn = dbManager.getConnection()) {
+			conn.setAutoCommit(false);
+			try {
+				boolean profileUpdated = userDAO.updateUser(user, conn);
+				boolean permissionsUpdated = userDAO.updateUserPermissions(user.getId(), permissionIds, conn);
+				conn.commit();
+				logger.info("Transaction for updating user '{}' committed successfully.", user.getUsername());
+				return profileUpdated || permissionsUpdated;
+			} catch (Exception e) {
+				conn.rollback();
+				logger.error("Transaction rolled back for updateUserWithPermissions for user '{}'.", user.getUsername(),
+						e);
+				return false;
+			}
+		} catch (SQLException e) {
+			logger.error("Failed to get connection for updateUserWithPermissions.", e);
+			return false;
+		}
+	}
 }

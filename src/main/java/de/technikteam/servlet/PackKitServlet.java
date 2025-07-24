@@ -1,12 +1,11 @@
 package de.technikteam.servlet;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.InventoryKitDAO;
-import de.technikteam.dao.StorageDAO;
 import de.technikteam.model.InventoryKit;
 import de.technikteam.model.InventoryKitItem;
-import de.technikteam.model.StorageItem;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -15,18 +14,17 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Optional;
 
-@WebServlet("/pack-kit")
+@Singleton
 public class PackKitServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(PackKitServlet.class);
 
-	private InventoryKitDAO kitDAO;
+	private final InventoryKitDAO kitDAO;
 
-	@Override
-	public void init() {
-		kitDAO = new InventoryKitDAO();
+	@Inject
+	public PackKitServlet(InventoryKitDAO kitDAO) {
+		this.kitDAO = kitDAO;
 	}
 
 	@Override

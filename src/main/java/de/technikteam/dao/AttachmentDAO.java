@@ -1,5 +1,7 @@
 package de.technikteam.dao;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.model.Attachment;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -11,12 +13,15 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * A unified DAO for managing file attachments for various parent entities
- * (e.g., Events, Meetings), interacting with the generic `attachments` table.
- */
+@Singleton
 public class AttachmentDAO {
 	private static final Logger logger = LogManager.getLogger(AttachmentDAO.class);
+	private final DatabaseManager dbManager;
+
+	@Inject
+	public AttachmentDAO(DatabaseManager dbManager) {
+		this.dbManager = dbManager;
+	}
 
 	private Attachment mapResultSetToAttachment(ResultSet rs) throws SQLException {
 		Attachment att = new Attachment();
@@ -31,9 +36,7 @@ public class AttachmentDAO {
 	}
 
 	public boolean addAttachment(Attachment attachment) {
-		logger.debug("Adding attachment '{}' to {} ID {} (manages its own connection)", attachment.getFilename(),
-				attachment.getParentType(), attachment.getParentId());
-		try (Connection conn = DatabaseManager.getConnection()) {
+		try (Connection conn = dbManager.getConnection()) {
 			return addAttachment(attachment, conn);
 		} catch (SQLException e) {
 			logger.error("Error adding attachment to {} ID {}", attachment.getParentType(), attachment.getParentId(),
@@ -60,7 +63,7 @@ public class AttachmentDAO {
 		if (!"ADMIN".equalsIgnoreCase(userRole)) {
 			sql += " AND required_role = 'NUTZER'";
 		}
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, parentType);
 			pstmt.setInt(2, parentId);
 			try (ResultSet rs = pstmt.executeQuery()) {
@@ -76,7 +79,7 @@ public class AttachmentDAO {
 
 	public Attachment getAttachmentById(int attachmentId) {
 		String sql = "SELECT * FROM attachments WHERE id = ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, attachmentId);
 			try (ResultSet rs = pstmt.executeQuery()) {
 				if (rs.next()) {
@@ -91,7 +94,7 @@ public class AttachmentDAO {
 
 	public boolean deleteAttachment(int attachmentId) {
 		String sql = "DELETE FROM attachments WHERE id = ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, attachmentId);
 			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {

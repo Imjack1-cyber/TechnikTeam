@@ -2,6 +2,7 @@ package de.technikteam.websocket;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import com.google.inject.Inject;
 import de.technikteam.config.Permissions;
 import de.technikteam.dao.FileDAO;
 import de.technikteam.model.User;
@@ -15,25 +16,24 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.util.Map;
 
-/**
- * WebSocket endpoint for real-time collaborative document editing. This version
- * uses a full-text synchronization model.
- */
-@ServerEndpoint(value = "/ws/editor/{fileId}", configurator = GetHttpSessionConfigurator.class)
+@ServerEndpoint(value = "/ws/editor/{fileId}", configurator = GuiceAwareServerEndpointConfigurator.class)
 public class DocumentEditorSocket {
 
 	private static final Logger logger = LogManager.getLogger(DocumentEditorSocket.class);
-	private static final FileDAO fileDAO = new FileDAO();
+	private static FileDAO fileDAO;
 	private static final Gson gson = new Gson();
+
+	@Inject
+	public static void setDependencies(FileDAO fileDAO) {
+		DocumentEditorSocket.fileDAO = fileDAO;
+	}
 
 	@OnOpen
 	public void onOpen(Session session, @PathParam("fileId") String fileId, EndpointConfig config) throws IOException {
 		User user = (User) config.getUserProperties().get(GetHttpSessionConfigurator.USER_PROPERTY_KEY);
 
 		if (user == null || (!user.getPermissions().contains(Permissions.FILE_UPDATE)
-				&& !user.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL))) {
-			logger.warn("Unauthorized WebSocket connection attempt for editor on file ID {}. User: {}", fileId,
-					user != null ? user.getUsername() : "GUEST");
+				&& !user.getPermissions().contains("ACCESS_ADMIN_PANEL"))) {
 			session.close(new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "Permission denied."));
 			return;
 		}
@@ -49,6 +49,7 @@ public class DocumentEditorSocket {
 			return;
 
 		try {
+			@SuppressWarnings("unchecked")
 			Map<String, String> messageMap = gson.fromJson(message, Map.class);
 			String type = messageMap.get("type");
 			String content = messageMap.get("payload");
@@ -68,23 +69,14 @@ public class DocumentEditorSocket {
 			de.technikteam.model.File dbFile = fileDAO.getFileById(fileId);
 
 			if (dbFile != null) {
-				// Sanitize the content on the server-side to prevent stored XSS
 				String sanitizedContent = MarkdownUtil.sanitize(content);
-
-				// Persist the changes to the disk
 				if (fileDAO.updateFileContent(dbFile.getFilepath(), sanitizedContent)) {
-					fileDAO.touchFileRecord(fileId); // Update timestamp
-
-					// Broadcast the full sanitized content to other connected clients
+					fileDAO.touchFileRecord(fileId);
 					Map<String, String> broadcastPayload = Map.of("type", "content_update", "payload",
 							sanitizedContent);
 					DocumentSessionManager.getInstance().broadcastExcept(fileIdStr, gson.toJson(broadcastPayload),
 							originSession);
-				} else {
-					logger.error("Failed to save file content to disk for file ID: {}", fileIdStr);
 				}
-			} else {
-				logger.warn("Received content update for non-existent file ID: {}", fileIdStr);
 			}
 		} catch (NumberFormatException e) {
 			logger.error("Invalid fileId '{}' received in WebSocket message.", fileIdStr);
@@ -93,9 +85,6 @@ public class DocumentEditorSocket {
 
 	@OnClose
 	public void onClose(Session session, @PathParam("fileId") String fileId) {
-		User user = (User) session.getUserProperties().get(GetHttpSessionConfigurator.USER_PROPERTY_KEY);
-		String username = (user != null) ? user.getUsername() : "[unauthenticated]";
-		logger.info("Editor WebSocket session for user '{}' on file {} closed.", username, fileId);
 		DocumentSessionManager.getInstance().removeSession(fileId, session);
 	}
 

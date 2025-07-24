@@ -1,50 +1,58 @@
 package de.technikteam.listener;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import de.technikteam.dao.DatabaseManager;
+import de.technikteam.service.ConfigurationService;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
 import jakarta.servlet.annotation.WebListener;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.output.MigrateResult;
 
-/**
- * An application lifecycle listener that runs when the application starts. It
- * performs two critical initialization tasks: 1. Manually loads the MySQL JDBC
- * driver to ensure it's available for the application. This is a robust
- * practice that prevents connectivity issues if the server's automatic service
- * discovery fails. 2. Explicitly triggers the initialization of the
- * `DatabaseManager` and its connection pool, and ensures the pool is closed on
- * application shutdown.
- */
 @WebListener
 public class ApplicationInitializerListener implements ServletContextListener {
 
-	private static final Logger logger = LogManager.getLogger(ApplicationInitializerListener.class);
+    private static final Logger logger = LogManager.getLogger(ApplicationInitializerListener.class);
 
-	@Override
-	public void contextInitialized(ServletContextEvent sce) {
-		logger.info("Application Initializer: Context is being initialized...");
+    @Override
+    public void contextInitialized(ServletContextEvent sce) {
+        logger.info("Application Initializer: Context is being initialized...");
 
-		try {
-			logger.info("Attempting to manually load MySQL JDBC driver...");
-			Class.forName("com.mysql.cj.jdbc.Driver");
-			logger.info("MySQL JDBC driver loaded successfully.");
+        try {
+            ConfigurationService configService = new ConfigurationService();
 
-			logger.info("Triggering database connection pool initialization...");
-			DatabaseManager.initDataSource();
+            logger.info("Initializing Flyway for database migration...");
+            Flyway flyway = Flyway.configure()
+                    .dataSource(
+                            configService.getProperty("db.url"),
+                            configService.getProperty("db.user"),
+                            configService.getProperty("db.password")
+                    )
+                    .locations("classpath:db/migration")
+                    .loggers("slf4j")
+                    .baselineOnMigrate(true)
+                    .load();
 
-		} catch (ClassNotFoundException e) {
-			logger.fatal("FATAL: MySQL JDBC driver not found in classpath. Application will fail.", e);
-			throw new RuntimeException("Failed to load JDBC driver", e);
-		} catch (Exception e) {
-			logger.fatal("FATAL: Database pool could not be initialized. Application startup aborted.", e);
-			throw new RuntimeException("Failed to initialize database pool", e);
-		}
-	}
+            logger.info("Starting database migration...");
+            MigrateResult result = flyway.migrate();
+            
+            // CORRECTED: Switched from direct field access to the correct getter method as recommended by the compiler.
+            logger.info("Flyway migration finished. {} migrations applied in {} ms.", result.migrationsExecuted, result.getTotalMigrationTime());
 
-	@Override
-	public void contextDestroyed(ServletContextEvent sce) {
-		logger.info("Application Initializer: Context is being destroyed.");
-		DatabaseManager.closeDataSource();
-	}
+            if (!result.success) {
+                logger.fatal("Flyway migration failed! Application startup aborted.");
+                throw new RuntimeException("Database migration failed. Check logs for details.");
+            }
+            logger.info("Database schema is up to date (Version: {}).", result.targetSchemaVersion);
+
+        } catch (Exception e) {
+            logger.fatal("FATAL: A critical error occurred during application initialization.", e);
+            throw new RuntimeException("Failed to initialize application.", e);
+        }
+    }
+
+    @Override
+    public void contextDestroyed(ServletContextEvent sce) {
+        logger.info("Application Initializer: Context is being destroyed.");
+    }
 }

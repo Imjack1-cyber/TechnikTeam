@@ -2,11 +2,12 @@ package de.technikteam.servlet;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.EventChatDAO;
 import de.technikteam.model.EventChatMessage;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -17,26 +18,19 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * Provides a JSON API to fetch the historical messages for a given event chat.
- * New messages are handled by the EventChatSocket WebSocket.
- */
-@WebServlet("/api/event-chat")
+@Singleton
 public class EventChatApiServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(EventChatApiServlet.class);
-	private EventChatDAO chatDAO;
-	private Gson gson;
+	private final EventChatDAO chatDAO;
+	private final Gson gson;
 
-	@Override
-	public void init() {
-		chatDAO = new EventChatDAO();
-		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+	@Inject
+	public EventChatApiServlet(EventChatDAO chatDAO) {
+		this.chatDAO = chatDAO;
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
-	/**
-	 * Handles GET requests to fetch the message history for an event.
-	 */
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {

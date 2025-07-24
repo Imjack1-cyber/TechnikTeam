@@ -1,5 +1,7 @@
 package de.technikteam.servlet.admin.action;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.FeedbackSubmissionDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
@@ -12,8 +14,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
 
+@Singleton
 public class DeleteFeedbackAction implements Action {
-	private final FeedbackSubmissionDAO submissionDAO = new FeedbackSubmissionDAO();
+	private final FeedbackSubmissionDAO submissionDAO;
+	private final AdminLogService adminLogService;
+
+	@Inject
+	public DeleteFeedbackAction(FeedbackSubmissionDAO submissionDAO, AdminLogService adminLogService) {
+		this.submissionDAO = submissionDAO;
+		this.adminLogService = adminLogService;
+	}
 
 	@Override
 	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
@@ -27,13 +37,10 @@ public class DeleteFeedbackAction implements Action {
 		try {
 			int submissionId = Integer.parseInt(request.getParameter("submissionId"));
 			if (submissionDAO.deleteSubmission(submissionId)) {
-				AdminLogService.log(adminUser.getUsername(), "DELETE_FEEDBACK",
+				adminLogService.log(adminUser.getUsername(), "DELETE_FEEDBACK",
 						"Feedback-Eintrag mit ID " + submissionId + " gelöscht.");
-
-				// Broadcast the UI update to all connected admins
 				NotificationService.getInstance().broadcastUIUpdate("feedback_deleted",
 						Map.of("submissionId", submissionId));
-
 				return ApiResponse.success("Feedback erfolgreich gelöscht.", Map.of("deletedId", submissionId));
 			} else {
 				return ApiResponse.error("Fehler beim Löschen des Feedbacks.");

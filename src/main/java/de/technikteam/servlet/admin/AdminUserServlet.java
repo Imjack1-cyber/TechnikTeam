@@ -2,6 +2,8 @@ package de.technikteam.servlet.admin;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.PermissionDAO;
@@ -11,42 +13,40 @@ import de.technikteam.model.Event;
 import de.technikteam.model.Permission;
 import de.technikteam.model.Role;
 import de.technikteam.model.User;
-import de.technikteam.service.AdminLogService;
-import de.technikteam.util.CSRFUtil;
-import de.technikteam.util.NavigationRegistry;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-@WebServlet("/admin/mitglieder")
+@Singleton
 public class AdminUserServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminUserServlet.class);
 
-	private UserDAO userDAO;
-	private EventDAO eventDAO;
-	private RoleDAO roleDAO;
-	private PermissionDAO permissionDAO;
-	private Gson gson;
+	private final UserDAO userDAO;
+	private final EventDAO eventDAO;
+	private final RoleDAO roleDAO;
+	private final PermissionDAO permissionDAO;
+	private final Gson gson;
 
-	@Override
-	public void init() {
-		userDAO = new UserDAO();
-		eventDAO = new EventDAO();
-		roleDAO = new RoleDAO();
-		permissionDAO = new PermissionDAO();
-		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+	@Inject
+	public AdminUserServlet(UserDAO userDAO, EventDAO eventDAO, RoleDAO roleDAO, PermissionDAO permissionDAO) {
+		this.userDAO = userDAO;
+		this.eventDAO = eventDAO;
+		this.roleDAO = roleDAO;
+		this.permissionDAO = permissionDAO;
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
 	@Override
@@ -59,8 +59,6 @@ public class AdminUserServlet extends HttpServlet {
 		}
 
 		String action = request.getParameter("action") == null ? "list" : request.getParameter("action");
-		logger.debug("AdminUserServlet received GET with action: {}", action);
-
 		try {
 			switch (action) {
 			case "details":
@@ -74,7 +72,6 @@ public class AdminUserServlet extends HttpServlet {
 				break;
 			}
 		} catch (NumberFormatException e) {
-			logger.warn("Invalid ID format in GET request: {}", e.getMessage());
 			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Ungültige ID angegeben.");
 		} catch (Exception e) {
 			logger.error("Error in AdminUserServlet doGet", e);
@@ -83,18 +80,8 @@ public class AdminUserServlet extends HttpServlet {
 		}
 	}
 
-	@Override
-	protected void doPost(HttpServletRequest request, HttpServletResponse response)
-			throws IOException, ServletException {
-		// All POST actions are now handled by the FrontControllerServlet
-		logger.warn(
-				"Received POST request on AdminUserServlet, which should be handled by FrontControllerServlet. Redirecting.");
-		response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
-	}
-
 	private void listUsers(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		logger.info("Executing listUsers method.");
 		List<User> userList = userDAO.getAllUsers();
 		List<Role> allRoles = roleDAO.getAllRoles();
 		List<Permission> allPermissions = permissionDAO.getAllPermissions();
@@ -105,8 +92,6 @@ public class AdminUserServlet extends HttpServlet {
 			return (underscoreIndex != -1) ? key.substring(0, underscoreIndex) : "ALLGEMEIN";
 		}, LinkedHashMap::new, Collectors.toList()));
 
-		logger.debug("Fetched {} users, {} roles, and {} permissions from DAOs.", userList.size(), allRoles.size(),
-				allPermissions.size());
 		request.setAttribute("userList", userList);
 		request.setAttribute("allRoles", allRoles);
 		request.setAttribute("groupedPermissionsJson", gson.toJson(groupedPermissions));
