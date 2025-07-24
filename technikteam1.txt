@@ -1,1130 +1,5 @@
 ﻿
 ========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminKitServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import com.google.gson.Gson;
-import de.technikteam.dao.InventoryKitDAO;
-import de.technikteam.dao.StorageDAO;
-import de.technikteam.model.InventoryKit;
-import de.technikteam.model.InventoryKitItem;
-import de.technikteam.model.StorageItem;
-import de.technikteam.model.User;
-import de.technikteam.service.AdminLogService;
-import de.technikteam.util.CSRFUtil;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.IOException;
-import java.util.List;
-
-@WebServlet("/admin/kits")
-public class AdminKitServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminKitServlet.class);
-	private InventoryKitDAO kitDAO;
-	private StorageDAO storageDAO;
-	private Gson gson = new Gson();
-
-	@Override
-	public void init() {
-		kitDAO = new InventoryKitDAO();
-		storageDAO = new StorageDAO();
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		String action = req.getParameter("action");
-
-		if ("getKitItems".equals(action)) {
-			getKitItemsAsJson(req, resp);
-			return;
-		}
-
-		// Performance: Fetch all kits and their items in one go to prevent N+1 queries.
-		List<InventoryKit> kits = kitDAO.getAllKitsWithItems();
-		List<StorageItem> allItems = storageDAO.getAllItems();
-
-		req.setAttribute("kits", kits);
-		req.setAttribute("allItems", allItems);
-		req.setAttribute("allItemsJson", gson.toJson(allItems));
-
-		req.getRequestDispatcher("/views/admin/admin_kits.jsp").forward(req, resp);
-	}
-
-	private void getKitItemsAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		try {
-			int kitId = Integer.parseInt(req.getParameter("id"));
-			List<InventoryKitItem> items = kitDAO.getItemsForKit(kitId);
-			String jsonResponse = gson.toJson(items);
-			resp.setContentType("application/json");
-			resp.setCharacterEncoding("UTF-8");
-			resp.getWriter().write(jsonResponse);
-		} catch (NumberFormatException e) {
-			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid kit ID.");
-		}
-	}
-
-	@Override
-	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		req.setCharacterEncoding("UTF-8");
-
-		if (!CSRFUtil.isTokenValid(req)) {
-			logger.warn("CSRF token validation failed for kit action.");
-			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
-			return;
-		}
-
-		User adminUser = (User) req.getSession().getAttribute("user");
-		String action = req.getParameter("action");
-		logger.debug("AdminKitServlet received POST with action: {}", action);
-
-		try {
-			switch (action) {
-			case "create":
-				handleCreateKit(req, adminUser);
-				break;
-			case "update":
-				handleUpdateKit(req, adminUser);
-				break;
-			case "delete":
-				handleDeleteKit(req, adminUser);
-				break;
-			case "updateKitItems":
-				handleUpdateKitItems(req, adminUser);
-				break;
-			default:
-				logger.warn("Unknown kit action: {}", action);
-				break;
-			}
-		} catch (Exception e) {
-			logger.error("Error processing kit action '{}'", action, e);
-			req.getSession().setAttribute("errorMessage", "Ein Fehler ist aufgetreten: " + e.getMessage());
-		}
-
-		resp.sendRedirect(req.getContextPath() + "/admin/kits");
-	}
-
-	private void handleCreateKit(HttpServletRequest req, User adminUser) {
-		InventoryKit kit = new InventoryKit();
-		kit.setName(req.getParameter("name"));
-		kit.setDescription(req.getParameter("description"));
-		kit.setLocation(req.getParameter("location"));
-		int newId = kitDAO.createKit(kit);
-		if (newId > 0) {
-			AdminLogService.log(adminUser.getUsername(), "CREATE_KIT",
-					"Kit '" + kit.getName() + "' (ID: " + newId + ") erstellt.");
-			req.getSession().setAttribute("successMessage", "Kit erfolgreich erstellt.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Kit konnte nicht erstellt werden.");
-		}
-	}
-
-	private void handleUpdateKit(HttpServletRequest req, User adminUser) {
-		InventoryKit kit = new InventoryKit();
-		kit.setId(Integer.parseInt(req.getParameter("id")));
-		kit.setName(req.getParameter("name"));
-		kit.setDescription(req.getParameter("description"));
-		kit.setLocation(req.getParameter("location"));
-
-		if (kitDAO.updateKit(kit)) {
-			AdminLogService.log(adminUser.getUsername(), "UPDATE_KIT",
-					"Kit '" + kit.getName() + "' (ID: " + kit.getId() + ") aktualisiert.");
-			req.getSession().setAttribute("successMessage", "Kit erfolgreich aktualisiert.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Kit konnte nicht aktualisiert werden.");
-		}
-	}
-
-	private void handleDeleteKit(HttpServletRequest req, User adminUser) {
-		int kitId = Integer.parseInt(req.getParameter("id"));
-		InventoryKit kit = kitDAO.getKitById(kitId);
-		if (kitDAO.deleteKit(kitId)) {
-			AdminLogService.log(adminUser.getUsername(), "DELETE_KIT",
-					"Kit '" + (kit != null ? kit.getName() : "N/A") + "' (ID: " + kitId + ") gelöscht.");
-			req.getSession().setAttribute("successMessage", "Kit erfolgreich gelöscht.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Kit konnte nicht gelöscht werden.");
-		}
-	}
-
-	private void handleUpdateKitItems(HttpServletRequest req, User adminUser) {
-		int kitId = Integer.parseInt(req.getParameter("kitId"));
-		String[] itemIds = req.getParameterValues("itemIds");
-		String[] quantities = req.getParameterValues("quantities");
-
-		if (kitDAO.updateKitItems(kitId, itemIds, quantities)) {
-			AdminLogService.log(adminUser.getUsername(), "UPDATE_KIT_ITEMS",
-					"Inhalt für Kit ID " + kitId + " aktualisiert.");
-			req.getSession().setAttribute("successMessage", "Kit-Inhalt erfolgreich gespeichert.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Fehler beim Speichern des Kit-Inhalts.");
-		}
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminLogServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import java.io.IOException;
-import java.util.List;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import de.technikteam.dao.AdminLogDAO;
-import de.technikteam.model.AdminLog;
-import de.technikteam.model.User;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-
-/**
- * Mapped to `/admin/log`, this servlet retrieves all entries from the
- * administrative action log using the `AdminLogDAO`. It then passes the
- * complete list of logs to `admin_log.jsp` for display and filtering on the
- * client side.
- */
-@WebServlet("/admin/log")
-public class AdminLogServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminLogServlet.class);
-	private AdminLogDAO adminLogDAO;
-
-	@Override
-	public void init() {
-		adminLogDAO = new AdminLogDAO();
-		logger.info("AdminLogServlet has been initialized.");
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		// Ensure a user is logged in, though AdminFilter should handle this.
-		if (adminUser == null) {
-			response.sendRedirect(request.getContextPath() + "/login");
-			return;
-		}
-
-		logger.info("Admin log page requested by user '{}'.", adminUser.getUsername());
-		try {
-			List<AdminLog> logs = adminLogDAO.getAllLogs();
-			request.setAttribute("logs", logs);
-			logger.info("Fetched {} log entries. Forwarding to JSP.", logs.size());
-			request.getRequestDispatcher("/views/admin/admin_log.jsp").forward(request, response);
-		} catch (Exception e) {
-			logger.error("A critical error occurred in AdminLogServlet doGet()", e);
-			response.sendRedirect(request.getContextPath() + "/error500");
-		}
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminMeetingServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import de.technikteam.config.AppConfig;
-import de.technikteam.config.LocalDateAdapter;
-import de.technikteam.config.LocalDateTimeAdapter;
-import de.technikteam.dao.AttachmentDAO;
-import de.technikteam.dao.CourseDAO;
-import de.technikteam.dao.MeetingDAO;
-import de.technikteam.dao.UserDAO;
-import de.technikteam.model.Attachment;
-import de.technikteam.model.Course;
-import de.technikteam.model.Meeting;
-import de.technikteam.model.User;
-import de.technikteam.service.AdminLogService;
-import de.technikteam.util.CSRFUtil;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.MultipartConfig;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.Part;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Paths;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeParseException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-@WebServlet("/admin/meetings")
-@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 20, maxRequestSize = 1024 * 1024 * 50)
-public class AdminMeetingServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminMeetingServlet.class);
-	private MeetingDAO meetingDAO;
-	private CourseDAO courseDAO;
-	private AttachmentDAO attachmentDAO;
-	private UserDAO userDAO;
-	private Gson gson;
-
-	@Override
-	public void init() {
-		meetingDAO = new MeetingDAO();
-		courseDAO = new CourseDAO();
-		attachmentDAO = new AttachmentDAO();
-		userDAO = new UserDAO();
-		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
-				.registerTypeAdapter(java.time.LocalDate.class, new LocalDateAdapter()).create();
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		String action = req.getParameter("action");
-		if ("getMeetingData".equals(action)) {
-			getMeetingDataAsJson(req, resp);
-		} else {
-			listMeetings(req, resp);
-		}
-	}
-
-	@Override
-	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
-		req.setCharacterEncoding("UTF-8");
-
-		if (!CSRFUtil.isTokenValid(req)) {
-			logger.warn("CSRF token validation failed for meeting action.");
-			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
-			return;
-		}
-
-		String action = req.getParameter("action");
-
-		logger.debug("AdminMeetingServlet received POST with action: {}", action);
-
-		switch (action) {
-		case "create":
-		case "update":
-			handleCreateOrUpdate(req, resp);
-			break;
-		case "delete":
-			handleDelete(req, resp);
-			break;
-		case "deleteAttachment":
-			handleDeleteAttachment(req, resp);
-			break;
-		default:
-			logger.warn("Unknown action received in doPost: {}", action);
-			resp.sendRedirect(req.getContextPath() + "/admin/meetings");
-			break;
-		}
-	}
-
-	private void listMeetings(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		int courseId = Integer.parseInt(req.getParameter("courseId"));
-		logger.info("Listing all meetings for course ID: {}", courseId);
-		Course parentCourse = courseDAO.getCourseById(courseId);
-		List<Meeting> meetings = meetingDAO.getMeetingsForCourse(courseId);
-		List<User> allUsers = userDAO.getAllUsers();
-
-		req.setAttribute("parentCourse", parentCourse);
-		req.setAttribute("meetings", meetings);
-		req.setAttribute("allUsers", allUsers);
-
-		req.getRequestDispatcher("/views/admin/admin_meeting_list.jsp").forward(req, resp);
-	}
-
-	private void getMeetingDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		try {
-			int meetingId = Integer.parseInt(req.getParameter("id"));
-			Meeting meeting = meetingDAO.getMeetingById(meetingId);
-			if (meeting != null) {
-				List<Attachment> attachments = attachmentDAO.getAttachmentsForParent("MEETING", meetingId, "ADMIN");
-				Map<String, Object> responseData = new HashMap<>();
-				responseData.put("meetingData", meeting);
-				responseData.put("attachmentsData", attachments);
-
-				String jsonResponse = gson.toJson(responseData);
-				resp.setContentType("application/json");
-				resp.setCharacterEncoding("UTF-8");
-				resp.getWriter().write(jsonResponse);
-			} else {
-				resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Meeting nicht gefunden");
-			}
-		} catch (NumberFormatException e) {
-			logger.error("Invalid ID for getting meeting data as JSON", e);
-			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Ungültige Meeting-ID");
-		}
-	}
-
-	private void handleCreateOrUpdate(HttpServletRequest req, HttpServletResponse resp)
-			throws IOException, ServletException {
-		User adminUser = (User) req.getSession().getAttribute("user");
-		String action = req.getParameter("action");
-		boolean isUpdate = "update".equals(action);
-		int courseId = Integer.parseInt(req.getParameter("courseId"));
-		int meetingId = 0;
-
-		try {
-			Meeting meeting = new Meeting();
-			meeting.setCourseId(courseId);
-			meeting.setName(req.getParameter("name"));
-			meeting.setDescription(req.getParameter("description"));
-			meeting.setLocation(req.getParameter("location"));
-
-			String leaderIdStr = req.getParameter("leaderUserId");
-			if (leaderIdStr != null && !leaderIdStr.isEmpty()) {
-				meeting.setLeaderUserId(Integer.parseInt(leaderIdStr));
-			}
-
-			String startDateTimeStr = req.getParameter("meetingDateTime");
-			if (startDateTimeStr != null && !startDateTimeStr.isEmpty()) {
-				meeting.setMeetingDateTime(LocalDateTime.parse(startDateTimeStr));
-			}
-			String endDateTimeStr = req.getParameter("endDateTime");
-			if (endDateTimeStr != null && !endDateTimeStr.isEmpty()) {
-				meeting.setEndDateTime(LocalDateTime.parse(endDateTimeStr));
-			}
-
-			Course parentCourse = courseDAO.getCourseById(courseId);
-			String parentCourseName = (parentCourse != null) ? parentCourse.getName() : "N/A";
-
-			if (isUpdate) {
-				meetingId = Integer.parseInt(req.getParameter("id"));
-				meeting.setId(meetingId);
-				if (meetingDAO.updateMeeting(meeting)) {
-					AdminLogService.log(adminUser.getUsername(), "UPDATE_MEETING", "Meeting '" + meeting.getName()
-							+ "' (ID: " + meetingId + ") für Lehrgang '" + parentCourseName + "' aktualisiert.");
-					req.getSession().setAttribute("successMessage", "Meeting erfolgreich aktualisiert.");
-				}
-			} else {
-				meetingId = meetingDAO.createMeeting(meeting);
-				if (meetingId > 0) {
-					AdminLogService.log(adminUser.getUsername(), "CREATE_MEETING", "Meeting '" + meeting.getName()
-							+ "' (ID: " + meetingId + ") für Lehrgang '" + parentCourseName + "' geplant.");
-					req.getSession().setAttribute("successMessage", "Neues Meeting erfolgreich geplant.");
-				}
-			}
-
-			Part filePart = req.getPart("attachment");
-			if (filePart != null && filePart.getSize() > 0 && meetingId > 0) {
-				String requiredRole = req.getParameter("requiredRole");
-				handleAttachmentUpload(filePart, meetingId, requiredRole, adminUser, req);
-			}
-
-		} catch (DateTimeParseException | NumberFormatException e) {
-			logger.error("Invalid data format in meeting form.", e);
-			req.getSession().setAttribute("errorMessage", "Ungültiges Datenformat.");
-		} catch (Exception e) {
-			logger.error("Error creating/updating meeting.", e);
-			req.getSession().setAttribute("errorMessage", "Fehler: " + e.getMessage());
-		}
-
-		resp.sendRedirect(req.getContextPath() + "/admin/meetings?courseId=" + courseId);
-	}
-
-	private void handleDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		int courseId = Integer.parseInt(req.getParameter("courseId"));
-		int meetingId = Integer.parseInt(req.getParameter("meetingId"));
-		User adminUser = (User) req.getSession().getAttribute("user");
-		logger.warn("Attempting to delete meeting ID {} from course ID {}", meetingId, courseId);
-
-		Meeting meeting = meetingDAO.getMeetingById(meetingId);
-		if (meetingDAO.deleteMeeting(meetingId)) {
-			String meetingName = (meeting != null) ? meeting.getName() : "N/A";
-			String courseName = (meeting != null && meeting.getParentCourseName() != null)
-					? meeting.getParentCourseName()
-					: "N/A";
-			String logDetails = String.format("Meeting '%s' (ID: %d) vom Lehrgang '%s' (Kurs-ID: %d) wurde gelöscht.",
-					meetingName, meetingId, courseName, courseId);
-			AdminLogService.log(adminUser.getUsername(), "DELETE_MEETING", logDetails);
-			req.getSession().setAttribute("successMessage", "Meeting erfolgreich gelöscht.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Meeting konnte nicht gelöscht werden.");
-		}
-
-		resp.sendRedirect(req.getContextPath() + "/admin/meetings?courseId=" + courseId);
-	}
-
-	private void handleDeleteAttachment(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		User adminUser = (User) req.getSession().getAttribute("user");
-		int attachmentId = Integer.parseInt(req.getParameter("attachmentId"));
-		int courseId = Integer.parseInt(req.getParameter("courseId"));
-		logger.warn("Attempting to delete attachment ID {}", attachmentId);
-
-		Attachment attachment = attachmentDAO.getAttachmentById(attachmentId);
-		if (attachment != null) {
-			File physicalFile = new File(AppConfig.UPLOAD_DIRECTORY, attachment.getFilepath());
-
-			if (physicalFile.exists()) {
-				physicalFile.delete();
-			}
-
-			if (attachmentDAO.deleteAttachment(attachmentId)) {
-				AdminLogService.log(adminUser.getUsername(), "DELETE_ATTACHMENT", "Anhang '" + attachment.getFilename()
-						+ "' von Meeting ID " + attachment.getParentId() + " gelöscht.");
-				req.getSession().setAttribute("successMessage", "Anhang gelöscht.");
-			} else {
-				req.getSession().setAttribute("errorMessage", "Anhang konnte nicht aus DB gelöscht werden.");
-			}
-		} else {
-			req.getSession().setAttribute("errorMessage", "Anhang nicht gefunden.");
-		}
-		resp.sendRedirect(req.getContextPath() + "/admin/meetings?courseId=" + courseId);
-	}
-
-	private void handleAttachmentUpload(Part filePart, int meetingId, String requiredRole, User adminUser,
-			HttpServletRequest req) throws IOException {
-		String uploadDir = AppConfig.UPLOAD_DIRECTORY + File.separator + "meetings";
-		new File(uploadDir).mkdirs();
-
-		String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
-		File targetFile = new File(uploadDir, fileName);
-		filePart.write(targetFile.getAbsolutePath());
-
-		Attachment attachment = new Attachment();
-		attachment.setParentId(meetingId);
-		attachment.setParentType("MEETING");
-		attachment.setFilename(fileName);
-		attachment.setFilepath("meetings/" + fileName);
-		attachment.setRequiredRole(requiredRole);
-		if (attachmentDAO.addAttachment(attachment)) {
-			logger.info("Attachment '{}' uploaded for meeting ID {} by '{}'", fileName, meetingId,
-					adminUser.getUsername());
-			String logDetails = String.format("Anhang '%s' zu Meeting ID %d hinzugefügt. Sichtbar für: %s.", fileName,
-					meetingId, requiredRole);
-			AdminLogService.log(adminUser.getUsername(), "ADD_MEETING_ATTACHMENT", logDetails);
-		} else {
-			req.getSession().setAttribute("errorMessage", "Anhang konnte nicht in DB gespeichert werden.");
-		}
-	}
-
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminReportServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import com.google.gson.Gson;
-import de.technikteam.dao.ReportDAO;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-@WebServlet("/admin/berichte")
-public class AdminReportServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminReportServlet.class);
-	private ReportDAO reportDAO;
-	private Gson gson = new Gson();
-
-	@Override
-	public void init() {
-		reportDAO = new ReportDAO();
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		String reportType = request.getParameter("report");
-		String exportType = request.getParameter("export");
-
-		if (reportType != null && !reportType.isEmpty()) {
-			handleSpecificReport(request, response, reportType, exportType);
-			return;
-		}
-
-		logger.debug("Serving main reports dashboard.");
-
-		List<Map<String, Object>> eventTrendData = reportDAO.getEventCountByMonth(12);
-		List<Map<String, Object>> userActivityData = reportDAO.getUserParticipationStats(10);
-
-		request.setAttribute("eventTrendDataJson", gson.toJson(eventTrendData));
-		request.setAttribute("userActivityDataJson", gson.toJson(userActivityData));
-
-		request.setAttribute("totalInventoryValue", reportDAO.getTotalInventoryValue());
-		request.getRequestDispatcher("/views/admin/admin_reports.jsp").forward(request, response);
-	}
-
-	private void handleSpecificReport(HttpServletRequest request, HttpServletResponse response, String reportType,
-			String exportType) throws IOException, ServletException {
-		List<Map<String, Object>> reportData = null;
-		String reportTitle = "";
-		String jspPath = "/views/admin/report_display.jsp";
-
-		switch (reportType) {
-		case "user_activity":
-			reportData = reportDAO.getUserActivityStats();
-			reportTitle = "Benutzeraktivitäts-Bericht";
-			break;
-		case "event_participation":
-			reportData = reportDAO.getEventParticipationSummary();
-			reportTitle = "Event-Teilnahme-Bericht";
-			break;
-		case "inventory_usage":
-			reportData = reportDAO.getInventoryUsageFrequency();
-			reportTitle = "Lagernutzungs-Bericht";
-			break;
-		default:
-			logger.warn("Unknown report type requested: {}", reportType);
-			response.sendError(HttpServletResponse.SC_NOT_FOUND, "Unbekannter Berichtstyp.");
-			return;
-		}
-
-		if ("csv".equalsIgnoreCase(exportType)) {
-			logger.info("Exporting report '{}' to CSV.", reportType);
-			exportToCsv(response, reportData, reportType + "_report.csv");
-		} else {
-			logger.debug("Forwarding data for report '{}' to JSP.", reportType);
-			request.setAttribute("reportData", reportData);
-			request.setAttribute("reportTitle", reportTitle);
-			request.getRequestDispatcher(jspPath).forward(request, response);
-		}
-	}
-
-	private void exportToCsv(HttpServletResponse response, List<Map<String, Object>> data, String filename)
-			throws IOException {
-		response.setContentType("text/csv");
-		response.setCharacterEncoding("UTF-8");
-		response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
-
-		if (data == null || data.isEmpty()) {
-			response.getWriter().write("No data available to export.");
-			return;
-		}
-
-		try (PrintWriter writer = response.getWriter()) {
-			String header = String.join(",", data.get(0).keySet());
-			writer.println(header);
-
-			for (Map<String, Object> row : data) {
-				String line = row.values().stream().map(this::escapeCsvField).collect(Collectors.joining(","));
-				writer.println(line);
-			}
-		}
-	}
-
-	private String escapeCsvField(Object field) {
-		if (field == null) {
-			return "";
-		}
-		String fieldStr = field.toString();
-		if (fieldStr.contains(",") || fieldStr.contains("\"") || fieldStr.contains("\n")) {
-			return "\"" + fieldStr.replace("\"", "\"\"") + "\"";
-		}
-		return fieldStr;
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminStorageServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import com.google.gson.Gson;
-import de.technikteam.config.AppConfig;
-import de.technikteam.dao.MaintenanceLogDAO;
-import de.technikteam.dao.StorageDAO;
-import de.technikteam.model.MaintenanceLogEntry;
-import de.technikteam.model.StorageItem;
-import de.technikteam.model.User;
-import de.technikteam.service.AdminLogService;
-import de.technikteam.util.CSRFUtil;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.MultipartConfig;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.Part;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Paths;
-import java.sql.SQLException;
-import java.util.List;
-import java.util.Map;
-
-@WebServlet("/admin/lager")
-@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 5, maxRequestSize = 1024 * 1024 * 10)
-public class AdminStorageServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminStorageServlet.class.getName());
-	private StorageDAO storageDAO;
-	private MaintenanceLogDAO maintenanceLogDAO;
-	private Gson gson = new Gson();
-
-	@Override
-	public void init() {
-		storageDAO = new StorageDAO();
-		maintenanceLogDAO = new MaintenanceLogDAO();
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		String action = request.getParameter("action");
-		if ("getItemData".equals(action)) {
-			getItemDataAsJson(request, response);
-			return;
-		}
-
-		try {
-			logger.info("Listing all storage items for admin view.");
-			List<StorageItem> storageList = storageDAO.getAllItems();
-			request.setAttribute("storageList", storageList);
-			request.getRequestDispatcher("/views/admin/admin_storage_list.jsp").forward(request, response);
-		} catch (Exception e) {
-			logger.error("Error in doGet of AdminStorageServlet", e);
-			request.getSession().setAttribute("errorMessage", "Ein Fehler ist aufgetreten: " + e.getMessage());
-			response.sendRedirect(request.getContextPath() + "/admin/dashboard");
-		}
-	}
-
-	@Override
-	protected void doPost(HttpServletRequest request, HttpServletResponse response)
-			throws IOException, ServletException {
-		request.setCharacterEncoding("UTF-8");
-
-		if (!CSRFUtil.isTokenValid(request)) {
-			logger.warn("CSRF token validation failed for storage action.");
-			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
-			return;
-		}
-
-		String action = request.getParameter("action");
-
-		switch (action) {
-		case "create":
-		case "update":
-			handleCreateOrUpdate(request, response);
-			break;
-		case "delete":
-			handleDelete(request, response);
-			break;
-		case "updateDefect":
-			handleDefectUpdate(request, response);
-			break;
-		case "updateStatus":
-			handleStatusUpdate(request, response);
-			break;
-		case "repair":
-			handleRepair(request, response);
-			break;
-		default:
-			response.sendRedirect(request.getContextPath() + "/admin/lager");
-			break;
-		}
-	}
-
-	private void handleRepair(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		String returnTo = request.getParameter("returnTo");
-		try {
-			int itemId = Integer.parseInt(request.getParameter("id"));
-			int repairedQty = Integer.parseInt(request.getParameter("repaired_quantity"));
-			String notes = request.getParameter("repair_notes");
-
-			if (storageDAO.repairItems(itemId, repairedQty)) {
-				MaintenanceLogEntry log = new MaintenanceLogEntry();
-				log.setItemId(itemId);
-				log.setUserId(adminUser.getId());
-				log.setAction(repairedQty + " Stück repariert");
-				log.setNotes(notes);
-				maintenanceLogDAO.createLog(log);
-
-				AdminLogService.log(adminUser.getUsername(), "REPAIR_ITEM", String.format(
-						"%d Stück von Artikel-ID %d als repariert markiert. Notiz: %s", repairedQty, itemId, notes));
-				request.getSession().setAttribute("successMessage", "Artikel erfolgreich als repariert markiert.");
-			} else {
-				request.getSession().setAttribute("errorMessage",
-						"Reparatur konnte nicht verbucht werden (vielleicht nicht genug defekte Artikel?).");
-			}
-		} catch (NumberFormatException e) {
-			request.getSession().setAttribute("errorMessage", "Ungültige Artikel-ID oder Anzahl.");
-		} catch (SQLException e) {
-			request.getSession().setAttribute("errorMessage", "Datenbankfehler: " + e.getMessage());
-		}
-		String redirectUrl = request.getContextPath()
-				+ ("/defekte".equals(returnTo) ? "/admin/defekte" : "/admin/lager");
-		response.sendRedirect(redirectUrl);
-	}
-
-	private void handleStatusUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		try {
-			int itemId = Integer.parseInt(request.getParameter("id"));
-			String newStatus = request.getParameter("status");
-			String notes = request.getParameter("notes");
-
-			storageDAO.updateItemStatus(itemId, newStatus);
-
-			MaintenanceLogEntry log = new MaintenanceLogEntry();
-			log.setItemId(itemId);
-			log.setUserId(adminUser.getId());
-			log.setNotes(notes);
-
-			String logAction;
-			if ("MAINTENANCE".equals(newStatus)) {
-				logAction = "Marked for Maintenance";
-			} else {
-				logAction = "Returned to Service";
-			}
-			log.setAction(logAction);
-
-			maintenanceLogDAO.createLog(log);
-			AdminLogService.log(adminUser.getUsername(), "UPDATE_ITEM_STATUS",
-					"Status für Artikel-ID " + itemId + " auf '" + newStatus + "' gesetzt. Notiz: " + notes);
-			request.getSession().setAttribute("successMessage", "Artikelstatus erfolgreich aktualisiert.");
-		} catch (Exception e) {
-			logger.error("Error updating item status", e);
-			request.getSession().setAttribute("errorMessage", "Fehler beim Aktualisieren des Status.");
-		}
-		response.sendRedirect(request.getContextPath() + "/admin/lager");
-	}
-
-	private void getItemDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		try {
-			int itemId = Integer.parseInt(req.getParameter("id"));
-			StorageItem item = storageDAO.getItemById(itemId);
-			if (item != null) {
-				resp.setContentType("application/json");
-				resp.setCharacterEncoding("UTF-8");
-				resp.getWriter().write(gson.toJson(item));
-			} else {
-				resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Item not found");
-			}
-		} catch (NumberFormatException e) {
-			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid item ID");
-		}
-	}
-
-	private void handleCreateOrUpdate(HttpServletRequest request, HttpServletResponse response)
-			throws IOException, ServletException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		boolean isCreate = "create".equals(request.getParameter("action"));
-
-		try {
-			StorageItem item = new StorageItem();
-			item.setName(request.getParameter("name"));
-			item.setLocation(request.getParameter("location"));
-			item.setCabinet(request.getParameter("cabinet"));
-			item.setCompartment(request.getParameter("compartment"));
-			item.setQuantity(Integer.parseInt(request.getParameter("quantity")));
-			item.setMaxQuantity(Integer.parseInt(request.getParameter("maxQuantity")));
-
-			String weightStr = request.getParameter("weight_kg");
-			item.setWeightKg(
-					weightStr == null || weightStr.isEmpty() ? 0.0 : Double.parseDouble(weightStr.replace(',', '.')));
-			String priceStr = request.getParameter("price_eur");
-			item.setPriceEur(
-					priceStr == null || priceStr.isEmpty() ? 0.0 : Double.parseDouble(priceStr.replace(',', '.')));
-
-			Part filePart = request.getPart("imageFile");
-			String imagePath = null;
-
-			if (!isCreate) {
-				int itemId = Integer.parseInt(request.getParameter("id"));
-				item.setId(itemId);
-				StorageItem originalItem = storageDAO.getItemById(itemId);
-				if (originalItem != null) {
-					imagePath = originalItem.getImagePath();
-					item.setDefectiveQuantity(originalItem.getDefectiveQuantity());
-					item.setDefectReason(originalItem.getDefectReason());
-					item.setStatus(originalItem.getStatus());
-				}
-			}
-
-			if (filePart != null && filePart.getSize() > 0) {
-				String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
-				if (!fileName.isEmpty()) {
-					File imageUploadDir = new File(AppConfig.UPLOAD_DIRECTORY, "images");
-					if (!imageUploadDir.exists())
-						imageUploadDir.mkdirs();
-					File targetFile = new File(imageUploadDir, fileName);
-					filePart.write(targetFile.getAbsolutePath());
-					imagePath = fileName;
-				}
-			}
-			item.setImagePath(imagePath);
-
-			boolean success = isCreate ? storageDAO.createItem(item) : storageDAO.updateItem(item);
-
-			if (success) {
-				String logDetails = String.format("Lagerartikel '%s' %s.", item.getName(),
-						isCreate ? "erstellt" : "aktualisiert");
-				AdminLogService.log(adminUser.getUsername(), isCreate ? "CREATE_STORAGE_ITEM" : "UPDATE_STORAGE_ITEM",
-						logDetails);
-				request.getSession().setAttribute("successMessage",
-						"Artikel '" + item.getName() + "' erfolgreich gespeichert.");
-			} else {
-				request.getSession().setAttribute("errorMessage", "Operation am Artikel fehlgeschlagen.");
-			}
-		} catch (Exception e) {
-			logger.error("Error creating/updating storage item.", e);
-			request.getSession().setAttribute("errorMessage", "Fehler: " + e.getMessage());
-		}
-		response.sendRedirect(request.getContextPath() + "/admin/lager");
-	}
-
-	private void handleDefectUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		String returnTo = request.getParameter("returnTo");
-		try {
-			int itemId = Integer.parseInt(request.getParameter("id"));
-			int defectiveQty = Integer.parseInt(request.getParameter("defective_quantity"));
-			String reason = request.getParameter("defect_reason");
-
-			if (storageDAO.updateDefectiveStatus(itemId, defectiveQty, reason)) {
-				AdminLogService.log(adminUser.getUsername(), "UPDATE_DEFECT_STATUS",
-						String.format("Defekt-Status für Artikel-ID %d aktualisiert: %d defekt. Grund: %s", itemId,
-								defectiveQty, reason));
-				request.getSession().setAttribute("successMessage", "Defekt-Status aktualisiert.");
-			} else {
-				request.getSession().setAttribute("errorMessage",
-						"Defekt-Status konnte nicht aktualisiert werden (vielleicht nicht genug Bestand?).");
-			}
-		} catch (NumberFormatException e) {
-			request.getSession().setAttribute("errorMessage", "Ungültige Artikel-ID oder Anzahl.");
-		} catch (SQLException e) {
-			request.getSession().setAttribute("errorMessage", "Datenbankfehler: " + e.getMessage());
-		}
-
-		String redirectUrl = request.getContextPath()
-				+ ("/defekte".equals(returnTo) ? "/admin/defekte" : "/admin/lager");
-		response.sendRedirect(redirectUrl);
-	}
-
-	private void handleDelete(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		try {
-			int itemId = Integer.parseInt(request.getParameter("id"));
-			StorageItem item = storageDAO.getItemById(itemId);
-			if (item != null && item.getImagePath() != null && !item.getImagePath().isEmpty()) {
-				File imageDir = new File(AppConfig.UPLOAD_DIRECTORY, "images");
-				File imageFile = new File(imageDir, item.getImagePath());
-				if (imageFile.exists() && !imageFile.delete()) {
-					logger.warn("Could not delete physical image file: {}", imageFile.getAbsolutePath());
-				}
-			}
-			if (storageDAO.deleteItem(itemId)) {
-				AdminLogService.log(adminUser.getUsername(), "DELETE_STORAGE_ITEM", String.format(
-						"Lagerartikel '%s' (ID: %d) gelöscht.", (item != null ? item.getName() : "N/A"), itemId));
-				request.getSession().setAttribute("successMessage", "Artikel erfolgreich gelöscht.");
-			} else {
-				request.getSession().setAttribute("errorMessage", "Artikel konnte nicht gelöscht werden.");
-			}
-		} catch (NumberFormatException e) {
-			request.getSession().setAttribute("errorMessage", "Ungültige Artikel-ID.");
-		}
-		response.sendRedirect(request.getContextPath() + "/admin/lager");
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminSystemServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-
-/**
- * Forwards to the system status dashboard page.
- */
-@WebServlet("/admin/system")
-public class AdminSystemServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		request.getRequestDispatcher("/views/admin/admin_system.jsp").forward(request, response);
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminUserServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import de.technikteam.config.LocalDateTimeAdapter;
-import de.technikteam.dao.EventDAO;
-import de.technikteam.dao.PermissionDAO;
-import de.technikteam.dao.RoleDAO;
-import de.technikteam.dao.UserDAO;
-import de.technikteam.model.Event;
-import de.technikteam.model.Permission;
-import de.technikteam.model.Role;
-import de.technikteam.model.User;
-import de.technikteam.service.AdminLogService;
-import de.technikteam.util.CSRFUtil;
-import de.technikteam.util.NavigationRegistry;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.IOException;
-import java.security.SecureRandom;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
-
-@WebServlet("/admin/mitglieder")
-public class AdminUserServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminUserServlet.class);
-
-	private UserDAO userDAO;
-	private EventDAO eventDAO;
-	private RoleDAO roleDAO;
-	private PermissionDAO permissionDAO;
-	private Gson gson;
-
-	@Override
-	public void init() {
-		userDAO = new UserDAO();
-		eventDAO = new EventDAO();
-		roleDAO = new RoleDAO();
-		permissionDAO = new PermissionDAO();
-		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		User currentUser = (User) request.getSession().getAttribute("user");
-		if (!currentUser.getPermissions().contains("USER_READ") && !currentUser.hasAdminAccess()) {
-			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
-			return;
-		}
-
-		String action = request.getParameter("action") == null ? "list" : request.getParameter("action");
-		logger.debug("AdminUserServlet received GET with action: {}", action);
-
-		try {
-			switch (action) {
-			case "details":
-				showUserDetails(request, response);
-				break;
-			case "getUserData":
-				getUserDataAsJson(request, response);
-				break;
-			default:
-				listUsers(request, response);
-				break;
-			}
-		} catch (NumberFormatException e) {
-			logger.warn("Invalid ID format in GET request: {}", e.getMessage());
-			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Ungültige ID angegeben.");
-		} catch (Exception e) {
-			logger.error("Error in AdminUserServlet doGet", e);
-			request.getSession().setAttribute("errorMessage", "Ein Fehler ist aufgetreten: " + e.getMessage());
-			response.sendRedirect(request.getContextPath() + "/admin/dashboard");
-		}
-	}
-
-	@Override
-	protected void doPost(HttpServletRequest request, HttpServletResponse response)
-			throws IOException, ServletException {
-		// All POST actions are now handled by the FrontControllerServlet
-		logger.warn(
-				"Received POST request on AdminUserServlet, which should be handled by FrontControllerServlet. Redirecting.");
-		response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
-	}
-
-	private void listUsers(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		logger.info("Executing listUsers method.");
-		List<User> userList = userDAO.getAllUsers();
-		List<Role> allRoles = roleDAO.getAllRoles();
-		List<Permission> allPermissions = permissionDAO.getAllPermissions();
-
-		Map<String, List<Permission>> groupedPermissions = allPermissions.stream().collect(Collectors.groupingBy(p -> {
-			String key = p.getPermissionKey();
-			int underscoreIndex = key.indexOf('_');
-			return (underscoreIndex != -1) ? key.substring(0, underscoreIndex) : "ALLGEMEIN";
-		}, LinkedHashMap::new, Collectors.toList()));
-
-		logger.debug("Fetched {} users, {} roles, and {} permissions from DAOs.", userList.size(), allRoles.size(),
-				allPermissions.size());
-		request.setAttribute("userList", userList);
-		request.setAttribute("allRoles", allRoles);
-		request.setAttribute("groupedPermissionsJson", gson.toJson(groupedPermissions));
-		request.getRequestDispatcher("/views/admin/admin_users.jsp").forward(request, response);
-	}
-
-	private void getUserDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		int userId = Integer.parseInt(req.getParameter("id"));
-		User user = userDAO.getUserById(userId);
-		if (user != null) {
-			Set<Integer> permissionIds = permissionDAO.getPermissionIdsForUser(userId);
-			Map<String, Object> responseData = new HashMap<>();
-			responseData.put("user", user);
-			responseData.put("permissionIds", permissionIds);
-
-			String userJson = gson.toJson(responseData);
-			resp.setContentType("application/json");
-			resp.setCharacterEncoding("UTF-8");
-			resp.getWriter().write(userJson);
-		} else {
-			resp.sendError(HttpServletResponse.SC_NOT_FOUND, "User not found");
-		}
-	}
-
-	private void showUserDetails(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		int userId = Integer.parseInt(request.getParameter("id"));
-		User user = userDAO.getUserById(userId);
-		if (user == null) {
-			request.getSession().setAttribute("errorMessage", "Benutzer nicht gefunden.");
-			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
-			return;
-		}
-		List<Event> eventHistory = eventDAO.getEventHistoryForUser(userId);
-		request.setAttribute("userToView", user);
-		request.setAttribute("eventHistory", eventHistory);
-		request.getRequestDispatcher("/views/admin/admin_user_details.jsp").forward(request, response);
-	}
-}
-========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\FrontControllerServlet.java
 ========================================================================
 
@@ -1132,12 +7,13 @@ package de.technikteam.servlet.admin;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.servlet.admin.action.*;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -1150,63 +26,52 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * A Front Controller that centralizes request handling for administrative
- * actions. It uses the Command pattern to delegate processing to specialized
- * Action classes and returns a standardized JSON ApiResponse.
- */
-@WebServlet("/admin/action/*")
+@Singleton
 @MultipartConfig
 public class FrontControllerServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(FrontControllerServlet.class);
 	private final Map<String, Action> actions = new HashMap<>();
-	private Gson gson;
+	private final Gson gson;
 
-	@Override
-	public void init() throws ServletException {
-		logger.info("Initializing FrontControllerServlet and mapping actions...");
-		// User Actions
-		actions.put("user.create", new CreateUserAction());
-		actions.put("user.update", new UpdateUserAction());
-		actions.put("user.delete", new DeleteUserAction());
-		actions.put("user.resetPassword", new ResetPasswordAction());
-		actions.put("user.unlock", new UnlockUserAction());
+	@Inject
+	public FrontControllerServlet(CreateUserAction createUserAction, UpdateUserAction updateUserAction,
+			DeleteUserAction deleteUserAction, ResetPasswordAction resetPasswordAction,
+			UnlockUserAction unlockUserAction, ApproveChangeAction approveChangeAction,
+			DenyChangeAction denyChangeAction, UpdateFeedbackStatusAction updateFeedbackStatusAction,
+			DeleteFeedbackAction deleteFeedbackAction) {
 
-		// Profile Change Request Actions
-		actions.put("request.approve", new ApproveChangeAction());
-		actions.put("request.deny", new DenyChangeAction());
+		actions.put("user.create", createUserAction);
+		actions.put("user.update", updateUserAction);
+		actions.put("user.delete", deleteUserAction);
+		actions.put("user.resetPassword", resetPasswordAction);
+		actions.put("user.unlock", unlockUserAction);
+		actions.put("request.approve", approveChangeAction);
+		actions.put("request.deny", denyChangeAction);
+		actions.put("feedback.updateStatus", updateFeedbackStatusAction);
+		actions.put("feedback.delete", deleteFeedbackAction);
 
-		// Feedback Actions
-		actions.put("feedback.updateStatus", new UpdateFeedbackStatusAction());
-		actions.put("feedback.delete", new DeleteFeedbackAction());
-
-		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
-
-		logger.info("FrontControllerServlet initialized with {} actions.", actions.size());
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
 	@Override
-	protected void service(HttpServletRequest request, HttpServletResponse response)
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		String pathInfo = request.getPathInfo(); // e.g., "/user"
-		String actionName = request.getParameter("action"); // e.g., "create"
+		String pathInfo = request.getPathInfo();
+		String actionName = request.getParameter("action");
 
 		if (pathInfo == null || pathInfo.equals("/") || actionName == null || actionName.isEmpty()) {
-			logger.warn("Invalid request to Front Controller: PathInfo='{}', Action='{}'", pathInfo, actionName);
 			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid action request.");
 			return;
 		}
 
-		String entity = pathInfo.substring(1); // "user"
-		String actionKey = entity + "." + actionName; // "user.create"
+		String entity = pathInfo.substring(1);
+		String actionKey = entity + "." + actionName;
 
 		Action action = actions.get(actionKey);
 
 		if (action == null) {
-			logger.error(
-					"No action found for key: '{}'. This indicates a misconfigured form or a manual malformed request.",
-					actionKey);
+			logger.error("No action found for key: '{}'", actionKey);
 			response.sendError(HttpServletResponse.SC_NOT_FOUND, "Action not found.");
 			return;
 		}
@@ -1215,19 +80,15 @@ public class FrontControllerServlet extends HttpServlet {
 		ApiResponse apiResponse = action.execute(request, response);
 
 		if (apiResponse == null) {
-			// Action handled the response directly (e.g., file download, error, etc.)
 			return;
 		}
 
-		// Set HTTP status code based on success
 		if (apiResponse.isSuccess()) {
 			response.setStatus(HttpServletResponse.SC_OK);
 		} else {
-			// Use a generic bad request for client-side errors, could be refined
 			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
 		}
 
-		// Serialize ApiResponse to JSON and send it
 		response.setContentType("application/json");
 		response.setCharacterEncoding("UTF-8");
 		try (PrintWriter out = response.getWriter()) {
@@ -1242,6 +103,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.servlet.admin;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.CourseDAO;
 import de.technikteam.dao.MeetingAttendanceDAO;
 import de.technikteam.dao.MeetingDAO;
@@ -1251,7 +114,6 @@ import de.technikteam.model.Meeting;
 import de.technikteam.model.MeetingAttendance;
 import de.technikteam.model.User;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -1265,35 +127,27 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/**
- * Mapped to `/admin/matrix`, this servlet constructs the data for the
- * comprehensive qualification and attendance matrix. It fetches all users, all
- * course templates, all meetings for each course, and all attendance records.
- * It then organizes this data and forwards it to `admin_matrix.jsp` for
- * rendering a grid view that shows which users have attended which course
- * meetings.
- */
-@WebServlet("/admin/matrix")
+@Singleton
 public class MatrixServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(MatrixServlet.class);
-	private UserDAO userDAO;
-	private CourseDAO courseDAO;
-	private MeetingDAO meetingDAO;
-	private MeetingAttendanceDAO meetingAttendanceDAO;
+	private final UserDAO userDAO;
+	private final CourseDAO courseDAO;
+	private final MeetingDAO meetingDAO;
+	private final MeetingAttendanceDAO meetingAttendanceDAO;
 
-	@Override
-	public void init() {
-		userDAO = new UserDAO();
-		courseDAO = new CourseDAO();
-		meetingDAO = new MeetingDAO();
-		meetingAttendanceDAO = new MeetingAttendanceDAO();
+	@Inject
+	public MatrixServlet(UserDAO userDAO, CourseDAO courseDAO, MeetingDAO meetingDAO,
+			MeetingAttendanceDAO meetingAttendanceDAO) {
+		this.userDAO = userDAO;
+		this.courseDAO = courseDAO;
+		this.meetingDAO = meetingDAO;
+		this.meetingAttendanceDAO = meetingAttendanceDAO;
 	}
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-
 		logger.info("Matrix data requested. Fetching all necessary data from DAOs.");
 
 		List<User> allUsers = userDAO.getAllUsers();
@@ -1361,6 +215,8 @@ package de.technikteam.servlet.admin.action;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.ProfileChangeRequestDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
@@ -1377,10 +233,19 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.Map;
 
+@Singleton
 public class ApproveChangeAction implements Action {
-	private final ProfileChangeRequestDAO requestDAO = new ProfileChangeRequestDAO();
-	private final UserDAO userDAO = new UserDAO();
+	private final ProfileChangeRequestDAO requestDAO;
+	private final UserDAO userDAO;
+	private final AdminLogService adminLogService;
 	private final Gson gson = new Gson();
+
+	@Inject
+	public ApproveChangeAction(ProfileChangeRequestDAO requestDAO, UserDAO userDAO, AdminLogService adminLogService) {
+		this.requestDAO = requestDAO;
+		this.userDAO = userDAO;
+		this.adminLogService = adminLogService;
+	}
 
 	@Override
 	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
@@ -1404,16 +269,12 @@ public class ApproveChangeAction implements Action {
 				return ApiResponse.error("Der zugehörige Benutzer existiert nicht mehr. Anfrage abgelehnt.");
 			}
 
-			// Apply changes from JSON
 			Type type = new TypeToken<Map<String, String>>() {
 			}.getType();
 			Map<String, String> changes = gson.fromJson(req.getRequestedChanges(), type);
 
 			changes.forEach((field, value) -> {
 				switch (field) {
-				case "username":
-					userToUpdate.setUsername(value);
-					break;
 				case "email":
 					userToUpdate.setEmail(value);
 					break;
@@ -1426,19 +287,18 @@ public class ApproveChangeAction implements Action {
 				}
 			});
 
+			// CORRECTED: Call the version of updateUser that does not require a Connection
+			// object.
 			if (userDAO.updateUser(userToUpdate)
 					&& requestDAO.updateRequestStatus(requestId, "APPROVED", adminUser.getId())) {
-				AdminLogService.log(adminUser.getUsername(), "PROFILE_CHANGE_APPROVED", "Profiländerung für '"
+				adminLogService.log(adminUser.getUsername(), "PROFILE_CHANGE_APPROVED", "Profiländerung für '"
 						+ userToUpdate.getUsername() + "' (Request ID: " + requestId + ") genehmigt.");
 
-				// Notify the user BEFORE invalidating their session.
 				String notificationMessage = "Ihre Profiländerung wurde genehmigt. Sie werden zur Sicherheit abgemeldet. Bitte loggen Sie sich erneut ein.";
 				Map<String, Object> payload = Map.of("type", "logout_notification", "payload",
 						Map.of("message", notificationMessage));
 				NotificationService.getInstance().sendNotificationToUser(userToUpdate.getId(), payload);
 
-				// Invalidate the user's session to force them to log in again and see the
-				// changes.
 				SessionManager.invalidateSessionsForUser(userToUpdate.getId());
 
 				return ApiResponse.success("Änderungsanfrage genehmigt.", Map.of("requestId", requestId));
@@ -1457,10 +317,11 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.servlet.admin.action;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.RoleDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
-import de.technikteam.service.AdminLogService;
 import de.technikteam.service.UserService;
 import de.technikteam.util.PasswordPolicyValidator;
 import jakarta.servlet.ServletException;
@@ -1470,10 +331,17 @@ import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
 
+@Singleton
 public class CreateUserAction implements Action {
 
-	private final UserService userService = new UserService();
-	private final RoleDAO roleDAO = new RoleDAO();
+	private final UserService userService;
+	private final RoleDAO roleDAO;
+
+	@Inject
+	public CreateUserAction(UserService userService, RoleDAO roleDAO) {
+		this.userService = userService;
+		this.roleDAO = roleDAO;
+	}
 
 	@Override
 	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
@@ -1510,18 +378,12 @@ public class CreateUserAction implements Action {
 		String email = request.getParameter("email");
 		newUser.setEmail(email != null && !email.trim().isEmpty() ? email.trim() : null);
 
-		int newUserId = userService.createUserWithPermissions(newUser, pass, permissionIds);
+		int newUserId = userService.createUserWithPermissions(newUser, pass, permissionIds, adminUser.getUsername());
 		if (newUserId > 0) {
 			newUser.setId(newUserId);
 			// Enrich with role name for the JSON response
 			roleDAO.getAllRoles().stream().filter(role -> role.getId() == newUser.getRoleId()).findFirst()
 					.ifPresent(role -> newUser.setRoleName(role.getRoleName()));
-
-			String logDetails = String.format(
-					"Benutzer '%s' (ID: %d, Rolle-ID: %d, Klasse: %d %s) erstellt und Berechtigungen zugewiesen.",
-					newUser.getUsername(), newUserId, newUser.getRoleId(), newUser.getClassYear(),
-					newUser.getClassName());
-			AdminLogService.log(adminUser.getUsername(), "CREATE_USER", logDetails);
 
 			return ApiResponse.success("Benutzer '" + newUser.getUsername() + "' erfolgreich erstellt.", newUser);
 		} else {
@@ -1536,6 +398,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.servlet.admin.action;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.FeedbackSubmissionDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
@@ -1548,8 +412,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
 
+@Singleton
 public class DeleteFeedbackAction implements Action {
-	private final FeedbackSubmissionDAO submissionDAO = new FeedbackSubmissionDAO();
+	private final FeedbackSubmissionDAO submissionDAO;
+	private final AdminLogService adminLogService;
+
+	@Inject
+	public DeleteFeedbackAction(FeedbackSubmissionDAO submissionDAO, AdminLogService adminLogService) {
+		this.submissionDAO = submissionDAO;
+		this.adminLogService = adminLogService;
+	}
 
 	@Override
 	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
@@ -1563,13 +435,10 @@ public class DeleteFeedbackAction implements Action {
 		try {
 			int submissionId = Integer.parseInt(request.getParameter("submissionId"));
 			if (submissionDAO.deleteSubmission(submissionId)) {
-				AdminLogService.log(adminUser.getUsername(), "DELETE_FEEDBACK",
+				adminLogService.log(adminUser.getUsername(), "DELETE_FEEDBACK",
 						"Feedback-Eintrag mit ID " + submissionId + " gelöscht.");
-
-				// Broadcast the UI update to all connected admins
 				NotificationService.getInstance().broadcastUIUpdate("feedback_deleted",
 						Map.of("submissionId", submissionId));
-
 				return ApiResponse.success("Feedback erfolgreich gelöscht.", Map.of("deletedId", submissionId));
 			} else {
 				return ApiResponse.error("Fehler beim Löschen des Feedbacks.");
@@ -1585,6 +454,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.servlet.admin.action;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
@@ -1598,8 +469,16 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.Map;
 
+@Singleton
 public class DeleteUserAction implements Action {
-	private final UserDAO userDAO = new UserDAO();
+	private final UserDAO userDAO;
+	private final AdminLogService adminLogService;
+
+	@Inject
+	public DeleteUserAction(UserDAO userDAO, AdminLogService adminLogService) {
+		this.userDAO = userDAO;
+		this.adminLogService = adminLogService;
+	}
 
 	@Override
 	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
@@ -1633,9 +512,8 @@ public class DeleteUserAction implements Action {
 		if (userDAO.deleteUser(userIdToDelete)) {
 			String logDetails = String.format("Benutzer '%s' (ID: %d, Rolle: %s) wurde gelöscht.", deletedUsername,
 					userIdToDelete, deletedRoleName);
-			AdminLogService.log(loggedInAdmin.getUsername(), "DELETE_USER", logDetails);
+			adminLogService.log(loggedInAdmin.getUsername(), "DELETE_USER", logDetails);
 
-			// Broadcast UI update to all clients
 			NotificationService.getInstance().broadcastUIUpdate("user_deleted", Map.of("userId", userIdToDelete));
 
 			return ApiResponse.success("Benutzer erfolgreich gelöscht.", Map.of("deletedUserId", userIdToDelete));
@@ -1650,6 +528,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.servlet.admin.action;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.ProfileChangeRequestDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.ProfileChangeRequest;
@@ -1662,8 +542,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
 
+@Singleton
 public class DenyChangeAction implements Action {
-	private final ProfileChangeRequestDAO requestDAO = new ProfileChangeRequestDAO();
+	private final ProfileChangeRequestDAO requestDAO;
+	private final AdminLogService adminLogService;
+
+	@Inject
+	public DenyChangeAction(ProfileChangeRequestDAO requestDAO, AdminLogService adminLogService) {
+		this.requestDAO = requestDAO;
+		this.adminLogService = adminLogService;
+	}
 
 	@Override
 	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
@@ -1682,7 +570,7 @@ public class DenyChangeAction implements Action {
 			}
 
 			if (requestDAO.updateRequestStatus(requestId, "DENIED", adminUser.getId())) {
-				AdminLogService.log(adminUser.getUsername(), "PROFILE_CHANGE_DENIED", "Profiländerung für Benutzer-ID "
+				adminLogService.log(adminUser.getUsername(), "PROFILE_CHANGE_DENIED", "Profiländerung für Benutzer-ID "
 						+ req.getUserId() + " (Request ID: " + requestId + ") abgelehnt.");
 				return ApiResponse.success("Änderungsanfrage abgelehnt.", Map.of("requestId", requestId));
 			} else {
@@ -1699,6 +587,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.servlet.admin.action;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
@@ -1713,48 +603,56 @@ import java.security.SecureRandom;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Singleton
 public class ResetPasswordAction implements Action {
 
-    private final UserDAO userDAO = new UserDAO();
+	private final UserDAO userDAO;
+	private final AdminLogService adminLogService;
 
-    @Override
-    public ApiResponse execute(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        HttpSession session = request.getSession();
-        User adminUser = (User) session.getAttribute("user");
+	@Inject
+	public ResetPasswordAction(UserDAO userDAO, AdminLogService adminLogService) {
+		this.userDAO = userDAO;
+		this.adminLogService = adminLogService;
+	}
 
-        if (!adminUser.getPermissions().contains("USER_PASSWORD_RESET") && !adminUser.hasAdminAccess()) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
-            return null;
-        }
+	@Override
+	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		HttpSession session = request.getSession();
+		User adminUser = (User) session.getAttribute("user");
 
-        int userId = Integer.parseInt(request.getParameter("userId"));
-        User userToReset = userDAO.getUserById(userId);
+		if (!adminUser.getPermissions().contains("USER_PASSWORD_RESET") && !adminUser.hasAdminAccess()) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return null;
+		}
 
-        if (userToReset == null) {
-            return ApiResponse.error("Benutzer zum Zurücksetzen nicht gefunden.");
-        } else {
-            String newPassword = generateRandomPassword(12);
-            if (userDAO.changePassword(userId, newPassword)) {
-                String logDetails = String.format("Passwort für Benutzer '%s' (ID: %d) zurückgesetzt.",
-                        userToReset.getUsername(), userId);
-                AdminLogService.log(adminUser.getUsername(), "RESET_PASSWORD", logDetails);
+		int userId = Integer.parseInt(request.getParameter("userId"));
+		User userToReset = userDAO.getUserById(userId);
 
-                return ApiResponse.success(
-                        "Passwort für " + userToReset.getUsername() + " zurückgesetzt auf: " + newPassword,
-                        Map.of("username", userToReset.getUsername(), "newPassword", newPassword)
-                );
-            } else {
-                return ApiResponse.error("Passwort konnte nicht zurückgesetzt werden.");
-            }
-        }
-    }
+		if (userToReset == null) {
+			return ApiResponse.error("Benutzer zum Zurücksetzen nicht gefunden.");
+		} else {
+			String newPassword = generateRandomPassword(12);
+			if (userDAO.changePassword(userId, newPassword)) {
+				String logDetails = String.format("Passwort für Benutzer '%s' (ID: %d) zurückgesetzt.",
+						userToReset.getUsername(), userId);
+				adminLogService.log(adminUser.getUsername(), "RESET_PASSWORD", logDetails);
 
-    private String generateRandomPassword(int length) {
-        final String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        SecureRandom random = new SecureRandom();
-        return random.ints(length, 0, chars.length()).mapToObj(chars::charAt)
-                .collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
-    }
+				return ApiResponse.success(
+						"Passwort für " + userToReset.getUsername() + " zurückgesetzt auf: " + newPassword,
+						Map.of("username", userToReset.getUsername(), "newPassword", newPassword));
+			} else {
+				return ApiResponse.error("Passwort konnte nicht zurückgesetzt werden.");
+			}
+		}
+	}
+
+	private String generateRandomPassword(int length) {
+		final String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()";
+		SecureRandom random = new SecureRandom();
+		return random.ints(length, 0, chars.length()).mapToObj(chars::charAt)
+				.collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
+	}
 }
 ========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\action\UnlockUserAction.java
@@ -1762,6 +660,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.servlet.admin.action;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
@@ -1774,7 +674,15 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.Map;
 
+@Singleton
 public class UnlockUserAction implements Action {
+
+	private final AdminLogService adminLogService;
+
+	@Inject
+	public UnlockUserAction(AdminLogService adminLogService) {
+		this.adminLogService = adminLogService;
+	}
 
 	@Override
 	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
@@ -1790,7 +698,7 @@ public class UnlockUserAction implements Action {
 		String usernameToUnlock = request.getParameter("username");
 		if (usernameToUnlock != null && !usernameToUnlock.isEmpty()) {
 			LoginServlet.LoginAttemptManager.clearLoginAttempts(usernameToUnlock);
-			AdminLogService.log(adminUser.getUsername(), "UNLOCK_USER_ACCOUNT",
+			adminLogService.log(adminUser.getUsername(), "UNLOCK_USER_ACCOUNT",
 					"Benutzerkonto '" + usernameToUnlock + "' manuell entsperrt.");
 			return ApiResponse.success("Benutzerkonto '" + usernameToUnlock + "' wurde erfolgreich entsperrt.",
 					Map.of("unlockedUsername", usernameToUnlock));
@@ -1805,6 +713,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.servlet.admin.action;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.FeedbackSubmissionDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
@@ -1817,8 +727,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
 
+@Singleton
 public class UpdateFeedbackStatusAction implements Action {
-	private final FeedbackSubmissionDAO submissionDAO = new FeedbackSubmissionDAO();
+	private final FeedbackSubmissionDAO submissionDAO;
+	private final AdminLogService adminLogService;
+
+	@Inject
+	public UpdateFeedbackStatusAction(FeedbackSubmissionDAO submissionDAO, AdminLogService adminLogService) {
+		this.submissionDAO = submissionDAO;
+		this.adminLogService = adminLogService;
+	}
 
 	@Override
 	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
@@ -1834,10 +752,9 @@ public class UpdateFeedbackStatusAction implements Action {
 			String newStatus = request.getParameter("status");
 
 			if (submissionDAO.updateStatus(submissionId, newStatus)) {
-				AdminLogService.log(adminUser.getUsername(), "UPDATE_FEEDBACK_STATUS",
+				adminLogService.log(adminUser.getUsername(), "UPDATE_FEEDBACK_STATUS",
 						"Status für Feedback ID " + submissionId + " auf '" + newStatus + "' gesetzt.");
 
-				// Broadcast the UI update to all connected admins
 				NotificationService.getInstance().broadcastUIUpdate("feedback_status_updated",
 						Map.of("submissionId", submissionId, "newStatus", newStatus));
 
@@ -1856,6 +773,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.servlet.admin.action;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.RoleDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
@@ -1870,11 +789,23 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
+import java.util.Objects;
 
+@Singleton
 public class UpdateUserAction implements Action {
-	private final UserDAO userDAO = new UserDAO();
-	private final RoleDAO roleDAO = new RoleDAO();
-	private final UserService userService = new UserService();
+	private final UserDAO userDAO;
+	private final RoleDAO roleDAO;
+	private final UserService userService;
+	private final AdminLogService adminLogService;
+
+	@Inject
+	public UpdateUserAction(UserDAO userDAO, RoleDAO roleDAO, UserService userService,
+			AdminLogService adminLogService) {
+		this.userDAO = userDAO;
+		this.roleDAO = roleDAO;
+		this.userService = userService;
+		this.adminLogService = adminLogService;
+	}
 
 	@Override
 	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
@@ -1893,49 +824,76 @@ public class UpdateUserAction implements Action {
 			return ApiResponse.error("Fehler: Benutzer mit ID " + userId + " nicht gefunden.");
 		}
 
-		int roleId = Integer.parseInt(request.getParameter("roleId"));
-		String[] permissionIds = request.getParameterValues("permissionIds");
+		// Capture changes for logging
+		StringBuilder changes = new StringBuilder();
 
 		User updatedUser = new User();
 		updatedUser.setId(userId);
-		updatedUser.setUsername(request.getParameter("username").trim());
-		updatedUser.setRoleId(roleId);
-		updatedUser.setClassName(request.getParameter("className"));
 
-		String email = request.getParameter("email");
-		updatedUser.setEmail(email != null && !email.trim().isEmpty() ? email.trim() : null);
+		String newUsername = request.getParameter("username").trim();
+		if (!Objects.equals(originalUser.getUsername(), newUsername)) {
+			changes.append(String.format("Benutzername von '%s' zu '%s', ", originalUser.getUsername(), newUsername));
+		}
+		updatedUser.setUsername(newUsername);
+
+		int roleId = Integer.parseInt(request.getParameter("roleId"));
+		if (originalUser.getRoleId() != roleId) {
+			changes.append(String.format("Rolle-ID von '%d' zu '%d', ", originalUser.getRoleId(), roleId));
+		}
+		updatedUser.setRoleId(roleId);
+
+		String newClassName = request.getParameter("className");
+		if (!Objects.equals(originalUser.getClassName(), newClassName)) {
+			changes.append(String.format("Klasse von '%s' zu '%s', ", originalUser.getClassName(), newClassName));
+		}
+		updatedUser.setClassName(newClassName);
+
+		String newEmail = request.getParameter("email");
+		newEmail = (newEmail != null && !newEmail.trim().isEmpty()) ? newEmail.trim() : null;
+		if (!Objects.equals(originalUser.getEmail(), newEmail)) {
+			changes.append("E-Mail geändert, ");
+		}
+		updatedUser.setEmail(newEmail);
 
 		try {
-			updatedUser.setClassYear(Integer.parseInt(request.getParameter("classYear")));
+			int newClassYear = Integer.parseInt(request.getParameter("classYear"));
+			if (originalUser.getClassYear() != newClassYear) {
+				changes.append(String.format("Jahrgang von '%d' zu '%d', ", originalUser.getClassYear(), newClassYear));
+			}
+			updatedUser.setClassYear(newClassYear);
 		} catch (NumberFormatException e) {
 			updatedUser.setClassYear(0);
 		}
+
+		String[] permissionIds = request.getParameterValues("permissionIds");
 
 		boolean success = userService.updateUserWithPermissions(updatedUser, permissionIds);
 
 		if (success) {
 			User refreshedUser = userDAO.getUserById(userId);
-
-			// Enrich with role name for the JSON response
 			roleDAO.getAllRoles().stream().filter(role -> role.getId() == refreshedUser.getRoleId()).findFirst()
 					.ifPresent(role -> refreshedUser.setRoleName(role.getRoleName()));
-
 
 			if (adminUser.getId() == userId) {
 				refreshedUser.setPermissions(userDAO.getPermissionsForUser(userId));
 				session.setAttribute("user", refreshedUser);
-				session.setAttribute("navigationItems",
-						NavigationRegistry.getNavigationItemsForUser(refreshedUser));
+				session.setAttribute("navigationItems", NavigationRegistry.getNavigationItemsForUser(refreshedUser));
 			}
-			AdminLogService.log(adminUser.getUsername(), "UPDATE_USER",
-					"Benutzer '" + originalUser.getUsername() + "' (ID: " + userId + ") aktualisiert.");
 
-			// Broadcast UI update to all clients
+			String logDetails = String.format("Benutzer '%s' (ID: %d) aktualisiert.", originalUser.getUsername(),
+					userId);
+			if (changes.length() > 2) {
+				logDetails += " Änderungen: " + changes.substring(0, changes.length() - 2) + ".";
+			}
+
+			adminLogService.log(adminUser.getUsername(), "UPDATE_USER", logDetails);
+
 			NotificationService.getInstance().broadcastUIUpdate("user_updated", refreshedUser);
 
 			return ApiResponse.success("Benutzerdaten erfolgreich aktualisiert.", refreshedUser);
 		} else {
-			return ApiResponse.error("Keine Änderungen an den Benutzerdaten vorgenommen oder ein Fehler ist aufgetreten.");
+			return ApiResponse
+					.error("Keine Änderungen an den Benutzerdaten vorgenommen oder ein Fehler ist aufgetreten.");
 		}
 	}
 }
@@ -1947,12 +905,13 @@ package de.technikteam.servlet.admin.api;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.model.Event;
 import de.technikteam.model.User;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -1963,22 +922,17 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * An API endpoint for finding qualified and available users for a specific
- * event. This is used by the "Crew Finder" feature in the event management
- * modal.
- */
-@WebServlet("/api/admin/crew-finder")
+@Singleton
 public class CrewFinderApiServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(CrewFinderApiServlet.class);
-	private EventDAO eventDAO;
-	private Gson gson;
+	private final EventDAO eventDAO;
+	private final Gson gson;
 
-	@Override
-	public void init() {
-		eventDAO = new EventDAO();
-		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+	@Inject
+	public CrewFinderApiServlet(EventDAO eventDAO) {
+		this.eventDAO = eventDAO;
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
 	@Override
@@ -2000,22 +954,15 @@ public class CrewFinderApiServlet extends HttpServlet {
 				return;
 			}
 
-			// Security: User must have general assignment rights OR be the leader of this
-			// specific event.
 			boolean hasPermission = currentUser.getPermissions().contains("EVENT_MANAGE_ASSIGNMENTS")
-					|| currentUser.getPermissions().contains("ACCESS_ADMIN_PANEL")
-					|| currentUser.getId() == event.getLeaderUserId();
+					|| currentUser.hasAdminAccess() || currentUser.getId() == event.getLeaderUserId();
 
 			if (!hasPermission) {
-				logger.warn("User '{}' tried to find crew for event {} without permission.", currentUser.getUsername(),
-						eventId);
 				response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
 				return;
 			}
 
 			List<User> qualifiedUsers = eventDAO.getQualifiedAndAvailableUsersForEvent(eventId);
-			logger.info("Found {} qualified and available users for event ID {}.", qualifiedUsers.size(), eventId);
-
 			response.setContentType("application/json");
 			response.setCharacterEncoding("UTF-8");
 			response.getWriter().write(gson.toJson(qualifiedUsers));
@@ -2033,11 +980,12 @@ package de.technikteam.servlet.api;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.model.DashboardDataDTO;
 import de.technikteam.service.AdminDashboardService;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -2045,20 +993,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.LocalDateTime;
 
-/**
- * API endpoint to provide all necessary data for the interactive admin
- * dashboard. This servlet is protected by the AdminFilter.
- */
-@WebServlet("/api/admin/dashboard-data")
+@Singleton
 public class AdminDashboardApiServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private AdminDashboardService dashboardService;
-	private Gson gson;
+	private final AdminDashboardService dashboardService;
+	private final Gson gson;
 
-	@Override
-	public void init() throws ServletException {
-		dashboardService = new AdminDashboardService();
-		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+	@Inject
+	public AdminDashboardApiServlet(AdminDashboardService dashboardService) {
+		this.dashboardService = dashboardService;
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
 	@Override
@@ -2078,12 +1022,13 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.servlet.api;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.FileDAO;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -2093,15 +1038,17 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 
-@WebServlet("/api/save-markdown")
+@Singleton
 public class MarkdownApiServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(MarkdownApiServlet.class);
-	private FileDAO fileDAO;
+	private final FileDAO fileDAO;
+	private final AdminLogService adminLogService;
 
-	@Override
-	public void init() {
-		fileDAO = new FileDAO();
+	@Inject
+	public MarkdownApiServlet(FileDAO fileDAO, AdminLogService adminLogService) {
+		this.fileDAO = fileDAO;
+		this.adminLogService = adminLogService;
 	}
 
 	@Override
@@ -2146,7 +1093,7 @@ public class MarkdownApiServlet extends HttpServlet {
 			boolean recordTouched = fileDAO.touchFileRecord(fileId);
 
 			if (contentUpdated && recordTouched) {
-				AdminLogService.log(user.getUsername(), "UPDATE_MARKDOWN_FILE",
+				adminLogService.log(user.getUsername(), "UPDATE_MARKDOWN_FILE",
 						"Inhalt der Datei '" + dbFile.getFilename() + "' (ID: " + fileId + ") aktualisiert.");
 				session.setAttribute("successMessage", "Änderungen erfolgreich gespeichert.");
 			} else {
@@ -2161,35 +1108,89 @@ public class MarkdownApiServlet extends HttpServlet {
 	}
 }
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\api\StorageHistoryApiServlet.java
+========================================================================
+
+package de.technikteam.servlet.api;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+import de.technikteam.config.LocalDateTimeAdapter;
+import de.technikteam.dao.StorageLogDAO;
+import de.technikteam.model.StorageLogEntry;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Singleton
+public class StorageHistoryApiServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(StorageHistoryApiServlet.class);
+	private final StorageLogDAO logDAO;
+	private final Gson gson;
+
+	@Inject
+	public StorageHistoryApiServlet(StorageLogDAO logDAO) {
+		this.logDAO = logDAO;
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+	}
+
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		try {
+			int itemId = Integer.parseInt(request.getParameter("itemId"));
+			logger.debug("API request for storage history for item ID: {}", itemId);
+			List<StorageLogEntry> history = logDAO.getHistoryForItem(itemId);
+
+			String jsonResponse = gson.toJson(history);
+			response.setContentType("application/json");
+			response.setCharacterEncoding("UTF-8");
+			response.getWriter().write(jsonResponse);
+
+		} catch (NumberFormatException e) {
+			logger.warn("Bad request to storage history API: invalid or missing itemId");
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid or missing itemId.");
+		}
+	}
+}
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\api\SystemStatsApiServlet.java
 ========================================================================
 
 package de.technikteam.servlet.api;
 
 import com.google.gson.Gson;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.model.SystemStatsDTO;
 import de.technikteam.service.SystemInfoService;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
 
-/**
- * Provides system statistics as a JSON API endpoint. This servlet is protected
- * by the AdminFilter.
- */
-@WebServlet("/api/admin/system-stats")
+@Singleton
 public class SystemStatsApiServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private SystemInfoService systemInfoService;
-	private Gson gson;
+	private final SystemInfoService systemInfoService;
+	private final Gson gson;
 
-	@Override
-	public void init() throws ServletException {
-		systemInfoService = new SystemInfoService();
-		gson = new Gson();
+	@Inject
+	public SystemStatsApiServlet(SystemInfoService systemInfoService) {
+		this.systemInfoService = systemInfoService;
+		this.gson = new Gson();
 	}
 
 	@Override
@@ -2209,11 +1210,12 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.servlet.api;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.User;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -2224,16 +1226,16 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.util.Set;
 
-@WebServlet("/api/user/preferences")
+@Singleton
 public class UserPreferencesApiServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(UserPreferencesApiServlet.class);
 	private static final Set<String> VALID_THEMES = Set.of("light", "dark");
-	private UserDAO userDAO;
+	private final UserDAO userDAO;
 
-	@Override
-	public void init() {
-		userDAO = new UserDAO();
+	@Inject
+	public UserPreferencesApiServlet(UserDAO userDAO) {
+		this.userDAO = userDAO;
 	}
 
 	@Override
@@ -2260,7 +1262,7 @@ public class UserPreferencesApiServlet extends HttpServlet {
 
 		if (userDAO.updateUserTheme(user.getId(), theme)) {
 			user.setTheme(theme);
-			session.setAttribute("user", user); // Update user object in session
+			session.setAttribute("user", user);
 			logger.info("Updated theme for user '{}' to '{}'.", user.getUsername(), theme);
 			response.setStatus(HttpServletResponse.SC_OK);
 		} else {
@@ -2277,6 +1279,8 @@ package de.technikteam.servlet.api.passkey;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.NavigationItem;
@@ -2285,7 +1289,6 @@ import de.technikteam.service.PasskeyService;
 import de.technikteam.util.CSRFUtil;
 import de.technikteam.util.NavigationRegistry;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -2296,15 +1299,16 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@WebServlet("/api/auth/passkey/login/finish")
+@Singleton
 public class AuthenticationFinishServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private final PasskeyService passkeyService = new PasskeyService();
-	private Gson gson;
+	private final PasskeyService passkeyService;
+	private final Gson gson;
 
-	@Override
-	public void init() throws ServletException {
-		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+	@Inject
+	public AuthenticationFinishServlet(PasskeyService passkeyService) {
+		this.passkeyService = passkeyService;
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
 	@Override
@@ -2337,28 +1341,36 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.servlet.api.passkey;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.service.PasskeyService;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
 
-@WebServlet("/api/auth/passkey/login/start")
+@Singleton
 public class AuthenticationStartServlet extends HttpServlet {
-    private static final long serialVersionUID = 1L;
-    private final PasskeyService passkeyService = new PasskeyService();
+	private static final long serialVersionUID = 1L;
+	private final PasskeyService passkeyService;
 
-    @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        String username = request.getParameter("username");
-        String challengeJson = passkeyService.startAuthentication(username);
-        
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
-        response.getWriter().write(challengeJson);
-    }
+	@Inject
+	public AuthenticationStartServlet(PasskeyService passkeyService) {
+		this.passkeyService = passkeyService;
+	}
+
+	@Override
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		String username = request.getParameter("username");
+		String challengeJson = passkeyService.startAuthentication(username);
+
+		response.setContentType("application/json");
+		response.setCharacterEncoding("UTF-8");
+		response.getWriter().write(challengeJson);
+	}
 }
 ========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\api\passkey\RegistrationFinishServlet.java
@@ -2368,28 +1380,31 @@ package de.technikteam.servlet.api.passkey;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
 import de.technikteam.service.PasskeyService;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
-@WebServlet("/api/auth/passkey/register/finish")
+@Singleton
 public class RegistrationFinishServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private final PasskeyService passkeyService = new PasskeyService();
-	private Gson gson;
+	private final PasskeyService passkeyService;
+	private final Gson gson;
 
-	@Override
-	public void init() throws ServletException {
-		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+	@Inject
+	public RegistrationFinishServlet(PasskeyService passkeyService) {
+		this.passkeyService = passkeyService;
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
 	@Override
@@ -2423,34 +1438,42 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.servlet.api.passkey;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.model.User;
 import de.technikteam.service.PasskeyService;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
 
-@WebServlet("/api/auth/passkey/register/start")
+@Singleton
 public class RegistrationStartServlet extends HttpServlet {
-    private static final long serialVersionUID = 1L;
-    private final PasskeyService passkeyService = new PasskeyService();
+	private static final long serialVersionUID = 1L;
+	private final PasskeyService passkeyService;
 
-    @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        User user = (User) request.getSession().getAttribute("user");
-        if (user == null) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
-        }
-        
-        String challengeJson = passkeyService.startRegistration(user);
-        
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
-        response.getWriter().write(challengeJson);
-    }
+	@Inject
+	public RegistrationStartServlet(PasskeyService passkeyService) {
+		this.passkeyService = passkeyService;
+	}
+
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		User user = (User) request.getSession().getAttribute("user");
+		if (user == null) {
+			response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+			return;
+		}
+
+		String challengeJson = passkeyService.startRegistration(user);
+
+		response.setContentType("application/json");
+		response.setCharacterEncoding("UTF-8");
+		response.getWriter().write(challengeJson);
+	}
 }
 ========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\http\SessionManager.java
@@ -3050,6 +2073,7 @@ package de.technikteam.websocket;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import com.google.inject.Inject;
 import de.technikteam.config.Permissions;
 import de.technikteam.dao.FileDAO;
 import de.technikteam.model.User;
@@ -3063,25 +2087,24 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.util.Map;
 
-/**
- * WebSocket endpoint for real-time collaborative document editing. This version
- * uses a full-text synchronization model.
- */
-@ServerEndpoint(value = "/ws/editor/{fileId}", configurator = GetHttpSessionConfigurator.class)
+@ServerEndpoint(value = "/ws/editor/{fileId}", configurator = GuiceAwareServerEndpointConfigurator.class)
 public class DocumentEditorSocket {
 
 	private static final Logger logger = LogManager.getLogger(DocumentEditorSocket.class);
-	private static final FileDAO fileDAO = new FileDAO();
+	private static FileDAO fileDAO;
 	private static final Gson gson = new Gson();
+
+	@Inject
+	public static void setDependencies(FileDAO fileDAO) {
+		DocumentEditorSocket.fileDAO = fileDAO;
+	}
 
 	@OnOpen
 	public void onOpen(Session session, @PathParam("fileId") String fileId, EndpointConfig config) throws IOException {
 		User user = (User) config.getUserProperties().get(GetHttpSessionConfigurator.USER_PROPERTY_KEY);
 
 		if (user == null || (!user.getPermissions().contains(Permissions.FILE_UPDATE)
-				&& !user.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL))) {
-			logger.warn("Unauthorized WebSocket connection attempt for editor on file ID {}. User: {}", fileId,
-					user != null ? user.getUsername() : "GUEST");
+				&& !user.getPermissions().contains("ACCESS_ADMIN_PANEL"))) {
 			session.close(new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "Permission denied."));
 			return;
 		}
@@ -3097,6 +2120,7 @@ public class DocumentEditorSocket {
 			return;
 
 		try {
+			@SuppressWarnings("unchecked")
 			Map<String, String> messageMap = gson.fromJson(message, Map.class);
 			String type = messageMap.get("type");
 			String content = messageMap.get("payload");
@@ -3116,23 +2140,14 @@ public class DocumentEditorSocket {
 			de.technikteam.model.File dbFile = fileDAO.getFileById(fileId);
 
 			if (dbFile != null) {
-				// Sanitize the content on the server-side to prevent stored XSS
 				String sanitizedContent = MarkdownUtil.sanitize(content);
-
-				// Persist the changes to the disk
 				if (fileDAO.updateFileContent(dbFile.getFilepath(), sanitizedContent)) {
-					fileDAO.touchFileRecord(fileId); // Update timestamp
-
-					// Broadcast the full sanitized content to other connected clients
+					fileDAO.touchFileRecord(fileId);
 					Map<String, String> broadcastPayload = Map.of("type", "content_update", "payload",
 							sanitizedContent);
 					DocumentSessionManager.getInstance().broadcastExcept(fileIdStr, gson.toJson(broadcastPayload),
 							originSession);
-				} else {
-					logger.error("Failed to save file content to disk for file ID: {}", fileIdStr);
 				}
-			} else {
-				logger.warn("Received content update for non-existent file ID: {}", fileIdStr);
 			}
 		} catch (NumberFormatException e) {
 			logger.error("Invalid fileId '{}' received in WebSocket message.", fileIdStr);
@@ -3141,9 +2156,6 @@ public class DocumentEditorSocket {
 
 	@OnClose
 	public void onClose(Session session, @PathParam("fileId") String fileId) {
-		User user = (User) session.getUserProperties().get(GetHttpSessionConfigurator.USER_PROPERTY_KEY);
-		String username = (user != null) ? user.getUsername() : "[unauthenticated]";
-		logger.info("Editor WebSocket session for user '{}' on file {} closed.", username, fileId);
 		DocumentSessionManager.getInstance().removeSession(fileId, session);
 	}
 
@@ -3234,6 +2246,7 @@ package de.technikteam.websocket;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
+import com.google.inject.Inject;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.config.Permissions;
 import de.technikteam.dao.EventChatDAO;
@@ -3258,54 +2271,51 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * WebSocket endpoint for real-time event chats. Handles new messages, edits,
- * deletions, and document collaboration updates.
- */
-@ServerEndpoint(value = "/ws/chat/{eventId}", configurator = GetHttpSessionConfigurator.class)
+@ServerEndpoint(value = "/ws/chat/{eventId}", configurator = GuiceAwareServerEndpointConfigurator.class)
 public class EventChatSocket {
 
 	private static final Logger logger = LogManager.getLogger(EventChatSocket.class);
-	private static final EventChatDAO chatDAO = new EventChatDAO();
-	private static final EventDAO eventDAO = new EventDAO();
-	private static final UserDAO userDAO = new UserDAO();
-	private static final FileDAO fileDAO = new FileDAO();
-	private static final Gson gson = new GsonBuilder()
-			.registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	private static final Pattern MENTION_PATTERN = Pattern.compile("@(\\w+)");
+
+	private static EventChatDAO chatDAO;
+	private static EventDAO eventDAO;
+	private static UserDAO userDAO;
+	private static FileDAO fileDAO;
+	private static AdminLogService adminLogService;
+	private static Gson gson;
+
+	@Inject
+	public static void setDependencies(EventChatDAO injectedChatDAO, EventDAO injectedEventDAO, UserDAO injectedUserDAO,
+			FileDAO injectedFileDAO, AdminLogService injectedAdminLogService) {
+		chatDAO = injectedChatDAO;
+		eventDAO = injectedEventDAO;
+		userDAO = injectedUserDAO;
+		fileDAO = injectedFileDAO;
+		adminLogService = injectedAdminLogService;
+		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+	}
 
 	@OnOpen
 	public void onOpen(Session session, @PathParam("eventId") String eventIdStr, EndpointConfig config)
 			throws IOException {
 		User user = (User) config.getUserProperties().get(GetHttpSessionConfigurator.USER_PROPERTY_KEY);
 
-		// Security: Immediately close the connection if no authenticated user is found.
 		if (user == null) {
-			logger.warn("Unauthenticated attempt to open WebSocket for event chat [{}]. Closing session.", eventIdStr);
 			session.close(new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "Authentication required."));
 			return;
 		}
 
 		try {
 			int eventId = Integer.parseInt(eventIdStr);
-
-			// Security: Verify the user is actually a participant or assigned to this
-			// event.
 			if (!eventDAO.isUserAssociatedWithEvent(eventId, user.getId())) {
-				logger.warn(
-						"Unauthorized WebSocket connection attempt for event chat [{}]. User '{}' is not associated with this event. Closing session.",
-						eventId, user.getUsername());
 				session.close(new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "Permission denied."));
 				return;
 			}
 
-			// If authorization passes, add user to session properties and register the
-			// session.
 			session.getUserProperties().put(GetHttpSessionConfigurator.USER_PROPERTY_KEY, user);
 			ChatSessionManager.getInstance().addSession(eventIdStr, session);
 
 		} catch (NumberFormatException e) {
-			logger.warn("Invalid eventId format '{}' in WebSocket onOpen. Closing session.", eventIdStr);
 			session.close(new CloseReason(CloseReason.CloseCodes.UNEXPECTED_CONDITION, "Invalid event ID format."));
 		}
 	}
@@ -3314,9 +2324,10 @@ public class EventChatSocket {
 	public void onMessage(Session session, String message, @PathParam("eventId") String eventId) {
 		User user = (User) session.getUserProperties().get(GetHttpSessionConfigurator.USER_PROPERTY_KEY);
 		if (user == null)
-			return; // Should not happen due to onOpen check, but as a safeguard.
+			return;
 
 		try {
+			@SuppressWarnings("unchecked")
 			Map<String, Object> messageMap = gson.fromJson(message, Map.class);
 			String type = (String) messageMap.get("type");
 			@SuppressWarnings("unchecked")
@@ -3332,67 +2343,32 @@ public class EventChatSocket {
 			case "delete_message":
 				handleDeleteMessage(user, eventId, payload);
 				break;
-			case "doc_update":
-				handleDocUpdate(session, eventId, payload);
-				break;
-			default:
-				logger.warn("Unknown WebSocket message type received: {}", type);
 			}
 		} catch (JsonSyntaxException e) {
 			logger.error("Error processing message from user '{}'. Invalid JSON format.", user.getUsername(), e);
 		}
 	}
 
-	/**
-	 * Handles real-time updates for a shared document.
-	 */
-	private void handleDocUpdate(Session originSession, String eventId, Map<String, Object> payload) {
-		// A special "event ID" of "0" is used for the global document to avoid
-		// conflicts.
-		if ("0".equals(eventId)) {
-			String content = (String) payload.get("content");
-			fileDAO.updateDocumentContent("realtime_notes", content);
-
-			// Broadcast to other clients in the same "document room", excluding the sender.
-			Map<String, Object> broadcastPayload = Map.of("type", "doc_update", "payload", payload);
-			ChatSessionManager.getInstance().broadcastExcept(eventId, gson.toJson(broadcastPayload), originSession);
-		}
-	}
-
-	/**
-	 * Handles a new chat message, saves it, and broadcasts it to the room.
-	 */
 	private void handleNewMessage(User user, String eventId, Map<String, Object> payload) {
 		String messageText = (String) payload.get("messageText");
-		// Server-side sanitization to prevent stored XSS
 		String sanitizedMessage = MarkdownUtil.sanitize(messageText);
-
 		EventChatMessage newMessage = new EventChatMessage();
 		newMessage.setEventId(Integer.parseInt(eventId));
 		newMessage.setUserId(user.getId());
 		newMessage.setUsername(user.getUsername());
-		newMessage.setMessageText(sanitizedMessage); // Use sanitized message
-
+		newMessage.setMessageText(sanitizedMessage);
 		EventChatMessage savedMessage = chatDAO.postMessage(newMessage);
-		if (savedMessage == null) {
-			logger.error("Failed to save new chat message for user {} in event {}", user.getId(), eventId);
+		if (savedMessage == null)
 			return;
-		}
-
 		Map<String, Object> broadcastPayload = Map.of("type", "new_message", "payload", savedMessage);
 		ChatSessionManager.getInstance().broadcast(eventId, gson.toJson(broadcastPayload));
-
 		handleMentions(user, savedMessage);
 	}
 
-	/**
-	 * Parses a message for @mentions and sends notifications.
-	 */
 	private void handleMentions(User sender, EventChatMessage message) {
 		Event event = eventDAO.getEventById(message.getEventId());
 		if (event == null)
 			return;
-
 		Matcher matcher = MENTION_PATTERN.matcher(message.getMessageText());
 		while (matcher.find()) {
 			String mentionedUsername = matcher.group(1);
@@ -3403,71 +2379,49 @@ public class EventChatSocket {
 				Map<String, Object> notificationPayload = Map.of("type", "mention", "payload",
 						Map.of("message", notificationMessage, "url", "/veranstaltungen/details?id=" + event.getId()));
 				NotificationService.getInstance().sendNotificationToUser(mentionedUser.getId(), notificationPayload);
-				logger.info("Sent @mention notification from {} to {} for event chat {}.", sender.getUsername(),
-						mentionedUsername, message.getEventId());
 			}
 		}
 	}
 
-	/**
-	 * Handles a request to delete a message, checking permissions before doing so.
-	 */
 	private void handleDeleteMessage(User user, String eventId, Map<String, Object> payload) {
 		int messageId = ((Double) payload.get("messageId")).intValue();
-
 		Event event = eventDAO.getEventById(Integer.parseInt(eventId));
 		boolean isEventLeader = event != null && event.getLeaderUserId() == user.getId();
 		boolean canDeleteAsAdmin = user.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL) || isEventLeader;
-
 		if (chatDAO.deleteMessage(messageId, user.getId(), canDeleteAsAdmin)) {
 			int originalUserId = ((Double) payload.get("originalUserId")).intValue();
-			if (canDeleteAsAdmin && user.getId() != originalUserId) {
+			if (canDeleteAsAdmin && user.getId() != originalUserId && event != null) {
 				String logDetails = String.format(
-						"User '%s' deleted a chat message (ID: %d) in event chat for event '%s' (ID: %s).",
+						"Admin '%s' deleted chat message (ID: %d) in event chat for event '%s' (ID: %s).",
 						user.getUsername(), messageId, event.getName(), eventId);
-				AdminLogService.log(user.getUsername(), "DELETE_CHAT_MESSAGE", logDetails);
+				adminLogService.log(user.getUsername(), "DELETE_CHAT_MESSAGE", logDetails);
 			}
-
 			Map<String, Object> broadcastPayload = Map.of("type", "message_soft_deleted", "payload",
 					Map.of("messageId", messageId, "originalUsername", payload.get("originalUsername"),
 							"deletedByUsername", user.getUsername()));
 			ChatSessionManager.getInstance().broadcast(eventId, gson.toJson(broadcastPayload));
-		} else {
-			logger.warn("User {} failed to delete message {} in event {}. Permission was likely denied.",
-					user.getUsername(), messageId, eventId);
 		}
 	}
 
-	/**
-	 * Handles a request to update a message's text, checking ownership.
-	 */
 	private void handleUpdateMessage(User user, String eventId, Map<String, Object> payload) {
 		int messageId = ((Double) payload.get("messageId")).intValue();
 		String newText = (String) payload.get("newText");
-		// Server-side sanitization to prevent stored XSS
 		String sanitizedText = MarkdownUtil.sanitize(newText);
-
 		if (chatDAO.updateMessage(messageId, user.getId(), sanitizedText)) {
 			Map<String, Object> broadcastPayload = Map.of("type", "message_updated", "payload",
 					Map.of("messageId", messageId, "newText", sanitizedText));
 			ChatSessionManager.getInstance().broadcast(eventId, gson.toJson(broadcastPayload));
-		} else {
-			logger.warn("User {} failed to update message {}. Not the owner or message deleted.", user.getUsername(),
-					messageId);
 		}
 	}
 
 	@OnClose
-	public void onClose(Session session, CloseReason reason, @PathParam("eventId") String eventId) {
-		User user = (User) session.getUserProperties().get(GetHttpSessionConfigurator.USER_PROPERTY_KEY);
-		String username = (user != null) ? user.getUsername() : "[unauthenticated]";
-		logger.info("WebSocket session for user '{}' closed. Reason: {}", username, reason.getReasonPhrase());
+	public void onClose(Session session, @PathParam("eventId") String eventId) {
 		ChatSessionManager.getInstance().removeSession(eventId, session);
 	}
 
 	@OnError
-	public void onError(Session session, Throwable throwable, @PathParam("eventId") String eventId) {
-		logger.error("WebSocket ERROR in event [{}], session [{}]:", eventId, session.getId(), throwable);
+	public void onError(Session session, Throwable throwable) {
+		logger.error("WebSocket ERROR in session [{}]:", session.getId(), throwable);
 	}
 }
 ========================================================================
@@ -3477,33 +2431,80 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 package de.technikteam.websocket;
 
 import de.technikteam.model.User;
+import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpSession;
 import jakarta.websocket.HandshakeResponse;
 import jakarta.websocket.server.HandshakeRequest;
 import jakarta.websocket.server.ServerEndpointConfig;
 
-/**
- * A custom WebSocket configurator that intercepts the WebSocket handshake
- * process. Its primary purpose is to retrieve the authenticated User object
- * from the HttpSession and make it available to the WebSocket endpoint's
- * session properties. This is a standard pattern for securing WebSocket
- * connections.
- */
 public class GetHttpSessionConfigurator extends ServerEndpointConfig.Configurator {
 
 	public static final String USER_PROPERTY_KEY = "user";
+	private static volatile ServletContext servletContext;
 
 	@Override
 	public void modifyHandshake(ServerEndpointConfig sec, HandshakeRequest request, HandshakeResponse response) {
 		HttpSession httpSession = (HttpSession) request.getHttpSession();
 		if (httpSession != null) {
+			// Store ServletContext if it's not already stored.
+			if (servletContext == null) {
+				servletContext = httpSession.getServletContext();
+			}
+
 			User user = (User) httpSession.getAttribute(USER_PROPERTY_KEY);
 			if (user != null) {
-				// Put the authenticated User object into the WebSocket session's user
-				// properties.
 				sec.getUserProperties().put(USER_PROPERTY_KEY, user);
 			}
 		}
+	}
+
+	public static ServletContext getServletContext() {
+		return servletContext;
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\websocket\GuiceAwareServerEndpointConfigurator.java
+========================================================================
+
+package de.technikteam.websocket;
+
+import com.google.inject.Injector;
+import jakarta.servlet.ServletContext;
+import jakarta.websocket.HandshakeResponse;
+import jakarta.websocket.server.HandshakeRequest;
+import jakarta.websocket.server.ServerEndpointConfig;
+
+public class GuiceAwareServerEndpointConfigurator extends ServerEndpointConfig.Configurator {
+
+	@Override
+	public <T> T getEndpointInstance(Class<T> endpointClass) throws InstantiationException {
+		ServletContext servletContext = GetHttpSessionConfigurator.getServletContext();
+		if (servletContext == null) {
+			throw new IllegalStateException("ServletContext is not available. Cannot find Guice Injector.");
+		}
+
+		Injector injector = (Injector) servletContext.getAttribute(Injector.class.getName());
+		if (injector == null) {
+			throw new IllegalStateException(
+					"Guice Injector not found in ServletContext. Is GuiceConfig configured correctly in web.xml?");
+		}
+
+		// Guice creates the instance and injects its constructor dependencies (if any).
+		// For WebSockets, we often use a static injection pattern, so we get the
+		// instance
+		// first and then ask Guice to inject its members (including static ones if
+		// configured).
+		T instance = injector.getInstance(endpointClass);
+		injector.injectMembers(instance); // This is the key part for member injection.
+
+		return instance;
+	}
+
+	@Override
+	public void modifyHandshake(ServerEndpointConfig sec, HandshakeRequest request, HandshakeResponse response) {
+		// Also perform the HttpSession capture
+		super.modifyHandshake(sec, request, response);
+		new GetHttpSessionConfigurator().modifyHandshake(sec, request, response);
 	}
 }
 ========================================================================
@@ -5202,14 +4203,10 @@ document.addEventListener('DOMContentLoaded', () => {
 	const currentPath = window.location.pathname;
 	document.querySelectorAll('.sidebar-nav a').forEach(link => {
 		const linkPath = link.getAttribute('href');
-		if (linkPath === currentPath) {
-			link.classList.add('active-nav-link');
-		} else if (currentPath.startsWith(linkPath) && linkPath !== `${contextPath}/home`) {
-			// Make parent links active, e.g., /admin/lehrgaenge for /admin/meetings
+		if (linkPath === currentPath || (currentPath.startsWith(linkPath) && linkPath !== `${contextPath}/` && linkPath !== `${contextPath}` && currentPath.charAt(linkPath.length) === '/')) {
 			link.classList.add('active-nav-link');
 		}
 	});
-
 
 	// --- THEME SWITCHER (SYNCED) ---
 	const themeSwitches = document.querySelectorAll('.theme-switcher input[type="checkbox"]');
@@ -5231,20 +4228,32 @@ document.addEventListener('DOMContentLoaded', () => {
 			localStorage.setItem('theme', newTheme);
 			updateSwitches(event.target.checked);
 
-			// Persist to server
 			const csrfToken = document.body.dataset.csrfToken;
 			const formData = new URLSearchParams();
 			formData.append('theme', newTheme);
 			if (csrfToken) {
 				formData.append('csrfToken', csrfToken);
 			}
-
 			fetch(`${contextPath}/api/user/preferences`, {
 				method: 'POST',
 				body: formData
 			}).catch(err => console.error("Failed to sync theme with server:", err));
 		});
 	});
+
+	// --- PERSISTENT SIDEBAR SCROLL POSITION ---
+	const sidebarNav = document.querySelector('.sidebar-nav');
+	const scrollPositionKey = 'sidebarScrollPosition';
+
+	if (sidebarNav) {
+		const savedPosition = sessionStorage.getItem(scrollPositionKey);
+		if (savedPosition) {
+			sidebarNav.scrollTop = parseInt(savedPosition, 10);
+		}
+		window.addEventListener('beforeunload', () => {
+			sessionStorage.setItem(scrollPositionKey, sidebarNav.scrollTop);
+		});
+	}
 
 	// --- GLOBAL CONFIRMATION MODAL ---
 	const confirmationModalElement = document.createElement('div');
@@ -5301,7 +4310,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	// --- GLOBAL EVENT DELEGATION FOR MODALS & CONFIRMATIONS ---
 	document.body.addEventListener('click', (event) => {
-		// Modal Open
 		const modalOpenTrigger = event.target.closest('[data-modal-target]');
 		if (modalOpenTrigger) {
 			event.preventDefault();
@@ -5312,7 +4320,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 		}
 
-		// Modal Close
 		const modalCloseTrigger = event.target.closest('[data-modal-close]');
 		if (modalCloseTrigger) {
 			event.preventDefault();
@@ -5337,18 +4344,11 @@ document.addEventListener('DOMContentLoaded', () => {
 		const toast = document.createElement('div');
 		toast.className = `toast toast-${type}`;
 		toast.innerHTML = `<p>${message}</p>`;
-
 		document.body.appendChild(toast);
-
-		setTimeout(() => {
-			toast.classList.add('show');
-		}, 100);
-
+		setTimeout(() => { toast.classList.add('show'); }, 100);
 		setTimeout(() => {
 			toast.classList.remove('show');
-			setTimeout(() => {
-				toast.remove();
-			}, 500);
+			setTimeout(() => { toast.remove(); }, 500);
 		}, 5000);
 	};
 
@@ -5359,20 +4359,15 @@ document.addEventListener('DOMContentLoaded', () => {
 		eventSource.onmessage = (event) => {
 			try {
 				const data = JSON.parse(event.data);
-				console.log("SSE data received:", data);
 				if (data.type === 'ui_update') {
 					handleUIUpdate(data.payload);
 				} else if (data.type === 'logout_notification') {
-                    // Special handler for forced logout
-                    showToast(data.payload.message, 'info');
-                    setTimeout(() => {
-                        window.location.href = `${contextPath}/logout`;
-                    }, 4000);
-                } else {
+					showToast(data.payload.message, 'info');
+					setTimeout(() => { window.location.href = `${contextPath}/logout`; }, 4000);
+				} else {
 					showBrowserNotification(data.payload);
 				}
 			} catch (e) {
-				console.log("SSE (plain text) message received:", event.data);
 				showBrowserNotification({ message: event.data });
 			}
 		};
@@ -5382,155 +4377,69 @@ document.addEventListener('DOMContentLoaded', () => {
 		};
 	}
 
+	// --- UI UPDATE HANDLER (COMPLETE & UNABBREVIATED) ---
 	function handleUIUpdate(payload) {
-        console.log("Handling UI update:", payload.updateType, payload.data);
-        switch (payload.updateType) {
-            case 'user_updated':
-                updateUserInUI(payload.data);
-                break;
-            case 'user_deleted':
-                deleteUserFromUI(payload.data.userId);
-                break;
-            case 'event_status_updated':
-                updateEventStatusInUI(payload.data.eventId, payload.data.newStatus);
-                break;
-            case 'feedback_status_updated':
-                updateFeedbackStatusInUI(payload.data.submissionId, payload.data.newStatus);
-                break;
-            case 'feedback_deleted':
-                deleteFeedbackFromUI(payload.data.submissionId);
-                break;
-        }
-    }
+		console.log("Handling UI update:", payload.updateType, payload.data);
+		const getStatusBadgeClass = (status, prefix = 'status-') => {
+			const classMap = {
+				'LAUFEND': 'warn', 'ABGESCHLOSSEN': 'info', 'ABGESAGT': 'info',
+				'GEPLANT': 'ok', 'KOMPLETT': 'ok',
+				'NEW': 'info', 'VIEWED': 'info', 'PLANNED': 'warn',
+				'COMPLETED': 'ok', 'REJECTED': 'danger'
+			};
+			return prefix + (classMap[status] || 'info');
+		};
 
-	function updateUserInUI(user) {
-		const userElements = document.querySelectorAll(`[data-user-id="${user.id}"]`);
-		userElements.forEach(el => {
-			el.querySelector('[data-field="username"]').textContent = user.username;
-			el.querySelector('[data-field="roleName"]').textContent = user.roleName;
-		});
-	}
-
-	function deleteUserFromUI(userId) {
-		const userElements = document.querySelectorAll(`[data-user-id="${userId}"]`);
-		userElements.forEach(el => {
-			el.style.transition = 'opacity 0.5s';
-			el.style.opacity = '0';
-			setTimeout(() => el.remove(), 500);
-		});
-	}
-	
-	function getStatusBadgeClass(status, prefix = 'status-') {
-        const classMap = {
-            'LAUFEND': 'warn',
-            'ABGESCHLOSSEN': 'info', 'ABGESAGT': 'info',
-            'GEPLANT': 'ok', 'KOMPLETT': 'ok',
-            // Feedback statuses
-            'NEW': 'info', 'VIEWED': 'info', 'PLANNED': 'warn',
-            'COMPLETED': 'ok', 'REJECTED': 'danger'
-        };
-        return prefix + (classMap[status] || 'info');
-    }
-
-	function updateEventStatusInUI(eventId, newStatus) {
-		const eventElements = document.querySelectorAll(`[data-event-id="${eventId}"]`);
-		eventElements.forEach(element => {
-			const badge = element.querySelector('.status-badge');
-			if (badge) {
-				badge.textContent = newStatus;
-				badge.className = `status-badge ${getStatusBadgeClass(newStatus)}`;
-			}
-	
-			const actionsContainer = element.querySelector('.event-status-actions');
-			if (actionsContainer) {
-				actionsContainer.innerHTML = '';
-	
-				const csrfToken = document.body.dataset.csrfToken || '';
-				const eventNameElement = element.querySelector('a');
-				const eventName = eventNameElement ? eventNameElement.textContent.trim() : 'dieses Event';
-	
-				if (newStatus === 'GEPLANT' || newStatus === 'KOMPLETT') {
-					actionsContainer.innerHTML = `
-						<form action="${contextPath}/admin/veranstaltungen" method="post" style="display: inline;" class="js-confirm-form" data-confirm-message="Event '${eventName}' wirklich starten? Der Chat wird aktiviert.">
-							<input type="hidden" name="csrfToken" value="${csrfToken}">
-							<input type="hidden" name="action" value="updateStatus">
-							<input type="hidden" name="id" value="${eventId}">
-							<input type="hidden" name="newStatus" value="LAUFEND">
-							<button type="submit" class="btn btn-small btn-warning">Starten</button>
-						</form>`;
-				} else if (newStatus === 'LAUFEND') {
-					actionsContainer.innerHTML = `
-						<form action="${contextPath}/admin/veranstaltungen" method="post" style="display: inline;" class="js-confirm-form" data-confirm-message="Event '${eventName}' wirklich abschließen?">
-							<input type="hidden" name="csrfToken" value="${csrfToken}">
-							<input type="hidden" name="action" value="updateStatus">
-							<input type="hidden" name="id" value="${eventId}">
-							<input type="hidden" name="newStatus" value="ABGESCHLOSSEN">
-							<button type="submit" class="btn btn-small" style="background-color: var(--text-muted-color);">Abschließen</button>
-						</form>`;
+		switch (payload.updateType) {
+			case 'user_updated':
+				const user = payload.data;
+				document.querySelectorAll(`[data-user-id="${user.id}"]`).forEach(el => {
+					const usernameEl = el.querySelector('[data-field="username"]');
+					const roleNameEl = el.querySelector('[data-field="roleName"]');
+					if (usernameEl) usernameEl.textContent = user.username;
+					if (roleNameEl) roleNameEl.textContent = user.roleName;
+				});
+				break;
+			case 'user_deleted':
+				document.querySelectorAll(`[data-user-id="${payload.data.userId}"]`).forEach(el => {
+					el.style.transition = 'opacity 0.5s';
+					el.style.opacity = '0';
+					setTimeout(() => el.remove(), 500);
+				});
+				break;
+			case 'event_status_updated':
+				const { eventId, newStatus } = payload.data;
+				document.querySelectorAll(`[data-event-id="${eventId}"]`).forEach(element => {
+					const badge = element.querySelector('.status-badge');
+					if (badge) {
+						badge.textContent = newStatus;
+						badge.className = `status-badge ${getStatusBadgeClass(newStatus)}`;
+					}
+				});
+				break;
+			case 'feedback_status_updated':
+				const { submissionId, newStatus: newFeedbackStatus } = payload.data;
+				const card = document.querySelector(`[data-submission-id="${submissionId}"]`);
+				if (card) {
+					const badge = card.querySelector('.status-badge');
+					if (badge) {
+						badge.textContent = newFeedbackStatus;
+						badge.className = `status-badge ${getStatusBadgeClass(newFeedbackStatus)}`;
+					}
 				}
-			}
-		});
-	}	
+				break;
+			case 'feedback_deleted':
+				const cardToDelete = document.querySelector(`[data-submission-id="${payload.data.submissionId}"]`);
+				if (cardToDelete) {
+					cardToDelete.style.transition = 'opacity 0.5s';
+					cardToDelete.style.opacity = '0';
+					setTimeout(() => cardToDelete.remove(), 500);
+				}
+				break;
+		}
+	}
 
-    function updateFeedbackStatusInUI(submissionId, newStatus) {
-        const card = document.querySelector(`[data-submission-id="${submissionId}"]`);
-        if (!card) return;
-
-        const badge = card.querySelector('.status-badge');
-        if (badge) {
-            badge.textContent = newStatus;
-            badge.className = `status-badge ${getStatusBadgeClass(newStatus)}`;
-        }
-
-        const statusSelect = card.querySelector('select[name="status"]');
-        if (statusSelect) {
-            statusSelect.value = newStatus;
-        }
-
-        const deleteForm = card.querySelector('.js-feedback-delete-form');
-        if (newStatus === 'COMPLETED' || newStatus === 'REJECTED') {
-            if (!deleteForm) { // Add delete form if it doesn't exist
-                const actionsContainer = card.querySelector('.card-actions');
-                const newForm = document.createElement('form');
-                newForm.className = 'js-feedback-delete-form';
-                newForm.action = `${contextPath}/admin/action/feedback?action=delete`;
-                newForm.method = 'POST';
-                newForm.innerHTML = `
-                    <input type="hidden" name="csrfToken" value="${document.body.dataset.csrfToken}">
-                    <input type="hidden" name="submissionId" value="${submissionId}">
-                    <button type="submit" class="btn btn-small btn-danger-outline">Löschen</button>
-                `;
-                actionsContainer.appendChild(newForm);
-                // Re-attach event listener for the new form
-                 newForm.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    showConfirmationModal('Diesen Feedback-Eintrag wirklich endgültig löschen?', async () => {
-                        const formData = new FormData(newForm);
-                        const response = await fetch(newForm.action, { method: 'POST', body: formData });
-                        const result = await response.json();
-                        if (response.ok && result.success) {
-                            showToast(result.message, 'success');
-                        } else {
-                            showToast(result.message || 'Eintrag konnte nicht gelöscht werden.', 'danger');
-                        }
-                    });
-                });
-            }
-        } else {
-            // Remove delete form if it exists and status is not COMPLETED/REJECTED
-            deleteForm?.remove();
-        }
-    }
-
-    function deleteFeedbackFromUI(submissionId) {
-        const card = document.querySelector(`[data-submission-id="${submissionId}"]`);
-        if (card) {
-            card.style.transition = 'opacity 0.5s';
-            card.style.opacity = '0';
-            setTimeout(() => card.remove(), 500);
-        }
-    }
-
+	// --- BROWSER NOTIFICATION HANDLER (COMPLETE & UNABBREVIATED) ---
 	function showBrowserNotification(payload) {
 		const message = payload.message || 'Neue Benachrichtigung';
 		const url = payload.url;
@@ -5550,6 +4459,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				notification.onclick = (event) => {
 					event.preventDefault();
 					window.open(contextPath + url, '_blank');
+					notification.close();
 				};
 			}
 		};
@@ -5565,18 +4475,14 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 
-
 	// --- GLOBAL MARKDOWN RENDERER ---
 	window.renderMarkdown = (element) => {
 		if (!element || typeof marked === 'undefined') return;
-		// Use marked's sanitizer to prevent XSS
 		const sanitizedHtml = marked.parse(element.textContent || '', { sanitize: true });
 		element.innerHTML = sanitizedHtml;
 	};
 
-	// Auto-render elements with the .markdown-content class
 	document.querySelectorAll('.markdown-content').forEach(window.renderMarkdown);
-
 });
 ========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\js\admin\admin_achievements.js
@@ -12984,3 +11890,1300 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\
 </div>
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\profile.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle" value="Mein Profil" />
+</c:import>
+
+<h1>Mein Profil</h1>
+<p>Hier finden Sie eine Übersicht Ihrer Daten, Qualifikationen und
+	Aktivitäten.</p>
+
+<c:import url="/WEB-INF/jspf/message_banner.jspf" />
+
+<div class="responsive-dashboard-grid">
+	<div class="card">
+		<h2 class="card-title">Stammdaten</h2>
+
+		<c:if test="${hasPendingRequest}">
+			<div class="info-message">
+				<i class="fas fa-info-circle"></i> Sie haben eine ausstehende
+				Profiländerung, die von einem Administrator geprüft wird.
+			</div>
+		</c:if>
+
+		<form id="profile-form"
+			action="${pageContext.request.contextPath}/profil" method="post">
+			<input type="hidden" name="action" value="requestProfileChange">
+
+			<ul class="details-list">
+				<li><strong>Benutzername:</strong> <input type="text"
+					name="username" class="form-group"
+					style="display: inline-block; width: auto; background-color: var(--bg-color); border-color: transparent;"
+					value="${fn:escapeXml(sessionScope.user.username)}" readonly>
+				</li>
+				<li><strong>Jahrgang:</strong> <input type="number"
+					name="classYear" class="form-group editable-field"
+					style="display: inline-block; width: auto;"
+					value="${sessionScope.user.classYear}"
+					data-original="${sessionScope.user.classYear}" readonly></li>
+				<li><strong>Klasse:</strong> <input type="text"
+					name="className" class="form-group editable-field"
+					style="display: inline-block; width: auto;"
+					value="${fn:escapeXml(sessionScope.user.className)}"
+					data-original="${fn:escapeXml(sessionScope.user.className)}"
+					readonly></li>
+				<li><strong>E-Mail:</strong> <input type="email" name="email"
+					class="form-group editable-field"
+					style="display: inline-block; width: auto;"
+					value="${fn:escapeXml(sessionScope.user.email)}"
+					data-original="${fn:escapeXml(sessionScope.user.email)}" readonly>
+				</li>
+			</ul>
+
+			<div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+				<c:if test="${!hasPendingRequest}">
+					<button type="button" id="edit-profile-btn"
+						class="btn btn-secondary">Profil bearbeiten</button>
+					<button type="submit" id="submit-profile-btn"
+						class="btn btn-success" style="display: none;">Antrag
+						einreichen</button>
+					<button type="button" id="cancel-edit-btn" class="btn"
+						style="background-color: var(--text-muted-color); display: none;">Abbrechen</button>
+				</c:if>
+			</div>
+		</form>
+
+		<hr style="margin: 1.5rem 0;">
+
+		<ul class="details-list">
+			<li style="align-items: center; gap: 1rem;"><strong>Chat-Farbe:</strong>
+				<form id="chat-color-form"
+					action="${pageContext.request.contextPath}/profil" method="post"
+					style="display: flex; align-items: center; gap: 0.5rem;">
+					<input type="hidden" name="csrfToken"
+						value="${sessionScope.csrfToken}"> <input type="hidden"
+						name="action" value="updateChatColor"> <input type="color"
+						name="chatColor"
+						value="<c:out value='${not empty sessionScope.user.chatColor ? sessionScope.user.chatColor : "#E9ECEF"}'/>"
+						title="Wähle deine Chat-Farbe">
+					<button type="submit" class="btn btn-small">Speichern</button>
+				</form></li>
+			<li><a href="${pageContext.request.contextPath}/passwort"
+				class="btn btn-secondary">Passwort ändern</a></li>
+		</ul>
+	</div>
+
+	<div class="card">
+		<h2 class="card-title">Sicherheit (Passkeys)</h2>
+		<p>Registrieren Sie Geräte für einen passwortlosen Login.</p>
+		<button id="register-passkey-btn" class="btn btn-success"
+			style="margin-bottom: 1rem;">
+			<i class="fas fa-plus-circle"></i> Neues Gerät registrieren
+		</button>
+
+		<h3 style="margin-top: 1.5rem; font-size: 1.1rem;">Registrierte
+			Geräte</h3>
+		<ul class="details-list">
+			<c:if test="${empty passkeys}">
+				<li>Keine Passkeys registriert.</li>
+			</c:if>
+			<c:forEach var="key" items="${passkeys}">
+				<li><span> <i class="fas fa-key"></i> <c:out
+							value="${key.name}" /> <small
+						style="display: block; color: var(--text-muted-color);">
+							Registriert am: <fmt:parseDate value="${key.createdAt}"
+								pattern="yyyy-MM-dd'T'HH:mm:ss" var="parsedDate" type="both" />
+							<fmt:formatDate value="${parsedDate}" type="both"
+								dateStyle="medium" timeStyle="short" />
+					</small>
+				</span>
+					<form action="${pageContext.request.contextPath}/profil"
+						method="post" style="display: inline;">
+						<input type="hidden" name="csrfToken"
+							value="${sessionScope.csrfToken}"> <input type="hidden"
+							name="action" value="deletePasskey"> <input type="hidden"
+							name="credentialId" value="${key.id}">
+						<button type="submit"
+							class="btn btn-small btn-danger-outline delete-passkey-btn">Entfernen</button>
+					</form></li>
+			</c:forEach>
+		</ul>
+	</div>
+
+	<div class="card">
+		<h2 class="card-title">Meine Qualifikationen</h2>
+		<div class="table-wrapper"
+			style="max-height: 400px; overflow-y: auto;">
+			<table class="data-table">
+				<thead>
+					<tr>
+						<th>Lehrgang</th>
+						<th>Status</th>
+					</tr>
+				</thead>
+				<tbody>
+					<c:if test="${empty qualifications}">
+						<tr>
+							<td colspan="2">Keine Qualifikationen erworben.</td>
+						</tr>
+					</c:if>
+					<c:forEach var="qual" items="${qualifications}">
+						<tr>
+							<td><c:out value="${qual.courseName}" /></td>
+							<td><c:out value="${qual.status}" /></td>
+						</tr>
+					</c:forEach>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+	<div class="card" style="grid-column: 1/-1;">
+		<h2 class="card-title">Meine Abzeichen</h2>
+		<c:if test="${empty achievements}">
+			<p>Du hast noch keine Abzeichen verdient. Nimm an Events teil, um
+				sie freizuschalten!</p>
+		</c:if>
+		<div style="display: flex; flex-wrap: wrap; gap: 1rem;">
+			<c:forEach var="ach" items="${achievements}">
+				<div class="card"
+					style="flex: 1; min-width: 250px; text-align: center;">
+					<i class="fas ${ach.iconClass}"
+						style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;"></i>
+					<h4 style="margin: 0;">
+						<c:out value="${ach.name}" />
+					</h4>
+					<p style="color: var(--text-muted-color); font-size: 0.9rem;">
+						<c:out value="${ach.description}" />
+					</p>
+					<small>Verdient am: <c:out value="${ach.formattedEarnedAt}" /></small>
+				</div>
+			</c:forEach>
+		</div>
+	</div>
+
+</div>
+
+<div class="card">
+	<h2 class="card-title">Meine Event-Historie</h2>
+	<div class="desktop-table-wrapper">
+		<div class="table-wrapper"
+			style="max-height: 500px; overflow-y: auto;">
+			<table class="data-table">
+				<thead>
+					<tr>
+						<th>Event</th>
+						<th>Datum</th>
+						<th>Dein Status</th>
+						<th>Feedback</th>
+					</tr>
+				</thead>
+				<tbody>
+					<c:if test="${empty eventHistory}">
+						<tr>
+							<td colspan="4">Keine Event-Historie vorhanden.</td>
+						</tr>
+					</c:if>
+					<c:forEach var="event" items="${eventHistory}">
+						<tr>
+							<td><a
+								href="${pageContext.request.contextPath}/veranstaltungen/details?id=${event.id}"><c:out
+										value="${event.name}" /></a></td>
+							<td><c:out value="${event.formattedEventDateTime}" /> Uhr</td>
+							<td><c:out value="${event.userAttendanceStatus}" /></td>
+							<td><c:if
+									test="${event.status == 'ABGESCHLOSSEN' && event.userAttendanceStatus == 'ZUGEWIESEN'}">
+									<a
+										href="${pageContext.request.contextPath}/feedback?action=submitEventFeedback&eventId=${event.id}"
+										class="btn btn-small">Feedback geben</a>
+								</c:if></td>
+						</tr>
+					</c:forEach>
+				</tbody>
+			</table>
+		</div>
+	</div>
+	<div class="mobile-card-list">
+		<c:if test="${empty eventHistory}">
+			<div class="list-item-card">
+				<p>Keine Event-Historie vorhanden.</p>
+			</div>
+		</c:if>
+		<c:forEach var="event" items="${eventHistory}">
+			<div class="list-item-card">
+				<h3 class="card-title">
+					<a
+						href="${pageContext.request.contextPath}/veranstaltungen/details?id=${event.id}"><c:out
+							value="${event.name}" /></a>
+				</h3>
+				<div class="card-row">
+					<span>Datum:</span> <strong><c:out
+							value="${event.formattedEventDateTime}" /> Uhr</strong>
+				</div>
+				<div class="card-row">
+					<span>Dein Status:</span> <strong><c:out
+							value="${event.userAttendanceStatus}" /></strong>
+				</div>
+				<div class="card-actions">
+					<c:if
+						test="${event.status == 'ABGESCHLOSSEN' && event.userAttendanceStatus == 'ZUGEWIESEN'}">
+						<a
+							href="${pageContext.request.contextPath}/feedback?action=submitEventFeedback&eventId=${event.id}"
+							class="btn btn-small">Feedback geben</a>
+					</c:if>
+				</div>
+			</div>
+		</c:forEach>
+	</div>
+</div>
+
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script src="${pageContext.request.contextPath}/js/auth/passkey_auth.js"></script>
+<script src="${pageContext.request.contextPath}/js/public/profile.js"></script>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\qr_action.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lager-Aktion: <c:out value="${item.name}" /></title>
+<link rel="stylesheet"
+	href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<link rel="stylesheet"
+	href="${pageContext.request.contextPath}/css/style.css">
+
+<script>
+	// This script runs immediately to prevent a "flash" of the wrong theme.
+	const savedTheme = localStorage.getItem('theme') || 'light';
+	document.documentElement.setAttribute('data-theme', savedTheme);
+</script>
+
+</head>
+<body class="qr-action-body">
+
+	<div class="qr-action-container card">
+		<p>Aktion für:</p>
+		<h1 class="qr-action-item-name">
+			<c:out value="${item.name}" />
+		</h1>
+		<p class="details-subtitle"
+			style="margin-top: -1rem; margin-bottom: 2rem;">Bestand:
+			${item.quantity} / ${item.maxQuantity} (Verfügbar:
+			${item.availableQuantity})</p>
+
+
+		<c:if test="${not empty sessionScope.successMessage}">
+			<p class="success-message" style="margin-top: 1rem;">${sessionScope.successMessage}</p>
+			<c:remove var="successMessage" scope="session" />
+		</c:if>
+		<c:if test="${not empty sessionScope.errorMessage}">
+			<p class="error-message" style="margin-top: 1rem;">${sessionScope.errorMessage}</p>
+			<c:remove var="errorMessage" scope="session" />
+		</c:if>
+
+		<form action="${pageContext.request.contextPath}/lager/transaktion"
+			method="post" data-available-qty="${item.availableQuantity}"
+			data-total-qty="${item.quantity}" data-max-qty="${item.maxQuantity}">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="itemId" value="${item.id}"> <input type="hidden"
+				name="redirectUrl"
+				value="${pageContext.request.contextPath}/lager/aktionen?id=${item.id}">
+
+			<div class="form-group">
+				<label for="quantity">Anzahl</label> <input type="number"
+					name="quantity" id="quantity" value="1" min="1" required>
+			</div>
+
+			<div class="form-group">
+				<label for="notes">Notiz (optional, z.B. für welches Event)</label>
+				<input type="text" name="notes" id="notes"
+					placeholder="z.B. für Event XYZ">
+			</div>
+			<div class="form-group">
+				<label for="eventId">Zuweisen zu Event (optional)</label> <select
+					name="eventId" id="eventId">
+					<option value="">Kein Event</option>
+					<c:forEach var="event" items="${activeEvents}">
+						<option value="${event.id}">${event.name}</option>
+					</c:forEach>
+				</select>
+			</div>
+
+			<div class="qr-action-buttons">
+				<button type="submit" name="type" value="checkout" id="checkout-btn"
+					class="btn btn-danger qr-action-btn"
+					${item.availableQuantity <= 0 ? 'disabled' : ''}>
+					<i class="fas fa-sign-out-alt"></i> Entnehmen
+				</button>
+				<button type="submit" name="type" value="checkin" id="checkin-btn"
+					class="btn btn-success qr-action-btn"
+					${item.maxQuantity > 0 && item.quantity >= item.maxQuantity ? 'disabled' : ''}>
+					<i class="fas fa-sign-in-alt"></i> Einräumen
+				</button>
+			</div>
+		</form>
+	</div>
+
+	<script src="${pageContext.request.contextPath}/js/public/qr_action.js"></script>
+</body>
+</html>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\storage_item_details.jsp
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+
+<c:import url="/WEB-INF/jspf/main_header.jspf">
+	<c:param name="pageTitle"
+		value="Artikeldetails: ${fn:escapeXml(item.name)}" />
+</c:import>
+
+<h1>
+	<i class="fas fa-cube"></i> Artikeldetails
+</h1>
+
+<div class="responsive-dashboard-grid" style="align-items: flex-start;">
+
+	<div class="card">
+		<h2 class="card-title">
+			<c:out value="${item.name}" />
+		</h2>
+		<c:if test="${not empty item.imagePath}">
+			<a
+				href="${pageContext.request.contextPath}/image?file=${item.imagePath}"
+				class="lightbox-trigger"> <img
+				src="${pageContext.request.contextPath}/image?file=${item.imagePath}"
+				alt="<c:out value='${item.name}'/>"
+				style="width: 100%; border-radius: var(--border-radius); margin-bottom: 1rem; cursor: zoom-in;">
+			</a>
+		</c:if>
+		<ul class="details-list">
+			<li><strong>Allg. Status:</strong> <span
+				class="status-badge ${item.availabilityStatusCssClass}"><c:out
+						value="${item.availabilityStatus}" /></span></li>
+			<li><strong>Verfügbar:</strong> <span><c:out
+						value="${item.availableQuantity}" /> / <c:out
+						value="${item.quantity}" /></span></li>
+			<li><strong>Defekt:</strong> <span><c:out
+						value="${item.defectiveQuantity}" /></span></li>
+			<li><strong>Tracking-Status:</strong> <span> <c:choose>
+						<c:when test="${item.status == 'CHECKED_OUT'}">
+							<span class="status-badge status-warn"><c:out
+									value="Entnommen" /></span>
+						</c:when>
+						<c:when test="${item.status == 'MAINTENANCE'}">
+							<span class="status-badge status-info"><c:out
+									value="Wartung" /></span>
+						</c:when>
+						<c:otherwise>
+							<span class="status-badge status-ok"><c:out
+									value="Im Lager" /></span>
+						</c:otherwise>
+					</c:choose>
+			</span></li>
+			<c:if test="${not empty item.currentHolderUsername}">
+				<li><strong>Aktueller Inhaber:</strong> <span><c:out
+							value="${item.currentHolderUsername}" /></span></li>
+			</c:if>
+			<li><strong>Ort:</strong> <span><c:out
+						value="${item.location}" /></span></li>
+			<li><strong>Schrank:</strong> <span><c:out
+						value="${not empty item.cabinet ? item.cabinet : 'N/A'}" /></span></li>
+			<li><strong>Fach:</strong> <span><c:out
+						value="${not empty item.compartment ? item.compartment : 'N/A'}" /></span></li>
+		</ul>
+		<div style="margin-top: 2rem;">
+			<a href="<c:url value='/lager'/>" class="btn btn-small"><i
+				class="fas fa-arrow-left"></i> Zur Lagerübersicht</a>
+		</div>
+	</div>
+
+	<div class="card">
+		<div class="modal-tabs">
+			<button class="modal-tab-button active" data-tab="history-tab">Verlauf</button>
+			<button class="modal-tab-button" data-tab="maintenance-tab">Wartungshistorie</button>
+		</div>
+
+		<div id="history-tab" class="modal-tab-content active">
+			<h2 class="card-title" style="border: none; padding: 0;">Verlauf
+				/ Chronik</h2>
+
+			<!-- Desktop Table View -->
+			<div class="desktop-table-wrapper">
+				<div class="table-wrapper"
+					style="max-height: 60vh; overflow-y: auto;">
+					<table class="data-table">
+						<thead>
+							<tr>
+								<th>Wann</th>
+								<th>Aktion</th>
+								<th>Wer</th>
+								<th>Notiz</th>
+							</tr>
+						</thead>
+						<tbody>
+							<c:if test="${empty history}">
+								<tr>
+									<td colspan="4" style="text-align: center;">Kein Verlauf
+										für diesen Artikel vorhanden.</td>
+								</tr>
+							</c:if>
+							<c:forEach var="entry" items="${history}">
+								<tr>
+									<td><c:out
+											value="${entry.transactionTimestampLocaleString}" /></td>
+									<td><span
+										class="status-badge ${entry.quantityChange > 0 ? 'status-ok' : 'status-danger'}">${entry.quantityChange > 0 ? '+' : ''}<c:out
+												value="${entry.quantityChange}" /></span></td>
+									<td><c:out value="${entry.username}" /></td>
+									<td><c:out
+											value="${not empty entry.notes ? entry.notes : '-'}" /></td>
+								</tr>
+							</c:forEach>
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<!-- Mobile Card View -->
+			<div class="mobile-card-list">
+				<c:if test="${empty history}">
+					<div class="list-item-card">
+						<p>Kein Verlauf für diesen Artikel vorhanden.</p>
+					</div>
+				</c:if>
+				<c:forEach var="entry" items="${history}">
+					<div class="list-item-card">
+						<h3 class="card-title">
+							<span
+								class="status-badge ${entry.quantityChange > 0 ? 'status-ok' : 'status-danger'}">
+								${entry.quantityChange > 0 ? '+' : ''}<c:out
+									value="${entry.quantityChange}" />
+							</span>
+							<c:out value="${entry.username}" />
+						</h3>
+						<div class="card-row">
+							<span>Wann:</span> <strong><c:out
+									value="${entry.transactionTimestampLocaleString}" /></strong>
+						</div>
+						<div class="card-row"
+							style="flex-direction: column; align-items: flex-start;">
+							<span>Notiz:</span>
+							<p style="margin-top: 0.25rem; font-size: 0.9em; width: 100%;">
+								<c:out value="${not empty entry.notes ? entry.notes : '-'}" />
+							</p>
+						</div>
+					</div>
+				</c:forEach>
+			</div>
+		</div>
+
+		<div id="maintenance-tab" class="modal-tab-content">
+			<h2 class="card-title" style="border: none; padding: 0;">Wartungshistorie</h2>
+			<!-- Desktop Table View -->
+			<div class="desktop-table-wrapper">
+				<div class="table-wrapper"
+					style="max-height: 60vh; overflow-y: auto;">
+					<table class="data-table">
+						<thead>
+							<tr>
+								<th>Datum</th>
+								<th>Aktion</th>
+								<th>Bearbeiter</th>
+								<th>Notiz</th>
+							</tr>
+						</thead>
+						<tbody>
+							<c:if test="${empty maintenanceHistory}">
+								<tr>
+									<td colspan="4" style="text-align: center;">Keine
+										Wartungseinträge für diesen Artikel vorhanden.</td>
+								</tr>
+							</c:if>
+							<c:forEach var="entry" items="${maintenanceHistory}">
+								<tr>
+									<td><c:out value="${entry.formattedLogDate}" /></td>
+									<td><c:out value="${entry.action}" /></td>
+									<td><c:out value="${entry.username}" /></td>
+									<td><c:out value="${entry.notes}" /></td>
+								</tr>
+							</c:forEach>
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<!-- Mobile Card View -->
+			<div class="mobile-card-list">
+				<c:if test="${empty maintenanceHistory}">
+					<div class="list-item-card">
+						<p>Keine Wartungseinträge für diesen Artikel vorhanden.</p>
+					</div>
+				</c:if>
+				<c:forEach var="entry" items="${maintenanceHistory}">
+					<div class="list-item-card">
+						<h3 class="card-title">
+							<c:out value="${entry.action}" />
+						</h3>
+						<div class="card-row">
+							<span>Datum:</span> <strong><c:out
+									value="${entry.formattedLogDate}" /></strong>
+						</div>
+						<div class="card-row">
+							<span>Bearbeiter:</span> <strong><c:out
+									value="${entry.username}" /></strong>
+						</div>
+						<div class="card-row"
+							style="flex-direction: column; align-items: flex-start;">
+							<span>Notiz:</span>
+							<p style="margin-top: 0.25rem; font-size: 0.9em; width: 100%;">
+								<c:out value="${entry.notes}" />
+							</p>
+						</div>
+					</div>
+				</c:forEach>
+			</div>
+
+		</div>
+	</div>
+</div>
+
+
+<div id="lightbox" class="lightbox-overlay">
+	<span class="lightbox-close" title="Schließen">×</span> <img
+		class="lightbox-content" id="lightbox-image" alt="Großansicht">
+</div>
+
+<c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script
+	src="${pageContext.request.contextPath}/js/public/storage_item_details.js"></script>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\web.xml
+========================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd"
+	version="5.0">
+
+	<display-name>TechnikTeam Web Application</display-name>
+
+	<listener>
+		<listener-class>de.technikteam.listener.ApplicationInitializerListener</listener-class>
+	</listener>
+	<listener>
+		<listener-class>de.technikteam.config.GuiceConfig</listener-class>
+	</listener>
+	<listener>
+		<listener-class>de.technikteam.listener.AppContextListener</listener-class>
+	</listener>
+	<listener>
+		<listener-class>de.technikteam.listener.SessionListener</listener-class>
+	</listener>
+
+	<filter>
+		<filter-name>guiceFilter</filter-name>
+		<filter-class>com.google.inject.servlet.GuiceFilter</filter-class>
+		<async-supported>true</async-supported>
+	</filter>
+	<filter-mapping>
+		<filter-name>guiceFilter</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+
+	<session-config>
+		<session-timeout>30</session-timeout>
+		<cookie-config>
+			<http-only>true</http-only>
+			<secure>false</secure>
+		</cookie-config>
+	</session-config>
+
+	<welcome-file-list>
+		<welcome-file>/</welcome-file>
+	</welcome-file-list>
+
+	<jsp-config>
+		<jsp-property-group>
+			<url-pattern>*.jsp</url-pattern>
+			<url-pattern>*.jspf</url-pattern>
+			<el-ignored>false</el-ignored>
+		</jsp-property-group>
+	</jsp-config>
+
+	<error-page>
+		<error-code>400</error-code>
+		<location>/views/error/error400.jsp</location>
+	</error-page>
+	<error-page>
+		<error-code>401</error-code>
+		<location>/views/error/error401.jsp</location>
+	</error-page>
+	<error-page>
+		<error-code>403</error-code>
+		<location>/views/error/error403.jsp</location>
+	</error-page>
+	<error-page>
+		<error-code>404</error-code>
+		<location>/views/error/error404.jsp</location>
+	</error-page>
+	<error-page>
+		<error-code>500</error-code>
+		<location>/views/error/error500.jsp</location>
+	</error-page>
+	<error-page>
+		<error-code>503</error-code>
+		<location>/views/error/error503.jsp</location>
+	</error-page>
+	<error-page>
+		<exception-type>java.lang.Throwable</exception-type>
+		<location>/views/error/error500.jsp</location>
+	</error-page>
+</web-app>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\common_modals.jspf
+========================================================================
+
+<%@ page pageEncoding="UTF-8"%>
+<!-- The confirmation modal is dynamically created and added to the body by main.js -->
+<!-- This file is a placeholder for any other future global modals. -->
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\error_footer.jspf
+========================================================================
+
+<%@ page pageEncoding="UTF-8"%>
+    </div>
+</main>
+<script src="${pageContext.request.contextPath}/js/main.js"></script>
+</body>
+</html>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\error_header.jspf
+========================================================================
+
+<%@ page pageEncoding="UTF-8" isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<!DOCTYPE html>
+<html lang="de" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><c:out value="${param.pageTitle}" /> - TechnikTeam</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
+</head>
+<body data-context-path="${pageContext.request.contextPath}">
+<main class="main-content-wrapper no-sidebar">
+    <div class="main-content">
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\event_modals.jspf
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<!-- Event Create/Edit Modal -->
+<div class="modal-overlay" id="event-modal">
+	<div class="modal-content" style="max-width: 800px;">
+		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
+		<h3 id="event-modal-title">Event verwalten</h3>
+
+		<div class="modal-tabs">
+			<button class="modal-tab-button active" data-tab="general">Allgemein</button>
+			<button class="modal-tab-button" data-tab="requirements">Bedarf</button>
+			<button class="modal-tab-button" data-tab="reservations">Material</button>
+			<button class="modal-tab-button" data-tab="attachments">Anhänge</button>
+			<button class="modal-tab-button" data-tab="custom-fields">Anmeldefelder</button>
+		</div>
+
+		<form id="event-modal-form"
+			action="${pageContext.request.contextPath}/admin/veranstaltungen"
+			method="post" enctype="multipart/form-data">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" id="event-modal-action"> <input type="hidden"
+				name="id" id="event-modal-id">
+
+			<!-- General Tab -->
+			<div class="modal-tab-content active" id="general">
+				<div class="form-group">
+					<label for="name-modal">Name des Events</label> <input type="text"
+						id="name-modal" name="name" required>
+				</div>
+				<div class="responsive-dashboard-grid">
+					<div class="form-group">
+						<label for="eventDateTime-modal">Beginn</label> <input
+							type="datetime-local" id="eventDateTime-modal"
+							name="eventDateTime" required>
+					</div>
+					<div class="form-group">
+						<label for="endDateTime-modal">Ende (optional)</label> <input
+							type="datetime-local" id="endDateTime-modal" name="endDateTime">
+					</div>
+				</div>
+				<div class="responsive-dashboard-grid">
+					<div class="form-group">
+						<label for="location-modal">Ort</label> <input type="text"
+							id="location-modal" name="location">
+					</div>
+					<div class="form-group">
+						<label for="leaderUserId-modal">Event-Leitung</label> <select
+							name="leaderUserId" id="leaderUserId-modal">
+							<option value="">(Keine)</option>
+							<c:forEach var="user" items="${allUsers}">
+								<option value="${user.id}"><c:out
+										value="${user.username}" /></option>
+							</c:forEach>
+						</select>
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="description-modal">Beschreibung (Markdown wird
+						unterstützt)</label>
+					<textarea id="description-modal" name="description" rows="3"></textarea>
+				</div>
+			</div>
+
+			<!-- Requirements Tab -->
+			<div class="modal-tab-content" id="requirements">
+				<h4>Personalbedarf</h4>
+				<p>Legen Sie fest, welche Qualifikationen für dieses Event
+					benötigt werden.</p>
+				<div id="modal-requirements-container"></div>
+				<button type="button" class="btn btn-small"
+					id="modal-add-requirement-btn" style="margin-top: 1rem;">
+					<i class="fas fa-plus"></i> Bedarf hinzufügen
+				</button>
+				<button type="button" class="btn btn-info" id="find-crew-btn"
+					style="margin-top: 1rem; margin-left: 1rem;">
+					<i class="fas fa-search"></i> Crew finden
+				</button>
+			</div>
+
+			<!-- Reservations Tab -->
+			<div class="modal-tab-content" id="reservations">
+				<h4>Materialreservierung</h4>
+				<p>Reservieren Sie Material aus dem Lager für dieses Event.</p>
+				<div class="form-group">
+					<label for="kit-selection-modal">Aus Kit hinzufügen</label> <select
+						id="kit-selection-modal">
+						<option value="">-- Kit auswählen --</option>
+						<c:forEach var="kit" items="${allKits}">
+							<option value="${kit.id}"><c:out value="${kit.name}" /></option>
+						</c:forEach>
+					</select>
+				</div>
+				<div id="modal-reservations-container"></div>
+				<button type="button" class="btn btn-small"
+					id="modal-add-reservation-btn" style="margin-top: 1rem;">
+					<i class="fas fa-plus"></i> Material hinzufügen
+				</button>
+			</div>
+
+			<!-- Attachments Tab -->
+			<div class="modal-tab-content" id="attachments">
+				<h4>Anhänge</h4>
+				<ul id="modal-attachments-list" class="details-list"></ul>
+				<div class="form-group">
+					<label for="attachment-modal">Neuen Anhang hochladen</label> <input
+						type="file" name="attachment" id="attachment-modal">
+				</div>
+				<div class="form-group">
+					<label for="requiredRole-modal">Sichtbar für</label> <select
+						name="requiredRole" id="requiredRole-modal">
+						<option value="NUTZER" selected>Alle Nutzer</option>
+						<option value="ADMIN">Nur Admins</option>
+					</select>
+				</div>
+			</div>
+
+			<!-- Custom Fields Tab -->
+			<div class="modal-tab-content" id="custom-fields">
+				<h4>Zusätzliche Anmeldefelder</h4>
+				<p>Fügen Sie benutzerdefinierte Felder hinzu, die bei der
+					Anmeldung abgefragt werden (z.B. T-Shirt Größe, Allergien etc.).</p>
+				<div id="modal-custom-fields-container"></div>
+				<button type="button" class="btn btn-small"
+					id="modal-add-custom-field-btn" style="margin-top: 1rem;">
+					<i class="fas fa-plus"></i> Feld hinzufügen
+				</button>
+			</div>
+
+			<div style="margin-top: 1.5rem;">
+				<button type="submit" class="btn btn-success">
+					<i class="fas fa-save"></i> Event speichern
+				</button>
+			</div>
+		</form>
+	</div>
+</div>
+
+<!-- User Assignment Modal -->
+<div class="modal-overlay" id="assign-users-modal">
+	<div class="modal-content" style="max-width: 500px;">
+		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
+		<h3 id="assign-users-modal-title">Team zuweisen</h3>
+		<form id="assign-users-form"
+			action="${pageContext.request.contextPath}/admin/veranstaltungen"
+			method="post">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="assignUsers"> <input type="hidden"
+				name="eventId" value="">
+			<div id="user-checkboxes-container"
+				style="max-height: 40vh; overflow-y: auto;">
+				<!-- Checkboxes populated by JS -->
+			</div>
+			<button type="submit" class="btn btn-success"
+				style="margin-top: 1rem;">
+				<i class="fas fa-users"></i> Team finalisieren
+			</button>
+		</form>
+	</div>
+</div>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\main_footer.jspf
+========================================================================
+
+<%@ page pageEncoding="UTF-8"%>
+</main>
+</div>
+<div id="lightbox" class="lightbox-overlay">
+	<span class="lightbox-close" title="Schließen">×</span> <img
+		class="lightbox-content" id="lightbox-image" alt="Großansicht">
+</div>
+<script
+	src="${pageContext.request.contextPath}/vendor/diff-match-patch/diff_match_patch.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="${pageContext.request.contextPath}/js/main.js"></script>
+</body>
+</html>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\main_header.jspf
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+
+<!DOCTYPE html>
+<html lang="de"
+	data-theme="${not empty sessionScope.user.theme ? sessionScope.user.theme : 'light'}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${param.pageTitle}-TechnikTeam</title>
+<link rel="stylesheet"
+	href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<link rel="stylesheet"
+	href="${pageContext.request.contextPath}/css/style.css">
+<link rel="icon"
+	href="${pageContext.request.contextPath}/images/favicon.ico"
+	type="image/x-icon">
+<script>
+	// This script runs immediately to prevent a "flash" of the wrong theme.
+	const savedTheme = localStorage.getItem('theme')
+			|| document.documentElement.dataset.theme || 'light';
+	document.documentElement.setAttribute('data-theme', savedTheme);
+</script>
+</head>
+<body data-context-path="${pageContext.request.contextPath}"
+	data-is-logged-in="${not empty sessionScope.user}"
+	data-csrf-token="${sessionScope.csrfToken}"
+	data-page="${not empty param.page ? param.page : ''}"
+	data-all-permissions="${fn:escapeXml(not empty param.permissionsJson ? param.permissionsJson : '[]')}">
+
+	<c:set var="showNav"
+		value="${empty param.showNav or param.showNav == 'true'}" />
+	<c:if test="${showNav}">
+		<c:set var="user" value="${sessionScope.user}" />
+
+		<aside class="sidebar">
+			<header class="sidebar-header">
+				<a href="${pageContext.request.contextPath}/home" class="logo">
+					<i class="fas fa-bolt"></i> TechnikTeam
+				</a>
+			</header>
+			<nav class="sidebar-nav">
+				<ul>
+					<c:set var="userSectionDrawn" value="false" />
+					<c:set var="adminSectionDrawn" value="false" />
+					<c:forEach var="navItem" items="${sessionScope.navigationItems}">
+						<c:if test="${navItem.requiredPermission == null}">
+							<c:if test="${not userSectionDrawn}">
+								<li class="nav-section-title">Benutzerbereich</li>
+								<c:set var="userSectionDrawn" value="true" />
+							</c:if>
+							<li><a
+								href="${pageContext.request.contextPath}${navItem.url}"
+								class="${pageContext.request.requestURI eq (pageContext.request.contextPath.concat(navItem.url)) ? 'active-nav-link' : ''}">
+									<i class="fas ${navItem.icon} fa-fw"></i> ${navItem.label}
+							</a></li>
+						</c:if>
+					</c:forEach>
+
+					<c:forEach var="navItem" items="${sessionScope.navigationItems}">
+						<c:if test="${not empty navItem.requiredPermission}">
+							<c:if test="${not adminSectionDrawn}">
+								<li class="nav-section-title">Admin-Bereich</li>
+								<c:set var="adminSectionDrawn" value="true" />
+							</c:if>
+							<li><a
+								href="${pageContext.request.contextPath}${navItem.url}"
+								class="${pageContext.request.requestURI eq (pageContext.request.contextPath.concat(navItem.url)) ? 'active-nav-link' : ''}">
+									<i class="fas ${navItem.icon} fa-fw"></i> ${navItem.label}
+							</a></li>
+						</c:if>
+					</c:forEach>
+				</ul>
+			</nav>
+			<div class="user-actions">
+				<div class="theme-switcher desktop-only">
+					<i class="fas fa-sun"></i> <label class="toggle-switch"> <input
+						type="checkbox" id="theme-toggle-desktop"> <span
+						class="slider"></span>
+					</label> <i class="fas fa-moon"></i>
+				</div>
+				<hr style="margin: 1rem 0;" class="desktop-only">
+				<div class="user-info">
+					Angemeldet als: <strong>${user.username}</strong>
+				</div>
+				<div class="sidebar-controls">
+					<a href="${pageContext.request.contextPath}/profil"
+						class="btn btn-secondary btn-small" style="flex-grow: 1;">Profil</a>
+					<a href="${pageContext.request.contextPath}/logout"
+						id="logout-link" class="btn btn-danger-outline btn-small"
+						style="flex-grow: 1;">Logout</a>
+				</div>
+			</div>
+		</aside>
+
+		<header class="mobile-header">
+			<button class="mobile-nav-toggle" aria-label="Navigation umschalten">
+				<span class="line line-1"></span> <span class="line line-2"></span>
+				<span class="line line-3"></span>
+			</button>
+			<a href="${pageContext.request.contextPath}/home" class="mobile-logo">TechnikTeam</a>
+			<div class="mobile-header-right">
+				<div class="theme-switcher mobile-only">
+					<i class="fas fa-sun"></i> <label class="toggle-switch"> <input
+						type="checkbox" id="theme-toggle"> <span class="slider"></span>
+					</label> <i class="fas fa-moon"></i>
+				</div>
+				<a href="${pageContext.request.contextPath}/profil"><i
+					class="fas fa-user-circle" style="font-size: 1.5rem;"></i></a>
+			</div>
+		</header>
+		<div class="page-overlay"></div>
+	</c:if>
+
+	<div class="main-content-wrapper">
+		<main class="main-content">
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\message_banner.jspf
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<c:if test="${not empty sessionScope.successMessage}">
+	<p class="success-message">
+		<i class="fas fa-check-circle"></i>
+		<c:out value="${sessionScope.successMessage}" />
+	</p>
+	<c:remove var="successMessage" scope="session" />
+</c:if>
+
+<c:if test="${not empty sessionScope.errorMessage}">
+	<p class="error-message">
+		<i class="fas fa-exclamation-triangle"></i>
+		<c:out value="${sessionScope.errorMessage}" />
+	</p>
+	<c:remove var="errorMessage" scope="session" />
+</c:if>
+
+<c:if test="${not empty sessionScope.infoMessage}">
+	<p class="info-message">
+		<i class="fas fa-info-circle"></i>
+		<c:out value="${sessionScope.infoMessage}" />
+	</p>
+	<c:remove var="infoMessage" scope="session" />
+</c:if>
+
+<c:if
+	test="${not empty sessionScope.passwordResetUser and not empty sessionScope.passwordResetNewPassword}">
+	<p class="password-reset-alert" id="password-reset-alert"
+		style="word-wrap: break-word;">
+		<i class="fas fa-key"></i> Passwort für '<strong><c:out
+				value="${sessionScope.passwordResetUser}" /></strong>' wurde zurückgesetzt
+		auf: <strong class="copyable-password"
+			title="In Zwischenablage kopieren"><c:out
+				value="${sessionScope.passwordResetNewPassword}" /></strong> (wurde in die
+		Zwischenablage kopiert).
+	</p>
+	<c:remove var="passwordResetUser" scope="session" />
+	<c:remove var="passwordResetNewPassword" scope="session" />
+</c:if>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\storage_modals.jspf
+========================================================================
+
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
+	isELIgnored="false"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+
+<!-- Transaction Modal -->
+<div class="modal-overlay" id="transaction-modal">
+	<div class="modal-content" style="max-width: 450px;">
+		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
+		<h3 id="transaction-modal-title">Aktion</h3>
+		<form id="transaction-form"
+			action="${pageContext.request.contextPath}/lager/transaktion"
+			method="post">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="itemId" id="transaction-item-id">
+			<div class="form-group">
+				<label for="transaction-quantity">Anzahl</label> <input
+					type="number" name="quantity" id="transaction-quantity" value="1"
+					min="1" required>
+			</div>
+			<div class="form-group">
+				<label for="transaction-notes">Notiz (optional)</label> <input
+					type="text" name="notes" id="transaction-notes"
+					placeholder="z.B. für Event XYZ">
+			</div>
+			<div class="form-group">
+				<label for="transaction-eventId">Zuweisen zu Event
+					(optional)</label> <select name="eventId" id="transaction-eventId">
+					<option value="">Kein Event</option>
+					<c:if test="${not empty activeEvents}">
+						<c:forEach var="event" items="${activeEvents}">
+							<option value="${event.id}">${event.name}</option>
+						</c:forEach>
+					</c:if>
+				</select>
+			</div>
+			<div
+				style="display: flex; justify-content: space-between; gap: 1rem;">
+				<button type="submit" name="type" value="checkout"
+					class="btn btn-danger" style="flex-grow: 1;">Entnehmen</button>
+				<button type="submit" name="type" value="checkin"
+					class="btn btn-success" style="flex-grow: 1;">Einräumen</button>
+			</div>
+		</form>
+	</div>
+</div>
+
+<!-- Maintenance Modal -->
+<div class="modal-overlay" id="maintenance-modal">
+	<div class="modal-content" style="max-width: 450px;">
+		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
+		<h3 id="maintenance-modal-title">Wartungs-Status</h3>
+		<form action="${pageContext.request.contextPath}/admin/lager"
+			method="post">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="updateStatus"> <input type="hidden"
+				name="id" id="maintenance-item-id">
+			<div class="form-group">
+				<label for="maintenance-status">Neuer Status</label> <select
+					name="status" id="maintenance-status">
+					<option value="IN_STORAGE">Zurück in den Bestand</option>
+					<option value="MAINTENANCE">Zur Wartung</option>
+				</select>
+			</div>
+			<div class="form-group">
+				<label for="maintenance-notes">Notiz (z.B. was wurde
+					gemacht?)</label>
+				<textarea name="notes" id="maintenance-notes" rows="3"></textarea>
+			</div>
+			<button type="submit" class="btn">Speichern</button>
+		</form>
+	</div>
+</div>
+
+<!-- Defect Modal -->
+<div class="modal-overlay" id="defect-modal">
+	<div class="modal-content" style="max-width: 450px;">
+		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
+		<h3>Defekt-Status bearbeiten</h3>
+		<form action="${pageContext.request.contextPath}/admin/lager"
+			method="post">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="updateDefect"> <input type="hidden"
+				name="id" id="defect-item-id">
+			<div class="form-group">
+				<label for="defective_quantity">Anzahl defekter Artikel</label> <input
+					type="number" name="defective_quantity" id="defective_quantity"
+					min="0" required>
+			</div>
+			<div class="form-group">
+				<label for="defect_reason">Grund (optional)</label>
+				<textarea name="defect_reason" id="defect_reason" rows="3"></textarea>
+			</div>
+			<button type="submit" class="btn">
+				<i class="fas fa-save"></i> Speichern
+			</button>
+		</form>
+	</div>
+</div>
+
+<!-- Item Create/Edit Modal -->
+<div class="modal-overlay" id="item-modal">
+	<div class="modal-content" style="max-width: 700px;">
+		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
+		<h3>Lagerartikel</h3>
+		<form action="${pageContext.request.contextPath}/admin/lager"
+			method="post" enctype="multipart/form-data">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value=""> <input type="hidden" name="id"
+				value="">
+
+			<div class="form-group">
+				<label for="name-modal">Name</label> <input type="text"
+					id="name-modal" name="name" required>
+			</div>
+			<div class="responsive-dashboard-grid">
+				<div class="form-group">
+					<label for="location-modal">Ort</label> <input type="text"
+						id="location-modal" name="location">
+				</div>
+				<div class="form-group">
+					<label for="cabinet-modal">Schrank (optional)</label> <input
+						type="text" id="cabinet-modal" name="cabinet">
+				</div>
+				<div class="form-group">
+					<label for="compartment-modal">Fach (optional)</label> <input
+						type="text" id="compartment-modal" name="compartment">
+				</div>
+			</div>
+			<div class="responsive-dashboard-grid">
+				<div class="form-group">
+					<label for="quantity-modal">Menge im Bestand</label> <input
+						type="number" id="quantity-modal" name="quantity" min="0" required>
+				</div>
+				<div class="form-group">
+					<label for="maxQuantity-modal">Max. Menge (für Status)</label> <input
+						type="number" id="maxQuantity-modal" name="maxQuantity" min="0"
+						required>
+				</div>
+			</div>
+			<div class="responsive-dashboard-grid">
+				<div class="form-group">
+					<label for="weight_kg-modal">Gewicht (kg)</label> <input
+						type="text" id="weight_kg-modal" name="weight_kg"
+						placeholder="z.B. 1.25">
+				</div>
+				<div class="form-group">
+					<label for="price_eur-modal">Preis (€)</label> <input type="text"
+						id="price_eur-modal" name="price_eur" placeholder="z.B. 49.99">
+				</div>
+			</div>
+			<div class="form-group">
+				<label for="imageFile-modal">Bild (optional)</label> <input
+					type="file" name="imageFile" id="imageFile-modal" accept="image/*">
+			</div>
+			<button type="submit" class="btn">
+				<i class="fas fa-save"></i> Speichern
+			</button>
+		</form>
+	</div>
+</div>
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\table_scripts.jspf
+========================================================================
+
+<%@ page pageEncoding="UTF-8"%>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- TABLE FILTERING LOGIC ---
+    const filterInput = document.getElementById('table-filter');
+    if (filterInput) {
+        const searchableLists = document.querySelectorAll('.searchable-list');
+        const searchableTables = document.querySelectorAll('.searchable-table');
+
+        filterInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            
+            searchableLists.forEach(list => {
+                const items = list.querySelectorAll('[data-searchable-content]');
+                items.forEach(item => {
+                    const content = item.dataset.searchableContent.toLowerCase();
+                    item.style.display = content.includes(searchTerm) ? '' : 'none';
+                });
+            });
+
+            searchableTables.forEach(table => {
+                const rows = table.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    const content = row.textContent.toLowerCase();
+                    row.style.display = content.includes(searchTerm) ? '' : 'none';
+                });
+            });
+        });
+    }
+
+    // --- TABLE SORTING LOGIC ---
+    document.querySelectorAll('.sortable-table').forEach(table => {
+        const headers = table.querySelectorAll('th.sortable');
+        const tbody = table.querySelector('tbody');
+
+        headers.forEach((header, index) => {
+            header.addEventListener('click', () => {
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                const isAscending = !header.classList.contains('sorted-asc');
+                const sortType = header.dataset.sortType || 'string';
+
+                headers.forEach(h => h.classList.remove('sorted-asc', 'sorted-desc'));
+                
+                header.classList.toggle('sorted-asc', isAscending);
+                header.classList.toggle('sorted-desc', !isAscending);
+
+                rows.sort((a, b) => {
+                    let valA = a.children[index].dataset.sortValue || a.children[index].textContent.trim();
+                    let valB = b.children[index].dataset.sortValue || b.children[index].textContent.trim();
+                    
+                    if (sortType === 'number') {
+                        valA = parseFloat(valA) || 0;
+                        valB = parseFloat(valB) || 0;
+                    }
+
+                    if (valA < valB) return isAscending ? -1 : 1;
+                    if (valA > valB) return isAscending ? 1 : -1;
+                    return 0;
+                });
+
+                tbody.append(...rows);
+            });
+        });
+    });
+});
+</script>

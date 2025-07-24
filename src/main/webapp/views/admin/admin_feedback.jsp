@@ -61,12 +61,12 @@
 			<div class="card-actions">
 				<form class="js-feedback-status-form"
 					style="display: flex; gap: 0.5rem; align-items: center;"
-					action="${pageContext.request.contextPath}/admin/action/feedback?action=updateStatus"
+					action="${pageContext.request.contextPath}/admin/action/feedback"
 					method="POST">
-					<input type="hidden" name="csrfToken"
-						value="${sessionScope.csrfToken}"> <input type="hidden"
-						name="submissionId" value="${sub.id}"> <select
-						name="status" class="form-group"
+					<input type="hidden" name="action" value="updateStatus"> <input
+						type="hidden" name="csrfToken" value="${sessionScope.csrfToken}">
+					<input type="hidden" name="submissionId" value="${sub.id}">
+					<select name="status" class="form-group"
 						style="margin: 0; min-width: 150px;">
 						<option value="NEW" ${sub.status == 'NEW' ? 'selected' : ''}>Neu</option>
 						<option value="VIEWED" ${sub.status == 'VIEWED' ? 'selected' : ''}>Gesehen</option>
@@ -83,11 +83,11 @@
 				<c:if
 					test="${sub.status == 'COMPLETED' or sub.status == 'REJECTED'}">
 					<form class="js-feedback-delete-form"
-						action="${pageContext.request.contextPath}/admin/action/feedback?action=delete"
+						action="${pageContext.request.contextPath}/admin/action/feedback"
 						method="POST">
-						<input type="hidden" name="csrfToken"
-							value="${sessionScope.csrfToken}"> <input type="hidden"
-							name="submissionId" value="${sub.id}">
+						<input type="hidden" name="action" value="delete"> <input
+							type="hidden" name="csrfToken" value="${sessionScope.csrfToken}">
+						<input type="hidden" name="submissionId" value="${sub.id}">
 						<button type="submit" class="btn btn-small btn-danger-outline">Löschen</button>
 					</form>
 				</c:if>

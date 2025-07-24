@@ -148,6 +148,10 @@
 <script id="allItemsData" type="application/json">
     ${allItemsJson}
 </script>
+<script id="allSelectableItemsData" type="application/json">
+    ${allItemsJson}
+</script>
+
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
 <script src="${pageContext.request.contextPath}/js/admin/admin_kits.js"></script>

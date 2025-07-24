@@ -36,7 +36,6 @@
 		<hr>
 
 		<h3 style="margin-top: 1.5rem;">Neue Datei hochladen</h3>
-		<%-- This form now correctly points to the unified AdminFileServlet --%>
 		<form action="${pageContext.request.contextPath}/admin/uploadFile"
 			method="post" enctype="multipart/form-data">
 			<input type="hidden" name="csrfToken"
@@ -78,11 +77,27 @@
 
 		<c:forEach var="categoryEntry" items="${groupedFiles}">
 			<div class="category-group" style="margin-bottom: 2rem;">
-				<h3
-					style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
-					<i class="fas fa-folder"></i>
-					<c:out value="${categoryEntry.key}" />
-				</h3>
+				<div
+					style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+					<h3>
+						<i class="fas fa-folder"></i>
+						<c:out value="${categoryEntry.key}" />
+					</h3>
+					<c:if test="${categoryEntry.key != 'Ohne Kategorie'}">
+						<form
+							action="${pageContext.request.contextPath}/admin/dateien/kategorien/loeschen"
+							method="post" class="js-confirm-form"
+							data-confirm-message="Kategorie '${fn:escapeXml(categoryEntry.key)}' wirklich löschen? Alle Dateien in dieser Kategorie werden der Gruppe 'Ohne Kategorie' zugeordnet.">
+							<input type="hidden" name="csrfToken"
+								value="${sessionScope.csrfToken}"> <input type="hidden"
+								name="categoryId" value="${categoryEntry.value[0].categoryId}">
+							<button type="submit" class="btn btn-small btn-danger-outline"
+								title="Kategorie löschen">
+								<i class="fas fa-trash"></i>
+							</button>
+						</form>
+					</c:if>
+				</div>
 				<ul class="file-list">
 					<c:if test="${empty categoryEntry.value}">
 						<li style="justify-content: center;">Keine Dateien in dieser

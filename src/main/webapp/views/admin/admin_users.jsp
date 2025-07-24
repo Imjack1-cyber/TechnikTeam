@@ -114,10 +114,12 @@
 				<c:out value="${user.username}" />
 			</h3>
 			<div class="card-row">
-				<span>Rolle:</span> <strong data-field="roleName"><c:out value="${user.roleName}" /></strong>
+				<span>Rolle:</span> <strong data-field="roleName"><c:out
+						value="${user.roleName}" /></strong>
 			</div>
 			<div class="card-row">
-				<span>ID:</span> <strong data-field="id"><c:out value="${user.id}" /></strong>
+				<span>ID:</span> <strong data-field="id"><c:out
+						value="${user.id}" /></strong>
 			</div>
 			<div class="card-actions">
 				<c:if

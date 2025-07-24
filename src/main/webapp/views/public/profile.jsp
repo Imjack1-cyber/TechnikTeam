@@ -27,7 +27,9 @@
 
 		<form id="profile-form"
 			action="${pageContext.request.contextPath}/profil" method="post">
-			<input type="hidden" name="action" value="requestProfileChange">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="requestProfileChange">
 
 			<ul class="details-list">
 				<li><strong>Benutzername:</strong> <input type="text"

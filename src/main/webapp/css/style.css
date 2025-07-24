@@ -318,7 +318,7 @@ body.nav-open .sidebar {
 .mobile-nav-toggle .line {
 	width: 25px;
 	height: 3px;
-	background-color: var(--text-color);
+	background-color: var(--primary-color);
 	margin: 5px 0;
 	border-radius: 3px;
 	transition: all 0.3s;
@@ -1542,6 +1542,11 @@ fieldset {
 /* =================================================================== */
 /*  12. MARKDOWN STYLES                                                */
 /* =================================================================== */
+.markdown-content {
+    overflow-wrap: break-word;
+    word-wrap: break-word; /* legacy */
+}
+
 .markdown-content h1, .markdown-content h2, .markdown-content h3,
 .markdown-content h4, .markdown-content h5, .markdown-content h6 {
     margin-top: 1.5rem;

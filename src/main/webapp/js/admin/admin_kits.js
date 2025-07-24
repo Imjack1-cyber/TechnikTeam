@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	// --- Kit Content Management (Accordion & Dynamic Rows) ---
 	const allItems = JSON.parse(document.getElementById('allItemsData').textContent || '[]');
+	const allSelectableItems = JSON.parse(document.getElementById('allSelectableItemsData').textContent || '[]');
 
 	// Toggle accordion for each kit
 	document.querySelectorAll('.kit-header').forEach(header => {
@@ -48,11 +49,23 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	});
 
-	/**
-	 * Creates a new DOM element for an item row within a kit's content form.
-	 * @param {object} item - The item to pre-populate the row with.
-	 * @returns {HTMLDivElement} The new row element.
-	 */
+	const updateMaxQuantity = (selectElement) => {
+		const selectedId = parseInt(selectElement.value, 10);
+		const quantityInput = selectElement.closest('.dynamic-row').querySelector('input[name="quantities"]');
+		const selectedItem = allItems.find(item => item.id === selectedId);
+
+		if (selectedItem) {
+			quantityInput.max = selectedItem.availableQuantity;
+			quantityInput.title = `Maximal verfügbar: ${selectedItem.availableQuantity}`;
+			if (parseInt(quantityInput.value) > selectedItem.availableQuantity) {
+				quantityInput.value = selectedItem.availableQuantity;
+			}
+		} else {
+			quantityInput.removeAttribute('max');
+			quantityInput.title = '';
+		}
+	};
+
 	const createItemRow = (item = { id: '', quantity: 1 }) => {
 		const row = document.createElement('div');
 		row.className = 'dynamic-row';
@@ -61,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		select.name = 'itemIds';
 		select.className = 'form-group';
 		select.innerHTML = '<option value="">-- Artikel auswählen --</option>' +
-			allItems.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
+			allSelectableItems.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
 		select.value = item.id;
 
 		const quantityInput = document.createElement('input');
@@ -83,8 +96,19 @@ document.addEventListener('DOMContentLoaded', () => {
 		row.appendChild(quantityInput);
 		row.appendChild(removeBtn);
 
+		select.addEventListener('change', () => updateMaxQuantity(select));
+
+		// Initial check in case the row is pre-populated
+		if (item.id) {
+			updateMaxQuantity(select);
+		}
+
 		return row;
 	};
+
+	document.querySelectorAll('.kit-content select[name="itemIds"]').forEach(select => {
+		updateMaxQuantity(select);
+	});
 
 	// Event delegation for adding/removing item rows
 	document.body.addEventListener('click', e => {
@@ -113,6 +137,17 @@ document.addEventListener('DOMContentLoaded', () => {
 					container.appendChild(p);
 				}
 			});
+		}
+	});
+
+	// Enforce max value on quantity inputs
+	document.body.addEventListener('input', e => {
+		if (e.target.matches('input[name="quantities"]')) {
+			const max = parseInt(e.target.max, 10);
+			const value = parseInt(e.target.value, 10);
+			if (!isNaN(max) && !isNaN(value) && value > max) {
+				e.target.value = max;
+			}
 		}
 	});
 });

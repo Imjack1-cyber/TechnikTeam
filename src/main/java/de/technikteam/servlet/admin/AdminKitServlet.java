@@ -20,6 +20,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Singleton
 public class AdminKitServlet extends HttpServlet {
@@ -29,6 +30,19 @@ public class AdminKitServlet extends HttpServlet {
 	private final StorageDAO storageDAO;
 	private final AdminLogService adminLogService;
 	private final Gson gson = new Gson();
+
+	// A simple DTO for client-side use to avoid sending unnecessary data
+	private static class StorageItemDTO {
+		int id;
+		String name;
+		int availableQuantity;
+
+		StorageItemDTO(StorageItem item) {
+			this.id = item.getId();
+			this.name = item.getName();
+			this.availableQuantity = item.getAvailableQuantity();
+		}
+	}
 
 	@Inject
 	public AdminKitServlet(InventoryKitDAO kitDAO, StorageDAO storageDAO, AdminLogService adminLogService) {
@@ -47,9 +61,11 @@ public class AdminKitServlet extends HttpServlet {
 
 		List<InventoryKit> kits = kitDAO.getAllKitsWithItems();
 		List<StorageItem> allItems = storageDAO.getAllItems();
+		List<StorageItemDTO> allItemsDto = allItems.stream().map(StorageItemDTO::new).collect(Collectors.toList());
+
 		req.setAttribute("kits", kits);
-		req.setAttribute("allItems", allItems);
-		req.setAttribute("allItemsJson", gson.toJson(allItems));
+		req.setAttribute("allItems", allItems); // Still needed for pre-populating selects
+		req.setAttribute("allItemsJson", gson.toJson(allItemsDto)); // DTO for JS logic
 		req.getRequestDispatcher("/views/admin/admin_kits.jsp").forward(req, resp);
 	}
 

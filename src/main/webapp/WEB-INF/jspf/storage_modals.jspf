@@ -82,16 +82,24 @@
 			method="post">
 			<input type="hidden" name="csrfToken"
 				value="${sessionScope.csrfToken}"> <input type="hidden"
-				name="action" value="updateDefect"> <input type="hidden"
-				name="id" id="defect-item-id">
+				name="action" value="updateDefectStatus"> <input
+				type="hidden" name="id" id="defect-item-id">
+
 			<div class="form-group">
-				<label for="defective_quantity">Anzahl defekter Artikel</label> <input
-					type="number" name="defective_quantity" id="defective_quantity"
-					min="0" required>
+				<label for="defect-status">Status</label> <select name="status"
+					id="defect-status" class="form-group">
+					<option value="DEFECT">Defekt melden</option>
+					<option value="UNREPAIRABLE">Nicht reparierbar</option>
+				</select>
+			</div>
+			<div class="form-group">
+				<label for="defective_quantity">Anzahl der betroffenen
+					Artikel</label> <input type="number" name="quantity"
+					id="defective_quantity" value="1" min="1" required>
 			</div>
 			<div class="form-group">
 				<label for="defect_reason">Grund (optional)</label>
-				<textarea name="defect_reason" id="defect_reason" rows="3"></textarea>
+				<textarea name="reason" id="defect_reason" rows="3"></textarea>
 			</div>
 			<button type="submit" class="btn">
 				<i class="fas fa-save"></i> Speichern
@@ -99,6 +107,7 @@
 		</form>
 	</div>
 </div>
+
 
 <!-- Item Create/Edit Modal -->
 <div class="modal-overlay" id="item-modal">

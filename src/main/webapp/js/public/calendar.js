@@ -2,7 +2,8 @@ document.addEventListener('DOMContentLoaded', function() {
 	const calendarEl = document.getElementById('calendar-container');
 	const contextPath = document.body.dataset.contextPath || '';
 
-	if (calendarEl && window.innerWidth >= 992) {
+	// This check ensures FullCalendar only runs if the desktop container is visible
+	if (calendarEl && getComputedStyle(calendarEl).display !== 'none') {
 		const calendar = new FullCalendar.Calendar(calendarEl, {
 			initialView: 'dayGridMonth',
 			locale: 'de',

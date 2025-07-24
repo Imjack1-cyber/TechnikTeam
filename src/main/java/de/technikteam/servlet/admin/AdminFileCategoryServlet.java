@@ -41,23 +41,23 @@ public class AdminFileCategoryServlet extends HttpServlet {
 			return;
 		}
 
-		String path = request.getServletPath();
+		String pathInfo = request.getPathInfo(); // E.g., "/erstellen", "/loeschen"
 		User adminUser = (User) session.getAttribute("user");
-		logger.debug("AdminFileCategoryServlet processing POST for action path: {}", path);
+		logger.debug("AdminFileCategoryServlet processing POST for action path: {}", pathInfo);
 
 		try {
-			if (path.endsWith("/erstellen")) {
+			if ("/erstellen".equals(pathInfo)) {
 				handleCreate(request, response, adminUser);
-			} else if (path.endsWith("/aktualisieren")) {
+			} else if ("/aktualisieren".equals(pathInfo)) {
 				handleUpdate(request, response, adminUser);
-			} else if (path.endsWith("/loeschen")) {
+			} else if ("/loeschen".equals(pathInfo)) {
 				handleDelete(request, response, adminUser);
 			} else {
-				logger.warn("Unknown path received in AdminFileCategoryServlet: {}", path);
+				logger.warn("Unknown path received in AdminFileCategoryServlet: {}", request.getRequestURI());
 				response.sendError(HttpServletResponse.SC_BAD_REQUEST);
 			}
 		} catch (NumberFormatException e) {
-			logger.error("Invalid ID format in AdminFileCategoryServlet for action {}", path, e);
+			logger.error("Invalid ID format in AdminFileCategoryServlet for action {}", pathInfo, e);
 			session.setAttribute("errorMessage", "Ungültige ID für Kategorie-Aktion.");
 			response.sendRedirect(request.getContextPath() + "/admin/dateien");
 		}
