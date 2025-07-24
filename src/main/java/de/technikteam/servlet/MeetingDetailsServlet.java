@@ -37,9 +37,14 @@ public class MeetingDetailsServlet extends HttpServlet {
 			return;
 		}
 
+		User user = (User) request.getSession().getAttribute("user");
+		if (user == null) {
+			response.sendRedirect(request.getContextPath() + "/login");
+			return;
+		}
+
 		try {
 			int meetingId = Integer.parseInt(meetingIdParam);
-			User user = (User) request.getSession().getAttribute("user");
 			logger.info("Meeting details for ID {} requested by user '{}'", meetingId, user.getUsername());
 
 			Meeting meeting = meetingDAO.getMeetingById(meetingId);

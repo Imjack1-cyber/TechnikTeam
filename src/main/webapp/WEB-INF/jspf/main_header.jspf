@@ -23,6 +23,11 @@
 			|| document.documentElement.dataset.theme || 'light';
 	document.documentElement.setAttribute('data-theme', savedTheme);
 </script>
+<c:if test="${param.pageTitle == 'Kalender'}">
+	<link
+		href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css"
+		rel="stylesheet" />
+</c:if>
 </head>
 <body data-context-path="${pageContext.request.contextPath}"
 	data-is-logged-in="${not empty sessionScope.user}"

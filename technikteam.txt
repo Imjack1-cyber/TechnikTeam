@@ -1,5 +1,185 @@
 ﻿
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\pom.xml
+========================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>de.technikteam</groupId>
+    <artifactId>TechnikTeam</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>war</packaging>
+
+    <name>TechnikTeam</name>
+    <url>http://localhost:8080/</url>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <java.version>21</java.version>
+        <guice.version>7.0.0</guice.version>
+        <flyway.version>10.15.2</flyway.version>
+        <caffeine.version>3.1.8</caffeine.version>
+        <log4j.version>2.23.1</log4j.version>
+        <jackson.version>2.17.1</jackson.version>
+    </properties>
+
+    <dependencies>
+        <!-- Dependency Injection -->
+        <dependency>
+            <groupId>com.google.inject</groupId>
+            <artifactId>guice</artifactId>
+            <version>${guice.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.inject.extensions</groupId>
+            <artifactId>guice-servlet</artifactId>
+            <version>${guice.version}</version>
+        </dependency>
+
+        <!-- Database -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+            <version>${flyway.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+            <version>${flyway.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>8.3.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <version>5.1.0</version>
+        </dependency>
+        
+        <!-- Web & Servlet APIs -->
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <version>5.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.websocket</groupId>
+            <artifactId>jakarta.websocket-api</artifactId>
+            <version>2.1.1</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.web</groupId>
+            <artifactId>jakarta.servlet.jsp.jstl</artifactId>
+            <version>2.0.0</version>
+        </dependency>
+        
+        <!-- Utilities -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
+        </dependency>
+        <dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-crypto</artifactId>
+			<version>6.2.4</version> 
+		</dependency>
+	    <dependency>
+		    <groupId>org.mnode.ical4j</groupId>
+		    <artifactId>ical4j</artifactId>
+		    <version>3.2.4</version>
+		</dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>${caffeine.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.googlecode.java-diff-utils</groupId>
+            <artifactId>diffutils</artifactId>
+            <version>1.3.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yubico</groupId>
+            <artifactId>webauthn-server-core</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+
+        <!-- Logging -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+        <dependency>
+		    <groupId>org.apache.logging.log4j</groupId>
+		    <artifactId>log4j-layout-template-json</artifactId>
+		    <version>${log4j.version}</version>
+		</dependency>
+
+        <!-- Jackson Dependencies (managed for Flyway compatibility) -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+
+        <!-- Frontend Dependencies (WebJars) -->
+        <dependency>
+            <groupId>org.webjars.npm</groupId>
+            <artifactId>sortablejs</artifactId>
+            <version>1.15.2</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>TechnikTeam</finalName>
+        <plugins>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+            </plugin>
+            <plugin>
+                <artifactId>maven-war-plugin</artifactId>
+                <version>3.4.0</version>
+                <configuration>
+                    <failOnMissingWebXml>false</failOnMissingWebXml>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\config\DateFormatter.java
 ========================================================================
 
@@ -313,7 +493,9 @@ public class ServiceModule extends ServletModule {
 		bind(ApproveChangeAction.class).in(Scopes.SINGLETON);
 		bind(DenyChangeAction.class).in(Scopes.SINGLETON);
 		bind(UpdateFeedbackStatusAction.class).in(Scopes.SINGLETON);
+		bind(UpdateFeedbackOrderAction.class).in(Scopes.SINGLETON);
 		bind(DeleteFeedbackAction.class).in(Scopes.SINGLETON);
+		bind(GetFeedbackDetailsAction.class).in(Scopes.SINGLETON);
 
 		// --- Explicitly bind all Servlets as Singletons before serving them ---
 		bind(RootServlet.class).in(Scopes.SINGLETON);
@@ -2177,7 +2359,7 @@ public class FeedbackSubmissionDAO {
 
 	public List<FeedbackSubmission> getAllSubmissions() {
 		List<FeedbackSubmission> submissions = new ArrayList<>();
-		String sql = "SELECT fs.*, u.username FROM feedback_submissions fs JOIN users u ON fs.user_id = u.id ORDER BY FIELD(fs.status, 'NEW', 'VIEWED', 'PLANNED', 'COMPLETED', 'REJECTED'), fs.submitted_at DESC";
+		String sql = "SELECT fs.*, u.username FROM feedback_submissions fs JOIN users u ON fs.user_id = u.id ORDER BY FIELD(fs.status, 'NEW', 'VIEWED', 'PLANNED', 'REJECTED', 'COMPLETED'), fs.display_order ASC";
 		try (Connection conn = dbManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
@@ -2188,6 +2370,21 @@ public class FeedbackSubmissionDAO {
 			logger.error("Error fetching all feedback submissions", e);
 		}
 		return submissions;
+	}
+
+	public FeedbackSubmission getSubmissionById(int submissionId) {
+		String sql = "SELECT fs.*, u.username FROM feedback_submissions fs JOIN users u ON fs.user_id = u.id WHERE fs.id = ?";
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, submissionId);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				if (rs.next()) {
+					return mapResultSetToSubmission(rs);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching feedback submission by ID {}", submissionId, e);
+		}
+		return null;
 	}
 
 	public List<FeedbackSubmission> getSubmissionsByUserId(int userId) {
@@ -2206,14 +2403,36 @@ public class FeedbackSubmissionDAO {
 		return submissions;
 	}
 
-	public boolean updateStatus(int submissionId, String newStatus) {
+	public boolean updateStatus(int submissionId, String newStatus, Connection conn) throws SQLException {
 		String sql = "UPDATE feedback_submissions SET status = ? WHERE id = ?";
-		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, newStatus);
 			pstmt.setInt(2, submissionId);
 			return pstmt.executeUpdate() > 0;
+		}
+	}
+
+	public void updateOrderForStatus(List<Integer> orderedIds, Connection conn) throws SQLException {
+		String sql = "UPDATE feedback_submissions SET display_order = ? WHERE id = ?";
+		try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			for (int i = 0; i < orderedIds.size(); i++) {
+				pstmt.setInt(1, i);
+				pstmt.setInt(2, orderedIds.get(i));
+				pstmt.addBatch();
+			}
+			pstmt.executeBatch();
+		}
+	}
+
+	public boolean updateStatusAndTitle(int submissionId, String newStatus, String displayTitle) {
+		String sql = "UPDATE feedback_submissions SET status = ?, display_title = ? WHERE id = ?";
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setString(1, newStatus);
+			pstmt.setString(2, displayTitle);
+			pstmt.setInt(3, submissionId);
+			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
-			logger.error("Error updating status for submission {}", submissionId, e);
+			logger.error("Error updating status and title for submission {}", submissionId, e);
 			return false;
 		}
 	}
@@ -2235,9 +2454,11 @@ public class FeedbackSubmissionDAO {
 		sub.setUserId(rs.getInt("user_id"));
 		sub.setUsername(rs.getString("username"));
 		sub.setSubject(rs.getString("subject"));
+		sub.setDisplayTitle(rs.getString("display_title"));
 		sub.setContent(rs.getString("content"));
 		sub.setSubmittedAt(rs.getTimestamp("submitted_at").toLocalDateTime());
 		sub.setStatus(rs.getString("status"));
+		sub.setDisplayOrder(rs.getInt("display_order"));
 		return sub;
 	}
 }
@@ -2391,6 +2612,22 @@ public class FileDAO {
 			return pstmt.executeUpdate() > 0;
 		} catch (SQLException e) {
 			logger.error("SQL error touching file record for ID {}", fileId, e);
+			return false;
+		}
+	}
+
+	public boolean reassignFileToCategory(int fileId, int categoryId) {
+		String sql = "UPDATE files SET category_id = ? WHERE id = ?";
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			if (categoryId > 0) {
+				pstmt.setInt(1, categoryId);
+			} else {
+				pstmt.setNull(1, Types.INTEGER);
+			}
+			pstmt.setInt(2, fileId);
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("SQL error reassigning file {} to category {}", fileId, categoryId, e);
 			return false;
 		}
 	}
@@ -3938,6 +4175,183 @@ public class StorageLogDAO {
 	}
 }
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\dao\TodoDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+import de.technikteam.model.TodoCategory;
+import de.technikteam.model.TodoTask;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+@Singleton
+public class TodoDAO {
+	private static final Logger logger = LogManager.getLogger(TodoDAO.class);
+	private final DatabaseManager dbManager;
+
+	@Inject
+	public TodoDAO(DatabaseManager dbManager) {
+		this.dbManager = dbManager;
+	}
+
+	public List<TodoCategory> getAllCategoriesWithTasks() {
+		Map<Integer, TodoCategory> categoryMap = new LinkedHashMap<>();
+		String sql = "SELECT c.id as cat_id, c.name as cat_name, c.display_order as cat_order, "
+				+ "t.id as task_id, t.category_id as task_cat_id, t.content as task_content, "
+				+ "t.is_completed as task_completed, t.display_order as task_order "
+				+ "FROM todo_categories c LEFT JOIN todo_tasks t ON c.id = t.category_id "
+				+ "ORDER BY c.display_order, t.display_order";
+
+		try (Connection conn = dbManager.getConnection();
+				Statement stmt = conn.createStatement();
+				ResultSet rs = stmt.executeQuery(sql)) {
+
+			while (rs.next()) {
+				int categoryId = rs.getInt("cat_id");
+				TodoCategory category = categoryMap.computeIfAbsent(categoryId, id -> {
+					TodoCategory newCat = new TodoCategory();
+					try {
+						newCat.setId(id);
+						newCat.setName(rs.getString("cat_name"));
+						newCat.setDisplayOrder(rs.getInt("cat_order"));
+					} catch (SQLException e) {
+						throw new RuntimeException(e);
+					}
+					return newCat;
+				});
+
+				if (rs.getObject("task_id") != null) {
+					TodoTask task = new TodoTask();
+					task.setId(rs.getInt("task_id"));
+					task.setCategoryId(rs.getInt("task_cat_id"));
+					task.setContent(rs.getString("task_content"));
+					task.setCompleted(rs.getBoolean("task_completed"));
+					task.setDisplayOrder(rs.getInt("task_order"));
+					category.getTasks().add(task);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching all To-Do categories with tasks.", e);
+		}
+		return new ArrayList<>(categoryMap.values());
+	}
+
+	public TodoCategory createCategory(String name) throws SQLException {
+		String sql = "INSERT INTO todo_categories (name, display_order) "
+				+ "SELECT ?, COALESCE(MAX(display_order), -1) + 1 FROM todo_categories";
+		try (Connection conn = dbManager.getConnection();
+				PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+			pstmt.setString(1, name);
+			int affectedRows = pstmt.executeUpdate();
+			if (affectedRows > 0) {
+				try (ResultSet rs = pstmt.getGeneratedKeys()) {
+					if (rs.next()) {
+						TodoCategory newCategory = new TodoCategory();
+						newCategory.setId(rs.getInt(1));
+						newCategory.setName(name);
+						// We would need another query to get the display_order, but for now this is
+						// enough for the response.
+						return newCategory;
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	public TodoTask createTask(int categoryId, String content) throws SQLException {
+		String sql = "INSERT INTO todo_tasks (category_id, content, display_order) "
+				+ "SELECT ?, ?, COALESCE(MAX(display_order), -1) + 1 FROM todo_tasks WHERE category_id = ?";
+		try (Connection conn = dbManager.getConnection();
+				PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+			pstmt.setInt(1, categoryId);
+			pstmt.setString(2, content);
+			pstmt.setInt(3, categoryId);
+			int affectedRows = pstmt.executeUpdate();
+			if (affectedRows > 0) {
+				try (ResultSet rs = pstmt.getGeneratedKeys()) {
+					if (rs.next()) {
+						TodoTask newTask = new TodoTask();
+						newTask.setId(rs.getInt(1));
+						newTask.setCategoryId(categoryId);
+						newTask.setContent(content);
+						return newTask;
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	public boolean updateTaskContent(int taskId, String content, Connection conn) throws SQLException {
+		String sql = "UPDATE todo_tasks SET content = ? WHERE id = ?";
+		try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setString(1, content);
+			pstmt.setInt(2, taskId);
+			return pstmt.executeUpdate() > 0;
+		}
+	}
+
+	public boolean updateTaskStatus(int taskId, boolean isCompleted, Connection conn) throws SQLException {
+		String sql = "UPDATE todo_tasks SET is_completed = ? WHERE id = ?";
+		try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setBoolean(1, isCompleted);
+			pstmt.setInt(2, taskId);
+			return pstmt.executeUpdate() > 0;
+		}
+	}
+
+	public boolean deleteTask(int taskId, Connection conn) throws SQLException {
+		String sql = "DELETE FROM todo_tasks WHERE id = ?";
+		try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, taskId);
+			return pstmt.executeUpdate() > 0;
+		}
+	}
+
+	public boolean deleteCategory(int categoryId, Connection conn) throws SQLException {
+		String sql = "DELETE FROM todo_categories WHERE id = ?";
+		try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, categoryId);
+			return pstmt.executeUpdate() > 0;
+		}
+	}
+
+	public void updateCategoryOrder(List<Integer> categoryIds, Connection conn) throws SQLException {
+		String sql = "UPDATE todo_categories SET display_order = ? WHERE id = ?";
+		try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			for (int i = 0; i < categoryIds.size(); i++) {
+				pstmt.setInt(1, i);
+				pstmt.setInt(2, categoryIds.get(i));
+				pstmt.addBatch();
+			}
+			pstmt.executeBatch();
+		}
+	}
+
+	public void updateTaskOrders(List<Integer> taskIds, int categoryId, Connection conn) throws SQLException {
+		String sql = "UPDATE todo_tasks SET display_order = ?, category_id = ? WHERE id = ?";
+		try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			for (int i = 0; i < taskIds.size(); i++) {
+				pstmt.setInt(1, i);
+				pstmt.setInt(2, categoryId);
+				pstmt.setInt(3, taskIds.get(i));
+				pstmt.addBatch();
+			}
+			pstmt.executeBatch();
+		}
+	}
+}
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\dao\UserDAO.java
 ========================================================================
 
@@ -4323,19 +4737,6 @@ public class UserQualificationsDAO {
 			}
 		}
 		return false;
-	}
-
-	public int batchGrantQualifications(int courseId, int minMeetings) {
-		String sql = "INSERT INTO user_qualifications (user_id, course_id, status, completion_date, remarks) SELECT user_id, ?, 'ABSOLVIERT', CURDATE(), 'Automatisch vergeben' FROM meeting_attendance WHERE attended = TRUE AND meeting_id IN (SELECT id FROM meetings WHERE course_id = ?) GROUP BY user_id HAVING COUNT(meeting_id) >= ? ON DUPLICATE KEY UPDATE status = VALUES(status), completion_date = VALUES(completion_date), remarks = VALUES(remarks)";
-		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, courseId);
-			pstmt.setInt(2, courseId);
-			pstmt.setInt(3, minMeetings);
-			return pstmt.executeUpdate();
-		} catch (SQLException e) {
-			logger.error("Error during batch qualification grant for course ID {}", courseId, e);
-			return -1;
-		}
 	}
 }
 ========================================================================
@@ -5845,9 +6246,11 @@ public class FeedbackSubmission {
 	private int userId;
 	private String username; // For display
 	private String subject;
+	private String displayTitle; // Admin-editable title
 	private String content;
 	private LocalDateTime submittedAt;
 	private String status;
+	private int displayOrder;
 
 	public String getFormattedSubmittedAt() {
 		return DateFormatter.formatDateTime(this.submittedAt);
@@ -5886,6 +6289,14 @@ public class FeedbackSubmission {
 		this.subject = subject;
 	}
 
+	public String getDisplayTitle() {
+		return displayTitle;
+	}
+
+	public void setDisplayTitle(String displayTitle) {
+		this.displayTitle = displayTitle;
+	}
+
 	public String getContent() {
 		return content;
 	}
@@ -5908,6 +6319,14 @@ public class FeedbackSubmission {
 
 	public void setStatus(String status) {
 		this.status = status;
+	}
+
+	public int getDisplayOrder() {
+		return displayOrder;
+	}
+
+	public void setDisplayOrder(int displayOrder) {
+		this.displayOrder = displayOrder;
 	}
 }
 ========================================================================
@@ -6832,23 +7251,28 @@ public class StorageItem {
 	}
 
 	public String getAvailabilityStatus() {
-		if (this.getAvailableQuantity() <= 0) {
+		int available = getAvailableQuantity();
+		if (available <= 0 && maxQuantity > 0) {
 			return "Vergriffen";
 		}
-		if (this.maxQuantity > 0 && this.getAvailableQuantity() >= this.maxQuantity) {
+		if (maxQuantity == 0) {
+			return "Auf Lager"; // Untracked quantity
+		}
+		if (available >= maxQuantity) {
 			return "Vollständig";
 		}
-		if (this.maxQuantity > 0 && (double) this.getAvailableQuantity() / this.maxQuantity <= 0.25) {
+		if ((double) available / maxQuantity <= 0.25) {
 			return "Niedriger Bestand";
 		}
 		return "Auf Lager";
 	}
 
 	public String getAvailabilityStatusCssClass() {
-		if (this.getAvailableQuantity() <= 0) {
+		int available = getAvailableQuantity();
+		if (available <= 0 && maxQuantity > 0) {
 			return "status-danger";
 		}
-		if (this.maxQuantity > 0 && (double) this.getAvailableQuantity() / this.maxQuantity <= 0.25) {
+		if (maxQuantity > 0 && (double) available / maxQuantity <= 0.25) {
 			return "status-warn";
 		}
 		return "status-ok";
@@ -7157,6 +7581,106 @@ public class SystemStatsDTO {
 
 	public void setBatteryPercentage(int batteryPercentage) {
 		this.batteryPercentage = batteryPercentage;
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\model\TodoCategory.java
+========================================================================
+
+package de.technikteam.model;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class TodoCategory {
+	private int id;
+	private String name;
+	private int displayOrder;
+	private List<TodoTask> tasks = new ArrayList<>();
+
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public int getDisplayOrder() {
+		return displayOrder;
+	}
+
+	public void setDisplayOrder(int displayOrder) {
+		this.displayOrder = displayOrder;
+	}
+
+	public List<TodoTask> getTasks() {
+		return tasks;
+	}
+
+	public void setTasks(List<TodoTask> tasks) {
+		this.tasks = tasks;
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\model\TodoTask.java
+========================================================================
+
+package de.technikteam.model;
+
+public class TodoTask {
+	private int id;
+	private int categoryId;
+	private String content;
+	private boolean isCompleted;
+	private int displayOrder;
+
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	public int getCategoryId() {
+		return categoryId;
+	}
+
+	public void setCategoryId(int categoryId) {
+		this.categoryId = categoryId;
+	}
+
+	public String getContent() {
+		return content;
+	}
+
+	public void setContent(String content) {
+		this.content = content;
+	}
+
+	public boolean isCompleted() {
+		return isCompleted;
+	}
+
+	public void setCompleted(boolean completed) {
+		isCompleted = completed;
+	}
+
+	public int getDisplayOrder() {
+		return displayOrder;
+	}
+
+	public void setDisplayOrder(int displayOrder) {
+		this.displayOrder = displayOrder;
 	}
 }
 ========================================================================
@@ -7631,6 +8155,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Singleton
 public class EventService {
@@ -7720,6 +8245,23 @@ public class EventService {
 		} catch (SQLException e) {
 			logger.error("Failed to get DB connection for event service transaction.", e);
 			return 0;
+		}
+	}
+
+	public void signOffUserFromRunningEvent(int userId, String username, int eventId, String reason) {
+		eventDAO.signOffFromEvent(userId, eventId);
+
+		Event event = eventDAO.getEventById(eventId);
+		if (event != null && event.getLeaderUserId() > 0) {
+			String notificationMessage = String.format("%s hat sich vom laufenden Event '%s' abgemeldet. Grund: %s",
+					username, event.getName(), reason);
+
+			Map<String, Object> payload = Map.of("type", "alert", "payload",
+					Map.of("message", notificationMessage, "url", "/veranstaltungen/details?id=" + eventId));
+
+			NotificationService.getInstance().sendNotificationToUser(event.getLeaderUserId(), payload);
+			logger.info("Sent sign-off notification to event leader (ID: {}) for event '{}'", event.getLeaderUserId(),
+					event.getName());
 		}
 	}
 
@@ -8173,6 +8715,159 @@ public class SystemInfoService {
 	}
 }
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\service\TodoService.java
+========================================================================
+
+package de.technikteam.service;
+
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+import de.technikteam.dao.DatabaseManager;
+import de.technikteam.dao.TodoDAO;
+import de.technikteam.model.TodoCategory;
+import de.technikteam.model.TodoTask;
+import de.technikteam.model.User;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Map;
+
+@Singleton
+public class TodoService {
+	private static final Logger logger = LogManager.getLogger(TodoService.class);
+	private final DatabaseManager dbManager;
+	private final TodoDAO todoDAO;
+	private final AdminLogService adminLogService;
+
+	@Inject
+	public TodoService(DatabaseManager dbManager, TodoDAO todoDAO, AdminLogService adminLogService) {
+		this.dbManager = dbManager;
+		this.todoDAO = todoDAO;
+		this.adminLogService = adminLogService;
+	}
+
+	public List<TodoCategory> getAllTodos() {
+		return todoDAO.getAllCategoriesWithTasks();
+	}
+
+	public TodoCategory createCategory(String name, User admin) {
+		try {
+			TodoCategory newCategory = todoDAO.createCategory(name);
+			if (newCategory != null) {
+				adminLogService.log(admin.getUsername(), "TODO_CREATE_CATEGORY",
+						"To-Do Kategorie '" + name + "' erstellt.");
+			}
+			return newCategory;
+		} catch (SQLException e) {
+			logger.error("Service error creating To-Do category '{}'", name, e);
+			return null;
+		}
+	}
+
+	public TodoTask createTask(int categoryId, String content, User admin) {
+		try {
+			TodoTask newTask = todoDAO.createTask(categoryId, content);
+			if (newTask != null) {
+				adminLogService.log(admin.getUsername(), "TODO_CREATE_TASK",
+						"To-Do Aufgabe '" + content + "' in Kategorie ID " + categoryId + " erstellt.");
+			}
+			return newTask;
+		} catch (SQLException e) {
+			logger.error("Service error creating To-Do task in category {}", categoryId, e);
+			return null;
+		}
+	}
+
+	public boolean updateTask(int taskId, String content, Boolean isCompleted, User admin) {
+		try (Connection conn = dbManager.getConnection()) {
+			conn.setAutoCommit(false);
+			try {
+				boolean success = false;
+				if (content != null) {
+					success = todoDAO.updateTaskContent(taskId, content, conn);
+					if (success)
+						adminLogService.log(admin.getUsername(), "TODO_UPDATE_TASK",
+								"Aufgabe ID " + taskId + " aktualisiert.");
+				}
+				if (isCompleted != null) {
+					success = todoDAO.updateTaskStatus(taskId, isCompleted, conn);
+					if (success)
+						adminLogService.log(admin.getUsername(), "TODO_UPDATE_STATUS",
+								"Status für Aufgabe ID " + taskId + " auf '" + isCompleted + "' gesetzt.");
+				}
+				conn.commit();
+				return success;
+			} catch (SQLException e) {
+				conn.rollback();
+				throw e;
+			}
+		} catch (SQLException e) {
+			logger.error("Service transaction error updating task {}", taskId, e);
+			return false;
+		}
+	}
+
+	public boolean deleteTask(int taskId, User admin) {
+		try (Connection conn = dbManager.getConnection()) {
+			if (todoDAO.deleteTask(taskId, conn)) {
+				adminLogService.log(admin.getUsername(), "TODO_DELETE_TASK", "Aufgabe ID " + taskId + " gelöscht.");
+				return true;
+			}
+			return false;
+		} catch (SQLException e) {
+			logger.error("Service error deleting task {}", taskId, e);
+			return false;
+		}
+	}
+
+	public boolean deleteCategory(int categoryId, User admin) {
+		try (Connection conn = dbManager.getConnection()) {
+			if (todoDAO.deleteCategory(categoryId, conn)) {
+				adminLogService.log(admin.getUsername(), "TODO_DELETE_CATEGORY",
+						"Kategorie ID " + categoryId + " und alle zugehörigen Aufgaben gelöscht.");
+				return true;
+			}
+			return false;
+		} catch (SQLException e) {
+			logger.error("Service error deleting category {}", categoryId, e);
+			return false;
+		}
+	}
+
+	public boolean reorder(Map<String, List<Integer>> reorderData, User admin) {
+		try (Connection conn = dbManager.getConnection()) {
+			conn.setAutoCommit(false);
+			try {
+				// Reorder categories first if present
+				List<Integer> categoryOrder = reorderData.get("categoryOrder");
+				if (categoryOrder != null) {
+					todoDAO.updateCategoryOrder(categoryOrder, conn);
+				}
+
+				// Reorder tasks within each category
+				for (Map.Entry<String, List<Integer>> entry : reorderData.entrySet()) {
+					if (entry.getKey().startsWith("category-")) {
+						int categoryId = Integer.parseInt(entry.getKey().substring("category-".length()));
+						todoDAO.updateTaskOrders(entry.getValue(), categoryId, conn);
+					}
+				}
+				conn.commit();
+				adminLogService.log(admin.getUsername(), "TODO_REORDER", "To-Do-Listen neu sortiert.");
+				return true;
+			} catch (Exception e) {
+				conn.rollback();
+				throw e;
+			}
+		} catch (SQLException e) {
+			logger.error("Service transaction error during To-Do reorder.", e);
+			return false;
+		}
+	}
+}
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\service\UserService.java
 ========================================================================
 
@@ -8353,9 +9048,16 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
+import java.time.temporal.WeekFields;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Singleton
 public class CalendarServlet extends HttpServlet {
@@ -8372,9 +9074,94 @@ public class CalendarServlet extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+
+		String view = request.getParameter("view");
+		if (view == null || view.isEmpty()) {
+			view = "month";
+		}
+
+		LocalDate today = LocalDate.now();
+		String monthParam = request.getParameter("month");
+		String yearParam = request.getParameter("year");
+
+		YearMonth currentYearMonth = YearMonth.now();
+		if (monthParam != null && yearParam != null) {
+			try {
+				currentYearMonth = YearMonth.of(Integer.parseInt(yearParam), Integer.parseInt(monthParam));
+			} catch (NumberFormatException e) {
+				// Ignore invalid parameters and use current month
+			}
+		}
+
+		request.setAttribute("currentDate", today);
+		request.setAttribute("currentYearMonth", currentYearMonth);
+		request.setAttribute("monthName",
+				currentYearMonth.getMonth().getDisplayName(TextStyle.FULL_STANDALONE, Locale.GERMAN));
+		request.setAttribute("year", currentYearMonth.getYear());
+		request.setAttribute("prevMonth", currentYearMonth.minusMonths(1));
+		request.setAttribute("nextMonth", currentYearMonth.plusMonths(1));
+
 		List<Event> events = eventDAO.getAllActiveAndUpcomingEvents();
 		List<Meeting> meetings = meetingDAO.getAllUpcomingMeetings();
 
+		// Create a unified list of map objects, which is safe for JSP EL
+		List<Map<String, Object>> unifiedList = new ArrayList<>();
+		events.forEach(item -> {
+			Map<String, Object> map = new HashMap<>();
+			map.put("type", "Event");
+			map.put("object", item);
+			unifiedList.add(map);
+		});
+		meetings.forEach(item -> {
+			Map<String, Object> map = new HashMap<>();
+			map.put("type", "Meeting");
+			map.put("object", item);
+			unifiedList.add(map);
+		});
+
+		Map<LocalDate, List<Map<String, Object>>> eventsByDate = unifiedList.stream()
+				.collect(Collectors.groupingBy(itemMap -> {
+					Object item = itemMap.get("object");
+					if (item instanceof Event) {
+						return ((Event) item).getEventDateTime().toLocalDate();
+					} else {
+						return ((Meeting) item).getMeetingDateTime().toLocalDate();
+					}
+				}));
+		request.setAttribute("eventsByDate", eventsByDate);
+
+		// --- Data for Monthly View ---
+		LocalDate firstOfMonth = currentYearMonth.atDay(1);
+		int startDayOfWeekValue = firstOfMonth.getDayOfWeek().getValue(); // Monday=1, ..., Sunday=7
+		int startDayOfWeekOffset = (startDayOfWeekValue == 7) ? 0 : startDayOfWeekValue; // Convert to Sunday=0,
+																							// Monday=1, ...
+		request.setAttribute("startDayOfWeekOffset", startDayOfWeekOffset);
+		request.setAttribute("daysInMonth", currentYearMonth.lengthOfMonth());
+
+		// --- Data for Weekly View ---
+		WeekFields weekFields = WeekFields.of(Locale.GERMANY);
+		LocalDate startOfWeek = today.with(weekFields.dayOfWeek(), 1);
+		List<Map<String, Object>> weekData = new ArrayList<>();
+		for (int i = 0; i < 7; i++) {
+			LocalDate date = startOfWeek.plusDays(i);
+			Map<String, Object> dayData = new HashMap<>();
+			dayData.put("date", date);
+			dayData.put("dayName", date.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.GERMAN));
+			dayData.put("dayOfMonth", date.getDayOfMonth());
+			weekData.add(dayData);
+		}
+		request.setAttribute("weekData", weekData);
+
+		// --- Data for Mobile List View ---
+		List<Map<String, Object>> mobileList = prepareMobileList(events, meetings, request.getContextPath());
+		request.setAttribute("mobileList", mobileList);
+
+		request.setAttribute("view", view);
+		request.getRequestDispatcher("/views/public/calendar.jsp").forward(request, response);
+	}
+
+	private List<Map<String, Object>> prepareMobileList(List<Event> events, List<Meeting> meetings,
+			String contextPath) {
 		List<Map<String, Object>> combinedList = new ArrayList<>();
 		DateTimeFormatter dayFormatter = DateTimeFormatter.ofPattern("dd");
 		DateTimeFormatter monthAbbrFormatter = DateTimeFormatter.ofPattern("MMM", Locale.GERMANY);
@@ -8387,7 +9174,7 @@ public class CalendarServlet extends HttpServlet {
 			entry.put("monthAbbr", event.getEventDateTime().format(monthAbbrFormatter));
 			entry.put("type", "Event");
 			entry.put("typeClass", "termin-type-event");
-			entry.put("url", request.getContextPath() + "/veranstaltungen/details?id=" + event.getId());
+			entry.put("url", contextPath + "/veranstaltungen/details?id=" + event.getId());
 			combinedList.add(entry);
 		}
 
@@ -8399,22 +9186,12 @@ public class CalendarServlet extends HttpServlet {
 			entry.put("monthAbbr", meeting.getMeetingDateTime().format(monthAbbrFormatter));
 			entry.put("type", "Lehrgang");
 			entry.put("typeClass", "termin-type-lehrgang");
-			entry.put("url", request.getContextPath() + "/meetingDetails?id=" + meeting.getId());
+			entry.put("url", contextPath + "/meetingDetails?id=" + meeting.getId());
 			combinedList.add(entry);
 		}
 
 		combinedList.sort(Comparator.comparing(m -> (LocalDateTime) m.get("start")));
-
-		DateTimeFormatter monthYearFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMANY);
-		Map<String, List<Map<String, Object>>> groupedByMonth = new LinkedHashMap<>();
-		for (Map<String, Object> entry : combinedList) {
-			LocalDateTime start = (LocalDateTime) entry.get("start");
-			String monthKey = start.format(monthYearFormatter);
-			groupedByMonth.computeIfAbsent(monthKey, k -> new ArrayList<>()).add(entry);
-		}
-
-		request.setAttribute("groupedEntries", groupedByMonth);
-		request.getRequestDispatcher("/views/public/calendar.jsp").forward(request, response);
+		return combinedList;
 	}
 }
 ========================================================================
@@ -8583,6 +9360,7 @@ import de.technikteam.dao.EventDAO;
 import de.technikteam.model.EventCustomField;
 import de.technikteam.model.EventCustomFieldResponse;
 import de.technikteam.model.User;
+import de.technikteam.service.EventService;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -8600,11 +9378,13 @@ public class EventActionServlet extends HttpServlet {
 	private static final Logger logger = LogManager.getLogger(EventActionServlet.class);
 	private final EventDAO eventDAO;
 	private final EventCustomFieldDAO customFieldDAO;
+	private final EventService eventService;
 
 	@Inject
-	public EventActionServlet(EventDAO eventDAO, EventCustomFieldDAO customFieldDAO) {
+	public EventActionServlet(EventDAO eventDAO, EventCustomFieldDAO customFieldDAO, EventService eventService) {
 		this.eventDAO = eventDAO;
 		this.customFieldDAO = customFieldDAO;
+		this.eventService = eventService;
 	}
 
 	@Override
@@ -8647,7 +9427,18 @@ public class EventActionServlet extends HttpServlet {
 			} else if ("signoff".equals(action)) {
 				eventDAO.signOffFromEvent(user.getId(), eventId);
 				request.getSession().setAttribute("successMessage", "Erfolgreich vom Event abgemeldet.");
+			} else if ("signOffWithReason".equals(action)) {
+				String reason = request.getParameter("reason");
+				if (reason == null || reason.trim().isEmpty()) {
+					request.getSession().setAttribute("errorMessage",
+							"Eine Begründung für die Abmeldung ist erforderlich.");
+				} else {
+					eventService.signOffUserFromRunningEvent(user.getId(), user.getUsername(), eventId, reason);
+					request.getSession().setAttribute("successMessage",
+							"Erfolgreich vom Event abgemeldet. Der Leiter wurde informiert.");
+				}
 			}
+
 		} catch (NumberFormatException e) {
 			logger.error("Invalid event ID format in EventActionServlet.", e);
 			request.getSession().setAttribute("errorMessage", "Ungültige Event-ID.");
@@ -8799,7 +9590,6 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Singleton
@@ -8830,6 +9620,11 @@ public class EventDetailsServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		User user = (User) request.getSession().getAttribute("user");
+		if (user == null) {
+			response.sendRedirect(request.getContextPath() + "/login");
+			return;
+		}
+
 		try {
 			int eventId = Integer.parseInt(request.getParameter("id"));
 			Event event = eventDAO.getEventById(eventId);
@@ -8839,16 +9634,31 @@ public class EventDetailsServlet extends HttpServlet {
 				return;
 			}
 
-			boolean isGlobalAdmin = user.getPermissions().contains("EVENT_MANAGE_TASKS") || user.hasAdminAccess();
+			// --- AUTHORIZATION CHECK ---
+			boolean isGlobalAdmin = user.hasAdminAccess();
 			boolean isEventLeader = user.getId() == event.getLeaderUserId();
+			boolean isAssociated = eventDAO.isUserAssociatedWithEvent(eventId, user.getId());
+
+			if (!isGlobalAdmin && !isEventLeader && !isAssociated) {
+				logger.warn("Access denied for user '{}' to event details for event ID {}", user.getUsername(),
+						eventId);
+				response.sendError(HttpServletResponse.SC_FORBIDDEN,
+						"Sie sind nicht berechtigt, dieses Event einzusehen.");
+				return;
+			}
+			// --- END AUTHORIZATION CHECK ---
+
 			boolean hasTaskManagementPermission = isGlobalAdmin || isEventLeader;
 			request.setAttribute("hasTaskManagementPermission", hasTaskManagementPermission);
 
 			String userRoleForAttachments = (hasTaskManagementPermission) ? "ADMIN" : "NUTZER";
+
 			List<User> assignedUsers = eventDAO.getAssignedUsersForEvent(eventId);
 			boolean isUserAssigned = assignedUsers.stream().anyMatch(u -> u.getId() == user.getId());
 			request.setAttribute("isUserAssigned", isUserAssigned);
 
+			// isUserAssociatedWithEvent already checks both assigned and signed-up, but we
+			// need the signed-up list for other logic.
 			List<User> signedUpUsers = eventDAO.getSignedUpUsersForEvent(eventId);
 			boolean isUserParticipant = signedUpUsers.stream().anyMatch(u -> u.getId() == user.getId());
 			request.setAttribute("isUserParticipant", isUserParticipant);
@@ -9041,7 +9851,7 @@ public class FeedbackServlet extends HttpServlet {
 		if (submissionDAO.createSubmission(submission)) {
 			request.getSession().setAttribute("successMessage",
 					"Vielen Dank! Dein Feedback wurde erfolgreich übermittelt.");
-			response.sendRedirect(request.getContextPath() + "/home");
+			response.sendRedirect(request.getContextPath() + "/my-feedback");
 		} else {
 			request.setAttribute("errorMessage",
 					"Dein Feedback konnte nicht übermittelt werden. Bitte versuche es später erneut.");
@@ -9822,9 +10632,14 @@ public class MeetingDetailsServlet extends HttpServlet {
 			return;
 		}
 
+		User user = (User) request.getSession().getAttribute("user");
+		if (user == null) {
+			response.sendRedirect(request.getContextPath() + "/login");
+			return;
+		}
+
 		try {
 			int meetingId = Integer.parseInt(meetingIdParam);
-			User user = (User) request.getSession().getAttribute("user");
 			logger.info("Meeting details for ID {} requested by user '{}'", meetingId, user.getUsername());
 
 			Meeting meeting = meetingDAO.getMeetingById(meetingId);
@@ -11176,7 +11991,6 @@ import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import de.technikteam.dao.CourseDAO;
-import de.technikteam.dao.UserQualificationsDAO;
 import de.technikteam.model.Course;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
@@ -11190,22 +12004,18 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 
 @Singleton
 public class AdminCourseServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminCourseServlet.class);
 	private final CourseDAO courseDAO;
-	private final UserQualificationsDAO userQualificationsDAO;
 	private final AdminLogService adminLogService;
 	private final Gson gson = new Gson();
 
 	@Inject
-	public AdminCourseServlet(CourseDAO courseDAO, UserQualificationsDAO userQualificationsDAO,
-			AdminLogService adminLogService) {
+	public AdminCourseServlet(CourseDAO courseDAO, AdminLogService adminLogService) {
 		this.courseDAO = courseDAO;
-		this.userQualificationsDAO = userQualificationsDAO;
 		this.adminLogService = adminLogService;
 	}
 
@@ -11236,9 +12046,6 @@ public class AdminCourseServlet extends HttpServlet {
 		case "create":
 		case "update":
 			handleCreateOrUpdate(req, resp);
-			break;
-		case "grantQualifications":
-			handleGrantQualifications(req, resp);
 			break;
 		default:
 			resp.sendRedirect(req.getContextPath() + "/admin/lehrgaenge");
@@ -11314,30 +12121,6 @@ public class AdminCourseServlet extends HttpServlet {
 		}
 		resp.sendRedirect(req.getContextPath() + "/admin/lehrgaenge");
 	}
-
-	private void handleGrantQualifications(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		User adminUser = (User) req.getSession().getAttribute("user");
-		try {
-			int courseId = Integer.parseInt(req.getParameter("courseId"));
-			int minMeetings = Integer.parseInt(req.getParameter("minMeetings"));
-			int updatedCount = userQualificationsDAO.batchGrantQualifications(courseId, minMeetings);
-			if (updatedCount >= 0) {
-				Course course = courseDAO.getCourseById(courseId);
-				String courseName = course != null ? course.getName() : "ID " + courseId;
-				String logDetails = String.format(
-						"Batch-Qualifikation für '%s' an %d Benutzer vergeben (min. %d Meetings).", courseName,
-						updatedCount, minMeetings);
-				adminLogService.log(adminUser.getUsername(), "BATCH_GRANT_QUALIFICATION", logDetails);
-				req.getSession().setAttribute("successMessage",
-						"Qualifikationen wurden erfolgreich an " + updatedCount + " Benutzer vergeben.");
-			} else {
-				req.getSession().setAttribute("errorMessage", "Qualifikationen konnten nicht vergeben werden.");
-			}
-		} catch (NumberFormatException e) {
-			req.getSession().setAttribute("errorMessage", "Ungültige Kurs-ID oder Anzahl der Meetings.");
-		}
-		resp.sendRedirect(req.getContextPath() + "/admin/lehrgaenge");
-	}
 }
 ========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminDashboardServlet.java
@@ -11345,28 +12128,46 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 
 package de.technikteam.servlet.admin;
 
-import java.io.IOException;
+import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import de.technikteam.dao.StatisticsDAO;
+import de.technikteam.dao.StorageDAO;
+import de.technikteam.model.StorageItem;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+import java.util.List;
 
 @Singleton
 public class AdminDashboardServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminDashboardServlet.class);
+	private final StorageDAO storageDAO;
+	private final StatisticsDAO statisticsDAO;
 
-	@Override
-	public void init() {
-		// DAOs are no longer needed here as data is fetched via API.
+	@Inject
+	public AdminDashboardServlet(StorageDAO storageDAO, StatisticsDAO statisticsDAO) {
+		this.storageDAO = storageDAO;
+		this.statisticsDAO = statisticsDAO;
 	}
 
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		logger.info("Admin dashboard page requested. Forwarding to JSP for dynamic data loading.");
+		logger.info("Admin dashboard page requested. Fetching initial widget data.");
+
+		List<StorageItem> defectiveItems = storageDAO.getDefectiveItems();
+		int userCount = statisticsDAO.getUserCount();
+		int activeEventCount = statisticsDAO.getActiveEventCount();
+
+		request.setAttribute("defectiveItems", defectiveItems);
+		request.setAttribute("userCount", userCount);
+		request.setAttribute("activeEventCount", activeEventCount);
+
 		request.getRequestDispatcher("/views/admin/admin_dashboard.jsp").forward(request, response);
 	}
 }
@@ -11790,12 +12591,19 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Singleton
 public class AdminFeedbackServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private final FeedbackSubmissionDAO submissionDAO;
+
+	// Define the order of statuses for the Kanban board
+	private static final List<String> FEEDBACK_STATUS_ORDER = Arrays.asList("NEW", "VIEWED", "PLANNED", "REJECTED",
+			"COMPLETED");
 
 	@Inject
 	public AdminFeedbackServlet(FeedbackSubmissionDAO submissionDAO) {
@@ -11806,14 +12614,20 @@ public class AdminFeedbackServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		User user = (User) request.getSession().getAttribute("user");
-		// This is a critical check. If the user is null, authentication has failed.
 		if (user == null || !user.hasAdminAccess()) {
 			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
 
 		List<FeedbackSubmission> submissions = submissionDAO.getAllSubmissions();
-		request.setAttribute("submissions", submissions);
+
+		// Group submissions by status for the Kanban view
+		Map<String, List<FeedbackSubmission>> groupedSubmissions = submissions.stream()
+				.collect(Collectors.groupingBy(FeedbackSubmission::getStatus));
+
+		request.setAttribute("groupedSubmissions", groupedSubmissions);
+		request.setAttribute("feedbackStatusOrder", FEEDBACK_STATUS_ORDER); // Pass the order to the JSP
+
 		request.getRequestDispatcher("/views/admin/admin_feedback.jsp").forward(request, response);
 	}
 }
@@ -12062,6 +12876,11 @@ public class AdminFileServlet extends HttpServlet {
 			return;
 		}
 
+		if ("reassign".equals(action)) {
+			handleReassign(request, response, adminUser);
+			return;
+		}
+
 		Part filePart = request.getPart("file");
 		if (filePart == null || filePart.getSize() == 0) {
 			session.setAttribute("errorMessage", "Bitte wählen Sie eine Datei zum Hochladen aus.");
@@ -12086,6 +12905,29 @@ public class AdminFileServlet extends HttpServlet {
 		}
 	}
 
+	private void handleReassign(HttpServletRequest request, HttpServletResponse response, User adminUser)
+			throws IOException {
+		HttpSession session = request.getSession();
+		try {
+			int fileId = Integer.parseInt(request.getParameter("fileId"));
+			int newCategoryId = Integer.parseInt(request.getParameter("newCategoryId"));
+
+			de.technikteam.model.File file = fileDAO.getFileById(fileId);
+			if (file == null) {
+				session.setAttribute("errorMessage", "Datei nicht gefunden.");
+			} else if (fileDAO.reassignFileToCategory(fileId, newCategoryId)) {
+				adminLogService.log(adminUser.getUsername(), "FILE_REASSIGN", "Datei '" + file.getFilename() + "' (ID: "
+						+ fileId + ") wurde in Kategorie ID " + newCategoryId + " verschoben.");
+				session.setAttribute("successMessage", "Datei wurde erfolgreich neu zugeordnet.");
+			} else {
+				session.setAttribute("errorMessage", "Datei konnte nicht neu zugeordnet werden.");
+			}
+		} catch (NumberFormatException e) {
+			session.setAttribute("errorMessage", "Ungültige ID-Angabe.");
+		}
+		response.sendRedirect(request.getContextPath() + "/admin/dateien");
+	}
+
 	private void handleCreateUpload(HttpServletRequest request, HttpServletResponse response, User adminUser,
 			Part filePart) throws IOException {
 		HttpSession session = request.getSession();
@@ -12105,8 +12947,9 @@ public class AdminFileServlet extends HttpServlet {
 			newDbFile.setRequiredRole(requiredRole);
 
 			if (fileDAO.createFile(newDbFile)) {
-				adminLogService.log(adminUser.getUsername(), "FILE_UPLOAD",
-						"Datei '" + sanitizedOriginalFileName + "' hochgeladen.");
+				String categoryName = fileDAO.getCategoryNameById(categoryId);
+				adminLogService.log(adminUser.getUsername(), "FILE_UPLOAD", "Datei '" + sanitizedOriginalFileName
+						+ "' in Kategorie '" + categoryName + "' hochgeladen. Sichtbar für: " + requiredRole + ".");
 				session.setAttribute("successMessage", "Datei erfolgreich hochgeladen.");
 			} else {
 				targetFile.delete();
@@ -12388,692 +13231,5 @@ public class AdminLogServlet extends HttpServlet {
 		List<AdminLog> logs = adminLogDAO.getAllLogs();
 		request.setAttribute("logs", logs);
 		request.getRequestDispatcher("/views/admin/admin_log.jsp").forward(request, response);
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminMeetingServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
-import de.technikteam.config.LocalDateAdapter;
-import de.technikteam.config.LocalDateTimeAdapter;
-import de.technikteam.dao.AttachmentDAO;
-import de.technikteam.dao.CourseDAO;
-import de.technikteam.dao.MeetingDAO;
-import de.technikteam.dao.UserDAO;
-import de.technikteam.model.Attachment;
-import de.technikteam.model.Course;
-import de.technikteam.model.Meeting;
-import de.technikteam.model.User;
-import de.technikteam.service.AdminLogService;
-import de.technikteam.service.ConfigurationService;
-import de.technikteam.util.CSRFUtil;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.MultipartConfig;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.Part;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Paths;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeParseException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-@Singleton
-@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 20, maxRequestSize = 1024 * 1024 * 50)
-public class AdminMeetingServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminMeetingServlet.class);
-
-	private final MeetingDAO meetingDAO;
-	private final CourseDAO courseDAO;
-	private final AttachmentDAO attachmentDAO;
-	private final UserDAO userDAO;
-	private final AdminLogService adminLogService;
-	private final ConfigurationService configService;
-	private final Gson gson;
-
-	@Inject
-	public AdminMeetingServlet(MeetingDAO meetingDAO, CourseDAO courseDAO, AttachmentDAO attachmentDAO, UserDAO userDAO,
-			AdminLogService adminLogService, ConfigurationService configService) {
-		this.meetingDAO = meetingDAO;
-		this.courseDAO = courseDAO;
-		this.attachmentDAO = attachmentDAO;
-		this.userDAO = userDAO;
-		this.adminLogService = adminLogService;
-		this.configService = configService;
-		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
-				.registerTypeAdapter(java.time.LocalDate.class, new LocalDateAdapter()).create();
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		String action = req.getParameter("action");
-		if ("getMeetingData".equals(action)) {
-			getMeetingDataAsJson(req, resp);
-		} else {
-			listMeetings(req, resp);
-		}
-	}
-
-	@Override
-	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
-		req.setCharacterEncoding("UTF-8");
-		if (!CSRFUtil.isTokenValid(req)) {
-			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
-			return;
-		}
-		String action = req.getParameter("action");
-		switch (action) {
-		case "create":
-		case "update":
-			handleCreateOrUpdate(req, resp);
-			break;
-		case "delete":
-			handleDelete(req, resp);
-			break;
-		case "deleteAttachment":
-			handleDeleteAttachment(req, resp);
-			break;
-		default:
-			resp.sendRedirect(req.getContextPath() + "/admin/meetings");
-			break;
-		}
-	}
-
-	private void listMeetings(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		int courseId = Integer.parseInt(req.getParameter("courseId"));
-		Course parentCourse = courseDAO.getCourseById(courseId);
-		List<Meeting> meetings = meetingDAO.getMeetingsForCourse(courseId);
-		List<User> allUsers = userDAO.getAllUsers();
-		req.setAttribute("parentCourse", parentCourse);
-		req.setAttribute("meetings", meetings);
-		req.setAttribute("allUsers", allUsers);
-		req.getRequestDispatcher("/views/admin/admin_meeting_list.jsp").forward(req, resp);
-	}
-
-	private void getMeetingDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		try {
-			int meetingId = Integer.parseInt(req.getParameter("id"));
-			Meeting meeting = meetingDAO.getMeetingById(meetingId);
-			if (meeting != null) {
-				List<Attachment> attachments = attachmentDAO.getAttachmentsForParent("MEETING", meetingId, "ADMIN");
-				Map<String, Object> responseData = new HashMap<>();
-				responseData.put("meetingData", meeting);
-				responseData.put("attachmentsData", attachments);
-				String jsonResponse = gson.toJson(responseData);
-				resp.setContentType("application/json");
-				resp.setCharacterEncoding("UTF-8");
-				resp.getWriter().write(jsonResponse);
-			} else {
-				resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Meeting nicht gefunden");
-			}
-		} catch (NumberFormatException e) {
-			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Ungültige Meeting-ID");
-		}
-	}
-
-	private void handleCreateOrUpdate(HttpServletRequest req, HttpServletResponse resp)
-			throws IOException, ServletException {
-		User adminUser = (User) req.getSession().getAttribute("user");
-		String action = req.getParameter("action");
-		boolean isUpdate = "update".equals(action);
-		int courseId = Integer.parseInt(req.getParameter("courseId"));
-		int meetingId = 0;
-
-		try {
-			Meeting meeting = new Meeting();
-			meeting.setCourseId(courseId);
-			meeting.setName(req.getParameter("name"));
-			meeting.setDescription(req.getParameter("description"));
-			meeting.setLocation(req.getParameter("location"));
-
-			String leaderIdStr = req.getParameter("leaderUserId");
-			if (leaderIdStr != null && !leaderIdStr.isEmpty()) {
-				meeting.setLeaderUserId(Integer.parseInt(leaderIdStr));
-			}
-			String startDateTimeStr = req.getParameter("meetingDateTime");
-			if (startDateTimeStr != null && !startDateTimeStr.isEmpty()) {
-				meeting.setMeetingDateTime(LocalDateTime.parse(startDateTimeStr));
-			}
-			String endDateTimeStr = req.getParameter("endDateTime");
-			if (endDateTimeStr != null && !endDateTimeStr.isEmpty()) {
-				meeting.setEndDateTime(LocalDateTime.parse(endDateTimeStr));
-			}
-
-			Course parentCourse = courseDAO.getCourseById(courseId);
-			String parentCourseName = (parentCourse != null) ? parentCourse.getName() : "N/A";
-
-			if (isUpdate) {
-				meetingId = Integer.parseInt(req.getParameter("id"));
-				meeting.setId(meetingId);
-				if (meetingDAO.updateMeeting(meeting)) {
-					adminLogService.log(adminUser.getUsername(), "UPDATE_MEETING", "Meeting '" + meeting.getName()
-							+ "' (ID: " + meetingId + ") für Lehrgang '" + parentCourseName + "' aktualisiert.");
-					req.getSession().setAttribute("successMessage", "Meeting erfolgreich aktualisiert.");
-				} else {
-					req.getSession().setAttribute("errorMessage", "Fehler beim Aktualisieren des Meetings.");
-				}
-			} else {
-				meetingId = meetingDAO.createMeeting(meeting);
-				if (meetingId > 0) {
-					adminLogService.log(adminUser.getUsername(), "CREATE_MEETING", "Meeting '" + meeting.getName()
-							+ "' (ID: " + meetingId + ") für Lehrgang '" + parentCourseName + "' geplant.");
-					req.getSession().setAttribute("successMessage", "Neues Meeting erfolgreich geplant.");
-				} else {
-					req.getSession().setAttribute("errorMessage", "Fehler beim Erstellen des Meetings.");
-				}
-			}
-
-			Part filePart = req.getPart("attachment");
-			if (filePart != null && filePart.getSize() > 0 && meetingId > 0) {
-				String requiredRole = req.getParameter("requiredRole");
-				handleAttachmentUpload(filePart, meetingId, requiredRole, adminUser, req);
-			}
-		} catch (DateTimeParseException | NumberFormatException e) {
-			req.getSession().setAttribute("errorMessage", "Ungültiges Datenformat.");
-		} catch (Exception e) {
-			logger.error("Error creating/updating meeting.", e);
-			req.getSession().setAttribute("errorMessage", "Fehler: " + e.getMessage());
-		}
-		resp.sendRedirect(req.getContextPath() + "/admin/meetings?courseId=" + courseId);
-	}
-
-	private void handleDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		int courseId = Integer.parseInt(req.getParameter("courseId"));
-		int meetingId = Integer.parseInt(req.getParameter("meetingId"));
-		User adminUser = (User) req.getSession().getAttribute("user");
-		Meeting meeting = meetingDAO.getMeetingById(meetingId);
-		if (meetingDAO.deleteMeeting(meetingId)) {
-			String meetingName = (meeting != null) ? meeting.getName() : "N/A";
-			String courseName = (meeting != null && meeting.getParentCourseName() != null)
-					? meeting.getParentCourseName()
-					: "N/A";
-			String logDetails = String.format("Meeting '%s' (ID: %d) vom Lehrgang '%s' (Kurs-ID: %d) wurde gelöscht.",
-					meetingName, meetingId, courseName, courseId);
-			adminLogService.log(adminUser.getUsername(), "DELETE_MEETING", logDetails);
-			req.getSession().setAttribute("successMessage", "Meeting erfolgreich gelöscht.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Meeting konnte nicht gelöscht werden.");
-		}
-		resp.sendRedirect(req.getContextPath() + "/admin/meetings?courseId=" + courseId);
-	}
-
-	private void handleDeleteAttachment(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		User adminUser = (User) req.getSession().getAttribute("user");
-		int attachmentId = Integer.parseInt(req.getParameter("attachmentId"));
-		int courseId = Integer.parseInt(req.getParameter("courseId"));
-		Attachment attachment = attachmentDAO.getAttachmentById(attachmentId);
-		if (attachment != null) {
-			File physicalFile = new File(configService.getProperty("upload.directory"), attachment.getFilepath());
-			if (physicalFile.exists()) {
-				physicalFile.delete();
-			}
-			if (attachmentDAO.deleteAttachment(attachmentId)) {
-				adminLogService.log(adminUser.getUsername(), "DELETE_ATTACHMENT", "Anhang '" + attachment.getFilename()
-						+ "' von Meeting ID " + attachment.getParentId() + " gelöscht.");
-				req.getSession().setAttribute("successMessage", "Anhang gelöscht.");
-			} else {
-				req.getSession().setAttribute("errorMessage", "Anhang konnte nicht aus DB gelöscht werden.");
-			}
-		} else {
-			req.getSession().setAttribute("errorMessage", "Anhang nicht gefunden.");
-		}
-		resp.sendRedirect(req.getContextPath() + "/admin/meetings?courseId=" + courseId);
-	}
-
-	private void handleAttachmentUpload(Part filePart, int meetingId, String requiredRole, User adminUser,
-			HttpServletRequest req) throws IOException {
-		String uploadDir = configService.getProperty("upload.directory") + File.separator + "meetings";
-		new File(uploadDir).mkdirs();
-		String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
-		File targetFile = new File(uploadDir, fileName);
-		filePart.write(targetFile.getAbsolutePath());
-		Attachment attachment = new Attachment();
-		attachment.setParentId(meetingId);
-		attachment.setParentType("MEETING");
-		attachment.setFilename(fileName);
-		attachment.setFilepath("meetings/" + fileName);
-		attachment.setRequiredRole(requiredRole);
-		if (attachmentDAO.addAttachment(attachment)) {
-			String logDetails = String.format("Anhang '%s' zu Meeting ID %d hinzugefügt. Sichtbar für: %s.", fileName,
-					meetingId, requiredRole);
-			adminLogService.log(adminUser.getUsername(), "ADD_MEETING_ATTACHMENT", logDetails);
-		} else {
-			req.getSession().setAttribute("errorMessage", "Anhang konnte nicht in DB gespeichert werden.");
-		}
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminReportServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import com.google.gson.Gson;
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
-import de.technikteam.dao.ReportDAO;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-@Singleton
-public class AdminReportServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminReportServlet.class);
-	private final ReportDAO reportDAO;
-	private final Gson gson = new Gson();
-
-	@Inject
-	public AdminReportServlet(ReportDAO reportDAO) {
-		this.reportDAO = reportDAO;
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		String reportType = request.getParameter("report");
-		String exportType = request.getParameter("export");
-
-		if (reportType != null && !reportType.isEmpty()) {
-			handleSpecificReport(request, response, reportType, exportType);
-			return;
-		}
-
-		List<Map<String, Object>> eventTrendData = reportDAO.getEventCountByMonth(12);
-		List<Map<String, Object>> userActivityData = reportDAO.getUserParticipationStats(10);
-		request.setAttribute("eventTrendDataJson", gson.toJson(eventTrendData));
-		request.setAttribute("userActivityDataJson", gson.toJson(userActivityData));
-		request.setAttribute("totalInventoryValue", reportDAO.getTotalInventoryValue());
-		request.getRequestDispatcher("/views/admin/admin_reports.jsp").forward(request, response);
-	}
-
-	private void handleSpecificReport(HttpServletRequest request, HttpServletResponse response, String reportType,
-			String exportType) throws IOException, ServletException {
-		List<Map<String, Object>> reportData;
-		String reportTitle;
-		switch (reportType) {
-		case "user_activity":
-			reportData = reportDAO.getUserActivityStats();
-			reportTitle = "Benutzeraktivitäts-Bericht";
-			break;
-		case "event_participation":
-			reportData = reportDAO.getEventParticipationSummary();
-			reportTitle = "Event-Teilnahme-Bericht";
-			break;
-		case "inventory_usage":
-			reportData = reportDAO.getInventoryUsageFrequency();
-			reportTitle = "Lagernutzungs-Bericht";
-			break;
-		default:
-			response.sendError(HttpServletResponse.SC_NOT_FOUND, "Unbekannter Berichtstyp.");
-			return;
-		}
-
-		if ("csv".equalsIgnoreCase(exportType)) {
-			exportToCsv(response, reportData, reportType + "_report.csv");
-		} else {
-			request.setAttribute("reportData", reportData);
-			request.setAttribute("reportTitle", reportTitle);
-			request.getRequestDispatcher("/views/admin/report_display.jsp").forward(request, response);
-		}
-	}
-
-	private void exportToCsv(HttpServletResponse response, List<Map<String, Object>> data, String filename)
-			throws IOException {
-		response.setContentType("text/csv");
-		response.setCharacterEncoding("UTF-8");
-		response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
-		if (data == null || data.isEmpty()) {
-			response.getWriter().write("No data available to export.");
-			return;
-		}
-		try (PrintWriter writer = response.getWriter()) {
-			String header = String.join(",", data.get(0).keySet());
-			writer.println(header);
-			for (Map<String, Object> row : data) {
-				String line = row.values().stream().map(this::escapeCsvField).collect(Collectors.joining(","));
-				writer.println(line);
-			}
-		}
-	}
-
-	private String escapeCsvField(Object field) {
-		if (field == null)
-			return "";
-		String fieldStr = field.toString();
-		if (fieldStr.contains(",") || fieldStr.contains("\"") || fieldStr.contains("\n")) {
-			return "\"" + fieldStr.replace("\"", "\"\"") + "\"";
-		}
-		return fieldStr;
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminStorageServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import com.google.gson.Gson;
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
-import de.technikteam.dao.MaintenanceLogDAO;
-import de.technikteam.dao.StorageDAO;
-import de.technikteam.model.MaintenanceLogEntry;
-import de.technikteam.model.StorageItem;
-import de.technikteam.model.User;
-import de.technikteam.service.AdminLogService;
-import de.technikteam.service.ConfigurationService;
-import de.technikteam.service.StorageService;
-import de.technikteam.util.CSRFUtil;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.MultipartConfig;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.Part;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Paths;
-import java.util.List;
-
-@Singleton
-@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 5, maxRequestSize = 1024 * 1024 * 10)
-public class AdminStorageServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminStorageServlet.class);
-	private final StorageDAO storageDAO;
-	private final MaintenanceLogDAO maintenanceLogDAO;
-	private final AdminLogService adminLogService;
-	private final ConfigurationService configService;
-	private final StorageService storageService;
-	private final Gson gson = new Gson();
-
-	@Inject
-	public AdminStorageServlet(StorageDAO storageDAO, MaintenanceLogDAO maintenanceLogDAO,
-			AdminLogService adminLogService, ConfigurationService configService, StorageService storageService) {
-		this.storageDAO = storageDAO;
-		this.maintenanceLogDAO = maintenanceLogDAO;
-		this.adminLogService = adminLogService;
-		this.configService = configService;
-		this.storageService = storageService;
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		String action = request.getParameter("action");
-		if ("getItemData".equals(action)) {
-			getItemDataAsJson(request, response);
-			return;
-		}
-
-		List<StorageItem> storageList = storageDAO.getAllItems();
-		request.setAttribute("storageList", storageList);
-		request.getRequestDispatcher("/views/admin/admin_storage_list.jsp").forward(request, response);
-	}
-
-	@Override
-	protected void doPost(HttpServletRequest request, HttpServletResponse response)
-			throws IOException, ServletException {
-		request.setCharacterEncoding("UTF-8");
-
-		if (!CSRFUtil.isTokenValid(request)) {
-			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
-			return;
-		}
-
-		String action = request.getParameter("action");
-
-		switch (action) {
-		case "create":
-		case "update":
-			handleCreateOrUpdate(request, response);
-			break;
-		case "delete":
-			handleDelete(request, response);
-			break;
-		case "updateDefectStatus":
-			handleDefectStatusUpdate(request, response);
-			break;
-		case "updateStatus":
-			handleStatusUpdate(request, response);
-			break;
-		case "repair":
-			handleRepair(request, response);
-			break;
-		default:
-			response.sendRedirect(request.getContextPath() + "/admin/lager");
-			break;
-		}
-	}
-
-	private void getItemDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		try {
-			int itemId = Integer.parseInt(req.getParameter("id"));
-			StorageItem item = storageDAO.getItemById(itemId);
-			if (item != null) {
-				resp.setContentType("application/json");
-				resp.setCharacterEncoding("UTF-8");
-				resp.getWriter().write(gson.toJson(item));
-			} else {
-				resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Item not found");
-			}
-		} catch (NumberFormatException e) {
-			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid item ID");
-		}
-	}
-
-	private void handleCreateOrUpdate(HttpServletRequest request, HttpServletResponse response)
-			throws IOException, ServletException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		boolean isCreate = "create".equals(request.getParameter("action"));
-
-		try {
-			StorageItem item = new StorageItem();
-			item.setName(request.getParameter("name"));
-			item.setLocation(request.getParameter("location"));
-			item.setCabinet(request.getParameter("cabinet"));
-			item.setCompartment(request.getParameter("compartment"));
-			item.setQuantity(Integer.parseInt(request.getParameter("quantity")));
-			item.setMaxQuantity(Integer.parseInt(request.getParameter("maxQuantity")));
-			String weightStr = request.getParameter("weight_kg");
-			item.setWeightKg(
-					weightStr == null || weightStr.isEmpty() ? 0.0 : Double.parseDouble(weightStr.replace(',', '.')));
-			String priceStr = request.getParameter("price_eur");
-			item.setPriceEur(
-					priceStr == null || priceStr.isEmpty() ? 0.0 : Double.parseDouble(priceStr.replace(',', '.')));
-
-			Part filePart = request.getPart("imageFile");
-			String imagePath = null;
-
-			if (!isCreate) {
-				int itemId = Integer.parseInt(request.getParameter("id"));
-				item.setId(itemId);
-				StorageItem originalItem = storageDAO.getItemById(itemId);
-				if (originalItem != null) {
-					imagePath = originalItem.getImagePath();
-					item.setDefectiveQuantity(originalItem.getDefectiveQuantity());
-					item.setDefectReason(originalItem.getDefectReason());
-					item.setStatus(originalItem.getStatus());
-				}
-			}
-
-			if (filePart != null && filePart.getSize() > 0) {
-				String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
-				if (!fileName.isEmpty()) {
-					File imageUploadDir = new File(configService.getProperty("upload.directory"), "images");
-					if (!imageUploadDir.exists())
-						imageUploadDir.mkdirs();
-					File targetFile = new File(imageUploadDir, fileName);
-					filePart.write(targetFile.getAbsolutePath());
-					imagePath = fileName;
-				}
-			}
-			item.setImagePath(imagePath);
-
-			boolean success = isCreate ? storageDAO.createItem(item) : storageDAO.updateItem(item);
-
-			if (success) {
-				String logDetails = String.format("Lagerartikel '%s' %s.", item.getName(),
-						isCreate ? "erstellt" : "aktualisiert");
-				adminLogService.log(adminUser.getUsername(), isCreate ? "CREATE_STORAGE_ITEM" : "UPDATE_STORAGE_ITEM",
-						logDetails);
-				request.getSession().setAttribute("successMessage",
-						"Artikel '" + item.getName() + "' erfolgreich gespeichert.");
-			} else {
-				request.getSession().setAttribute("errorMessage", "Operation am Artikel fehlgeschlagen.");
-			}
-		} catch (Exception e) {
-			logger.error("Error creating/updating storage item.", e);
-			request.getSession().setAttribute("errorMessage", "Fehler: " + e.getMessage());
-		}
-		response.sendRedirect(request.getContextPath() + "/admin/lager");
-	}
-
-	private void handleDefectStatusUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        User adminUser = (User) request.getSession().getAttribute("user");
-        try {
-            int itemId = Integer.parseInt(request.getParameter("id"));
-            String status = request.getParameter("status"); // "DEFECT" or "UNREPAIRABLE"
-            int quantity = Integer.parseInt(request.getParameter("quantity"));
-            String reason = request.getParameter("reason");
-
-            boolean success = storageService.updateDefectiveItemStatus(itemId, status, quantity, reason, adminUser);
-
-            if (success) {
-                request.getSession().setAttribute("successMessage", "Defekt-Status erfolgreich aktualisiert.");
-            } else {
-                request.getSession().setAttribute("errorMessage", "Status konnte nicht aktualisiert werden. Überprüfen Sie die Bestandsmengen.");
-            }
-        } catch (NumberFormatException e) {
-            request.getSession().setAttribute("errorMessage", "Ungültige Artikel-ID oder Anzahl.");
-        }
-        response.sendRedirect(request.getContextPath() + "/admin/lager");
-    }
-
-	private void handleDelete(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		try {
-			int itemId = Integer.parseInt(request.getParameter("id"));
-			StorageItem item = storageDAO.getItemById(itemId);
-			if (item != null && item.getImagePath() != null && !item.getImagePath().isEmpty()) {
-				File imageDir = new File(configService.getProperty("upload.directory"), "images");
-				File imageFile = new File(imageDir, item.getImagePath());
-				if (imageFile.exists() && !imageFile.delete()) {
-					logger.warn("Could not delete physical image file: {}", imageFile.getAbsolutePath());
-				}
-			}
-			if (storageDAO.deleteItem(itemId)) {
-				adminLogService.log(adminUser.getUsername(), "DELETE_STORAGE_ITEM", String.format(
-						"Lagerartikel '%s' (ID: %d) gelöscht.", (item != null ? item.getName() : "N/A"), itemId));
-				request.getSession().setAttribute("successMessage", "Artikel erfolgreich gelöscht.");
-			} else {
-				request.getSession().setAttribute("errorMessage", "Artikel konnte nicht gelöscht werden.");
-			}
-		} catch (NumberFormatException e) {
-			request.getSession().setAttribute("errorMessage", "Ungültige Artikel-ID.");
-		}
-		response.sendRedirect(request.getContextPath() + "/admin/lager");
-	}
-
-	private void handleStatusUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		try {
-			int itemId = Integer.parseInt(request.getParameter("id"));
-			String newStatus = request.getParameter("status");
-			String notes = request.getParameter("notes");
-			storageDAO.updateItemStatus(itemId, newStatus);
-			MaintenanceLogEntry log = new MaintenanceLogEntry();
-			log.setItemId(itemId);
-			log.setUserId(adminUser.getId());
-			log.setNotes(notes);
-			String logAction = "MAINTENANCE".equals(newStatus) ? "Marked for Maintenance" : "Returned to Service";
-			log.setAction(logAction);
-			maintenanceLogDAO.createLog(log);
-			adminLogService.log(adminUser.getUsername(), "UPDATE_ITEM_STATUS",
-					"Status für Artikel-ID " + itemId + " auf '" + newStatus + "' gesetzt. Notiz: " + notes);
-			request.getSession().setAttribute("successMessage", "Artikelstatus erfolgreich aktualisiert.");
-		} catch (Exception e) {
-			logger.error("Error updating item status", e);
-			request.getSession().setAttribute("errorMessage", "Fehler beim Aktualisieren des Status.");
-		}
-		response.sendRedirect(request.getContextPath() + "/admin/lager");
-	}
-
-	private void handleRepair(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		String returnTo = request.getParameter("returnTo");
-		try {
-			int itemId = Integer.parseInt(request.getParameter("id"));
-			int repairedQty = Integer.parseInt(request.getParameter("repaired_quantity"));
-			String notes = request.getParameter("repair_notes");
-			if (storageDAO.repairItems(itemId, repairedQty)) {
-				MaintenanceLogEntry log = new MaintenanceLogEntry();
-				log.setItemId(itemId);
-				log.setUserId(adminUser.getId());
-				log.setAction(repairedQty + " Stück repariert");
-				log.setNotes(notes);
-				maintenanceLogDAO.createLog(log);
-				adminLogService.log(adminUser.getUsername(), "REPAIR_ITEM", String.format(
-						"%d Stück von Artikel-ID %d als repariert markiert. Notiz: %s", repairedQty, itemId, notes));
-				request.getSession().setAttribute("successMessage", "Artikel erfolgreich als repariert markiert.");
-			} else {
-				request.getSession().setAttribute("errorMessage",
-						"Reparatur konnte nicht verbucht werden (vielleicht nicht genug defekte Artikel?).");
-			}
-		} catch (NumberFormatException e) {
-			request.getSession().setAttribute("errorMessage", "Ungültige Artikel-ID oder Anzahl.");
-		}
-		String redirectUrl = request.getContextPath()
-				+ ("/defekte".equals(returnTo) ? "/admin/defekte" : "/admin/lager");
-		response.sendRedirect(redirectUrl);
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminSystemServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import com.google.inject.Singleton;
-
-@Singleton
-public class AdminSystemServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		request.getRequestDispatcher("/views/admin/admin_system.jsp").forward(request, response);
 	}
 }

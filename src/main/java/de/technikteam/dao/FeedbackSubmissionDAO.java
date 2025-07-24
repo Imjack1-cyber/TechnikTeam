@@ -35,7 +35,7 @@ public class FeedbackSubmissionDAO {
 
 	public List<FeedbackSubmission> getAllSubmissions() {
 		List<FeedbackSubmission> submissions = new ArrayList<>();
-		String sql = "SELECT fs.*, u.username FROM feedback_submissions fs JOIN users u ON fs.user_id = u.id ORDER BY FIELD(fs.status, 'NEW', 'VIEWED', 'PLANNED', 'COMPLETED', 'REJECTED'), fs.submitted_at DESC";
+		String sql = "SELECT fs.*, u.username FROM feedback_submissions fs JOIN users u ON fs.user_id = u.id ORDER BY FIELD(fs.status, 'NEW', 'VIEWED', 'PLANNED', 'REJECTED', 'COMPLETED'), fs.display_order ASC";
 		try (Connection conn = dbManager.getConnection();
 				Statement stmt = conn.createStatement();
 				ResultSet rs = stmt.executeQuery(sql)) {
@@ -79,15 +79,24 @@ public class FeedbackSubmissionDAO {
 		return submissions;
 	}
 
-	public boolean updateStatus(int submissionId, String newStatus) {
+	public boolean updateStatus(int submissionId, String newStatus, Connection conn) throws SQLException {
 		String sql = "UPDATE feedback_submissions SET status = ? WHERE id = ?";
-		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+		try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setString(1, newStatus);
 			pstmt.setInt(2, submissionId);
 			return pstmt.executeUpdate() > 0;
-		} catch (SQLException e) {
-			logger.error("Error updating status for submission {}", submissionId, e);
-			return false;
+		}
+	}
+
+	public void updateOrderForStatus(List<Integer> orderedIds, Connection conn) throws SQLException {
+		String sql = "UPDATE feedback_submissions SET display_order = ? WHERE id = ?";
+		try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			for (int i = 0; i < orderedIds.size(); i++) {
+				pstmt.setInt(1, i);
+				pstmt.setInt(2, orderedIds.get(i));
+				pstmt.addBatch();
+			}
+			pstmt.executeBatch();
 		}
 	}
 
@@ -125,6 +134,7 @@ public class FeedbackSubmissionDAO {
 		sub.setContent(rs.getString("content"));
 		sub.setSubmittedAt(rs.getTimestamp("submitted_at").toLocalDateTime());
 		sub.setStatus(rs.getString("status"));
+		sub.setDisplayOrder(rs.getInt("display_order"));
 		return sub;
 	}
 }

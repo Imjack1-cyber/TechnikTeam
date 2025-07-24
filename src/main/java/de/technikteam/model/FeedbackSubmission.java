@@ -16,6 +16,7 @@ public class FeedbackSubmission {
 	private String content;
 	private LocalDateTime submittedAt;
 	private String status;
+	private int displayOrder;
 
 	public String getFormattedSubmittedAt() {
 		return DateFormatter.formatDateTime(this.submittedAt);
@@ -84,5 +85,13 @@ public class FeedbackSubmission {
 
 	public void setStatus(String status) {
 		this.status = status;
+	}
+
+	public int getDisplayOrder() {
+		return displayOrder;
+	}
+
+	public void setDisplayOrder(int displayOrder) {
+		this.displayOrder = displayOrder;
 	}
 }

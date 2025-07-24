@@ -67,7 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			modalStatus.value = submission.status;
 
 			modal.classList.add('active');
-
 		} catch (error) {
 			console.error(error);
 			showToast('Details konnten nicht geladen werden.', 'danger');
@@ -107,6 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const reorderData = {
 			submissionId: parseInt(submissionId, 10),
 			newStatus: newStatus,
+			orderedIds: Array.from(toList.children).map(child => parseInt(child.dataset.id, 10))
 		};
 
 		try {
