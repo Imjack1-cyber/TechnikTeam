@@ -18,7 +18,7 @@
 <c:import url="/WEB-INF/jspf/message_banner.jspf" />
 
 <div class="dashboard-grid">
-	<div class.card id="widget-upcoming-events">
+	<div class="card" id="widget-upcoming-events">
 		<h2>
 			<i class="fas fa-calendar-check"></i> Nächste Einsätze
 		</h2>
@@ -60,7 +60,6 @@
 		<canvas id="eventTrendChart"></canvas>
 	</div>
 </div>
-
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
