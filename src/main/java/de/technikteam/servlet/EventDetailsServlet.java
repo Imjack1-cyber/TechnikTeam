@@ -59,16 +59,31 @@ public class EventDetailsServlet extends HttpServlet {
 				return;
 			}
 
-			boolean isGlobalAdmin = user.getPermissions().contains("EVENT_MANAGE_TASKS") || user.hasAdminAccess();
+			// --- AUTHORIZATION CHECK ---
+			boolean isGlobalAdmin = user.hasAdminAccess();
 			boolean isEventLeader = user.getId() == event.getLeaderUserId();
+			boolean isAssociated = eventDAO.isUserAssociatedWithEvent(eventId, user.getId());
+
+			if (!isGlobalAdmin && !isEventLeader && !isAssociated) {
+				logger.warn("Access denied for user '{}' to event details for event ID {}", user.getUsername(),
+						eventId);
+				response.sendError(HttpServletResponse.SC_FORBIDDEN,
+						"Sie sind nicht berechtigt, dieses Event einzusehen.");
+				return;
+			}
+			// --- END AUTHORIZATION CHECK ---
+
 			boolean hasTaskManagementPermission = isGlobalAdmin || isEventLeader;
 			request.setAttribute("hasTaskManagementPermission", hasTaskManagementPermission);
 
 			String userRoleForAttachments = (hasTaskManagementPermission) ? "ADMIN" : "NUTZER";
+
 			List<User> assignedUsers = eventDAO.getAssignedUsersForEvent(eventId);
 			boolean isUserAssigned = assignedUsers.stream().anyMatch(u -> u.getId() == user.getId());
 			request.setAttribute("isUserAssigned", isUserAssigned);
 
+			// isUserAssociatedWithEvent already checks both assigned and signed-up, but we
+			// need the signed-up list for other logic.
 			List<User> signedUpUsers = eventDAO.getSignedUpUsersForEvent(eventId);
 			boolean isUserParticipant = signedUpUsers.stream().anyMatch(u -> u.getId() == user.getId());
 			request.setAttribute("isUserParticipant", isUserParticipant);

@@ -120,17 +120,4 @@ public class UserQualificationsDAO {
 		}
 		return false;
 	}
-
-	public int batchGrantQualifications(int courseId, int minMeetings) {
-		String sql = "INSERT INTO user_qualifications (user_id, course_id, status, completion_date, remarks) SELECT user_id, ?, 'ABSOLVIERT', CURDATE(), 'Automatisch vergeben' FROM meeting_attendance WHERE attended = TRUE AND meeting_id IN (SELECT id FROM meetings WHERE course_id = ?) GROUP BY user_id HAVING COUNT(meeting_id) >= ? ON DUPLICATE KEY UPDATE status = VALUES(status), completion_date = VALUES(completion_date), remarks = VALUES(remarks)";
-		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, courseId);
-			pstmt.setInt(2, courseId);
-			pstmt.setInt(3, minMeetings);
-			return pstmt.executeUpdate();
-		} catch (SQLException e) {
-			logger.error("Error during batch qualification grant for course ID {}", courseId, e);
-			return -1;
-		}
-	}
 }

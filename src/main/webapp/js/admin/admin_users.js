@@ -133,7 +133,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		const action = actionInput.value;
 		const formActionUrl = `${contextPath}/admin/action/user?action=${action}`;
 
-		// FIX: Use URLSearchParams to ensure the correct Content-Type for the servlet.
 		const formData = new URLSearchParams(new FormData(form));
 		try {
 			const response = await fetch(formActionUrl, {
@@ -161,7 +160,6 @@ document.addEventListener('DOMContentLoaded', () => {
 	});
 
 	const handleAjaxFormSubmit = async (formElement) => {
-		// FIX: Use URLSearchParams to ensure the correct Content-Type for the servlet.
 		const formData = new URLSearchParams(new FormData(formElement));
 		const actionUrl = formElement.getAttribute('action');
 
@@ -183,8 +181,8 @@ document.addEventListener('DOMContentLoaded', () => {
 					showToast(result.message, 'success');
 				}
 
-				const urlParams = new URLSearchParams(new URL(actionUrl).search);
-				const action = urlParams.get('action');
+				// FIX: Instead of trying to parse the action from the URL, get it from the form data itself.
+				const action = formData.get('action');
 				if (action === 'delete') {
 					removeTableRow(result.data.deletedUserId);
 				}

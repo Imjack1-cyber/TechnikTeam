@@ -61,6 +61,11 @@ public class AdminFileServlet extends HttpServlet {
 			return;
 		}
 
+		if ("reassign".equals(action)) {
+			handleReassign(request, response, adminUser);
+			return;
+		}
+
 		Part filePart = request.getPart("file");
 		if (filePart == null || filePart.getSize() == 0) {
 			session.setAttribute("errorMessage", "Bitte wählen Sie eine Datei zum Hochladen aus.");
@@ -85,6 +90,29 @@ public class AdminFileServlet extends HttpServlet {
 		}
 	}
 
+	private void handleReassign(HttpServletRequest request, HttpServletResponse response, User adminUser)
+			throws IOException {
+		HttpSession session = request.getSession();
+		try {
+			int fileId = Integer.parseInt(request.getParameter("fileId"));
+			int newCategoryId = Integer.parseInt(request.getParameter("newCategoryId"));
+
+			de.technikteam.model.File file = fileDAO.getFileById(fileId);
+			if (file == null) {
+				session.setAttribute("errorMessage", "Datei nicht gefunden.");
+			} else if (fileDAO.reassignFileToCategory(fileId, newCategoryId)) {
+				adminLogService.log(adminUser.getUsername(), "FILE_REASSIGN", "Datei '" + file.getFilename() + "' (ID: "
+						+ fileId + ") wurde in Kategorie ID " + newCategoryId + " verschoben.");
+				session.setAttribute("successMessage", "Datei wurde erfolgreich neu zugeordnet.");
+			} else {
+				session.setAttribute("errorMessage", "Datei konnte nicht neu zugeordnet werden.");
+			}
+		} catch (NumberFormatException e) {
+			session.setAttribute("errorMessage", "Ungültige ID-Angabe.");
+		}
+		response.sendRedirect(request.getContextPath() + "/admin/dateien");
+	}
+
 	private void handleCreateUpload(HttpServletRequest request, HttpServletResponse response, User adminUser,
 			Part filePart) throws IOException {
 		HttpSession session = request.getSession();
@@ -104,8 +132,9 @@ public class AdminFileServlet extends HttpServlet {
 			newDbFile.setRequiredRole(requiredRole);
 
 			if (fileDAO.createFile(newDbFile)) {
-				adminLogService.log(adminUser.getUsername(), "FILE_UPLOAD",
-						"Datei '" + sanitizedOriginalFileName + "' hochgeladen.");
+				String categoryName = fileDAO.getCategoryNameById(categoryId);
+				adminLogService.log(adminUser.getUsername(), "FILE_UPLOAD", "Datei '" + sanitizedOriginalFileName
+						+ "' in Kategorie '" + categoryName + "' hochgeladen. Sichtbar für: " + requiredRole + ".");
 				session.setAttribute("successMessage", "Datei erfolgreich hochgeladen.");
 			} else {
 				targetFile.delete();

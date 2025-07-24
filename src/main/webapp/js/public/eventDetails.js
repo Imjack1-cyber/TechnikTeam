@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			removeBtn.innerHTML = '×';
 			removeBtn.onclick = () => onRemove(row);
 			row.appendChild(removeBtn);
-			container.appendChild(row); // FIX: append the new row itself
+			container.appendChild(row);
 			return row;
 		};
 

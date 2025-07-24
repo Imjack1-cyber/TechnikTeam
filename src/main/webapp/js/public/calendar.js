@@ -2,8 +2,9 @@ document.addEventListener('DOMContentLoaded', function() {
 	const calendarEl = document.getElementById('calendar-container');
 	const contextPath = document.body.dataset.contextPath || '';
 
-	// This check ensures FullCalendar only runs if the desktop container is visible
-	if (calendarEl && getComputedStyle(calendarEl).display !== 'none') {
+	// FIX: Removed the flawed getComputedStyle check. The calendar should always be initialized
+	// if the container element exists in the DOM. CSS media queries are responsible for visibility.
+	if (calendarEl) {
 		const calendar = new FullCalendar.Calendar(calendarEl, {
 			initialView: 'dayGridMonth',
 			locale: 'de',

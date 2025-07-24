@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import de.technikteam.dao.CourseDAO;
-import de.technikteam.dao.UserQualificationsDAO;
 import de.technikteam.model.Course;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
@@ -18,22 +17,18 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 
 @Singleton
 public class AdminCourseServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminCourseServlet.class);
 	private final CourseDAO courseDAO;
-	private final UserQualificationsDAO userQualificationsDAO;
 	private final AdminLogService adminLogService;
 	private final Gson gson = new Gson();
 
 	@Inject
-	public AdminCourseServlet(CourseDAO courseDAO, UserQualificationsDAO userQualificationsDAO,
-			AdminLogService adminLogService) {
+	public AdminCourseServlet(CourseDAO courseDAO, AdminLogService adminLogService) {
 		this.courseDAO = courseDAO;
-		this.userQualificationsDAO = userQualificationsDAO;
 		this.adminLogService = adminLogService;
 	}
 
@@ -64,9 +59,6 @@ public class AdminCourseServlet extends HttpServlet {
 		case "create":
 		case "update":
 			handleCreateOrUpdate(req, resp);
-			break;
-		case "grantQualifications":
-			handleGrantQualifications(req, resp);
 			break;
 		default:
 			resp.sendRedirect(req.getContextPath() + "/admin/lehrgaenge");
@@ -139,30 +131,6 @@ public class AdminCourseServlet extends HttpServlet {
 			}
 		} catch (NumberFormatException e) {
 			req.getSession().setAttribute("errorMessage", "Ungültige ID für Löschvorgang.");
-		}
-		resp.sendRedirect(req.getContextPath() + "/admin/lehrgaenge");
-	}
-
-	private void handleGrantQualifications(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		User adminUser = (User) req.getSession().getAttribute("user");
-		try {
-			int courseId = Integer.parseInt(req.getParameter("courseId"));
-			int minMeetings = Integer.parseInt(req.getParameter("minMeetings"));
-			int updatedCount = userQualificationsDAO.batchGrantQualifications(courseId, minMeetings);
-			if (updatedCount >= 0) {
-				Course course = courseDAO.getCourseById(courseId);
-				String courseName = course != null ? course.getName() : "ID " + courseId;
-				String logDetails = String.format(
-						"Batch-Qualifikation für '%s' an %d Benutzer vergeben (min. %d Meetings).", courseName,
-						updatedCount, minMeetings);
-				adminLogService.log(adminUser.getUsername(), "BATCH_GRANT_QUALIFICATION", logDetails);
-				req.getSession().setAttribute("successMessage",
-						"Qualifikationen wurden erfolgreich an " + updatedCount + " Benutzer vergeben.");
-			} else {
-				req.getSession().setAttribute("errorMessage", "Qualifikationen konnten nicht vergeben werden.");
-			}
-		} catch (NumberFormatException e) {
-			req.getSession().setAttribute("errorMessage", "Ungültige Kurs-ID oder Anzahl der Meetings.");
 		}
 		resp.sendRedirect(req.getContextPath() + "/admin/lehrgaenge");
 	}

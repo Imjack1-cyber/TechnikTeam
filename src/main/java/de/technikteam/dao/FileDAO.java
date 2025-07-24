@@ -148,6 +148,22 @@ public class FileDAO {
 		}
 	}
 
+	public boolean reassignFileToCategory(int fileId, int categoryId) {
+		String sql = "UPDATE files SET category_id = ? WHERE id = ?";
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			if (categoryId > 0) {
+				pstmt.setInt(1, categoryId);
+			} else {
+				pstmt.setNull(1, Types.INTEGER);
+			}
+			pstmt.setInt(2, fileId);
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("SQL error reassigning file {} to category {}", fileId, categoryId, e);
+			return false;
+		}
+	}
+
 	public List<FileCategory> getAllCategories() {
 		List<FileCategory> categories = new ArrayList<>();
 		String sql = "SELECT * FROM file_categories ORDER BY name";
