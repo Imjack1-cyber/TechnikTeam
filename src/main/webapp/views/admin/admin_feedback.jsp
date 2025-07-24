@@ -64,9 +64,8 @@
 		</button></li>
 </template>
 
-
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
 <script
-	src="${pageContext.request.contextPath}/vendor/sortable/Sortable.min.js"></script>
+	src="${pageContext.request.contextPath}/vendor/sortablejs/Sortable.min.js"></script>
 <script
 	src="${pageContext.request.contextPath}/js/admin/admin_feedback.js"></script>

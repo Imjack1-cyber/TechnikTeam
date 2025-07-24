@@ -115,10 +115,16 @@
 							<div class="file-actions"
 								style="display: flex; gap: 0.5rem; align-items: center;">
 								<button type="button"
+									class="btn btn-small btn-info reassign-file-btn"
+									data-file-id="${file.id}"
+									data-file-name="${fn:escapeXml(file.filename)}">
+									<i class="fas fa-random"></i>
+								</button>
+								<button type="button"
 									class="btn btn-small btn-secondary upload-new-version-btn"
 									data-file-id="${file.id}"
 									data-file-name="${fn:escapeXml(file.filename)}">
-									<i class="fas fa-upload"></i> Neue Version
+									<i class="fas fa-upload"></i>
 								</button>
 								<form
 									action="${pageContext.request.contextPath}/admin/uploadFile"
@@ -139,6 +145,36 @@
 				</ul>
 			</div>
 		</c:forEach>
+	</div>
+</div>
+
+<!-- Modal for reassigning a file -->
+<div class="modal-overlay" id="reassign-file-modal">
+	<div class="modal-content">
+		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
+		<h3 id="reassign-modal-title">Datei neu zuordnen</h3>
+		<form action="${pageContext.request.contextPath}/admin/uploadFile"
+			method="post">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="reassign"> <input type="hidden"
+				name="fileId" id="reassign-file-id">
+			<p>
+				Wählen Sie die neue Kategorie für die Datei <strong
+					id="reassign-file-name"></strong>.
+			</p>
+			<div class="form-group">
+				<label for="newCategoryId">Neue Kategorie</label> <select
+					name="newCategoryId" id="newCategoryId" required>
+					<c:forEach var="cat" items="${allCategories}">
+						<option value="${cat.id}">${cat.name}</option>
+					</c:forEach>
+				</select>
+			</div>
+			<button type="submit" class="btn btn-success">
+				<i class="fas fa-save"></i> Neu zuordnen
+			</button>
+		</form>
 	</div>
 </div>
 
@@ -175,4 +211,3 @@
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
 <script src="${pageContext.request.contextPath}/js/admin/admin_files.js"></script>
-<script src="${pageContext.request.contextPath}/js/public/dateien.js"></script>
