@@ -167,16 +167,14 @@ a:hover {
 }
 
 .feedback-card {
-    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+	transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
 }
 
-
-@media (max-width: 767.98px) {
-    .responsive-dashboard-grid {
-        grid-template-columns: 1fr;
-    }
+@media ( max-width : 767.98px) {
+	.responsive-dashboard-grid {
+		grid-template-columns: 1fr;
+	}
 }
-
 
 /* --- 4. NAVIGATION --- */
 .sidebar {
@@ -306,11 +304,10 @@ body.nav-open .sidebar {
 }
 
 .mobile-header-right {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+	display: flex;
+	align-items: center;
+	gap: 1rem;
 }
-
 
 .mobile-nav-toggle {
 	background: none;
@@ -374,14 +371,14 @@ body.nav-open .page-overlay {
 		margin-left: var(--sidebar-width);
 	}
 	.sidebar .mobile-only {
-        display: none !important;
-    }
+		display: none !important;
+	}
 }
 
 @media ( max-width : 991.98px) {
-    .sidebar .desktop-only {
-        display: none !important;
-    }
+	.sidebar .desktop-only {
+		display: none !important;
+	}
 }
 
 /* --- 5. COMPONENTS --- */
@@ -478,29 +475,37 @@ body.nav-open .page-overlay {
 
 /* Toast Notifications */
 .toast {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background-color: var(--surface-color);
-    color: var(--text-color);
-    padding: 1rem 1.5rem;
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow-lg);
-    z-index: 9999;
-    transform: translateY(150%);
-    transition: transform 0.4s ease-in-out, opacity 0.4s;
-    border-left: 5px solid var(--primary-color);
-    opacity: 0;
+	position: fixed;
+	bottom: 20px;
+	right: 20px;
+	background-color: var(--surface-color);
+	color: var(--text-color);
+	padding: 1rem 1.5rem;
+	border-radius: var(--border-radius);
+	box-shadow: var(--shadow-lg);
+	z-index: 9999;
+	transform: translateY(150%);
+	transition: transform 0.4s ease-in-out, opacity 0.4s;
+	border-left: 5px solid var(--primary-color);
+	opacity: 0;
 }
-.toast.toast-success { border-left-color: var(--success-color); }
-.toast.toast-danger { border-left-color: var(--danger-color); }
-.toast.toast-info { border-left-color: var(--info-color); }
+
+.toast.toast-success {
+	border-left-color: var(--success-color);
+}
+
+.toast.toast-danger {
+	border-left-color: var(--danger-color);
+}
+
+.toast.toast-info {
+	border-left-color: var(--info-color);
+}
 
 .toast.show {
-    transform: translateY(0);
-    opacity: 1;
+	transform: translateY(0);
+	opacity: 1;
 }
-
 
 /* Forms & Inputs */
 .form-group {
@@ -526,15 +531,14 @@ body.nav-open .page-overlay {
 }
 
 fieldset {
-    border: none;
-    padding: 0;
-    margin: 0;
+	border: none;
+	padding: 0;
+	margin: 0;
 }
 
-[data-theme="dark"] .form-group textarea,
-[data-theme="dark"] #editor {
-    color: var(--text-color);
-    background-color: var(--surface-color);
+[data-theme="dark"] .form-group textarea, [data-theme="dark"] #editor {
+	color: var(--text-color);
+	background-color: var(--surface-color);
 }
 
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus
@@ -570,7 +574,6 @@ fieldset {
 	cursor: pointer;
 	color: var(--text-muted-color);
 }
-
 
 .file-size-warning {
 	color: var(--danger-color);
@@ -691,11 +694,11 @@ fieldset {
 
 /* FIX for admin requests table */
 .data-table pre {
-    white-space: pre-wrap;
-    word-break: break-all;
-    background-color: var(--bg-color);
-    padding: 0.5rem;
-    border-radius: 4px;
+	white-space: pre-wrap;
+	word-break: break-all;
+	background-color: var(--bg-color);
+	padding: 0.5rem;
+	border-radius: 4px;
 }
 
 .data-table thead th {
@@ -843,11 +846,11 @@ fieldset {
 	gap: 0.5rem;
 }
 
-@media (max-width: 576px) {
-    .details-list li {
-        flex-direction: column;
-        align-items: flex-start;
-    }
+@media ( max-width : 576px) {
+	.details-list li {
+		flex-direction: column;
+		align-items: flex-start;
+	}
 }
 
 .details-list li:last-child {
@@ -1056,20 +1059,20 @@ fieldset {
 }
 
 .horizontal-scroll-hint {
-    display: none;
-    text-align: center;
-    padding: 0.5rem;
-    background-color: var(--warning-color);
-    color: #000;
-    font-weight: 500;
-    border-radius: var(--border-radius);
-    margin-bottom: 1rem;
+	display: none;
+	text-align: center;
+	padding: 0.5rem;
+	background-color: var(--warning-color);
+	color: #000;
+	font-weight: 500;
+	border-radius: var(--border-radius);
+	margin-bottom: 1rem;
 }
 
-@media (max-width: 768px) {
-    .horizontal-scroll-hint {
-        display: block;
-    }
+@media ( max-width : 768px) {
+	.horizontal-scroll-hint {
+		display: block;
+	}
 }
 
 /* Progress Bars (System Page) */
@@ -1122,107 +1125,128 @@ fieldset {
 }
 
 .kit-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    flex-wrap: wrap; /* Allow wrapping on mobile */
-    gap: 1rem;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	cursor: pointer;
+	flex-wrap: wrap; /* Allow wrapping on mobile */
+	gap: 1rem;
 }
 
 /* Custom Calendar List */
 .termin-list {
-    list-style: none;
-    padding: 0;
+	list-style: none;
+	padding: 0;
 }
+
 .termin-item-link {
-    text-decoration: none;
-    color: inherit;
-    display: block;
+	text-decoration: none;
+	color: inherit;
+	display: block;
 }
+
 .termin-item {
-    display: flex;
-    align-items: center;
-    padding: 1rem;
-    background-color: var(--surface-color);
-    border-bottom: 1px solid var(--border-color);
-    transition: background-color 0.2s;
+	display: flex;
+	align-items: center;
+	padding: 1rem;
+	background-color: var(--surface-color);
+	border-bottom: 1px solid var(--border-color);
+	transition: background-color 0.2s;
 }
+
 .termin-item:hover {
-    background-color: var(--bg-color);
+	background-color: var(--bg-color);
 }
+
 .termin-list li:first-child {
-    border-top: 1px solid var(--border-color);
+	border-top: 1px solid var(--border-color);
 }
+
 .termin-month-header {
-    margin-top: 2rem;
-    margin-bottom: 0.5rem;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text-muted-color);
-    border: none;
-    padding: 0;
+	margin-top: 2rem;
+	margin-bottom: 0.5rem;
+	font-size: 1.1rem;
+	font-weight: 600;
+	color: var(--text-muted-color);
+	border: none;
+	padding: 0;
 }
+
 .termin-date {
-    flex-shrink: 0;
-    text-align: center;
-    margin-right: 1.5rem;
-    width: 60px;
+	flex-shrink: 0;
+	text-align: center;
+	margin-right: 1.5rem;
+	width: 60px;
 }
+
 .termin-date-day {
-    font-size: 1.8rem;
-    font-weight: 600;
-    display: block;
-    line-height: 1;
-    color: var(--primary-color);
+	font-size: 1.8rem;
+	font-weight: 600;
+	display: block;
+	line-height: 1;
+	color: var(--primary-color);
 }
+
 .termin-date-month {
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    font-weight: 500;
-    display: block;
-    color: var(--text-muted-color);
+	font-size: 0.9rem;
+	text-transform: uppercase;
+	font-weight: 500;
+	display: block;
+	color: var(--text-muted-color);
 }
+
 .termin-details {
-    flex-grow: 1;
+	flex-grow: 1;
 }
+
 .termin-title {
-    font-weight: 600;
-    display: block;
-    margin-bottom: 0.25rem;
+	font-weight: 600;
+	display: block;
+	margin-bottom: 0.25rem;
 }
+
 .termin-type-event {
-    background-color: var(--danger-color);
-    color: white;
+	background-color: var(--danger-color);
+	color: white;
 }
+
 .termin-type-lehrgang {
-    background-color: var(--primary-color);
-    color: white;
+	background-color: var(--primary-color);
+	color: white;
 }
+
 .termin-arrow {
-    color: var(--text-muted-color);
-    margin-left: 1rem;
+	color: var(--text-muted-color);
+	margin-left: 1rem;
 }
 
-.mobile-list-view { display: block; }
-.desktop-calendar-view { display: none; }
+.mobile-list-view {
+	display: block;
+}
 
-@media (min-width: 992px) {
-    .mobile-list-view { display: none; }
-    .desktop-calendar-view { display: block; }
+.desktop-calendar-view {
+	display: none;
+}
+
+@media ( min-width : 992px) {
+	.mobile-list-view {
+		display: none;
+	}
+	.desktop-calendar-view {
+		display: block;
+	}
 }
 
 .fc .fc-button-primary {
-    background-color: var(--primary-color);
-    border-color: var(--primary-color);
+	background-color: var(--primary-color);
+	border-color: var(--primary-color);
 }
 
-.fc .fc-button-primary:not(:disabled).fc-button-active,
-.fc .fc-button-primary:not(:disabled):active {
-    background-color: var(--primary-color-hover);
-    border-color: var(--primary-color-hover);
+.fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active
+	{
+	background-color: var(--primary-color-hover);
+	border-color: var(--primary-color-hover);
 }
-
 
 /* --- 8. ERROR PAGES --- */
 .error-page-container {
@@ -1446,24 +1470,24 @@ fieldset {
 	border-radius: 50%;
 }
 
-.toggle-switch input:checked + .slider {
+.toggle-switch input:checked+.slider {
 	background-color: var(--primary-color);
 }
 
-.toggle-switch input:checked + .slider:before {
+.toggle-switch input:checked+.slider:before {
 	transform: translateX(20px);
 }
 
-
 /* Editor Specific Styles */
 #editor-page-wrapper {
-    /* Make the wrapper take up all available vertical space */
-    height: calc(100vh - var(--header-height)); /* Account for mobile header */
-    display: flex;
-    flex-direction: column;
+	/* Make the wrapper take up all available vertical space */
+	height: calc(100vh - var(--header-height));
+	/* Account for mobile header */
+	display: flex;
+	flex-direction: column;
 }
 
-@media (min-width: 992px) {
+@media ( min-width : 992px) {
 	#editor-page-wrapper {
 		/* On desktop, the main header is gone, so just 100vh */
 		height: 100vh;
@@ -1471,70 +1495,76 @@ fieldset {
 }
 
 #editor-page-wrapper .main-content {
-    flex-grow: 1; /* Allow main-content to fill remaining height */
-    padding: 1rem; /* Consistent padding on all sides */
-    max-width: none; /* Remove max-width constraint for full flexibility */
-    margin: 0; /* Remove auto margins to allow full width */
-    display: flex;
-    flex-direction: column;
-    min-height: 0; /* Important for flex container to properly shrink children */
+	flex-grow: 1; /* Allow main-content to fill remaining height */
+	padding: 1rem; /* Consistent padding on all sides */
+	max-width: none; /* Remove max-width constraint for full flexibility */
+	margin: 0; /* Remove auto margins to allow full width */
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	/* Important for flex container to properly shrink children */
 }
 
 #editor-page-container {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1; /* Make it fill the remaining space */
-    min-height: 0; /* Crucial for nested flex items */
+	display: flex;
+	flex-direction: column;
+	flex-grow: 1; /* Make it fill the remaining space */
+	min-height: 0; /* Crucial for nested flex items */
 }
 
 .editor-header {
 	flex-shrink: 0;
 	margin-bottom: 1rem;
 }
+
 .editor-header h1 {
 	margin-bottom: 0;
-    font-size: 1.5rem;
+	font-size: 1.5rem;
 }
+
 .editor-controls {
 	display: flex;
 	align-items: center;
 	gap: 1rem;
 	flex-wrap: wrap;
 }
-.editor-container { /* This is the flex container for editor/preview panes */
+
+.editor-container {
+	/* This is the flex container for editor/preview panes */
 	display: flex;
 	flex-direction: column; /* Stack vertically on mobile */
 	gap: 1.5rem; /* Space between panes */
-    flex-grow: 1; /* Allow this container to fill available height */
-    min-height: 0; /* Crucial for flex item inside a flex column */
+	flex-grow: 1; /* Allow this container to fill available height */
+	min-height: 0; /* Crucial for flex item inside a flex column */
 	padding: 1.5rem; /* Padding *inside* the card, around the panes */
-    margin: 0; /* Remove external margins */
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-sm);
-    background: var(--surface-color);
-    border-radius: var(--border-radius);
+	margin: 0; /* Remove external margins */
+	border: 1px solid var(--border-color);
+	box-shadow: var(--shadow-sm);
+	background: var(--surface-color);
+	border-radius: var(--border-radius);
 }
 
 #editor, #markdown-preview {
-	flex-grow: 1; /* Allow the element to grow and fill the flex container */
+	flex-grow: 1;
+	/* Allow the element to grow and fill the flex container */
 	width: 100%; /* Ensure it takes full width in mobile stack */
 	border: none; /* Border is now on .editor-container */
 	padding: 0; /* Padding is now on .editor-container */
 	background: transparent; /* Background is now on .editor-container */
-    overflow-y: auto; /* Internal scrolling within each pane */
-    
-    /* Unified typography for WYSIWYG feel */
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+	overflow-y: auto; /* Internal scrolling within each pane */
+	/* Unified typography for WYSIWYG feel */
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+		"Helvetica Neue", Arial, sans-serif;
 	font-size: 1rem;
 	line-height: 1.6;
-    color: var(--text-color);
+	color: var(--text-color);
 }
 
 #editor {
 	resize: none; /* Disable manual resizing */
 }
 
-@media (min-width: 992px) {
+@media ( min-width : 992px) {
 	.editor-container {
 		flex-direction: row; /* Desktop: side-by-side */
 	}
@@ -1543,85 +1573,96 @@ fieldset {
 	}
 }
 
-
 /* =================================================================== */
 /*  12. MARKDOWN STYLES                                                */
 /* =================================================================== */
 .markdown-content {
-    overflow-wrap: break-word;
-    word-wrap: break-word; /* legacy */
+	overflow-wrap: break-word;
+	word-wrap: break-word; /* legacy */
 }
 
 .markdown-content h1, .markdown-content h2, .markdown-content h3,
-.markdown-content h4, .markdown-content h5, .markdown-content h6 {
-    margin-top: 1.5rem;
-    margin-bottom: 1rem;
-    font-weight: 600;
-    border: none;
-    padding: 0;
+	.markdown-content h4, .markdown-content h5, .markdown-content h6 {
+	margin-top: 1.5rem;
+	margin-bottom: 1rem;
+	font-weight: 600;
+	border: none;
+	padding: 0;
 }
+
 .markdown-content p {
-    margin-bottom: 1rem;
+	margin-bottom: 1rem;
 }
+
 .markdown-content ul, .markdown-content ol {
-    padding-left: 2rem;
-    margin-bottom: 1rem;
+	padding-left: 2rem;
+	margin-bottom: 1rem;
 }
+
 .markdown-content blockquote {
-    padding: 0.5rem 1rem;
-    margin: 0 0 1rem;
-    font-size: 1rem;
-    border-left: 0.25rem solid var(--border-color);
-    background-color: var(--bg-color);
-    color: var(--text-muted-color);
+	padding: 0.5rem 1rem;
+	margin: 0 0 1rem;
+	font-size: 1rem;
+	border-left: 0.25rem solid var(--border-color);
+	background-color: var(--bg-color);
+	color: var(--text-muted-color);
 }
-.markdown-content blockquote > :first-child {
-    margin-top: 0;
+
+.markdown-content blockquote>:first-child {
+	margin-top: 0;
 }
-.markdown-content blockquote > :last-child {
-    margin-bottom: 0;
+
+.markdown-content blockquote>:last-child {
+	margin-bottom: 0;
 }
+
 .markdown-content code {
-    padding: .2em .4em;
-    margin: 0;
-    font-size: 85%;
-    background-color: var(--primary-color-light);
-    border-radius: 6px;
-    font-family: monospace;
+	padding: .2em .4em;
+	margin: 0;
+	font-size: 85%;
+	background-color: var(--primary-color-light);
+	border-radius: 6px;
+	font-family: monospace;
 }
+
 .markdown-content pre {
-    padding: 1rem;
-    overflow: auto;
-    font-size: 85%;
-    line-height: 1.45;
-    background-color: var(--bg-color);
-    border-radius: 6px;
-    margin-bottom: 1rem;
+	padding: 1rem;
+	overflow: auto;
+	font-size: 85%;
+	line-height: 1.45;
+	background-color: var(--bg-color);
+	border-radius: 6px;
+	margin-bottom: 1rem;
 }
+
 .markdown-content pre code {
-    padding: 0;
-    margin: 0;
-    font-size: 100%;
-    background-color: transparent;
-    border-radius: 0;
+	padding: 0;
+	margin: 0;
+	font-size: 100%;
+	background-color: transparent;
+	border-radius: 0;
 }
+
 .markdown-content table {
-    width: 100%;
-    margin-bottom: 1rem;
-    border-collapse: collapse;
-    display: block;
-    overflow-x: auto;
+	width: 100%;
+	margin-bottom: 1rem;
+	border-collapse: collapse;
+	display: block;
+	overflow-x: auto;
 }
+
 .markdown-content th, .markdown-content td {
-    padding: 0.75rem;
-    border: 1px solid var(--border-color);
+	padding: 0.75rem;
+	border: 1px solid var(--border-color);
 }
+
 .markdown-content thead {
-    background-color: var(--bg-color);
+	background-color: var(--bg-color);
 }
+
 .markdown-content img {
-    max-width: 100%;
-    height: auto;
+	max-width: 100%;
+	height: auto;
 }
 
 /* =================================================================== */
@@ -1651,4 +1692,83 @@ fieldset {
 	h1, h2, h3 {
 		color: #000;
 	}
+}
+
+/* =================================================================== */
+/*  14. TO-DO LIST STYLES                                              */
+/* =================================================================== */
+.todo-app-container {
+	max-width: 1200px;
+	margin: auto;
+}
+
+.todo-category {
+	margin-bottom: 1.5rem;
+}
+
+.category-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	border: none;
+	padding: 0;
+	margin-bottom: 1rem;
+	cursor: grab;
+}
+
+.category-title {
+	border: none;
+	padding: 0;
+	margin: 0;
+	cursor: pointer;
+	flex-grow: 1;
+}
+
+.task-list {
+	list-style: none;
+	padding: 0;
+}
+
+.task-item {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	padding: 0.75rem 0.5rem;
+	border-bottom: 1px solid var(--border-color);
+	cursor: grab;
+}
+
+.task-item:last-child {
+	border-bottom: none;
+}
+
+.task-item.completed .task-content {
+	text-decoration: line-through;
+	color: var(--text-muted-color);
+}
+
+.task-checkbox {
+	width: 20px;
+	height: 20px;
+	flex-shrink: 0;
+	cursor: pointer;
+}
+
+.task-content {
+	flex-grow: 1;
+	cursor: pointer;
+}
+
+.task-item .btn {
+	opacity: 0;
+	transition: opacity 0.2s;
+}
+
+.task-item:hover .btn {
+	opacity: 1;
+}
+
+.sortable-ghost {
+	opacity: 0.4;
+	background: var(--primary-color-light);
 }
