@@ -18,43 +18,23 @@
 <c:import url="/WEB-INF/jspf/message_banner.jspf" />
 
 <div class="dashboard-grid">
-	<div class="card">
-		<h2 class="card-title">
-			<i class="fas fa-rocket"></i> Schnellzugriff
+	<div class.card id="widget-upcoming-events">
+		<h2>
+			<i class="fas fa-calendar-check"></i> Nächste Einsätze
 		</h2>
-		<ul style="list-style: none; padding: 0;">
-			<li style="padding: 0.5rem 0;"><a
-				href="${pageContext.request.contextPath}/admin/veranstaltungen">Neue
-					Veranstaltung anlegen</a></li>
-			<li style="padding: 0.5rem 0;"><a
-				href="${pageContext.request.contextPath}/admin/mitglieder">Neuen
-					Benutzer erstellen</a></li>
-			<li style="padding: 0.5rem 0;"><a
-				href="${pageContext.request.contextPath}/admin/lager">Neuen
-					Lagerartikel anlegen</a></li>
-			<li style="padding: 0.5rem 0;"><a
-				href="${pageContext.request.contextPath}/admin/lehrgaenge">Neue
-					Lehrgangs-Vorlage erstellen</a></li>
-		</ul>
+		<p>Lade Daten...</p>
+	</div>
+
+	<div class="card" id="widget-low-stock">
+		<h2>
+			<i class="fas fa-battery-quarter"></i> Niedriger Lagerbestand
+		</h2>
+		<p>Lade Daten...</p>
 	</div>
 
 	<div class="card">
 		<h2 class="card-title">
-			<i class="fas fa-chart-bar"></i> System-Statistiken
-		</h2>
-		<p style="font-size: 1.1rem; margin-bottom: 0.5rem;">
-			Anzahl registrierter Benutzer: <strong><c:out
-					value="${userCount}" /></strong>
-		</p>
-		<p style="font-size: 1.1rem;">
-			Anzahl aktiver Events: <strong><c:out
-					value="${activeEventCount}" /></strong>
-		</p>
-	</div>
-
-	<div class="card">
-		<h2 class="card-title">
-			<i class="fas fa-exclamation-triangle text-warning"></i> Defekte
+			<i class="fas fa-exclamation-triangle text-danger"></i> Defekte
 			Artikel
 		</h2>
 		<p>
@@ -66,15 +46,23 @@
 			class="btn btn-small" style="margin-top: 1rem;">Defekte anzeigen</a>
 	</div>
 
-	<div class="card">
-		<h2 class="card-title">
-			<i class="fas fa-history"></i> Letzte Aktionen
+	<div class="card" id="widget-recent-logs">
+		<h2>
+			<i class="fas fa-history"></i> Letzte Aktivitäten
 		</h2>
-		<p>Die letzten Log-Einträge des Systems.</p>
-		<a href="${pageContext.request.contextPath}/admin/log"
-			class="btn btn-small" style="margin-top: 1rem;">Komplettes Log
-			ansehen</a>
+		<p>Lade Daten...</p>
 	</div>
 </div>
 
+<div class="card" style="margin-top: 2rem;">
+	<h2 class="card-title">Event-Trend (Letzte 12 Monate)</h2>
+	<div style="position: relative; height: 300px;">
+		<canvas id="eventTrendChart"></canvas>
+	</div>
+</div>
+
+
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script
+	src="${pageContext.request.contextPath}/js/admin/admin_dashboard.js"></script>
