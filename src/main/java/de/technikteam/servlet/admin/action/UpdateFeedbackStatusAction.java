@@ -37,13 +37,14 @@ public class UpdateFeedbackStatusAction implements Action {
 		try {
 			int submissionId = Integer.parseInt(request.getParameter("submissionId"));
 			String newStatus = request.getParameter("status");
+			String displayTitle = request.getParameter("displayTitle");
 
-			if (submissionDAO.updateStatus(submissionId, newStatus)) {
+			if (submissionDAO.updateStatusAndTitle(submissionId, newStatus, displayTitle)) {
 				adminLogService.log(adminUser.getUsername(), "UPDATE_FEEDBACK_STATUS",
 						"Status für Feedback ID " + submissionId + " auf '" + newStatus + "' gesetzt.");
 
 				NotificationService.getInstance().broadcastUIUpdate("feedback_status_updated",
-						Map.of("submissionId", submissionId, "newStatus", newStatus));
+						Map.of("submissionId", submissionId, "newStatus", newStatus, "displayTitle", displayTitle));
 
 				return ApiResponse.success("Status erfolgreich aktualisiert.");
 			} else {

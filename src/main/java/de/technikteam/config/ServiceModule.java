@@ -27,7 +27,6 @@ public class ServiceModule extends ServletModule {
 		bind(SystemInfoService.class).in(Scopes.SINGLETON);
 		bind(AchievementService.class).in(Scopes.SINGLETON);
 		bind(AdminDashboardService.class).in(Scopes.SINGLETON);
-		bind(TodoService.class).in(Scopes.SINGLETON);
 
 		bind(UserDAO.class).in(Scopes.SINGLETON);
 		bind(RoleDAO.class).in(Scopes.SINGLETON);
@@ -54,7 +53,6 @@ public class ServiceModule extends ServletModule {
 		bind(FileDAO.class).in(Scopes.SINGLETON);
 		bind(ReportDAO.class).in(Scopes.SINGLETON);
 		bind(StatisticsDAO.class).in(Scopes.SINGLETON);
-		bind(TodoDAO.class).in(Scopes.SINGLETON);
 
 		bind(CreateUserAction.class).in(Scopes.SINGLETON);
 		bind(UpdateUserAction.class).in(Scopes.SINGLETON);
@@ -64,7 +62,9 @@ public class ServiceModule extends ServletModule {
 		bind(ApproveChangeAction.class).in(Scopes.SINGLETON);
 		bind(DenyChangeAction.class).in(Scopes.SINGLETON);
 		bind(UpdateFeedbackStatusAction.class).in(Scopes.SINGLETON);
+		bind(UpdateFeedbackOrderAction.class).in(Scopes.SINGLETON);
 		bind(DeleteFeedbackAction.class).in(Scopes.SINGLETON);
+		bind(GetFeedbackDetailsAction.class).in(Scopes.SINGLETON);
 
 		// --- Explicitly bind all Servlets as Singletons before serving them ---
 		bind(RootServlet.class).in(Scopes.SINGLETON);
@@ -126,7 +126,6 @@ public class ServiceModule extends ServletModule {
 		bind(AdminDashboardApiServlet.class).in(Scopes.SINGLETON);
 		bind(SystemStatsApiServlet.class).in(Scopes.SINGLETON);
 		bind(CrewFinderApiServlet.class).in(Scopes.SINGLETON);
-		bind(AdminTodoApiServlet.class).in(Scopes.SINGLETON);
 		bind(FrontControllerServlet.class).in(Scopes.SINGLETON);
 
 		// --- Explicitly Map all URL Patterns to their Servlets ---
@@ -189,7 +188,6 @@ public class ServiceModule extends ServletModule {
 		serve("/api/admin/dashboard-data").with(AdminDashboardApiServlet.class);
 		serve("/api/admin/system-stats").with(SystemStatsApiServlet.class);
 		serve("/api/admin/crew-finder").with(CrewFinderApiServlet.class);
-		serve("/api/admin/todos").with(AdminTodoApiServlet.class);
 		serve("/admin/action/*").with(FrontControllerServlet.class);
 	}
 }

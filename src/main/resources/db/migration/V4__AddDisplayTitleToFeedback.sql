@@ -1,0 +1,1 @@
+ALTER TABLE feedback_submissions ADD COLUMN display_title VARCHAR(255) NULL DEFAULT NULL AFTER subject;

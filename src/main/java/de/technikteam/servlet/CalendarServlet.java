@@ -31,6 +31,7 @@ public class CalendarServlet extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+		// This logic is now primarily for the mobile list view.
 		List<Event> events = eventDAO.getAllActiveAndUpcomingEvents();
 		List<Meeting> meetings = meetingDAO.getAllUpcomingMeetings();
 

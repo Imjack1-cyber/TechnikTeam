@@ -48,6 +48,21 @@ public class FeedbackSubmissionDAO {
 		return submissions;
 	}
 
+	public FeedbackSubmission getSubmissionById(int submissionId) {
+		String sql = "SELECT fs.*, u.username FROM feedback_submissions fs JOIN users u ON fs.user_id = u.id WHERE fs.id = ?";
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, submissionId);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				if (rs.next()) {
+					return mapResultSetToSubmission(rs);
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching feedback submission by ID {}", submissionId, e);
+		}
+		return null;
+	}
+
 	public List<FeedbackSubmission> getSubmissionsByUserId(int userId) {
 		List<FeedbackSubmission> submissions = new ArrayList<>();
 		String sql = "SELECT fs.*, u.username FROM feedback_submissions fs JOIN users u ON fs.user_id = u.id WHERE fs.user_id = ? ORDER BY fs.submitted_at DESC";
@@ -76,6 +91,19 @@ public class FeedbackSubmissionDAO {
 		}
 	}
 
+	public boolean updateStatusAndTitle(int submissionId, String newStatus, String displayTitle) {
+		String sql = "UPDATE feedback_submissions SET status = ?, display_title = ? WHERE id = ?";
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setString(1, newStatus);
+			pstmt.setString(2, displayTitle);
+			pstmt.setInt(3, submissionId);
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("Error updating status and title for submission {}", submissionId, e);
+			return false;
+		}
+	}
+
 	public boolean deleteSubmission(int submissionId) {
 		String sql = "DELETE FROM feedback_submissions WHERE id = ?";
 		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -93,6 +121,7 @@ public class FeedbackSubmissionDAO {
 		sub.setUserId(rs.getInt("user_id"));
 		sub.setUsername(rs.getString("username"));
 		sub.setSubject(rs.getString("subject"));
+		sub.setDisplayTitle(rs.getString("display_title"));
 		sub.setContent(rs.getString("content"));
 		sub.setSubmittedAt(rs.getTimestamp("submitted_at").toLocalDateTime());
 		sub.setStatus(rs.getString("status"));

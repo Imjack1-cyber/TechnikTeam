@@ -34,7 +34,8 @@ public class FrontControllerServlet extends HttpServlet {
 			DeleteUserAction deleteUserAction, ResetPasswordAction resetPasswordAction,
 			UnlockUserAction unlockUserAction, ApproveChangeAction approveChangeAction,
 			DenyChangeAction denyChangeAction, UpdateFeedbackStatusAction updateFeedbackStatusAction,
-			DeleteFeedbackAction deleteFeedbackAction) {
+			UpdateFeedbackOrderAction updateFeedbackOrderAction, DeleteFeedbackAction deleteFeedbackAction,
+			GetFeedbackDetailsAction getFeedbackDetailsAction) {
 
 		actions.put("user.create", createUserAction);
 		actions.put("user.update", updateUserAction);
@@ -44,7 +45,9 @@ public class FrontControllerServlet extends HttpServlet {
 		actions.put("request.approve", approveChangeAction);
 		actions.put("request.deny", denyChangeAction);
 		actions.put("feedback.updateStatus", updateFeedbackStatusAction);
+		actions.put("feedback.reorder", updateFeedbackOrderAction);
 		actions.put("feedback.delete", deleteFeedbackAction);
+		actions.put("feedback.getDetails", getFeedbackDetailsAction);
 
 		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}

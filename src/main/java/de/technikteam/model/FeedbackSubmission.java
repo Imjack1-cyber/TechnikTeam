@@ -12,6 +12,7 @@ public class FeedbackSubmission {
 	private int userId;
 	private String username; // For display
 	private String subject;
+	private String displayTitle; // Admin-editable title
 	private String content;
 	private LocalDateTime submittedAt;
 	private String status;
@@ -51,6 +52,14 @@ public class FeedbackSubmission {
 
 	public void setSubject(String subject) {
 		this.subject = subject;
+	}
+
+	public String getDisplayTitle() {
+		return displayTitle;
+	}
+
+	public void setDisplayTitle(String displayTitle) {
+		this.displayTitle = displayTitle;
 	}
 
 	public String getContent() {

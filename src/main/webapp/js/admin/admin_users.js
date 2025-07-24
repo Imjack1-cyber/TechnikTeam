@@ -181,6 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					showToast(result.message, 'success');
 				}
 
+				// FIX: Get the action from the form data itself, not by parsing a URL object.
 				const action = formData.get('action');
 				if (action === 'delete') {
 					removeTableRow(result.data.deletedUserId);

@@ -1,246 +1,133 @@
 document.addEventListener('DOMContentLoaded', () => {
 	const contextPath = document.body.dataset.contextPath || '';
 	const csrfToken = document.body.dataset.csrfToken;
-	const apiUrl = `${contextPath}/api/admin/todos`;
 
-	const categoriesContainer = document.getElementById('todo-categories-container');
-	const categoryTemplate = document.getElementById('category-template');
-	const taskTemplate = document.getElementById('task-template');
-	const newCategoryForm = document.getElementById('new-category-form');
-	const newCategoryNameInput = document.getElementById('new-category-name');
+	const columns = document.querySelectorAll('.feedback-list');
+	if (!columns.length || typeof Sortable === 'undefined') {
+		if (typeof Sortable === 'undefined') {
+			console.error("Sortable.js library not loaded. Drag & drop functionality will not be available.");
+		}
+		return;
+	}
 
-	// --- API HELPER ---
+	const modal = document.getElementById('feedback-details-modal');
+	const modalForm = document.getElementById('feedback-details-form');
+	const modalIdInput = document.getElementById('feedback-modal-id');
+	const modalOriginalSubject = document.getElementById('feedback-modal-original-subject');
+	const modalDisplayTitle = document.getElementById('feedback-modal-display-title');
+	const modalContent = document.getElementById('feedback-modal-content');
+	const modalStatus = document.getElementById('feedback-modal-status');
+
 	const api = {
-		async get() {
-			const response = await fetch(apiUrl);
-			if (!response.ok) throw new Error('Failed to fetch data');
-			return response.json();
-		},
-		async post(action, body) {
-			const response = await fetch(`${apiUrl}?action=${action}`, {
+		async getDetails(id) {
+			const response = await fetch(`${contextPath}/admin/action/feedback?action=getDetails`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-				body: body
+				body: new URLSearchParams({ submissionId: id, csrfToken: csrfToken })
+			});
+			if (!response.ok) throw new Error('Could not fetch feedback details.');
+			return response.json();
+		},
+		async update(formData) {
+			const response = await fetch(`${contextPath}/admin/action/feedback?action=updateStatus`, {
+				method: 'POST',
+				body: new URLSearchParams(formData)
 			});
 			return response.json();
 		},
-		async put(payload) {
-			const response = await fetch(apiUrl, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ ...payload, csrfToken })
-			});
-			return response.json();
-		},
-		async delete(resource, id) {
-			const response = await fetch(`${apiUrl}?${resource}Id=${id}&csrfToken=${csrfToken}`, {
-				method: 'DELETE'
+		async reorder(data) {
+			const response = await fetch(`${contextPath}/admin/action/feedback?action=reorder`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+				body: new URLSearchParams({
+					csrfToken: csrfToken,
+					reorderData: JSON.stringify(data)
+				})
 			});
 			return response.json();
 		}
 	};
 
-	// --- RENDERING LOGIC ---
-	const renderTask = (task) => {
-		const taskClone = taskTemplate.content.cloneNode(true);
-		const taskItem = taskClone.querySelector('.task-item');
-		const checkbox = taskClone.querySelector('.task-checkbox');
-		const contentSpan = taskClone.querySelector('.task-content');
+	document.querySelector('.feedback-board').addEventListener('click', async (e) => {
+		const card = e.target.closest('.feedback-card-item');
+		if (!card) return;
 
-		taskItem.dataset.taskId = task.id;
-		contentSpan.textContent = task.content;
-		checkbox.checked = task.isCompleted;
-		if (task.isCompleted) {
-			taskItem.classList.add('completed');
-		}
-
-		return taskClone;
-	};
-
-	const renderCategory = (category) => {
-		const categoryClone = categoryTemplate.content.cloneNode(true);
-		const categoryEl = categoryClone.querySelector('.todo-category');
-		const title = categoryClone.querySelector('.category-title');
-		const taskList = categoryClone.querySelector('.task-list');
-
-		categoryEl.dataset.categoryId = category.id;
-		title.textContent = category.name;
-
-		category.tasks.forEach(task => {
-			taskList.appendChild(renderTask(task));
-		});
-
-		initTaskSortable(taskList);
-		return categoryClone;
-	};
-
-	const loadAndRender = async () => {
 		try {
-			const categories = await api.get();
-			categoriesContainer.innerHTML = '';
-			categories.forEach(cat => {
-				categoriesContainer.appendChild(renderCategory(cat));
-			});
+			const submissionId = card.dataset.id;
+			const result = await api.getDetails(submissionId);
+			if (!result.success) throw new Error(result.message);
+
+			const submission = result.data;
+
+			modalIdInput.value = submission.id;
+			modalOriginalSubject.textContent = submission.subject;
+			modalDisplayTitle.value = submission.displayTitle || '';
+			modalContent.textContent = submission.content;
+			if (window.renderMarkdown) window.renderMarkdown(modalContent);
+			modalStatus.value = submission.status;
+
+			modal.classList.add('active');
+
 		} catch (error) {
 			console.error(error);
-			showToast('Fehler beim Laden der To-Do-Liste.', 'danger');
+			showToast('Details konnten nicht geladen werden.', 'danger');
 		}
-	};
+	});
 
-	// --- EVENT HANDLERS ---
-	newCategoryForm.addEventListener('submit', async (e) => {
+	modalForm.addEventListener('submit', async (e) => {
 		e.preventDefault();
-		const name = newCategoryNameInput.value.trim();
-		if (!name) return;
+		const formData = new FormData(modalForm);
+		formData.append('csrfToken', csrfToken);
 
 		try {
-			const result = await api.post('createCategory', new URLSearchParams({ name, csrfToken }));
+			const result = await api.update(formData);
 			if (result.success) {
-				categoriesContainer.appendChild(renderCategory({ ...result.data, tasks: [] }));
-				newCategoryNameInput.value = '';
+				showToast('Änderungen gespeichert.', 'success');
+				modal.classList.remove('active');
+				window.location.reload(); // Reload to reflect changes
 			} else {
 				throw new Error(result.message);
 			}
 		} catch (error) {
-			showToast('Kategorie konnte nicht erstellt werden.', 'danger');
+			showToast(error.message || 'Fehler beim Speichern.', 'danger');
 		}
 	});
 
-	categoriesContainer.addEventListener('submit', async (e) => {
-		if (e.target.matches('.new-task-form')) {
-			e.preventDefault();
-			const form = e.target;
-			const contentInput = form.querySelector('.new-task-content');
-			const content = contentInput.value.trim();
-			const categoryId = form.closest('.todo-category').dataset.categoryId;
+	modal.querySelector('.modal-close-btn').addEventListener('click', () => modal.classList.remove('active'));
+	modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('active'); });
 
-			if (!content || !categoryId) return;
+	const handleReorder = async (evt) => {
+		const item = evt.item;
+		const toList = evt.to;
+		const newStatus = toList.dataset.statusId;
+		const submissionId = item.dataset.id;
 
-			try {
-				const result = await api.post('createTask', new URLSearchParams({ categoryId, content, csrfToken }));
-				if (result.success) {
-					form.previousElementSibling.appendChild(renderTask(result.data));
-					contentInput.value = '';
-				} else {
-					throw new Error(result.message);
-				}
-			} catch (error) {
-				showToast('Aufgabe konnte nicht erstellt werden.', 'danger');
-			}
-		}
-	});
+		item.dataset.status = newStatus;
 
-	categoriesContainer.addEventListener('click', async (e) => {
-		if (e.target.matches('.delete-category-btn, .delete-category-btn *')) {
-			const categoryEl = e.target.closest('.todo-category');
-			showConfirmationModal('Kategorie und alle Aufgaben darin löschen?', async () => {
-				try {
-					await api.delete('category', categoryEl.dataset.categoryId);
-					categoryEl.remove();
-				} catch {
-					showToast('Kategorie konnte nicht gelöscht werden.', 'danger');
-				}
-			});
-		}
-		if (e.target.matches('.delete-task-btn, .delete-task-btn *')) {
-			const taskEl = e.target.closest('.task-item');
-			showConfirmationModal('Aufgabe wirklich löschen?', async () => {
-				try {
-					await api.delete('task', taskEl.dataset.taskId);
-					taskEl.remove();
-				} catch {
-					showToast('Aufgabe konnte nicht gelöscht werden.', 'danger');
-				}
-			});
-		}
-	});
-
-	categoriesContainer.addEventListener('change', async (e) => {
-		if (e.target.matches('.task-checkbox')) {
-			const taskEl = e.target.closest('.task-item');
-			taskEl.classList.toggle('completed', e.target.checked);
-			try {
-				await api.put({
-					action: 'updateTask',
-					taskId: taskEl.dataset.taskId,
-					isCompleted: e.target.checked
-				});
-			} catch {
-				showToast('Status konnte nicht gespeichert werden.', 'danger');
-				e.target.checked = !e.target.checked;
-				taskEl.classList.toggle('completed', e.target.checked);
-			}
-		}
-	});
-
-	categoriesContainer.addEventListener('dblclick', (e) => {
-		if (e.target.matches('.task-content, .category-title')) {
-			const element = e.target;
-			const originalText = element.textContent;
-			const input = document.createElement('input');
-			input.type = 'text';
-			input.value = originalText;
-			input.className = element.className;
-
-			element.replaceWith(input);
-			input.focus();
-
-			const saveChanges = async () => {
-				const newText = input.value.trim();
-				element.textContent = newText || originalText;
-				input.replaceWith(element);
-
-				if (newText && newText !== originalText) {
-					try {
-						if (element.matches('.task-content')) {
-							await api.put({ action: 'updateTask', taskId: element.closest('.task-item').dataset.taskId, content: newText });
-						}
-					} catch {
-						showToast('Änderung konnte nicht gespeichert werden.', 'danger');
-						element.textContent = originalText;
-					}
-				}
-			};
-			input.addEventListener('blur', saveChanges);
-			input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') input.blur(); });
-		}
-	});
-
-	// --- SORTABLEJS DRAG & DROP LOGIC ---
-	const saveOrder = async () => {
-		const orderData = {
-			categoryOrder: Array.from(categoriesContainer.children).map(c => c.dataset.categoryId)
+		const reorderData = {
+			submissionId: parseInt(submissionId, 10),
+			newStatus: newStatus,
 		};
-		document.querySelectorAll('.task-list').forEach(list => {
-			const catId = list.closest('.todo-category').dataset.categoryId;
-			orderData[`category-${catId}`] = Array.from(list.children).map(task => task.dataset.taskId);
-		});
 
 		try {
-			await api.put({ action: 'reorder', orderData });
-			showToast('Sortierung gespeichert.', 'success');
-		} catch {
-			showToast('Sortierung konnte nicht gespeichert werden.', 'danger');
-			loadAndRender(); // Revert to server state on failure
+			const result = await api.reorder(reorderData);
+			if (result.success) {
+				showToast(result.message, 'success');
+			} else {
+				throw new Error(result.message);
+			}
+		} catch (error) {
+			console.error('Error saving new order:', error);
+			showToast(error.message || 'Sortierung konnte nicht gespeichert werden.', 'danger');
 		}
 	};
 
-	const initTaskSortable = (listEl) => {
-		new Sortable(listEl, {
-			group: 'tasks',
+	columns.forEach(col => {
+		new Sortable(col, {
+			group: 'feedback',
 			animation: 150,
 			ghostClass: 'sortable-ghost',
-			onEnd: saveOrder
+			onEnd: handleReorder
 		});
-	};
-
-	new Sortable(categoriesContainer, {
-		animation: 150,
-		ghostClass: 'sortable-ghost',
-		handle: '.category-header',
-		onEnd: saveOrder
 	});
-
-	// --- INITIAL LOAD ---
-	loadAndRender();
 });
