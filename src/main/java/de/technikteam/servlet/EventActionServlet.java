@@ -7,6 +7,7 @@ import de.technikteam.dao.EventDAO;
 import de.technikteam.model.EventCustomField;
 import de.technikteam.model.EventCustomFieldResponse;
 import de.technikteam.model.User;
+import de.technikteam.service.EventService;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -24,11 +25,13 @@ public class EventActionServlet extends HttpServlet {
 	private static final Logger logger = LogManager.getLogger(EventActionServlet.class);
 	private final EventDAO eventDAO;
 	private final EventCustomFieldDAO customFieldDAO;
+	private final EventService eventService;
 
 	@Inject
-	public EventActionServlet(EventDAO eventDAO, EventCustomFieldDAO customFieldDAO) {
+	public EventActionServlet(EventDAO eventDAO, EventCustomFieldDAO customFieldDAO, EventService eventService) {
 		this.eventDAO = eventDAO;
 		this.customFieldDAO = customFieldDAO;
+		this.eventService = eventService;
 	}
 
 	@Override
@@ -71,7 +74,18 @@ public class EventActionServlet extends HttpServlet {
 			} else if ("signoff".equals(action)) {
 				eventDAO.signOffFromEvent(user.getId(), eventId);
 				request.getSession().setAttribute("successMessage", "Erfolgreich vom Event abgemeldet.");
+			} else if ("signOffWithReason".equals(action)) {
+				String reason = request.getParameter("reason");
+				if (reason == null || reason.trim().isEmpty()) {
+					request.getSession().setAttribute("errorMessage",
+							"Eine Begründung für die Abmeldung ist erforderlich.");
+				} else {
+					eventService.signOffUserFromRunningEvent(user.getId(), user.getUsername(), eventId, reason);
+					request.getSession().setAttribute("successMessage",
+							"Erfolgreich vom Event abgemeldet. Der Leiter wurde informiert.");
+				}
 			}
+
 		} catch (NumberFormatException e) {
 			logger.error("Invalid event ID format in EventActionServlet.", e);
 			request.getSession().setAttribute("errorMessage", "Ungültige Event-ID.");

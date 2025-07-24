@@ -94,4 +94,53 @@ public class StorageService {
 			return false;
 		}
 	}
+	
+	public boolean updateDefectiveItemStatus(int itemId, String status, int quantity, String reason, User adminUser) {
+        try (Connection conn = dbManager.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                StorageItem item = storageDAO.getItemById(itemId, conn);
+                if (item == null) {
+                    throw new IllegalArgumentException("Item with ID " + itemId + " not found.");
+                }
+
+                boolean success;
+                String logDetails;
+
+                if ("UNREPAIRABLE".equals(status)) {
+                    if (item.getQuantity() < quantity) {
+                        throw new IllegalStateException("Cannot mark more items as unrepairable than exist.");
+                    }
+                    if (item.getDefectiveQuantity() < quantity) {
+                        throw new IllegalStateException("Cannot mark more items as unrepairable than are currently defective.");
+                    }
+                    success = storageDAO.permanentlyReduceQuantities(itemId, quantity, reason, conn);
+                    logDetails = String.format("Permanently removed %d x '%s' (ID: %d) from stock (unrepairable). Reason: %s", quantity, item.getName(), itemId, reason);
+                    adminLogService.log(adminUser.getUsername(), "ITEM_UNREPAIRABLE", logDetails);
+                } else { // "DEFECT"
+                    int newDefectiveTotal = item.getDefectiveQuantity() + quantity;
+                    if (item.getQuantity() < newDefectiveTotal) {
+                        throw new IllegalStateException("Total defective quantity cannot exceed total quantity.");
+                    }
+                    success = storageDAO.updateDefectiveStatus(itemId, newDefectiveTotal, reason, conn);
+                    logDetails = String.format("Defect status for '%s' (ID: %d) updated: %d defective. Reason: %s", item.getName(), itemId, newDefectiveTotal, reason);
+                    adminLogService.log(adminUser.getUsername(), "UPDATE_DEFECT_STATUS", logDetails);
+                }
+
+                if (success) {
+                    conn.commit();
+                    return true;
+                } else {
+                    throw new SQLException("DAO operation failed, rolling back.");
+                }
+            } catch (Exception e) {
+                conn.rollback();
+                logger.error("Transaction rolled back for defect status update on item {}", itemId, e);
+                return false;
+            }
+        } catch (SQLException e) {
+            logger.error("Failed to get DB connection for defect status update.", e);
+            return false;
+        }
+    }
 }

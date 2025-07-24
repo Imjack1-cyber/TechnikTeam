@@ -39,21 +39,21 @@ document.addEventListener('DOMContentLoaded', () => {
 			removeBtn.innerHTML = '×';
 			removeBtn.onclick = () => onRemove(row);
 			row.appendChild(removeBtn);
-			container.appendChild(newRow);
+			container.appendChild(row); // FIX: append the new row itself
 			return row;
 		};
 
 		const addItemRow = (item = { id: '', quantity: 1 }) => {
 			const row = createRow(itemsContainer, r => r.remove());
 			const select = document.createElement('select');
-			select.name = 'itemIds';
+			select.name = 'itemIds[]';
 			select.className = 'form-group';
 			select.innerHTML = '<option value="">-- Material --</option>' + allItems.map(i => `<option value="${i.id}" data-max-qty="${i.availableQuantity}">${i.name}</option>`).join('');
 			select.value = item.id;
 
 			const input = document.createElement('input');
 			input.type = 'number';
-			input.name = 'itemQuantities';
+			input.name = 'itemQuantities[]';
 			input.value = item.quantity;
 			input.min = '1';
 			input.className = 'form-group';
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const addKitRow = (kit = { id: '' }) => {
 			const row = createRow(kitsContainer, r => r.remove());
 			const select = document.createElement('select');
-			select.name = 'kitIds';
+			select.name = 'kitIds[]';
 			select.className = 'form-group';
 			select.innerHTML = '<option value="">-- Kit --</option>' + allKits.map(k => `<option value="${k.id}">${k.name}</option>`).join('');
 			select.value = kit.id;
@@ -163,6 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 		});
 
+		// FIX: Use event delegation on the body to handle clicks on dynamically added elements
 		document.body.addEventListener('click', e => {
 			const addItemBtn = e.target.closest('#add-task-item-btn');
 			const addKitBtn = e.target.closest('#add-task-kit-btn');

@@ -179,30 +179,28 @@ public class StorageDAO {
 		}
 	}
 
-	public boolean updateDefectiveStatus(int itemId, int defectiveQty, String reason, Connection conn)
-			throws SQLException {
-		String sql = "UPDATE storage_items SET defective_quantity = ?, defect_reason = ? WHERE id = ? AND ? <= quantity";
-		try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, defectiveQty);
-			pstmt.setString(2, reason);
-			pstmt.setInt(3, itemId);
-			pstmt.setInt(4, defectiveQty);
-			return pstmt.executeUpdate() > 0;
-		}
-	}
+	public boolean updateDefectiveStatus(int itemId, int defectiveQty, String reason, Connection conn) throws SQLException {
+        String sql = "UPDATE storage_items SET defective_quantity = ?, defect_reason = ? WHERE id = ? AND ? <= quantity";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, defectiveQty);
+            pstmt.setString(2, reason);
+            pstmt.setInt(3, itemId);
+            pstmt.setInt(4, defectiveQty);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
 
-	public boolean permanentlyReduceQuantities(int itemId, int quantityToReduce, String reason, Connection conn)
-			throws SQLException {
-		String sql = "UPDATE storage_items SET quantity = quantity - ?, defective_quantity = defective_quantity - ?, defect_reason = ? WHERE id = ? AND defective_quantity >= ?";
-		try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, quantityToReduce);
-			pstmt.setInt(2, quantityToReduce);
+	public boolean permanentlyReduceQuantities(int itemId, int quantityToReduce, String reason, Connection conn) throws SQLException {
+        String sql = "UPDATE storage_items SET quantity = quantity - ?, defective_quantity = defective_quantity - ?, defect_reason = ? WHERE id = ? AND defective_quantity >= ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, quantityToReduce);
+            pstmt.setInt(2, quantityToReduce);
 			pstmt.setString(3, reason);
-			pstmt.setInt(4, itemId);
-			pstmt.setInt(5, quantityToReduce);
-			return pstmt.executeUpdate() > 0;
-		}
-	}
+            pstmt.setInt(4, itemId);
+            pstmt.setInt(5, quantityToReduce);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
 
 	public boolean repairItems(int itemId, int repairedQuantity) {
 		String sql = "UPDATE storage_items SET defective_quantity = defective_quantity - ?, status = CASE WHEN (defective_quantity - ?) <= 0 THEN 'IN_STORAGE' ELSE status END WHERE id = ? AND defective_quantity >= ?";

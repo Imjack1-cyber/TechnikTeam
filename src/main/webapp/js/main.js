@@ -216,6 +216,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		};
 	}
 
+	const feedbackStatusOrder = { 'NEW': 0, 'VIEWED': 1, 'PLANNED': 2, 'COMPLETED': 3, 'REJECTED': 4 };
+
 	// --- UI UPDATE HANDLER (COMPLETE & UNABBREVIATED) ---
 	function handleUIUpdate(payload) {
 		console.log("Handling UI update:", payload.updateType, payload.data);
@@ -258,13 +260,28 @@ document.addEventListener('DOMContentLoaded', () => {
 				break;
 			case 'feedback_status_updated':
 				const { submissionId, newStatus: newFeedbackStatus } = payload.data;
-				const card = document.querySelector(`[data-submission-id="${submissionId}"]`);
+				const card = document.querySelector(`.feedback-card[data-submission-id="${submissionId}"]`);
 				if (card) {
+					// 1. Update the data attribute and badge
+					card.dataset.status = newFeedbackStatus;
 					const badge = card.querySelector('.status-badge');
 					if (badge) {
 						badge.textContent = newFeedbackStatus;
 						badge.className = `status-badge ${getStatusBadgeClass(newFeedbackStatus)}`;
 					}
+
+					// 2. Re-sort the list
+					const container = card.parentElement;
+					const allCards = Array.from(container.querySelectorAll('.feedback-card'));
+
+					allCards.sort((a, b) => {
+						const statusA = feedbackStatusOrder[a.dataset.status] ?? 99;
+						const statusB = feedbackStatusOrder[b.dataset.status] ?? 99;
+						return statusA - statusB;
+					});
+
+					// 3. Re-append sorted cards
+					allCards.forEach(c => container.appendChild(c));
 				}
 				break;
 			case 'feedback_deleted':

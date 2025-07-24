@@ -81,13 +81,14 @@
 							</c:if>
 							<c:if test="${event.userAttendanceStatus == 'ANGEMELDET'}">
 								<form action="${pageContext.request.contextPath}/event-action"
-									method="post" class="js-confirm-form"
+									method="post" class="js-signoff-form"
+									data-event-id="${event.id}" data-event-status="${event.status}"
 									data-confirm-message="Wirklich vom Event '${fn:escapeXml(event.name)}' abmelden?">
 									<input type="hidden" name="csrfToken"
 										value="${sessionScope.csrfToken}"> <input
-										type="hidden" name="eventId" value="${event.id}">
-									<button type="submit" name="action" value="signoff"
-										class="btn btn-small btn-danger">Abmelden</button>
+										type="hidden" name="eventId" value="${event.id}"> <input
+										type="hidden" name="action" value="signoff">
+									<button type="submit" class="btn btn-small btn-danger">Abmelden</button>
 								</form>
 							</c:if>
 						</div>
@@ -149,13 +150,14 @@
 				</c:if>
 				<c:if test="${event.userAttendanceStatus == 'ANGEMELDET'}">
 					<form action="${pageContext.request.contextPath}/event-action"
-						method="post" class="js-confirm-form"
+						method="post" class="js-signoff-form" data-event-id="${event.id}"
+						data-event-status="${event.status}"
 						data-confirm-message="Wirklich vom Event '${fn:escapeXml(event.name)}' abmelden?">
 						<input type="hidden" name="csrfToken"
 							value="${sessionScope.csrfToken}"> <input type="hidden"
-							name="eventId" value="${event.id}">
-						<button type="submit" name="action" value="signoff"
-							class="btn btn-small btn-danger">Abmelden</button>
+							name="eventId" value="${event.id}"> <input type="hidden"
+							name="action" value="signoff">
+						<button type="submit" class="btn btn-small btn-danger">Abmelden</button>
 					</form>
 				</c:if>
 			</div>
@@ -178,6 +180,30 @@
 			<div id="custom-fields-container"></div>
 			<button type="submit" class="btn btn-success"
 				style="margin-top: 1rem;">Anmeldung bestätigen</button>
+		</form>
+	</div>
+</div>
+
+<!-- Sign-off with Reason Modal -->
+<div class="modal-overlay" id="signoff-reason-modal">
+	<div class="modal-content" style="max-width: 500px;">
+		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
+		<h3>Abmeldung vom laufenden Event</h3>
+		<p>Da dieses Event bereits läuft, ist eine Begründung für die
+			Abmeldung erforderlich. Der Event-Leiter wird benachrichtigt.</p>
+		<form id="signoff-reason-form"
+			action="${pageContext.request.contextPath}/event-action"
+			method="post">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="signOffWithReason"> <input
+				type="hidden" name="eventId" id="signoff-event-id">
+			<div class="form-group">
+				<label for="signoff-reason">Begründung</label>
+				<textarea id="signoff-reason" name="reason" rows="4" required></textarea>
+			</div>
+			<button type="submit" class="btn btn-danger">Abmeldung
+				bestätigen</button>
 		</form>
 	</div>
 </div>

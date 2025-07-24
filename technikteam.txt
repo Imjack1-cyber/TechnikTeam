@@ -3790,19 +3790,28 @@ public class StorageDAO {
 		}
 	}
 
-	public boolean updateDefectiveStatus(int itemId, int defectiveQty, String reason) {
-		String sql = "UPDATE storage_items SET defective_quantity = ?, defect_reason = ? WHERE id = ? AND ? <= quantity";
-		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, defectiveQty);
-			pstmt.setString(2, reason);
-			pstmt.setInt(3, itemId);
-			pstmt.setInt(4, defectiveQty);
-			return pstmt.executeUpdate() > 0;
-		} catch (SQLException e) {
-			logger.error("SQL error updating defect status for item {}", itemId, e);
-			return false;
-		}
-	}
+	public boolean updateDefectiveStatus(int itemId, int defectiveQty, String reason, Connection conn) throws SQLException {
+        String sql = "UPDATE storage_items SET defective_quantity = ?, defect_reason = ? WHERE id = ? AND ? <= quantity";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, defectiveQty);
+            pstmt.setString(2, reason);
+            pstmt.setInt(3, itemId);
+            pstmt.setInt(4, defectiveQty);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+	public boolean permanentlyReduceQuantities(int itemId, int quantityToReduce, String reason, Connection conn) throws SQLException {
+        String sql = "UPDATE storage_items SET quantity = quantity - ?, defective_quantity = defective_quantity - ?, defect_reason = ? WHERE id = ? AND defective_quantity >= ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, quantityToReduce);
+            pstmt.setInt(2, quantityToReduce);
+			pstmt.setString(3, reason);
+            pstmt.setInt(4, itemId);
+            pstmt.setInt(5, quantityToReduce);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
 
 	public boolean repairItems(int itemId, int repairedQuantity) {
 		String sql = "UPDATE storage_items SET defective_quantity = defective_quantity - ?, status = CASE WHEN (defective_quantity - ?) <= 0 THEN 'IN_STORAGE' ELSE status END WHERE id = ? AND defective_quantity >= ?";
@@ -8030,6 +8039,55 @@ public class StorageService {
 			return false;
 		}
 	}
+	
+	public boolean updateDefectiveItemStatus(int itemId, String status, int quantity, String reason, User adminUser) {
+        try (Connection conn = dbManager.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                StorageItem item = storageDAO.getItemById(itemId, conn);
+                if (item == null) {
+                    throw new IllegalArgumentException("Item with ID " + itemId + " not found.");
+                }
+
+                boolean success;
+                String logDetails;
+
+                if ("UNREPAIRABLE".equals(status)) {
+                    if (item.getQuantity() < quantity) {
+                        throw new IllegalStateException("Cannot mark more items as unrepairable than exist.");
+                    }
+                    if (item.getDefectiveQuantity() < quantity) {
+                        throw new IllegalStateException("Cannot mark more items as unrepairable than are currently defective.");
+                    }
+                    success = storageDAO.permanentlyReduceQuantities(itemId, quantity, reason, conn);
+                    logDetails = String.format("Permanently removed %d x '%s' (ID: %d) from stock (unrepairable). Reason: %s", quantity, item.getName(), itemId, reason);
+                    adminLogService.log(adminUser.getUsername(), "ITEM_UNREPAIRABLE", logDetails);
+                } else { // "DEFECT"
+                    int newDefectiveTotal = item.getDefectiveQuantity() + quantity;
+                    if (item.getQuantity() < newDefectiveTotal) {
+                        throw new IllegalStateException("Total defective quantity cannot exceed total quantity.");
+                    }
+                    success = storageDAO.updateDefectiveStatus(itemId, newDefectiveTotal, reason, conn);
+                    logDetails = String.format("Defect status for '%s' (ID: %d) updated: %d defective. Reason: %s", item.getName(), itemId, newDefectiveTotal, reason);
+                    adminLogService.log(adminUser.getUsername(), "UPDATE_DEFECT_STATUS", logDetails);
+                }
+
+                if (success) {
+                    conn.commit();
+                    return true;
+                } else {
+                    throw new SQLException("DAO operation failed, rolling back.");
+                }
+            } catch (Exception e) {
+                conn.rollback();
+                logger.error("Transaction rolled back for defect status update on item {}", itemId, e);
+                return false;
+            }
+        } catch (SQLException e) {
+            logger.error("Failed to get DB connection for defect status update.", e);
+            return false;
+        }
+    }
 }
 ========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\service\SystemInfoService.java
@@ -9524,15 +9582,15 @@ import java.io.IOException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.google.inject.Singleton;
 import de.technikteam.model.User;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
-@WebServlet("/logout")
+@Singleton
 public class LogoutServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(LogoutServlet.class);
@@ -9893,9 +9951,10 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 package de.technikteam.servlet;
 
 import java.io.IOException;
+
+import com.google.inject.Singleton;
 import de.technikteam.service.NotificationService;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -9903,14 +9962,7 @@ import jakarta.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-/**
- * Mapped to `/notifications`, this servlet is the entry point for clients
- * wanting to receive real-time updates via Server-Sent Events (SSE). On a GET
- * request, it establishes a persistent connection by setting the appropriate
- * headers and registering the client's asynchronous context with the singleton
- * `NotificationService`. It requires an active user session to connect.
- */
-@WebServlet(urlPatterns = "/notifications", asyncSupported = true)
+@Singleton
 public class NotificationServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(NotificationServlet.class);
@@ -10667,42 +10719,67 @@ public class TaskActionServlet extends HttpServlet {
 			return;
 		}
 
-		boolean isUpdate = !request.getParameter("taskId").isEmpty();
-		EventTask task = new EventTask();
-		task.setEventId(eventId);
-		task.setDescription(request.getParameter("description"));
-		task.setDetails(request.getParameter("details"));
-		task.setDisplayOrder(Integer.parseInt(request.getParameter("displayOrder")));
+		try {
+			int displayOrder = Integer.parseInt(request.getParameter("displayOrder"));
+			if (displayOrder < 0) {
+				request.getSession().setAttribute("errorMessage", "Die Anzeigereihenfolge darf nicht negativ sein.");
+				response.sendRedirect(request.getContextPath() + "/veranstaltungen/details?id=" + eventId);
+				return;
+			}
 
-		if (isUpdate) {
-			task.setId(Integer.parseInt(request.getParameter("taskId")));
-			task.setStatus(request.getParameter("status"));
-		}
+			int requiredPersons = 0;
+			String assignmentType = request.getParameter("assignmentType");
+			if (!"direct".equals(assignmentType)) {
+				long requiredPersonsLong = Long.parseLong(request.getParameter("requiredPersons"));
+				if (requiredPersonsLong > Integer.MAX_VALUE || requiredPersonsLong < 0) {
+					request.getSession().setAttribute("errorMessage",
+							"Die Anzahl der benötigten Personen ist ungültig.");
+					response.sendRedirect(request.getContextPath() + "/veranstaltungen/details?id=" + eventId);
+					return;
+				}
+				requiredPersons = (int) requiredPersonsLong;
+			}
 
-		String assignmentType = request.getParameter("assignmentType");
-		int[] userIds = null;
-		if ("direct".equals(assignmentType)) {
-			String[] userIdsStr = request.getParameterValues("userIds");
-			userIds = userIdsStr == null ? new int[0] : Arrays.stream(userIdsStr).mapToInt(Integer::parseInt).toArray();
-			task.setRequiredPersons(0);
-		} else {
-			task.setRequiredPersons(Integer.parseInt(request.getParameter("requiredPersons")));
-		}
+			boolean isUpdate = !request.getParameter("taskId").isEmpty();
+			EventTask task = new EventTask();
+			task.setEventId(eventId);
+			task.setDescription(request.getParameter("description"));
+			task.setDetails(request.getParameter("details"));
+			task.setDisplayOrder(displayOrder);
+			task.setRequiredPersons(requiredPersons);
 
-		String[] itemIds = request.getParameterValues("itemIds");
-		String[] itemQuantities = request.getParameterValues("itemQuantities");
-		String[] kitIds = request.getParameterValues("kitIds");
+			if (isUpdate) {
+				task.setId(Integer.parseInt(request.getParameter("taskId")));
+				task.setStatus(request.getParameter("status"));
+			}
 
-		int taskId = taskDAO.saveTask(task, userIds, itemIds, itemQuantities, kitIds);
+			int[] userIds = null;
+			if ("direct".equals(assignmentType)) {
+				String[] userIdsStr = request.getParameterValues("userIds");
+				userIds = userIdsStr == null ? new int[0]
+						: Arrays.stream(userIdsStr).mapToInt(Integer::parseInt).toArray();
+			}
 
-		if (taskId > 0) {
-			String logAction = isUpdate ? "UPDATE_TASK" : "CREATE_TASK";
-			String logDetails = String.format("Aufgabe '%s' (ID: %d) für Event '%s' (ID: %d) %s.",
-					task.getDescription(), taskId, event.getName(), eventId, isUpdate ? "aktualisiert" : "erstellt");
-			adminLogService.log(user.getUsername(), logAction, logDetails);
-			request.getSession().setAttribute("successMessage", "Aufgabe erfolgreich gespeichert.");
-		} else {
-			request.getSession().setAttribute("errorMessage", "Fehler beim Speichern der Aufgabe.");
+			String[] itemIds = request.getParameterValues("itemIds");
+			String[] itemQuantities = request.getParameterValues("itemQuantities");
+			String[] kitIds = request.getParameterValues("kitIds");
+
+			int taskId = taskDAO.saveTask(task, userIds, itemIds, itemQuantities, kitIds);
+
+			if (taskId > 0) {
+				String logAction = isUpdate ? "UPDATE_TASK" : "CREATE_TASK";
+				String logDetails = String.format("Aufgabe '%s' (ID: %d) für Event '%s' (ID: %d) %s.",
+						task.getDescription(), taskId, event.getName(), eventId,
+						isUpdate ? "aktualisiert" : "erstellt");
+				adminLogService.log(user.getUsername(), logAction, logDetails);
+				request.getSession().setAttribute("successMessage", "Aufgabe erfolgreich gespeichert.");
+			} else {
+				request.getSession().setAttribute("errorMessage", "Fehler beim Speichern der Aufgabe.");
+			}
+		} catch (NumberFormatException e) {
+			logger.error("Invalid number format during task save.", e);
+			request.getSession().setAttribute("errorMessage",
+					"Ungültiges Zahlenformat für Reihenfolge oder benötigte Personen.");
 		}
 		response.sendRedirect(request.getContextPath() + "/veranstaltungen/details?id=" + eventId);
 	}
@@ -11269,26 +11346,15 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 package de.technikteam.servlet.admin;
 
 import java.io.IOException;
-import java.util.List;
-
+import com.google.inject.Singleton;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import de.technikteam.dao.StatisticsDAO;
-import de.technikteam.dao.StorageDAO;
-import de.technikteam.model.StorageItem;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-/**
- * Mapped to `/admin/dashboard`, this servlet serves as the entry point for the
- * main administrative dashboard. It simply forwards to the JSP, which then uses
- * JavaScript to fetch its data dynamically.
- */
-@WebServlet("/admin/dashboard")
+@Singleton
 public class AdminDashboardServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminDashboardServlet.class);
@@ -11301,7 +11367,6 @@ public class AdminDashboardServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		logger.info("Admin dashboard page requested. Forwarding to JSP for dynamic data loading.");
-
 		request.getRequestDispatcher("/views/admin/admin_dashboard.jsp").forward(request, response);
 	}
 }
@@ -11724,7 +11789,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
 import java.io.IOException;
 import java.util.List;
 
@@ -11742,7 +11806,8 @@ public class AdminFeedbackServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		User user = (User) request.getSession().getAttribute("user");
-		if (!user.hasAdminAccess()) {
+		// This is a critical check. If the user is null, authentication has failed.
+		if (user == null || !user.hasAdminAccess()) {
 			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -11799,23 +11864,23 @@ public class AdminFileCategoryServlet extends HttpServlet {
 			return;
 		}
 
-		String path = request.getServletPath();
+		String pathInfo = request.getPathInfo(); // E.g., "/erstellen", "/loeschen"
 		User adminUser = (User) session.getAttribute("user");
-		logger.debug("AdminFileCategoryServlet processing POST for action path: {}", path);
+		logger.debug("AdminFileCategoryServlet processing POST for action path: {}", pathInfo);
 
 		try {
-			if (path.endsWith("/erstellen")) {
+			if ("/erstellen".equals(pathInfo)) {
 				handleCreate(request, response, adminUser);
-			} else if (path.endsWith("/aktualisieren")) {
+			} else if ("/aktualisieren".equals(pathInfo)) {
 				handleUpdate(request, response, adminUser);
-			} else if (path.endsWith("/loeschen")) {
+			} else if ("/loeschen".equals(pathInfo)) {
 				handleDelete(request, response, adminUser);
 			} else {
-				logger.warn("Unknown path received in AdminFileCategoryServlet: {}", path);
+				logger.warn("Unknown path received in AdminFileCategoryServlet: {}", request.getRequestURI());
 				response.sendError(HttpServletResponse.SC_BAD_REQUEST);
 			}
 		} catch (NumberFormatException e) {
-			logger.error("Invalid ID format in AdminFileCategoryServlet for action {}", path, e);
+			logger.error("Invalid ID format in AdminFileCategoryServlet for action {}", pathInfo, e);
 			session.setAttribute("errorMessage", "Ungültige ID für Kategorie-Aktion.");
 			response.sendRedirect(request.getContextPath() + "/admin/dateien");
 		}
@@ -12130,6 +12195,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Singleton
 public class AdminKitServlet extends HttpServlet {
@@ -12139,6 +12205,19 @@ public class AdminKitServlet extends HttpServlet {
 	private final StorageDAO storageDAO;
 	private final AdminLogService adminLogService;
 	private final Gson gson = new Gson();
+
+	// A simple DTO for client-side use to avoid sending unnecessary data
+	private static class StorageItemDTO {
+		int id;
+		String name;
+		int availableQuantity;
+
+		StorageItemDTO(StorageItem item) {
+			this.id = item.getId();
+			this.name = item.getName();
+			this.availableQuantity = item.getAvailableQuantity();
+		}
+	}
 
 	@Inject
 	public AdminKitServlet(InventoryKitDAO kitDAO, StorageDAO storageDAO, AdminLogService adminLogService) {
@@ -12157,9 +12236,11 @@ public class AdminKitServlet extends HttpServlet {
 
 		List<InventoryKit> kits = kitDAO.getAllKitsWithItems();
 		List<StorageItem> allItems = storageDAO.getAllItems();
+		List<StorageItemDTO> allItemsDto = allItems.stream().map(StorageItemDTO::new).collect(Collectors.toList());
+
 		req.setAttribute("kits", kits);
-		req.setAttribute("allItems", allItems);
-		req.setAttribute("allItemsJson", gson.toJson(allItems));
+		req.setAttribute("allItems", allItems); // Still needed for pre-populating selects
+		req.setAttribute("allItemsJson", gson.toJson(allItemsDto)); // DTO for JS logic
 		req.getRequestDispatcher("/views/admin/admin_kits.jsp").forward(req, resp);
 	}
 
@@ -12705,6 +12786,7 @@ import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.ConfigurationService;
+import de.technikteam.service.StorageService;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
@@ -12729,15 +12811,17 @@ public class AdminStorageServlet extends HttpServlet {
 	private final MaintenanceLogDAO maintenanceLogDAO;
 	private final AdminLogService adminLogService;
 	private final ConfigurationService configService;
+	private final StorageService storageService;
 	private final Gson gson = new Gson();
 
 	@Inject
 	public AdminStorageServlet(StorageDAO storageDAO, MaintenanceLogDAO maintenanceLogDAO,
-			AdminLogService adminLogService, ConfigurationService configService) {
+			AdminLogService adminLogService, ConfigurationService configService, StorageService storageService) {
 		this.storageDAO = storageDAO;
 		this.maintenanceLogDAO = maintenanceLogDAO;
 		this.adminLogService = adminLogService;
 		this.configService = configService;
+		this.storageService = storageService;
 	}
 
 	@Override
@@ -12774,8 +12858,8 @@ public class AdminStorageServlet extends HttpServlet {
 		case "delete":
 			handleDelete(request, response);
 			break;
-		case "updateDefect":
-			handleDefectUpdate(request, response);
+		case "updateDefectStatus":
+			handleDefectStatusUpdate(request, response);
 			break;
 		case "updateStatus":
 			handleStatusUpdate(request, response);
@@ -12872,26 +12956,26 @@ public class AdminStorageServlet extends HttpServlet {
 		response.sendRedirect(request.getContextPath() + "/admin/lager");
 	}
 
-	private void handleDefectUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		try {
-			int itemId = Integer.parseInt(request.getParameter("id"));
-			int defectiveQty = Integer.parseInt(request.getParameter("defective_quantity"));
-			String reason = request.getParameter("defect_reason");
-			if (storageDAO.updateDefectiveStatus(itemId, defectiveQty, reason)) {
-				adminLogService.log(adminUser.getUsername(), "UPDATE_DEFECT_STATUS",
-						String.format("Defekt-Status für Artikel-ID %d aktualisiert: %d defekt. Grund: %s", itemId,
-								defectiveQty, reason));
-				request.getSession().setAttribute("successMessage", "Defekt-Status aktualisiert.");
-			} else {
-				request.getSession().setAttribute("errorMessage",
-						"Defekt-Status konnte nicht aktualisiert werden (vielleicht nicht genug Bestand?).");
-			}
-		} catch (NumberFormatException e) {
-			request.getSession().setAttribute("errorMessage", "Ungültige Artikel-ID oder Anzahl.");
-		}
-		response.sendRedirect(request.getContextPath() + "/admin/lager");
-	}
+	private void handleDefectStatusUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        User adminUser = (User) request.getSession().getAttribute("user");
+        try {
+            int itemId = Integer.parseInt(request.getParameter("id"));
+            String status = request.getParameter("status"); // "DEFECT" or "UNREPAIRABLE"
+            int quantity = Integer.parseInt(request.getParameter("quantity"));
+            String reason = request.getParameter("reason");
+
+            boolean success = storageService.updateDefectiveItemStatus(itemId, status, quantity, reason, adminUser);
+
+            if (success) {
+                request.getSession().setAttribute("successMessage", "Defekt-Status erfolgreich aktualisiert.");
+            } else {
+                request.getSession().setAttribute("errorMessage", "Status konnte nicht aktualisiert werden. Überprüfen Sie die Bestandsmengen.");
+            }
+        } catch (NumberFormatException e) {
+            request.getSession().setAttribute("errorMessage", "Ungültige Artikel-ID oder Anzahl.");
+        }
+        response.sendRedirect(request.getContextPath() + "/admin/lager");
+    }
 
 	private void handleDelete(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		User adminUser = (User) request.getSession().getAttribute("user");
@@ -12978,158 +13062,18 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\
 package de.technikteam.servlet.admin;
 
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import com.google.inject.Singleton;
 
-/**
- * Forwards to the system status dashboard page.
- */
-@WebServlet("/admin/system")
+@Singleton
 public class AdminSystemServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		request.getRequestDispatcher("/views/admin/admin_system.jsp").forward(request, response);
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminUserServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
-import de.technikteam.config.LocalDateTimeAdapter;
-import de.technikteam.dao.EventDAO;
-import de.technikteam.dao.PermissionDAO;
-import de.technikteam.dao.RoleDAO;
-import de.technikteam.dao.UserDAO;
-import de.technikteam.model.Event;
-import de.technikteam.model.Permission;
-import de.technikteam.model.Role;
-import de.technikteam.model.User;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.IOException;
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-@Singleton
-public class AdminUserServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminUserServlet.class);
-
-	private final UserDAO userDAO;
-	private final EventDAO eventDAO;
-	private final RoleDAO roleDAO;
-	private final PermissionDAO permissionDAO;
-	private final Gson gson;
-
-	@Inject
-	public AdminUserServlet(UserDAO userDAO, EventDAO eventDAO, RoleDAO roleDAO, PermissionDAO permissionDAO) {
-		this.userDAO = userDAO;
-		this.eventDAO = eventDAO;
-		this.roleDAO = roleDAO;
-		this.permissionDAO = permissionDAO;
-		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		User currentUser = (User) request.getSession().getAttribute("user");
-		if (!currentUser.getPermissions().contains("USER_READ") && !currentUser.hasAdminAccess()) {
-			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
-			return;
-		}
-
-		String action = request.getParameter("action") == null ? "list" : request.getParameter("action");
-		try {
-			switch (action) {
-			case "details":
-				showUserDetails(request, response);
-				break;
-			case "getUserData":
-				getUserDataAsJson(request, response);
-				break;
-			default:
-				listUsers(request, response);
-				break;
-			}
-		} catch (NumberFormatException e) {
-			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Ungültige ID angegeben.");
-		} catch (Exception e) {
-			logger.error("Error in AdminUserServlet doGet", e);
-			request.getSession().setAttribute("errorMessage", "Ein Fehler ist aufgetreten: " + e.getMessage());
-			response.sendRedirect(request.getContextPath() + "/admin/dashboard");
-		}
-	}
-
-	private void listUsers(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		List<User> userList = userDAO.getAllUsers();
-		List<Role> allRoles = roleDAO.getAllRoles();
-		List<Permission> allPermissions = permissionDAO.getAllPermissions();
-
-		Map<String, List<Permission>> groupedPermissions = allPermissions.stream().collect(Collectors.groupingBy(p -> {
-			String key = p.getPermissionKey();
-			int underscoreIndex = key.indexOf('_');
-			return (underscoreIndex != -1) ? key.substring(0, underscoreIndex) : "ALLGEMEIN";
-		}, LinkedHashMap::new, Collectors.toList()));
-
-		request.setAttribute("userList", userList);
-		request.setAttribute("allRoles", allRoles);
-		request.setAttribute("groupedPermissionsJson", gson.toJson(groupedPermissions));
-		request.getRequestDispatcher("/views/admin/admin_users.jsp").forward(request, response);
-	}
-
-	private void getUserDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		int userId = Integer.parseInt(req.getParameter("id"));
-		User user = userDAO.getUserById(userId);
-		if (user != null) {
-			Set<Integer> permissionIds = permissionDAO.getPermissionIdsForUser(userId);
-			Map<String, Object> responseData = new HashMap<>();
-			responseData.put("user", user);
-			responseData.put("permissionIds", permissionIds);
-
-			String userJson = gson.toJson(responseData);
-			resp.setContentType("application/json");
-			resp.setCharacterEncoding("UTF-8");
-			resp.getWriter().write(userJson);
-		} else {
-			resp.sendError(HttpServletResponse.SC_NOT_FOUND, "User not found");
-		}
-	}
-
-	private void showUserDetails(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		int userId = Integer.parseInt(request.getParameter("id"));
-		User user = userDAO.getUserById(userId);
-		if (user == null) {
-			request.getSession().setAttribute("errorMessage", "Benutzer nicht gefunden.");
-			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
-			return;
-		}
-		List<Event> eventHistory = eventDAO.getEventHistoryForUser(userId);
-		request.setAttribute("userToView", user);
-		request.setAttribute("eventHistory", eventHistory);
-		request.getRequestDispatcher("/views/admin/admin_user_details.jsp").forward(request, response);
 	}
 }

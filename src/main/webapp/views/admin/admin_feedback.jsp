@@ -34,7 +34,8 @@
 			<c:set var="statusClass" value="status-danger" />
 		</c:if>
 
-		<div class="card" data-submission-id="${sub.id}">
+		<div class="card feedback-card" data-submission-id="${sub.id}"
+			data-status="${sub.status}">
 			<div
 				style="display: flex; justify-content: space-between; align-items: start;">
 				<div>

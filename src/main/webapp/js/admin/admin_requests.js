@@ -3,8 +3,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	const handleRequestAction = async (form) => {
 		try {
-			const formData = new FormData(form);
-			const response = await fetch(form.action, { method: 'POST', body: formData });
+			// FIX: Use URLSearchParams to ensure the correct Content-Type for the servlet.
+			const formData = new URLSearchParams(new FormData(form));
+
+			const response = await fetch(form.action, {
+				method: 'POST',
+				body: formData
+			});
 			const result = await response.json();
 
 			if (response.ok && result.success) {
@@ -24,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	};
 
-	// Use event delegation for dynamically added content if needed, but direct binding is fine here.
 	document.querySelectorAll('.js-approve-request-form').forEach(form => {
 		form.addEventListener('submit', (e) => {
 			e.preventDefault();

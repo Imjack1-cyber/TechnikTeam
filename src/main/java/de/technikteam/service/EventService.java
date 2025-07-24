@@ -16,6 +16,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Singleton
 public class EventService {
@@ -105,6 +106,23 @@ public class EventService {
 		} catch (SQLException e) {
 			logger.error("Failed to get DB connection for event service transaction.", e);
 			return 0;
+		}
+	}
+
+	public void signOffUserFromRunningEvent(int userId, String username, int eventId, String reason) {
+		eventDAO.signOffFromEvent(userId, eventId);
+
+		Event event = eventDAO.getEventById(eventId);
+		if (event != null && event.getLeaderUserId() > 0) {
+			String notificationMessage = String.format("%s hat sich vom laufenden Event '%s' abgemeldet. Grund: %s",
+					username, event.getName(), reason);
+
+			Map<String, Object> payload = Map.of("type", "alert", "payload",
+					Map.of("message", notificationMessage, "url", "/veranstaltungen/details?id=" + eventId));
+
+			NotificationService.getInstance().sendNotificationToUser(event.getLeaderUserId(), payload);
+			logger.info("Sent sign-off notification to event leader (ID: {}) for event '{}'", event.getLeaderUserId(),
+					event.getName());
 		}
 	}
 

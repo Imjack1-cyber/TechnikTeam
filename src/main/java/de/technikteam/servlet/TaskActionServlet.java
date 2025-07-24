@@ -86,42 +86,67 @@ public class TaskActionServlet extends HttpServlet {
 			return;
 		}
 
-		boolean isUpdate = !request.getParameter("taskId").isEmpty();
-		EventTask task = new EventTask();
-		task.setEventId(eventId);
-		task.setDescription(request.getParameter("description"));
-		task.setDetails(request.getParameter("details"));
-		task.setDisplayOrder(Integer.parseInt(request.getParameter("displayOrder")));
+		try {
+			int displayOrder = Integer.parseInt(request.getParameter("displayOrder"));
+			if (displayOrder < 0) {
+				request.getSession().setAttribute("errorMessage", "Die Anzeigereihenfolge darf nicht negativ sein.");
+				response.sendRedirect(request.getContextPath() + "/veranstaltungen/details?id=" + eventId);
+				return;
+			}
 
-		if (isUpdate) {
-			task.setId(Integer.parseInt(request.getParameter("taskId")));
-			task.setStatus(request.getParameter("status"));
-		}
+			int requiredPersons = 0;
+			String assignmentType = request.getParameter("assignmentType");
+			if (!"direct".equals(assignmentType)) {
+				long requiredPersonsLong = Long.parseLong(request.getParameter("requiredPersons"));
+				if (requiredPersonsLong > Integer.MAX_VALUE || requiredPersonsLong < 0) {
+					request.getSession().setAttribute("errorMessage",
+							"Die Anzahl der benötigten Personen ist ungültig.");
+					response.sendRedirect(request.getContextPath() + "/veranstaltungen/details?id=" + eventId);
+					return;
+				}
+				requiredPersons = (int) requiredPersonsLong;
+			}
 
-		String assignmentType = request.getParameter("assignmentType");
-		int[] userIds = null;
-		if ("direct".equals(assignmentType)) {
-			String[] userIdsStr = request.getParameterValues("userIds");
-			userIds = userIdsStr == null ? new int[0] : Arrays.stream(userIdsStr).mapToInt(Integer::parseInt).toArray();
-			task.setRequiredPersons(0);
-		} else {
-			task.setRequiredPersons(Integer.parseInt(request.getParameter("requiredPersons")));
-		}
+			boolean isUpdate = !request.getParameter("taskId").isEmpty();
+			EventTask task = new EventTask();
+			task.setEventId(eventId);
+			task.setDescription(request.getParameter("description"));
+			task.setDetails(request.getParameter("details"));
+			task.setDisplayOrder(displayOrder);
+			task.setRequiredPersons(requiredPersons);
 
-		String[] itemIds = request.getParameterValues("itemIds");
-		String[] itemQuantities = request.getParameterValues("itemQuantities");
-		String[] kitIds = request.getParameterValues("kitIds");
+			if (isUpdate) {
+				task.setId(Integer.parseInt(request.getParameter("taskId")));
+				task.setStatus(request.getParameter("status"));
+			}
 
-		int taskId = taskDAO.saveTask(task, userIds, itemIds, itemQuantities, kitIds);
+			int[] userIds = null;
+			if ("direct".equals(assignmentType)) {
+				String[] userIdsStr = request.getParameterValues("userIds");
+				userIds = userIdsStr == null ? new int[0]
+						: Arrays.stream(userIdsStr).mapToInt(Integer::parseInt).toArray();
+			}
 
-		if (taskId > 0) {
-			String logAction = isUpdate ? "UPDATE_TASK" : "CREATE_TASK";
-			String logDetails = String.format("Aufgabe '%s' (ID: %d) für Event '%s' (ID: %d) %s.",
-					task.getDescription(), taskId, event.getName(), eventId, isUpdate ? "aktualisiert" : "erstellt");
-			adminLogService.log(user.getUsername(), logAction, logDetails);
-			request.getSession().setAttribute("successMessage", "Aufgabe erfolgreich gespeichert.");
-		} else {
-			request.getSession().setAttribute("errorMessage", "Fehler beim Speichern der Aufgabe.");
+			String[] itemIds = request.getParameterValues("itemIds");
+			String[] itemQuantities = request.getParameterValues("itemQuantities");
+			String[] kitIds = request.getParameterValues("kitIds");
+
+			int taskId = taskDAO.saveTask(task, userIds, itemIds, itemQuantities, kitIds);
+
+			if (taskId > 0) {
+				String logAction = isUpdate ? "UPDATE_TASK" : "CREATE_TASK";
+				String logDetails = String.format("Aufgabe '%s' (ID: %d) für Event '%s' (ID: %d) %s.",
+						task.getDescription(), taskId, event.getName(), eventId,
+						isUpdate ? "aktualisiert" : "erstellt");
+				adminLogService.log(user.getUsername(), logAction, logDetails);
+				request.getSession().setAttribute("successMessage", "Aufgabe erfolgreich gespeichert.");
+			} else {
+				request.getSession().setAttribute("errorMessage", "Fehler beim Speichern der Aufgabe.");
+			}
+		} catch (NumberFormatException e) {
+			logger.error("Invalid number format during task save.", e);
+			request.getSession().setAttribute("errorMessage",
+					"Ungültiges Zahlenformat für Reihenfolge oder benötigte Personen.");
 		}
 		response.sendRedirect(request.getContextPath() + "/veranstaltungen/details?id=" + eventId);
 	}

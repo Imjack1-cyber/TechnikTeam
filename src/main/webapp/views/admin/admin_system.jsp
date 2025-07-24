@@ -49,7 +49,7 @@
 		</div>
 		<p id="battery-text" class="progress-text">Lade...</p>
 	</div>
-	<div class="card">
+	<div class="card" id="uptime-card">
 		<h2 class="card-title">
 			<i class="fas fa-clock"></i> Server Uptime
 		</h2>

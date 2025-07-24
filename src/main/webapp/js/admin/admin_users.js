@@ -133,7 +133,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		const action = actionInput.value;
 		const formActionUrl = `${contextPath}/admin/action/user?action=${action}`;
 
-		const formData = new FormData(form);
+		// FIX: Use URLSearchParams to ensure the correct Content-Type for the servlet.
+		const formData = new URLSearchParams(new FormData(form));
 		try {
 			const response = await fetch(formActionUrl, {
 				method: 'POST',
@@ -146,7 +147,6 @@ document.addEventListener('DOMContentLoaded', () => {
 				closeModal();
 				showToast(result.message, 'success');
 				if (action === 'create') {
-					// Simply reload on create to get the full new row with all buttons
 					window.location.reload();
 				} else if (action === 'update') {
 					updateTableRow(result.data);
@@ -161,7 +161,8 @@ document.addEventListener('DOMContentLoaded', () => {
 	});
 
 	const handleAjaxFormSubmit = async (formElement) => {
-		const formData = new FormData(formElement);
+		// FIX: Use URLSearchParams to ensure the correct Content-Type for the servlet.
+		const formData = new URLSearchParams(new FormData(formElement));
 		const actionUrl = formElement.getAttribute('action');
 
 		try {
@@ -169,10 +170,8 @@ document.addEventListener('DOMContentLoaded', () => {
 			const result = await response.json();
 
 			if (response.ok && result.success) {
-				// For password resets, we want to show a persistent banner, not just a toast.
 				if (result.data && result.data.newPassword) {
 					const bannerContainer = document.querySelector('.main-content');
-					// Remove any existing banners first
 					document.querySelectorAll('.password-reset-alert, .info-message, .success-message, .error-message').forEach(el => el.remove());
 
 					const banner = document.createElement('p');
@@ -200,7 +199,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	document.body.addEventListener('submit', (event) => {
 		const form = event.target;
-		// Apply to all three types of confirmation forms
 		if (form.matches('.js-confirm-delete-form, .js-reset-password-form, .js-unlock-form')) {
 			event.preventDefault();
 			const message = form.dataset.confirmMessage || 'Sind Sie sicher?';

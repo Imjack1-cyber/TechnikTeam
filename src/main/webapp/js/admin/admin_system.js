@@ -36,7 +36,13 @@ document.addEventListener('DOMContentLoaded', () => {
 			diskText.textContent = `${formatGigaBytes(stats.usedDiskSpace)} / ${formatGigaBytes(stats.totalDiskSpace)}`;
 		}
 
-		uptimeText.textContent = stats.uptime;
+        const uptimeCard = uptimeText.closest('.card');
+		if (stats.uptime && stats.uptime !== 'Nicht verfügbar') {
+            if(uptimeCard) uptimeCard.style.display = 'block';
+			uptimeText.textContent = stats.uptime;
+		} else {
+			if(uptimeCard) uptimeCard.style.display = 'none';
+		}
 
 		if (stats.batteryPercentage >= 0) {
 			batteryCard.style.display = 'block';

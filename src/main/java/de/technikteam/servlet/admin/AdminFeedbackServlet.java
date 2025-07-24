@@ -9,7 +9,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
 import java.io.IOException;
 import java.util.List;
 
@@ -27,7 +26,8 @@ public class AdminFeedbackServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		User user = (User) request.getSession().getAttribute("user");
-		if (!user.hasAdminAccess()) {
+		// This is a critical check. If the user is null, authentication has failed.
+		if (user == null || !user.hasAdminAccess()) {
 			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}

@@ -1,5 +1,142 @@
 ﻿
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminUserServlet.java
+========================================================================
+
+package de.technikteam.servlet.admin;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+import de.technikteam.config.LocalDateTimeAdapter;
+import de.technikteam.dao.EventDAO;
+import de.technikteam.dao.PermissionDAO;
+import de.technikteam.dao.RoleDAO;
+import de.technikteam.dao.UserDAO;
+import de.technikteam.model.Event;
+import de.technikteam.model.Permission;
+import de.technikteam.model.Role;
+import de.technikteam.model.User;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+@Singleton
+public class AdminUserServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(AdminUserServlet.class);
+
+	private final UserDAO userDAO;
+	private final EventDAO eventDAO;
+	private final RoleDAO roleDAO;
+	private final PermissionDAO permissionDAO;
+	private final Gson gson;
+
+	@Inject
+	public AdminUserServlet(UserDAO userDAO, EventDAO eventDAO, RoleDAO roleDAO, PermissionDAO permissionDAO) {
+		this.userDAO = userDAO;
+		this.eventDAO = eventDAO;
+		this.roleDAO = roleDAO;
+		this.permissionDAO = permissionDAO;
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+	}
+
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		User currentUser = (User) request.getSession().getAttribute("user");
+		if (!currentUser.getPermissions().contains("USER_READ") && !currentUser.hasAdminAccess()) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+			return;
+		}
+
+		String action = request.getParameter("action") == null ? "list" : request.getParameter("action");
+		try {
+			switch (action) {
+			case "details":
+				showUserDetails(request, response);
+				break;
+			case "getUserData":
+				getUserDataAsJson(request, response);
+				break;
+			default:
+				listUsers(request, response);
+				break;
+			}
+		} catch (NumberFormatException e) {
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Ungültige ID angegeben.");
+		} catch (Exception e) {
+			logger.error("Error in AdminUserServlet doGet", e);
+			request.getSession().setAttribute("errorMessage", "Ein Fehler ist aufgetreten: " + e.getMessage());
+			response.sendRedirect(request.getContextPath() + "/admin/dashboard");
+		}
+	}
+
+	private void listUsers(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		List<User> userList = userDAO.getAllUsers();
+		List<Role> allRoles = roleDAO.getAllRoles();
+		List<Permission> allPermissions = permissionDAO.getAllPermissions();
+
+		Map<String, List<Permission>> groupedPermissions = allPermissions.stream().collect(Collectors.groupingBy(p -> {
+			String key = p.getPermissionKey();
+			int underscoreIndex = key.indexOf('_');
+			return (underscoreIndex != -1) ? key.substring(0, underscoreIndex) : "ALLGEMEIN";
+		}, LinkedHashMap::new, Collectors.toList()));
+
+		request.setAttribute("userList", userList);
+		request.setAttribute("allRoles", allRoles);
+		request.setAttribute("groupedPermissionsJson", gson.toJson(groupedPermissions));
+		request.getRequestDispatcher("/views/admin/admin_users.jsp").forward(request, response);
+	}
+
+	private void getUserDataAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		int userId = Integer.parseInt(req.getParameter("id"));
+		User user = userDAO.getUserById(userId);
+		if (user != null) {
+			Set<Integer> permissionIds = permissionDAO.getPermissionIdsForUser(userId);
+			Map<String, Object> responseData = new HashMap<>();
+			responseData.put("user", user);
+			responseData.put("permissionIds", permissionIds);
+
+			String userJson = gson.toJson(responseData);
+			resp.setContentType("application/json");
+			resp.setCharacterEncoding("UTF-8");
+			resp.getWriter().write(userJson);
+		} else {
+			resp.sendError(HttpServletResponse.SC_NOT_FOUND, "User not found");
+		}
+	}
+
+	private void showUserDetails(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		int userId = Integer.parseInt(request.getParameter("id"));
+		User user = userDAO.getUserById(userId);
+		if (user == null) {
+			request.getSession().setAttribute("errorMessage", "Benutzer nicht gefunden.");
+			response.sendRedirect(request.getContextPath() + "/admin/mitglieder");
+			return;
+		}
+		List<Event> eventHistory = eventDAO.getEventHistoryForUser(userId);
+		request.setAttribute("userToView", user);
+		request.setAttribute("eventHistory", eventHistory);
+		request.getRequestDispatcher("/views/admin/admin_user_details.jsp").forward(request, response);
+	}
+}
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\FrontControllerServlet.java
 ========================================================================
 
@@ -2679,6 +2816,11 @@ a:hover {
 	gap: 1.5rem;
 }
 
+.feedback-card {
+    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+}
+
+
 @media (max-width: 767.98px) {
     .responsive-dashboard-grid {
         grid-template-columns: 1fr;
@@ -2831,7 +2973,7 @@ body.nav-open .sidebar {
 .mobile-nav-toggle .line {
 	width: 25px;
 	height: 3px;
-	background-color: var(--text-color);
+	background-color: var(--primary-color);
 	margin: 5px 0;
 	border-radius: 3px;
 	transition: all 0.3s;
@@ -4055,6 +4197,11 @@ fieldset {
 /* =================================================================== */
 /*  12. MARKDOWN STYLES                                                */
 /* =================================================================== */
+.markdown-content {
+    overflow-wrap: break-word;
+    word-wrap: break-word; /* legacy */
+}
+
 .markdown-content h1, .markdown-content h2, .markdown-content h3,
 .markdown-content h4, .markdown-content h5, .markdown-content h6 {
     margin-top: 1.5rem;
@@ -4377,6 +4524,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		};
 	}
 
+	const feedbackStatusOrder = { 'NEW': 0, 'VIEWED': 1, 'PLANNED': 2, 'COMPLETED': 3, 'REJECTED': 4 };
+
 	// --- UI UPDATE HANDLER (COMPLETE & UNABBREVIATED) ---
 	function handleUIUpdate(payload) {
 		console.log("Handling UI update:", payload.updateType, payload.data);
@@ -4419,13 +4568,28 @@ document.addEventListener('DOMContentLoaded', () => {
 				break;
 			case 'feedback_status_updated':
 				const { submissionId, newStatus: newFeedbackStatus } = payload.data;
-				const card = document.querySelector(`[data-submission-id="${submissionId}"]`);
+				const card = document.querySelector(`.feedback-card[data-submission-id="${submissionId}"]`);
 				if (card) {
+					// 1. Update the data attribute and badge
+					card.dataset.status = newFeedbackStatus;
 					const badge = card.querySelector('.status-badge');
 					if (badge) {
 						badge.textContent = newFeedbackStatus;
 						badge.className = `status-badge ${getStatusBadgeClass(newFeedbackStatus)}`;
 					}
+
+					// 2. Re-sort the list
+					const container = card.parentElement;
+					const allCards = Array.from(container.querySelectorAll('.feedback-card'));
+
+					allCards.sort((a, b) => {
+						const statusA = feedbackStatusOrder[a.dataset.status] ?? 99;
+						const statusB = feedbackStatusOrder[b.dataset.status] ?? 99;
+						return statusA - statusB;
+					});
+
+					// 3. Re-append sorted cards
+					allCards.forEach(c => container.appendChild(c));
 				}
 				break;
 			case 'feedback_deleted':
@@ -5255,14 +5419,29 @@ document.addEventListener('DOMContentLoaded', () => {
 	document.querySelectorAll('.js-feedback-status-form').forEach(form => {
 		form.addEventListener('submit', async (e) => {
 			e.preventDefault();
-			const formData = new FormData(form);
-			const response = await fetch(form.action, { method: 'POST', body: formData });
-			const result = await response.json();
-			if (response.ok && result.success) {
-				showToast(result.message, 'success');
-				// NO reload needed. SSE will handle the UI update.
-			} else {
-				showToast(result.message || 'Status konnte nicht aktualisiert werden.', 'danger');
+
+			// CORRECTED: Use URLSearchParams to ensure the correct Content-Type.
+			const formData = new URLSearchParams(new FormData(form));
+			const actionUrl = form.getAttribute('action');
+
+			try {
+				const response = await fetch(actionUrl, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/x-www-form-urlencoded',
+					},
+					body: formData
+				});
+				const result = await response.json();
+				if (response.ok && result.success) {
+					showToast(result.message, 'success');
+					// NO reload needed. SSE will handle the UI update.
+				} else {
+					showToast(result.message || 'Status konnte nicht aktualisiert werden.', 'danger');
+				}
+			} catch (error) {
+				console.error("Failed to parse JSON or network error:", error);
+				showToast("Ein Server- oder Netzwerkfehler ist aufgetreten.", "danger");
 			}
 		});
 	});
@@ -5272,14 +5451,29 @@ document.addEventListener('DOMContentLoaded', () => {
 		form.addEventListener('submit', (e) => {
 			e.preventDefault();
 			showConfirmationModal('Diesen Feedback-Eintrag wirklich endgültig löschen?', async () => {
-				const formData = new FormData(form);
-				const response = await fetch(form.action, { method: 'POST', body: formData });
-				const result = await response.json();
-				if (response.ok && result.success) {
-					showToast(result.message, 'success');
-					// NO DOM removal here. SSE will handle it for all clients at once.
-				} else {
-					showToast(result.message || 'Eintrag konnte nicht gelöscht werden.', 'danger');
+
+				// CORRECTED: Use URLSearchParams here as well for consistency and correctness.
+				const formData = new URLSearchParams(new FormData(form));
+				const actionUrl = form.getAttribute('action');
+
+				try {
+					const response = await fetch(actionUrl, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/x-www-form-urlencoded',
+						},
+						body: formData
+					});
+					const result = await response.json();
+					if (response.ok && result.success) {
+						showToast(result.message, 'success');
+						// NO DOM removal here. SSE will handle it for all clients at once.
+					} else {
+						showToast(result.message || 'Eintrag konnte nicht gelöscht werden.', 'danger');
+					}
+				} catch (error) {
+					console.error("Failed to parse JSON or network error:", error);
+					showToast("Ein Server- oder Netzwerkfehler ist aufgetreten.", "danger");
 				}
 			});
 		});
@@ -5325,6 +5519,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	// --- Kit Content Management (Accordion & Dynamic Rows) ---
 	const allItems = JSON.parse(document.getElementById('allItemsData').textContent || '[]');
+	const allSelectableItems = JSON.parse(document.getElementById('allSelectableItemsData').textContent || '[]');
 
 	// Toggle accordion for each kit
 	document.querySelectorAll('.kit-header').forEach(header => {
@@ -5339,11 +5534,23 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	});
 
-	/**
-	 * Creates a new DOM element for an item row within a kit's content form.
-	 * @param {object} item - The item to pre-populate the row with.
-	 * @returns {HTMLDivElement} The new row element.
-	 */
+	const updateMaxQuantity = (selectElement) => {
+		const selectedId = parseInt(selectElement.value, 10);
+		const quantityInput = selectElement.closest('.dynamic-row').querySelector('input[name="quantities"]');
+		const selectedItem = allItems.find(item => item.id === selectedId);
+
+		if (selectedItem) {
+			quantityInput.max = selectedItem.availableQuantity;
+			quantityInput.title = `Maximal verfügbar: ${selectedItem.availableQuantity}`;
+			if (parseInt(quantityInput.value) > selectedItem.availableQuantity) {
+				quantityInput.value = selectedItem.availableQuantity;
+			}
+		} else {
+			quantityInput.removeAttribute('max');
+			quantityInput.title = '';
+		}
+	};
+
 	const createItemRow = (item = { id: '', quantity: 1 }) => {
 		const row = document.createElement('div');
 		row.className = 'dynamic-row';
@@ -5352,7 +5559,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		select.name = 'itemIds';
 		select.className = 'form-group';
 		select.innerHTML = '<option value="">-- Artikel auswählen --</option>' +
-			allItems.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
+			allSelectableItems.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
 		select.value = item.id;
 
 		const quantityInput = document.createElement('input');
@@ -5374,8 +5581,19 @@ document.addEventListener('DOMContentLoaded', () => {
 		row.appendChild(quantityInput);
 		row.appendChild(removeBtn);
 
+		select.addEventListener('change', () => updateMaxQuantity(select));
+
+		// Initial check in case the row is pre-populated
+		if (item.id) {
+			updateMaxQuantity(select);
+		}
+
 		return row;
 	};
+
+	document.querySelectorAll('.kit-content select[name="itemIds"]').forEach(select => {
+		updateMaxQuantity(select);
+	});
 
 	// Event delegation for adding/removing item rows
 	document.body.addEventListener('click', e => {
@@ -5404,6 +5622,17 @@ document.addEventListener('DOMContentLoaded', () => {
 					container.appendChild(p);
 				}
 			});
+		}
+	});
+
+	// Enforce max value on quantity inputs
+	document.body.addEventListener('input', e => {
+		if (e.target.matches('input[name="quantities"]')) {
+			const max = parseInt(e.target.max, 10);
+			const value = parseInt(e.target.value, 10);
+			if (!isNaN(max) && !isNaN(value) && value > max) {
+				e.target.value = max;
+			}
 		}
 	});
 });
@@ -5988,6 +6217,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	const ramText = document.getElementById('ram-text');
 	const diskProgress = document.getElementById('disk-progress');
 	const diskText = document.getElementById('disk-text');
+	const uptimeCard = document.getElementById('uptime-card');
 	const uptimeText = document.getElementById('uptime-text');
 	const batteryCard = document.getElementById('battery-card');
 	const batteryProgress = document.getElementById('battery-progress');
@@ -6016,7 +6246,12 @@ document.addEventListener('DOMContentLoaded', () => {
 			diskText.textContent = `${formatGigaBytes(stats.usedDiskSpace)} / ${formatGigaBytes(stats.totalDiskSpace)}`;
 		}
 
-		uptimeText.textContent = stats.uptime;
+		if (stats.uptime && stats.uptime !== 'Nicht verfügbar') {
+			uptimeCard.style.display = 'block';
+			uptimeText.textContent = stats.uptime;
+		} else {
+			uptimeCard.style.display = 'none';
+		}
 
 		if (stats.batteryPercentage >= 0) {
 			batteryCard.style.display = 'block';
@@ -6784,7 +7019,8 @@ document.addEventListener('DOMContentLoaded', function() {
 	const calendarEl = document.getElementById('calendar-container');
 	const contextPath = document.body.dataset.contextPath || '';
 
-	if (calendarEl && window.innerWidth >= 992) {
+	// This check ensures FullCalendar only runs if the desktop container is visible
+	if (calendarEl && getComputedStyle(calendarEl).display !== 'none') {
 		const calendar = new FullCalendar.Calendar(calendarEl, {
 			initialView: 'dayGridMonth',
 			locale: 'de',
@@ -8572,7 +8808,8 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 			<c:set var="statusClass" value="status-danger" />
 		</c:if>
 
-		<div class="card" data-submission-id="${sub.id}">
+		<div class="card feedback-card" data-submission-id="${sub.id}"
+			data-status="${sub.status}">
 			<div
 				style="display: flex; justify-content: space-between; align-items: start;">
 				<div>
@@ -8599,12 +8836,12 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 			<div class="card-actions">
 				<form class="js-feedback-status-form"
 					style="display: flex; gap: 0.5rem; align-items: center;"
-					action="${pageContext.request.contextPath}/admin/action/feedback?action=updateStatus"
+					action="${pageContext.request.contextPath}/admin/action/feedback"
 					method="POST">
-					<input type="hidden" name="csrfToken"
-						value="${sessionScope.csrfToken}"> <input type="hidden"
-						name="submissionId" value="${sub.id}"> <select
-						name="status" class="form-group"
+					<input type="hidden" name="action" value="updateStatus"> <input
+						type="hidden" name="csrfToken" value="${sessionScope.csrfToken}">
+					<input type="hidden" name="submissionId" value="${sub.id}">
+					<select name="status" class="form-group"
 						style="margin: 0; min-width: 150px;">
 						<option value="NEW" ${sub.status == 'NEW' ? 'selected' : ''}>Neu</option>
 						<option value="VIEWED" ${sub.status == 'VIEWED' ? 'selected' : ''}>Gesehen</option>
@@ -8621,11 +8858,11 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 				<c:if
 					test="${sub.status == 'COMPLETED' or sub.status == 'REJECTED'}">
 					<form class="js-feedback-delete-form"
-						action="${pageContext.request.contextPath}/admin/action/feedback?action=delete"
+						action="${pageContext.request.contextPath}/admin/action/feedback"
 						method="POST">
-						<input type="hidden" name="csrfToken"
-							value="${sessionScope.csrfToken}"> <input type="hidden"
-							name="submissionId" value="${sub.id}">
+						<input type="hidden" name="action" value="delete"> <input
+							type="hidden" name="csrfToken" value="${sessionScope.csrfToken}">
+						<input type="hidden" name="submissionId" value="${sub.id}">
 						<button type="submit" class="btn btn-small btn-danger-outline">Löschen</button>
 					</form>
 				</c:if>
@@ -8679,7 +8916,6 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 		<hr>
 
 		<h3 style="margin-top: 1.5rem;">Neue Datei hochladen</h3>
-		<%-- This form now correctly points to the unified AdminFileServlet --%>
 		<form action="${pageContext.request.contextPath}/admin/uploadFile"
 			method="post" enctype="multipart/form-data">
 			<input type="hidden" name="csrfToken"
@@ -8721,11 +8957,27 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 
 		<c:forEach var="categoryEntry" items="${groupedFiles}">
 			<div class="category-group" style="margin-bottom: 2rem;">
-				<h3
-					style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
-					<i class="fas fa-folder"></i>
-					<c:out value="${categoryEntry.key}" />
-				</h3>
+				<div
+					style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+					<h3>
+						<i class="fas fa-folder"></i>
+						<c:out value="${categoryEntry.key}" />
+					</h3>
+					<c:if test="${categoryEntry.key != 'Ohne Kategorie'}">
+						<form
+							action="${pageContext.request.contextPath}/admin/dateien/kategorien/loeschen"
+							method="post" class="js-confirm-form"
+							data-confirm-message="Kategorie '${fn:escapeXml(categoryEntry.key)}' wirklich löschen? Alle Dateien in dieser Kategorie werden der Gruppe 'Ohne Kategorie' zugeordnet.">
+							<input type="hidden" name="csrfToken"
+								value="${sessionScope.csrfToken}"> <input type="hidden"
+								name="categoryId" value="${categoryEntry.value[0].categoryId}">
+							<button type="submit" class="btn btn-small btn-danger-outline"
+								title="Kategorie löschen">
+								<i class="fas fa-trash"></i>
+							</button>
+						</form>
+					</c:if>
+				</div>
 				<ul class="file-list">
 					<c:if test="${empty categoryEntry.value}">
 						<li style="justify-content: center;">Keine Dateien in dieser
@@ -8958,6 +9210,10 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 <script id="allItemsData" type="application/json">
     ${allItemsJson}
 </script>
+<script id="allSelectableItemsData" type="application/json">
+    ${allItemsJson}
+</script>
+
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
 <script src="${pageContext.request.contextPath}/js/admin/admin_kits.js"></script>
@@ -9773,7 +10029,7 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 		</div>
 		<p id="battery-text" class="progress-text">Lade...</p>
 	</div>
-	<div class="card">
+	<div class="card" id="uptime-card">
 		<h2 class="card-title">
 			<i class="fas fa-clock"></i> Server Uptime
 		</h2>
@@ -9904,10 +10160,12 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 				<c:out value="${user.username}" />
 			</h3>
 			<div class="card-row">
-				<span>Rolle:</span> <strong data-field="roleName"><c:out value="${user.roleName}" /></strong>
+				<span>Rolle:</span> <strong data-field="roleName"><c:out
+						value="${user.roleName}" /></strong>
 			</div>
 			<div class="card-row">
-				<span>ID:</span> <strong data-field="id"><c:out value="${user.id}" /></strong>
+				<span>ID:</span> <strong data-field="id"><c:out
+						value="${user.id}" /></strong>
 			</div>
 			<div class="card-actions">
 				<c:if
@@ -10614,7 +10872,33 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\
 	src="${pageContext.request.contextPath}/vendor/fullcalendar/main.global.min.js"></script>
 <script
 	src="${pageContext.request.contextPath}/vendor/fullcalendar/locales/de.js"></script>
-<script src="${pageContext.request.contextPath}/js/public/calendar.js"></script>
+<script>
+	document.addEventListener('DOMContentLoaded', function() {
+		const calendarEl = document.getElementById('calendar-container');
+		const contextPath = document.body.dataset.contextPath || '';
+
+		// This check ensures FullCalendar only runs if the desktop container is visible
+		if (calendarEl && getComputedStyle(calendarEl).display !== 'none') {
+			const calendar = new FullCalendar.Calendar(calendarEl, {
+				initialView : 'dayGridMonth',
+				locale : 'de',
+				headerToolbar : {
+					left : 'prev,next today',
+					center : 'title',
+					right : 'dayGridMonth,timeGridWeek,listWeek'
+				},
+				events : `${contextPath}/api/calendar/entries`,
+				eventClick : function(info) {
+					info.jsEvent.preventDefault();
+					if (info.event.url) {
+						window.location.href = info.event.url;
+					}
+				}
+			});
+			calendar.render();
+		}
+	});
+</script>
 ========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\dateien.jsp
 ========================================================================
@@ -11024,9 +11308,9 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\
 									data-confirm-message="Wirklich vom Event '${fn:escapeXml(event.name)}' abmelden?">
 									<input type="hidden" name="csrfToken"
 										value="${sessionScope.csrfToken}"> <input
-										type="hidden" name="eventId" value="${event.id}">
-									<button type="submit" name="action" value="signoff"
-										class="btn btn-small btn-danger">Abmelden</button>
+										type="hidden" name="eventId" value="${event.id}"> <input
+										type="hidden" name="action" value="signoff">
+									<button type="submit" class="btn btn-small btn-danger">Abmelden</button>
 								</form>
 							</c:if>
 						</div>
@@ -11092,9 +11376,9 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\
 						data-confirm-message="Wirklich vom Event '${fn:escapeXml(event.name)}' abmelden?">
 						<input type="hidden" name="csrfToken"
 							value="${sessionScope.csrfToken}"> <input type="hidden"
-							name="eventId" value="${event.id}">
-						<button type="submit" name="action" value="signoff"
-							class="btn btn-small btn-danger">Abmelden</button>
+							name="eventId" value="${event.id}"> <input type="hidden"
+							name="action" value="signoff">
+						<button type="submit" class="btn btn-small btn-danger">Abmelden</button>
 					</form>
 				</c:if>
 			</div>
@@ -11923,7 +12207,9 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\public\
 
 		<form id="profile-form"
 			action="${pageContext.request.contextPath}/profil" method="post">
-			<input type="hidden" name="action" value="requestProfileChange">
+			<input type="hidden" name="csrfToken"
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="requestProfileChange">
 
 			<ul class="details-list">
 				<li><strong>Benutzername:</strong> <input type="text"
@@ -12949,241 +13235,3 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\
 	<c:remove var="passwordResetUser" scope="session" />
 	<c:remove var="passwordResetNewPassword" scope="session" />
 </c:if>
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\storage_modals.jspf
-========================================================================
-
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
-	isELIgnored="false"%>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
-
-<!-- Transaction Modal -->
-<div class="modal-overlay" id="transaction-modal">
-	<div class="modal-content" style="max-width: 450px;">
-		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
-		<h3 id="transaction-modal-title">Aktion</h3>
-		<form id="transaction-form"
-			action="${pageContext.request.contextPath}/lager/transaktion"
-			method="post">
-			<input type="hidden" name="csrfToken"
-				value="${sessionScope.csrfToken}"> <input type="hidden"
-				name="itemId" id="transaction-item-id">
-			<div class="form-group">
-				<label for="transaction-quantity">Anzahl</label> <input
-					type="number" name="quantity" id="transaction-quantity" value="1"
-					min="1" required>
-			</div>
-			<div class="form-group">
-				<label for="transaction-notes">Notiz (optional)</label> <input
-					type="text" name="notes" id="transaction-notes"
-					placeholder="z.B. für Event XYZ">
-			</div>
-			<div class="form-group">
-				<label for="transaction-eventId">Zuweisen zu Event
-					(optional)</label> <select name="eventId" id="transaction-eventId">
-					<option value="">Kein Event</option>
-					<c:if test="${not empty activeEvents}">
-						<c:forEach var="event" items="${activeEvents}">
-							<option value="${event.id}">${event.name}</option>
-						</c:forEach>
-					</c:if>
-				</select>
-			</div>
-			<div
-				style="display: flex; justify-content: space-between; gap: 1rem;">
-				<button type="submit" name="type" value="checkout"
-					class="btn btn-danger" style="flex-grow: 1;">Entnehmen</button>
-				<button type="submit" name="type" value="checkin"
-					class="btn btn-success" style="flex-grow: 1;">Einräumen</button>
-			</div>
-		</form>
-	</div>
-</div>
-
-<!-- Maintenance Modal -->
-<div class="modal-overlay" id="maintenance-modal">
-	<div class="modal-content" style="max-width: 450px;">
-		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
-		<h3 id="maintenance-modal-title">Wartungs-Status</h3>
-		<form action="${pageContext.request.contextPath}/admin/lager"
-			method="post">
-			<input type="hidden" name="csrfToken"
-				value="${sessionScope.csrfToken}"> <input type="hidden"
-				name="action" value="updateStatus"> <input type="hidden"
-				name="id" id="maintenance-item-id">
-			<div class="form-group">
-				<label for="maintenance-status">Neuer Status</label> <select
-					name="status" id="maintenance-status">
-					<option value="IN_STORAGE">Zurück in den Bestand</option>
-					<option value="MAINTENANCE">Zur Wartung</option>
-				</select>
-			</div>
-			<div class="form-group">
-				<label for="maintenance-notes">Notiz (z.B. was wurde
-					gemacht?)</label>
-				<textarea name="notes" id="maintenance-notes" rows="3"></textarea>
-			</div>
-			<button type="submit" class="btn">Speichern</button>
-		</form>
-	</div>
-</div>
-
-<!-- Defect Modal -->
-<div class="modal-overlay" id="defect-modal">
-	<div class="modal-content" style="max-width: 450px;">
-		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
-		<h3>Defekt-Status bearbeiten</h3>
-		<form action="${pageContext.request.contextPath}/admin/lager"
-			method="post">
-			<input type="hidden" name="csrfToken"
-				value="${sessionScope.csrfToken}"> <input type="hidden"
-				name="action" value="updateDefect"> <input type="hidden"
-				name="id" id="defect-item-id">
-			<div class="form-group">
-				<label for="defective_quantity">Anzahl defekter Artikel</label> <input
-					type="number" name="defective_quantity" id="defective_quantity"
-					min="0" required>
-			</div>
-			<div class="form-group">
-				<label for="defect_reason">Grund (optional)</label>
-				<textarea name="defect_reason" id="defect_reason" rows="3"></textarea>
-			</div>
-			<button type="submit" class="btn">
-				<i class="fas fa-save"></i> Speichern
-			</button>
-		</form>
-	</div>
-</div>
-
-<!-- Item Create/Edit Modal -->
-<div class="modal-overlay" id="item-modal">
-	<div class="modal-content" style="max-width: 700px;">
-		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
-		<h3>Lagerartikel</h3>
-		<form action="${pageContext.request.contextPath}/admin/lager"
-			method="post" enctype="multipart/form-data">
-			<input type="hidden" name="csrfToken"
-				value="${sessionScope.csrfToken}"> <input type="hidden"
-				name="action" value=""> <input type="hidden" name="id"
-				value="">
-
-			<div class="form-group">
-				<label for="name-modal">Name</label> <input type="text"
-					id="name-modal" name="name" required>
-			</div>
-			<div class="responsive-dashboard-grid">
-				<div class="form-group">
-					<label for="location-modal">Ort</label> <input type="text"
-						id="location-modal" name="location">
-				</div>
-				<div class="form-group">
-					<label for="cabinet-modal">Schrank (optional)</label> <input
-						type="text" id="cabinet-modal" name="cabinet">
-				</div>
-				<div class="form-group">
-					<label for="compartment-modal">Fach (optional)</label> <input
-						type="text" id="compartment-modal" name="compartment">
-				</div>
-			</div>
-			<div class="responsive-dashboard-grid">
-				<div class="form-group">
-					<label for="quantity-modal">Menge im Bestand</label> <input
-						type="number" id="quantity-modal" name="quantity" min="0" required>
-				</div>
-				<div class="form-group">
-					<label for="maxQuantity-modal">Max. Menge (für Status)</label> <input
-						type="number" id="maxQuantity-modal" name="maxQuantity" min="0"
-						required>
-				</div>
-			</div>
-			<div class="responsive-dashboard-grid">
-				<div class="form-group">
-					<label for="weight_kg-modal">Gewicht (kg)</label> <input
-						type="text" id="weight_kg-modal" name="weight_kg"
-						placeholder="z.B. 1.25">
-				</div>
-				<div class="form-group">
-					<label for="price_eur-modal">Preis (€)</label> <input type="text"
-						id="price_eur-modal" name="price_eur" placeholder="z.B. 49.99">
-				</div>
-			</div>
-			<div class="form-group">
-				<label for="imageFile-modal">Bild (optional)</label> <input
-					type="file" name="imageFile" id="imageFile-modal" accept="image/*">
-			</div>
-			<button type="submit" class="btn">
-				<i class="fas fa-save"></i> Speichern
-			</button>
-		</form>
-	</div>
-</div>
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\jspf\table_scripts.jspf
-========================================================================
-
-<%@ page pageEncoding="UTF-8"%>
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    // --- TABLE FILTERING LOGIC ---
-    const filterInput = document.getElementById('table-filter');
-    if (filterInput) {
-        const searchableLists = document.querySelectorAll('.searchable-list');
-        const searchableTables = document.querySelectorAll('.searchable-table');
-
-        filterInput.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            
-            searchableLists.forEach(list => {
-                const items = list.querySelectorAll('[data-searchable-content]');
-                items.forEach(item => {
-                    const content = item.dataset.searchableContent.toLowerCase();
-                    item.style.display = content.includes(searchTerm) ? '' : 'none';
-                });
-            });
-
-            searchableTables.forEach(table => {
-                const rows = table.querySelectorAll('tbody tr');
-                rows.forEach(row => {
-                    const content = row.textContent.toLowerCase();
-                    row.style.display = content.includes(searchTerm) ? '' : 'none';
-                });
-            });
-        });
-    }
-
-    // --- TABLE SORTING LOGIC ---
-    document.querySelectorAll('.sortable-table').forEach(table => {
-        const headers = table.querySelectorAll('th.sortable');
-        const tbody = table.querySelector('tbody');
-
-        headers.forEach((header, index) => {
-            header.addEventListener('click', () => {
-                const rows = Array.from(tbody.querySelectorAll('tr'));
-                const isAscending = !header.classList.contains('sorted-asc');
-                const sortType = header.dataset.sortType || 'string';
-
-                headers.forEach(h => h.classList.remove('sorted-asc', 'sorted-desc'));
-                
-                header.classList.toggle('sorted-asc', isAscending);
-                header.classList.toggle('sorted-desc', !isAscending);
-
-                rows.sort((a, b) => {
-                    let valA = a.children[index].dataset.sortValue || a.children[index].textContent.trim();
-                    let valB = b.children[index].dataset.sortValue || b.children[index].textContent.trim();
-                    
-                    if (sortType === 'number') {
-                        valA = parseFloat(valA) || 0;
-                        valB = parseFloat(valB) || 0;
-                    }
-
-                    if (valA < valB) return isAscending ? -1 : 1;
-                    if (valA > valB) return isAscending ? 1 : -1;
-                    return 0;
-                });
-
-                tbody.append(...rows);
-            });
-        });
-    });
-});
-</script>

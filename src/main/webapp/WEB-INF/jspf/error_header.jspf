@@ -10,5 +10,5 @@
 <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
 </head>
 <body data-context-path="${pageContext.request.contextPath}">
-<main class="main-content-wrapper no-sidebar">
+<div class="main-content-wrapper no-sidebar">
     <div class="main-content">

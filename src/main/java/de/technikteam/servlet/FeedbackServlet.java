@@ -89,7 +89,7 @@ public class FeedbackServlet extends HttpServlet {
 		if (submissionDAO.createSubmission(submission)) {
 			request.getSession().setAttribute("successMessage",
 					"Vielen Dank! Dein Feedback wurde erfolgreich übermittelt.");
-			response.sendRedirect(request.getContextPath() + "/home");
+			response.sendRedirect(request.getContextPath() + "/my-feedback");
 		} else {
 			request.setAttribute("errorMessage",
 					"Dein Feedback konnte nicht übermittelt werden. Bitte versuche es später erneut.");

@@ -10,6 +10,7 @@ import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.ConfigurationService;
+import de.technikteam.service.StorageService;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
@@ -34,15 +35,17 @@ public class AdminStorageServlet extends HttpServlet {
 	private final MaintenanceLogDAO maintenanceLogDAO;
 	private final AdminLogService adminLogService;
 	private final ConfigurationService configService;
+	private final StorageService storageService;
 	private final Gson gson = new Gson();
 
 	@Inject
 	public AdminStorageServlet(StorageDAO storageDAO, MaintenanceLogDAO maintenanceLogDAO,
-			AdminLogService adminLogService, ConfigurationService configService) {
+			AdminLogService adminLogService, ConfigurationService configService, StorageService storageService) {
 		this.storageDAO = storageDAO;
 		this.maintenanceLogDAO = maintenanceLogDAO;
 		this.adminLogService = adminLogService;
 		this.configService = configService;
+		this.storageService = storageService;
 	}
 
 	@Override
@@ -79,8 +82,8 @@ public class AdminStorageServlet extends HttpServlet {
 		case "delete":
 			handleDelete(request, response);
 			break;
-		case "updateDefect":
-			handleDefectUpdate(request, response);
+		case "updateDefectStatus":
+			handleDefectStatusUpdate(request, response);
 			break;
 		case "updateStatus":
 			handleStatusUpdate(request, response);
@@ -177,26 +180,26 @@ public class AdminStorageServlet extends HttpServlet {
 		response.sendRedirect(request.getContextPath() + "/admin/lager");
 	}
 
-	private void handleDefectUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		try {
-			int itemId = Integer.parseInt(request.getParameter("id"));
-			int defectiveQty = Integer.parseInt(request.getParameter("defective_quantity"));
-			String reason = request.getParameter("defect_reason");
-			if (storageDAO.updateDefectiveStatus(itemId, defectiveQty, reason)) {
-				adminLogService.log(adminUser.getUsername(), "UPDATE_DEFECT_STATUS",
-						String.format("Defekt-Status für Artikel-ID %d aktualisiert: %d defekt. Grund: %s", itemId,
-								defectiveQty, reason));
-				request.getSession().setAttribute("successMessage", "Defekt-Status aktualisiert.");
-			} else {
-				request.getSession().setAttribute("errorMessage",
-						"Defekt-Status konnte nicht aktualisiert werden (vielleicht nicht genug Bestand?).");
-			}
-		} catch (NumberFormatException e) {
-			request.getSession().setAttribute("errorMessage", "Ungültige Artikel-ID oder Anzahl.");
-		}
-		response.sendRedirect(request.getContextPath() + "/admin/lager");
-	}
+	private void handleDefectStatusUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        User adminUser = (User) request.getSession().getAttribute("user");
+        try {
+            int itemId = Integer.parseInt(request.getParameter("id"));
+            String status = request.getParameter("status"); // "DEFECT" or "UNREPAIRABLE"
+            int quantity = Integer.parseInt(request.getParameter("quantity"));
+            String reason = request.getParameter("reason");
+
+            boolean success = storageService.updateDefectiveItemStatus(itemId, status, quantity, reason, adminUser);
+
+            if (success) {
+                request.getSession().setAttribute("successMessage", "Defekt-Status erfolgreich aktualisiert.");
+            } else {
+                request.getSession().setAttribute("errorMessage", "Status konnte nicht aktualisiert werden. Überprüfen Sie die Bestandsmengen.");
+            }
+        } catch (NumberFormatException e) {
+            request.getSession().setAttribute("errorMessage", "Ungültige Artikel-ID oder Anzahl.");
+        }
+        response.sendRedirect(request.getContextPath() + "/admin/lager");
+    }
 
 	private void handleDelete(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		User adminUser = (User) request.getSession().getAttribute("user");

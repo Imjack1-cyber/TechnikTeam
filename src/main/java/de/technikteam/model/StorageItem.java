@@ -30,23 +30,28 @@ public class StorageItem {
 	}
 
 	public String getAvailabilityStatus() {
-		if (this.getAvailableQuantity() <= 0) {
+		int available = getAvailableQuantity();
+		if (available <= 0 && maxQuantity > 0) {
 			return "Vergriffen";
 		}
-		if (this.maxQuantity > 0 && this.getAvailableQuantity() >= this.maxQuantity) {
+		if (maxQuantity == 0) {
+			return "Auf Lager"; // Untracked quantity
+		}
+		if (available >= maxQuantity) {
 			return "Vollständig";
 		}
-		if (this.maxQuantity > 0 && (double) this.getAvailableQuantity() / this.maxQuantity <= 0.25) {
+		if ((double) available / maxQuantity <= 0.25) {
 			return "Niedriger Bestand";
 		}
 		return "Auf Lager";
 	}
 
 	public String getAvailabilityStatusCssClass() {
-		if (this.getAvailableQuantity() <= 0) {
+		int available = getAvailableQuantity();
+		if (available <= 0 && maxQuantity > 0) {
 			return "status-danger";
 		}
-		if (this.maxQuantity > 0 && (double) this.getAvailableQuantity() / this.maxQuantity <= 0.25) {
+		if (maxQuantity > 0 && (double) available / maxQuantity <= 0.25) {
 			return "status-warn";
 		}
 		return "status-ok";

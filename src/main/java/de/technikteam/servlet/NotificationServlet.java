@@ -1,9 +1,10 @@
 package de.technikteam.servlet;
 
 import java.io.IOException;
+
+import com.google.inject.Singleton;
 import de.technikteam.service.NotificationService;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -11,14 +12,7 @@ import jakarta.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-/**
- * Mapped to `/notifications`, this servlet is the entry point for clients
- * wanting to receive real-time updates via Server-Sent Events (SSE). On a GET
- * request, it establishes a persistent connection by setting the appropriate
- * headers and registering the client's asynchronous context with the singleton
- * `NotificationService`. It requires an active user session to connect.
- */
-@WebServlet(urlPatterns = "/notifications", asyncSupported = true)
+@Singleton
 public class NotificationServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(NotificationServlet.class);
