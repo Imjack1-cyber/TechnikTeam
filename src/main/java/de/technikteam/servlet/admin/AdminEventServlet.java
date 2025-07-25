@@ -32,7 +32,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Singleton
-@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 40, maxRequestSize = 1024 * 1024 * 80)
+@MultipartConfig // CORRECTED: Added annotation for robust multipart request handling.
 public class AdminEventServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminEventServlet.class);

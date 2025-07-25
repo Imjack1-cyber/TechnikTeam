@@ -1,5 +1,6 @@
 package de.technikteam.filter;
 
+import de.technikteam.model.User; // CORRECTED: Added User import for clarity
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -14,26 +15,22 @@ import jakarta.servlet.FilterConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
-import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
-@WebFilter(value = "/*", asyncSupported = true)
 public class AuthenticationFilter implements Filter {
 
 	private static final Logger logger = LogManager.getLogger(AuthenticationFilter.class.getName());
 
 	private static final Set<String> PUBLIC_PATHS = new HashSet<>(Arrays.asList("/login", "/logout", "/calendar.ics"));
 
-	// Added /api/auth to allow pre-login access for passkeys
 	private static final Set<String> PUBLIC_RESOURCE_PREFIXES = new HashSet<>(
 			Arrays.asList("/css", "/js", "/images", "/error", "/public", "/vendor", "/wopi", "/api/auth"));
 
 	@Override
 	public void init(FilterConfig filterConfig) throws ServletException {
-		logger.info("AuthenticationFilter initialized. Public paths: {}, Public prefixes: {}", PUBLIC_PATHS,
-				PUBLIC_RESOURCE_PREFIXES);
+		logger.info("AuthenticationFilter initialized by Guice.");
 	}
 
 	@Override
@@ -47,7 +44,6 @@ public class AuthenticationFilter implements Filter {
 		String contextPath = request.getContextPath();
 		String requestUri = request.getRequestURI();
 
-		// Strip jsessionid from the path, if present
 		String path = requestUri.substring(contextPath.length());
 		int semicolonIndex = path.indexOf(';');
 		if (semicolonIndex != -1) {
@@ -58,8 +54,6 @@ public class AuthenticationFilter implements Filter {
 
 		boolean isLoggedIn = (session != null && session.getAttribute("user") != null);
 
-		// Assign to a final variable to be used in lambda, ensuring compiler
-		// compatibility
 		final String finalPath = path;
 		boolean isPublicResource = PUBLIC_PATHS.contains(finalPath)
 				|| PUBLIC_RESOURCE_PREFIXES.stream().anyMatch(prefix -> finalPath.startsWith(prefix));

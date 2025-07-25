@@ -3,6 +3,9 @@ package de.technikteam.config;
 import com.google.inject.Scopes;
 import com.google.inject.servlet.ServletModule;
 import de.technikteam.dao.*;
+import de.technikteam.filter.AdminFilter;
+import de.technikteam.filter.AuthenticationFilter;
+import de.technikteam.filter.CharacterEncodingFilter;
 import de.technikteam.service.*;
 import de.technikteam.servlet.*;
 import de.technikteam.servlet.admin.*;
@@ -15,6 +18,16 @@ public class ServiceModule extends ServletModule {
 
 	@Override
 	protected void configureServlets() {
+		// CORRECTED: Centralize all filter definitions here to guarantee execution
+		// order.
+		bind(CharacterEncodingFilter.class).in(Scopes.SINGLETON);
+		bind(AuthenticationFilter.class).in(Scopes.SINGLETON);
+		bind(AdminFilter.class).in(Scopes.SINGLETON);
+
+		filter("/*").through(CharacterEncodingFilter.class);
+		filter("/*").through(AuthenticationFilter.class);
+		filter("/admin/*", "/api/admin/*").through(AdminFilter.class);
+
 		// --- Bind Services, DAOs, and Actions (Singletons) ---
 		bind(ConfigurationService.class).in(Scopes.SINGLETON);
 		bind(DatabaseManager.class).in(Scopes.SINGLETON);
@@ -28,6 +41,7 @@ public class ServiceModule extends ServletModule {
 		bind(AchievementService.class).in(Scopes.SINGLETON);
 		bind(AdminDashboardService.class).in(Scopes.SINGLETON);
 		bind(WikiService.class).in(Scopes.SINGLETON);
+		bind(TodoService.class).in(Scopes.SINGLETON);
 
 		bind(UserDAO.class).in(Scopes.SINGLETON);
 		bind(RoleDAO.class).in(Scopes.SINGLETON);
@@ -54,6 +68,7 @@ public class ServiceModule extends ServletModule {
 		bind(FileDAO.class).in(Scopes.SINGLETON);
 		bind(ReportDAO.class).in(Scopes.SINGLETON);
 		bind(StatisticsDAO.class).in(Scopes.SINGLETON);
+		bind(TodoDAO.class).in(Scopes.SINGLETON);
 
 		bind(CreateUserAction.class).in(Scopes.SINGLETON);
 		bind(UpdateUserAction.class).in(Scopes.SINGLETON);
@@ -115,9 +130,7 @@ public class ServiceModule extends ServletModule {
 		bind(AdminStorageServlet.class).in(Scopes.SINGLETON);
 		bind(AdminDefectServlet.class).in(Scopes.SINGLETON);
 		bind(AdminKitServlet.class).in(Scopes.SINGLETON);
-		bind(AdminFileManagementServlet.class).in(Scopes.SINGLETON);
 		bind(AdminFileServlet.class).in(Scopes.SINGLETON);
-		bind(AdminFileCategoryServlet.class).in(Scopes.SINGLETON);
 		bind(AdminLogServlet.class).in(Scopes.SINGLETON);
 		bind(AdminReportServlet.class).in(Scopes.SINGLETON);
 		bind(AdminSystemServlet.class).in(Scopes.SINGLETON);
@@ -129,6 +142,7 @@ public class ServiceModule extends ServletModule {
 		bind(AdminDashboardApiServlet.class).in(Scopes.SINGLETON);
 		bind(SystemStatsApiServlet.class).in(Scopes.SINGLETON);
 		bind(CrewFinderApiServlet.class).in(Scopes.SINGLETON);
+		bind(AdminTodoApiServlet.class).in(Scopes.SINGLETON);
 		bind(FrontControllerServlet.class).in(Scopes.SINGLETON);
 
 		// --- Explicitly Map all URL Patterns to their Servlets ---
@@ -179,9 +193,7 @@ public class ServiceModule extends ServletModule {
 		serve("/admin/lager").with(AdminStorageServlet.class);
 		serve("/admin/defekte").with(AdminDefectServlet.class);
 		serve("/admin/kits").with(AdminKitServlet.class);
-		serve("/admin/dateien").with(AdminFileManagementServlet.class);
-		serve("/admin/uploadFile").with(AdminFileServlet.class);
-		serve("/admin/dateien/kategorien/*").with(AdminFileCategoryServlet.class);
+		serve("/admin/dateien").with(AdminFileServlet.class);
 		serve("/admin/log").with(AdminLogServlet.class);
 		serve("/admin/berichte").with(AdminReportServlet.class);
 		serve("/admin/system").with(AdminSystemServlet.class);
@@ -193,6 +205,7 @@ public class ServiceModule extends ServletModule {
 		serve("/api/admin/dashboard-data").with(AdminDashboardApiServlet.class);
 		serve("/api/admin/system-stats").with(SystemStatsApiServlet.class);
 		serve("/api/admin/crew-finder").with(CrewFinderApiServlet.class);
+		serve("/api/admin/todos").with(AdminTodoApiServlet.class);
 		serve("/admin/action/*").with(FrontControllerServlet.class);
 	}
 }

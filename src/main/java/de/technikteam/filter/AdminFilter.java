@@ -2,7 +2,7 @@ package de.technikteam.filter;
 
 import de.technikteam.model.User;
 import jakarta.servlet.*;
-import jakarta.servlet.annotation.WebFilter;
+// CORRECTED: Removed @WebFilter annotation. This will now be managed by Guice.
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -11,14 +11,13 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 
-@WebFilter(urlPatterns = { "/admin/*", "/api/admin/*" }, asyncSupported = true)
 public class AdminFilter implements Filter {
 
 	private static final Logger logger = LogManager.getLogger(AdminFilter.class);
 
 	@Override
 	public void init(FilterConfig filterConfig) throws ServletException {
-		logger.info("AdminFilter initialized and protecting /admin/* and /api/admin/* paths.");
+		logger.info("AdminFilter initialized by Guice and protecting /admin/* and /api/admin/* paths.");
 	}
 
 	@Override

@@ -8,7 +8,6 @@ import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.servlet.admin.action.*;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -22,7 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Singleton
-@MultipartConfig
+// CORRECTED: Removed @MultipartConfig as no actions handled by this controller process file uploads.
 public class FrontControllerServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(FrontControllerServlet.class);

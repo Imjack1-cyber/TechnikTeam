@@ -19,19 +19,9 @@ public final class CSRFUtil {
 	private static final String CSRF_TOKEN_SESSION_ATTR = "csrfToken";
 	private static final String CSRF_TOKEN_PARAM_NAME = "csrfToken";
 
-	/**
-	 * Private constructor to prevent instantiation of this utility class.
-	 */
 	private CSRFUtil() {
 	}
 
-	/**
-	 * Generates a new, cryptographically secure random token and stores it in the
-	 * user's session. This should be called after a successful login or when a new
-	 * session is created.
-	 *
-	 * @param session The HttpSession to store the token in.
-	 */
 	public static void storeToken(HttpSession session) {
 		if (session != null) {
 			String token = generateToken();
@@ -40,11 +30,6 @@ public final class CSRFUtil {
 		}
 	}
 
-	/**
-	 * Generates a new, cryptographically secure random token.
-	 *
-	 * @return A Base64-encoded random token string.
-	 */
 	private static String generateToken() {
 		SecureRandom random = new SecureRandom();
 		byte[] tokenBytes = new byte[32];
@@ -54,23 +39,23 @@ public final class CSRFUtil {
 
 	/**
 	 * Validates the CSRF token from a request parameter against the one stored in
-	 * the session. This method should be called at the beginning of any
-	 * state-changing POST/PUT/DELETE request handler.
+	 * the session. This method is intended for standard
+	 * 'application/x-www-form-urlencoded' requests. For multipart requests, the
+	 * token must be extracted manually first.
 	 *
 	 * @param request The HttpServletRequest containing the token.
 	 * @return true if the token is valid and matches the session token, false
 	 *         otherwise.
 	 */
 	public static boolean isTokenValid(HttpServletRequest request) {
-		HttpSession session = request.getSession(false);
 		String requestToken = request.getParameter(CSRF_TOKEN_PARAM_NAME);
-		return isTokenValid(session, requestToken);
+		return isTokenValid(request.getSession(false), requestToken);
 	}
 
 	/**
 	 * Validates a given request token against the one stored in the session. This
-	 * is a helper method, useful for multipart requests where the token is
-	 * extracted manually.
+	 * is the primary validation method, useful for multipart requests where the
+	 * token is extracted manually by the servlet.
 	 *
 	 * @param session      The current HttpSession.
 	 * @param requestToken The token submitted with the request.
@@ -100,13 +85,6 @@ public final class CSRFUtil {
 		return isValid;
 	}
 
-	/**
-	 * Returns the HTML hidden input field for the CSRF token. This can be used in
-	 * JSPs to easily include the token in forms.
-	 *
-	 * @param session The current HttpSession.
-	 * @return An HTML string for the hidden input field.
-	 */
 	public static String getCsrfInputField(HttpSession session) {
 		if (session != null) {
 			String token = (String) session.getAttribute(CSRF_TOKEN_SESSION_ATTR);

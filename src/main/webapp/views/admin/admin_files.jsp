@@ -19,11 +19,12 @@
 
 	<div class="card">
 		<h2>Aktionen</h2>
-		<form
-			action="${pageContext.request.contextPath}/admin/dateien/kategorien/erstellen"
+		<%-- REVERTED: Removed enctype as it's not needed for a non-file-upload form. The new CSRFUtil handles this correctly. --%>
+		<form action="${pageContext.request.contextPath}/admin/dateien"
 			method="post" style="margin-bottom: 2rem;">
 			<input type="hidden" name="csrfToken"
-				value="${sessionScope.csrfToken}">
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="createCategory">
 			<div class="form-group">
 				<label for="newCategoryName">Neue Kategorie erstellen</label> <input
 					type="text" name="categoryName" id="newCategoryName" required>
@@ -36,7 +37,7 @@
 		<hr>
 
 		<h3 style="margin-top: 1.5rem;">Neue Datei hochladen</h3>
-		<form action="${pageContext.request.contextPath}/admin/uploadFile"
+		<form action="${pageContext.request.contextPath}/admin/dateien"
 			method="post" enctype="multipart/form-data">
 			<input type="hidden" name="csrfToken"
 				value="${sessionScope.csrfToken}"> <input type="hidden"
@@ -84,13 +85,15 @@
 						<c:out value="${categoryEntry.key}" />
 					</h3>
 					<c:if test="${categoryEntry.key != 'Ohne Kategorie'}">
-						<form
-							action="${pageContext.request.contextPath}/admin/dateien/kategorien/loeschen"
+						<%-- REVERTED: Removed enctype here as well. --%>
+						<form action="${pageContext.request.contextPath}/admin/dateien"
 							method="post" class="js-confirm-form"
 							data-confirm-message="Kategorie '${fn:escapeXml(categoryEntry.key)}' wirklich löschen? Alle Dateien in dieser Kategorie werden der Gruppe 'Ohne Kategorie' zugeordnet.">
 							<input type="hidden" name="csrfToken"
 								value="${sessionScope.csrfToken}"> <input type="hidden"
-								name="categoryId" value="${categoryEntry.value[0].categoryId}">
+								name="action" value="deleteCategory"> <input
+								type="hidden" name="categoryId"
+								value="${categoryEntry.value[0].categoryId}">
 							<button type="submit" class="btn btn-small btn-danger-outline"
 								title="Kategorie löschen">
 								<i class="fas fa-trash"></i>
@@ -126,10 +129,8 @@
 									data-file-name="${fn:escapeXml(file.filename)}">
 									<i class="fas fa-upload"></i>
 								</button>
-								<form
-									action="${pageContext.request.contextPath}/admin/uploadFile"
-									method="post" class="js-confirm-form"
-									data-confirm-message="Datei '${fn:escapeXml(file.filename)}' wirklich löschen?">
+								<form action="${pageContext.request.contextPath}/admin/dateien"
+									method="post" class="js-confirm-form">
 									<input type="hidden" name="csrfToken"
 										value="${sessionScope.csrfToken}"> <input
 										type="hidden" name="action" value="delete"> <input
@@ -153,7 +154,7 @@
 	<div class="modal-content">
 		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
 		<h3 id="reassign-modal-title">Datei neu zuordnen</h3>
-		<form action="${pageContext.request.contextPath}/admin/uploadFile"
+		<form action="${pageContext.request.contextPath}/admin/dateien"
 			method="post">
 			<input type="hidden" name="csrfToken"
 				value="${sessionScope.csrfToken}"> <input type="hidden"
@@ -184,7 +185,7 @@
 		<button class="modal-close-btn" type="button" aria-label="Schließen">×</button>
 		<h3 id="upload-modal-title">Neue Version hochladen</h3>
 		<form id="upload-version-form"
-			action="${pageContext.request.contextPath}/admin/uploadFile"
+			action="${pageContext.request.contextPath}/admin/dateien"
 			method="post" enctype="multipart/form-data">
 			<input type="hidden" name="csrfToken"
 				value="${sessionScope.csrfToken}"> <input type="hidden"

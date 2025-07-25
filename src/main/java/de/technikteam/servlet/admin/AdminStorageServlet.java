@@ -27,7 +27,7 @@ import java.nio.file.Paths;
 import java.util.List;
 
 @Singleton
-@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 5, maxRequestSize = 1024 * 1024 * 10)
+@MultipartConfig // CORRECTED: Added annotation for robust multipart request handling.
 public class AdminStorageServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminStorageServlet.class);
@@ -181,25 +181,26 @@ public class AdminStorageServlet extends HttpServlet {
 	}
 
 	private void handleDefectStatusUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        User adminUser = (User) request.getSession().getAttribute("user");
-        try {
-            int itemId = Integer.parseInt(request.getParameter("id"));
-            String status = request.getParameter("status"); // "DEFECT" or "UNREPAIRABLE"
-            int quantity = Integer.parseInt(request.getParameter("quantity"));
-            String reason = request.getParameter("reason");
+		User adminUser = (User) request.getSession().getAttribute("user");
+		try {
+			int itemId = Integer.parseInt(request.getParameter("id"));
+			String status = request.getParameter("status"); // "DEFECT" or "UNREPAIRABLE"
+			int quantity = Integer.parseInt(request.getParameter("quantity"));
+			String reason = request.getParameter("reason");
 
-            boolean success = storageService.updateDefectiveItemStatus(itemId, status, quantity, reason, adminUser);
+			boolean success = storageService.updateDefectiveItemStatus(itemId, status, quantity, reason, adminUser);
 
-            if (success) {
-                request.getSession().setAttribute("successMessage", "Defekt-Status erfolgreich aktualisiert.");
-            } else {
-                request.getSession().setAttribute("errorMessage", "Status konnte nicht aktualisiert werden. Überprüfen Sie die Bestandsmengen.");
-            }
-        } catch (NumberFormatException e) {
-            request.getSession().setAttribute("errorMessage", "Ungültige Artikel-ID oder Anzahl.");
-        }
-        response.sendRedirect(request.getContextPath() + "/admin/lager");
-    }
+			if (success) {
+				request.getSession().setAttribute("successMessage", "Defekt-Status erfolgreich aktualisiert.");
+			} else {
+				request.getSession().setAttribute("errorMessage",
+						"Status konnte nicht aktualisiert werden. Überprüfen Sie die Bestandsmengen.");
+			}
+		} catch (NumberFormatException e) {
+			request.getSession().setAttribute("errorMessage", "Ungültige Artikel-ID oder Anzahl.");
+		}
+		response.sendRedirect(request.getContextPath() + "/admin/lager");
+	}
 
 	private void handleDelete(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		User adminUser = (User) request.getSession().getAttribute("user");

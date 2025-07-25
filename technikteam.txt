@@ -1,185 +1,5 @@
 ﻿
 ========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\pom.xml
-========================================================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
-    <groupId>de.technikteam</groupId>
-    <artifactId>TechnikTeam</artifactId>
-    <version>1.0-SNAPSHOT</version>
-    <packaging>war</packaging>
-
-    <name>TechnikTeam</name>
-    <url>http://localhost:8080/</url>
-
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
-        <java.version>21</java.version>
-        <guice.version>7.0.0</guice.version>
-        <flyway.version>10.15.2</flyway.version>
-        <caffeine.version>3.1.8</caffeine.version>
-        <log4j.version>2.23.1</log4j.version>
-        <jackson.version>2.17.1</jackson.version>
-    </properties>
-
-    <dependencies>
-        <!-- Dependency Injection -->
-        <dependency>
-            <groupId>com.google.inject</groupId>
-            <artifactId>guice</artifactId>
-            <version>${guice.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.google.inject.extensions</groupId>
-            <artifactId>guice-servlet</artifactId>
-            <version>${guice.version}</version>
-        </dependency>
-
-        <!-- Database -->
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
-            <version>${flyway.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-mysql</artifactId>
-            <version>${flyway.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
-            <version>8.3.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.zaxxer</groupId>
-            <artifactId>HikariCP</artifactId>
-            <version>5.1.0</version>
-        </dependency>
-        
-        <!-- Web & Servlet APIs -->
-        <dependency>
-            <groupId>jakarta.servlet</groupId>
-            <artifactId>jakarta.servlet-api</artifactId>
-            <version>5.0.0</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>jakarta.websocket</groupId>
-            <artifactId>jakarta.websocket-api</artifactId>
-            <version>2.1.1</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.glassfish.web</groupId>
-            <artifactId>jakarta.servlet.jsp.jstl</artifactId>
-            <version>2.0.0</version>
-        </dependency>
-        
-        <!-- Utilities -->
-        <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-            <version>2.10.1</version>
-        </dependency>
-        <dependency>
-			<groupId>org.springframework.security</groupId>
-			<artifactId>spring-security-crypto</artifactId>
-			<version>6.2.4</version> 
-		</dependency>
-	    <dependency>
-		    <groupId>org.mnode.ical4j</groupId>
-		    <artifactId>ical4j</artifactId>
-		    <version>3.2.4</version>
-		</dependency>
-        <dependency>
-            <groupId>com.github.ben-manes.caffeine</groupId>
-            <artifactId>caffeine</artifactId>
-            <version>${caffeine.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.googlecode.java-diff-utils</groupId>
-            <artifactId>diffutils</artifactId>
-            <version>1.3.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.yubico</groupId>
-            <artifactId>webauthn-server-core</artifactId>
-            <version>2.2.0</version>
-        </dependency>
-
-        <!-- Logging -->
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-api</artifactId>
-            <version>${log4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-core</artifactId>
-            <version>${log4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-slf4j-impl</artifactId>
-            <version>${log4j.version}</version>
-        </dependency>
-        <dependency>
-		    <groupId>org.apache.logging.log4j</groupId>
-		    <artifactId>log4j-layout-template-json</artifactId>
-		    <version>${log4j.version}</version>
-		</dependency>
-
-        <!-- Jackson Dependencies (managed for Flyway compatibility) -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-            <version>${jackson.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>${jackson.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-annotations</artifactId>
-            <version>${jackson.version}</version>
-        </dependency>
-
-        <!-- Frontend Dependencies (WebJars) -->
-        <dependency>
-            <groupId>org.webjars.npm</groupId>
-            <artifactId>sortablejs</artifactId>
-            <version>1.15.2</version>
-        </dependency>
-    </dependencies>
-
-    <build>
-        <finalName>TechnikTeam</finalName>
-        <plugins>
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
-            </plugin>
-            <plugin>
-                <artifactId>maven-war-plugin</artifactId>
-                <version>3.4.0</version>
-                <configuration>
-                    <failOnMissingWebXml>false</failOnMissingWebXml>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
-</project>
-========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\config\DateFormatter.java
 ========================================================================
 
@@ -458,6 +278,7 @@ public class ServiceModule extends ServletModule {
 		bind(SystemInfoService.class).in(Scopes.SINGLETON);
 		bind(AchievementService.class).in(Scopes.SINGLETON);
 		bind(AdminDashboardService.class).in(Scopes.SINGLETON);
+		bind(WikiService.class).in(Scopes.SINGLETON);
 
 		bind(UserDAO.class).in(Scopes.SINGLETON);
 		bind(RoleDAO.class).in(Scopes.SINGLETON);
@@ -546,7 +367,6 @@ public class ServiceModule extends ServletModule {
 		bind(AdminDefectServlet.class).in(Scopes.SINGLETON);
 		bind(AdminKitServlet.class).in(Scopes.SINGLETON);
 		bind(AdminFileManagementServlet.class).in(Scopes.SINGLETON);
-		bind(AdminFileServlet.class).in(Scopes.SINGLETON);
 		bind(AdminFileCategoryServlet.class).in(Scopes.SINGLETON);
 		bind(AdminLogServlet.class).in(Scopes.SINGLETON);
 		bind(AdminReportServlet.class).in(Scopes.SINGLETON);
@@ -554,6 +374,8 @@ public class ServiceModule extends ServletModule {
 		bind(AdminAchievementServlet.class).in(Scopes.SINGLETON);
 		bind(AdminChangeRequestServlet.class).in(Scopes.SINGLETON);
 		bind(AdminFeedbackServlet.class).in(Scopes.SINGLETON);
+		bind(AdminWikiServlet.class).in(Scopes.SINGLETON);
+		bind(AdminWikiDetailsServlet.class).in(Scopes.SINGLETON);
 		bind(AdminDashboardApiServlet.class).in(Scopes.SINGLETON);
 		bind(SystemStatsApiServlet.class).in(Scopes.SINGLETON);
 		bind(CrewFinderApiServlet.class).in(Scopes.SINGLETON);
@@ -608,7 +430,6 @@ public class ServiceModule extends ServletModule {
 		serve("/admin/defekte").with(AdminDefectServlet.class);
 		serve("/admin/kits").with(AdminKitServlet.class);
 		serve("/admin/dateien").with(AdminFileManagementServlet.class);
-		serve("/admin/uploadFile").with(AdminFileServlet.class);
 		serve("/admin/dateien/kategorien/*").with(AdminFileCategoryServlet.class);
 		serve("/admin/log").with(AdminLogServlet.class);
 		serve("/admin/berichte").with(AdminReportServlet.class);
@@ -616,6 +437,8 @@ public class ServiceModule extends ServletModule {
 		serve("/admin/achievements").with(AdminAchievementServlet.class);
 		serve("/admin/requests").with(AdminChangeRequestServlet.class);
 		serve("/admin/feedback").with(AdminFeedbackServlet.class);
+		serve("/admin/wiki").with(AdminWikiServlet.class);
+		serve("/admin/wiki/details").with(AdminWikiDetailsServlet.class);
 		serve("/api/admin/dashboard-data").with(AdminDashboardApiServlet.class);
 		serve("/api/admin/system-stats").with(SystemStatsApiServlet.class);
 		serve("/api/admin/crew-finder").with(CrewFinderApiServlet.class);
@@ -8952,6 +8775,206 @@ public class UserService {
 	}
 }
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\service\WikiService.java
+========================================================================
+
+package de.technikteam.service;
+
+import com.google.inject.Singleton;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+@Singleton
+public class WikiService {
+	private static final Logger logger = LogManager.getLogger(WikiService.class);
+	private static final String WIKI_FILE = "Wiki.md";
+
+	private static final String projectTreeHtml;
+	private static final Map<String, String> documentationMap;
+	private static final Map<String, String> anchorToPathMap;
+
+	static {
+		// Initialize maps
+		documentationMap = new HashMap<>();
+		anchorToPathMap = new HashMap<>();
+		// Parse documentation first to build the necessary lookup map
+		parseFileDocumentation();
+		// Now parse the tree, which can use the map
+		projectTreeHtml = parseProjectTree();
+	}
+
+	private static int getIndentLevel(String line) {
+		int count = 0;
+		for (char c : line.toCharArray()) {
+			if (c == ' ') {
+				count++;
+			} else {
+				break;
+			}
+		}
+		return count / 4; // Assumes 4 spaces per indent level
+	}
+
+	private static String parseProjectTree() {
+		try (InputStream is = WikiService.class.getClassLoader().getResourceAsStream(WIKI_FILE)) {
+			if (is == null) {
+				logger.error("Could not find {} in classpath resources.", WIKI_FILE);
+				return "<p class='error-message'>Wiki content file not found.</p>";
+			}
+			List<String> lines = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)).lines()
+					.collect(Collectors.toList());
+
+			StringBuilder html = new StringBuilder();
+			boolean inTree = false;
+			int lastLevel = -1;
+
+			for (String line : lines) {
+				if (line.contains("## Part 1: Project Tree")) {
+					inTree = true;
+					continue;
+				}
+				if (line.contains("## Part 2: Detailed File Documentation")) {
+					break;
+				}
+				if (!inTree || line.trim().isEmpty() || !line.trim().startsWith("-")) {
+					continue;
+				}
+
+				int level = getIndentLevel(line);
+				String content = line.trim().substring(1).trim();
+
+				if (level > lastLevel) {
+					html.append("<ul>");
+				} else if (level < lastLevel) {
+					html.append("</li></ul>".repeat(lastLevel - level));
+					html.append("</li>");
+				} else if (lastLevel != -1) {
+					html.append("</li>");
+				}
+
+				html.append("<li>");
+
+				Pattern linkPattern = Pattern.compile("\\[`([^`]+)`\\]\\(#([^)]+)\\)");
+				Matcher matcher = linkPattern.matcher(content);
+
+				if (matcher.find()) {
+					String fileName = matcher.group(1);
+					String anchor = matcher.group(2);
+					String filePath = anchorToPathMap.get(anchor);
+
+					if (filePath != null) {
+						String encodedPath = URLEncoder.encode(filePath, StandardCharsets.UTF_8.toString());
+						html.append("<a href=\"wiki/details?file=").append(encodedPath).append("\">").append(fileName)
+								.append("</a>");
+					} else {
+						html.append(fileName).append(" (Link error)");
+						logger.warn("Could not find file path for anchor: {}", anchor);
+					}
+				} else {
+					html.append(content);
+				}
+				lastLevel = level;
+			}
+
+			if (lastLevel != -1) {
+				html.append("</li></ul>".repeat(lastLevel + 1));
+			}
+
+			return html.toString();
+		} catch (IOException e) {
+			logger.error("Failed to read project tree from {}", WIKI_FILE, e);
+			return "<p class='error-message'>Error reading wiki content.</p>";
+		}
+	}
+
+	private static void parseFileDocumentation() {
+		try (InputStream is = WikiService.class.getClassLoader().getResourceAsStream(WIKI_FILE)) {
+			if (is == null)
+				return;
+			List<String> lines = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)).lines()
+					.collect(Collectors.toList());
+
+			Pattern anchorPattern = Pattern.compile("<a name=\"([^\"]+)\"></a>");
+			Pattern pathPattern = Pattern
+					.compile("`C:\\\\Users\\\\techn\\\\eclipse\\\\workspace\\\\TechnikTeam\\\\([^`]+)`");
+
+			String currentAnchor = null;
+			String currentPath = null;
+			StringBuilder currentContent = new StringBuilder();
+			boolean inDocsSection = false;
+
+			for (String line : lines) {
+				if (line.contains("## Part 2: Detailed File Documentation")) {
+					inDocsSection = true;
+					continue;
+				}
+				if (!inDocsSection)
+					continue;
+
+				Matcher anchorMatcher = anchorPattern.matcher(line);
+				Matcher pathMatcher = pathPattern.matcher(line);
+
+				boolean isNewSectionStart = line.startsWith("---") && line.contains("C:\\");
+
+				if (isNewSectionStart) {
+					// Save the previous section before starting a new one
+					if (currentPath != null) {
+						documentationMap.put(currentPath, currentContent.toString().trim());
+					}
+					currentContent = new StringBuilder(); // Reset content
+
+					// Try to find anchor and path in the same combined line concept
+					Matcher combinedAnchorMatcher = Pattern.compile("<a name=\"([^\"]+)\"></a>").matcher(line);
+					Matcher combinedPathMatcher = Pattern
+							.compile("`C:\\\\Users\\\\techn\\\\eclipse\\\\workspace\\\\TechnikTeam\\\\([^`]+)`")
+							.matcher(line);
+
+					if (combinedAnchorMatcher.find() && combinedPathMatcher.find()) {
+						currentAnchor = combinedAnchorMatcher.group(1);
+						currentPath = combinedPathMatcher.group(1).replace("\\", "/");
+						anchorToPathMap.put(currentAnchor, currentPath);
+					} else {
+						currentPath = null; // Invalidate if format is unexpected
+					}
+				} else if (currentPath != null) {
+					currentContent.append(line).append("\n");
+				}
+			}
+			// Add the very last entry after the loop finishes
+			if (currentPath != null && !currentContent.toString().isEmpty()) {
+				documentationMap.put(currentPath, currentContent.toString().trim());
+			}
+
+		} catch (IOException e) {
+			logger.error("Failed to parse file documentation from {}", WIKI_FILE, e);
+		}
+	}
+
+	public String getProjectTreeHtml() {
+		return projectTreeHtml;
+	}
+
+	public String getFileDocumentation(String filePath) {
+		return documentationMap.getOrDefault(filePath,
+				"# Error\n\nDocumentation for the specified file could not be found.");
+	}
+}
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\CalendarApiServlet.java
 ========================================================================
 
@@ -12244,7 +12267,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Singleton
-@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 40, maxRequestSize = 1024 * 1024 * 80)
 public class AdminEventServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminEventServlet.class);
@@ -12760,64 +12782,6 @@ package de.technikteam.servlet.admin;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import de.technikteam.dao.FileDAO;
-import de.technikteam.model.File;
-import de.technikteam.model.FileCategory;
-import de.technikteam.model.User;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-
-@Singleton
-public class AdminFileManagementServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminFileManagementServlet.class);
-	private final FileDAO fileDAO;
-
-	@Inject
-	public AdminFileManagementServlet(FileDAO fileDAO) {
-		this.fileDAO = fileDAO;
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		User user = (User) request.getSession().getAttribute("user");
-		logger.info("Admin file management page requested by user '{}' (Role: {})", user.getUsername(),
-				user.getRoleName());
-
-		// In the admin area, we always want to show all files, so we create a temporary
-		// user object with admin rights to pass to the DAO.
-		User adminProxy = new User();
-		adminProxy.setPermissions(new HashSet<>());
-		adminProxy.getPermissions().add("ACCESS_ADMIN_PANEL");
-
-		Map<String, List<File>> groupedFiles = fileDAO.getAllFilesGroupedByCategory(adminProxy);
-		List<FileCategory> allCategories = fileDAO.getAllCategories();
-
-		request.setAttribute("groupedFiles", groupedFiles);
-		request.setAttribute("allCategories", allCategories);
-
-		logger.debug("Forwarding file and category data to admin_files.jsp.");
-		request.getRequestDispatcher("/views/admin/admin_files.jsp").forward(request, response);
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminFileServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
-import de.technikteam.dao.FileDAO;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.ConfigurationService;
@@ -12834,29 +12798,54 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.UUID;
 
 @Singleton
-@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 20, maxRequestSize = 1024 * 1024 * 50)
-public class AdminFileServlet extends HttpServlet {
+public class AdminFileManagementServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminFileServlet.class);
-
+	private static final Logger logger = LogManager.getLogger(AdminFileManagementServlet.class);
 	private final FileDAO fileDAO;
 	private final ConfigurationService configService;
 	private final AdminLogService adminLogService;
 
 	private static final Set<String> ALLOWED_MIME_TYPES = Set.of("image/jpeg", "image/png", "image/gif",
-			"application/pdf", "text/markdown", "text/plain");
+			"application/pdf", "text/markdown", "text/plain", "application/vnd.oasis.opendocument.text");
 
 	@Inject
-	public AdminFileServlet(FileDAO fileDAO, ConfigurationService configService, AdminLogService adminLogService) {
+	public AdminFileManagementServlet(FileDAO fileDAO, ConfigurationService configService,
+			AdminLogService adminLogService) {
 		this.fileDAO = fileDAO;
 		this.configService = configService;
 		this.adminLogService = adminLogService;
+	}
+
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		User user = (User) request.getSession().getAttribute("user");
+		logger.info("Admin file management page requested by user '{}' (Role: {})", user.getUsername(),
+				user.getRoleName());
+
+		User adminProxy = new User();
+		adminProxy.setPermissions(new HashSet<>());
+		adminProxy.getPermissions().add("ACCESS_ADMIN_PANEL");
+
+		Map<String, List<de.technikteam.model.File>> groupedFiles = fileDAO.getAllFilesGroupedByCategory(adminProxy);
+		List<de.technikteam.model.FileCategory> allCategories = fileDAO.getAllCategories();
+
+		request.setAttribute("groupedFiles", groupedFiles);
+		request.setAttribute("allCategories", allCategories);
+
+		logger.debug("Forwarding file and category data to admin_files.jsp.");
+		request.getRequestDispatcher("/views/admin/admin_files.jsp").forward(request, response);
 	}
 
 	@Override
@@ -12865,23 +12854,41 @@ public class AdminFileServlet extends HttpServlet {
 		HttpSession session = request.getSession();
 		User adminUser = (User) session.getAttribute("user");
 
-		if (!CSRFUtil.isTokenValid(request)) {
+		Map<String, String> params = new HashMap<>();
+		Part filePart = null;
+
+		// Manually parse all parts of the multipart request
+		for (Part part : request.getParts()) {
+			if (part.getSubmittedFileName() == null) {
+				try (Scanner scanner = new Scanner(part.getInputStream(), StandardCharsets.UTF_8.name())) {
+					if (scanner.hasNext()) {
+						params.put(part.getName(), scanner.useDelimiter("\\A").next());
+					}
+				}
+			} else {
+				if ("file".equals(part.getName())) {
+					filePart = part;
+				}
+			}
+		}
+
+		if (!CSRFUtil.isTokenValid(session, params.get("csrfToken"))) {
 			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
 			return;
 		}
 
-		String action = request.getParameter("action");
+		String action = params.get("action");
+
 		if ("delete".equals(action)) {
-			handleDeleteUpload(request, response, adminUser);
+			handleDeleteUpload(request, response, adminUser, params);
 			return;
 		}
 
 		if ("reassign".equals(action)) {
-			handleReassign(request, response, adminUser);
+			handleReassign(request, response, adminUser, params);
 			return;
 		}
 
-		Part filePart = request.getPart("file");
 		if (filePart == null || filePart.getSize() == 0) {
 			session.setAttribute("errorMessage", "Bitte wählen Sie eine Datei zum Hochladen aus.");
 			response.sendRedirect(request.getContextPath() + "/admin/dateien");
@@ -12896,21 +12903,21 @@ public class AdminFileServlet extends HttpServlet {
 		}
 
 		if ("create".equals(action)) {
-			handleCreateUpload(request, response, adminUser, filePart);
+			handleCreateUpload(request, response, adminUser, filePart, params);
 		} else if ("update".equals(action)) {
-			handleUpdateUpload(request, response, adminUser, filePart);
+			handleUpdateUpload(request, response, adminUser, filePart, params);
 		} else {
 			session.setAttribute("errorMessage", "Unbekannte Upload-Aktion.");
 			response.sendRedirect(request.getContextPath() + "/admin/dateien");
 		}
 	}
 
-	private void handleReassign(HttpServletRequest request, HttpServletResponse response, User adminUser)
-			throws IOException {
+	private void handleReassign(HttpServletRequest request, HttpServletResponse response, User adminUser,
+			Map<String, String> params) throws IOException {
 		HttpSession session = request.getSession();
 		try {
-			int fileId = Integer.parseInt(request.getParameter("fileId"));
-			int newCategoryId = Integer.parseInt(request.getParameter("newCategoryId"));
+			int fileId = Integer.parseInt(params.get("fileId"));
+			int newCategoryId = Integer.parseInt(params.get("newCategoryId"));
 
 			de.technikteam.model.File file = fileDAO.getFileById(fileId);
 			if (file == null) {
@@ -12929,11 +12936,11 @@ public class AdminFileServlet extends HttpServlet {
 	}
 
 	private void handleCreateUpload(HttpServletRequest request, HttpServletResponse response, User adminUser,
-			Part filePart) throws IOException {
+			Part filePart, Map<String, String> params) throws IOException {
 		HttpSession session = request.getSession();
 		try {
-			int categoryId = Integer.parseInt(request.getParameter("categoryId"));
-			String requiredRole = request.getParameter("requiredRole");
+			int categoryId = Integer.parseInt(params.get("categoryId"));
+			String requiredRole = params.get("requiredRole");
 			String originalFileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
 			String sanitizedOriginalFileName = originalFileName.replaceAll("[^a-zA-Z0-9.\\-_ ]", "_");
 			String uniqueFileName = UUID.randomUUID().toString() + "-" + sanitizedOriginalFileName;
@@ -12963,10 +12970,240 @@ public class AdminFileServlet extends HttpServlet {
 	}
 
 	private void handleUpdateUpload(HttpServletRequest request, HttpServletResponse response, User adminUser,
-			Part filePart) throws IOException {
+			Part filePart, Map<String, String> params) throws IOException {
 		HttpSession session = request.getSession();
 		try {
-			int fileId = Integer.parseInt(request.getParameter("fileId"));
+			int fileId = Integer.parseInt(params.get("fileId"));
+			de.technikteam.model.File dbFile = fileDAO.getFileById(fileId);
+			if (dbFile == null) {
+				session.setAttribute("errorMessage", "Datei zum Aktualisieren nicht gefunden.");
+				response.sendRedirect(request.getContextPath() + "/admin/dateien");
+				return;
+			}
+
+			File targetFile = new File(configService.getProperty("upload.directory"), dbFile.getFilepath());
+			filePart.write(targetFile.getAbsolutePath());
+
+			if (fileDAO.touchFileRecord(dbFile.getId())) {
+				adminLogService.log(adminUser.getUsername(), "FILE_UPDATE",
+						"Neue Version für Datei '" + dbFile.getFilename() + "' hochgeladen.");
+				session.setAttribute("successMessage", "Neue Version erfolgreich hochgeladen.");
+			} else {
+				session.setAttribute("errorMessage", "DB-Fehler: Datei-Metadaten konnten nicht aktualisiert werden.");
+			}
+		} catch (Exception e) {
+			logger.error("Error during file update upload.", e);
+			session.setAttribute("errorMessage", "Fehler beim Aktualisieren: " + e.getMessage());
+		}
+		response.sendRedirect(request.getContextPath() + "/admin/dateien");
+	}
+
+	private void handleDeleteUpload(HttpServletRequest request, HttpServletResponse response, User adminUser,
+			Map<String, String> params) throws IOException {
+		HttpSession session = request.getSession();
+		try {
+			int fileId = Integer.parseInt(params.get("fileId"));
+			de.technikteam.model.File fileToDelete = fileDAO.getFileById(fileId);
+			if (fileToDelete == null) {
+				session.setAttribute("errorMessage", "Datei zum Löschen nicht gefunden.");
+			} else if (fileDAO.deleteFile(fileId)) {
+				adminLogService.log(adminUser.getUsername(), "FILE_DELETE", "Datei '" + fileToDelete.getFilename()
+						+ "' (ID: " + fileId + ") aus Kategorie '" + fileToDelete.getCategoryName() + "' gelöscht.");
+				session.setAttribute("successMessage", "Datei '" + fileToDelete.getFilename() + "' wurde gelöscht.");
+			} else {
+				session.setAttribute("errorMessage", "Datei konnte nicht gelöscht werden.");
+			}
+		} catch (NumberFormatException e) {
+			session.setAttribute("errorMessage", "Ungültige Datei-ID.");
+		}
+		response.sendRedirect(request.getContextPath() + "/admin/dateien");
+	}
+}
+========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminFileServlet.java
+========================================================================
+
+package de.technikteam.servlet.admin;
+
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+import de.technikteam.dao.FileDAO;
+import de.technikteam.model.User;
+import de.technikteam.service.AdminLogService;
+import de.technikteam.service.ConfigurationService;
+import de.technikteam.util.CSRFUtil;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.Part;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Scanner;
+import java.util.Set;
+import java.util.UUID;
+
+@Singleton
+@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 20, maxRequestSize = 1024 * 1024 * 50)
+public class AdminFileServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(AdminFileServlet.class);
+
+	private final FileDAO fileDAO;
+	private final ConfigurationService configService;
+	private final AdminLogService adminLogService;
+
+	private static final Set<String> ALLOWED_MIME_TYPES = Set.of("image/jpeg", "image/png", "image/gif",
+			"application/pdf", "text/markdown", "text/plain", "application/vnd.oasis.opendocument.text");
+
+	@Inject
+	public AdminFileServlet(FileDAO fileDAO, ConfigurationService configService, AdminLogService adminLogService) {
+		this.fileDAO = fileDAO;
+		this.configService = configService;
+		this.adminLogService = adminLogService;
+	}
+
+	@Override
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		HttpSession session = request.getSession();
+		User adminUser = (User) session.getAttribute("user");
+
+		Map<String, String> params = new HashMap<>();
+		Part filePart = null;
+
+		// Manually parse all parts of the multipart request
+		for (Part part : request.getParts()) {
+			if (part.getSubmittedFileName() == null) {
+				// This is a regular form field
+				try (Scanner scanner = new Scanner(part.getInputStream(), StandardCharsets.UTF_8.name())) {
+					if (scanner.hasNext()) {
+						params.put(part.getName(), scanner.useDelimiter("\\A").next());
+					}
+				}
+			} else {
+				// This is the file part
+				if ("file".equals(part.getName())) {
+					filePart = part;
+				}
+			}
+		}
+
+		if (!CSRFUtil.isTokenValid(session, params.get("csrfToken"))) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
+
+		String action = params.get("action");
+		if ("delete".equals(action)) {
+			// Repopulate request for the handler as it expects request parameters
+			request.setAttribute("fileId", params.get("fileId"));
+			handleDeleteUpload(request, response, adminUser);
+			return;
+		}
+
+		if ("reassign".equals(action)) {
+			// Repopulate for handler
+			request.setAttribute("fileId", params.get("fileId"));
+			request.setAttribute("newCategoryId", params.get("newCategoryId"));
+			handleReassign(request, response, adminUser);
+			return;
+		}
+
+		if (filePart == null || filePart.getSize() == 0) {
+			session.setAttribute("errorMessage", "Bitte wählen Sie eine Datei zum Hochladen aus.");
+			response.sendRedirect(request.getContextPath() + "/admin/dateien");
+			return;
+		}
+
+		String contentType = filePart.getContentType();
+		if (!ALLOWED_MIME_TYPES.contains(contentType)) {
+			session.setAttribute("errorMessage", "Dateityp '" + contentType + "' ist nicht erlaubt.");
+			response.sendRedirect(request.getContextPath() + "/admin/dateien");
+			return;
+		}
+
+		if ("create".equals(action)) {
+			handleCreateUpload(request, response, adminUser, filePart, params);
+		} else if ("update".equals(action)) {
+			handleUpdateUpload(request, response, adminUser, filePart, params);
+		} else {
+			session.setAttribute("errorMessage", "Unbekannte Upload-Aktion.");
+			response.sendRedirect(request.getContextPath() + "/admin/dateien");
+		}
+	}
+
+	private void handleReassign(HttpServletRequest request, HttpServletResponse response, User adminUser)
+			throws IOException {
+		HttpSession session = request.getSession();
+		try {
+			int fileId = Integer.parseInt((String) request.getAttribute("fileId"));
+			int newCategoryId = Integer.parseInt((String) request.getAttribute("newCategoryId"));
+
+			de.technikteam.model.File file = fileDAO.getFileById(fileId);
+			if (file == null) {
+				session.setAttribute("errorMessage", "Datei nicht gefunden.");
+			} else if (fileDAO.reassignFileToCategory(fileId, newCategoryId)) {
+				adminLogService.log(adminUser.getUsername(), "FILE_REASSIGN", "Datei '" + file.getFilename() + "' (ID: "
+						+ fileId + ") wurde in Kategorie ID " + newCategoryId + " verschoben.");
+				session.setAttribute("successMessage", "Datei wurde erfolgreich neu zugeordnet.");
+			} else {
+				session.setAttribute("errorMessage", "Datei konnte nicht neu zugeordnet werden.");
+			}
+		} catch (NumberFormatException e) {
+			session.setAttribute("errorMessage", "Ungültige ID-Angabe.");
+		}
+		response.sendRedirect(request.getContextPath() + "/admin/dateien");
+	}
+
+	private void handleCreateUpload(HttpServletRequest request, HttpServletResponse response, User adminUser,
+			Part filePart, Map<String, String> params) throws IOException {
+		HttpSession session = request.getSession();
+		try {
+			int categoryId = Integer.parseInt(params.get("categoryId"));
+			String requiredRole = params.get("requiredRole");
+			String originalFileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
+			String sanitizedOriginalFileName = originalFileName.replaceAll("[^a-zA-Z0-9.\\-_ ]", "_");
+			String uniqueFileName = UUID.randomUUID().toString() + "-" + sanitizedOriginalFileName;
+			File targetFile = new File(configService.getProperty("upload.directory"), uniqueFileName);
+			filePart.write(targetFile.getAbsolutePath());
+
+			de.technikteam.model.File newDbFile = new de.technikteam.model.File();
+			newDbFile.setFilename(sanitizedOriginalFileName);
+			newDbFile.setFilepath(uniqueFileName);
+			newDbFile.setCategoryId(categoryId);
+			newDbFile.setRequiredRole(requiredRole);
+
+			if (fileDAO.createFile(newDbFile)) {
+				String categoryName = fileDAO.getCategoryNameById(categoryId);
+				adminLogService.log(adminUser.getUsername(), "FILE_UPLOAD", "Datei '" + sanitizedOriginalFileName
+						+ "' in Kategorie '" + categoryName + "' hochgeladen. Sichtbar für: " + requiredRole + ".");
+				session.setAttribute("successMessage", "Datei erfolgreich hochgeladen.");
+			} else {
+				targetFile.delete();
+				session.setAttribute("errorMessage", "DB-Fehler: Datei konnte nicht gespeichert werden.");
+			}
+		} catch (Exception e) {
+			logger.error("Error during file creation upload.", e);
+			session.setAttribute("errorMessage", "Fehler beim Upload: " + e.getMessage());
+		}
+		response.sendRedirect(request.getContextPath() + "/admin/dateien");
+	}
+
+	private void handleUpdateUpload(HttpServletRequest request, HttpServletResponse response, User adminUser,
+			Part filePart, Map<String, String> params) throws IOException {
+		HttpSession session = request.getSession();
+		try {
+			int fileId = Integer.parseInt(params.get("fileId"));
 			de.technikteam.model.File dbFile = fileDAO.getFileById(fileId);
 			if (dbFile == null) {
 				session.setAttribute("errorMessage", "Datei zum Aktualisieren nicht gefunden.");
@@ -12995,7 +13232,7 @@ public class AdminFileServlet extends HttpServlet {
 			throws IOException {
 		HttpSession session = request.getSession();
 		try {
-			int fileId = Integer.parseInt(request.getParameter("fileId"));
+			int fileId = Integer.parseInt((String) request.getAttribute("fileId"));
 			de.technikteam.model.File fileToDelete = fileDAO.getFileById(fileId);
 			if (fileToDelete == null) {
 				session.setAttribute("errorMessage", "Datei zum Löschen nicht gefunden.");
@@ -13010,226 +13247,5 @@ public class AdminFileServlet extends HttpServlet {
 			session.setAttribute("errorMessage", "Ungültige Datei-ID.");
 		}
 		response.sendRedirect(request.getContextPath() + "/admin/dateien");
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminKitServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import com.google.gson.Gson;
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
-import de.technikteam.dao.InventoryKitDAO;
-import de.technikteam.dao.StorageDAO;
-import de.technikteam.model.InventoryKit;
-import de.technikteam.model.InventoryKitItem;
-import de.technikteam.model.StorageItem;
-import de.technikteam.model.User;
-import de.technikteam.service.AdminLogService;
-import de.technikteam.util.CSRFUtil;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.stream.Collectors;
-
-@Singleton
-public class AdminKitServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminKitServlet.class);
-	private final InventoryKitDAO kitDAO;
-	private final StorageDAO storageDAO;
-	private final AdminLogService adminLogService;
-	private final Gson gson = new Gson();
-
-	// A simple DTO for client-side use to avoid sending unnecessary data
-	private static class StorageItemDTO {
-		int id;
-		String name;
-		int availableQuantity;
-
-		StorageItemDTO(StorageItem item) {
-			this.id = item.getId();
-			this.name = item.getName();
-			this.availableQuantity = item.getAvailableQuantity();
-		}
-	}
-
-	@Inject
-	public AdminKitServlet(InventoryKitDAO kitDAO, StorageDAO storageDAO, AdminLogService adminLogService) {
-		this.kitDAO = kitDAO;
-		this.storageDAO = storageDAO;
-		this.adminLogService = adminLogService;
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		String action = req.getParameter("action");
-		if ("getKitItems".equals(action)) {
-			getKitItemsAsJson(req, resp);
-			return;
-		}
-
-		List<InventoryKit> kits = kitDAO.getAllKitsWithItems();
-		List<StorageItem> allItems = storageDAO.getAllItems();
-		List<StorageItemDTO> allItemsDto = allItems.stream().map(StorageItemDTO::new).collect(Collectors.toList());
-
-		req.setAttribute("kits", kits);
-		req.setAttribute("allItems", allItems); // Still needed for pre-populating selects
-		req.setAttribute("allItemsJson", gson.toJson(allItemsDto)); // DTO for JS logic
-		req.getRequestDispatcher("/views/admin/admin_kits.jsp").forward(req, resp);
-	}
-
-	private void getKitItemsAsJson(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		try {
-			int kitId = Integer.parseInt(req.getParameter("id"));
-			List<InventoryKitItem> items = kitDAO.getItemsForKit(kitId);
-			String jsonResponse = gson.toJson(items);
-			resp.setContentType("application/json");
-			resp.setCharacterEncoding("UTF-8");
-			resp.getWriter().write(jsonResponse);
-		} catch (NumberFormatException e) {
-			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid kit ID.");
-		}
-	}
-
-	@Override
-	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		req.setCharacterEncoding("UTF-8");
-		if (!CSRFUtil.isTokenValid(req)) {
-			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
-			return;
-		}
-
-		User adminUser = (User) req.getSession().getAttribute("user");
-		String action = req.getParameter("action");
-		try {
-			switch (action) {
-			case "create":
-				handleCreateKit(req, adminUser);
-				break;
-			case "update":
-				handleUpdateKit(req, adminUser);
-				break;
-			case "delete":
-				handleDeleteKit(req, adminUser);
-				break;
-			case "updateKitItems":
-				handleUpdateKitItems(req, adminUser);
-				break;
-			}
-		} catch (Exception e) {
-			logger.error("Error processing kit action '{}'", action, e);
-			req.getSession().setAttribute("errorMessage", "Ein Fehler ist aufgetreten: " + e.getMessage());
-		}
-		resp.sendRedirect(req.getContextPath() + "/admin/kits");
-	}
-
-	private void handleCreateKit(HttpServletRequest req, User adminUser) {
-		InventoryKit kit = new InventoryKit();
-		kit.setName(req.getParameter("name"));
-		kit.setDescription(req.getParameter("description"));
-		kit.setLocation(req.getParameter("location"));
-		int newId = kitDAO.createKit(kit);
-		if (newId > 0) {
-			adminLogService.log(adminUser.getUsername(), "CREATE_KIT",
-					"Kit '" + kit.getName() + "' (ID: " + newId + ") erstellt.");
-			req.getSession().setAttribute("successMessage", "Kit erfolgreich erstellt.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Kit konnte nicht erstellt werden.");
-		}
-	}
-
-	private void handleUpdateKit(HttpServletRequest req, User adminUser) {
-		InventoryKit kit = new InventoryKit();
-		kit.setId(Integer.parseInt(req.getParameter("id")));
-		kit.setName(req.getParameter("name"));
-		kit.setDescription(req.getParameter("description"));
-		kit.setLocation(req.getParameter("location"));
-		if (kitDAO.updateKit(kit)) {
-			adminLogService.log(adminUser.getUsername(), "UPDATE_KIT",
-					"Kit '" + kit.getName() + "' (ID: " + kit.getId() + ") aktualisiert.");
-			req.getSession().setAttribute("successMessage", "Kit erfolgreich aktualisiert.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Kit konnte nicht aktualisiert werden.");
-		}
-	}
-
-	private void handleDeleteKit(HttpServletRequest req, User adminUser) {
-		int kitId = Integer.parseInt(req.getParameter("id"));
-		InventoryKit kit = kitDAO.getKitById(kitId);
-		if (kitDAO.deleteKit(kitId)) {
-			adminLogService.log(adminUser.getUsername(), "DELETE_KIT",
-					"Kit '" + (kit != null ? kit.getName() : "N/A") + "' (ID: " + kitId + ") gelöscht.");
-			req.getSession().setAttribute("successMessage", "Kit erfolgreich gelöscht.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Kit konnte nicht gelöscht werden.");
-		}
-	}
-
-	private void handleUpdateKitItems(HttpServletRequest req, User adminUser) {
-		int kitId = Integer.parseInt(req.getParameter("kitId"));
-		String[] itemIds = req.getParameterValues("itemIds");
-		String[] quantities = req.getParameterValues("quantities");
-		if (kitDAO.updateKitItems(kitId, itemIds, quantities)) {
-			adminLogService.log(adminUser.getUsername(), "UPDATE_KIT_ITEMS",
-					"Inhalt für Kit ID " + kitId + " aktualisiert.");
-			req.getSession().setAttribute("successMessage", "Kit-Inhalt erfolgreich gespeichert.");
-		} else {
-			req.getSession().setAttribute("errorMessage", "Fehler beim Speichern des Kit-Inhalts.");
-		}
-	}
-}
-========================================================================
-FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminLogServlet.java
-========================================================================
-
-package de.technikteam.servlet.admin;
-
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
-import de.technikteam.dao.AdminLogDAO;
-import de.technikteam.model.AdminLog;
-import de.technikteam.model.User;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.IOException;
-import java.util.List;
-
-@Singleton
-public class AdminLogServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(AdminLogServlet.class);
-	private final AdminLogDAO adminLogDAO;
-
-	@Inject
-	public AdminLogServlet(AdminLogDAO adminLogDAO) {
-		this.adminLogDAO = adminLogDAO;
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		if (adminUser == null) {
-			response.sendRedirect(request.getContextPath() + "/login");
-			return;
-		}
-
-		List<AdminLog> logs = adminLogDAO.getAllLogs();
-		request.setAttribute("logs", logs);
-		request.getRequestDispatcher("/views/admin/admin_log.jsp").forward(request, response);
 	}
 }
