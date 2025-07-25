@@ -19,11 +19,9 @@ public class AdminWikiDetailsServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminWikiDetailsServlet.class);
 
-	private final WikiService wikiService;
-
 	@Inject
-	public AdminWikiDetailsServlet(WikiService wikiService) {
-		this.wikiService = wikiService;
+	public AdminWikiDetailsServlet() {
+		// Constructor is now empty as WikiService is no longer needed for content.
 	}
 
 	@Override
@@ -44,10 +42,28 @@ public class AdminWikiDetailsServlet extends HttpServlet {
 			return;
 		}
 
-		String wikiContent = wikiService.getFileDocumentation(filePath);
+		// Security: Prevent path traversal attacks
+		if (filePath.contains("..")) {
+			logger.error("Path traversal attempt detected in AdminWikiDetailsServlet for file: {}", filePath);
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid file path.");
+			return;
+		}
 
-		request.setAttribute("filePath", filePath);
-		request.setAttribute("wikiContent", wikiContent);
-		request.getRequestDispatcher("/views/admin/admin_wiki_details.jsp").forward(request, response);
+		String jspPath = "/views/public/wiki/" + filePath + ".jsp";
+
+		// Check if the requested JSP file actually exists
+		if (getServletContext().getResource(jspPath) == null) {
+			logger.warn("Requested wiki JSP page does not exist: {}", jspPath);
+			// Optionally, create a placeholder or show a specific "not found" page
+			// For now, we forward to a generic editor with a placeholder
+			request.setAttribute("filePath", filePath);
+			request.setAttribute("wikiContent", "# Documentation Not Found\n\nNo documentation file exists yet for `"
+					+ filePath + "`. You can start creating it here in edit mode.");
+			request.getRequestDispatcher("/views/admin/admin_wiki_details.jsp").forward(request, response);
+		} else {
+			logger.debug("Forwarding to wiki page: {}", jspPath);
+			request.setAttribute("filePath", filePath); // Still needed for the title
+			request.getRequestDispatcher(jspPath).forward(request, response);
+		}
 	}
 }
