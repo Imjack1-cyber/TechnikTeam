@@ -171,6 +171,20 @@
                     <failOnMissingWebXml>false</failOnMissingWebXml>
                 </configuration>
             </plugin>
+            
+            <!-- ADD THIS ENTIRE PLUGIN SECTION -->
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <version>${flyway.version}</version>
+                <configuration>
+                    <url>jdbc:mysql://localhost:3306/technik_team_db</url>
+                    <user>technik_user</user>
+                    <password>X32MYaaD</password>
+                </configuration>
+            </plugin>
+            <!-- END OF NEW PLUGIN SECTION -->
+            
         </plugins>
     </build>
 </project>

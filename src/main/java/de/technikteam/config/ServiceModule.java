@@ -68,6 +68,7 @@ public class ServiceModule extends ServletModule {
 		bind(ReportDAO.class).in(Scopes.SINGLETON);
 		bind(StatisticsDAO.class).in(Scopes.SINGLETON);
 		bind(TodoDAO.class).in(Scopes.SINGLETON);
+		bind(WikiDAO.class).in(Scopes.SINGLETON);
 
 		bind(CreateUserAction.class).in(Scopes.SINGLETON);
 		bind(UpdateUserAction.class).in(Scopes.SINGLETON);
@@ -80,6 +81,7 @@ public class ServiceModule extends ServletModule {
 		bind(UpdateFeedbackOrderAction.class).in(Scopes.SINGLETON);
 		bind(DeleteFeedbackAction.class).in(Scopes.SINGLETON);
 		bind(GetFeedbackDetailsAction.class).in(Scopes.SINGLETON);
+		bind(UpdateWikiAction.class).in(Scopes.SINGLETON);
 
 		// --- Explicitly bind all Servlets as Singletons before serving them ---
 		bind(RootServlet.class).in(Scopes.SINGLETON);

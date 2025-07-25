@@ -269,8 +269,7 @@ public class ServiceModule extends ServletModule {
 
 	@Override
 	protected void configureServlets() {
-		// CORRECTED: Centralize all filter definitions here to guarantee execution
-		// order.
+		// Centralize all filter definitions here to guarantee execution order.
 		bind(CharacterEncodingFilter.class).in(Scopes.SINGLETON);
 		bind(AuthenticationFilter.class).in(Scopes.SINGLETON);
 		bind(AdminFilter.class).in(Scopes.SINGLETON);
@@ -382,6 +381,7 @@ public class ServiceModule extends ServletModule {
 		bind(AdminDefectServlet.class).in(Scopes.SINGLETON);
 		bind(AdminKitServlet.class).in(Scopes.SINGLETON);
 		bind(AdminFileServlet.class).in(Scopes.SINGLETON);
+		bind(AdminFileManagementServlet.class).in(Scopes.SINGLETON);
 		bind(AdminLogServlet.class).in(Scopes.SINGLETON);
 		bind(AdminReportServlet.class).in(Scopes.SINGLETON);
 		bind(AdminSystemServlet.class).in(Scopes.SINGLETON);
@@ -444,7 +444,8 @@ public class ServiceModule extends ServletModule {
 		serve("/admin/lager").with(AdminStorageServlet.class);
 		serve("/admin/defekte").with(AdminDefectServlet.class);
 		serve("/admin/kits").with(AdminKitServlet.class);
-		serve("/admin/dateien").with(AdminFileServlet.class);
+		serve("/admin/dateien").with(AdminFileManagementServlet.class); // Displays the page
+		serve("/admin/dateien/*").with(AdminFileServlet.class); // Handles POST actions
 		serve("/admin/log").with(AdminLogServlet.class);
 		serve("/admin/berichte").with(AdminReportServlet.class);
 		serve("/admin/system").with(AdminSystemServlet.class);
@@ -4739,7 +4740,6 @@ import jakarta.servlet.FilterConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
-import jakarta.servlet.annotation.WebFilter;
 
 /**
  * A crucial utility filter that intercepts all incoming requests (`/*`) to set
@@ -4748,7 +4748,6 @@ import jakarta.servlet.annotation.WebFilter;
  * any content sent in responses is correctly interpreted and rendered by the
  * browser. It should be the first filter in the chain.
  */
-@WebFilter(value = "/*", asyncSupported = true)
 public class CharacterEncodingFilter implements Filter {
 
 	private static final Logger logger = LogManager.getLogger(CharacterEncodingFilter.class);
@@ -8798,8 +8797,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayDeque;
-import java.util.Deque;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -8816,13 +8814,14 @@ public class WikiService {
 	private static final Map<String, String> documentationMap;
 	private static final Map<String, String> anchorToPathMap;
 
+	// Helper record for the two-pass parsing algorithm
+	private record WikiBlockIndex(String path, String anchor, int startLine) {
+	}
+
 	static {
-		// Initialize maps
 		documentationMap = new HashMap<>();
 		anchorToPathMap = new HashMap<>();
-		// Parse documentation first to build the necessary lookup map
 		parseFileDocumentation();
-		// Now parse the tree, which can use the map
 		projectTreeHtml = parseProjectTree();
 	}
 
@@ -8838,10 +8837,78 @@ public class WikiService {
 		return count / 4; // Assumes 4 spaces per indent level
 	}
 
-	private static String parseProjectTree() {
+	private static void parseFileDocumentation() {
 		try (InputStream is = WikiService.class.getClassLoader().getResourceAsStream(WIKI_FILE)) {
 			if (is == null) {
 				logger.error("Could not find {} in classpath resources.", WIKI_FILE);
+				return;
+			}
+			List<String> lines = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)).lines()
+					.collect(Collectors.toList());
+
+			Pattern pathPattern = Pattern.compile(
+					"`?C:[\\\\/]Users[\\\\/]techn[\\\\/]eclipse[\\\\/]workspace[\\\\/]TechnikTeam[\\\\/](.+?)`?$");
+			Pattern anchorPattern = Pattern.compile("<a name=\"([^\"]+)\"></a>");
+
+			boolean inDocsSection = false;
+			List<WikiBlockIndex> blockIndices = new ArrayList<>();
+
+			// --- PASS 1: Index all documentation blocks ---
+			for (int i = 0; i < lines.size(); i++) {
+				String line = lines.get(i);
+				if (line.contains("## Part 2: Detailed File Documentation")) {
+					inDocsSection = true;
+					continue;
+				}
+				if (!inDocsSection)
+					continue;
+
+				Matcher pathMatcher = pathPattern.matcher(line.trim());
+				if (pathMatcher.find() && i + 1 < lines.size()) {
+					String nextLine = lines.get(i + 1);
+					Matcher anchorMatcher = anchorPattern.matcher(nextLine);
+					if (anchorMatcher.find()) {
+						String capturedGroup = pathMatcher.group(1).trim();
+						if (capturedGroup.startsWith("`"))
+							capturedGroup = capturedGroup.substring(1);
+						if (capturedGroup.endsWith("`"))
+							capturedGroup = capturedGroup.substring(0, capturedGroup.length() - 1);
+
+						String path = capturedGroup.replace("\\", "/");
+						String anchor = anchorMatcher.group(1);
+
+						blockIndices.add(new WikiBlockIndex(path, anchor, i + 2)); // Content starts after anchor line
+						anchorToPathMap.put(anchor, path);
+
+						i++; // Skip the anchor line on the next iteration
+					}
+				}
+			}
+
+			// --- PASS 2: Extract content between indexed blocks ---
+			for (int i = 0; i < blockIndices.size(); i++) {
+				WikiBlockIndex currentBlock = blockIndices.get(i);
+				int startLine = currentBlock.startLine();
+				int endLine = (i + 1 < blockIndices.size()) ? blockIndices.get(i + 1).startLine() - 3 : lines.size();
+
+				StringBuilder contentBuilder = new StringBuilder();
+				for (int j = startLine; j < endLine; j++) {
+					String line = lines.get(j);
+					if (line.trim().equals("---"))
+						continue;
+					contentBuilder.append(line).append("\n");
+				}
+				documentationMap.put(currentBlock.path(), contentBuilder.toString().trim());
+			}
+
+		} catch (IOException e) {
+			logger.error("Failed to parse file documentation from {}", WIKI_FILE, e);
+		}
+	}
+
+	private static String parseProjectTree() {
+		try (InputStream is = WikiService.class.getClassLoader().getResourceAsStream(WIKI_FILE)) {
+			if (is == null) {
 				return "<p class='error-message'>Wiki content file not found.</p>";
 			}
 			List<String> lines = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)).lines()
@@ -8877,7 +8944,8 @@ public class WikiService {
 
 				html.append("<li>");
 
-				Pattern linkPattern = Pattern.compile("\\[`([^`]+)`\\]\\(#([^)]+)\\)");
+				// CORRECTED: Made the backticks optional and the capture non-greedy.
+				Pattern linkPattern = Pattern.compile("\\[`?([^`]+?)`?\\]\\(#([^)]+)\\)");
 				Matcher matcher = linkPattern.matcher(content);
 
 				if (matcher.find()) {
@@ -8890,8 +8958,9 @@ public class WikiService {
 						html.append("<a href=\"wiki/details?file=").append(encodedPath).append("\">").append(fileName)
 								.append("</a>");
 					} else {
-						html.append(fileName).append(" (Link error)");
-						logger.warn("Could not find file path for anchor: {}", anchor);
+						// This case should no longer happen for files, but we keep it for non-file list
+						// items.
+						html.append(content.replaceAll("`", ""));
 					}
 				} else {
 					html.append(content);
@@ -8910,76 +8979,14 @@ public class WikiService {
 		}
 	}
 
-	private static void parseFileDocumentation() {
-		try (InputStream is = WikiService.class.getClassLoader().getResourceAsStream(WIKI_FILE)) {
-			if (is == null)
-				return;
-			List<String> lines = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)).lines()
-					.collect(Collectors.toList());
-
-			Pattern anchorPattern = Pattern.compile("<a name=\"([^\"]+)\"></a>");
-			Pattern pathPattern = Pattern
-					.compile("`C:\\\\Users\\\\techn\\\\eclipse\\\\workspace\\\\TechnikTeam\\\\([^`]+)`");
-
-			String currentAnchor = null;
-			String currentPath = null;
-			StringBuilder currentContent = new StringBuilder();
-			boolean inDocsSection = false;
-
-			for (String line : lines) {
-				if (line.contains("## Part 2: Detailed File Documentation")) {
-					inDocsSection = true;
-					continue;
-				}
-				if (!inDocsSection)
-					continue;
-
-				Matcher anchorMatcher = anchorPattern.matcher(line);
-				Matcher pathMatcher = pathPattern.matcher(line);
-
-				boolean isNewSectionStart = line.startsWith("---") && line.contains("C:\\");
-
-				if (isNewSectionStart) {
-					// Save the previous section before starting a new one
-					if (currentPath != null) {
-						documentationMap.put(currentPath, currentContent.toString().trim());
-					}
-					currentContent = new StringBuilder(); // Reset content
-
-					// Try to find anchor and path in the same combined line concept
-					Matcher combinedAnchorMatcher = Pattern.compile("<a name=\"([^\"]+)\"></a>").matcher(line);
-					Matcher combinedPathMatcher = Pattern
-							.compile("`C:\\\\Users\\\\techn\\\\eclipse\\\\workspace\\\\TechnikTeam\\\\([^`]+)`")
-							.matcher(line);
-
-					if (combinedAnchorMatcher.find() && combinedPathMatcher.find()) {
-						currentAnchor = combinedAnchorMatcher.group(1);
-						currentPath = combinedPathMatcher.group(1).replace("\\", "/");
-						anchorToPathMap.put(currentAnchor, currentPath);
-					} else {
-						currentPath = null; // Invalidate if format is unexpected
-					}
-				} else if (currentPath != null) {
-					currentContent.append(line).append("\n");
-				}
-			}
-			// Add the very last entry after the loop finishes
-			if (currentPath != null && !currentContent.toString().isEmpty()) {
-				documentationMap.put(currentPath, currentContent.toString().trim());
-			}
-
-		} catch (IOException e) {
-			logger.error("Failed to parse file documentation from {}", WIKI_FILE, e);
-		}
-	}
-
 	public String getProjectTreeHtml() {
 		return projectTreeHtml;
 	}
 
 	public String getFileDocumentation(String filePath) {
+		// This method is now deprecated as content is served by JSPs.
 		return documentationMap.getOrDefault(filePath,
-				"# Error\n\nDocumentation for the specified file could not be found.");
+				"# Error\n\nDocumentation for this file is managed in its corresponding JSP page.");
 	}
 }
 ========================================================================
@@ -12257,7 +12264,6 @@ import de.technikteam.service.EventService;
 import de.technikteam.service.NotificationService;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -12275,7 +12281,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Singleton
-@MultipartConfig // CORRECTED: Added annotation for robust multipart request handling.
 public class AdminEventServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminEventServlet.class);
@@ -12663,6 +12668,66 @@ public class AdminFeedbackServlet extends HttpServlet {
 	}
 }
 ========================================================================
+FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminFileManagementServlet.java
+========================================================================
+
+package de.technikteam.servlet.admin;
+
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+import de.technikteam.dao.FileDAO;
+import de.technikteam.model.File;
+import de.technikteam.model.FileCategory;
+import de.technikteam.model.User;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+
+@Singleton
+public class AdminFileManagementServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(AdminFileManagementServlet.class);
+	private final FileDAO fileDAO;
+
+	@Inject
+	public AdminFileManagementServlet(FileDAO fileDAO) {
+		this.fileDAO = fileDAO;
+	}
+
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		User user = (User) request.getSession().getAttribute("user");
+		if (user == null) {
+			response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+			return;
+		}
+		logger.info("Admin file management page requested by user '{}' (Role: {})", user.getUsername(),
+				user.getRoleName());
+
+		User adminProxy = new User();
+		adminProxy.setPermissions(new HashSet<>());
+		adminProxy.getPermissions().add("ACCESS_ADMIN_PANEL");
+
+		Map<String, List<File>> groupedFiles = fileDAO.getAllFilesGroupedByCategory(adminProxy);
+		List<FileCategory> allCategories = fileDAO.getAllCategories();
+
+		request.setAttribute("groupedFiles", groupedFiles);
+		request.setAttribute("allCategories", allCategories);
+
+		logger.debug("Forwarding file and category data to admin_files.jsp.");
+		request.getRequestDispatcher("/views/admin/admin_files.jsp").forward(request, response);
+	}
+}
+========================================================================
 FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\servlet\admin\AdminFileServlet.java
 ========================================================================
 
@@ -12688,26 +12753,9 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * A comprehensive servlet for managing all administrative aspects of files and
- * categories. This single servlet acts as the controller for the
- * `/admin/dateien` endpoint.
- * <p>
- * - The {@code doGet} method handles the display of the file management page. -
- * The {@code doPost} method is a router that handles various actions,
- * including: - Multipart file uploads (create, update). - Standard form
- * submissions for managing categories and file metadata (delete, reassign).
- * <p>
- * This servlet's multipart configuration is defined in `web.xml` to ensure
- * compatibility with the Guice-managed servlet lifecycle, which is the key to
- * solving previous issues.
- */
 @Singleton
 @MultipartConfig
 public class AdminFileServlet extends HttpServlet {
@@ -12727,41 +12775,6 @@ public class AdminFileServlet extends HttpServlet {
 		this.adminLogService = adminLogService;
 	}
 
-	/**
-	 * Handles GET requests to display the main file management page. It fetches all
-	 * files and categories for an administrative view.
-	 */
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		User user = (User) request.getSession().getAttribute("user");
-		if (user == null) {
-			response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
-			return;
-		}
-		logger.info("Admin file management page requested by user '{}' (Role: {})", user.getUsername(),
-				user.getRoleName());
-
-		User adminProxy = new User();
-		adminProxy.setPermissions(new HashSet<>());
-		adminProxy.getPermissions().add("ACCESS_ADMIN_PANEL");
-
-		Map<String, List<de.technikteam.model.File>> groupedFiles = fileDAO.getAllFilesGroupedByCategory(adminProxy);
-		List<de.technikteam.model.FileCategory> allCategories = fileDAO.getAllCategories();
-
-		request.setAttribute("groupedFiles", groupedFiles);
-		request.setAttribute("allCategories", allCategories);
-
-		logger.debug("Forwarding file and category data to admin_files.jsp.");
-		request.getRequestDispatcher("/views/admin/admin_files.jsp").forward(request, response);
-	}
-
-	/**
-	 * Handles POST requests for all file and category management actions. With the
-	 * correct web.xml configuration, request.getParameter() now works reliably for
-	 * all form fields, regardless of the request's content type, making the CSRF
-	 * check simple and robust.
-	 */
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
@@ -12774,30 +12787,34 @@ public class AdminFileServlet extends HttpServlet {
 			return;
 		}
 
-		String action = request.getParameter("action");
-		logger.debug("AdminFileServlet processing POST for action: {}", action);
+		String pathInfo = request.getPathInfo();
+		if (pathInfo == null) {
+			pathInfo = "";
+		}
 
-		switch (action) {
-		case "create":
+		logger.debug("AdminFileServlet processing POST for path: {}", pathInfo);
+
+		switch (pathInfo) {
+		case "/create":
 			handleCreateUpload(request, response, adminUser);
 			break;
-		case "update":
+		case "/update":
 			handleUpdateUpload(request, response, adminUser);
 			break;
-		case "delete":
+		case "/delete":
 			handleDelete(request, response, adminUser);
 			break;
-		case "reassign":
+		case "/reassign":
 			handleReassign(request, response, adminUser);
 			break;
-		case "createCategory":
+		case "/createCategory":
 			handleCreateCategory(request, response, adminUser);
 			break;
-		case "deleteCategory":
+		case "/deleteCategory":
 			handleDeleteCategory(request, response, adminUser);
 			break;
 		default:
-			session.setAttribute("errorMessage", "Unbekannte Aktion: " + action);
+			session.setAttribute("errorMessage", "Unbekannte Aktion: " + pathInfo);
 			response.sendRedirect(request.getContextPath() + "/admin/dateien");
 			break;
 		}

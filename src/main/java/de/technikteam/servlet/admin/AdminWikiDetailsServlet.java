@@ -3,7 +3,9 @@ package de.technikteam.servlet.admin;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import de.technikteam.config.Permissions;
+import de.technikteam.dao.WikiDAO;
 import de.technikteam.model.User;
+import de.technikteam.model.WikiEntry;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,9 +19,11 @@ import java.io.IOException;
 public class AdminWikiDetailsServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminWikiDetailsServlet.class);
+	private final WikiDAO wikiDAO;
 
 	@Inject
-	public AdminWikiDetailsServlet() {
+	public AdminWikiDetailsServlet(WikiDAO wikiDAO) {
+		this.wikiDAO = wikiDAO;
 	}
 
 	@Override
@@ -34,28 +38,26 @@ public class AdminWikiDetailsServlet extends HttpServlet {
 			return;
 		}
 
-		String filePath = request.getParameter("file");
-		if (filePath == null || filePath.trim().isEmpty()) {
-			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "File parameter is missing.");
+		String idParam = request.getParameter("id");
+		if (idParam == null || idParam.trim().isEmpty()) {
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "ID parameter is missing.");
 			return;
 		}
 
-		if (filePath.contains("..")) {
-			logger.error("Path traversal attempt detected in AdminWikiDetailsServlet for file: {}", filePath);
-			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid file path.");
-			return;
-		}
+		try {
+			int id = Integer.parseInt(idParam);
+			WikiEntry entry = wikiDAO.getWikiEntryById(id);
 
-		String jspPath = "/views/admin/wiki/" + filePath + ".jsp";
+			if (entry == null) {
+				response.sendError(HttpServletResponse.SC_NOT_FOUND, "Wiki entry not found.");
+				return;
+			}
 
-		if (getServletContext().getResource(jspPath) == null) {
-			logger.warn("Requested wiki JSP page does not exist: {}. Forwarding to template.", jspPath);
-			request.setAttribute("filePath", filePath);
-			request.getRequestDispatcher("/views/admin/wiki/_template.jsp").forward(request, response);
-		} else {
-			logger.debug("Forwarding to wiki page: {}", jspPath);
-			request.setAttribute("filePath", filePath);
-			request.getRequestDispatcher(jspPath).forward(request, response);
+			request.setAttribute("wikiEntry", entry);
+			request.getRequestDispatcher("/views/admin/admin_wiki_details.jsp").forward(request, response);
+
+		} catch (NumberFormatException e) {
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid ID format.");
 		}
 	}
 }

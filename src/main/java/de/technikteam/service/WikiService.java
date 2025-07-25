@@ -1,6 +1,9 @@
 package de.technikteam.service;
 
+import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import de.technikteam.dao.WikiDAO;
+import de.technikteam.model.WikiEntry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -8,9 +11,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,20 +23,26 @@ import java.util.stream.Collectors;
 public class WikiService {
 	private static final Logger logger = LogManager.getLogger(WikiService.class);
 	private static final String WIKI_FILE = "Wiki.md";
+	private final WikiDAO wikiDAO;
 
-	private static final String projectTreeHtml;
-	private static final Map<String, String> documentationMap;
-	private static final Map<String, String> anchorToPathMap;
+	private String projectTreeHtml;
+	private final Map<String, WikiEntry> wikiEntriesByPath = new HashMap<>();
 
-	// Helper record for the two-pass parsing algorithm
-	private record WikiBlockIndex(String path, String anchor, int startLine) {
+	@Inject
+	public WikiService(WikiDAO wikiDAO) {
+		this.wikiDAO = wikiDAO;
+		initialize();
 	}
 
-	static {
-		documentationMap = new HashMap<>();
-		anchorToPathMap = new HashMap<>();
-		parseFileDocumentation();
-		projectTreeHtml = parseProjectTree();
+	private void initialize() {
+		logger.info("Initializing WikiService...");
+		List<WikiEntry> allEntries = wikiDAO.getAllWikiEntries();
+		for (WikiEntry entry : allEntries) {
+			wikiEntriesByPath.put(entry.getFilePath(), entry);
+		}
+		logger.debug("Loaded {} wiki entries from database into cache.", wikiEntriesByPath.size());
+		this.projectTreeHtml = parseProjectTree();
+		logger.info("WikiService initialized successfully. Project tree HTML has been generated.");
 	}
 
 	private static int getIndentLevel(String line) {
@@ -50,82 +57,15 @@ public class WikiService {
 		return count / 4; // Assumes 4 spaces per indent level
 	}
 
-	private static void parseFileDocumentation() {
+	private String parseProjectTree() {
 		try (InputStream is = WikiService.class.getClassLoader().getResourceAsStream(WIKI_FILE)) {
 			if (is == null) {
-				logger.error("Could not find {} in classpath resources.", WIKI_FILE);
-				return;
+				return "<p class='error-message'>Wiki structure file (Wiki.md) not found.</p>";
 			}
 			List<String> lines = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)).lines()
 					.collect(Collectors.toList());
 
-			Pattern pathPattern = Pattern.compile(
-					"`?C:[\\\\/]Users[\\\\/]techn[\\\\/]eclipse[\\\\/]workspace[\\\\/]TechnikTeam[\\\\/](.+?)`?$");
-			Pattern anchorPattern = Pattern.compile("<a name=\"([^\"]+)\"></a>");
-
-			boolean inDocsSection = false;
-			List<WikiBlockIndex> blockIndices = new ArrayList<>();
-
-			// --- PASS 1: Index all documentation blocks ---
-			for (int i = 0; i < lines.size(); i++) {
-				String line = lines.get(i);
-				if (line.contains("## Part 2: Detailed File Documentation")) {
-					inDocsSection = true;
-					continue;
-				}
-				if (!inDocsSection)
-					continue;
-
-				Matcher pathMatcher = pathPattern.matcher(line.trim());
-				if (pathMatcher.find() && i + 1 < lines.size()) {
-					String nextLine = lines.get(i + 1);
-					Matcher anchorMatcher = anchorPattern.matcher(nextLine);
-					if (anchorMatcher.find()) {
-						String capturedGroup = pathMatcher.group(1).trim();
-						if (capturedGroup.startsWith("`"))
-							capturedGroup = capturedGroup.substring(1);
-						if (capturedGroup.endsWith("`"))
-							capturedGroup = capturedGroup.substring(0, capturedGroup.length() - 1);
-
-						String path = capturedGroup.replace("\\", "/");
-						String anchor = anchorMatcher.group(1);
-
-						blockIndices.add(new WikiBlockIndex(path, anchor, i + 2)); // Content starts after anchor line
-						anchorToPathMap.put(anchor, path);
-
-						i++; // Skip the anchor line on the next iteration
-					}
-				}
-			}
-
-			// --- PASS 2: Extract content between indexed blocks ---
-			for (int i = 0; i < blockIndices.size(); i++) {
-				WikiBlockIndex currentBlock = blockIndices.get(i);
-				int startLine = currentBlock.startLine();
-				int endLine = (i + 1 < blockIndices.size()) ? blockIndices.get(i + 1).startLine() - 3 : lines.size();
-
-				StringBuilder contentBuilder = new StringBuilder();
-				for (int j = startLine; j < endLine; j++) {
-					String line = lines.get(j);
-					if (line.trim().equals("---"))
-						continue;
-					contentBuilder.append(line).append("\n");
-				}
-				documentationMap.put(currentBlock.path(), contentBuilder.toString().trim());
-			}
-
-		} catch (IOException e) {
-			logger.error("Failed to parse file documentation from {}", WIKI_FILE, e);
-		}
-	}
-
-	private static String parseProjectTree() {
-		try (InputStream is = WikiService.class.getClassLoader().getResourceAsStream(WIKI_FILE)) {
-			if (is == null) {
-				return "<p class='error-message'>Wiki content file not found.</p>";
-			}
-			List<String> lines = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)).lines()
-					.collect(Collectors.toList());
+			Map<String, String> anchorToPathMap = buildAnchorToPathMap(lines);
 
 			StringBuilder html = new StringBuilder();
 			boolean inTree = false;
@@ -154,11 +94,9 @@ public class WikiService {
 				} else if (lastLevel != -1) {
 					html.append("</li>");
 				}
-
 				html.append("<li>");
 
-				// CORRECTED: Made the backticks optional and the capture non-greedy.
-				Pattern linkPattern = Pattern.compile("\\[`?([^`]+?)`?\\]\\(#([^)]+)\\)");
+				Pattern linkPattern = Pattern.compile("\\[`?([^\\]`]+)`?\\]\\(#([^)]+)\\)");
 				Matcher matcher = linkPattern.matcher(content);
 
 				if (matcher.find()) {
@@ -167,13 +105,17 @@ public class WikiService {
 					String filePath = anchorToPathMap.get(anchor);
 
 					if (filePath != null) {
-						String encodedPath = URLEncoder.encode(filePath, StandardCharsets.UTF_8.toString());
-						html.append("<a href=\"wiki/details?file=").append(encodedPath).append("\">").append(fileName)
-								.append("</a>");
+						WikiEntry entry = wikiEntriesByPath.get(filePath);
+						if (entry != null) {
+							html.append("<a href=\"wiki/details?id=").append(entry.getId()).append("\">")
+									.append(fileName).append("</a>");
+						} else {
+							html.append(fileName).append(" (No Doc)");
+							logger.warn("No database entry found for wiki file path: {}", filePath);
+						}
 					} else {
-						// This case should no longer happen for files, but we keep it for non-file list
-						// items.
-						html.append(content.replaceAll("`", ""));
+						html.append(fileName).append(" (No Path)");
+						logger.warn("No path found for anchor: {}", anchor);
 					}
 				} else {
 					html.append(content);
@@ -188,17 +130,42 @@ public class WikiService {
 			return html.toString();
 		} catch (IOException e) {
 			logger.error("Failed to read project tree from {}", WIKI_FILE, e);
-			return "<p class='error-message'>Error reading wiki content.</p>";
+			return "<p class='error-message'>Error reading wiki structure.</p>";
 		}
+	}
+
+	private Map<String, String> buildAnchorToPathMap(List<String> lines) {
+		Map<String, String> map = new HashMap<>();
+		Pattern pathPattern = Pattern
+				.compile("C:[\\\\/]Users[\\\\/]techn[\\\\/]eclipse[\\\\/]workspace[\\\\/]TechnikTeam[\\\\/](.+)");
+		Pattern anchorPattern = Pattern.compile("<a name=\"([^\"]+)\"></a>");
+		boolean inDocsSection = false;
+
+		for (int i = 0; i < lines.size(); i++) {
+			String line = lines.get(i);
+			if (line.contains("## Part 2: Detailed File Documentation")) {
+				inDocsSection = true;
+				continue;
+			}
+			if (!inDocsSection)
+				continue;
+
+			String cleanedLine = line.trim().replace("`", "");
+			Matcher pathMatcher = pathPattern.matcher(cleanedLine);
+
+			if (pathMatcher.find() && i + 1 < lines.size()) {
+				Matcher anchorMatcher = anchorPattern.matcher(lines.get(i + 1));
+				if (anchorMatcher.find()) {
+					String path = pathMatcher.group(1).replace("\\", "/");
+					String anchor = anchorMatcher.group(1);
+					map.put(anchor, path);
+				}
+			}
+		}
+		return map;
 	}
 
 	public String getProjectTreeHtml() {
 		return projectTreeHtml;
-	}
-
-	public String getFileDocumentation(String filePath) {
-		// This method is now deprecated as content is served by JSPs.
-		return documentationMap.getOrDefault(filePath,
-				"# Error\n\nDocumentation for this file is managed in its corresponding JSP page.");
 	}
 }
