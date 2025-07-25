@@ -172,7 +172,6 @@
                 </configuration>
             </plugin>
             
-            <!-- ADD THIS ENTIRE PLUGIN SECTION -->
             <plugin>
                 <groupId>org.flywaydb</groupId>
                 <artifactId>flyway-maven-plugin</artifactId>
@@ -183,7 +182,6 @@
                     <password>X32MYaaD</password>
                 </configuration>
             </plugin>
-            <!-- END OF NEW PLUGIN SECTION -->
             
         </plugins>
     </build>

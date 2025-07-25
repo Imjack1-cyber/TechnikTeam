@@ -65,8 +65,6 @@ public class WikiService {
 			List<String> lines = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)).lines()
 					.collect(Collectors.toList());
 
-			Map<String, String> anchorToPathMap = buildAnchorToPathMap(lines);
-
 			StringBuilder html = new StringBuilder();
 			boolean inTree = false;
 			int lastLevel = -1;
@@ -76,7 +74,7 @@ public class WikiService {
 					inTree = true;
 					continue;
 				}
-				if (line.contains("## Part 2: Detailed File Documentation")) {
+				if (line.contains("## Part 2: Detailed File Documentation")) { // Stop if legacy file is used
 					break;
 				}
 				if (!inTree || line.trim().isEmpty() || !line.trim().startsWith("-")) {
@@ -96,13 +94,12 @@ public class WikiService {
 				}
 				html.append("<li>");
 
-				Pattern linkPattern = Pattern.compile("\\[`?([^\\]`]+)`?\\]\\(#([^)]+)\\)");
+				Pattern linkPattern = Pattern.compile("\\[`?([^\\]`]+)`?\\]\\(([^)]+)\\)");
 				Matcher matcher = linkPattern.matcher(content);
 
 				if (matcher.find()) {
 					String fileName = matcher.group(1);
-					String anchor = matcher.group(2);
-					String filePath = anchorToPathMap.get(anchor);
+					String filePath = matcher.group(2);
 
 					if (filePath != null) {
 						WikiEntry entry = wikiEntriesByPath.get(filePath);
@@ -115,7 +112,7 @@ public class WikiService {
 						}
 					} else {
 						html.append(fileName).append(" (No Path)");
-						logger.warn("No path found for anchor: {}", anchor);
+						logger.warn("No path found in link for: {}", fileName);
 					}
 				} else {
 					html.append(content);
@@ -132,37 +129,6 @@ public class WikiService {
 			logger.error("Failed to read project tree from {}", WIKI_FILE, e);
 			return "<p class='error-message'>Error reading wiki structure.</p>";
 		}
-	}
-
-	private Map<String, String> buildAnchorToPathMap(List<String> lines) {
-		Map<String, String> map = new HashMap<>();
-		Pattern pathPattern = Pattern
-				.compile("C:[\\\\/]Users[\\\\/]techn[\\\\/]eclipse[\\\\/]workspace[\\\\/]TechnikTeam[\\\\/](.+)");
-		Pattern anchorPattern = Pattern.compile("<a name=\"([^\"]+)\"></a>");
-		boolean inDocsSection = false;
-
-		for (int i = 0; i < lines.size(); i++) {
-			String line = lines.get(i);
-			if (line.contains("## Part 2: Detailed File Documentation")) {
-				inDocsSection = true;
-				continue;
-			}
-			if (!inDocsSection)
-				continue;
-
-			String cleanedLine = line.trim().replace("`", "");
-			Matcher pathMatcher = pathPattern.matcher(cleanedLine);
-
-			if (pathMatcher.find() && i + 1 < lines.size()) {
-				Matcher anchorMatcher = anchorPattern.matcher(lines.get(i + 1));
-				if (anchorMatcher.find()) {
-					String path = pathMatcher.group(1).replace("\\", "/");
-					String anchor = anchorMatcher.group(1);
-					map.put(anchor, path);
-				}
-			}
-		}
-		return map;
 	}
 
 	public String getProjectTreeHtml() {
