@@ -1722,8 +1722,6 @@ fieldset {
 .wiki-layout {
 	display: flex;
 	gap: 1.5rem;
-	/* Calculate height to fill viewport minus header and some padding */
-	height: calc(100vh - var(--header-height) - 150px); 
 	align-items: flex-start;
 }
 .wiki-sidebar {
@@ -1741,7 +1739,8 @@ fieldset {
 .wiki-content-pane {
 	flex-grow: 1;
 	height: 100%;
-	overflow-y: auto;
+    display: flex;
+    flex-direction: column;
 }
 .wiki-tree-container ul {
 	list-style-type: none;
@@ -1788,6 +1787,7 @@ fieldset {
     margin-bottom: 1rem;
     flex-wrap: wrap;
     gap: 1rem;
+    flex-shrink: 0;
 }
 .wiki-content-header h2 {
     margin: 0;
@@ -1798,24 +1798,70 @@ fieldset {
 }
 
 /* =================================================================== */
-/*  16. UTILITY STYLES FOR OVERFLOW                                    */
+/*  16. UTILITY STYLES FOR OVERFLOW & FLEX LAYOUT                      */
 /* =================================================================== */
-.data-table td, .data-table th {
-    /* Allow long strings (like paths or log details) to break */
+
+/* These rules create a flexible layout that fills the viewport height */
+.main-content-wrapper {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+.main-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Fix for flexbox overflow bugs */
+}
+.wiki-layout {
+    flex-grow: 1;
+    min-height: 0; /* Allow child elements to scroll correctly */
+}
+
+/* General word wrapping for tables and code blocks */
+.data-table td, .data-table th, code, pre {
     word-break: break-word;
-    white-space: normal; /* Allow wrapping */
+    white-space: normal;
+}
+pre, code {
+    white-space: pre-wrap;
 }
 
-/* Specifically for the log and requests page to handle long text */
-td pre {
-    white-space: pre-wrap;   /* CSS3 */
-    white-space: -moz-pre-wrap; /* Firefox */
-    white-space: -pre-wrap;     /* Opera <7 */
-    white-space: -o-pre-wrap;   /* Opera 7 */
-    word-wrap: break-word;      /* IE */
+/* =================================================================== */
+/*  17. INLINE WIKI EDITOR STYLES                                      */
+/* =================================================================== */
+.wiki-editor-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
-.data-table pre code {
-	white-space: pre-wrap;
-	word-break: break-all;
+#wiki-content-pane .editor-container {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Allow it to fill the content pane */
+    min-height: 0; /* Critical for scrolling */
+    border: none;
+    padding: 0;
+    box-shadow: none;
+    background: transparent;
+}
+
+#wiki-content-pane #editor {
+    flex-grow: 1;
+    width: 100%;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    background-color: var(--surface-color);
+    font-family: monospace;
+    font-size: 0.9rem;
+    resize: none;
+    overflow-y: auto;
+}
+
+#wiki-content-pane #markdown-preview {
+    flex-grow: 1;
+    overflow-y: auto;
+    min-height: 0;
 }

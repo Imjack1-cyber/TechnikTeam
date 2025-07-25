@@ -140,7 +140,6 @@ public class ServiceModule extends ServletModule {
 		bind(AdminChangeRequestServlet.class).in(Scopes.SINGLETON);
 		bind(AdminFeedbackServlet.class).in(Scopes.SINGLETON);
 		bind(AdminWikiServlet.class).in(Scopes.SINGLETON);
-		bind(AdminWikiDetailsServlet.class).in(Scopes.SINGLETON);
 		bind(AdminDashboardApiServlet.class).in(Scopes.SINGLETON);
 		bind(SystemStatsApiServlet.class).in(Scopes.SINGLETON);
 		bind(CrewFinderApiServlet.class).in(Scopes.SINGLETON);
@@ -205,7 +204,6 @@ public class ServiceModule extends ServletModule {
 		serve("/admin/requests").with(AdminChangeRequestServlet.class);
 		serve("/admin/feedback").with(AdminFeedbackServlet.class);
 		serve("/admin/wiki").with(AdminWikiServlet.class);
-		serve("/admin/wiki/details").with(AdminWikiDetailsServlet.class);
 		serve("/api/admin/dashboard-data").with(AdminDashboardApiServlet.class);
 		serve("/api/admin/system-stats").with(SystemStatsApiServlet.class);
 		serve("/api/admin/crew-finder").with(CrewFinderApiServlet.class);

@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	const addPageForm = document.getElementById('add-wiki-page-form');
 	const addPageCloseBtn = addPageModal.querySelector('.modal-close-btn');
 
+	let debounceTimer;
 
 	if (!treeContainer || !contentPane) return;
 
@@ -29,7 +30,47 @@ document.addEventListener('DOMContentLoaded', () => {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 			body: new URLSearchParams({ wikiId: id, csrfToken })
+		}).then(res => res.json()),
+		updatePage: (id, content) => fetch(`${contextPath}/admin/action/wiki?action=update`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+			body: new URLSearchParams({ wikiId: id, content, csrfToken })
 		}).then(res => res.json())
+	};
+
+	const saveTreeState = () => {
+		const openDirectories = [];
+		treeContainer.querySelectorAll('details[open]').forEach(details => {
+			let path = [];
+			let current = details;
+			while (current && current !== treeContainer) {
+				if (current.tagName === 'LI') {
+					path.unshift(current.dataset.name);
+				}
+				current = current.parentElement;
+			}
+			openDirectories.push(path.join('/'));
+		});
+		sessionStorage.setItem('wikiTreeState', JSON.stringify(openDirectories));
+	};
+
+	const restoreTreeState = () => {
+		const openDirectories = JSON.parse(sessionStorage.getItem('wikiTreeState') || '[]');
+		if (openDirectories.length === 0) return;
+
+		treeContainer.querySelectorAll('details').forEach(details => {
+			let path = [];
+			let current = details;
+			while (current && current !== treeContainer) {
+				if (current.tagName === 'LI') {
+					path.unshift(current.dataset.name);
+				}
+				current = current.parentElement;
+			}
+			if (openDirectories.includes(path.join('/'))) {
+				details.open = true;
+			}
+		});
 	};
 
 	const renderTree = (node, container) => {
@@ -62,16 +103,26 @@ document.addEventListener('DOMContentLoaded', () => {
 				contentPane.innerHTML = `
                     <div class="wiki-content-header">
                         <h2>${entry.filePath}</h2>
-                        <div style="display:flex; gap: 0.5rem;">
-                            <a href="${contextPath}/admin/wiki/details?id=${entry.id}" class="btn btn-secondary btn-small">
-                                <i class="fas fa-edit"></i> Bearbeiten
-                            </a>
+                        <div class="wiki-editor-controls">
+                            <span id="save-status-indicator" class="status-badge" style="display: none;"></span>
+                            <div class="mode-switcher">
+                                <span>View</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="mode-toggle">
+                                    <span class="slider"></span>
+                                </label>
+                                <span>Edit</span>
+                            </div>
                             <button class="btn btn-danger-outline btn-small" id="delete-wiki-page-btn" data-id="${entry.id}" data-path="${entry.filePath}">
                                 <i class="fas fa-trash"></i> Löschen
                             </button>
                         </div>
                     </div>
-                    <div class="markdown-content">${renderedHtml}</div>`;
+                    <div class="editor-container card">
+                        <textarea id="editor" style="display: none;">${entry.content || ''}</textarea>
+                        <div id="markdown-preview" class="markdown-content">${renderedHtml}</div>
+                    </div>`;
+				setupEditor(entry.id);
 			} else {
 				throw new Error(result.message);
 			}
@@ -79,6 +130,56 @@ document.addEventListener('DOMContentLoaded', () => {
 			console.error('Failed to load content:', error);
 			contentPane.innerHTML = `<p class="error-message">Could not load documentation content: ${error.message}</p>`;
 		}
+	};
+
+	const setupEditor = (wikiId) => {
+		const editor = document.getElementById('editor');
+		const preview = document.getElementById('markdown-preview');
+		const toggle = document.getElementById('mode-toggle');
+		const statusIndicator = document.getElementById('save-status-indicator');
+
+		const showStatus = (state, message) => {
+			statusIndicator.style.display = 'inline-block';
+			statusIndicator.className = `status-badge status-${state}`;
+			statusIndicator.textContent = message;
+			if (state !== 'danger' && state !== 'warn') {
+				setTimeout(() => {
+					if (statusIndicator.textContent === message) {
+						statusIndicator.style.display = 'none';
+					}
+				}, 3000);
+			}
+		};
+
+		const autoSave = async () => {
+			showStatus('warn', 'Speichern...');
+			try {
+				const result = await api.updatePage(wikiId, editor.value);
+				if (result.success) {
+					showStatus('ok', 'Gespeichert');
+				} else {
+					throw new Error(result.message);
+				}
+			} catch (error) {
+				console.error("Auto-save failed:", error);
+				showStatus('danger', 'Fehler!');
+			}
+		};
+
+		toggle.addEventListener('change', () => {
+			const isEditMode = toggle.checked;
+			editor.style.display = isEditMode ? 'block' : 'none';
+			preview.style.display = isEditMode ? 'none' : 'block';
+			if (!isEditMode) {
+				preview.innerHTML = marked.parse(editor.value, { sanitize: true });
+			}
+		});
+
+		editor.addEventListener('input', () => {
+			clearTimeout(debounceTimer);
+			showStatus('info', 'Ungespeichert');
+			debounceTimer = setTimeout(autoSave, 1500); // Auto-save 1.5s after user stops typing
+		});
 	};
 
 	// --- Event Delegation for Tree and Content Pane ---
@@ -106,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					if (result.success) {
 						showToast(result.message, 'success');
 						const linkToDelete = treeContainer.querySelector(`a[data-id="${id}"]`);
-						linkToDelete?.parentElement.remove();
+						linkToDelete?.closest('li').remove();
 						contentPane.innerHTML = `<p>Seite gelöscht. Wählen Sie eine andere Seite aus.</p>`;
 					} else {
 						throw new Error(result.message);
@@ -115,6 +216,13 @@ document.addEventListener('DOMContentLoaded', () => {
 					showToast(`Fehler beim Löschen: ${error.message}`, 'danger');
 				}
 			});
+		}
+
+		// Save tree state when a directory is opened/closed
+		const summary = e.target.closest('summary');
+		if (summary) {
+			// Wait a moment for the 'open' attribute to be toggled
+			setTimeout(saveTreeState, 100);
 		}
 	});
 
@@ -142,6 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			.then(treeData => {
 				treeContainer.innerHTML = '';
 				renderTree(treeData, treeContainer);
+				restoreTreeState();
 			})
 			.catch(error => {
 				console.error('Failed to load wiki tree:', error);
