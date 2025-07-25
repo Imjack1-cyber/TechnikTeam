@@ -27,6 +27,7 @@ public class ServiceModule extends ServletModule {
 		bind(SystemInfoService.class).in(Scopes.SINGLETON);
 		bind(AchievementService.class).in(Scopes.SINGLETON);
 		bind(AdminDashboardService.class).in(Scopes.SINGLETON);
+		bind(WikiService.class).in(Scopes.SINGLETON);
 
 		bind(UserDAO.class).in(Scopes.SINGLETON);
 		bind(RoleDAO.class).in(Scopes.SINGLETON);
@@ -123,6 +124,8 @@ public class ServiceModule extends ServletModule {
 		bind(AdminAchievementServlet.class).in(Scopes.SINGLETON);
 		bind(AdminChangeRequestServlet.class).in(Scopes.SINGLETON);
 		bind(AdminFeedbackServlet.class).in(Scopes.SINGLETON);
+		bind(AdminWikiServlet.class).in(Scopes.SINGLETON);
+		bind(AdminWikiDetailsServlet.class).in(Scopes.SINGLETON);
 		bind(AdminDashboardApiServlet.class).in(Scopes.SINGLETON);
 		bind(SystemStatsApiServlet.class).in(Scopes.SINGLETON);
 		bind(CrewFinderApiServlet.class).in(Scopes.SINGLETON);
@@ -185,6 +188,8 @@ public class ServiceModule extends ServletModule {
 		serve("/admin/achievements").with(AdminAchievementServlet.class);
 		serve("/admin/requests").with(AdminChangeRequestServlet.class);
 		serve("/admin/feedback").with(AdminFeedbackServlet.class);
+		serve("/admin/wiki").with(AdminWikiServlet.class);
+		serve("/admin/wiki/details").with(AdminWikiDetailsServlet.class);
 		serve("/api/admin/dashboard-data").with(AdminDashboardApiServlet.class);
 		serve("/api/admin/system-stats").with(SystemStatsApiServlet.class);
 		serve("/api/admin/crew-finder").with(CrewFinderApiServlet.class);
