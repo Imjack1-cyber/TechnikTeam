@@ -180,6 +180,8 @@
                     <url>jdbc:mysql://localhost:3306/technik_team_db</url>
                     <user>technik_user</user>
                     <password>X32MYaaD</password>
+                    <!-- ADD THIS LINE TO ENABLE CLEAN -->
+                    <cleanDisabled>false</cleanDisabled>
                 </configuration>
             </plugin>
             
