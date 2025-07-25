@@ -21,7 +21,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Singleton
-// CORRECTED: Removed @MultipartConfig as no actions handled by this controller process file uploads.
 public class FrontControllerServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(FrontControllerServlet.class);

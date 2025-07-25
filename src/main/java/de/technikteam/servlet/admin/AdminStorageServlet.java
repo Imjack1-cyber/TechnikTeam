@@ -27,7 +27,7 @@ import java.nio.file.Paths;
 import java.util.List;
 
 @Singleton
-@MultipartConfig // CORRECTED: Added annotation for robust multipart request handling.
+@MultipartConfig
 public class AdminStorageServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminStorageServlet.class);

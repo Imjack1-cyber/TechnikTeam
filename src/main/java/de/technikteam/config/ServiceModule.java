@@ -18,8 +18,7 @@ public class ServiceModule extends ServletModule {
 
 	@Override
 	protected void configureServlets() {
-		// CORRECTED: Centralize all filter definitions here to guarantee execution
-		// order.
+		// Centralize all filter definitions here to guarantee execution order.
 		bind(CharacterEncodingFilter.class).in(Scopes.SINGLETON);
 		bind(AuthenticationFilter.class).in(Scopes.SINGLETON);
 		bind(AdminFilter.class).in(Scopes.SINGLETON);

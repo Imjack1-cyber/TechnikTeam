@@ -7180,11 +7180,12 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 
 	<div class="card">
 		<h2>Aktionen</h2>
-		<form
-			action="${pageContext.request.contextPath}/admin/dateien/kategorien/erstellen"
+		<%-- REVERTED: Removed enctype as it's not needed for a non-file-upload form. The new CSRFUtil handles this correctly. --%>
+		<form action="${pageContext.request.contextPath}/admin/dateien"
 			method="post" style="margin-bottom: 2rem;">
 			<input type="hidden" name="csrfToken"
-				value="${sessionScope.csrfToken}">
+				value="${sessionScope.csrfToken}"> <input type="hidden"
+				name="action" value="createCategory">
 			<div class="form-group">
 				<label for="newCategoryName">Neue Kategorie erstellen</label> <input
 					type="text" name="categoryName" id="newCategoryName" required>
@@ -7245,13 +7246,15 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 						<c:out value="${categoryEntry.key}" />
 					</h3>
 					<c:if test="${categoryEntry.key != 'Ohne Kategorie'}">
-						<form
-							action="${pageContext.request.contextPath}/admin/dateien/kategorien/loeschen"
+						<%-- REVERTED: Removed enctype here as well. --%>
+						<form action="${pageContext.request.contextPath}/admin/dateien"
 							method="post" class="js-confirm-form"
 							data-confirm-message="Kategorie '${fn:escapeXml(categoryEntry.key)}' wirklich löschen? Alle Dateien in dieser Kategorie werden der Gruppe 'Ohne Kategorie' zugeordnet.">
 							<input type="hidden" name="csrfToken"
 								value="${sessionScope.csrfToken}"> <input type="hidden"
-								name="categoryId" value="${categoryEntry.value[0].categoryId}">
+								name="action" value="deleteCategory"> <input
+								type="hidden" name="categoryId"
+								value="${categoryEntry.value[0].categoryId}">
 							<button type="submit" class="btn btn-small btn-danger-outline"
 								title="Kategorie löschen">
 								<i class="fas fa-trash"></i>
@@ -7288,8 +7291,7 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\views\admin\a
 									<i class="fas fa-upload"></i>
 								</button>
 								<form action="${pageContext.request.contextPath}/admin/dateien"
-									method="post" class="js-confirm-form"
-									data-confirm-message="Datei '${fn:escapeXml(file.filename)}' wirklich löschen?">
+									method="post" class="js-confirm-form">
 									<input type="hidden" name="csrfToken"
 										value="${sessionScope.csrfToken}"> <input
 										type="hidden" name="action" value="delete"> <input
@@ -11258,10 +11260,10 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\web.x
 		<url-pattern>/*</url-pattern>
 	</filter-mapping>
 
-	<!-- NEW SECTION FOR MULTIPART CONFIGURATION -->
+	<!-- SECTION FOR MULTIPART CONFIGURATION -->
 	<servlet>
-		<servlet-name>de.technikteam.servlet.admin.AdminFileManagementServlet</servlet-name>
-		<servlet-class>de.technikteam.servlet.admin.AdminFileManagementServlet</servlet-class>
+		<servlet-name>de.technikteam.servlet.admin.AdminFileServlet</servlet-name>
+		<servlet-class>de.technikteam.servlet.admin.AdminFileServlet</servlet-class>
 		<multipart-config>
 			<max-file-size>20971520</max-file-size> <!-- 20MB -->
 			<max-request-size>52428800</max-request-size> <!-- 50MB -->
@@ -11295,7 +11297,7 @@ FILE: C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\webapp\WEB-INF\web.x
 			<file-size-threshold>1048576</file-size-threshold> <!-- 1MB -->
 		</multipart-config>
 	</servlet>
-	<!-- END NEW SECTION -->
+	<!-- END SECTION -->
 
 	<session-config>
 		<session-timeout>30</session-timeout>

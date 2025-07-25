@@ -11,7 +11,6 @@ import jakarta.servlet.FilterConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
-import jakarta.servlet.annotation.WebFilter;
 
 /**
  * A crucial utility filter that intercepts all incoming requests (`/*`) to set
@@ -20,7 +19,6 @@ import jakarta.servlet.annotation.WebFilter;
  * any content sent in responses is correctly interpreted and rendered by the
  * browser. It should be the first filter in the chain.
  */
-@WebFilter(value = "/*", asyncSupported = true)
 public class CharacterEncodingFilter implements Filter {
 
 	private static final Logger logger = LogManager.getLogger(CharacterEncodingFilter.class);

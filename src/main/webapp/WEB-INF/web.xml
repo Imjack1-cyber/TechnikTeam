@@ -30,8 +30,6 @@
 	</filter-mapping>
 
 	<!-- SECTION FOR MULTIPART CONFIGURATION -->
-	<!-- CORRECTED AND FINAL: Added the missing configuration for AdminFileServlet. -->
-	<!-- This is the definitive fix that tells the container to enable multipart processing for this servlet. -->
 	<servlet>
 		<servlet-name>de.technikteam.servlet.admin.AdminFileServlet</servlet-name>
 		<servlet-class>de.technikteam.servlet.admin.AdminFileServlet</servlet-class>
