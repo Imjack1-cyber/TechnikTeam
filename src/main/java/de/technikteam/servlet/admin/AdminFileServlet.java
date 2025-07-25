@@ -26,9 +26,19 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * A comprehensive servlet for managing all administrative aspects of files and categories.
+ * This single servlet acts as the controller for the `/admin/dateien` endpoint.
+ * <p>
+ * - The {@code doGet} method handles the display of the file management page.
+ * - The {@code doPost} method is a router that handles various actions, including:
+ *   - Multipart file uploads (create, update).
+ *   - Standard form submissions for managing categories and file metadata (delete, reassign).
+ * <p>
+ * This servlet's multipart configuration is defined in `web.xml` to ensure compatibility
+ * with the Guice-managed servlet lifecycle.
+ */
 @Singleton
-// This annotation works in tandem with the web.xml <servlet> definition,
-// ensuring the container is correctly configured to handle all request types.
 @MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 20, maxRequestSize = 1024 * 1024 * 50)
 public class AdminFileServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
@@ -47,19 +57,25 @@ public class AdminFileServlet extends HttpServlet {
         this.adminLogService = adminLogService;
     }
 
+    /**
+     * Handles GET requests to display the main file management page.
+     * It fetches all files and categories for an administrative view.
+     */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         User user = (User) request.getSession().getAttribute("user");
         if (user == null) {
-            // Add a defensive check, even though the filter should prevent this.
+            // Defensive check; the AdminFilter should prevent this from being reached.
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
         logger.info("Admin file management page requested by user '{}' (Role: {})", user.getUsername(),
                 user.getRoleName());
 
-        // Use a proxy admin user to ensure the DAO fetches all files for the admin view
+        // To ensure the DAO returns all files (including admin-only ones), we create a
+        // temporary "proxy" user with master admin rights. This allows us to reuse the
+        // role-aware DAO method without duplicating logic.
         User adminProxy = new User();
         adminProxy.setPermissions(new HashSet<>());
         adminProxy.getPermissions().add("ACCESS_ADMIN_PANEL");
@@ -74,6 +90,11 @@ public class AdminFileServlet extends HttpServlet {
         request.getRequestDispatcher("/views/admin/admin_files.jsp").forward(request, response);
     }
 
+    /**
+     * Handles POST requests for all file and category management actions.
+     * It validates the CSRF token and then routes the request to the appropriate handler method
+     * based on the 'action' parameter.
+     */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -81,10 +102,9 @@ public class AdminFileServlet extends HttpServlet {
         HttpSession session = request.getSession();
         User adminUser = (User) session.getAttribute("user");
 
-        // CORRECTED AND FINAL: Because web.xml correctly configures this servlet for multipart,
-        // the container now ensures request.getParameter() works for all form fields,
-        // regardless of whether the request is multipart or urlencoded. This is the simplest,
-        // most robust way to handle the CSRF check.
+        // With the multipart configuration correctly defined in web.xml, the servlet container
+        // ensures request.getParameter() works for all form fields, regardless of the request's
+        // content type. This simplifies the logic and makes the CSRF check robust.
         if (!CSRFUtil.isTokenValid(request)) {
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
             return;
@@ -118,10 +138,10 @@ public class AdminFileServlet extends HttpServlet {
                 break;
         }
     }
-    
-    // All handler methods below now correctly and reliably use request.getParameter() and request.getPart()
-    // because the container configuration is correct.
 
+    /**
+     * Handles the creation of a new file, including the physical upload and database record insertion.
+     */
     private void handleCreateUpload(HttpServletRequest request, HttpServletResponse response, User adminUser) throws IOException, ServletException {
         HttpSession session = request.getSession();
         Part filePart = request.getPart("file");
@@ -140,28 +160,34 @@ public class AdminFileServlet extends HttpServlet {
         }
 
         try {
+            // 1. Extract parameters
             int categoryId = Integer.parseInt(request.getParameter("categoryId"));
             String requiredRole = request.getParameter("requiredRole");
             String originalFileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
+            
+            // 2. Sanitize and create a unique filename to prevent collisions and path issues
             String sanitizedOriginalFileName = originalFileName.replaceAll("[^a-zA-Z0-9.\\-_ ]", "_");
             String uniqueFileName = UUID.randomUUID().toString() + "-" + sanitizedOriginalFileName;
             File targetFile = new File(configService.getProperty("upload.directory"), uniqueFileName);
             
+            // 3. Write the file to the disk
             filePart.write(targetFile.getAbsolutePath());
 
+            // 4. Create the database record
             de.technikteam.model.File newDbFile = new de.technikteam.model.File();
             newDbFile.setFilename(sanitizedOriginalFileName);
             newDbFile.setFilepath(uniqueFileName);
             newDbFile.setCategoryId(categoryId);
             newDbFile.setRequiredRole(requiredRole);
 
+            // 5. Save record and provide feedback
             if (fileDAO.createFile(newDbFile)) {
                 String categoryName = fileDAO.getCategoryNameById(categoryId);
                 adminLogService.log(adminUser.getUsername(), "FILE_UPLOAD", "Datei '" + sanitizedOriginalFileName
                         + "' in Kategorie '" + categoryName + "' hochgeladen. Sichtbar für: " + requiredRole + ".");
                 session.setAttribute("successMessage", "Datei erfolgreich hochgeladen.");
             } else {
-                targetFile.delete();
+                targetFile.delete(); // Clean up orphaned file if DB insert fails
                 session.setAttribute("errorMessage", "DB-Fehler: Datei konnte nicht gespeichert werden.");
             }
         } catch (Exception e) {
@@ -171,6 +197,9 @@ public class AdminFileServlet extends HttpServlet {
         response.sendRedirect(request.getContextPath() + "/admin/dateien");
     }
 
+    /**
+     * Handles updating an existing file by overwriting the physical file and updating the timestamp.
+     */
     private void handleUpdateUpload(HttpServletRequest request, HttpServletResponse response, User adminUser) throws IOException, ServletException {
         HttpSession session = request.getSession();
         Part filePart = request.getPart("file");
@@ -190,9 +219,11 @@ public class AdminFileServlet extends HttpServlet {
                 return;
             }
 
+            // Overwrite the existing physical file
             File targetFile = new File(configService.getProperty("upload.directory"), dbFile.getFilepath());
             filePart.write(targetFile.getAbsolutePath());
 
+            // Update the timestamp in the database
             if (fileDAO.touchFileRecord(dbFile.getId())) {
                 adminLogService.log(adminUser.getUsername(), "FILE_UPDATE",
                         "Neue Version für Datei '" + dbFile.getFilename() + "' hochgeladen.");
@@ -207,6 +238,9 @@ public class AdminFileServlet extends HttpServlet {
         response.sendRedirect(request.getContextPath() + "/admin/dateien");
     }
     
+    /**
+     * Handles the deletion of a file, including its database record and physical file.
+     */
     private void handleDelete(HttpServletRequest request, HttpServletResponse response, User adminUser) throws IOException {
         HttpSession session = request.getSession();
         try {
@@ -227,6 +261,9 @@ public class AdminFileServlet extends HttpServlet {
         response.sendRedirect(request.getContextPath() + "/admin/dateien");
     }
 
+    /**
+     * Handles reassigning a file to a different category.
+     */
     private void handleReassign(HttpServletRequest request, HttpServletResponse response, User adminUser) throws IOException {
         HttpSession session = request.getSession();
         try {
@@ -249,6 +286,9 @@ public class AdminFileServlet extends HttpServlet {
         response.sendRedirect(request.getContextPath() + "/admin/dateien");
     }
     
+    /**
+     * Handles the creation of a new file category.
+     */
     private void handleCreateCategory(HttpServletRequest request, HttpServletResponse response, User adminUser)
 			throws IOException {
 		String categoryName = request.getParameter("categoryName");
@@ -266,6 +306,9 @@ public class AdminFileServlet extends HttpServlet {
 		response.sendRedirect(request.getContextPath() + "/admin/dateien");
 	}
     
+    /**
+     * Handles the deletion of a file category. Files within the category are reassigned to 'Uncategorized'.
+     */
     private void handleDeleteCategory(HttpServletRequest request, HttpServletResponse response, User adminUser)
 			throws IOException {
         HttpSession session = request.getSession();

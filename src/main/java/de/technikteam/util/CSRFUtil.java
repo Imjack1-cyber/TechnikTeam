@@ -41,7 +41,7 @@ public final class CSRFUtil {
 	 * Validates the CSRF token from a request parameter against the one stored in
 	 * the session. This method is intended for standard
 	 * 'application/x-www-form-urlencoded' requests. For multipart requests, the
-	 * token must be extracted manually first.
+	 * token must be extracted manually first by the servlet.
 	 *
 	 * @param request The HttpServletRequest containing the token.
 	 * @return true if the token is valid and matches the session token, false
