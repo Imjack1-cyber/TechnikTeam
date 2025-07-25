@@ -50,78 +50,6 @@ public class WikiService {
 		return count / 4; // Assumes 4 spaces per indent level
 	}
 
-	private static String parseProjectTree() {
-		try (InputStream is = WikiService.class.getClassLoader().getResourceAsStream(WIKI_FILE)) {
-			if (is == null) {
-				logger.error("Could not find {} in classpath resources.", WIKI_FILE);
-				return "<p class='error-message'>Wiki content file not found.</p>";
-			}
-			List<String> lines = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)).lines()
-					.collect(Collectors.toList());
-
-			StringBuilder html = new StringBuilder();
-			boolean inTree = false;
-			int lastLevel = -1;
-
-			for (String line : lines) {
-				if (line.contains("## Part 1: Project Tree")) {
-					inTree = true;
-					continue;
-				}
-				if (line.contains("## Part 2: Detailed File Documentation")) {
-					break;
-				}
-				if (!inTree || line.trim().isEmpty() || !line.trim().startsWith("-")) {
-					continue;
-				}
-
-				int level = getIndentLevel(line);
-				String content = line.trim().substring(1).trim();
-
-				if (level > lastLevel) {
-					html.append("<ul>");
-				} else if (level < lastLevel) {
-					html.append("</li></ul>".repeat(lastLevel - level));
-					html.append("</li>");
-				} else if (lastLevel != -1) {
-					html.append("</li>");
-				}
-
-				html.append("<li>");
-
-				Pattern linkPattern = Pattern.compile("\\[`([^`]+)`\\]\\(#([^)]+)\\)");
-				Matcher matcher = linkPattern.matcher(content);
-
-				if (matcher.find()) {
-					String fileName = matcher.group(1);
-					String anchor = matcher.group(2);
-					String filePath = anchorToPathMap.get(anchor);
-
-					if (filePath != null) {
-						String encodedPath = URLEncoder.encode(filePath, StandardCharsets.UTF_8.toString());
-						html.append("<a href=\"wiki/details?file=").append(encodedPath).append("\">").append(fileName)
-								.append("</a>");
-					} else {
-						html.append(fileName).append(" (Link error)");
-						// This warning is now expected for non-file entries in the tree
-					}
-				} else {
-					html.append(content);
-				}
-				lastLevel = level;
-			}
-
-			if (lastLevel != -1) {
-				html.append("</li></ul>".repeat(lastLevel + 1));
-			}
-
-			return html.toString();
-		} catch (IOException e) {
-			logger.error("Failed to read project tree from {}", WIKI_FILE, e);
-			return "<p class='error-message'>Error reading wiki content.</p>";
-		}
-	}
-
 	private static void parseFileDocumentation() {
 		try (InputStream is = WikiService.class.getClassLoader().getResourceAsStream(WIKI_FILE)) {
 			if (is == null) {
@@ -131,8 +59,8 @@ public class WikiService {
 			List<String> lines = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)).lines()
 					.collect(Collectors.toList());
 
-			Pattern pathPattern = Pattern
-					.compile("`?C:\\\\Users\\\\techn\\\\eclipse\\\\workspace\\\\TechnikTeam\\\\(.+?)`?$");
+			Pattern pathPattern = Pattern.compile(
+					"`?C:[\\\\/]Users[\\\\/]techn[\\\\/]eclipse[\\\\/]workspace[\\\\/]TechnikTeam[\\\\/](.+?)`?$");
 			Pattern anchorPattern = Pattern.compile("<a name=\"([^\"]+)\"></a>");
 
 			boolean inDocsSection = false;
@@ -179,7 +107,6 @@ public class WikiService {
 				StringBuilder contentBuilder = new StringBuilder();
 				for (int j = startLine; j < endLine; j++) {
 					String line = lines.get(j);
-					// Skip any horizontal rules that might have been block separators
 					if (line.trim().equals("---"))
 						continue;
 					contentBuilder.append(line).append("\n");
@@ -192,12 +119,86 @@ public class WikiService {
 		}
 	}
 
+	private static String parseProjectTree() {
+		try (InputStream is = WikiService.class.getClassLoader().getResourceAsStream(WIKI_FILE)) {
+			if (is == null) {
+				return "<p class='error-message'>Wiki content file not found.</p>";
+			}
+			List<String> lines = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)).lines()
+					.collect(Collectors.toList());
+
+			StringBuilder html = new StringBuilder();
+			boolean inTree = false;
+			int lastLevel = -1;
+
+			for (String line : lines) {
+				if (line.contains("## Part 1: Project Tree")) {
+					inTree = true;
+					continue;
+				}
+				if (line.contains("## Part 2: Detailed File Documentation")) {
+					break;
+				}
+				if (!inTree || line.trim().isEmpty() || !line.trim().startsWith("-")) {
+					continue;
+				}
+
+				int level = getIndentLevel(line);
+				String content = line.trim().substring(1).trim();
+
+				if (level > lastLevel) {
+					html.append("<ul>");
+				} else if (level < lastLevel) {
+					html.append("</li></ul>".repeat(lastLevel - level));
+					html.append("</li>");
+				} else if (lastLevel != -1) {
+					html.append("</li>");
+				}
+
+				html.append("<li>");
+
+				// CORRECTED: Made the backticks optional and the capture non-greedy.
+				Pattern linkPattern = Pattern.compile("\\[`?([^`]+?)`?\\]\\(#([^)]+)\\)");
+				Matcher matcher = linkPattern.matcher(content);
+
+				if (matcher.find()) {
+					String fileName = matcher.group(1);
+					String anchor = matcher.group(2);
+					String filePath = anchorToPathMap.get(anchor);
+
+					if (filePath != null) {
+						String encodedPath = URLEncoder.encode(filePath, StandardCharsets.UTF_8.toString());
+						html.append("<a href=\"wiki/details?file=").append(encodedPath).append("\">").append(fileName)
+								.append("</a>");
+					} else {
+						// This case should no longer happen for files, but we keep it for non-file list
+						// items.
+						html.append(content.replaceAll("`", ""));
+					}
+				} else {
+					html.append(content);
+				}
+				lastLevel = level;
+			}
+
+			if (lastLevel != -1) {
+				html.append("</li></ul>".repeat(lastLevel + 1));
+			}
+
+			return html.toString();
+		} catch (IOException e) {
+			logger.error("Failed to read project tree from {}", WIKI_FILE, e);
+			return "<p class='error-message'>Error reading wiki content.</p>";
+		}
+	}
+
 	public String getProjectTreeHtml() {
 		return projectTreeHtml;
 	}
 
 	public String getFileDocumentation(String filePath) {
+		// This method is now deprecated as content is served by JSPs.
 		return documentationMap.getOrDefault(filePath,
-				"# Error\n\nDocumentation for the specified file could not be found.");
+				"# Error\n\nDocumentation for this file is managed in its corresponding JSP page.");
 	}
 }

@@ -4,7 +4,6 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import de.technikteam.config.Permissions;
 import de.technikteam.model.User;
-import de.technikteam.service.WikiService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,7 +20,6 @@ public class AdminWikiDetailsServlet extends HttpServlet {
 
 	@Inject
 	public AdminWikiDetailsServlet() {
-		// Constructor is now empty as WikiService is no longer needed for content.
 	}
 
 	@Override
@@ -42,27 +40,21 @@ public class AdminWikiDetailsServlet extends HttpServlet {
 			return;
 		}
 
-		// Security: Prevent path traversal attacks
 		if (filePath.contains("..")) {
 			logger.error("Path traversal attempt detected in AdminWikiDetailsServlet for file: {}", filePath);
 			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid file path.");
 			return;
 		}
 
-		String jspPath = "/views/public/wiki/" + filePath + ".jsp";
+		String jspPath = "/views/admin/wiki/" + filePath + ".jsp";
 
-		// Check if the requested JSP file actually exists
 		if (getServletContext().getResource(jspPath) == null) {
-			logger.warn("Requested wiki JSP page does not exist: {}", jspPath);
-			// Optionally, create a placeholder or show a specific "not found" page
-			// For now, we forward to a generic editor with a placeholder
+			logger.warn("Requested wiki JSP page does not exist: {}. Forwarding to template.", jspPath);
 			request.setAttribute("filePath", filePath);
-			request.setAttribute("wikiContent", "# Documentation Not Found\n\nNo documentation file exists yet for `"
-					+ filePath + "`. You can start creating it here in edit mode.");
-			request.getRequestDispatcher("/views/admin/admin_wiki_details.jsp").forward(request, response);
+			request.getRequestDispatcher("/views/admin/wiki/_template.jsp").forward(request, response);
 		} else {
 			logger.debug("Forwarding to wiki page: {}", jspPath);
-			request.setAttribute("filePath", filePath); // Still needed for the title
+			request.setAttribute("filePath", filePath);
 			request.getRequestDispatcher(jspPath).forward(request, response);
 		}
 	}
