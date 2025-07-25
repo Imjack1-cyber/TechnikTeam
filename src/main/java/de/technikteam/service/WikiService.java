@@ -10,6 +10,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,10 @@ public class WikiService {
 	private static final String projectTreeHtml;
 	private static final Map<String, String> documentationMap;
 	private static final Map<String, String> anchorToPathMap;
+
+	// Helper record for the two-pass parsing algorithm
+	private record WikiBlockIndex(String path, String anchor, int startLine) {
+	}
 
 	static {
 		documentationMap = new HashMap<>();
@@ -98,7 +103,7 @@ public class WikiService {
 								.append("</a>");
 					} else {
 						html.append(fileName).append(" (Link error)");
-						logger.warn("Could not find file path for anchor: {}", anchor);
+						// This warning is now expected for non-file entries in the tree
 					}
 				} else {
 					html.append(content);
@@ -127,75 +132,59 @@ public class WikiService {
 					.collect(Collectors.toList());
 
 			Pattern pathPattern = Pattern
-					.compile("C:\\\\Users\\\\techn\\\\eclipse\\\\workspace\\\\TechnikTeam\\\\(.+)");
+					.compile("`?C:\\\\Users\\\\techn\\\\eclipse\\\\workspace\\\\TechnikTeam\\\\(.+?)`?$");
 			Pattern anchorPattern = Pattern.compile("<a name=\"([^\"]+)\"></a>");
 
-			String currentPath = null;
-			StringBuilder currentContent = new StringBuilder();
 			boolean inDocsSection = false;
+			List<WikiBlockIndex> blockIndices = new ArrayList<>();
 
+			// --- PASS 1: Index all documentation blocks ---
 			for (int i = 0; i < lines.size(); i++) {
 				String line = lines.get(i);
-
 				if (line.contains("## Part 2: Detailed File Documentation")) {
 					inDocsSection = true;
 					continue;
 				}
-				if (!inDocsSection) {
+				if (!inDocsSection)
 					continue;
-				}
 
 				Matcher pathMatcher = pathPattern.matcher(line.trim());
-
 				if (pathMatcher.find() && i + 1 < lines.size()) {
-					Matcher anchorMatcher = null;
-					int advanceBy = 0;
-
-					if (i + 1 < lines.size()) {
-						anchorMatcher = anchorPattern.matcher(lines.get(i + 1));
-						if (anchorMatcher.find()) {
-							advanceBy = 1;
-						}
-					}
-
-					if (advanceBy == 0 && i + 2 < lines.size()) {
-						anchorMatcher = anchorPattern.matcher(lines.get(i + 2));
-						if (anchorMatcher.find()) {
-							advanceBy = 2;
-						}
-					}
-
-					if (anchorMatcher != null && advanceBy > 0) {
-						if (currentPath != null && currentContent.length() > 0) {
-							documentationMap.put(currentPath, currentContent.toString().trim());
-						}
-
-						currentContent.setLength(0);
-
+					String nextLine = lines.get(i + 1);
+					Matcher anchorMatcher = anchorPattern.matcher(nextLine);
+					if (anchorMatcher.find()) {
 						String capturedGroup = pathMatcher.group(1).trim();
-						if (capturedGroup.startsWith("`")) {
+						if (capturedGroup.startsWith("`"))
 							capturedGroup = capturedGroup.substring(1);
-						}
-						if (capturedGroup.endsWith("`")) {
+						if (capturedGroup.endsWith("`"))
 							capturedGroup = capturedGroup.substring(0, capturedGroup.length() - 1);
-						}
 
-						currentPath = capturedGroup.replace("\\", "/");
-						String currentAnchor = anchorMatcher.group(1);
-						anchorToPathMap.put(currentAnchor, currentPath);
+						String path = capturedGroup.replace("\\", "/");
+						String anchor = anchorMatcher.group(1);
 
-						i += advanceBy;
-						continue;
+						blockIndices.add(new WikiBlockIndex(path, anchor, i + 2)); // Content starts after anchor line
+						anchorToPathMap.put(anchor, path);
+
+						i++; // Skip the anchor line on the next iteration
 					}
-				}
-
-				if (currentPath != null && !line.trim().equals("---")) {
-					currentContent.append(line).append("\n");
 				}
 			}
 
-			if (currentPath != null && currentContent.length() > 0) {
-				documentationMap.put(currentPath, currentContent.toString().trim());
+			// --- PASS 2: Extract content between indexed blocks ---
+			for (int i = 0; i < blockIndices.size(); i++) {
+				WikiBlockIndex currentBlock = blockIndices.get(i);
+				int startLine = currentBlock.startLine();
+				int endLine = (i + 1 < blockIndices.size()) ? blockIndices.get(i + 1).startLine() - 3 : lines.size();
+
+				StringBuilder contentBuilder = new StringBuilder();
+				for (int j = startLine; j < endLine; j++) {
+					String line = lines.get(j);
+					// Skip any horizontal rules that might have been block separators
+					if (line.trim().equals("---"))
+						continue;
+					contentBuilder.append(line).append("\n");
+				}
+				documentationMap.put(currentBlock.path(), contentBuilder.toString().trim());
 			}
 
 		} catch (IOException e) {
