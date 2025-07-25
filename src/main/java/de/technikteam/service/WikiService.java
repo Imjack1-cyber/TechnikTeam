@@ -125,18 +125,17 @@ public class WikiService {
 			}
 			List<String> lines = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)).lines()
 					.collect(Collectors.toList());
-
-			Pattern pathPattern = Pattern
-					.compile("`?C:\\\\Users\\\\techn\\\\eclipse\\\\workspace\\\\TechnikTeam\\\\(.+?)`?$");
+	
+			Pattern pathPattern = Pattern.compile("`?C:\\\\Users\\\\techn\\\\eclipse\\\\workspace\\\\TechnikTeam\\\\(.+?)`?$");
 			Pattern anchorPattern = Pattern.compile("<a name=\"([^\"]+)\"></a>");
-
+	
 			String currentPath = null;
 			StringBuilder currentContent = new StringBuilder();
 			boolean inDocsSection = false;
-
+	
 			for (int i = 0; i < lines.size(); i++) {
 				String line = lines.get(i);
-
+	
 				if (line.contains("## Part 2: Detailed File Documentation")) {
 					inDocsSection = true;
 					continue;
@@ -144,20 +143,20 @@ public class WikiService {
 				if (!inDocsSection) {
 					continue;
 				}
-
+	
 				Matcher pathMatcher = pathPattern.matcher(line.trim());
-
+	
 				if (pathMatcher.find() && i + 1 < lines.size()) {
 					Matcher anchorMatcher = null;
 					int advanceBy = 0;
-
+	
 					if (i + 1 < lines.size()) {
 						anchorMatcher = anchorPattern.matcher(lines.get(i + 1));
 						if (anchorMatcher.find()) {
 							advanceBy = 1;
 						}
 					}
-
+					
 					if (advanceBy == 0 && i + 2 < lines.size()) {
 						anchorMatcher = anchorPattern.matcher(lines.get(i + 2));
 						if (anchorMatcher.find()) {
@@ -169,35 +168,35 @@ public class WikiService {
 						if (currentPath != null && currentContent.length() > 0) {
 							documentationMap.put(currentPath, currentContent.toString().trim());
 						}
-
+						
 						currentContent.setLength(0);
-
+						
 						String capturedGroup = pathMatcher.group(1).trim();
-						if (capturedGroup.startsWith("`")) {
+						if(capturedGroup.startsWith("`")) {
 							capturedGroup = capturedGroup.substring(1);
 						}
-						if (capturedGroup.endsWith("`")) {
+						if(capturedGroup.endsWith("`")) {
 							capturedGroup = capturedGroup.substring(0, capturedGroup.length() - 1);
 						}
 
 						currentPath = capturedGroup.replace("\\", "/");
 						String currentAnchor = anchorMatcher.group(1);
 						anchorToPathMap.put(currentAnchor, currentPath);
-
-						i += advanceBy;
-						continue;
+	
+						i += advanceBy; 
+						continue; 
 					}
 				}
-
+	
 				if (currentPath != null && !line.trim().equals("---")) {
 					currentContent.append(line).append("\n");
 				}
 			}
-
+	
 			if (currentPath != null && currentContent.length() > 0) {
 				documentationMap.put(currentPath, currentContent.toString().trim());
 			}
-
+	
 		} catch (IOException e) {
 			logger.error("Failed to parse file documentation from {}", WIKI_FILE, e);
 		}
