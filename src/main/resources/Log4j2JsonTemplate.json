@@ -24,8 +24,9 @@
 	},
 	"thrown": {
 		"$resolver": "exception",
-		"field": "stackTrace",
-		"stringified": true
+		"stackTrace": {
+			"stringified": true
+		}
 	},
 	"context": {
 		"$resolver": "mdc"
