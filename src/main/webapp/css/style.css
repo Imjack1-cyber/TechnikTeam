@@ -689,15 +689,6 @@ fieldset {
 	vertical-align: middle;
 }
 
-/* FIX for admin requests table */
-.data-table pre {
-    white-space: pre-wrap;
-    word-break: break-all;
-    background-color: var(--bg-color);
-    padding: 0.5rem;
-    border-radius: 4px;
-}
-
 .data-table thead th {
 	font-size: 0.8rem;
 	text-transform: uppercase;
@@ -1804,4 +1795,27 @@ fieldset {
     border: none;
     font-size: 1.2rem;
     word-break: break-all;
+}
+
+/* =================================================================== */
+/*  16. UTILITY STYLES FOR OVERFLOW                                    */
+/* =================================================================== */
+.data-table td, .data-table th {
+    /* Allow long strings (like paths or log details) to break */
+    word-break: break-word;
+    white-space: normal; /* Allow wrapping */
+}
+
+/* Specifically for the log and requests page to handle long text */
+td pre {
+    white-space: pre-wrap;   /* CSS3 */
+    white-space: -moz-pre-wrap; /* Firefox */
+    white-space: -pre-wrap;     /* Opera <7 */
+    white-space: -o-pre-wrap;   /* Opera 7 */
+    word-wrap: break-word;      /* IE */
+}
+
+.data-table pre code {
+	white-space: pre-wrap;
+	word-break: break-all;
 }
