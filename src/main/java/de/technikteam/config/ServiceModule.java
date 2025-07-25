@@ -130,6 +130,7 @@ public class ServiceModule extends ServletModule {
 		bind(AdminDefectServlet.class).in(Scopes.SINGLETON);
 		bind(AdminKitServlet.class).in(Scopes.SINGLETON);
 		bind(AdminFileServlet.class).in(Scopes.SINGLETON);
+		bind(AdminFileManagementServlet.class).in(Scopes.SINGLETON);
 		bind(AdminLogServlet.class).in(Scopes.SINGLETON);
 		bind(AdminReportServlet.class).in(Scopes.SINGLETON);
 		bind(AdminSystemServlet.class).in(Scopes.SINGLETON);
@@ -192,7 +193,8 @@ public class ServiceModule extends ServletModule {
 		serve("/admin/lager").with(AdminStorageServlet.class);
 		serve("/admin/defekte").with(AdminDefectServlet.class);
 		serve("/admin/kits").with(AdminKitServlet.class);
-		serve("/admin/dateien").with(AdminFileServlet.class);
+		serve("/admin/dateien").with(AdminFileManagementServlet.class); // Displays the page
+		serve("/admin/dateien/*").with(AdminFileServlet.class); // Handles POST actions
 		serve("/admin/log").with(AdminLogServlet.class);
 		serve("/admin/berichte").with(AdminReportServlet.class);
 		serve("/admin/system").with(AdminSystemServlet.class);

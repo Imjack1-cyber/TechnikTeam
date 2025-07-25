@@ -14,7 +14,6 @@ import de.technikteam.service.EventService;
 import de.technikteam.service.NotificationService;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -32,7 +31,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Singleton
-@MultipartConfig
 public class AdminEventServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminEventServlet.class);

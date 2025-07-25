@@ -18,7 +18,6 @@ import de.technikteam.service.AdminLogService;
 import de.technikteam.service.ConfigurationService;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -36,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 
 @Singleton
-@MultipartConfig
 public class AdminMeetingServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminMeetingServlet.class);

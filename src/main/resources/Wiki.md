@@ -745,10 +745,7 @@ This document serves as the definitive internal technical reference for the Tech
     *   **`<jsp-config>`**: Ensures that Expression Language (EL) is enabled for all JSP and JSPF files.
     *   **`<error-page>`**: Maps specific HTTP error codes (400, 401, 403, 404, 500, 503) and general `java.lang.Throwable` exceptions to custom error pages located in `/views/error/`. This provides a user-friendly error handling experience.
 
-### Java Source Files
-
-... (Continuing with the detailed breakdown of each Java file as planned) ...
-
+---
 C:\Users\techn\eclipse\workspace\TechnikTeam\src\main\java\de\technikteam\config\DateFormatter.java
 <a name="dateformatter-java"></a>
 

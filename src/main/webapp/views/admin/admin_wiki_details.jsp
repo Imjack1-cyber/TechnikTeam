@@ -1,33 +1,42 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
 
 <c:import url="/WEB-INF/jspf/main_header.jspf">
 	<c:param name="pageTitle" value="Wiki: ${filePath}" />
 </c:import>
 
-<h1>
-	<i class="fas fa-file-alt"></i> Wiki:
-	<code>
-		<c:out value="${filePath}" />
-	</code>
-</h1>
-<a href="${pageContext.request.contextPath}/admin/wiki"
-	class="btn btn-secondary" style="margin-bottom: 1.5rem;"> <i
-	class="fas fa-arrow-left"></i> Back to Wiki Index
-</a>
+<div id="editor-page-wrapper">
+	<div id="editor-page-container">
+		<div class="editor-header">
+			<h1>
+				<i class="fas fa-file-alt"></i> Wiki:
+				<code>
+					<c:out value="${filePath}" />
+				</code>
+			</h1>
+			<div class="editor-controls">
+				<div class="mode-switcher">
+					<span>View</span> <label class="toggle-switch"> <input
+						type="checkbox" id="mode-toggle"> <span class="slider"></span>
+					</label> <span>Edit (Raw)</span>
+				</div>
+				<a href="${pageContext.request.contextPath}/admin/wiki"
+					class="btn btn-secondary btn-small"> <i
+					class="fas fa-arrow-left"></i> Back to Index
+				</a>
+			</div>
+		</div>
 
-<div class="card">
-	<div id="wiki-content-container" class="markdown-content">
-		${wikiContent}</div>
+		<div class="editor-container card">
+			<textarea id="editor" name="content" style="display: none;">${fn:escapeXml(wikiContent)}</textarea>
+			<div id="markdown-preview" class="markdown-content">
+				${wikiContent}</div>
+		</div>
+	</div>
 </div>
 
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
-<script>
-	document.addEventListener('DOMContentLoaded', () => {
-		const wikiContainer = document.getElementById('wiki-content-container');
-		if (wikiContainer && window.renderMarkdown) {
-			window.renderMarkdown(wikiContainer);
-		}
-	});
-</script>
+<script
+	src="${pageContext.request.contextPath}/js/admin/admin_wiki_details.js"></script>

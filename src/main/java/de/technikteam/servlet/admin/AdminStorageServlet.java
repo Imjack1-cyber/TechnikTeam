@@ -13,7 +13,6 @@ import de.technikteam.service.ConfigurationService;
 import de.technikteam.service.StorageService;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,7 +26,6 @@ import java.nio.file.Paths;
 import java.util.List;
 
 @Singleton
-@MultipartConfig
 public class AdminStorageServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminStorageServlet.class);

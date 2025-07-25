@@ -10,8 +10,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,12 +27,9 @@ public class WikiService {
 	private static final Map<String, String> anchorToPathMap;
 
 	static {
-		// Initialize maps
 		documentationMap = new HashMap<>();
 		anchorToPathMap = new HashMap<>();
-		// Parse documentation first to build the necessary lookup map
 		parseFileDocumentation();
-		// Now parse the tree, which can use the map
 		projectTreeHtml = parseProjectTree();
 	}
 
@@ -124,59 +119,82 @@ public class WikiService {
 
 	private static void parseFileDocumentation() {
 		try (InputStream is = WikiService.class.getClassLoader().getResourceAsStream(WIKI_FILE)) {
-			if (is == null)
+			if (is == null) {
+				logger.error("Could not find {} in classpath resources.", WIKI_FILE);
 				return;
+			}
 			List<String> lines = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)).lines()
 					.collect(Collectors.toList());
 
-			Pattern anchorPattern = Pattern.compile("<a name=\"([^\"]+)\"></a>");
 			Pattern pathPattern = Pattern
-					.compile("`C:\\\\Users\\\\techn\\\\eclipse\\\\workspace\\\\TechnikTeam\\\\([^`]+)`");
+					.compile("`?C:\\\\Users\\\\techn\\\\eclipse\\\\workspace\\\\TechnikTeam\\\\(.+?)`?$");
+			Pattern anchorPattern = Pattern.compile("<a name=\"([^\"]+)\"></a>");
 
-			String currentAnchor = null;
 			String currentPath = null;
 			StringBuilder currentContent = new StringBuilder();
 			boolean inDocsSection = false;
 
-			for (String line : lines) {
+			for (int i = 0; i < lines.size(); i++) {
+				String line = lines.get(i);
+
 				if (line.contains("## Part 2: Detailed File Documentation")) {
 					inDocsSection = true;
 					continue;
 				}
-				if (!inDocsSection)
+				if (!inDocsSection) {
 					continue;
+				}
 
-				Matcher anchorMatcher = anchorPattern.matcher(line);
-				Matcher pathMatcher = pathPattern.matcher(line);
+				Matcher pathMatcher = pathPattern.matcher(line.trim());
 
-				boolean isNewSectionStart = line.startsWith("---") && line.contains("C:\\");
+				if (pathMatcher.find() && i + 1 < lines.size()) {
+					Matcher anchorMatcher = null;
+					int advanceBy = 0;
 
-				if (isNewSectionStart) {
-					// Save the previous section before starting a new one
-					if (currentPath != null) {
-						documentationMap.put(currentPath, currentContent.toString().trim());
+					if (i + 1 < lines.size()) {
+						anchorMatcher = anchorPattern.matcher(lines.get(i + 1));
+						if (anchorMatcher.find()) {
+							advanceBy = 1;
+						}
 					}
-					currentContent = new StringBuilder(); // Reset content
 
-					// Try to find anchor and path in the same combined line concept
-					Matcher combinedAnchorMatcher = Pattern.compile("<a name=\"([^\"]+)\"></a>").matcher(line);
-					Matcher combinedPathMatcher = Pattern
-							.compile("`C:\\\\Users\\\\techn\\\\eclipse\\\\workspace\\\\TechnikTeam\\\\([^`]+)`")
-							.matcher(line);
+					if (advanceBy == 0 && i + 2 < lines.size()) {
+						anchorMatcher = anchorPattern.matcher(lines.get(i + 2));
+						if (anchorMatcher.find()) {
+							advanceBy = 2;
+						}
+					}
 
-					if (combinedAnchorMatcher.find() && combinedPathMatcher.find()) {
-						currentAnchor = combinedAnchorMatcher.group(1);
-						currentPath = combinedPathMatcher.group(1).replace("\\", "/");
+					if (anchorMatcher != null && advanceBy > 0) {
+						if (currentPath != null && currentContent.length() > 0) {
+							documentationMap.put(currentPath, currentContent.toString().trim());
+						}
+
+						currentContent.setLength(0);
+
+						String capturedGroup = pathMatcher.group(1).trim();
+						if (capturedGroup.startsWith("`")) {
+							capturedGroup = capturedGroup.substring(1);
+						}
+						if (capturedGroup.endsWith("`")) {
+							capturedGroup = capturedGroup.substring(0, capturedGroup.length() - 1);
+						}
+
+						currentPath = capturedGroup.replace("\\", "/");
+						String currentAnchor = anchorMatcher.group(1);
 						anchorToPathMap.put(currentAnchor, currentPath);
-					} else {
-						currentPath = null; // Invalidate if format is unexpected
+
+						i += advanceBy;
+						continue;
 					}
-				} else if (currentPath != null) {
+				}
+
+				if (currentPath != null && !line.trim().equals("---")) {
 					currentContent.append(line).append("\n");
 				}
 			}
-			// Add the very last entry after the loop finishes
-			if (currentPath != null && !currentContent.toString().isEmpty()) {
+
+			if (currentPath != null && currentContent.length() > 0) {
 				documentationMap.put(currentPath, currentContent.toString().trim());
 			}
 

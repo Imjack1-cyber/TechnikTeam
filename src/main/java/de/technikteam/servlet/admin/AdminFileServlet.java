@@ -20,26 +20,9 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * A comprehensive servlet for managing all administrative aspects of files and
- * categories. This single servlet acts as the controller for the
- * `/admin/dateien` endpoint.
- * <p>
- * - The {@code doGet} method handles the display of the file management page. -
- * The {@code doPost} method is a router that handles various actions,
- * including: - Multipart file uploads (create, update). - Standard form
- * submissions for managing categories and file metadata (delete, reassign).
- * <p>
- * This servlet's multipart configuration is defined in `web.xml` to ensure
- * compatibility with the Guice-managed servlet lifecycle, which is the key to
- * solving previous issues.
- */
 @Singleton
 @MultipartConfig
 public class AdminFileServlet extends HttpServlet {
@@ -59,41 +42,6 @@ public class AdminFileServlet extends HttpServlet {
 		this.adminLogService = adminLogService;
 	}
 
-	/**
-	 * Handles GET requests to display the main file management page. It fetches all
-	 * files and categories for an administrative view.
-	 */
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		User user = (User) request.getSession().getAttribute("user");
-		if (user == null) {
-			response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
-			return;
-		}
-		logger.info("Admin file management page requested by user '{}' (Role: {})", user.getUsername(),
-				user.getRoleName());
-
-		User adminProxy = new User();
-		adminProxy.setPermissions(new HashSet<>());
-		adminProxy.getPermissions().add("ACCESS_ADMIN_PANEL");
-
-		Map<String, List<de.technikteam.model.File>> groupedFiles = fileDAO.getAllFilesGroupedByCategory(adminProxy);
-		List<de.technikteam.model.FileCategory> allCategories = fileDAO.getAllCategories();
-
-		request.setAttribute("groupedFiles", groupedFiles);
-		request.setAttribute("allCategories", allCategories);
-
-		logger.debug("Forwarding file and category data to admin_files.jsp.");
-		request.getRequestDispatcher("/views/admin/admin_files.jsp").forward(request, response);
-	}
-
-	/**
-	 * Handles POST requests for all file and category management actions. With the
-	 * correct web.xml configuration, request.getParameter() now works reliably for
-	 * all form fields, regardless of the request's content type, making the CSRF
-	 * check simple and robust.
-	 */
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
@@ -106,30 +54,34 @@ public class AdminFileServlet extends HttpServlet {
 			return;
 		}
 
-		String action = request.getParameter("action");
-		logger.debug("AdminFileServlet processing POST for action: {}", action);
+		String pathInfo = request.getPathInfo();
+		if (pathInfo == null) {
+			pathInfo = "";
+		}
 
-		switch (action) {
-		case "create":
+		logger.debug("AdminFileServlet processing POST for path: {}", pathInfo);
+
+		switch (pathInfo) {
+		case "/create":
 			handleCreateUpload(request, response, adminUser);
 			break;
-		case "update":
+		case "/update":
 			handleUpdateUpload(request, response, adminUser);
 			break;
-		case "delete":
+		case "/delete":
 			handleDelete(request, response, adminUser);
 			break;
-		case "reassign":
+		case "/reassign":
 			handleReassign(request, response, adminUser);
 			break;
-		case "createCategory":
+		case "/createCategory":
 			handleCreateCategory(request, response, adminUser);
 			break;
-		case "deleteCategory":
+		case "/deleteCategory":
 			handleDeleteCategory(request, response, adminUser);
 			break;
 		default:
-			session.setAttribute("errorMessage", "Unbekannte Aktion: " + action);
+			session.setAttribute("errorMessage", "Unbekannte Aktion: " + pathInfo);
 			response.sendRedirect(request.getContextPath() + "/admin/dateien");
 			break;
 		}
