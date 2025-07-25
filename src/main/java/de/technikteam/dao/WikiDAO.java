@@ -72,4 +72,36 @@ public class WikiDAO {
 			return false;
 		}
 	}
+	
+	public WikiEntry createWikiEntry(WikiEntry entry) {
+	    String sql = "INSERT INTO wiki_documentation (file_path, content) VALUES (?, ?)";
+	    try (Connection conn = dbManager.getConnection();
+	         PreparedStatement pstmt = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
+	        pstmt.setString(1, entry.getFilePath());
+	        pstmt.setString(2, entry.getContent());
+	        int affectedRows = pstmt.executeUpdate();
+	        if (affectedRows > 0) {
+	            try (ResultSet rs = pstmt.getGeneratedKeys()) {
+	                if (rs.next()) {
+	                    entry.setId(rs.getInt(1));
+	                    return entry;
+	                }
+	            }
+	        }
+	    } catch (SQLException e) {
+	        logger.error("Error creating wiki entry for path {}", entry.getFilePath(), e);
+	    }
+	    return null;
+	}
+
+	public boolean deleteWikiEntry(int id) {
+	    String sql = "DELETE FROM wiki_documentation WHERE id = ?";
+	    try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+	        pstmt.setInt(1, id);
+	        return pstmt.executeUpdate() > 0;
+	    } catch (SQLException e) {
+	        logger.error("Error deleting wiki entry with ID {}", id, e);
+	        return false;
+	    }
+	}
 }

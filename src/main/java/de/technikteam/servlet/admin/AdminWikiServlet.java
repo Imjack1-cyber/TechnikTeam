@@ -4,7 +4,6 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import de.technikteam.config.Permissions;
 import de.technikteam.model.User;
-import de.technikteam.service.WikiService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,11 +18,9 @@ public class AdminWikiServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminWikiServlet.class);
 
-	private final WikiService wikiService;
-
 	@Inject
-	public AdminWikiServlet(WikiService wikiService) {
-		this.wikiService = wikiService;
+	public AdminWikiServlet() {
+		// Guice requires a constructor, but no dependencies are needed here anymore.
 	}
 
 	@Override
@@ -38,7 +35,8 @@ public class AdminWikiServlet extends HttpServlet {
 			return;
 		}
 
-		request.setAttribute("projectTreeHtml", wikiService.getProjectTreeHtml());
+		// This servlet now only forwards to the JSP.
+		// The JSP's JavaScript will fetch all dynamic data from the API servlets.
 		request.getRequestDispatcher("/views/admin/admin_wiki_index.jsp").forward(request, response);
 	}
 }

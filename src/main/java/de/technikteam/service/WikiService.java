@@ -7,26 +7,16 @@ import de.technikteam.model.WikiEntry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Singleton
 public class WikiService {
 	private static final Logger logger = LogManager.getLogger(WikiService.class);
-	private static final String WIKI_FILE = "Wiki.md";
 	private final WikiDAO wikiDAO;
-
-	private String projectTreeHtml;
-	private final Map<String, WikiEntry> wikiEntriesByPath = new HashMap<>();
+	private Map<String, Object> wikiTreeData;
 
 	@Inject
 	public WikiService(WikiDAO wikiDAO) {
@@ -35,103 +25,32 @@ public class WikiService {
 	}
 
 	private void initialize() {
-		logger.info("Initializing WikiService...");
+		logger.info("Initializing WikiService and building data tree...");
+		this.wikiTreeData = buildWikiTreeData();
+		logger.info("WikiService initialized successfully. Data tree has been generated.");
+	}
+
+	@SuppressWarnings("unchecked")
+	private Map<String, Object> buildWikiTreeData() {
 		List<WikiEntry> allEntries = wikiDAO.getAllWikiEntries();
+		// Sort entries to ensure directories are processed before files within them.
+		allEntries.sort(Comparator.comparing(WikiEntry::getFilePath));
+
+		Map<String, Object> root = new LinkedHashMap<>();
 		for (WikiEntry entry : allEntries) {
-			wikiEntriesByPath.put(entry.getFilePath(), entry);
+			String[] pathParts = entry.getFilePath().split("/");
+			Map<String, Object> currentNode = root;
+			for (int i = 0; i < pathParts.length - 1; i++) {
+				String part = pathParts[i];
+				currentNode = (Map<String, Object>) currentNode.computeIfAbsent(part,
+						k -> new LinkedHashMap<String, Object>());
+			}
+			currentNode.put(pathParts[pathParts.length - 1], entry);
 		}
-		logger.debug("Loaded {} wiki entries from database into cache.", wikiEntriesByPath.size());
-		this.projectTreeHtml = parseProjectTree();
-		logger.info("WikiService initialized successfully. Project tree HTML has been generated.");
+		return root;
 	}
 
-	private static int getIndentLevel(String line) {
-		int count = 0;
-		for (char c : line.toCharArray()) {
-			if (c == ' ') {
-				count++;
-			} else {
-				break;
-			}
-		}
-		return count / 4; // Assumes 4 spaces per indent level
-	}
-
-	private String parseProjectTree() {
-		try (InputStream is = WikiService.class.getClassLoader().getResourceAsStream(WIKI_FILE)) {
-			if (is == null) {
-				return "<p class='error-message'>Wiki structure file (Wiki.md) not found.</p>";
-			}
-			List<String> lines = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)).lines()
-					.collect(Collectors.toList());
-
-			StringBuilder html = new StringBuilder();
-			boolean inTree = false;
-			int lastLevel = -1;
-
-			for (String line : lines) {
-				if (line.contains("## Part 1: Project Tree")) {
-					inTree = true;
-					continue;
-				}
-				if (line.contains("## Part 2: Detailed File Documentation")) { // Stop if legacy file is used
-					break;
-				}
-				if (!inTree || line.trim().isEmpty() || !line.trim().startsWith("-")) {
-					continue;
-				}
-
-				int level = getIndentLevel(line);
-				String content = line.trim().substring(1).trim();
-
-				if (level > lastLevel) {
-					html.append("<ul>");
-				} else if (level < lastLevel) {
-					html.append("</li></ul>".repeat(lastLevel - level));
-					html.append("</li>");
-				} else if (lastLevel != -1) {
-					html.append("</li>");
-				}
-				html.append("<li>");
-
-				Pattern linkPattern = Pattern.compile("\\[`?([^\\]`]+)`?\\]\\(([^)]+)\\)");
-				Matcher matcher = linkPattern.matcher(content);
-
-				if (matcher.find()) {
-					String fileName = matcher.group(1);
-					String filePath = matcher.group(2);
-
-					if (filePath != null) {
-						WikiEntry entry = wikiEntriesByPath.get(filePath);
-						if (entry != null) {
-							html.append("<a href=\"wiki/details?id=").append(entry.getId()).append("\">")
-									.append(fileName).append("</a>");
-						} else {
-							html.append(fileName).append(" (No Doc)");
-							logger.warn("No database entry found for wiki file path: {}", filePath);
-						}
-					} else {
-						html.append(fileName).append(" (No Path)");
-						logger.warn("No path found in link for: {}", fileName);
-					}
-				} else {
-					html.append(content);
-				}
-				lastLevel = level;
-			}
-
-			if (lastLevel != -1) {
-				html.append("</li></ul>".repeat(lastLevel + 1));
-			}
-
-			return html.toString();
-		} catch (IOException e) {
-			logger.error("Failed to read project tree from {}", WIKI_FILE, e);
-			return "<p class='error-message'>Error reading wiki structure.</p>";
-		}
-	}
-
-	public String getProjectTreeHtml() {
-		return projectTreeHtml;
+	public Map<String, Object> getWikiTreeAsData() {
+		return wikiTreeData;
 	}
 }

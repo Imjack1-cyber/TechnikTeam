@@ -146,6 +146,7 @@ public class ServiceModule extends ServletModule {
 		bind(CrewFinderApiServlet.class).in(Scopes.SINGLETON);
 		bind(AdminTodoApiServlet.class).in(Scopes.SINGLETON);
 		bind(FrontControllerServlet.class).in(Scopes.SINGLETON);
+		bind(AdminWikiApiServlet.class).in(Scopes.SINGLETON);
 
 		// --- Explicitly Map all URL Patterns to their Servlets ---
 		serve("").with(RootServlet.class);
@@ -210,5 +211,6 @@ public class ServiceModule extends ServletModule {
 		serve("/api/admin/crew-finder").with(CrewFinderApiServlet.class);
 		serve("/api/admin/todos").with(AdminTodoApiServlet.class);
 		serve("/admin/action/*").with(FrontControllerServlet.class);
+		serve("/api/admin/wiki").with(AdminWikiApiServlet.class);
 	}
 }

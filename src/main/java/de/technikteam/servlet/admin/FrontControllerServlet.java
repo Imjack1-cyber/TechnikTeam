@@ -33,20 +33,32 @@ public class FrontControllerServlet extends HttpServlet {
 			UnlockUserAction unlockUserAction, ApproveChangeAction approveChangeAction,
 			DenyChangeAction denyChangeAction, UpdateFeedbackStatusAction updateFeedbackStatusAction,
 			UpdateFeedbackOrderAction updateFeedbackOrderAction, DeleteFeedbackAction deleteFeedbackAction,
-			GetFeedbackDetailsAction getFeedbackDetailsAction, UpdateWikiAction updateWikiAction) {
+			GetFeedbackDetailsAction getFeedbackDetailsAction, UpdateWikiAction updateWikiAction,
+			CreateWikiAction createWikiAction, DeleteWikiAction deleteWikiAction,
+			GetWikiContentAction getWikiContentAction) {
 
+		// User Actions
 		actions.put("user.create", createUserAction);
 		actions.put("user.update", updateUserAction);
 		actions.put("user.delete", deleteUserAction);
 		actions.put("user.resetPassword", resetPasswordAction);
 		actions.put("user.unlock", unlockUserAction);
+
+		// Request Actions
 		actions.put("request.approve", approveChangeAction);
 		actions.put("request.deny", denyChangeAction);
+
+		// Feedback Actions
 		actions.put("feedback.updateStatus", updateFeedbackStatusAction);
 		actions.put("feedback.reorder", updateFeedbackOrderAction);
 		actions.put("feedback.delete", deleteFeedbackAction);
 		actions.put("feedback.getDetails", getFeedbackDetailsAction);
+
+		// Wiki Actions
 		actions.put("wiki.update", updateWikiAction);
+		actions.put("wiki.create", createWikiAction);
+		actions.put("wiki.delete", deleteWikiAction);
+		actions.put("wiki.getContent", getWikiContentAction);
 
 		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
@@ -77,6 +89,7 @@ public class FrontControllerServlet extends HttpServlet {
 		ApiResponse apiResponse = action.execute(request, response);
 
 		if (apiResponse == null) {
+			// This can happen if the action handles the response directly (e.g., sendError)
 			return;
 		}
 

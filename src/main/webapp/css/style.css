@@ -1724,3 +1724,84 @@ fieldset {
     padding: 0.5rem;
     min-height: 60vh;
 }
+
+/* =================================================================== */
+/*  15. WIKI PAGE STYLES                                               */
+/* =================================================================== */
+.wiki-layout {
+	display: flex;
+	gap: 1.5rem;
+	/* Calculate height to fill viewport minus header and some padding */
+	height: calc(100vh - var(--header-height) - 150px); 
+	align-items: flex-start;
+}
+.wiki-sidebar {
+	flex: 0 0 350px; /* Don't grow or shrink, fixed width */
+	height: 100%;
+	display: flex;
+    flex-direction: column;
+}
+.wiki-tree-container {
+    flex-grow: 1; /* Allow the tree container to fill available vertical space */
+    overflow-y: auto;
+    padding-right: 1rem;
+    border-right: 1px solid var(--border-color);
+}
+.wiki-content-pane {
+	flex-grow: 1;
+	height: 100%;
+	overflow-y: auto;
+}
+.wiki-tree-container ul {
+	list-style-type: none;
+	padding-left: 1rem;
+}
+.wiki-tree-container summary {
+	cursor: pointer;
+	padding: 0.25rem 0;
+    list-style: none; /* Hide default triangle */
+}
+.wiki-tree-container summary::-webkit-details-marker {
+    display: none; /* Hide default triangle in Chrome/Safari */
+}
+.wiki-tree-container summary:before {
+    content: '\f07b'; /* FontAwesome folder icon */
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    margin-right: 0.5rem;
+    color: var(--text-muted-color);
+    transition: transform 0.2s;
+}
+.wiki-tree-container details[open] > summary:before {
+    content: '\f07c'; /* FontAwesome open folder icon */
+}
+.wiki-tree-container a {
+	display: block;
+	padding: 0.25rem 0.5rem;
+	border-radius: 4px;
+    text-decoration: none;
+}
+.wiki-tree-container a:hover {
+    background-color: var(--sidebar-hover-bg);
+}
+.wiki-tree-container a.active {
+    background-color: var(--primary-color-light);
+    font-weight: 600;
+    color: var(--primary-color);
+}
+.wiki-content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.wiki-content-header h2 {
+    margin: 0;
+    padding: 0;
+    border: none;
+    font-size: 1.2rem;
+    word-break: break-all;
+}
