@@ -31,7 +31,6 @@ public class AchievementService {
 			checkEventLeaderAchievements(user);
 			break;
 		case "QUALIFICATION_GAINED":
-			// This would be called from UserQualificationsDAO after an update
 			break;
 		}
 	}

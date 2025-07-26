@@ -21,10 +21,8 @@ public class RootServlet extends HttpServlet {
 		User user = (session != null) ? (User) session.getAttribute("user") : null;
 
 		if (user != null) {
-			// User is logged in, redirect to the home page.
 			response.sendRedirect(request.getContextPath() + "/home");
 		} else {
-			// User is not logged in, redirect to the login page.
 			response.sendRedirect(request.getContextPath() + "/login");
 		}
 	}

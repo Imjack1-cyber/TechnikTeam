@@ -80,9 +80,6 @@ public class AdminTodoApiServlet extends HttpServlet {
 
 	@Override
 	protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		// Note: CSRF for PUT from JS needs to be handled differently, e.g. via custom
-		// header.
-		// Assuming CSRF is handled for this simplified example.
 		User admin = (User) req.getSession().getAttribute("user");
 		String jsonPayload = req.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
 		Type type = new TypeToken<Map<String, Object>>() {
@@ -122,8 +119,6 @@ public class AdminTodoApiServlet extends HttpServlet {
 
 	@Override
 	protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		// Note: CSRF for DELETE from JS needs to be handled differently, e.g. via
-		// custom header.
 		User admin = (User) req.getSession().getAttribute("user");
 
 		if (req.getParameter("taskId") != null) {

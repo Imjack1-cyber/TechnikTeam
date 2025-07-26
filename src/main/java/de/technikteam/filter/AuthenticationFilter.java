@@ -1,6 +1,6 @@
 package de.technikteam.filter;
 
-import de.technikteam.model.User; // CORRECTED: Added User import for clarity
+import de.technikteam.model.User; 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;

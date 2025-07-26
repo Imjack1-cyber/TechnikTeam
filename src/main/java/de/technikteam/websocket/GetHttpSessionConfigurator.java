@@ -16,7 +16,6 @@ public class GetHttpSessionConfigurator extends ServerEndpointConfig.Configurato
 	public void modifyHandshake(ServerEndpointConfig sec, HandshakeRequest request, HandshakeResponse response) {
 		HttpSession httpSession = (HttpSession) request.getHttpSession();
 		if (httpSession != null) {
-			// Store ServletContext if it's not already stored.
 			if (servletContext == null) {
 				servletContext = httpSession.getServletContext();
 			}

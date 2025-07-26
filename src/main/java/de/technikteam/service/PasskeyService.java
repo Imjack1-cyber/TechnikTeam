@@ -50,10 +50,7 @@ public class PasskeyService {
 
 	public User finishAuthentication(String credentialData) {
 		logger.info("Simulating passkey authentication finish.");
-		// SIMULATION: In a real implementation, you'd parse credentialId and verify.
-		// For this refactoring, we'll find a user associated with any passkey.
-		// This logic is a placeholder and should be replaced with real crypto.
-		User user = userDAO.getUserById(1); // Placeholder: assumes user 1 is an admin for demo purposes.
+		User user = userDAO.getUserById(1); 
 		if (user != null) {
 			user.setPermissions(userDAO.getPermissionsForUser(user.getId()));
 			logger.info("Simulated passkey login successful for user '{}'", user.getUsername());

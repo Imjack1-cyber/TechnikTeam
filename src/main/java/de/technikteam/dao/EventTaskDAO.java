@@ -95,8 +95,6 @@ public class EventTaskDAO {
 						tasksById.put(currentTaskId, task);
 					}
 
-					// CORRECTED: Perform checks outside of the lambda to avoid checked exception
-					// issues.
 					int currentUserId = rs.getInt("user_id");
 					if (currentUserId > 0
 							&& task.getAssignedUsers().stream().noneMatch(u -> u.getId() == currentUserId)) {

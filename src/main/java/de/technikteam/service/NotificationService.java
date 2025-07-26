@@ -25,8 +25,6 @@ public class NotificationService {
 	private final Map<Integer, List<AsyncContext>> contextsByUser = new ConcurrentHashMap<>();
 
 	private NotificationService() {
-		// FIX: Initialize Gson with the custom adapter to handle LocalDateTime
-		// correctly
 		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 

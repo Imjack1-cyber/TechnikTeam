@@ -24,8 +24,7 @@ public class RoleDAO {
 	@Inject
 	public RoleDAO(DatabaseManager dbManager) {
 		this.dbManager = dbManager;
-		this.roleCache = Caffeine.newBuilder().expireAfterWrite(1, TimeUnit.HOURS).maximumSize(1) // Only one entry: the
-																									// list of all roles
+		this.roleCache = Caffeine.newBuilder().expireAfterWrite(1, TimeUnit.HOURS).maximumSize(1) 
 				.build(key -> fetchAllRolesFromDb());
 	}
 

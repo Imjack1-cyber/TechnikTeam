@@ -1,45 +1,31 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
-	isELIgnored="false"%>
+<%-- /src/main/webapp/WEB-INF/jspf/storage_modals.jspf --%>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
 <!-- Transaction Modal -->
 <div class="modal-overlay" id="transaction-modal">
 	<div class="modal-content" style="max-width: 450px;">
-		<button type="button" class="modal-close-btn" aria-label="Schließen">×</button>
+		<button type="button" class="modal-close-btn" aria-label="Schließen" data-modal-close>×</button>
 		<h3 id="transaction-modal-title">Aktion</h3>
-		<form id="transaction-form"
-			action="${pageContext.request.contextPath}/lager/transaktion"
-			method="post">
-			<input type="hidden" name="csrfToken"
-				value="${sessionScope.csrfToken}"> <input type="hidden"
-				name="itemId" id="transaction-item-id">
+		<form id="transaction-form"> <%-- Removed action/method --%>
+			<input type="hidden" name="itemId" id="transaction-item-id">
 			<div class="form-group">
-				<label for="transaction-quantity">Anzahl</label> <input
-					type="number" name="quantity" id="transaction-quantity" value="1"
-					min="1" required>
+				<label for="transaction-quantity">Anzahl</label> 
+                <input type="number" name="quantity" id="transaction-quantity" value="1" min="1" required>
 			</div>
 			<div class="form-group">
-				<label for="transaction-notes">Notiz (optional)</label> <input
-					type="text" name="notes" id="transaction-notes"
-					placeholder="z.B. für Event XYZ">
+				<label for="transaction-notes">Notiz (optional)</label> 
+                <input type="text" name="notes" id="transaction-notes" placeholder="z.B. für Event XYZ">
 			</div>
 			<div class="form-group">
-				<label for="transaction-eventId">Zuweisen zu Event
-					(optional)</label> <select name="eventId" id="transaction-eventId">
+				<label for="transaction-eventId">Zuweisen zu Event (optional)</label> 
+                <select name="eventId" id="transaction-eventId">
 					<option value="">Kein Event</option>
-					<c:if test="${not empty activeEvents}">
-						<c:forEach var="event" items="${activeEvents}">
-							<option value="${event.id}">${event.name}</option>
-						</c:forEach>
-					</c:if>
 				</select>
 			</div>
-			<div
-				style="display: flex; justify-content: space-between; gap: 1rem;">
-				<button type="submit" name="type" value="checkout"
-					class="btn btn-danger" style="flex-grow: 1;">Entnehmen</button>
-				<button type="submit" name="type" value="checkin"
-					class="btn btn-success" style="flex-grow: 1;">Einräumen</button>
+			<div style="display: flex; justify-content: space-between; gap: 1rem;">
+				<button type="submit" name="type" value="checkout" class="btn btn-danger" style="flex-grow: 1;">Entnehmen</button>
+				<button type="submit" name="type" value="checkin" class="btn btn-success" style="flex-grow: 1;">Einräumen</button>
 			</div>
 		</form>
 	</div>

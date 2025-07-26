@@ -1,33 +1,38 @@
+// src/main/java/de/technikteam/config/ServiceModule.java
 package de.technikteam.config;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.inject.Scopes;
 import com.google.inject.servlet.ServletModule;
+import de.technikteam.api.v1.*;
+import de.technikteam.api.v1.public_api.*;
 import de.technikteam.dao.*;
 import de.technikteam.filter.AdminFilter;
 import de.technikteam.filter.AuthenticationFilter;
 import de.technikteam.filter.CharacterEncodingFilter;
 import de.technikteam.service.*;
 import de.technikteam.servlet.*;
-import de.technikteam.servlet.admin.*;
-import de.technikteam.servlet.admin.action.*;
-import de.technikteam.servlet.admin.api.*;
 import de.technikteam.servlet.api.*;
 import de.technikteam.servlet.api.passkey.*;
+import java.time.LocalDateTime;
 
 public class ServiceModule extends ServletModule {
-
 	@Override
 	protected void configureServlets() {
-		// Centralize all filter definitions here to guarantee execution order.
+		// --- Filter Bindings ---
 		bind(CharacterEncodingFilter.class).in(Scopes.SINGLETON);
 		bind(AuthenticationFilter.class).in(Scopes.SINGLETON);
 		bind(AdminFilter.class).in(Scopes.SINGLETON);
-
 		filter("/*").through(CharacterEncodingFilter.class);
 		filter("/*").through(AuthenticationFilter.class);
-		filter("/admin/*", "/api/admin/*").through(AdminFilter.class);
+		filter("/api/v1/*").through(AdminFilter.class);
 
-		// --- Bind Services, DAOs, and Actions (Singletons) ---
+		// --- Shared Instances ---
+		bind(Gson.class).toInstance(
+				new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create());
+
+		// --- Service and DAO Bindings ---
 		bind(ConfigurationService.class).in(Scopes.SINGLETON);
 		bind(DatabaseManager.class).in(Scopes.SINGLETON);
 		bind(AuthorizationService.class).in(Scopes.SINGLETON);
@@ -41,7 +46,7 @@ public class ServiceModule extends ServletModule {
 		bind(AdminDashboardService.class).in(Scopes.SINGLETON);
 		bind(WikiService.class).in(Scopes.SINGLETON);
 		bind(TodoService.class).in(Scopes.SINGLETON);
-
+		bind(NotificationService.class).in(Scopes.SINGLETON);
 		bind(UserDAO.class).in(Scopes.SINGLETON);
 		bind(RoleDAO.class).in(Scopes.SINGLETON);
 		bind(PermissionDAO.class).in(Scopes.SINGLETON);
@@ -70,20 +75,8 @@ public class ServiceModule extends ServletModule {
 		bind(TodoDAO.class).in(Scopes.SINGLETON);
 		bind(WikiDAO.class).in(Scopes.SINGLETON);
 
-		bind(CreateUserAction.class).in(Scopes.SINGLETON);
-		bind(UpdateUserAction.class).in(Scopes.SINGLETON);
-		bind(DeleteUserAction.class).in(Scopes.SINGLETON);
-		bind(ResetPasswordAction.class).in(Scopes.SINGLETON);
-		bind(UnlockUserAction.class).in(Scopes.SINGLETON);
-		bind(ApproveChangeAction.class).in(Scopes.SINGLETON);
-		bind(DenyChangeAction.class).in(Scopes.SINGLETON);
-		bind(UpdateFeedbackStatusAction.class).in(Scopes.SINGLETON);
-		bind(UpdateFeedbackOrderAction.class).in(Scopes.SINGLETON);
-		bind(DeleteFeedbackAction.class).in(Scopes.SINGLETON);
-		bind(GetFeedbackDetailsAction.class).in(Scopes.SINGLETON);
-		bind(UpdateWikiAction.class).in(Scopes.SINGLETON);
-
-		// --- Explicitly bind all Servlets as Singletons before serving them ---
+		// --- Servlet Bindings ---
+		// Public Page Shell Servlets
 		bind(RootServlet.class).in(Scopes.SINGLETON);
 		bind(LoginServlet.class).in(Scopes.SINGLETON);
 		bind(LogoutServlet.class).in(Scopes.SINGLETON);
@@ -91,63 +84,51 @@ public class ServiceModule extends ServletModule {
 		bind(ProfileServlet.class).in(Scopes.SINGLETON);
 		bind(PasswordServlet.class).in(Scopes.SINGLETON);
 		bind(CalendarServlet.class).in(Scopes.SINGLETON);
-		bind(IcalServlet.class).in(Scopes.SINGLETON);
-		bind(EventServlet.class).in(Scopes.SINGLETON);
 		bind(EventDetailsServlet.class).in(Scopes.SINGLETON);
-		bind(EventActionServlet.class).in(Scopes.SINGLETON);
-		bind(MeetingServlet.class).in(Scopes.SINGLETON);
 		bind(MeetingDetailsServlet.class).in(Scopes.SINGLETON);
-		bind(MeetingActionServlet.class).in(Scopes.SINGLETON);
-		bind(StorageServlet.class).in(Scopes.SINGLETON);
 		bind(StorageItemDetailsServlet.class).in(Scopes.SINGLETON);
-		bind(StorageItemActionServlet.class).in(Scopes.SINGLETON);
-		bind(StorageTransactionServlet.class).in(Scopes.SINGLETON);
 		bind(FileServlet.class).in(Scopes.SINGLETON);
 		bind(FeedbackServlet.class).in(Scopes.SINGLETON);
 		bind(MyFeedbackServlet.class).in(Scopes.SINGLETON);
 		bind(PackKitServlet.class).in(Scopes.SINGLETON);
+		bind(MarkdownEditorServlet.class).in(Scopes.SINGLETON);
+		bind(StorageItemActionServlet.class).in(Scopes.SINGLETON);
+
+		// Legacy Public APIs & Actions
+		bind(IcalServlet.class).in(Scopes.SINGLETON);
 		bind(DownloadServlet.class).in(Scopes.SINGLETON);
 		bind(ImageServlet.class).in(Scopes.SINGLETON);
-		bind(MarkdownEditorServlet.class).in(Scopes.SINGLETON);
-		bind(TaskActionServlet.class).in(Scopes.SINGLETON);
-		bind(NotificationServlet.class).in(Scopes.SINGLETON);
-		bind(CalendarApiServlet.class).in(Scopes.SINGLETON);
-		bind(StorageHistoryApiServlet.class).in(Scopes.SINGLETON);
-		bind(UserPreferencesApiServlet.class).in(Scopes.SINGLETON);
-		bind(EventCustomFieldsApiServlet.class).in(Scopes.SINGLETON);
-		bind(EventChatApiServlet.class).in(Scopes.SINGLETON);
 		bind(MarkdownApiServlet.class).in(Scopes.SINGLETON);
-		bind(RegistrationStartServlet.class).in(Scopes.SINGLETON);
-		bind(RegistrationFinishServlet.class).in(Scopes.SINGLETON);
+		bind(NotificationServlet.class).in(Scopes.SINGLETON);
 		bind(AuthenticationStartServlet.class).in(Scopes.SINGLETON);
 		bind(AuthenticationFinishServlet.class).in(Scopes.SINGLETON);
-		bind(AdminDashboardServlet.class).in(Scopes.SINGLETON);
-		bind(AdminUserServlet.class).in(Scopes.SINGLETON);
-		bind(AdminEventServlet.class).in(Scopes.SINGLETON);
-		bind(AdminCourseServlet.class).in(Scopes.SINGLETON);
-		bind(AdminMeetingServlet.class).in(Scopes.SINGLETON);
-		bind(AdminAttendanceServlet.class).in(Scopes.SINGLETON);
-		bind(MatrixServlet.class).in(Scopes.SINGLETON);
-		bind(AdminStorageServlet.class).in(Scopes.SINGLETON);
-		bind(AdminDefectServlet.class).in(Scopes.SINGLETON);
-		bind(AdminKitServlet.class).in(Scopes.SINGLETON);
-		bind(AdminFileServlet.class).in(Scopes.SINGLETON);
-		bind(AdminFileManagementServlet.class).in(Scopes.SINGLETON);
-		bind(AdminLogServlet.class).in(Scopes.SINGLETON);
-		bind(AdminReportServlet.class).in(Scopes.SINGLETON);
-		bind(AdminSystemServlet.class).in(Scopes.SINGLETON);
-		bind(AdminAchievementServlet.class).in(Scopes.SINGLETON);
-		bind(AdminChangeRequestServlet.class).in(Scopes.SINGLETON);
-		bind(AdminFeedbackServlet.class).in(Scopes.SINGLETON);
-		bind(AdminWikiServlet.class).in(Scopes.SINGLETON);
-		bind(AdminDashboardApiServlet.class).in(Scopes.SINGLETON);
-		bind(SystemStatsApiServlet.class).in(Scopes.SINGLETON);
-		bind(CrewFinderApiServlet.class).in(Scopes.SINGLETON);
-		bind(AdminTodoApiServlet.class).in(Scopes.SINGLETON);
-		bind(FrontControllerServlet.class).in(Scopes.SINGLETON);
-		bind(AdminWikiApiServlet.class).in(Scopes.SINGLETON);
+		bind(RegistrationStartServlet.class).in(Scopes.SINGLETON);
+		bind(RegistrationFinishServlet.class).in(Scopes.SINGLETON);
 
-		// --- Explicitly Map all URL Patterns to their Servlets ---
+		// New API v1 Admin Resources
+		bind(UserResource.class).in(Scopes.SINGLETON);
+		bind(WikiResource.class).in(Scopes.SINGLETON);
+		bind(FeedbackResource.class).in(Scopes.SINGLETON);
+		bind(ProfileRequestResource.class).in(Scopes.SINGLETON);
+		bind(CourseResource.class).in(Scopes.SINGLETON);
+		bind(MeetingResource.class).in(Scopes.SINGLETON);
+		bind(StorageResource.class).in(Scopes.SINGLETON);
+		bind(KitResource.class).in(Scopes.SINGLETON);
+		bind(AchievementResource.class).in(Scopes.SINGLETON);
+		bind(EventResource.class).in(Scopes.SINGLETON);
+		bind(LogResource.class).in(Scopes.SINGLETON);
+		bind(ReportResource.class).in(Scopes.SINGLETON);
+		bind(SystemResource.class).in(Scopes.SINGLETON);
+		bind(MatrixResource.class).in(Scopes.SINGLETON);
+
+		// New API v1 Public Resources
+		bind(PublicDashboardResource.class).in(Scopes.SINGLETON);
+		bind(PublicEventResource.class).in(Scopes.SINGLETON);
+		bind(PublicMeetingResource.class).in(Scopes.SINGLETON);
+		bind(PublicStorageResource.class).in(Scopes.SINGLETON);
+		bind(PublicProfileResource.class).in(Scopes.SINGLETON);
+
+		// --- URL Mappings ---
 		serve("").with(RootServlet.class);
 		serve("/login").with(LoginServlet.class);
 		serve("/logout").with(LogoutServlet.class);
@@ -155,60 +136,45 @@ public class ServiceModule extends ServletModule {
 		serve("/profil").with(ProfileServlet.class);
 		serve("/passwort").with(PasswordServlet.class);
 		serve("/kalender").with(CalendarServlet.class);
-		serve("/calendar.ics").with(IcalServlet.class);
-		serve("/veranstaltungen").with(EventServlet.class);
 		serve("/veranstaltungen/details").with(EventDetailsServlet.class);
-		serve("/event-action").with(EventActionServlet.class);
-		serve("/lehrgaenge").with(MeetingServlet.class);
 		serve("/meetingDetails").with(MeetingDetailsServlet.class);
-		serve("/meeting-action").with(MeetingActionServlet.class);
-		serve("/lager").with(StorageServlet.class);
 		serve("/lager/details").with(StorageItemDetailsServlet.class);
-		serve("/lager/aktionen").with(StorageItemActionServlet.class);
-		serve("/lager/transaktion").with(StorageTransactionServlet.class);
 		serve("/dateien").with(FileServlet.class);
 		serve("/feedback").with(FeedbackServlet.class);
 		serve("/my-feedback").with(MyFeedbackServlet.class);
 		serve("/pack-kit").with(PackKitServlet.class);
+		serve("/editor").with(MarkdownEditorServlet.class);
+		serve("/lager/aktionen").with(StorageItemActionServlet.class);
+		serve("/calendar.ics").with(IcalServlet.class);
 		serve("/download").with(DownloadServlet.class);
 		serve("/image").with(ImageServlet.class);
-		serve("/editor").with(MarkdownEditorServlet.class);
-		serve("/task-action").with(TaskActionServlet.class);
-		serve("/notifications").with(NotificationServlet.class);
-		serve("/api/calendar/entries").with(CalendarApiServlet.class);
-		serve("/api/storage-history").with(StorageHistoryApiServlet.class);
-		serve("/api/user/preferences").with(UserPreferencesApiServlet.class);
-		serve("/api/public/event-custom-fields").with(EventCustomFieldsApiServlet.class);
-		serve("/api/event-chat").with(EventChatApiServlet.class);
 		serve("/api/save-markdown").with(MarkdownApiServlet.class);
+		serve("/notifications").with(NotificationServlet.class);
 		serve("/api/auth/passkey/register/start").with(RegistrationStartServlet.class);
 		serve("/api/auth/passkey/register/finish").with(RegistrationFinishServlet.class);
 		serve("/api/auth/passkey/login/start").with(AuthenticationStartServlet.class);
 		serve("/api/auth/passkey/login/finish").with(AuthenticationFinishServlet.class);
-		serve("/admin/dashboard").with(AdminDashboardServlet.class);
-		serve("/admin/mitglieder").with(AdminUserServlet.class);
-		serve("/admin/veranstaltungen").with(AdminEventServlet.class);
-		serve("/admin/lehrgaenge").with(AdminCourseServlet.class);
-		serve("/admin/meetings").with(AdminMeetingServlet.class);
-		serve("/admin/teilnahme").with(AdminAttendanceServlet.class);
-		serve("/admin/matrix").with(MatrixServlet.class);
-		serve("/admin/lager").with(AdminStorageServlet.class);
-		serve("/admin/defekte").with(AdminDefectServlet.class);
-		serve("/admin/kits").with(AdminKitServlet.class);
-		serve("/admin/dateien").with(AdminFileManagementServlet.class); // Displays the page
-		serve("/admin/dateien/*").with(AdminFileServlet.class); // Handles POST actions
-		serve("/admin/log").with(AdminLogServlet.class);
-		serve("/admin/berichte").with(AdminReportServlet.class);
-		serve("/admin/system").with(AdminSystemServlet.class);
-		serve("/admin/achievements").with(AdminAchievementServlet.class);
-		serve("/admin/requests").with(AdminChangeRequestServlet.class);
-		serve("/admin/feedback").with(AdminFeedbackServlet.class);
-		serve("/admin/wiki").with(AdminWikiServlet.class);
-		serve("/api/admin/dashboard-data").with(AdminDashboardApiServlet.class);
-		serve("/api/admin/system-stats").with(SystemStatsApiServlet.class);
-		serve("/api/admin/crew-finder").with(CrewFinderApiServlet.class);
-		serve("/api/admin/todos").with(AdminTodoApiServlet.class);
-		serve("/admin/action/*").with(FrontControllerServlet.class);
-		serve("/api/admin/wiki").with(AdminWikiApiServlet.class);
+
+		// API v1 Mappings
+		serve("/api/v1/public/dashboard").with(PublicDashboardResource.class);
+		serve("/api/v1/public/events/*").with(PublicEventResource.class);
+		serve("/api/v1/public/meetings/*").with(PublicMeetingResource.class);
+		serve("/api/v1/public/storage/*").with(PublicStorageResource.class);
+		serve("/api/v1/public/profile/*").with(PublicProfileResource.class);
+
+		serve("/api/v1/users/*").with(UserResource.class);
+		serve("/api/v1/wiki/*").with(WikiResource.class);
+		serve("/api/v1/feedback/*").with(FeedbackResource.class);
+		serve("/api/v1/profile-requests/*").with(ProfileRequestResource.class);
+		serve("/api/v1/courses/*").with(CourseResource.class);
+		serve("/api/v1/meetings/*").with(MeetingResource.class);
+		serve("/api/v1/storage/*").with(StorageResource.class);
+		serve("/api/v1/kits/*").with(KitResource.class);
+		serve("/api/v1/achievements/*").with(AchievementResource.class);
+		serve("/api/v1/events/*").with(EventResource.class);
+		serve("/api/v1/logs").with(LogResource.class);
+		serve("/api/v1/reports/*").with(ReportResource.class);
+		serve("/api/v1/system/stats").with(SystemResource.class);
+		serve("/api/v1/matrix/*").with(MatrixResource.class);
 	}
 }

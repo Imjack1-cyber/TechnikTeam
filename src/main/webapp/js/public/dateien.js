@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 			modalFileIdInput.value = fileId;
 			modalFileNameSpan.textContent = fileName;
-			fileInput.value = ''; // Reset file input
+			fileInput.value = ''; 
 			uploadModal.classList.add('active');
 		});
 	});

@@ -21,20 +21,14 @@ public class GuiceAwareServerEndpointConfigurator extends ServerEndpointConfig.C
 					"Guice Injector not found in ServletContext. Is GuiceConfig configured correctly in web.xml?");
 		}
 
-		// Guice creates the instance and injects its constructor dependencies (if any).
-		// For WebSockets, we often use a static injection pattern, so we get the
-		// instance
-		// first and then ask Guice to inject its members (including static ones if
-		// configured).
 		T instance = injector.getInstance(endpointClass);
-		injector.injectMembers(instance); // This is the key part for member injection.
+		injector.injectMembers(instance); 
 
 		return instance;
 	}
 
 	@Override
 	public void modifyHandshake(ServerEndpointConfig sec, HandshakeRequest request, HandshakeResponse response) {
-		// Also perform the HttpSession capture
 		super.modifyHandshake(sec, request, response);
 		new GetHttpSessionConfigurator().modifyHandshake(sec, request, response);
 	}

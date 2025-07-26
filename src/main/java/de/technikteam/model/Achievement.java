@@ -17,7 +17,6 @@ public class Achievement {
 		return earnedAt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
 	}
 
-	// Getters and Setters
 	public int getId() {
 		return id;
 	}

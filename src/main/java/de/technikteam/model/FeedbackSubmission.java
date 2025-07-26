@@ -10,9 +10,9 @@ import java.time.LocalDateTime;
 public class FeedbackSubmission {
 	private int id;
 	private int userId;
-	private String username; // For display
+	private String username; 
 	private String subject;
-	private String displayTitle; // Admin-editable title
+	private String displayTitle; 
 	private String content;
 	private LocalDateTime submittedAt;
 	private String status;
@@ -22,7 +22,6 @@ public class FeedbackSubmission {
 		return DateFormatter.formatDateTime(this.submittedAt);
 	}
 
-	// Standard Getters and Setters
 	public int getId() {
 		return id;
 	}

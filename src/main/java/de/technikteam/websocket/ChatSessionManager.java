@@ -19,8 +19,6 @@ public final class ChatSessionManager {
 	private static final Logger logger = LogManager.getLogger(ChatSessionManager.class);
 	private static final ChatSessionManager INSTANCE = new ChatSessionManager();
 
-	// A map where the key is the event ID and the value is a thread-safe set of
-	// sessions for that event.
 	private final Map<String, Set<Session>> sessionsByEvent = new ConcurrentHashMap<>();
 
 	private ChatSessionManager() {
@@ -81,7 +79,6 @@ public final class ChatSessionManager {
 						session.getBasicRemote().sendText(message);
 					} catch (IOException e) {
 						logger.error("Error broadcasting to session {}:", session.getId(), e);
-						// Consider removing the session here if an error occurs
 					}
 				}
 			}

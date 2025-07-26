@@ -79,7 +79,6 @@ public class EventDAO {
 
 	public Event getEventById(int eventId) {
 		try (Connection connection = dbManager.getConnection()) {
-			// Re-cast is safe here as the non-transactional method will handle null.
 			return getEventById((Integer) eventId, connection);
 		} catch (SQLException exception) {
 			logger.error("SQL error fetching event by ID: {}", eventId, exception);

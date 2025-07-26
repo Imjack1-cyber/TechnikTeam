@@ -9,15 +9,14 @@ import java.time.LocalDateTime;
 public class ProfileChangeRequest {
 	private int id;
 	private int userId;
-	private String username; // For display purposes
-	private String requestedChanges; // JSON string
+	private String username; 
+	private String requestedChanges; 
 	private String status;
 	private LocalDateTime requestedAt;
 	private Integer reviewedByAdminId;
-	private String reviewedByAdminName; // For display purposes
+	private String reviewedByAdminName; 
 	private LocalDateTime reviewedAt;
 
-	// Getters and Setters
 	public int getId() {
 		return id;
 	}

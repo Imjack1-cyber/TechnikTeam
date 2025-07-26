@@ -1,4 +1,3 @@
-// FILE: /src/main/java/de/technikteam/servlet/admin/action/CreateWikiAction.java
 package de.technikteam.servlet.admin.action;
 
 import com.google.inject.Inject;

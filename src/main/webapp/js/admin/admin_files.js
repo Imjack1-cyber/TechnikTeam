@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-	// --- Upload New Version Modal Logic ---
 	const uploadModal = document.getElementById('upload-version-modal');
 	if (uploadModal) {
 		const modalTitle = document.getElementById('upload-modal-title');
@@ -16,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 				modalFileIdInput.value = fileId;
 				modalFileNameSpan.textContent = fileName;
-				fileInput.value = ''; // Reset file input
+				fileInput.value = ''; 
 				uploadModal.classList.add('active');
 			});
 		});
@@ -28,7 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	}
 
-	// --- Reassign File Modal Logic ---
 	const reassignModal = document.getElementById('reassign-file-modal');
 	if (reassignModal) {
 		const modalFileIdInput = document.getElementById('reassign-file-id');
@@ -50,7 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	}
 
-	// --- Generic File Input Size Validation ---
 	document.querySelectorAll('.file-input').forEach(input => {
 		input.addEventListener('change', (e) => {
 			const file = e.target.files[0];
@@ -61,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 			if (file.size > maxSize) {
 				if (warningElement) warningElement.style.display = 'block';
-				e.target.value = ''; // Clear the invalid selection
+				e.target.value = ''; 
 			} else {
 				if (warningElement) warningElement.style.display = 'none';
 			}

@@ -30,7 +30,6 @@ public class Event {
 	private String leaderUsername;
 	private List<EventCustomField> customFields;
 
-	// Transient field for view logic
 	private boolean isUserQualified;
 
 	public Event() {

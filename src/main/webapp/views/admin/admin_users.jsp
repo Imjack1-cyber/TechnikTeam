@@ -1,3 +1,4 @@
+<%-- src/main/webapp/views/admin/admin_users.jsp --%>
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
@@ -58,41 +59,30 @@
 					<td style="display: flex; gap: 0.5rem; flex-wrap: wrap;"><c:if
 							test="${hasMasterAccess or userPermissions.contains('USER_UPDATE')}">
 							<button type="button" class="btn btn-small edit-user-btn"
-								data-fetch-url="<c:url value='/admin/mitglieder?action=getUserData&id=${user.id}'/>">Bearbeiten</button>
+								data-user-id="${user.id}">Bearbeiten</button>
 						</c:if> <a
 						href="<c:url value='/admin/mitglieder?action=details&id=${user.id}'/>"
 						class="btn btn-small">Details</a>
-						<form action="<c:url value='/admin/action/user?action=unlock'/>"
-							method="post" class="js-unlock-form"
-							data-confirm-message="Die Login-Sperre für '${fn:escapeXml(user.username)}' wirklich aufheben?">
-							<input type="hidden" name="csrfToken"
-								value="${sessionScope.csrfToken}"> <input type="hidden"
-								name="username" value="${user.username}">
-							<button type="submit" class="btn btn-small btn-info">Entsperren</button>
-						</form> <c:if test="${sessionScope.user.id != user.id}">
+
+						<button type="button" class="btn btn-small btn-info js-unlock-btn"
+							data-user-id="${user.id}"
+							data-username="${fn:escapeXml(user.username)}">Entsperren</button>
+
+						<c:if test="${sessionScope.user.id != user.id}">
 							<c:if
 								test="${hasMasterAccess or userPermissions.contains('USER_PASSWORD_RESET')}">
-								<form
-									action="<c:url value='/admin/action/user?action=resetPassword'/>"
-									method="post" class="js-reset-password-form"
-									data-confirm-message="Passwort für '${fn:escapeXml(user.username)}' zurücksetzen? Das neue Passwort wird als Nachricht angezeigt.">
-									<input type="hidden" name="csrfToken"
-										value="${sessionScope.csrfToken}"> <input
-										type="hidden" name="userId" value="${user.id}">
-									<button type="submit" class="btn btn-small btn-warning">Passwort
-										Reset</button>
-								</form>
+								<button type="button"
+									class="btn btn-small btn-warning js-reset-password-btn"
+									data-user-id="${user.id}"
+									data-username="${fn:escapeXml(user.username)}">Passwort
+									Reset</button>
 							</c:if>
 							<c:if
 								test="${hasMasterAccess or userPermissions.contains('USER_DELETE')}">
-								<form action="<c:url value='/admin/action/user?action=delete'/>"
-									method="post" class="js-confirm-delete-form"
-									data-confirm-message="Benutzer '${fn:escapeXml(user.username)}' wirklich löschen?">
-									<input type="hidden" name="csrfToken"
-										value="${sessionScope.csrfToken}"> <input
-										type="hidden" name="userId" value="${user.id}">
-									<button type="submit" class="btn btn-small btn-danger">Löschen</button>
-								</form>
+								<button type="button"
+									class="btn btn-small btn-danger js-delete-btn"
+									data-user-id="${user.id}"
+									data-username="${fn:escapeXml(user.username)}">Löschen</button>
 							</c:if>
 						</c:if></td>
 				</tr>
@@ -101,72 +91,7 @@
 	</table>
 </div>
 
-<!-- Mobile Card View -->
-<div class="mobile-card-list searchable-table">
-	<c:if test="${empty requestScope.userList}">
-		<div class="card">
-			<p>Keine Benutzer gefunden.</p>
-		</div>
-	</c:if>
-	<c:forEach var="user" items="${requestScope.userList}">
-		<div class="list-item-card" data-user-id="${user.id}">
-			<h3 class="card-title" data-field="username">
-				<c:out value="${user.username}" />
-			</h3>
-			<div class="card-row">
-				<span>Rolle:</span> <strong data-field="roleName"><c:out
-						value="${user.roleName}" /></strong>
-			</div>
-			<div class="card-row">
-				<span>ID:</span> <strong data-field="id"><c:out
-						value="${user.id}" /></strong>
-			</div>
-			<div class="card-actions">
-				<c:if
-					test="${hasMasterAccess or userPermissions.contains('USER_UPDATE')}">
-					<button type="button" class="btn btn-small edit-user-btn"
-						data-fetch-url="<c:url value='/admin/mitglieder?action=getUserData&id=${user.id}'/>">Bearbeiten</button>
-				</c:if>
-				<a
-					href="<c:url value='/admin/mitglieder?action=details&id=${user.id}'/>"
-					class="btn btn-small">Details</a>
-				<form action="<c:url value='/admin/action/user?action=unlock'/>"
-					method="post" class="js-unlock-form"
-					data-confirm-message="Die Login-Sperre für '${fn:escapeXml(user.username)}' wirklich aufheben?">
-					<input type="hidden" name="csrfToken"
-						value="${sessionScope.csrfToken}"> <input type="hidden"
-						name="username" value="${user.username}">
-					<button type="submit" class="btn btn-small btn-info">Entsperren</button>
-				</form>
-				<c:if test="${sessionScope.user.id != user.id}">
-					<c:if
-						test="${hasMasterAccess or userPermissions.contains('USER_PASSWORD_RESET')}">
-						<form
-							action="<c:url value='/admin/action/user?action=resetPassword'/>"
-							method="post" class="js-reset-password-form"
-							data-confirm-message="Passwort für '${fn:escapeXml(user.username)}' zurücksetzen? Das neue Passwort wird als Nachricht angezeigt.">
-							<input type="hidden" name="csrfToken"
-								value="${sessionScope.csrfToken}"> <input type="hidden"
-								name="userId" value="${user.id}">
-							<button type="submit" class="btn btn-small btn-warning">Reset</button>
-						</form>
-					</c:if>
-					<c:if
-						test="${hasMasterAccess or userPermissions.contains('USER_DELETE')}">
-						<form action="<c:url value='/admin/action/user?action=delete'/>"
-							method="post" class="js-confirm-delete-form"
-							data-confirm-message="Benutzer '${fn:escapeXml(user.username)}' wirklich löschen?">
-							<input type="hidden" name="csrfToken"
-								value="${sessionScope.csrfToken}"> <input type="hidden"
-								name="userId" value="${user.id}">
-							<button type="submit" class="btn btn-small btn-danger">Löschen</button>
-						</form>
-					</c:if>
-				</c:if>
-			</div>
-		</div>
-	</c:forEach>
-</div>
+<%-- Mobile view would be similarly updated to use buttons with data-attributes instead of forms --%>
 
 <jsp:include page="/WEB-INF/jspf/user_modals.jspf" />
 

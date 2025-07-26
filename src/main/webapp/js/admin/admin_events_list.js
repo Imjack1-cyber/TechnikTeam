@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	});
 
-	// Client-side file size validation
 	document.querySelectorAll('.file-input').forEach(input => {
 		input.addEventListener('change', (e) => {
 			const file = e.target.files[0];
@@ -18,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 			if (file.size > maxSize) {
 				if (warningElement) warningElement.style.display = 'block';
-				e.target.value = ''; // Clear the invalid selection
+				e.target.value = ''; 
 			} else {
 				if (warningElement) warningElement.style.display = 'none';
 			}

@@ -38,15 +38,10 @@ public class User {
 		if (permissions == null) {
 			return false;
 		}
-		// A user has admin access if they have the master key OR any other specific
-		// admin-level permission that is not just for viewing or updating specific
-		// content.
 		return permissions.contains(Permissions.ACCESS_ADMIN_PANEL) || permissions.stream().anyMatch(
 				p -> !p.equals(Permissions.FILE_READ) && !p.equals(Permissions.FILE_UPDATE) && (p.contains("_READ")
 						|| p.contains("_MANAGE") || p.contains("_CREATE") || p.contains("_DELETE")));
 	}
-
-	// --- Standard Getters and Setters ---
 
 	public int getId() {
 		return id;

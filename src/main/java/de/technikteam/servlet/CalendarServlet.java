@@ -53,7 +53,6 @@ public class CalendarServlet extends HttpServlet {
 			try {
 				currentYearMonth = YearMonth.of(Integer.parseInt(yearParam), Integer.parseInt(monthParam));
 			} catch (NumberFormatException e) {
-				// Ignore invalid parameters and use current month
 			}
 		}
 
@@ -68,7 +67,6 @@ public class CalendarServlet extends HttpServlet {
 		List<Event> events = eventDAO.getAllActiveAndUpcomingEvents();
 		List<Meeting> meetings = meetingDAO.getAllUpcomingMeetings();
 
-		// Create a unified list of map objects, which is safe for JSP EL
 		List<Map<String, Object>> unifiedList = new ArrayList<>();
 		events.forEach(item -> {
 			Map<String, Object> map = new HashMap<>();
@@ -96,9 +94,8 @@ public class CalendarServlet extends HttpServlet {
 
 		// --- Data for Monthly View ---
 		LocalDate firstOfMonth = currentYearMonth.atDay(1);
-		int startDayOfWeekValue = firstOfMonth.getDayOfWeek().getValue(); // Monday=1, ..., Sunday=7
-		int startDayOfWeekOffset = (startDayOfWeekValue == 7) ? 0 : startDayOfWeekValue; // Convert to Sunday=0,
-																							// Monday=1, ...
+		int startDayOfWeekValue = firstOfMonth.getDayOfWeek().getValue(); 
+		int startDayOfWeekOffset = (startDayOfWeekValue == 7) ? 0 : startDayOfWeekValue; 
 		request.setAttribute("startDayOfWeekOffset", startDayOfWeekOffset);
 		request.setAttribute("daysInMonth", currentYearMonth.lengthOfMonth());
 

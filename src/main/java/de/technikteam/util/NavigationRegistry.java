@@ -17,10 +17,6 @@ import java.util.stream.Collectors;
 public final class NavigationRegistry {
 
 	private static final List<NavigationItem> ALL_ITEMS = new ArrayList<>();
-
-	// Defines all possible navigation links, their icons, and the permission
-	// required to see them.
-	// A null permission means the link is public to all authenticated users.
 	static {
 		// User Section
 		ALL_ITEMS.add(new NavigationItem("Dashboard", "/home", "fa-home", null));
@@ -57,7 +53,6 @@ public final class NavigationRegistry {
 	}
 
 	private NavigationRegistry() {
-		// Private constructor to prevent instantiation.
 	}
 
 	/**

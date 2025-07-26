@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	const handleRequestAction = async (form) => {
 		try {
-			// FIX: Use URLSearchParams to ensure the correct Content-Type for the servlet.
 			const formData = new URLSearchParams(new FormData(form));
 
 			const response = await fetch(form.action, {

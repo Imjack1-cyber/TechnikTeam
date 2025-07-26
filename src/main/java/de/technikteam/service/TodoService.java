@@ -121,13 +121,11 @@ public class TodoService {
 		try (Connection conn = dbManager.getConnection()) {
 			conn.setAutoCommit(false);
 			try {
-				// Reorder categories first if present
 				List<Integer> categoryOrder = reorderData.get("categoryOrder");
 				if (categoryOrder != null) {
 					todoDAO.updateCategoryOrder(categoryOrder, conn);
 				}
 
-				// Reorder tasks within each category
 				for (Map.Entry<String, List<Integer>> entry : reorderData.entrySet()) {
 					if (entry.getKey().startsWith("category-")) {
 						int categoryId = Integer.parseInt(entry.getKey().substring("category-".length()));

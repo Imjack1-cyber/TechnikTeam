@@ -8,7 +8,6 @@ package de.technikteam.config;
 public final class Permissions {
 
 	private Permissions() {
-		// Private constructor to prevent instantiation
 	}
 
 	// --- GLOBAL ---
@@ -67,7 +66,7 @@ public final class Permissions {
 	public static final String ACHIEVEMENT_CREATE = "ACHIEVEMENT_CREATE";
 	public static final String ACHIEVEMENT_UPDATE = "ACHIEVEMENT_UPDATE";
 	public static final String ACHIEVEMENT_DELETE = "ACHIEVEMENT_DELETE";
-	public static final String ACHIEVEMENT_VIEW = "ACHIEVEMENT_VIEW"; // Special key for navigation
+	public static final String ACHIEVEMENT_VIEW = "ACHIEVEMENT_VIEW"; 
 
 	// --- NAVIGATION-SPECIFIC ---
 	public static final String ADMIN_DASHBOARD_ACCESS = "ADMIN_DASHBOARD_ACCESS";

@@ -30,7 +30,6 @@ public class PasskeyCredential {
 	public PasskeyCredential() {
 	}
 
-	// Getters and setters
 	public int getId() {
 		return id;
 	}

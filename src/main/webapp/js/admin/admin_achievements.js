@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
 	const iconInput = document.getElementById('icon-modal');
 	const descInput = document.getElementById('description-modal');
 
-	// --- Key Builder Elements for Creating New Achievements ---
 	const keyBuilderGroup = document.getElementById('key-builder-group');
 	const keyTypeSelect = document.getElementById('key-type-select');
 	const keySubtypeGroups = document.querySelectorAll('.key-subtype-group');
@@ -30,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		const type = keyTypeSelect.value;
 		let generatedKey = '';
 
-		// Hide all subtype groups initially for a clean slate
 		keySubtypeGroups.forEach(group => group.style.display = 'none');
 
 		if (type === 'EVENT_PARTICIPANT' || type === 'EVENT_LEADER') {
@@ -53,14 +51,13 @@ document.addEventListener('DOMContentLoaded', () => {
 	if (keyValueInput) keyValueInput.addEventListener('input', updateKey);
 	if (keyCourseSelect) keyCourseSelect.addEventListener('change', updateKey);
 
-	// --- Event Listeners for Buttons ---
 	document.getElementById('new-achievement-btn').addEventListener('click', () => {
 		form.reset();
 		title.textContent = 'Neuen Erfolg anlegen';
 		actionInput.value = 'create';
 		idInput.value = '';
-		keyBuilderGroup.style.display = 'block'; // Show key builder for new achievements
-		updateKey(); // Initialize/reset the key builder state
+		keyBuilderGroup.style.display = 'block'; 
+		updateKey(); 
 	});
 
 	document.querySelectorAll('.edit-achievement-btn').forEach(btn => {
@@ -87,7 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	});
 
-	// --- Generic Modal Closing ---
 	modal.addEventListener('click', (e) => {
 		if (e.target === modal) modal.classList.remove('active');
 	});

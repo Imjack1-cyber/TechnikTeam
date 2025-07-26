@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	function createAlertBanner(message, type = 'info') {
 		const banner = document.createElement('div');
-		banner.className = `${type}-message`; // info-message, error-message, etc.
+		banner.className = `${type}-message`; 
 		const iconClass = type === 'danger' ? 'fa-exclamation-triangle' : 'fa-info-circle';
 		banner.innerHTML = `<i class="fas ${iconClass}"></i> ${message}`;
 		return banner;
@@ -56,7 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			}).join('');
 			content = `<ul class="details-list">${list}</ul>`;
 
-			// Add an alert banner if there are low stock items
 			const alertMessage = `Es gibt ${items.length} Artikel mit niedrigem Lagerbestand. <a href="${contextPath}/admin/lager">Jetzt prüfen</a>.`;
 			const banner = createAlertBanner(alertMessage, 'danger');
 			lowStockContainer.prepend(banner);
@@ -155,5 +154,5 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	fetchData();
-	setInterval(fetchData, 60000); // Re-fetch every 60 seconds
+	setInterval(fetchData, 60000); 
 });

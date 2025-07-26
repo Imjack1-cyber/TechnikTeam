@@ -117,7 +117,7 @@ public class StorageService {
                     success = storageDAO.permanentlyReduceQuantities(itemId, quantity, reason, conn);
                     logDetails = String.format("Permanently removed %d x '%s' (ID: %d) from stock (unrepairable). Reason: %s", quantity, item.getName(), itemId, reason);
                     adminLogService.log(adminUser.getUsername(), "ITEM_UNREPAIRABLE", logDetails);
-                } else { // "DEFECT"
+                } else { 
                     int newDefectiveTotal = item.getDefectiveQuantity() + quantity;
                     if (item.getQuantity() < newDefectiveTotal) {
                         throw new IllegalStateException("Total defective quantity cannot exceed total quantity.");

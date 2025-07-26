@@ -1,463 +1,272 @@
+// src/main/webapp/js/public/eventDetails.js
 document.addEventListener('DOMContentLoaded', () => {
 	const contextPath = document.body.dataset.contextPath || '';
 	const eventId = document.body.dataset.eventId || '';
 	const currentUserId = document.body.dataset.userId || '';
-	const isAdmin = document.body.dataset.isAdmin === 'true';
+	const isAdminOrLeader = document.body.dataset.isAdmin === 'true';
 
-	const taskModal = document.getElementById('task-modal');
-	if (taskModal) {
-		const allUsers = JSON.parse(document.getElementById('allUsersData')?.textContent || '[]');
-		const allItems = JSON.parse(document.getElementById('allItemsData')?.textContent || '[]');
-		const allKits = JSON.parse(document.getElementById('allKitsData')?.textContent || '[]');
-		const allTasks = JSON.parse(document.getElementById('allTasksData')?.textContent || '[]');
+	const container = document.getElementById('event-details-container');
+	if (!container) return;
 
-		const form = document.getElementById('task-modal-form');
-		const title = document.getElementById('task-modal-title');
-		const taskIdInput = document.getElementById('task-id-modal');
-		const descInput = document.getElementById('task-description-modal');
-		const detailsInput = document.getElementById('task-details-modal');
-		const orderInput = document.getElementById('task-display-order-modal');
-		const statusGroup = document.getElementById('task-status-group');
-		const statusInput = document.getElementById('task-status-modal');
-		const deleteBtn = document.getElementById('delete-task-btn');
+	// --- API Abstraction ---
+	const api = {
+		getEvent: (id) => fetch(`${contextPath}/api/v1/public/events/${id}`).then(res => {
+			if (!res.ok) { throw new Error(`HTTP error! status: ${res.status}`); }
+			return res.json();
+		})
+	};
 
-		const assignmentTypeRadios = form.querySelectorAll('input[name="assignmentType"]');
-		const directFields = document.getElementById('direct-assignment-fields');
-		const poolFields = document.getElementById('pool-assignment-fields');
-		const requiredPersonsInput = document.getElementById('task-required-persons-modal');
-		const userCheckboxesContainer = document.getElementById('task-user-checkboxes');
+	// --- RENDER FUNCTIONS ---
+	const escape = (str) => {
+		if (str === null || typeof str === 'undefined') return '';
+		const div = document.createElement('div');
+		div.innerText = str;
+		return div.innerHTML;
+	};
 
-		const itemsContainer = document.getElementById('task-items-container');
-		const kitsContainer = document.getElementById('task-kits-container');
+	const renderHeader = (event) => {
+		const statusClass = event.status === 'LAUFEND' ? 'status-warn' : (event.status === 'ABGESCHLOSSEN' || event.status === 'ABGESAGT') ? 'status-info' : 'status-ok';
+		return `
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+                <h1>${escape(event.name)}</h1>
+                <span class="status-badge ${statusClass}">${escape(event.status)}</span>
+            </div>
+            <p class="details-subtitle">
+                <strong>Zeitraum:</strong> ${escape(event.formattedEventDateTimeRange)}
+                ${event.location ? `<span style="margin-left: 1rem;"><strong>Ort:</strong> ${escape(event.location)}</span>` : ''}
+            </p>`;
+	};
 
-		const createRow = (container, onRemove) => {
-			const row = document.createElement('div');
-			row.className = 'dynamic-row';
-			const removeBtn = document.createElement('button');
-			removeBtn.type = 'button';
-			removeBtn.className = 'btn-small btn-danger';
-			removeBtn.innerHTML = '×';
-			removeBtn.onclick = () => onRemove(row);
-			row.appendChild(removeBtn);
-			container.appendChild(row);
-			return row;
-		};
+	const renderTasks = (event) => {
+		let tasksHtml = '';
+		if (!event.eventTasks || event.eventTasks.length === 0) {
+			tasksHtml = '<p>Für dieses Event wurden noch keine Aufgaben erstellt.</p>';
+		} else {
+			tasksHtml = event.eventTasks.map(task => {
+				const assignedUsers = (task.assignedUsers || []).map(u => escape(u.username)).join(', ') || 'Niemand';
+				const requiredMaterials = (task.requiredItems || []).map(item => `<li><a href="${contextPath}/lager/details?id=${item.id}">${escape(item.quantity)}x ${escape(item.name)}</a></li>`).join('');
+				const requiredKits = (task.requiredKits || []).map(kit => `<li><a href="${contextPath}/pack-kit?kitId=${kit.id}">1x Kit: ${escape(kit.name)}</a></li>`).join('');
+				const isTaskAssignedToCurrentUser = (task.assignedUsers || []).some(u => u.id == currentUserId);
 
-		const addItemRow = (item = { id: '', quantity: 1 }) => {
-			const row = createRow(itemsContainer, r => r.remove());
-			const select = document.createElement('select');
-			select.name = 'itemIds[]';
-			select.className = 'form-group';
-			select.innerHTML = '<option value="">-- Material --</option>' + allItems.map(i => `<option value="${i.id}" data-max-qty="${i.availableQuantity}">${i.name}</option>`).join('');
-			select.value = item.id;
+				let actionButtons = '';
+				if (event.status === 'LAUFEND') {
+					if (task.requiredPersons > 0) {
+						if (isTaskAssignedToCurrentUser) {
+							actionButtons += `<form action="${contextPath}/task-action" method="post"><input type="hidden" name="csrfToken" value="${document.body.dataset.csrfToken}"><input type="hidden" name="action" value="unclaim"><input type="hidden" name="taskId" value="${task.id}"><button type="submit" class="btn btn-danger-outline btn-small">Aufgabe zurückgeben</button></form>`;
+						} else if ((task.assignedUsers || []).length < task.requiredPersons) {
+							actionButtons += `<form action="${contextPath}/task-action" method="post"><input type="hidden" name="csrfToken" value="${document.body.dataset.csrfToken}"><input type="hidden" name="action" value="claim"><input type="hidden" name="taskId" value="${task.id}"><button type="submit" class="btn btn-success btn-small">Aufgabe übernehmen</button></form>`;
+						}
+					}
+					if (isTaskAssignedToCurrentUser && task.status === 'OFFEN') {
+						actionButtons += `<button class="btn btn-primary btn-small mark-task-done-btn" data-task-id="${task.id}">Als erledigt markieren</button>`;
+					}
+				}
 
-			const input = document.createElement('input');
-			input.type = 'number';
-			input.name = 'itemQuantities[]';
-			input.value = item.quantity;
-			input.min = '1';
-			input.className = 'form-group';
-			input.style.maxWidth = '100px';
+				return `
+                <div class="card" style="margin-bottom: 1rem;">
+					<div style="display: flex; justify-content: space-between; align-items: start;">
+						<div>
+							<span class="status-badge ${task.status === 'ERLEDIGT' ? 'status-ok' : 'status-warn'}">${escape(task.status)}</span>
+							<h4 style="margin-top: 0.5rem;">${escape(task.displayOrder)}. ${escape(task.description)}</h4>
+						</div>
+						${isAdminOrLeader ? `<div><button class="btn btn-small edit-task-btn" data-task-id="${task.id}">Bearbeiten</button></div>` : ''}
+					</div>
+					<div class="markdown-content" style="margin-top: 1rem;">${marked.parse(task.details || '', { sanitize: true })}</div>
+					<p style="margin-top: 1rem;"><strong>Zugewiesen an:</strong> ${task.requiredPersons > 0 ? `<span class="text-muted">Offener Pool (${(task.assignedUsers || []).length} / ${task.requiredPersons} Plätze)</span>` : ''} ${assignedUsers}</p>
+					${(requiredMaterials || requiredKits) ? `<p style="margin-top: 1rem;"><strong>Benötigtes Material:</strong></p><ul style="padding-left: 1.5rem;">${requiredMaterials}${requiredKits}</ul>` : ''}
+                    ${actionButtons ? `<div style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem; display: flex; gap: 0.5rem;">${actionButtons}</div>` : ''}
+				</div>`;
+			}).join('');
+		}
+		return `
+            <div class="card" style="grid-column: 1/-1;">
+                <h2 class="card-title">Aufgaben</h2>
+                <div id="task-list-container">${tasksHtml}</div>
+                ${isAdminOrLeader ? `<button class="btn btn-success" id="new-task-btn" style="margin-top: 1rem;"><i class="fas fa-plus"></i> Neue Aufgabe</button>` : ''}
+            </div>`;
+	};
 
-			select.addEventListener('change', () => {
-				const selectedOption = select.options[select.selectedIndex];
-				const maxQty = selectedOption.dataset.maxQty;
-				input.max = maxQty || '';
-				if (maxQty) input.title = `Maximal verfügbar: ${maxQty}`;
-			});
+	const renderChat = (event) => {
+		if (event.status !== 'LAUFEND') {
+			return `<div class="card" style="grid-column: 1/-1;"><h2 class="card-title">Event-Chat</h2><p class="info-message">Der Chat ist nur aktiv, während das Event läuft.</p></div>`;
+		}
+		return `
+            <div class="card" style="grid-column: 1/-1;">
+                <h2 class="card-title">Event-Chat</h2>
+                <div id="chat-box" style="height: 300px; overflow-y: auto; border: 1px solid var(--border-color); padding: 0.5rem; margin-bottom: 1rem; background: var(--bg-color);"></div>
+                <div style="position: relative;">
+                    <form id="chat-form" style="display: flex; gap: 0.5rem;">
+                        <input type="text" id="chat-message-input" class="form-group" style="flex-grow: 1; margin: 0;" placeholder="Nachricht eingeben... @ für Erwähnungen" autocomplete="off">
+                        <button type="submit" class="btn">Senden</button>
+                    </form>
+                    <div id="mention-popup" style="display: none; position: absolute; bottom: 100%; left: 0; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: var(--shadow-md); max-height: 150px; overflow-y: auto; z-index: 10;">
+                    </div>
+                </div>
+            </div>`;
+	};
 
-			row.prepend(select, input);
-		};
+	const renderDescription = (event) => `<div class="card"><h2 class="card-title">Beschreibung</h2><div class="markdown-content">${marked.parse(event.description || 'Keine Beschreibung für dieses Event vorhanden.', { sanitize: true })}</div></div>`;
+	const renderRequirements = (event) => `<div class="card"><h2 class="card-title">Benötigter Personalbedarf</h2><ul class="details-list">${!event.skillRequirements || event.skillRequirements.length === 0 ? '<li>Keine speziellen Qualifikationen benötigt.</li>' : event.skillRequirements.map(req => `<li><strong>${escape(req.courseName)}:</strong> <span>${escape(req.requiredPersons)} Person(en)</span></li>`).join('')}</ul></div>`;
+	const renderMaterials = (event) => `<div class="card"><h2 class="card-title">Reserviertes Material</h2><ul class="details-list">${!event.reservedItems || event.reservedItems.length === 0 ? '<li>Kein Material für dieses Event reserviert.</li>' : event.reservedItems.map(item => `<li>${escape(item.name)} <span>${escape(item.quantity)}x</span></li>`).join('')}</ul></div>`;
+	const renderAttachments = (event) => `<div class="card"><h2 class="card-title">Anhänge</h2><ul class="details-list">${!event.attachments || event.attachments.length === 0 ? '<li>Keine Anhänge für dieses Event vorhanden.</li>' : event.attachments.map(att => `<li><a href="${contextPath}/download?id=${att.id}">${escape(att.filename)}</a></li>`).join('')}</ul></div>`;
+	const renderTeam = (event) => `<div class="card"><h2 class="card-title">Zugewiesenes Team</h2><ul class="details-list">${!event.assignedAttendees || event.assignedAttendees.length === 0 ? '<li>Noch kein Team zugewiesen.</li>' : event.assignedAttendees.map(attendee => `<li>${escape(attendee.username)}</li>`).join('')}</ul></div>`;
 
-		const addKitRow = (kit = { id: '' }) => {
-			const row = createRow(kitsContainer, r => r.remove());
-			const select = document.createElement('select');
-			select.name = 'kitIds[]';
-			select.className = 'form-group';
-			select.innerHTML = '<option value="">-- Kit --</option>' + allKits.map(k => `<option value="${k.id}">${k.name}</option>`).join('');
-			select.value = kit.id;
-			row.prepend(select);
-		};
-
-		const openModal = () => taskModal.classList.add('active');
-		const closeModal = () => taskModal.classList.remove('active');
-
-		const resetModal = () => {
-			form.reset();
-			taskIdInput.value = '';
-			itemsContainer.innerHTML = '';
-			kitsContainer.innerHTML = '';
-			userCheckboxesContainer.innerHTML = '';
-			statusGroup.style.display = 'none';
-			deleteBtn.style.display = 'none';
-			directFields.style.display = 'block';
-			poolFields.style.display = 'none';
-			form.querySelector('input[name="assignmentType"][value="direct"]').checked = true;
-		};
-
-		document.getElementById('new-task-btn')?.addEventListener('click', () => {
-			resetModal();
-			title.textContent = 'Neue Aufgabe erstellen';
-			allUsers.forEach(user => {
-				userCheckboxesContainer.innerHTML += `<label><input type="checkbox" name="userIds" value="${user.id}"> ${user.username}</label>`;
-			});
-			openModal();
-		});
-
-		document.querySelectorAll('.edit-task-btn').forEach(btn => {
-			btn.addEventListener('click', () => {
-				const taskId = parseInt(btn.dataset.taskId, 10);
-				const task = allTasks.find(t => t.id === taskId);
-				if (!task) return;
-
-				resetModal();
-				title.textContent = 'Aufgabe bearbeiten';
-				statusGroup.style.display = 'block';
-				deleteBtn.style.display = 'inline-block';
-
-				taskIdInput.value = task.id;
-				descInput.value = task.description;
-				detailsInput.value = task.details || '';
-				orderInput.value = task.displayOrder;
-				statusInput.value = task.status;
-
-				if (task.requiredPersons > 0) {
-					form.querySelector('input[name="assignmentType"][value="pool"]').checked = true;
-					poolFields.style.display = 'block';
-					directFields.style.display = 'none';
-					requiredPersonsInput.value = task.requiredPersons;
+	const loadEventDetails = async () => {
+		try {
+			const result = await api.getEvent(eventId);
+			if (!result.success) {
+				if (result.message.includes("Access Denied") || result.message.includes("Authentication required")) {
+					container.innerHTML = `<h1 class="error-message">Zugriff verweigert</h1><p>Sie sind nicht berechtigt, die Details für dieses Event einzusehen.</p><a href="${contextPath}/veranstaltungen" class="btn">Zurück zur Übersicht</a>`;
 				} else {
-					const assignedIds = new Set(task.assignedUsers.map(u => u.id));
-					allUsers.forEach(user => {
-						const isChecked = assignedIds.has(user.id) ? 'checked' : '';
-						userCheckboxesContainer.innerHTML += `<label><input type="checkbox" name="userIds" value="${user.id}" ${isChecked}> ${user.username}</label>`;
-					});
+					throw new Error(result.message);
 				}
-
-				task.requiredItems?.forEach(item => addItemRow({ id: item.id, quantity: item.quantity }));
-				task.requiredKits?.forEach(kit => addKitRow({ id: kit.id }));
-				openModal();
-			});
-		});
-
-		assignmentTypeRadios.forEach(radio => {
-			radio.addEventListener('change', () => {
-				directFields.style.display = radio.value === 'direct' ? 'block' : 'none';
-				poolFields.style.display = radio.value === 'pool' ? 'block' : 'none';
-			});
-		});
-
-		deleteBtn.addEventListener('click', () => {
-			showConfirmationModal('Diese Aufgabe wirklich löschen?', () => {
-				const csrfToken = form.querySelector('input[name="csrfToken"]').value;
-				const deleteForm = document.createElement('form');
-				deleteForm.method = 'post';
-				deleteForm.action = `${contextPath}/task-action`;
-				deleteForm.innerHTML = `
-					<input type="hidden" name="action" value="delete">
-					<input type="hidden" name="taskId" value="${taskIdInput.value}">
-					<input type="hidden" name="eventId" value="${eventId}">
-					<input type="hidden" name="csrfToken" value="${csrfToken}">`;
-				document.body.appendChild(deleteForm);
-				deleteForm.submit();
-			});
-		});
-
-		// FIX: Use event delegation on the body to handle clicks on dynamically added elements
-		document.body.addEventListener('click', e => {
-			const addItemBtn = e.target.closest('#add-task-item-btn');
-			const addKitBtn = e.target.closest('#add-task-kit-btn');
-
-			if (addItemBtn) {
-				addItemRow();
+				return;
 			}
-			if (addKitBtn) {
-				addKitRow();
+
+			const event = result.data;
+			document.title = `Event Details: ${event.name}`;
+
+			container.querySelector('#event-header-placeholder').innerHTML = renderHeader(event);
+
+			let contentHtml = renderTasks(event);
+			contentHtml += renderChat(event);
+			contentHtml += renderDescription(event);
+			contentHtml += renderRequirements(event);
+			contentHtml += renderMaterials(event);
+			contentHtml += renderAttachments(event);
+			contentHtml += renderTeam(event);
+
+			container.querySelector('#event-content-placeholder').innerHTML = contentHtml;
+
+			if (event.status === 'LAUFEND') {
+				initializeWebSocket(event.chatMessages, event.assignedAttendees);
 			}
-		});
+			// Re-initialize markdown rendering for content loaded via API
+			document.querySelectorAll('.markdown-content').forEach(el => window.renderMarkdown(el));
 
-		taskModal.querySelector('.modal-close-btn').addEventListener('click', closeModal);
-	}
+		} catch (error) {
+			console.error("Failed to load event details:", error);
+			container.innerHTML = `<div class="error-message">Event-Details konnten nicht geladen werden: ${error.message}</div>`;
+		}
+	};
 
-	const taskListContainer = document.getElementById('task-list-container');
-	if (taskListContainer) {
-		taskListContainer.addEventListener('click', (e) => {
-			const markDoneBtn = e.target.closest('.mark-task-done-btn');
-			if (markDoneBtn) {
-				const taskId = markDoneBtn.dataset.taskId;
-				const csrfToken = document.body.dataset.csrfToken;
-				const params = new URLSearchParams();
-				params.append('action', 'updateStatus');
-				params.append('taskId', taskId);
-				params.append('status', 'ERLEDIGT');
-				if (csrfToken) {
-					params.append('csrfToken', csrfToken);
-				}
-
-				fetch(`${contextPath}/task-action`, {
-					method: 'POST',
-					body: params
-				})
-					.then(response => {
-						if (response.ok) window.location.reload();
-						else alert('Fehler beim Aktualisieren der Aufgabe.');
-					})
-					.catch(error => {
-						console.error("Error updating task status:", error);
-						alert('Netzwerkfehler beim Aktualisieren der Aufgabe.');
-					});
-			}
-		});
-	}
-
-	const chatBox = document.getElementById('chat-box');
-	if (chatBox) {
+	const initializeWebSocket = (initialMessages, assignedUsers) => {
+		const chatBox = document.getElementById('chat-box');
 		const chatForm = document.getElementById('chat-form');
 		const chatInput = document.getElementById('chat-message-input');
+		const mentionPopup = document.getElementById('mention-popup');
+		if (!chatBox || !chatForm || !chatInput) return;
+
+		chatBox.innerHTML = '';
+		if (initialMessages && initialMessages.length > 0) {
+			initialMessages.forEach(msg => appendMessage(msg));
+		}
+
 		const websocketProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 		const websocketUrl = `${websocketProtocol}//${window.location.host}${contextPath}/ws/chat/${eventId}`;
-		let socket;
+		const socket = new WebSocket(websocketUrl);
 
-		const connect = () => {
-			socket = new WebSocket(websocketUrl);
-			socket.onopen = () => fetchMessages();
-			socket.onmessage = (event) => {
-				const data = JSON.parse(event.data);
-				switch (data.type) {
-					case 'new_message':
-						appendMessage(data.payload);
-						break;
-					case 'message_soft_deleted':
-						handleSoftDelete(data.payload);
-						break;
-					case 'message_updated':
-						const messageTextElement = document.getElementById(`message-text-${data.payload.messageId}`);
-						const editedMarkerElement = document.getElementById(`message-edited-marker-${data.payload.messageId}`);
-						if (messageTextElement) messageTextElement.innerHTML = marked.parse(data.payload.newText, { sanitize: true });;
-						if (editedMarkerElement) editedMarkerElement.style.display = 'inline';
-						break;
-				}
-			};
-			socket.onclose = (event) => console.warn('WebSocket connection closed.', event);
-			socket.onerror = (error) => console.error('WebSocket error:', error);
-		};
-
-		const getTextColorForBackground = (hexColor) => {
-			if (!hexColor || hexColor.length < 7) return '#000000';
-			const r = parseInt(hexColor.slice(1, 3), 16);
-			const g = parseInt(hexColor.slice(3, 5), 16);
-			const b = parseInt(hexColor.slice(5, 7), 16);
-			const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-			return luminance > 0.5 ? '#000000' : '#FFFFFF';
-		};
-
-		const formatAsLocaleTime = (dateString) => {
-			if (!dateString) return '';
-			return new Date(dateString).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-		};
-
-		const appendMessage = (message) => {
-			const isCurrentUser = String(message.userId) === String(currentUserId);
-
-			const container = document.createElement('div');
-			container.className = 'chat-message-container';
-			container.id = `message-container-${message.id}`;
-			if (isCurrentUser) container.classList.add('current-user');
-
-			const bubbleElement = document.createElement('div');
-			bubbleElement.className = 'chat-bubble';
-			bubbleElement.id = `chat-bubble-${message.id}`;
-
-			const bubbleBackgroundColor = isCurrentUser ? 'var(--primary-color)' : (message.chatColor || '#E9ECEF');
-			bubbleElement.style.backgroundColor = bubbleBackgroundColor;
-			bubbleElement.style.borderColor = bubbleBackgroundColor;
-			bubbleElement.style.color = getTextColorForBackground(bubbleBackgroundColor);
-
-			if (message.isDeleted) {
-				renderDeletedState(bubbleElement, message);
-			} else {
-				renderNormalState(bubbleElement, message, isCurrentUser);
-				const optionsMenu = createOptionsMenu(message, isCurrentUser);
-				container.appendChild(optionsMenu);
-			}
-
-			container.prepend(bubbleElement);
-			chatBox.appendChild(container);
-			chatBox.scrollTop = chatBox.scrollHeight;
-		};
-
-		const renderNormalState = (bubbleElement, message, isCurrentUser) => {
-			if (!isCurrentUser) {
-				const usernameElement = document.createElement('strong');
-				usernameElement.className = 'chat-username';
-				usernameElement.style.color = 'black';
-				usernameElement.textContent = message.username;
-				bubbleElement.appendChild(usernameElement);
-			}
-
-			const textElement = document.createElement('span');
-			textElement.className = 'chat-text';
-			textElement.id = `message-text-${message.id}`;
-			textElement.innerHTML = marked.parse(message.messageText, { sanitize: true });
-
-			const timeElement = document.createElement('span');
-			timeElement.className = 'chat-timestamp';
-			timeElement.textContent = formatAsLocaleTime(message.sentAt);
-			timeElement.style.color = bubbleElement.style.color === '#FFFFFF' ? 'rgba(255,255,255,0.7)' : 'var(--text-muted-color)';
-
-			const editedMarker = document.createElement('span');
-			editedMarker.className = 'chat-edited-marker';
-			editedMarker.id = `message-edited-marker-${message.id}`;
-			editedMarker.textContent = ' (bearbeitet)';
-			editedMarker.style.display = message.edited ? 'inline' : 'none';
-
-			timeElement.prepend(editedMarker);
-			bubbleElement.appendChild(textElement);
-			bubbleElement.appendChild(timeElement);
-		};
-
-		const renderDeletedState = (bubbleElement, message) => {
-			let deletedText;
-			const deletedByEl = document.createElement('span');
-			deletedByEl.textContent = message.deletedByUsername;
-
-			const originalUserEl = document.createElement('span');
-			originalUserEl.textContent = message.username;
-
-			const infoSpan = document.createElement('span');
-			infoSpan.className = 'chat-deleted-info';
-
-			if (message.username === message.deletedByUsername) {
-				infoSpan.textContent = `Nachricht wurde von ${originalUserEl.textContent} gelöscht`;
-			} else {
-				infoSpan.textContent = `Nachricht von ${originalUserEl.textContent} wurde von ${deletedByEl.textContent} gelöscht`;
-			}
-			bubbleElement.appendChild(infoSpan);
-			bubbleElement.classList.add('deleted');
-		};
-
-		const createOptionsMenu = (message, isCurrentUser) => {
-			const optionsMenu = document.createElement('div');
-			optionsMenu.className = 'chat-options';
-			if (isCurrentUser) {
-				const editButton = document.createElement('button');
-				editButton.className = 'chat-option-btn';
-				editButton.innerHTML = '<i class="fas fa-pencil-alt"></i>';
-				editButton.onclick = () => handleEdit(message.id);
-				optionsMenu.appendChild(editButton);
-			}
-			if (isAdmin || isCurrentUser) {
-				const deleteButton = document.createElement('button');
-				deleteButton.className = 'chat-option-btn';
-				deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>';
-				deleteButton.onclick = () => handleDelete(message.id, message.userId, message.username);
-				optionsMenu.appendChild(deleteButton);
-			}
-			return optionsMenu;
-		};
-
-		const handleDelete = (messageId, originalUserId, originalUsername) => {
-			showConfirmationModal("Nachricht wirklich löschen?", () => {
-				socket.send(JSON.stringify({ type: 'delete_message', payload: { messageId, originalUserId, originalUsername } }));
-			});
-		};
-
-		const handleSoftDelete = (payload) => {
-			const bubbleElement = document.getElementById(`chat-bubble-${payload.messageId}`);
-			const containerElement = document.getElementById(`message-container-${payload.messageId}`);
-			if (bubbleElement && containerElement) {
-				containerElement.querySelector('.chat-options')?.remove();
-
-				const deletedByEl = document.createElement('span');
-				deletedByEl.textContent = payload.deletedByUsername;
-
-				const originalUserEl = document.createElement('span');
-				originalUserEl.textContent = payload.originalUsername;
-
-				const infoSpan = document.createElement('span');
-				infoSpan.className = 'chat-deleted-info';
-
-				if (payload.originalUsername === payload.deletedByUsername) {
-					infoSpan.textContent = `Nachricht von ${originalUserEl.textContent} gelöscht`;
-				} else {
-					infoSpan.textContent = `Nachricht von ${originalUserEl.textContent} wurde von ${deletedByEl.textContent} gelöscht`;
-				}
-
-				bubbleElement.innerHTML = ''; // Clear existing content
-				bubbleElement.appendChild(infoSpan);
-				bubbleElement.classList.add('deleted');
+		socket.onmessage = (event) => {
+			const data = JSON.parse(event.data);
+			switch (data.type) {
+				case 'new_message':
+					appendMessage(data.payload);
+					break;
+				case 'message_soft_deleted':
+					handleSoftDelete(data.payload);
+					break;
+				case 'message_updated':
+					const msgTextEl = document.getElementById(`message-text-${data.payload.messageId}`);
+					const editedMarkerEl = document.getElementById(`message-edited-marker-${data.payload.messageId}`);
+					if (msgTextEl) msgTextEl.innerHTML = marked.parse(data.payload.newText, { sanitize: true });
+					if (editedMarkerEl) editedMarkerEl.style.display = 'inline';
+					break;
 			}
 		};
 
-		const handleEdit = (messageId) => {
-			const textElement = document.getElementById(`message-text-${messageId}`);
-			const currentText = textElement.textContent;
-			const editInput = document.createElement('input');
-			editInput.type = 'text';
-			editInput.value = currentText;
-			editInput.className = 'chat-edit-input';
-
-			editInput.onkeydown = (keyboardEvent) => {
-				if (keyboardEvent.key === 'Enter') {
-					if (editInput.value.trim() && editInput.value !== currentText) {
-						socket.send(JSON.stringify({ type: 'update_message', payload: { messageId, newText: editInput.value } }));
-					}
-					textElement.style.display = 'block';
-					editInput.replaceWith(textElement);
-				} else if (keyboardEvent.key === 'Escape') {
-					textElement.style.display = 'block';
-					editInput.replaceWith(textElement);
-				}
-			};
-
-			textElement.style.display = 'none';
-			textElement.parentElement.insertBefore(editInput, textElement);
-			editInput.focus();
-		};
-
-		const fetchMessages = () => {
-			fetch(`${contextPath}/api/event-chat?eventId=${eventId}`)
-				.then(response => response.json())
-				.then(messages => {
-					chatBox.innerHTML = '';
-					if (messages && messages.length > 0) messages.forEach(appendMessage);
-				}).catch(error => console.error("Error fetching initial chat messages:", error));
-		};
-
-		chatInput.addEventListener('keyup', (e) => {
-			const popup = document.getElementById('mention-popup');
-			if (e.key === '@') {
-				const assignedUsers = JSON.parse(document.getElementById('allUsersData')?.textContent || '[]');
-				if (assignedUsers.length > 0) {
-					popup.innerHTML = assignedUsers.map(u => `<div class="mention-item" data-username="${u.username}">${u.username}</div>`).join('');
-					popup.style.display = 'block';
-				}
-			} else if (popup.style.display === 'block' && e.key !== 'Shift') { // Avoid closing on shift
-				popup.style.display = 'none';
+		chatForm.addEventListener('submit', (e) => {
+			e.preventDefault();
+			const messageText = chatInput.value.trim();
+			if (messageText && socket && socket.readyState === WebSocket.OPEN) {
+				socket.send(JSON.stringify({ type: "new_message", payload: { messageText } }));
+				chatInput.value = '';
 			}
 		});
 
-		document.getElementById('mention-popup').addEventListener('click', (e) => {
+		chatInput.addEventListener('keyup', (e) => {
+			if (e.key === '@') {
+				if (assignedUsers.length > 0) {
+					mentionPopup.innerHTML = assignedUsers.map(u => `<div class="mention-item" data-username="${escape(u.username)}">${escape(u.username)}</div>`).join('');
+					mentionPopup.style.display = 'block';
+				}
+			} else if (mentionPopup.style.display === 'block' && e.key !== 'Shift') {
+				mentionPopup.style.display = 'none';
+			}
+		});
+
+		mentionPopup.addEventListener('click', (e) => {
 			if (e.target.classList.contains('mention-item')) {
 				const username = e.target.dataset.username;
 				const text = chatInput.value;
 				const atIndex = text.lastIndexOf('@');
 				chatInput.value = text.substring(0, atIndex + 1) + username + ' ';
-				document.getElementById('mention-popup').style.display = 'none';
+				mentionPopup.style.display = 'none';
 				chatInput.focus();
 			}
 		});
+	};
 
-		chatForm.addEventListener('submit', (event) => {
-			event.preventDefault();
-			const messageText = chatInput.value.trim();
-			if (messageText && socket && socket.readyState === WebSocket.OPEN) {
-				const payload = { type: "new_message", payload: { messageText: messageText } };
-				socket.send(JSON.stringify(payload));
-				chatInput.value = '';
+	const appendMessage = (message) => {
+		const isCurrentUser = String(message.userId) === String(currentUserId);
+		const chatBox = document.getElementById('chat-box');
+		const container = document.createElement('div');
+		container.className = 'chat-message-container';
+		container.id = `message-container-${message.id}`;
+		if (isCurrentUser) container.classList.add('current-user');
+
+		const bubble = document.createElement('div');
+		bubble.className = 'chat-bubble';
+		bubble.id = `chat-bubble-${message.id}`;
+		bubble.style.backgroundColor = isCurrentUser ? 'var(--primary-color)' : (message.chatColor || '#E9ECEF');
+
+		if (message.isDeleted) {
+			bubble.classList.add('deleted');
+			bubble.innerHTML = `<span class="chat-deleted-info">Nachricht von ${escape(message.username)} wurde von ${escape(message.deletedByUsername)} gelöscht</span>`;
+		} else {
+			const time = new Date(message.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+			const editedMarker = `<span class="chat-edited-marker" id="message-edited-marker-${message.id}" style="display: ${message.edited ? 'inline' : 'none'};"> (bearbeitet)</span>`;
+
+			bubble.innerHTML = `
+                ${!isCurrentUser ? `<strong class="chat-username">${escape(message.username)}</strong>` : ''}
+                <span class="chat-text" id="message-text-${message.id}">${marked.parse(message.messageText, { sanitize: true })}</span>
+                <span class="chat-timestamp">${time}${editedMarker}</span>`;
+
+			const optionsMenu = document.createElement('div');
+			optionsMenu.className = 'chat-options';
+			if (isAdminOrLeader || isCurrentUser) {
+				optionsMenu.innerHTML = `<button class="chat-option-btn" title="Löschen"><i class="fas fa-trash-alt"></i></button>`;
 			}
-		});
+			if (isCurrentUser) {
+				optionsMenu.innerHTML = `<button class="chat-option-btn" title="Bearbeiten"><i class="fas fa-pencil-alt"></i></button>` + optionsMenu.innerHTML;
+			}
+			container.appendChild(optionsMenu);
+		}
 
-		connect();
-	}
+		container.prepend(bubble);
+		chatBox.appendChild(container);
+		chatBox.scrollTop = chatBox.scrollHeight;
+	};
+
+	const handleSoftDelete = (payload) => {
+		const bubble = document.getElementById(`chat-bubble-${payload.messageId}`);
+		const container = document.getElementById(`message-container-${payload.messageId}`);
+		if (bubble && container) {
+			container.querySelector('.chat-options')?.remove();
+			bubble.classList.add('deleted');
+			bubble.innerHTML = `<span class="chat-deleted-info">Nachricht von ${escape(payload.originalUsername)} wurde von ${escape(payload.deletedByUsername)} gelöscht</span>`;
+		}
+	};
+
+	// --- INITIAL LOAD ---
+	loadEventDetails();
 });

@@ -17,7 +17,6 @@ public class AuthorizationService {
 		if (user == null || user.getPermissions() == null) {
 			return false;
 		}
-		// A master admin can do anything.
 		if (user.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
 			return true;
 		}

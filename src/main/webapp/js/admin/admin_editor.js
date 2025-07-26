@@ -11,14 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
 	let socket;
 	let debounceTimer;
 
-	// Function to render markdown content
 	const renderMarkdown = (content) => {
 		if (typeof marked !== 'undefined') {
 			preview.innerHTML = marked.parse(content, { sanitize: true });
 		}
 	};
 
-	// --- Status Indicator Logic ---
 	const showStatus = (state, message) => {
 		if (statusIndicator) {
 			statusIndicator.style.display = 'inline-block';
@@ -27,7 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	};
 
-	// --- WebSocket Connection Logic ---
 	const connect = () => {
 		const websocketProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 		const websocketUrl = `${websocketProtocol}//${window.location.host}${document.body.dataset.contextPath}/ws/editor/${fileId}`;
@@ -44,14 +41,12 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (data.type === 'content_update') {
 				console.log('Received content update from another client.');
 
-				// Save cursor position before updating
 				const cursorStart = editor.selectionStart;
 				const cursorEnd = editor.selectionEnd;
 
 				editor.value = data.payload;
 				renderMarkdown(data.payload);
 
-				// Restore cursor position
 				editor.setSelectionRange(cursorStart, cursorEnd);
 			}
 		};
@@ -59,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		socket.onclose = () => {
 			console.warn('WebSocket connection closed.');
 			showStatus('danger', 'Getrennt');
-			setTimeout(connect, 5000); // Try to reconnect after 5 seconds
+			setTimeout(connect, 5000); 
 		};
 
 		socket.onerror = (error) => {
@@ -69,7 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
 	};
 
 
-	// --- Event Listeners ---
 	if (editor.readOnly) {
 		renderMarkdown(editor.value);
 		return;
@@ -78,7 +72,6 @@ document.addEventListener('DOMContentLoaded', () => {
 	connect();
 	renderMarkdown(editor.value);
 
-	// Debounced function to send content updates
 	const sendContentUpdate = () => {
 		if (socket && socket.readyState === WebSocket.OPEN) {
 			const payload = {
@@ -87,7 +80,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			};
 			socket.send(JSON.stringify(payload));
 			showStatus('warn', 'Speichern...');
-			// Give visual feedback that saving is complete
 			setTimeout(() => {
 				if (statusIndicator.textContent === 'Speichern...') {
 					showStatus('ok', 'Gespeichert');
@@ -96,20 +88,18 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	};
 
-	// Live preview and debounced saving on input
 	editor.addEventListener('input', () => {
 		renderMarkdown(editor.value);
 		clearTimeout(debounceTimer);
-		debounceTimer = setTimeout(sendContentUpdate, 500); // Send update 500ms after user stops typing
+		debounceTimer = setTimeout(sendContentUpdate, 500); 
 	});
 
-	// Event listener for the toggle switch
 	if (toggle) {
 		toggle.addEventListener('change', () => {
-			if (toggle.checked) { // Edit mode
+			if (toggle.checked) { 
 				editor.style.display = 'block';
 				preview.style.display = 'none';
-			} else { // View mode
+			} else { 
 				renderMarkdown(editor.value);
 				editor.style.display = 'none';
 				preview.style.display = 'block';

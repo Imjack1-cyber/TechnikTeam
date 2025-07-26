@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  */
 public class Attachment {
 	private int id;
-	private String parentType; // "EVENT" or "MEETING"
+	private String parentType; 
 	private int parentId;
 	private String filename;
 	private String filepath;

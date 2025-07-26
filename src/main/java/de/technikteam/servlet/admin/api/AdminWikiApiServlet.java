@@ -37,7 +37,6 @@ public class AdminWikiApiServlet extends HttpServlet {
 		response.setContentType("application/json");
 		response.setCharacterEncoding("UTF-8");
 
-		// Fetch the tree data from the service and write it as JSON
 		Map<String, Object> treeData = wikiService.getWikiTreeAsData();
 		response.getWriter().write(gson.toJson(treeData));
 	}

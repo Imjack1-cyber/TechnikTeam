@@ -33,14 +33,12 @@ public class SessionManager {
 				de.technikteam.model.User user = (de.technikteam.model.User) session.getAttribute("user");
 				return user != null && user.getId() == userId;
 			} catch (IllegalStateException e) {
-				// Session might already be invalid, safe to ignore and remove
 				return false;
 			}
 		}).forEach(session -> {
 			try {
 				session.invalidate();
 			} catch (IllegalStateException e) {
-				// Session was already invalidated, no action needed
 			}
 		});
 	}

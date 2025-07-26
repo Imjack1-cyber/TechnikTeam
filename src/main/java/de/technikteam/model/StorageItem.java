@@ -35,7 +35,7 @@ public class StorageItem {
 			return "Vergriffen";
 		}
 		if (maxQuantity == 0) {
-			return "Auf Lager"; // Untracked quantity
+			return "Auf Lager"; 
 		}
 		if (available >= maxQuantity) {
 			return "Vollständig";

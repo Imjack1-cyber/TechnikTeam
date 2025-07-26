@@ -2,9 +2,6 @@ document.addEventListener('DOMContentLoaded', function() {
 	const calendarEl = document.getElementById('calendar-container');
 	const contextPath = document.body.dataset.contextPath || '';
 
-	// FIX: The calendar must be initialized if the element exists.
-	// CSS media queries are responsible for showing/hiding the container, not JS.
-	// The previous getComputedStyle check was a race condition.
 	if (calendarEl) {
 		try {
 			const calendar = new FullCalendar.Calendar(calendarEl, {

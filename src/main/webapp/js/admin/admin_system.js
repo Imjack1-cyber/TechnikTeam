@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
 	const contextPath = document.body.dataset.contextPath || '';
-	const apiUrl = `${contextPath}/api/admin/system-stats`;
+	const apiUrl = `${contextPath}/api/v1/system/stats`;
 
 	const cpuProgress = document.getElementById('cpu-progress');
 	const cpuText = document.getElementById('cpu-text');

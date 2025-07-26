@@ -29,23 +29,18 @@ public class WikiService {
      */
     public Map<String, Object> getWikiTreeAsData() {
         List<WikiEntry> allEntries = wikiDAO.getAllWikiEntries();
-        // Use LinkedHashMap to preserve the order of insertion (alphabetical from DB)
         Map<String, Object> rootNode = new LinkedHashMap<>();
 
         for (WikiEntry entry : allEntries) {
             String[] pathParts = entry.getFilePath().split("/");
             Map<String, Object> currentNode = rootNode;
 
-            // Traverse or create directory structure
             for (int i = 0; i < pathParts.length - 1; i++) {
                 String part = pathParts[i];
-                // Get the next directory level, or create it if it doesn't exist.
-                // The key is the directory name. The value is another map.
                 currentNode = (Map<String, Object>) currentNode
                         .computeIfAbsent(part, k -> new LinkedHashMap<String, Object>());
             }
 
-            // Add the file (the WikiEntry itself) to the final directory
             String fileName = pathParts[pathParts.length - 1];
             if (!fileName.isEmpty()) {
                 currentNode.put(fileName, entry);

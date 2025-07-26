@@ -78,8 +78,6 @@ public class TodoDAO {
 						TodoCategory newCategory = new TodoCategory();
 						newCategory.setId(rs.getInt(1));
 						newCategory.setName(name);
-						// We would need another query to get the display_order, but for now this is
-						// enough for the response.
 						return newCategory;
 					}
 				}

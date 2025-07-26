@@ -2,7 +2,6 @@ package de.technikteam.filter;
 
 import de.technikteam.model.User;
 import jakarta.servlet.*;
-// CORRECTED: Removed @WebFilter annotation. This will now be managed by Guice.
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;

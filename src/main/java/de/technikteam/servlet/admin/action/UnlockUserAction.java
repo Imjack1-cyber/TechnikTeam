@@ -30,7 +30,7 @@ public class UnlockUserAction implements Action {
 		HttpSession session = request.getSession();
 		User adminUser = (User) session.getAttribute("user");
 
-		if (!adminUser.hasAdminAccess()) { // Only admins can unlock
+		if (!adminUser.hasAdminAccess()) { 
 			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return null;
 		}

@@ -13,7 +13,6 @@ public class DashboardDataDTO {
 	private List<AdminLog> recentLogs;
 	private List<Map<String, Object>> eventTrendData;
 
-	// Getters and Setters
 	public List<Event> getUpcomingEvents() {
 		return upcomingEvents;
 	}

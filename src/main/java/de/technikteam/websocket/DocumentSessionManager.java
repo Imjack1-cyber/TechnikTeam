@@ -19,8 +19,6 @@ public final class DocumentSessionManager {
 	private static final Logger logger = LogManager.getLogger(DocumentSessionManager.class);
 	private static final DocumentSessionManager INSTANCE = new DocumentSessionManager();
 
-	// A map where the key is the file ID and the value is a thread-safe set of
-	// sessions for that document.
 	private final Map<String, Set<Session>> sessionsByFile = new ConcurrentHashMap<>();
 
 	private DocumentSessionManager() {

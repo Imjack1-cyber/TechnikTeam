@@ -30,9 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
 			const data = await response.json();
 			const assignedIds = new Set(data.permissionIds);
 
-			checkboxContainer.innerHTML = ''; // Clear loading message
+			checkboxContainer.innerHTML = ''; 
 
-			// Group permissions for better UI
 			const grouped = allPermissions.reduce((acc, p) => {
 				const groupName = p.permissionKey.split('_')[0] || 'ALLGEMEIN';
 				if (!acc[groupName]) acc[groupName] = [];
@@ -43,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 			for (const groupName in grouped) {
 				const details = document.createElement('details');
-				details.open = true; // Default to open
+				details.open = true; 
 				const summary = document.createElement('summary');
 				summary.textContent = groupName;
 				details.appendChild(summary);
@@ -52,7 +51,6 @@ document.addEventListener('DOMContentLoaded', () => {
 				groupDiv.className = 'permission-group';
 				grouped[groupName].forEach(p => {
 					const isChecked = assignedIds.has(p.id) ? 'checked' : '';
-					// Prevent ADMIN role from having the main access permission removed to avoid lockouts.
 					const isDisabled = p.permissionKey === 'ACCESS_ADMIN_PANEL' && roleName === 'ADMIN' ? 'disabled' : '';
 					const label = document.createElement('label');
 					label.className = 'checkbox-label';

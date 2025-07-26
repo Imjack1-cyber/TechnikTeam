@@ -1,17 +1,14 @@
+<%-- src/main/webapp/views/admin/admin_system.jsp --%>
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	isELIgnored="false"%>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
-
 <c:import url="/WEB-INF/jspf/main_header.jspf">
 	<c:param name="pageTitle" value="Systemstatus" />
 </c:import>
-
 <h1>
 	<i class="fas fa-server"></i> Systemstatus
 </h1>
 <p>Live-Statistiken des Servers. Die Daten werden alle 5 Sekunden
 	aktualisiert.</p>
-
 <div class="dashboard-grid">
 	<div class="card">
 		<h2 class="card-title">
@@ -57,6 +54,5 @@
 			style="font-size: 1.5rem; font-weight: 500; color: var(--primary-color); text-align: center;">Lade...</p>
 	</div>
 </div>
-
 <c:import url="/WEB-INF/jspf/main_footer.jspf" />
 <script src="<c:url value='/js/admin/admin_system.js'/>"></script>

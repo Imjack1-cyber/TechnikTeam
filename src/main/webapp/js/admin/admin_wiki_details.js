@@ -12,20 +12,17 @@ document.addEventListener('DOMContentLoaded', () => {
 	const saveBtn = document.getElementById('save-wiki-btn');
 	const statusIndicator = document.getElementById('save-status-indicator');
 
-	// Function to render markdown content
 	const renderMarkdown = (content) => {
 		if (preview && typeof marked !== 'undefined') {
 			preview.innerHTML = marked.parse(content || '', { sanitize: true });
 		}
 	};
 
-	// --- Status Indicator Logic ---
 	const showStatus = (state, message) => {
 		if (statusIndicator) {
 			statusIndicator.style.display = 'inline-block';
 			statusIndicator.className = `status-badge status-${state}`;
 			statusIndicator.textContent = message;
-			// Fade out after a few seconds unless it's an error
 			if (state !== 'danger') {
 				setTimeout(() => {
 					statusIndicator.style.display = 'none';
@@ -34,7 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	};
 
-	// --- Save Logic ---
 	const saveContent = async () => {
 		showStatus('warn', 'Speichern...');
 		try {
@@ -62,18 +58,16 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	};
 
-	// --- Event Listeners ---
 	if (saveBtn) {
 		saveBtn.addEventListener('click', saveContent);
 	}
 
-	// Initial render of the preview pane from the reliable textarea source
 	renderMarkdown(editor.value);
 	editor.style.display = 'none';
 	preview.style.display = 'block';
 
 	if (toggle) {
-		toggle.checked = false; // Start in view mode
+		toggle.checked = false; 
 		toggle.addEventListener('change', () => {
 			const isEditMode = toggle.checked;
 			editor.style.display = isEditMode ? 'block' : 'none';
@@ -81,7 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			saveBtn.style.display = isEditMode ? 'inline-flex' : 'none';
 
 			if (!isEditMode) {
-				// When switching back to view mode, re-render from editor
 				renderMarkdown(editor.value);
 			}
 		});

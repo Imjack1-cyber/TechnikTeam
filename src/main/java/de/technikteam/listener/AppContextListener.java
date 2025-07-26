@@ -32,15 +32,9 @@ public class AppContextListener implements ServletContextListener {
 	public void contextDestroyed(ServletContextEvent sce) {
 		logger.info(">>>>>>>>>> TechnikTeam Application Context Being Destroyed. Cleaning up resources... <<<<<<<<<<");
 
-		// The MySQL-specific cleanup thread code has been removed as it is no longer
-		// needed
-		// with the MariaDB driver.
-
 		Enumeration<java.sql.Driver> drivers = DriverManager.getDrivers();
 		while (drivers.hasMoreElements()) {
 			java.sql.Driver driver = drivers.nextElement();
-			// Only deregister the driver if it was loaded by this web application's
-			// classloader
 			if (driver.getClass().getClassLoader() == getClass().getClassLoader()) {
 				try {
 					DriverManager.deregisterDriver(driver);

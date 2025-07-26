@@ -36,7 +36,6 @@ public class ApplicationInitializerListener implements ServletContextListener {
             logger.info("Starting database migration...");
             MigrateResult result = flyway.migrate();
             
-            // CORRECTED: Switched from direct field access to the correct getter method as recommended by the compiler.
             logger.info("Flyway migration finished. {} migrations applied in {} ms.", result.migrationsExecuted, result.getTotalMigrationTime());
 
             if (!result.success) {
