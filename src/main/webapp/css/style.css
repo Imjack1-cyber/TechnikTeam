@@ -71,6 +71,10 @@
 	padding: 0;
 }
 
+html, body {
+	height: 100%; /* Establish a base height for the layout */
+}
+
 html {
 	scroll-behavior: smooth;
 }
@@ -82,6 +86,7 @@ body {
 	color: var(--text-color);
 	line-height: 1.6;
 	transition: background-color 0.3s, color 0.3s;
+	overflow: hidden; /* Prevent body scroll when layout fills viewport */
 }
 
 h1, h2, h3, h4 {
@@ -131,6 +136,9 @@ a:hover {
 /* --- 3. LAYOUT & CONTAINERS --- */
 .main-content-wrapper {
 	transition: margin-left 0.3s ease-in-out;
+	height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 .main-content {
@@ -138,6 +146,12 @@ a:hover {
 	max-width: 1600px;
 	margin-left: auto;
 	margin-right: auto;
+    width: 100%;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto; /* Allow main content area to scroll */
+    min-height: 0; /* Fix for flexbox overflow bugs */
 }
 
 .card {
@@ -303,6 +317,7 @@ body.nav-open .sidebar {
 	top: 0;
 	z-index: 1000;
 	border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
 }
 
 .mobile-header-right {
@@ -1435,95 +1450,6 @@ fieldset {
 }
 
 
-/* Editor Specific Styles */
-#editor-page-wrapper {
-    /* Make the wrapper take up all available vertical space */
-    height: calc(100vh - var(--header-height)); /* Account for mobile header */
-    display: flex;
-    flex-direction: column;
-}
-
-@media (min-width: 992px) {
-	#editor-page-wrapper {
-		/* On desktop, the main header is gone, so just 100vh */
-		height: 100vh;
-	}
-}
-
-#editor-page-wrapper .main-content {
-    flex-grow: 1; /* Allow main-content to fill remaining height */
-    padding: 1rem; /* Consistent padding on all sides */
-    max-width: none; /* Remove max-width constraint for full flexibility */
-    margin: 0; /* Remove auto margins to allow full width */
-    display: flex;
-    flex-direction: column;
-    min-height: 0; /* Important for flex container to properly shrink children */
-}
-
-#editor-page-container {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1; /* Make it fill the remaining space */
-    min-height: 0; /* Crucial for nested flex items */
-}
-
-.editor-header {
-	flex-shrink: 0;
-	margin-bottom: 1rem;
-}
-.editor-header h1 {
-	margin-bottom: 0;
-    font-size: 1.5rem;
-}
-.editor-controls {
-	display: flex;
-	align-items: center;
-	gap: 1rem;
-	flex-wrap: wrap;
-}
-.editor-container { /* This is the flex container for editor/preview panes */
-	display: flex;
-	flex-direction: column; /* Stack vertically on mobile */
-	gap: 1.5rem; /* Space between panes */
-    flex-grow: 1; /* Allow this container to fill available height */
-    min-height: 0; /* Crucial for flex item inside a flex column */
-	padding: 1.5rem; /* Padding *inside* the card, around the panes */
-    margin: 0; /* Remove external margins */
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-sm);
-    background: var(--surface-color);
-    border-radius: var(--border-radius);
-}
-
-#editor, #markdown-preview {
-	flex-grow: 1; /* Allow the element to grow and fill the flex container */
-	width: 100%; /* Ensure it takes full width in mobile stack */
-	border: none; /* Border is now on .editor-container */
-	padding: 0; /* Padding is now on .editor-container */
-	background: transparent; /* Background is now on .editor-container */
-    overflow-y: auto; /* Internal scrolling within each pane */
-    
-    /* Unified typography for WYSIWYG feel */
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-	font-size: 1rem;
-	line-height: 1.6;
-    color: var(--text-color);
-}
-
-#editor {
-	resize: none; /* Disable manual resizing */
-}
-
-@media (min-width: 992px) {
-	.editor-container {
-		flex-direction: row; /* Desktop: side-by-side */
-	}
-	#editor, #markdown-preview {
-		flex-basis: 50%; /* Distribute space evenly */
-	}
-}
-
-
 /* =================================================================== */
 /*  12. MARKDOWN STYLES                                                */
 /* =================================================================== */
@@ -1722,6 +1648,8 @@ fieldset {
 .wiki-layout {
 	display: flex;
 	gap: 1.5rem;
+    flex-grow: 1;
+    min-height: 0;
 	align-items: flex-start;
 }
 .wiki-sidebar {
@@ -1800,29 +1728,12 @@ fieldset {
 /* =================================================================== */
 /*  16. UTILITY STYLES FOR OVERFLOW & FLEX LAYOUT                      */
 /* =================================================================== */
-
-/* These rules create a flexible layout that fills the viewport height */
-.main-content-wrapper {
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-}
-.main-content {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0; /* Fix for flexbox overflow bugs */
-}
-.wiki-layout {
-    flex-grow: 1;
-    min-height: 0; /* Allow child elements to scroll correctly */
-}
-
-/* General word wrapping for tables and code blocks */
 .data-table td, .data-table th, code, pre {
+    /* Allow long strings (like paths or log details) to break */
     word-break: break-word;
-    white-space: normal;
+    white-space: normal; /* Allow wrapping */
 }
+
 pre, code {
     white-space: pre-wrap;
 }
