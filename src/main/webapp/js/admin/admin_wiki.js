@@ -5,6 +5,10 @@ document.addEventListener('DOMContentLoaded', () => {
 	const contentPane = document.getElementById('wiki-content-pane');
 	const searchInput = document.getElementById('wiki-search');
 
+	// Layout elements for mobile
+	const wrapper = document.querySelector('.wiki-page-wrapper');
+	const sidebarToggle = document.getElementById('wiki-sidebar-toggle');
+
 	// New Page Modal elements
 	const addPageModal = document.getElementById('add-wiki-page-modal');
 	const addPageBtn = document.getElementById('add-wiki-page-btn');
@@ -94,31 +98,31 @@ document.addEventListener('DOMContentLoaded', () => {
 	};
 
 	const loadContent = async (id) => {
-		contentPane.innerHTML = '<p>Loading content...</p>';
+		contentPane.innerHTML = '<p>Lade Inhalt...</p>';
 		try {
 			const result = await api.getContent(id);
 			if (result.success) {
 				const entry = result.data;
-				const renderedHtml = marked.parse(entry.content || 'This document has no content yet.', { sanitize: true });
+				const renderedHtml = marked.parse(entry.content || 'Für dieses Dokument wurde noch kein Inhalt verfasst.', { sanitize: true });
 				contentPane.innerHTML = `
                     <div class="wiki-content-header">
                         <h2>${entry.filePath}</h2>
                         <div class="wiki-editor-controls">
                             <span id="save-status-indicator" class="status-badge" style="display: none;"></span>
                             <div class="mode-switcher">
-                                <span>View</span>
+                                <span>Ansehen</span>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="mode-toggle">
                                     <span class="slider"></span>
                                 </label>
-                                <span>Edit</span>
+                                <span>Bearbeiten</span>
                             </div>
                             <button class="btn btn-danger-outline btn-small" id="delete-wiki-page-btn" data-id="${entry.id}" data-path="${entry.filePath}">
-                                <i class="fas fa-trash"></i> Löschen
+                                <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </div>
-                    <div class="editor-container card">
+                    <div class="editor-container">
                         <textarea id="editor" style="display: none;">${entry.content || ''}</textarea>
                         <div id="markdown-preview" class="markdown-content">${renderedHtml}</div>
                     </div>`;
@@ -128,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 		} catch (error) {
 			console.error('Failed to load content:', error);
-			contentPane.innerHTML = `<p class="error-message">Could not load documentation content: ${error.message}</p>`;
+			contentPane.innerHTML = `<p class="error-message">Dokumenteninhalt konnte nicht geladen werden: ${error.message}</p>`;
 		}
 	};
 
@@ -192,6 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				document.querySelectorAll('#wiki-tree-container a').forEach(a => a.classList.remove('active'));
 				treeLink.classList.add('active');
 				loadContent(id);
+				wrapper.classList.remove('sidebar-open'); // Close mobile sidebar on selection
 			}
 			return;
 		}
@@ -208,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
 						showToast(result.message, 'success');
 						const linkToDelete = treeContainer.querySelector(`a[data-id="${id}"]`);
 						linkToDelete?.closest('li').remove();
-						contentPane.innerHTML = `<p>Seite gelöscht. Wählen Sie eine andere Seite aus.</p>`;
+						contentPane.innerHTML = `<div class="wiki-welcome-pane"><h2>Seite gelöscht</h2><p>Wählen Sie eine andere Seite aus.</p></div>`;
 					} else {
 						throw new Error(result.message);
 					}
@@ -218,10 +223,8 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 		}
 
-		// Save tree state when a directory is opened/closed
 		const summary = e.target.closest('summary');
 		if (summary) {
-			// Wait a moment for the 'open' attribute to be toggled
 			setTimeout(saveTreeState, 100);
 		}
 	});
@@ -232,7 +235,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			const text = li.dataset.name.toLowerCase();
 			const isMatch = text.includes(searchTerm);
 			li.style.display = isMatch ? '' : 'none';
-			// If it's a match, ensure its parent directories are open
 			if (isMatch) {
 				let parent = li.parentElement;
 				while (parent && parent !== treeContainer) {
@@ -258,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 	};
 
-	// --- Add Page Modal Logic ---
+	// --- Modal & Mobile Sidebar Logic ---
 	addPageBtn.addEventListener('click', () => addPageModal.classList.add('active'));
 	addPageCloseBtn.addEventListener('click', () => addPageModal.classList.remove('active'));
 	addPageForm.addEventListener('submit', async (e) => {
@@ -271,13 +273,17 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (result.success) {
 				showToast(result.message, 'success');
 				addPageModal.classList.remove('active');
-				loadTree(); // Reload the whole tree to show the new page
+				loadTree();
 			} else {
 				throw new Error(result.message);
 			}
 		} catch (error) {
 			showToast(`Fehler: ${error.message}`, 'danger');
 		}
+	});
+
+	sidebarToggle.addEventListener('click', () => {
+		wrapper.classList.toggle('sidebar-open');
 	});
 
 	// Initial Load

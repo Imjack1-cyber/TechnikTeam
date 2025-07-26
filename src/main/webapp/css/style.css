@@ -1646,41 +1646,77 @@ fieldset {
 }
 
 /* =================================================================== */
-/*  15. WIKI PAGE STYLES                                               */
+/*  15. WIKI PAGE STYLES (NUCLEAR REWRITE)                             */
 /* =================================================================== */
-#wiki-card-container {
+
+/* Remove default padding from main content area ONLY on the wiki page */
+body[data-page="wiki"] .main-content {
+    padding: 0;
+}
+
+.wiki-page-wrapper {
     display: flex;
-    flex-direction: column;
-    flex-grow: 1; /* Make the card fill the available space */
-    min-height: 0;
-    margin-bottom: 0;
+    height: 100%; /* Fill the main-content area */
+    overflow: hidden; /* Prevent this wrapper from scrolling */
 }
-.wiki-layout {
-	display: flex;
-	gap: 1.5rem;
-    flex-grow: 1;
-    min-height: 0;
-	align-items: flex-start;
-}
+
 .wiki-sidebar {
-	flex: 0 0 350px; /* Don't grow or shrink, fixed width */
-	height: 100%;
-	display: flex;
-    flex-direction: column;
-}
-.wiki-tree-container {
-    flex-grow: 1; /* Allow the tree container to fill available vertical space */
-    overflow-y: auto;
-    padding-right: 1rem;
-    border-right: 1px solid var(--border-color);
-}
-.wiki-content-pane {
-	flex-grow: 1;
-	height: 100%;
+    flex: 0 0 350px;
+    height: 100%;
     display: flex;
     flex-direction: column;
-    min-height: 0;
+    background-color: var(--surface-color);
+    border-right: 1px solid var(--border-color);
+    transition: margin-left 0.3s ease;
+    padding: 1.5rem;
 }
+
+.wiki-sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-shrink: 0;
+}
+
+.wiki-sidebar-header h3 {
+    margin: 0;
+    border: none;
+    padding: 0;
+}
+
+.wiki-tree-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    min-height: 0; /* Important flexbox fix */
+}
+
+.wiki-content-pane {
+    flex-grow: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; /* Important flexbox fix */
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+.wiki-welcome-pane {
+    text-align: center;
+    margin: auto;
+    color: var(--text-muted-color);
+}
+.wiki-welcome-pane h1 {
+    margin-top: 1rem;
+}
+
+#wiki-sidebar-toggle {
+    position: fixed;
+    top: calc(var(--header-height) + 1rem);
+    left: 1rem;
+    z-index: 1001;
+}
+
 .wiki-tree-container ul {
 	list-style-type: none;
 	padding-left: 1rem;
@@ -1735,6 +1771,23 @@ fieldset {
     font-size: 1.2rem;
     word-break: break-all;
 }
+
+/* Responsive styles for the wiki */
+@media (max-width: 991.98px) {
+    .wiki-sidebar {
+        position: fixed;
+        top: var(--header-height);
+        left: 0;
+        height: calc(100% - var(--header-height));
+        margin-left: -100%;
+        z-index: 1000;
+        box-shadow: var(--shadow-lg);
+    }
+    .wiki-page-wrapper.sidebar-open .wiki-sidebar {
+        margin-left: 0;
+    }
+}
+
 
 /* =================================================================== */
 /*  16. UTILITY STYLES FOR OVERFLOW & FLEX LAYOUT                      */
