@@ -18,24 +18,26 @@
 <p>Wählen Sie eine Datei aus dem Baum aus, um deren Dokumentation
 	anzuzeigen.</p>
 
-<div class="card wiki-layout">
-	<aside class="wiki-sidebar">
-		<div class="form-group">
-			<input type="search" id="wiki-search" class="form-group"
-				placeholder="Dateien filtern...">
-		</div>
-		<div id="wiki-tree-container" class="wiki-tree-container">
-			<p>Lade Navigation...</p>
-		</div>
-	</aside>
-	<main id="wiki-content-pane">
-		<div
-			style="text-align: center; padding-top: 4rem; color: var(--text-muted-color);">
-			<i class="fas fa-arrow-left fa-2x"></i>
-			<p style="margin-top: 1rem;">Wählen Sie eine Datei aus dem Baum
-				aus, um deren Dokumentation anzuzeigen.</p>
-		</div>
-	</main>
+<div class="card" id="wiki-card-container">
+	<div class="wiki-layout">
+		<aside class="wiki-sidebar">
+			<div class="form-group">
+				<input type="search" id="wiki-search" class="form-group"
+					placeholder="Dateien filtern...">
+			</div>
+			<div id="wiki-tree-container" class="wiki-tree-container">
+				<p>Lade Navigation...</p>
+			</div>
+		</aside>
+		<main id="wiki-content-pane">
+			<div
+				style="text-align: center; padding-top: 4rem; color: var(--text-muted-color);">
+				<i class="fas fa-arrow-left fa-2x"></i>
+				<p style="margin-top: 1rem;">Wählen Sie eine Datei aus dem Baum
+					aus, um deren Dokumentation anzuzeigen.</p>
+			</div>
+		</main>
+	</div>
 </div>
 
 <!-- Modal for adding a new wiki page -->
