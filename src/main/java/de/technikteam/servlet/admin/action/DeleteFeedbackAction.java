@@ -41,12 +41,12 @@ public class DeleteFeedbackAction implements Action {
 						"Feedback-Eintrag mit ID " + submissionId + " gelöscht.");
 				NotificationService.getInstance().broadcastUIUpdate("feedback_deleted",
 						Map.of("submissionId", submissionId));
-				return ApiResponse.success("Feedback erfolgreich gelöscht.", Map.of("deletedId", submissionId));
+				return new ApiResponse(true, "Feedback erfolgreich gelöscht.", Map.of("deletedId", submissionId));
 			} else {
-				return ApiResponse.error("Fehler beim Löschen des Feedbacks.");
+				return new ApiResponse(false, "Fehler beim Löschen des Feedbacks.", null);
 			}
 		} catch (NumberFormatException e) {
-			return ApiResponse.error("Ungültige Feedback-ID.");
+			return new ApiResponse(false, "Ungültige Feedback-ID.", null);
 		}
 	}
 }

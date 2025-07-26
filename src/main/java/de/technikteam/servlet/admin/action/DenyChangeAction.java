@@ -38,18 +38,18 @@ public class DenyChangeAction implements Action {
 			int requestId = Integer.parseInt(request.getParameter("requestId"));
 			ProfileChangeRequest req = requestDAO.getRequestById(requestId);
 			if (req == null || !"PENDING".equals(req.getStatus())) {
-				return ApiResponse.error("Anfrage nicht gefunden oder bereits bearbeitet.");
+				return new ApiResponse(false, "Anfrage nicht gefunden oder bereits bearbeitet.", null);
 			}
 
 			if (requestDAO.updateRequestStatus(requestId, "DENIED", adminUser.getId())) {
 				adminLogService.log(adminUser.getUsername(), "PROFILE_CHANGE_DENIED", "Profiländerung für Benutzer-ID "
 						+ req.getUserId() + " (Request ID: " + requestId + ") abgelehnt.");
-				return ApiResponse.success("Änderungsanfrage abgelehnt.", Map.of("requestId", requestId));
+				return new ApiResponse(true, "Änderungsanfrage abgelehnt.", Map.of("requestId", requestId));
 			} else {
-				return ApiResponse.error("Fehler beim Ablehnen der Anfrage.");
+				return new ApiResponse(false, "Fehler beim Ablehnen der Anfrage.", null);
 			}
 		} catch (NumberFormatException e) {
-			return ApiResponse.error("Ungültige Anfrage-ID.");
+			return new ApiResponse(false, "Ungültige Anfrage-ID.", null);
 		}
 	}
 }

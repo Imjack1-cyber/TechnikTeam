@@ -29,45 +29,6 @@
 		<url-pattern>/*</url-pattern>
 	</filter-mapping>
 
-	<!-- SECTION FOR MULTIPART CONFIGURATION -->
-	<servlet>
-		<servlet-name>de.technikteam.servlet.admin.AdminFileServlet</servlet-name>
-		<servlet-class>de.technikteam.servlet.admin.AdminFileServlet</servlet-class>
-		<multipart-config>
-			<max-file-size>20971520</max-file-size> <!-- 20MB -->
-			<max-request-size>52428800</max-request-size> <!-- 50MB -->
-			<file-size-threshold>1048576</file-size-threshold> <!-- 1MB -->
-		</multipart-config>
-	</servlet>
-	<servlet>
-		<servlet-name>de.technikteam.servlet.admin.AdminEventServlet</servlet-name>
-		<servlet-class>de.technikteam.servlet.admin.AdminEventServlet</servlet-class>
-		<multipart-config>
-			<max-file-size>41943040</max-file-size> <!-- 40MB -->
-			<max-request-size>83886080</max-request-size> <!-- 80MB -->
-			<file-size-threshold>1048576</file-size-threshold> <!-- 1MB -->
-		</multipart-config>
-	</servlet>
-	<servlet>
-		<servlet-name>de.technikteam.servlet.admin.AdminMeetingServlet</servlet-name>
-		<servlet-class>de.technikteam.servlet.admin.AdminMeetingServlet</servlet-class>
-		<multipart-config>
-			<max-file-size>20971520</max-file-size> <!-- 20MB -->
-			<max-request-size>52428800</max-request-size> <!-- 50MB -->
-			<file-size-threshold>1048576</file-size-threshold> <!-- 1MB -->
-		</multipart-config>
-	</servlet>
-	<servlet>
-		<servlet-name>de.technikteam.servlet.admin.AdminStorageServlet</servlet-name>
-		<servlet-class>de.technikteam.servlet.admin.AdminStorageServlet</servlet-class>
-		<multipart-config>
-			<max-file-size>5242880</max-file-size> <!-- 5MB -->
-			<max-request-size>10485760</max-request-size> <!-- 10MB -->
-			<file-size-threshold>1048576</file-size-threshold> <!-- 1MB -->
-		</multipart-config>
-	</servlet>
-	<!-- END SECTION -->
-
 	<session-config>
 		<session-timeout>30</session-timeout>
 		<cookie-config>

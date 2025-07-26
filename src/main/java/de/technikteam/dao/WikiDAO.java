@@ -10,8 +10,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Singleton
 public class WikiDAO {
@@ -31,19 +33,34 @@ public class WikiDAO {
 		return entry;
 	}
 
-	public WikiEntry getWikiEntryById(int id) {
+	public Optional<WikiEntry> getWikiEntryById(int id) {
 		String sql = "SELECT * FROM wiki_documentation WHERE id = ?";
 		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, id);
 			try (ResultSet rs = pstmt.executeQuery()) {
 				if (rs.next()) {
-					return mapResultSetToWikiEntry(rs);
+					return Optional.of(mapResultSetToWikiEntry(rs));
 				}
 			}
 		} catch (SQLException e) {
 			logger.error("Error fetching wiki entry by ID {}", id, e);
 		}
-		return null;
+		return Optional.empty();
+	}
+
+	public Optional<WikiEntry> findByFilePath(String filePath) {
+		String sql = "SELECT * FROM wiki_documentation WHERE file_path = ?";
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setString(1, filePath);
+			try (ResultSet rs = pstmt.executeQuery()) {
+				if (rs.next()) {
+					return Optional.of(mapResultSetToWikiEntry(rs));
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error fetching wiki entry by file_path {}", filePath, e);
+		}
+		return Optional.empty();
 	}
 
 	public List<WikiEntry> getAllWikiEntries() {
@@ -72,36 +89,36 @@ public class WikiDAO {
 			return false;
 		}
 	}
-	
-	public WikiEntry createWikiEntry(WikiEntry entry) {
-	    String sql = "INSERT INTO wiki_documentation (file_path, content) VALUES (?, ?)";
-	    try (Connection conn = dbManager.getConnection();
-	         PreparedStatement pstmt = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
-	        pstmt.setString(1, entry.getFilePath());
-	        pstmt.setString(2, entry.getContent());
-	        int affectedRows = pstmt.executeUpdate();
-	        if (affectedRows > 0) {
-	            try (ResultSet rs = pstmt.getGeneratedKeys()) {
-	                if (rs.next()) {
-	                    entry.setId(rs.getInt(1));
-	                    return entry;
-	                }
-	            }
-	        }
-	    } catch (SQLException e) {
-	        logger.error("Error creating wiki entry for path {}", entry.getFilePath(), e);
-	    }
-	    return null;
+
+	public Optional<WikiEntry> createWikiEntry(WikiEntry entry) {
+		String sql = "INSERT INTO wiki_documentation (file_path, content) VALUES (?, ?)";
+		try (Connection conn = dbManager.getConnection();
+				PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+			pstmt.setString(1, entry.getFilePath());
+			pstmt.setString(2, entry.getContent());
+			int affectedRows = pstmt.executeUpdate();
+			if (affectedRows > 0) {
+				try (ResultSet rs = pstmt.getGeneratedKeys()) {
+					if (rs.next()) {
+						entry.setId(rs.getInt(1));
+						return Optional.of(entry);
+					}
+				}
+			}
+		} catch (SQLException e) {
+			logger.error("Error creating wiki entry for path {}", entry.getFilePath(), e);
+		}
+		return Optional.empty();
 	}
 
 	public boolean deleteWikiEntry(int id) {
-	    String sql = "DELETE FROM wiki_documentation WHERE id = ?";
-	    try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-	        pstmt.setInt(1, id);
-	        return pstmt.executeUpdate() > 0;
-	    } catch (SQLException e) {
-	        logger.error("Error deleting wiki entry with ID {}", id, e);
-	        return false;
-	    }
+		String sql = "DELETE FROM wiki_documentation WHERE id = ?";
+		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+			pstmt.setInt(1, id);
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			logger.error("Error deleting wiki entry with ID {}", id, e);
+			return false;
+		}
 	}
 }

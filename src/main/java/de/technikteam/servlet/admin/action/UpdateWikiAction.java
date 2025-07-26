@@ -2,59 +2,46 @@ package de.technikteam.servlet.admin.action;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import de.technikteam.config.Permissions;
 import de.technikteam.dao.WikiDAO;
 import de.technikteam.model.ApiResponse;
-import de.technikteam.model.User;
-import de.technikteam.model.WikiEntry;
-import de.technikteam.service.AdminLogService;
-import de.technikteam.util.MarkdownUtil;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
-import java.io.IOException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 @Singleton
 public class UpdateWikiAction implements Action {
+	private static final Logger logger = LogManager.getLogger(UpdateWikiAction.class);
 	private final WikiDAO wikiDAO;
-	private final AdminLogService adminLogService;
 
 	@Inject
-	public UpdateWikiAction(WikiDAO wikiDAO, AdminLogService adminLogService) {
+	public UpdateWikiAction(WikiDAO wikiDAO) {
 		this.wikiDAO = wikiDAO;
-		this.adminLogService = adminLogService;
 	}
 
 	@Override
-	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)) {
-			return ApiResponse.error("Access Denied.");
-		}
-
+	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response) {
 		try {
 			int wikiId = Integer.parseInt(request.getParameter("wikiId"));
 			String content = request.getParameter("content");
-			String sanitizedContent = MarkdownUtil.sanitize(content);
 
-			WikiEntry originalEntry = wikiDAO.getWikiEntryById(wikiId);
-			if (originalEntry == null) {
-				return ApiResponse.error("Wiki entry not found.");
+			if (content == null) {
+				logger.warn("Update attempt for wikiId {} with null content.", wikiId);
+				return new ApiResponse(false, "Content cannot be null.", null);
 			}
 
-			if (wikiDAO.updateWikiContent(wikiId, sanitizedContent)) {
-				adminLogService.log(adminUser.getUsername(), "WIKI_UPDATE",
-						"Updated documentation for file: " + originalEntry.getFilePath());
-				return ApiResponse.success("Documentation updated successfully.");
+			boolean success = wikiDAO.updateWikiContent(wikiId, content);
+
+			if (success) {
+				logger.info("Successfully updated wiki entry with ID: {}", wikiId);
+				return new ApiResponse(true, "Page updated successfully.", null);
 			} else {
-				return ApiResponse.error("Failed to update documentation in the database.");
+				logger.error("Failed to update wiki entry with ID: {} in database.", wikiId);
+				return new ApiResponse(false, "Failed to update page in database.", null);
 			}
 		} catch (NumberFormatException e) {
-			return ApiResponse.error("Invalid wiki ID format.");
-		} catch (Exception e) {
-			return ApiResponse.error("An internal error occurred: " + e.getMessage());
+			logger.error("Invalid ID format in UpdateWikiAction: {}", request.getParameter("wikiId"), e);
+			return new ApiResponse(false, "Invalid ID format.", null);
 		}
 	}
 }

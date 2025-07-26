@@ -51,10 +51,10 @@ public class AuthenticationFinishServlet extends HttpServlet {
 			List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(user);
 			session.setAttribute("navigationItems", navigationItems);
 
-			response.getWriter().write(gson.toJson(ApiResponse.success("Login successful!", user)));
+			response.getWriter().write(gson.toJson(new ApiResponse(true, "Login successful!", user)));
 		} else {
 			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-			response.getWriter().write(gson.toJson(ApiResponse.error("Passkey authentication failed.")));
+			response.getWriter().write(gson.toJson(new ApiResponse(false, "Passkey authentication failed.", null)));
 		}
 	}
 }

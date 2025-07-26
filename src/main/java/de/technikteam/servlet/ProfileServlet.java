@@ -127,7 +127,7 @@ public class ProfileServlet extends HttpServlet {
 		}
 
 		if (changes.isEmpty()) {
-			response.getWriter().write(gson.toJson(ApiResponse.error("Keine Änderungen festgestellt.")));
+			response.getWriter().write(gson.toJson(new ApiResponse(false, "Keine Änderungen festgestellt.", null)));
 			return;
 		}
 
@@ -136,10 +136,12 @@ public class ProfileServlet extends HttpServlet {
 		pcr.setRequestedChanges(gson.toJson(changes));
 
 		if (requestDAO.createRequest(pcr)) {
-			response.getWriter().write(gson.toJson(ApiResponse.success("Änderungsantrag erfolgreich eingereicht.")));
+			response.getWriter()
+					.write(gson.toJson(new ApiResponse(true, "Änderungsantrag erfolgreich eingereicht.", null)));
 		} else {
 			response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-			response.getWriter().write(gson.toJson(ApiResponse.error("Antrag konnte nicht gespeichert werden.")));
+			response.getWriter()
+					.write(gson.toJson(new ApiResponse(false, "Antrag konnte nicht gespeichert werden.", null)));
 		}
 	}
 

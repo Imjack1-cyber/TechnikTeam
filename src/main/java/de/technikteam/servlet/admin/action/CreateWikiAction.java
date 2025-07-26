@@ -1,54 +1,57 @@
+// FILE: /src/main/java/de/technikteam/servlet/admin/action/CreateWikiAction.java
 package de.technikteam.servlet.admin.action;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import de.technikteam.config.Permissions;
 import de.technikteam.dao.WikiDAO;
 import de.technikteam.model.ApiResponse;
-import de.technikteam.model.User;
 import de.technikteam.model.WikiEntry;
-import de.technikteam.service.AdminLogService;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import java.io.IOException;
+import java.util.Optional;
 
 @Singleton
 public class CreateWikiAction implements Action {
-
+	private static final Logger logger = LogManager.getLogger(CreateWikiAction.class);
 	private final WikiDAO wikiDAO;
-	private final AdminLogService adminLogService;
 
 	@Inject
-	public CreateWikiAction(WikiDAO wikiDAO, AdminLogService adminLogService) {
+	public CreateWikiAction(WikiDAO wikiDAO) {
 		this.wikiDAO = wikiDAO;
-		this.adminLogService = adminLogService;
 	}
 
 	@Override
-	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response) {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)) {
-			return ApiResponse.error("Access Denied.");
-		}
-
+	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
 		String filePath = request.getParameter("filePath");
 		String content = request.getParameter("content");
 
-		if (filePath == null || filePath.trim().isEmpty()) {
-			return ApiResponse.error("File path cannot be empty.");
+		if (filePath == null || filePath.isBlank()) {
+			return new ApiResponse(false, "File path cannot be empty.", null);
+		}
+
+		if (wikiDAO.findByFilePath(filePath).isPresent()) {
+			logger.warn("Attempted to create a wiki entry with a duplicate file path: {}", filePath);
+			return new ApiResponse(false, "An entry with this file path already exists.", null);
 		}
 
 		WikiEntry newEntry = new WikiEntry();
-		newEntry.setFilePath(filePath.trim());
+		newEntry.setFilePath(filePath);
 		newEntry.setContent(content);
 
-		WikiEntry createdEntry = wikiDAO.createWikiEntry(newEntry);
+		Optional<WikiEntry> createdEntryOptional = wikiDAO.createWikiEntry(newEntry);
 
-		if (createdEntry != null) {
-			adminLogService.log(adminUser.getUsername(), "WIKI_CREATE",
-					"Created documentation for file: " + createdEntry.getFilePath());
-			return ApiResponse.success("Wiki page created successfully.", createdEntry);
+		if (createdEntryOptional.isPresent()) {
+			WikiEntry createdEntry = createdEntryOptional.get();
+			logger.info("Successfully created new wiki entry with ID: {}", createdEntry.getId());
+			return new ApiResponse(true, "Page created successfully.", createdEntry);
 		} else {
-			return ApiResponse.error("Failed to create wiki page. The file path may already exist.");
+			logger.error("Failed to create wiki entry for path: {}", filePath);
+			return new ApiResponse(false, "Failed to create page in database.", null);
 		}
 	}
 }

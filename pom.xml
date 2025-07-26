@@ -48,11 +48,18 @@
             <artifactId>flyway-mysql</artifactId>
             <version>${flyway.version}</version>
         </dependency>
+        
+        <!-- =================================================================== -->
+        <!-- THE DATABASE DRIVER FIX -->
+        <!-- REMOVED: mysql-connector-j -->
+        <!-- ADDED: mariadb-java-client -->
         <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
-            <version>8.3.0</version>
+            <groupId>org.mariadb.jdbc</groupId>
+            <artifactId>mariadb-java-client</artifactId>
+            <version>3.4.1</version> 
         </dependency>
+        <!-- =================================================================== -->
+        
         <dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
@@ -177,7 +184,8 @@
                 <artifactId>flyway-maven-plugin</artifactId>
                 <version>${flyway.version}</version>
                 <configuration>
-                    <url>jdbc:mysql://localhost:3306/technik_team_db</url>
+                    <!-- IMPORTANT: The URL must be changed for MariaDB -->
+                    <url>jdbc:mariadb://localhost:3306/technik_team_db</url>
                     <user>technik_user</user>
                     <password>X32MYaaD</password>
                 </configuration>

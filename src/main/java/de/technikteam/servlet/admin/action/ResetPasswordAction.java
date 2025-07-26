@@ -43,7 +43,7 @@ public class ResetPasswordAction implements Action {
 		User userToReset = userDAO.getUserById(userId);
 
 		if (userToReset == null) {
-			return ApiResponse.error("Benutzer zum Zurücksetzen nicht gefunden.");
+			return new ApiResponse(false, "Benutzer zum Zurücksetzen nicht gefunden.", null);
 		} else {
 			String newPassword = generateRandomPassword(12);
 			if (userDAO.changePassword(userId, newPassword)) {
@@ -51,11 +51,11 @@ public class ResetPasswordAction implements Action {
 						userToReset.getUsername(), userId);
 				adminLogService.log(adminUser.getUsername(), "RESET_PASSWORD", logDetails);
 
-				return ApiResponse.success(
+				return new ApiResponse(true,
 						"Passwort für " + userToReset.getUsername() + " zurückgesetzt auf: " + newPassword,
 						Map.of("username", userToReset.getUsername(), "newPassword", newPassword));
 			} else {
-				return ApiResponse.error("Passwort konnte nicht zurückgesetzt werden.");
+				return new ApiResponse(false, "Passwort konnte nicht zurückgesetzt werden.", null);
 			}
 		}
 	}

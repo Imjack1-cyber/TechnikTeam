@@ -47,10 +47,10 @@ public class RegistrationFinishServlet extends HttpServlet {
 		response.setCharacterEncoding("UTF-8");
 
 		if (success) {
-			response.getWriter().write(gson.toJson(ApiResponse.success("Device registered successfully!")));
+			response.getWriter().write(gson.toJson(new ApiResponse(true, "Device registered successfully!", null)));
 		} else {
 			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-			response.getWriter().write(gson.toJson(ApiResponse.error("Failed to register device.")));
+			response.getWriter().write(gson.toJson(new ApiResponse(false, "Failed to register device.", null)));
 		}
 	}
 }

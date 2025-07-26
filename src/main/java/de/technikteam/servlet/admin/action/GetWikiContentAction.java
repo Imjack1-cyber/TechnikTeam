@@ -2,17 +2,18 @@ package de.technikteam.servlet.admin.action;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import de.technikteam.config.Permissions;
 import de.technikteam.dao.WikiDAO;
 import de.technikteam.model.ApiResponse;
-import de.technikteam.model.User;
 import de.technikteam.model.WikiEntry;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import java.util.Optional;
 
 @Singleton
 public class GetWikiContentAction implements Action {
-
+	private static final Logger logger = LogManager.getLogger(GetWikiContentAction.class);
 	private final WikiDAO wikiDAO;
 
 	@Inject
@@ -22,20 +23,19 @@ public class GetWikiContentAction implements Action {
 
 	@Override
 	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response) {
-		User user = (User) request.getSession().getAttribute("user");
-		if (user == null || !user.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)) {
-			return ApiResponse.error("Access Denied.");
-		}
-
 		try {
 			int id = Integer.parseInt(request.getParameter("id"));
-			WikiEntry entry = wikiDAO.getWikiEntryById(id);
-			if (entry == null) {
-				return ApiResponse.error("Wiki entry not found.");
+			Optional<WikiEntry> entryOptional = wikiDAO.getWikiEntryById(id);
+
+			if (entryOptional.isPresent()) {
+				return new ApiResponse(true, "Content loaded.", entryOptional.get());
+			} else {
+				logger.warn("Wiki content requested for non-existent ID: {}", id);
+				return new ApiResponse(false, "Entry not found.", null);
 			}
-			return ApiResponse.success("Content loaded.", entry);
 		} catch (NumberFormatException e) {
-			return ApiResponse.error("Invalid ID format.");
+			logger.error("Invalid ID format in GetWikiContentAction: {}", request.getParameter("id"), e);
+			return new ApiResponse(false, "Invalid ID format.", null);
 		}
 	}
 }

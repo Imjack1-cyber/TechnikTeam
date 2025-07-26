@@ -13,6 +13,7 @@ import de.technikteam.service.ConfigurationService;
 import de.technikteam.service.StorageService;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,6 +27,10 @@ import java.nio.file.Paths;
 import java.util.List;
 
 @Singleton
+@MultipartConfig(maxFileSize = 5242880, // 5MB
+		maxRequestSize = 10485760, // 10MB
+		fileSizeThreshold = 1048576 // 1MB
+)
 public class AdminStorageServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminStorageServlet.class);
@@ -64,12 +69,6 @@ public class AdminStorageServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
 		request.setCharacterEncoding("UTF-8");
-
-		if (!CSRFUtil.isTokenValid(request)) {
-			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
-			return;
-		}
-
 		String action = request.getParameter("action");
 
 		switch (action) {
@@ -113,6 +112,11 @@ public class AdminStorageServlet extends HttpServlet {
 
 	private void handleCreateOrUpdate(HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
+		if (!CSRFUtil.isTokenValid(request)) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
+
 		User adminUser = (User) request.getSession().getAttribute("user");
 		boolean isCreate = "create".equals(request.getParameter("action"));
 
@@ -179,10 +183,14 @@ public class AdminStorageServlet extends HttpServlet {
 	}
 
 	private void handleDefectStatusUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		if (!CSRFUtil.isTokenValid(request)) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
 		User adminUser = (User) request.getSession().getAttribute("user");
 		try {
 			int itemId = Integer.parseInt(request.getParameter("id"));
-			String status = request.getParameter("status"); // "DEFECT" or "UNREPAIRABLE"
+			String status = request.getParameter("status");
 			int quantity = Integer.parseInt(request.getParameter("quantity"));
 			String reason = request.getParameter("reason");
 
@@ -201,6 +209,10 @@ public class AdminStorageServlet extends HttpServlet {
 	}
 
 	private void handleDelete(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		if (!CSRFUtil.isTokenValid(request)) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
 		User adminUser = (User) request.getSession().getAttribute("user");
 		try {
 			int itemId = Integer.parseInt(request.getParameter("id"));
@@ -226,6 +238,10 @@ public class AdminStorageServlet extends HttpServlet {
 	}
 
 	private void handleStatusUpdate(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		if (!CSRFUtil.isTokenValid(request)) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
 		User adminUser = (User) request.getSession().getAttribute("user");
 		try {
 			int itemId = Integer.parseInt(request.getParameter("id"));
@@ -250,6 +266,10 @@ public class AdminStorageServlet extends HttpServlet {
 	}
 
 	private void handleRepair(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		if (!CSRFUtil.isTokenValid(request)) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
 		User adminUser = (User) request.getSession().getAttribute("user");
 		String returnTo = request.getParameter("returnTo");
 		try {

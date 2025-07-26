@@ -42,7 +42,8 @@ public class CreateUserAction implements Action {
 
 		PasswordPolicyValidator.ValidationResult validationResult = PasswordPolicyValidator.validate(pass);
 		if (!validationResult.isValid()) {
-			return ApiResponse.error("Fehler beim Erstellen des Benutzers: " + validationResult.getMessage());
+			return new ApiResponse(false, "Fehler beim Erstellen des Benutzers: " + validationResult.getMessage(),
+					null);
 		}
 
 		int roleId = Integer.parseInt(request.getParameter("roleId"));
@@ -64,14 +65,13 @@ public class CreateUserAction implements Action {
 		int newUserId = userService.createUserWithPermissions(newUser, pass, permissionIds, adminUser.getUsername());
 		if (newUserId > 0) {
 			newUser.setId(newUserId);
-			// Enrich with role name for the JSON response
 			roleDAO.getAllRoles().stream().filter(role -> role.getId() == newUser.getRoleId()).findFirst()
 					.ifPresent(role -> newUser.setRoleName(role.getRoleName()));
 
-			return ApiResponse.success("Benutzer '" + newUser.getUsername() + "' erfolgreich erstellt.", newUser);
+			return new ApiResponse(true, "Benutzer '" + newUser.getUsername() + "' erfolgreich erstellt.", newUser);
 		} else {
-			return ApiResponse
-					.error("Benutzer konnte nicht erstellt werden (ggf. existiert der Name oder die E-Mail bereits).");
+			return new ApiResponse(false,
+					"Benutzer konnte nicht erstellt werden (ggf. existiert der Name oder die E-Mail bereits).", null);
 		}
 	}
 }

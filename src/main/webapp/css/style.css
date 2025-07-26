@@ -86,7 +86,6 @@ body {
 	color: var(--text-color);
 	line-height: 1.6;
 	transition: background-color 0.3s, color 0.3s;
-	overflow: hidden; /* Prevent body scroll when layout fills viewport */
 }
 
 h1, h2, h3, h4 {
@@ -1646,23 +1645,22 @@ fieldset {
 /*  15. WIKI PAGE STYLES (NUCLEAR REWRITE)                             */
 /* =================================================================== */
 
-/* 1. On the wiki page, make the .main-content a non-scrolling flex container */
+/* On the wiki page, make the .main-content a non-scrolling flex container */
 body[data-page="wiki"] .main-content {
     display: flex;
     padding: 0;
-    overflow-y: hidden; /* CRITICAL: Disables parent scrolling */
+    overflow: hidden; /* CRITICAL: Disables parent scrolling and sizing issues */
 }
 
-/* 2. Make the wiki wrapper fill the now-stable .main-content area */
+/* Make the wiki wrapper fill the now-stable .main-content area */
 .wiki-page-wrapper {
     display: flex;
     flex-grow: 1; /* Fills the container */
-    min-height: 0; /* Flexbox safety */
-    min-width: 0;  /* Flexbox safety */
-    overflow: hidden; 
+    min-height: 0; /* Flexbox safety for vertical sizing */
+    min-width: 0;  /* Flexbox safety for horizontal sizing */
 }
 
-/* 3. Define the sidebar and the content pane behavior */
+/* Define the sidebar behavior */
 .wiki-sidebar {
     flex: 0 0 350px; /* Fixed width, doesn't grow or shrink */
     height: 100%;
@@ -1673,6 +1671,7 @@ body[data-page="wiki"] .main-content {
     padding: 1.5rem;
 }
 
+/* Define the content pane behavior */
 .wiki-content-pane {
     flex-grow: 1; /* Takes up the rest of the space */
     height: 100%;
@@ -1680,7 +1679,7 @@ body[data-page="wiki"] .main-content {
     flex-direction: column;
     min-width: 0; /* CRITICAL: Prevents wide content from breaking layout */
     padding: 1.5rem;
-    overflow-y: auto; /* This is now the ONLY vertically scrolling pane */
+    overflow-y: auto; /* This is the ONLY vertically scrolling pane */
 }
 
 /* --- All other wiki styles below this line are for appearance --- */
@@ -1774,7 +1773,7 @@ body[data-page="wiki"] .main-content {
     padding: 0;
     border: none;
     font-size: 1.2rem;
-    word-break: break-all; /* CRITICAL: Fixes horizontal overflow from long titles */
+    word-break: break-all; /* CRITICAL: Forces long titles to wrap */
 }
 
 /* Responsive styles for the wiki */
@@ -1828,14 +1827,15 @@ pre, code {
 
 #wiki-content-pane #editor {
     flex-grow: 1;
-    width: 100%;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 1rem;
-    background-color: var(--surface-color);
-    font-family: monospace;
-    font-size: 0.9rem;
-    resize: none;
+    min-height: 0; /* <-- This is the crucial fix */
+/*     width: 100%; */
+/*     border: 1px solid var(--border-color); */
+/*     border-radius: var(--border-radius); */
+/*     padding: 1rem; */
+/*     background-color: var(--surface-color); */
+/*     font-family: monospace; */
+/*     font-size: 0.9rem; */
+	height: auto; 
     overflow-y: auto;
 }
 

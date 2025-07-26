@@ -56,10 +56,9 @@
 					<form action="${pageContext.request.contextPath}/admin/kits"
 						method="post" class="js-confirm-form"
 						data-confirm-message="Kit '${fn:escapeXml(kit.name)}' wirklich löschen?">
-						<input type="hidden" name="csrfToken"
-							value="${sessionScope.csrfToken}"> <input type="hidden"
-							name="action" value="delete"> <input type="hidden"
-							name="id" value="${kit.id}">
+						<input type="hidden" name="action" value="delete"> <input
+							type="hidden" name="id" value="${kit.id}"> <input
+							type="hidden" name="csrfToken" value="${sessionScope.csrfToken}">
 						<button type="submit" class="btn btn-small btn-danger">Löschen</button>
 					</form>
 				</div>

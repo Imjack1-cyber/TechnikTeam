@@ -40,10 +40,10 @@ public class UnlockUserAction implements Action {
 			LoginServlet.LoginAttemptManager.clearLoginAttempts(usernameToUnlock);
 			adminLogService.log(adminUser.getUsername(), "UNLOCK_USER_ACCOUNT",
 					"Benutzerkonto '" + usernameToUnlock + "' manuell entsperrt.");
-			return ApiResponse.success("Benutzerkonto '" + usernameToUnlock + "' wurde erfolgreich entsperrt.",
+			return new ApiResponse(true, "Benutzerkonto '" + usernameToUnlock + "' wurde erfolgreich entsperrt.",
 					Map.of("unlockedUsername", usernameToUnlock));
 		} else {
-			return ApiResponse.error("Benutzername zum Entsperren wurde nicht angegeben.");
+			return new ApiResponse(false, "Benutzername zum Entsperren wurde nicht angegeben.", null);
 		}
 	}
 }

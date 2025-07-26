@@ -68,10 +68,10 @@
 								action="${pageContext.request.contextPath}/admin/achievements"
 								method="post" class="js-confirm-form" style="display: inline;"
 								data-confirm-message="Erfolg '${fn:escapeXml(ach.name)}' wirklich löschen?">
-								<input type="hidden" name="csrfToken"
-									value="${sessionScope.csrfToken}"> <input type="hidden"
-									name="action" value="delete"> <input type="hidden"
-									name="id" value="${ach.id}">
+								<input type="hidden" name="action" value="delete"> <input
+									type="hidden" name="id" value="${ach.id}"> <input
+									type="hidden" name="csrfToken"
+									value="${sessionScope.csrfToken}">
 								<button type="submit" class="btn btn-small btn-danger">
 									<i class="fas fa-trash"></i> Löschen
 								</button>
@@ -117,10 +117,9 @@
 						action="${pageContext.request.contextPath}/admin/achievements"
 						method="post" class="js-confirm-form"
 						data-confirm-message="Erfolg '${fn:escapeXml(ach.name)}' wirklich löschen?">
-						<input type="hidden" name="csrfToken"
-							value="${sessionScope.csrfToken}"> <input type="hidden"
-							name="action" value="delete"> <input type="hidden"
-							name="id" value="${ach.id}">
+						<input type="hidden" name="action" value="delete"> <input
+							type="hidden" name="id" value="${ach.id}"> <input
+							type="hidden" name="csrfToken" value="${sessionScope.csrfToken}">
 						<button type="submit" class="btn btn-small btn-danger">
 							<i class="fas fa-trash"></i> Löschen
 						</button>
@@ -177,8 +176,9 @@
 							id="key-course-select">
 							<option value="">-- Lehrgang wählen --</option>
 							<c:forEach var="course" items="${allCourses}">
-								<option value="${fn:replace(course.abbreviation, ' ', '_')}"><c:out
-										value="${course.name}" /></option>
+								<option value="${fn:replace(course.abbreviation, ' ', '_')}">
+									<c:out value="${course.name}" />
+								</option>
 							</c:forEach>
 						</select>
 					</div>

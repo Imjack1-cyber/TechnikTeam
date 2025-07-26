@@ -47,13 +47,13 @@ public class ApproveChangeAction implements Action {
 			int requestId = Integer.parseInt(request.getParameter("requestId"));
 			ProfileChangeRequest req = requestDAO.getRequestById(requestId);
 			if (req == null || !"PENDING".equals(req.getStatus())) {
-				return ApiResponse.error("Anfrage nicht gefunden oder bereits bearbeitet.");
+				return new ApiResponse(false, "Anfrage nicht gefunden oder bereits bearbeitet.", null);
 			}
 
 			User userToUpdate = userDAO.getUserById(req.getUserId());
 			if (userToUpdate == null) {
 				requestDAO.updateRequestStatus(requestId, "DENIED", adminUser.getId());
-				return ApiResponse.error("Der zugehörige Benutzer existiert nicht mehr. Anfrage abgelehnt.");
+				return new ApiResponse(false, "Der zugehörige Benutzer existiert nicht mehr. Anfrage abgelehnt.", null);
 			}
 
 			Type type = new TypeToken<Map<String, String>>() {
@@ -74,8 +74,6 @@ public class ApproveChangeAction implements Action {
 				}
 			});
 
-			// CORRECTED: Call the version of updateUser that does not require a Connection
-			// object.
 			if (userDAO.updateUser(userToUpdate)
 					&& requestDAO.updateRequestStatus(requestId, "APPROVED", adminUser.getId())) {
 				adminLogService.log(adminUser.getUsername(), "PROFILE_CHANGE_APPROVED", "Profiländerung für '"
@@ -88,13 +86,14 @@ public class ApproveChangeAction implements Action {
 
 				SessionManager.invalidateSessionsForUser(userToUpdate.getId());
 
-				return ApiResponse.success("Änderungsanfrage genehmigt.", Map.of("requestId", requestId));
+				return new ApiResponse(true, "Änderungsanfrage genehmigt.", Map.of("requestId", requestId));
 			} else {
-				return ApiResponse.error("Fehler beim Anwenden der Änderungen oder beim Aktualisieren der Anfrage.");
+				return new ApiResponse(false,
+						"Fehler beim Anwenden der Änderungen oder beim Aktualisieren der Anfrage.", null);
 			}
 
 		} catch (Exception e) {
-			return ApiResponse.error("Ein interner Fehler ist aufgetreten: " + e.getMessage());
+			return new ApiResponse(false, "Ein interner Fehler ist aufgetreten: " + e.getMessage(), null);
 		}
 	}
 }

@@ -18,6 +18,7 @@ import de.technikteam.service.AdminLogService;
 import de.technikteam.service.ConfigurationService;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -35,6 +36,10 @@ import java.util.List;
 import java.util.Map;
 
 @Singleton
+@MultipartConfig(maxFileSize = 20971520, // 20MB
+		maxRequestSize = 52428800, // 50MB
+		fileSizeThreshold = 1048576 // 1MB
+)
 public class AdminMeetingServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminMeetingServlet.class);
@@ -73,10 +78,6 @@ public class AdminMeetingServlet extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		req.setCharacterEncoding("UTF-8");
-		if (!CSRFUtil.isTokenValid(req)) {
-			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
-			return;
-		}
 		String action = req.getParameter("action");
 		switch (action) {
 		case "create":
@@ -129,6 +130,11 @@ public class AdminMeetingServlet extends HttpServlet {
 
 	private void handleCreateOrUpdate(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException, ServletException {
+		if (!CSRFUtil.isTokenValid(req)) {
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
+
 		User adminUser = (User) req.getSession().getAttribute("user");
 		String action = req.getParameter("action");
 		boolean isUpdate = "update".equals(action);
@@ -194,6 +200,10 @@ public class AdminMeetingServlet extends HttpServlet {
 	}
 
 	private void handleDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		if (!CSRFUtil.isTokenValid(req)) {
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
 		int courseId = Integer.parseInt(req.getParameter("courseId"));
 		int meetingId = Integer.parseInt(req.getParameter("meetingId"));
 		User adminUser = (User) req.getSession().getAttribute("user");
@@ -214,6 +224,10 @@ public class AdminMeetingServlet extends HttpServlet {
 	}
 
 	private void handleDeleteAttachment(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		if (!CSRFUtil.isTokenValid(req)) {
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
 		User adminUser = (User) req.getSession().getAttribute("user");
 		int attachmentId = Integer.parseInt(req.getParameter("attachmentId"));
 		int courseId = Integer.parseInt(req.getParameter("courseId"));

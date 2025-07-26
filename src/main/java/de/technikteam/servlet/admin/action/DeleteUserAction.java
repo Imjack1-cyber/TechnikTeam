@@ -39,17 +39,17 @@ public class DeleteUserAction implements Action {
 		}
 
 		if (loggedInAdmin.getId() == userIdToDelete) {
-			return ApiResponse.error("Sie können sich nicht selbst löschen.");
+			return new ApiResponse(false, "Sie können sich nicht selbst löschen.", null);
 		}
 
 		User userToDelete = userDAO.getUserById(userIdToDelete);
 		if (userToDelete == null) {
-			return ApiResponse.error("Benutzer mit ID " + userIdToDelete + " nicht gefunden.");
+			return new ApiResponse(false, "Benutzer mit ID " + userIdToDelete + " nicht gefunden.", null);
 		}
 
 		if (userToDelete.getPermissions().contains("ACCESS_ADMIN_PANEL")
 				&& !loggedInAdmin.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
-			return ApiResponse.error("Sie haben keine Berechtigung, einen Haupt-Administrator zu löschen.");
+			return new ApiResponse(false, "Sie haben keine Berechtigung, einen Haupt-Administrator zu löschen.", null);
 		}
 
 		String deletedUsername = userToDelete.getUsername();
@@ -62,9 +62,9 @@ public class DeleteUserAction implements Action {
 
 			NotificationService.getInstance().broadcastUIUpdate("user_deleted", Map.of("userId", userIdToDelete));
 
-			return ApiResponse.success("Benutzer erfolgreich gelöscht.", Map.of("deletedUserId", userIdToDelete));
+			return new ApiResponse(true, "Benutzer erfolgreich gelöscht.", Map.of("deletedUserId", userIdToDelete));
 		} else {
-			return ApiResponse.error("Benutzer konnte nicht gelöscht werden.");
+			return new ApiResponse(false, "Benutzer konnte nicht gelöscht werden.", null);
 		}
 	}
 }

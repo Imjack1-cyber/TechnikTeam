@@ -2,11 +2,11 @@ package de.technikteam.servlet.admin;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import de.technikteam.dao.FileDAO;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.ConfigurationService;
 import de.technikteam.util.CSRFUtil;
+import de.technikteam.dao.FileDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
@@ -24,7 +24,11 @@ import java.util.Set;
 import java.util.UUID;
 
 @Singleton
-@MultipartConfig
+@MultipartConfig(
+    maxFileSize = 20971520,    // 20MB
+    maxRequestSize = 52428800, // 50MB
+    fileSizeThreshold = 1048576  // 1MB
+)
 public class AdminFileServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminFileServlet.class);
@@ -48,11 +52,6 @@ public class AdminFileServlet extends HttpServlet {
 		request.setCharacterEncoding("UTF-8");
 		HttpSession session = request.getSession();
 		User adminUser = (User) session.getAttribute("user");
-
-		if (!CSRFUtil.isTokenValid(request)) {
-			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
-			return;
-		}
 
 		String pathInfo = request.getPathInfo();
 		if (pathInfo == null) {
@@ -91,6 +90,11 @@ public class AdminFileServlet extends HttpServlet {
 			throws IOException, ServletException {
 		HttpSession session = request.getSession();
 		Part filePart = request.getPart("file");
+
+		if (!CSRFUtil.isTokenValid(request)) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
 
 		if (filePart == null || filePart.getSize() == 0) {
 			session.setAttribute("errorMessage", "Bitte wählen Sie eine Datei zum Hochladen aus.");
@@ -141,6 +145,11 @@ public class AdminFileServlet extends HttpServlet {
 			throws IOException, ServletException {
 		HttpSession session = request.getSession();
 		Part filePart = request.getPart("file");
+		
+		if (!CSRFUtil.isTokenValid(request)) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
 
 		if (filePart == null || filePart.getSize() == 0) {
 			session.setAttribute("errorMessage", "Bitte wählen Sie eine Datei zum Hochladen aus.");
@@ -176,6 +185,10 @@ public class AdminFileServlet extends HttpServlet {
 
 	private void handleDelete(HttpServletRequest request, HttpServletResponse response, User adminUser)
 			throws IOException {
+		if (!CSRFUtil.isTokenValid(request)) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
 		HttpSession session = request.getSession();
 		try {
 			int fileId = Integer.parseInt(request.getParameter("fileId"));
@@ -197,6 +210,10 @@ public class AdminFileServlet extends HttpServlet {
 
 	private void handleReassign(HttpServletRequest request, HttpServletResponse response, User adminUser)
 			throws IOException {
+		if (!CSRFUtil.isTokenValid(request)) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
 		HttpSession session = request.getSession();
 		try {
 			int fileId = Integer.parseInt(request.getParameter("fileId"));
@@ -220,6 +237,10 @@ public class AdminFileServlet extends HttpServlet {
 
 	private void handleCreateCategory(HttpServletRequest request, HttpServletResponse response, User adminUser)
 			throws IOException {
+		if (!CSRFUtil.isTokenValid(request)) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
 		String categoryName = request.getParameter("categoryName");
 		HttpSession session = request.getSession();
 		if (categoryName == null || categoryName.trim().isEmpty()) {
@@ -237,6 +258,10 @@ public class AdminFileServlet extends HttpServlet {
 
 	private void handleDeleteCategory(HttpServletRequest request, HttpServletResponse response, User adminUser)
 			throws IOException {
+		if (!CSRFUtil.isTokenValid(request)) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
 		HttpSession session = request.getSession();
 		try {
 			int categoryId = Integer.parseInt(request.getParameter("categoryId"));

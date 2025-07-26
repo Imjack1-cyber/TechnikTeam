@@ -1,52 +1,44 @@
+// FILE: /src/main/java/de/technikteam/servlet/admin/action/DeleteWikiAction.java
 package de.technikteam.servlet.admin.action;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import de.technikteam.config.Permissions;
 import de.technikteam.dao.WikiDAO;
 import de.technikteam.model.ApiResponse;
-import de.technikteam.model.User;
-import de.technikteam.model.WikiEntry;
-import de.technikteam.service.AdminLogService;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.util.Map;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import java.io.IOException;
 
 @Singleton
 public class DeleteWikiAction implements Action {
-
+	private static final Logger logger = LogManager.getLogger(DeleteWikiAction.class);
 	private final WikiDAO wikiDAO;
-	private final AdminLogService adminLogService;
 
 	@Inject
-	public DeleteWikiAction(WikiDAO wikiDAO, AdminLogService adminLogService) {
+	public DeleteWikiAction(WikiDAO wikiDAO) {
 		this.wikiDAO = wikiDAO;
-		this.adminLogService = adminLogService;
 	}
 
 	@Override
-	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response) {
-		User adminUser = (User) request.getSession().getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)) {
-			return ApiResponse.error("Access Denied.");
-		}
-
+	public ApiResponse execute(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
 		try {
 			int wikiId = Integer.parseInt(request.getParameter("wikiId"));
-			WikiEntry entryToDelete = wikiDAO.getWikiEntryById(wikiId);
-			if (entryToDelete == null) {
-				return ApiResponse.error("Wiki entry not found.");
-			}
+			boolean success = wikiDAO.deleteWikiEntry(wikiId);
 
-			if (wikiDAO.deleteWikiEntry(wikiId)) {
-				adminLogService.log(adminUser.getUsername(), "WIKI_DELETE",
-						"Deleted documentation for file: " + entryToDelete.getFilePath());
-				return ApiResponse.success("Wiki page deleted successfully.", Map.of("deletedId", wikiId));
+			if (success) {
+				logger.info("Successfully deleted wiki entry with ID: {}", wikiId);
+				return new ApiResponse(true, "Page deleted successfully.", null);
 			} else {
-				return ApiResponse.error("Failed to delete wiki page.");
+				logger.warn("Attempted to delete a non-existent wiki entry with ID: {}", wikiId);
+				return new ApiResponse(false, "Failed to delete page. It may have already been deleted.", null);
 			}
 		} catch (NumberFormatException e) {
-			return ApiResponse.error("Invalid wiki ID format.");
+			logger.error("Invalid ID format in DeleteWikiAction: {}", request.getParameter("wikiId"), e);
+			return new ApiResponse(false, "Invalid ID format.", null);
 		}
 	}
 }

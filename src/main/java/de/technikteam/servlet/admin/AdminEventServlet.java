@@ -6,18 +6,30 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import de.technikteam.config.LocalDateAdapter;
 import de.technikteam.config.LocalDateTimeAdapter;
-import de.technikteam.dao.*;
-import de.technikteam.model.*;
+import de.technikteam.dao.AttachmentDAO;
+import de.technikteam.dao.CourseDAO;
+import de.technikteam.dao.EventCustomFieldDAO;
+import de.technikteam.dao.EventDAO;
+import de.technikteam.dao.InventoryKitDAO;
+import de.technikteam.dao.StorageDAO;
+import de.technikteam.dao.UserDAO;
+import de.technikteam.model.Attachment;
+import de.technikteam.model.Course;
+import de.technikteam.model.Event;
+import de.technikteam.model.EventCustomField;
+import de.technikteam.model.InventoryKit;
+import de.technikteam.model.StorageItem;
+import de.technikteam.model.User;
 import de.technikteam.service.AchievementService;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.EventService;
 import de.technikteam.service.NotificationService;
 import de.technikteam.util.CSRFUtil;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.Part;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -31,6 +43,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Singleton
+@MultipartConfig(maxFileSize = 41943040, // 40MB
+		maxRequestSize = 83886080, // 80MB
+		fileSizeThreshold = 1048576 // 1MB
+)
 public class AdminEventServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AdminEventServlet.class);
@@ -96,11 +112,6 @@ public class AdminEventServlet extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		req.setCharacterEncoding("UTF-8");
-		if (!CSRFUtil.isTokenValid(req)) {
-			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
-			return;
-		}
-
 		String action = req.getParameter("action");
 		switch (action) {
 		case "create":
@@ -183,6 +194,11 @@ public class AdminEventServlet extends HttpServlet {
 
 	private void handleCreateOrUpdate(HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
+		if (!CSRFUtil.isTokenValid(request)) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
+
 		User adminUser = (User) request.getSession().getAttribute("user");
 		String idParam = request.getParameter("id");
 		boolean isUpdate = idParam != null && !idParam.isEmpty();
@@ -231,6 +247,10 @@ public class AdminEventServlet extends HttpServlet {
 	}
 
 	private void handleDeleteAttachment(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		if (!CSRFUtil.isTokenValid(req)) {
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
 		User adminUser = (User) req.getSession().getAttribute("user");
 		int attachmentId = Integer.parseInt(req.getParameter("id"));
 		Attachment attachment = attachmentDAO.getAttachmentById(attachmentId);
@@ -254,6 +274,10 @@ public class AdminEventServlet extends HttpServlet {
 	}
 
 	private void handleDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		if (!CSRFUtil.isTokenValid(req)) {
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
 		User adminUser = (User) req.getSession().getAttribute("user");
 		if (!adminUser.getPermissions().contains("EVENT_DELETE") && !adminUser.hasAdminAccess()) {
 			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
@@ -276,6 +300,10 @@ public class AdminEventServlet extends HttpServlet {
 	}
 
 	private void handleAssignUsers(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		if (!CSRFUtil.isTokenValid(req)) {
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
 		User adminUser = (User) req.getSession().getAttribute("user");
 		int eventId = Integer.parseInt(req.getParameter("eventId"));
 		Event event = eventDAO.getEventById(eventId);
@@ -298,6 +326,10 @@ public class AdminEventServlet extends HttpServlet {
 	}
 
 	private void handleStatusUpdate(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		if (!CSRFUtil.isTokenValid(req)) {
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
 		User adminUser = (User) req.getSession().getAttribute("user");
 		int eventId = Integer.parseInt(req.getParameter("id"));
 		Event event = eventDAO.getEventById(eventId);
@@ -330,6 +362,10 @@ public class AdminEventServlet extends HttpServlet {
 	}
 
 	private void handleInviteUsers(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		if (!CSRFUtil.isTokenValid(req)) {
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid CSRF Token");
+			return;
+		}
 		User adminUser = (User) req.getSession().getAttribute("user");
 		int eventId = Integer.parseInt(req.getParameter("eventId"));
 		String[] userIdsToInvite = req.getParameterValues("userIds");
@@ -339,7 +375,7 @@ public class AdminEventServlet extends HttpServlet {
 			return;
 		}
 		if (!adminUser.hasAdminAccess()) {
-			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
 		if (userIdsToInvite != null) {

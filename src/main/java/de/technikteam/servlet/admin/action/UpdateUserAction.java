@@ -48,10 +48,9 @@ public class UpdateUserAction implements Action {
 
 		User originalUser = userDAO.getUserById(userId);
 		if (originalUser == null) {
-			return ApiResponse.error("Fehler: Benutzer mit ID " + userId + " nicht gefunden.");
+			return new ApiResponse(false, "Fehler: Benutzer mit ID " + userId + " nicht gefunden.", null);
 		}
 
-		// Capture changes for logging
 		StringBuilder changes = new StringBuilder();
 
 		User updatedUser = new User();
@@ -117,10 +116,10 @@ public class UpdateUserAction implements Action {
 
 			NotificationService.getInstance().broadcastUIUpdate("user_updated", refreshedUser);
 
-			return ApiResponse.success("Benutzerdaten erfolgreich aktualisiert.", refreshedUser);
+			return new ApiResponse(true, "Benutzerdaten erfolgreich aktualisiert.", refreshedUser);
 		} else {
-			return ApiResponse
-					.error("Keine Änderungen an den Benutzerdaten vorgenommen oder ein Fehler ist aufgetreten.");
+			return new ApiResponse(false,
+					"Keine Änderungen an den Benutzerdaten vorgenommen oder ein Fehler ist aufgetreten.", null);
 		}
 	}
 }

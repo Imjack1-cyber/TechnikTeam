@@ -46,12 +46,12 @@ public class UpdateFeedbackStatusAction implements Action {
 				NotificationService.getInstance().broadcastUIUpdate("feedback_status_updated",
 						Map.of("submissionId", submissionId, "newStatus", newStatus, "displayTitle", displayTitle));
 
-				return ApiResponse.success("Status erfolgreich aktualisiert.");
+				return new ApiResponse(true, "Status erfolgreich aktualisiert.", null);
 			} else {
-				return ApiResponse.error("Fehler beim Aktualisieren des Status.");
+				return new ApiResponse(false, "Fehler beim Aktualisieren des Status.", null);
 			}
 		} catch (NumberFormatException e) {
-			return ApiResponse.error("Ungültige Feedback-ID.");
+			return new ApiResponse(false, "Ungültige Feedback-ID.", null);
 		}
 	}
 }

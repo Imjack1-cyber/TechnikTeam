@@ -6,7 +6,22 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.model.ApiResponse;
-import de.technikteam.servlet.admin.action.*;
+import de.technikteam.servlet.admin.action.Action;
+import de.technikteam.servlet.admin.action.ApproveChangeAction;
+import de.technikteam.servlet.admin.action.CreateUserAction;
+import de.technikteam.servlet.admin.action.CreateWikiAction;
+import de.technikteam.servlet.admin.action.DeleteFeedbackAction;
+import de.technikteam.servlet.admin.action.DeleteUserAction;
+import de.technikteam.servlet.admin.action.DeleteWikiAction;
+import de.technikteam.servlet.admin.action.DenyChangeAction;
+import de.technikteam.servlet.admin.action.GetFeedbackDetailsAction;
+import de.technikteam.servlet.admin.action.GetWikiContentAction;
+import de.technikteam.servlet.admin.action.ResetPasswordAction;
+import de.technikteam.servlet.admin.action.UnlockUserAction;
+import de.technikteam.servlet.admin.action.UpdateFeedbackOrderAction;
+import de.technikteam.servlet.admin.action.UpdateFeedbackStatusAction;
+import de.technikteam.servlet.admin.action.UpdateUserAction;
+import de.technikteam.servlet.admin.action.UpdateWikiAction;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -89,7 +104,8 @@ public class FrontControllerServlet extends HttpServlet {
 		ApiResponse apiResponse = action.execute(request, response);
 
 		if (apiResponse == null) {
-			// This can happen if the action handles the response directly (e.g., sendError)
+			// This can happen if the action handles the response directly (e.g., by calling
+			// sendError)
 			return;
 		}
 

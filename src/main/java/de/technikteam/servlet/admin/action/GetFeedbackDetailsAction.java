@@ -28,12 +28,12 @@ public class GetFeedbackDetailsAction implements Action {
 			int submissionId = Integer.parseInt(request.getParameter("submissionId"));
 			FeedbackSubmission submission = submissionDAO.getSubmissionById(submissionId);
 			if (submission != null) {
-				return ApiResponse.success("Details erfolgreich geladen.", submission);
+				return new ApiResponse(true, "Details erfolgreich geladen.", submission);
 			} else {
-				return ApiResponse.error("Feedback-Eintrag nicht gefunden.");
+				return new ApiResponse(false, "Feedback-Eintrag nicht gefunden.", null);
 			}
 		} catch (NumberFormatException e) {
-			return ApiResponse.error("Ungültige Feedback-ID.");
+			return new ApiResponse(false, "Ungültige Feedback-ID.", null);
 		}
 	}
 }

@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
+import java.util.Map;
 
 @Singleton
 public class AdminWikiApiServlet extends HttpServlet {
@@ -36,7 +37,8 @@ public class AdminWikiApiServlet extends HttpServlet {
 		response.setContentType("application/json");
 		response.setCharacterEncoding("UTF-8");
 
-		Object treeData = wikiService.getWikiTreeAsData();
+		// Fetch the tree data from the service and write it as JSON
+		Map<String, Object> treeData = wikiService.getWikiTreeAsData();
 		response.getWriter().write(gson.toJson(treeData));
 	}
 }
