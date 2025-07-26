@@ -136,7 +136,7 @@ a:hover {
 /* --- 3. LAYOUT & CONTAINERS --- */
 .main-content-wrapper {
 	transition: margin-left 0.3s ease-in-out;
-    height: 100%;
+    height: 100vh; /* Use viewport height for a stable base */
     display: flex;
     flex-direction: column;
 }
@@ -148,9 +148,7 @@ a:hover {
 	margin-right: auto;
     width: 100%;
     flex-grow: 1; /* This makes it fill the remaining space */
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto; /* Allow this area to scroll if its content overflows */
+    overflow-y: auto; /* Default scroll behavior for non-wiki pages */
     min-height: 0; /* Fix for flexbox overflow bugs */
 }
 
@@ -190,7 +188,6 @@ a:hover {
         grid-template-columns: 1fr;
     }
 }
-
 
 /* --- 4. NAVIGATION --- */
 .sidebar {
@@ -1649,27 +1646,44 @@ fieldset {
 /*  15. WIKI PAGE STYLES (NUCLEAR REWRITE)                             */
 /* =================================================================== */
 
-/* Remove default padding from main content area ONLY on the wiki page */
+/* 1. On the wiki page, make the .main-content a non-scrolling flex container */
 body[data-page="wiki"] .main-content {
+    display: flex;
     padding: 0;
+    overflow-y: hidden; /* CRITICAL: Disables parent scrolling */
 }
 
+/* 2. Make the wiki wrapper fill the now-stable .main-content area */
 .wiki-page-wrapper {
     display: flex;
-    height: 100%; /* Fill the main-content area */
-    overflow: hidden; /* Prevent this wrapper from scrolling */
+    flex-grow: 1; /* Fills the container */
+    min-height: 0; /* Flexbox safety */
+    min-width: 0;  /* Flexbox safety */
+    overflow: hidden; 
 }
 
+/* 3. Define the sidebar and the content pane behavior */
 .wiki-sidebar {
-    flex: 0 0 350px;
+    flex: 0 0 350px; /* Fixed width, doesn't grow or shrink */
     height: 100%;
     display: flex;
     flex-direction: column;
     background-color: var(--surface-color);
     border-right: 1px solid var(--border-color);
-    transition: margin-left 0.3s ease;
     padding: 1.5rem;
 }
+
+.wiki-content-pane {
+    flex-grow: 1; /* Takes up the rest of the space */
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; /* CRITICAL: Prevents wide content from breaking layout */
+    padding: 1.5rem;
+    overflow-y: auto; /* This is now the ONLY vertically scrolling pane */
+}
+
+/* --- All other wiki styles below this line are for appearance --- */
 
 .wiki-sidebar-header {
     display: flex;
@@ -1688,17 +1702,7 @@ body[data-page="wiki"] .main-content {
 .wiki-tree-container {
     flex-grow: 1;
     overflow-y: auto;
-    min-height: 0; /* Important flexbox fix */
-}
-
-.wiki-content-pane {
-    flex-grow: 1;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    min-width: 0; /* Important flexbox fix */
-    padding: 1.5rem;
-    overflow-y: auto;
+    min-height: 0;
 }
 
 .wiki-welcome-pane {
@@ -1724,13 +1728,13 @@ body[data-page="wiki"] .main-content {
 .wiki-tree-container summary {
 	cursor: pointer;
 	padding: 0.25rem 0;
-    list-style: none; /* Hide default triangle */
+    list-style: none;
 }
 .wiki-tree-container summary::-webkit-details-marker {
-    display: none; /* Hide default triangle in Chrome/Safari */
+    display: none;
 }
 .wiki-tree-container summary:before {
-    content: '\f07b'; /* FontAwesome folder icon */
+    content: '\f07b';
     font-family: 'Font Awesome 5 Free';
     font-weight: 900;
     margin-right: 0.5rem;
@@ -1738,7 +1742,7 @@ body[data-page="wiki"] .main-content {
     transition: transform 0.2s;
 }
 .wiki-tree-container details[open] > summary:before {
-    content: '\f07c'; /* FontAwesome open folder icon */
+    content: '\f07c';
 }
 .wiki-tree-container a {
 	display: block;
@@ -1764,12 +1768,13 @@ body[data-page="wiki"] .main-content {
     gap: 1rem;
     flex-shrink: 0;
 }
+
 .wiki-content-header h2 {
     margin: 0;
     padding: 0;
     border: none;
     font-size: 1.2rem;
-    word-break: break-all;
+    word-break: break-all; /* CRITICAL: Fixes horizontal overflow from long titles */
 }
 
 /* Responsive styles for the wiki */
@@ -1787,7 +1792,6 @@ body[data-page="wiki"] .main-content {
         margin-left: 0;
     }
 }
-
 
 /* =================================================================== */
 /*  16. UTILITY STYLES FOR OVERFLOW & FLEX LAYOUT                      */
