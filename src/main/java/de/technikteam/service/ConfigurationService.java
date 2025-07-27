@@ -1,3 +1,4 @@
+// src/main/java/de/technikteam/service/ConfigurationService.java
 package de.technikteam.service;
 
 import com.google.inject.Singleton;
@@ -14,16 +15,21 @@ public class ConfigurationService {
 	private final Properties properties = new Properties();
 
 	public ConfigurationService() {
-		try (InputStream input = getClass().getClassLoader().getResourceAsStream("config.properties")) {
+		loadProperties("config.properties");
+		loadProperties("db.properties");
+	}
+
+	private void loadProperties(String fileName) {
+		try (InputStream input = getClass().getClassLoader().getResourceAsStream(fileName)) {
 			if (input == null) {
-				logger.error("Unable to find config.properties on the classpath.");
-				throw new IllegalStateException("config.properties not found.");
+				logger.error("Unable to find {} on the classpath.", fileName);
+				throw new IllegalStateException(fileName + " not found.");
 			}
 			properties.load(input);
-			logger.info("ConfigurationService initialized and loaded properties successfully.");
+			logger.info("{} loaded successfully.", fileName);
 		} catch (IOException ex) {
-			logger.fatal("Failed to load configuration properties.", ex);
-			throw new RuntimeException("Failed to load configuration properties.", ex);
+			logger.fatal("Failed to load configuration properties from {}.", fileName, ex);
+			throw new RuntimeException("Failed to load configuration properties from " + fileName, ex);
 		}
 	}
 

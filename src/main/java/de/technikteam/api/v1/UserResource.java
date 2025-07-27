@@ -10,8 +10,8 @@ import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
+import de.technikteam.service.LoginAttemptService;
 import de.technikteam.service.UserService;
-import de.technikteam.servlet.LoginServlet; // For LoginAttemptManager
 import de.technikteam.util.PasswordPolicyValidator;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -27,11 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * A stateless, resource-oriented REST API endpoint for managing users. This
- * servlet handles all CRUD operations and other actions for the User resource.
- * Mapped to /api/v1/users/*
- */
 @Singleton
 public class UserResource extends HttpServlet {
 	private static final long serialVersionUID = 1L;
@@ -41,25 +36,23 @@ public class UserResource extends HttpServlet {
 	private final UserDAO userDAO;
 	private final RoleDAO roleDAO;
 	private final AdminLogService adminLogService;
+	private final LoginAttemptService loginAttemptService;
 	private final Gson gson;
 
 	@Inject
 	public UserResource(UserService userService, UserDAO userDAO, RoleDAO roleDAO, AdminLogService adminLogService,
-			Gson gson) {
+			LoginAttemptService loginAttemptService, Gson gson) {
 		this.userService = userService;
 		this.userDAO = userDAO;
 		this.roleDAO = roleDAO;
 		this.adminLogService = adminLogService;
+		this.loginAttemptService = loginAttemptService;
 		this.gson = gson;
 	}
 
-	/**
-	 * Handles GET requests. GET /api/v1/users -> Returns a list of all users. GET
-	 * /api/v1/users/{id} -> Returns a single user.
-	 */
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		User adminUser = (User) req.getAttribute("user"); // Assumes a filter provides this
+		User adminUser = (User) req.getAttribute("user");
 		if (adminUser == null || !adminUser.getPermissions().contains("USER_READ")) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
@@ -69,12 +62,10 @@ public class UserResource extends HttpServlet {
 
 		try {
 			if (pathInfo == null || pathInfo.equals("/")) {
-				// Get all users
 				List<User> users = userDAO.getAllUsers();
 				sendJsonResponse(resp, HttpServletResponse.SC_OK,
 						new ApiResponse(true, "Users retrieved successfully", users));
 			} else {
-				// Get single user by ID
 				Integer userId = parseIdFromPath(pathInfo);
 				if (userId != null) {
 					User user = userDAO.getUserById(userId);
@@ -94,11 +85,6 @@ public class UserResource extends HttpServlet {
 		}
 	}
 
-	/**
-	 * Handles POST requests. POST /api/v1/users -> Creates a new user. POST
-	 * /api/v1/users/{id}/reset-password -> Resets a user's password. POST
-	 * /api/v1/users/{id}/unlock -> Unlocks a user account.
-	 */
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		String pathInfo = req.getPathInfo();
@@ -145,7 +131,6 @@ public class UserResource extends HttpServlet {
 			Map<String, Object> payloadMap = gson.fromJson(jsonPayload, Map.class);
 			String password = (String) payloadMap.get("password");
 
-			// Handle permissionIds which might be an empty array
 			List<Double> permissionIdDoubles = (List<Double>) payloadMap.get("permissionIds");
 			String[] permissionIds = permissionIdDoubles.stream().map(d -> Integer.toString(d.intValue()))
 					.toArray(String[]::new);
@@ -199,7 +184,6 @@ public class UserResource extends HttpServlet {
 			String logDetails = String.format("Passwort für Benutzer '%s' (ID: %d) zurückgesetzt.",
 					userToReset.getUsername(), userId);
 			adminLogService.log(adminUser.getUsername(), "RESET_PASSWORD_API", logDetails);
-
 			sendJsonResponse(resp, HttpServletResponse.SC_OK,
 					new ApiResponse(true, "Password for " + userToReset.getUsername() + " has been reset.",
 							Map.of("username", userToReset.getUsername(), "newPassword", newPassword)));
@@ -222,17 +206,13 @@ public class UserResource extends HttpServlet {
 		}
 
 		String usernameToUnlock = userToUnlock.getUsername();
-		LoginServlet.LoginAttemptManager.clearLoginAttempts(usernameToUnlock);
+		loginAttemptService.clearLoginAttempts(usernameToUnlock);
 		adminLogService.log(adminUser.getUsername(), "UNLOCK_USER_API",
 				"User account '" + usernameToUnlock + "' (ID: " + userId + ") unlocked via API.");
 		sendJsonResponse(resp, HttpServletResponse.SC_OK, new ApiResponse(true,
 				"User account '" + usernameToUnlock + "' has been unlocked.", Map.of("unlockedUserId", userId)));
 	}
 
-	/**
-	 * Handles PUT requests. PUT /api/v1/users/{id} -> Updates an existing user from
-	 * a JSON body.
-	 */
 	@Override
 	protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
@@ -276,9 +256,6 @@ public class UserResource extends HttpServlet {
 		}
 	}
 
-	/**
-	 * Handles DELETE requests. DELETE /api/v1/users/{id} -> Deletes a user.
-	 */
 	@Override
 	protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");

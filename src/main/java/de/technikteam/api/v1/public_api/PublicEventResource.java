@@ -80,25 +80,21 @@ public class PublicEventResource extends HttpServlet {
 		}
 
 		String[] pathParts = pathInfo.substring(1).split("/");
-		if (pathParts.length != 2 && pathParts.length != 3) {
-			sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Invalid URL format.");
-			return;
-		}
 
 		try {
 			int eventId = Integer.parseInt(pathParts[0]);
-			String action = pathParts[1];
+			String action = pathParts.length > 1 ? pathParts[1] : "";
 
 			if ("signup".equals(action)) {
 				handleSignup(req, resp, user, eventId);
 			} else if ("signoff".equals(action)) {
 				handleSignoff(req, resp, user, eventId);
-			} else if ("tasks".equals(action) && pathParts.length == 3) {
+			} else if ("tasks".equals(action) && pathParts.length == 4) {
 				int taskId = Integer.parseInt(pathParts[2]);
-				String taskAction = req.getParameter("action");
+				String taskAction = pathParts[3];
 				handleTaskAction(req, resp, user, eventId, taskId, taskAction);
 			} else {
-				sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Unknown action.");
+				sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Invalid action or URL format.");
 			}
 		} catch (NumberFormatException e) {
 			sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Invalid event or task ID format.");
@@ -120,8 +116,9 @@ public class PublicEventResource extends HttpServlet {
 		}
 
 		String[] pathParts = pathInfo.substring(1).split("/");
-		if (pathParts.length != 3 || !pathParts[1].equals("tasks") || !pathParts[2].endsWith("/status")) {
-			sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Invalid URL format for PUT.");
+		if (pathParts.length != 3 || !pathParts[1].equals("tasks") || !pathParts[2].endsWith("status")) {
+			sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST,
+					"Invalid URL format for PUT. Expected /api/v1/public/events/{eventId}/tasks/{taskId}/status");
 			return;
 		}
 

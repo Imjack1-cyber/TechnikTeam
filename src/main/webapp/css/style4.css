@@ -72,7 +72,7 @@
 	gap: 0.5rem;
 }
 
-@media ( max-width : 576px) {
+@media (max-width : 576px) {
 	.details-list li {
 		flex-direction: column;
 		align-items: flex-start;
@@ -110,8 +110,9 @@
 	content: '★';
 }
 
-.star-rating input:checked ~ label, .star-rating:not(:checked)>label:hover,
-	.star-rating:not(:checked)>label:hover ~ label {
+.star-rating input:checked~label,
+.star-rating:not(:checked)>label:hover,
+.star-rating:not(:checked)>label:hover~label {
 	color: #ffc107;
 }
 
@@ -180,7 +181,8 @@
 	transition: 0.3s;
 }
 
-.lightbox-close:hover, .lightbox-close:focus {
+.lightbox-close:hover,
+.lightbox-close:focus {
 	color: #bbb;
 	text-decoration: none;
 	cursor: pointer;
@@ -214,7 +216,7 @@
 	margin-bottom: 1rem;
 }
 
-@media ( max-width : 768px) {
+@media (max-width : 768px) {
 	.horizontal-scroll-hint {
 		display: block;
 	}
@@ -371,8 +373,12 @@
 	word-wrap: break-word;
 }
 
-.markdown-content h1, .markdown-content h2, .markdown-content h3,
-	.markdown-content h4, .markdown-content h5, .markdown-content h6 {
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
 	margin-top: 1.5rem;
 	margin-bottom: 1rem;
 	font-weight: 600;
@@ -384,7 +390,8 @@
 	margin-bottom: 1rem;
 }
 
-.markdown-content ul, .markdown-content ol {
+.markdown-content ul,
+.markdown-content ol {
 	padding-left: 2rem;
 	margin-bottom: 1rem;
 }
@@ -425,7 +432,8 @@
 	overflow-x: auto;
 }
 
-.markdown-content th, .markdown-content td {
+.markdown-content th,
+.markdown-content td {
 	padding: 0.75rem;
 	border: 1px solid var(--border-color);
 }
@@ -524,10 +532,11 @@
 	display: none;
 }
 
-@media ( min-width : 992px) {
+@media (min-width : 992px) {
 	.mobile-list-view {
 		display: none;
 	}
+
 	.desktop-calendar-view {
 		display: block;
 	}
@@ -661,7 +670,7 @@ body[data-page="wiki"] .main-content {
 	word-break: break-all;
 }
 
-@media ( max-width : 991.98px) {
+@media (max-width : 991.98px) {
 	.wiki-sidebar {
 		position: fixed;
 		top: var(--header-height);
@@ -671,18 +680,23 @@ body[data-page="wiki"] .main-content {
 		z-index: 1000;
 		box-shadow: var(--shadow-lg);
 	}
+
 	.wiki-page-wrapper.sidebar-open .wiki-sidebar {
 		margin-left: 0;
 	}
 }
 
 /* --- 16. UTILITY OVERFLOW STYLES --- */
-.data-table td, .data-table th, code, pre {
+.data-table td,
+.data-table th,
+code,
+pre {
 	word-break: break-word;
 	white-space: normal;
 }
 
-pre, code {
+pre,
+code {
 	white-space: pre-wrap;
 }
 

@@ -1,10 +1,10 @@
+// src/main/java/de/technikteam/filter/AdminFilter.java
 package de.technikteam.filter;
 
 import de.technikteam.model.User;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -16,7 +16,7 @@ public class AdminFilter implements Filter {
 
 	@Override
 	public void init(FilterConfig filterConfig) throws ServletException {
-		logger.info("AdminFilter initialized by Guice and protecting /admin/* and /api/admin/* paths.");
+		logger.info("AdminFilter initialized. This filter checks for administrative permissions.");
 	}
 
 	@Override
@@ -25,31 +25,32 @@ public class AdminFilter implements Filter {
 
 		HttpServletRequest request = (HttpServletRequest) req;
 		HttpServletResponse response = (HttpServletResponse) res;
-		HttpSession session = request.getSession(false);
 		String path = request.getRequestURI().substring(request.getContextPath().length());
-		logger.trace("AdminFilter is processing request for path: '{}'", path);
 
-		if (session == null || session.getAttribute("user") == null) {
-			logger.warn("Admin access DENIED to path '{}'. No active session found. Redirecting to login.", path);
-			response.sendRedirect(request.getContextPath() + "/login");
+		// The user object is now expected to be in the request attribute,
+		// placed there by either ApiAuthFilter (for JWT) or AuthenticationFilter (for
+		// session).
+		User user = (User) request.getAttribute("user");
+
+		// If no user object is present after authentication filters, it's an internal
+		// error or misconfiguration.
+		if (user == null) {
+			logger.error(
+					"AdminFilter Error: User object not found in request attribute for protected path '{}'. This should have been set by an authentication filter.",
+					path);
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
 			return;
 		}
 
-		User user = (User) session.getAttribute("user");
-
 		if (user.hasAdminAccess()) {
-			logger.debug(
-					"ADMIN area access GRANTED for user '{}' to path '{}'. User has at least one admin permission.",
-					user.getUsername(), path);
+			logger.trace("ADMIN area access GRANTED for user '{}' to path '{}'.", user.getUsername(), path);
 			chain.doFilter(request, response);
 		} else {
 			logger.warn(
 					"ADMIN access DENIED for user '{}' (Role: '{}') to path '{}'. No relevant admin permissions found.",
 					user.getUsername(), user.getRoleName(), path);
-			request.getSession().setAttribute("accessErrorMessage",
-					"Sie haben keine Berechtigung, auf den Admin-Bereich zuzugreifen.");
 			response.sendError(HttpServletResponse.SC_FORBIDDEN,
-					"Sie haben keine Berechtigung, auf diesen Bereich zuzugreifen.");
+					"You do not have permission to access this administrative area.");
 		}
 	}
 

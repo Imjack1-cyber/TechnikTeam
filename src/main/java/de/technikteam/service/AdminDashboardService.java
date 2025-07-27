@@ -6,13 +6,7 @@ import de.technikteam.dao.AdminLogDAO;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.ReportDAO;
 import de.technikteam.dao.StorageDAO;
-import de.technikteam.model.AdminLog;
 import de.technikteam.model.DashboardDataDTO;
-import de.technikteam.model.Event;
-import de.technikteam.model.StorageItem;
-
-import java.util.List;
-import java.util.Map;
 
 @Singleton
 public class AdminDashboardService {

@@ -1,6 +1,7 @@
+// src/main/java/de/technikteam/filter/AuthenticationFilter.java
 package de.technikteam.filter;
 
-import de.technikteam.model.User; 
+import de.technikteam.model.User;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -23,10 +24,11 @@ public class AuthenticationFilter implements Filter {
 
 	private static final Logger logger = LogManager.getLogger(AuthenticationFilter.class.getName());
 
-	private static final Set<String> PUBLIC_PATHS = new HashSet<>(Arrays.asList("/login", "/logout", "/calendar.ics"));
+	private static final Set<String> PUBLIC_PATHS = new HashSet<>(Arrays.asList("/login", "/logout"));
 
-	private static final Set<String> PUBLIC_RESOURCE_PREFIXES = new HashSet<>(
-			Arrays.asList("/css", "/js", "/images", "/error", "/public", "/vendor", "/wopi", "/api/auth"));
+	// CORRECTED: Added "/api/v1/auth/passkey" to the public prefixes
+	private static final Set<String> PUBLIC_RESOURCE_PREFIXES = new HashSet<>(Arrays.asList("/css", "/js", "/images",
+			"/error", "/vendor", "/api/v1/auth/login", "/api/v1/public/calendar.ics", "/api/v1/auth/passkey"));
 
 	@Override
 	public void init(FilterConfig filterConfig) throws ServletException {
@@ -52,11 +54,16 @@ public class AuthenticationFilter implements Filter {
 
 		logger.trace("AuthenticationFilter processing request for path: '{}'", path);
 
-		boolean isLoggedIn = (session != null && session.getAttribute("user") != null);
-
 		final String finalPath = path;
 		boolean isPublicResource = PUBLIC_PATHS.contains(finalPath)
 				|| PUBLIC_RESOURCE_PREFIXES.stream().anyMatch(prefix -> finalPath.startsWith(prefix));
+
+		User user = null;
+		boolean isLoggedIn = (session != null && (user = (User) session.getAttribute("user")) != null);
+
+		if (isLoggedIn) {
+			request.setAttribute("user", user);
+		}
 
 		if (isLoggedIn || isPublicResource) {
 			logger.trace("Access granted for path '{}'. LoggedIn: {}, IsPublic: {}", finalPath, isLoggedIn,

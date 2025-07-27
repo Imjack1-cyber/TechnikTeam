@@ -1,3 +1,4 @@
+// src/main/java/de/technikteam/service/EventService.java
 package de.technikteam.service;
 
 import com.google.inject.Inject;
@@ -28,16 +29,19 @@ public class EventService {
 	private final DatabaseManager dbManager;
 	private final ConfigurationService configService;
 	private final AdminLogService adminLogService;
+	private final NotificationService notificationService;
 
 	@Inject
 	public EventService(EventDAO eventDAO, AttachmentDAO attachmentDAO, EventCustomFieldDAO customFieldDAO,
-			DatabaseManager dbManager, ConfigurationService configService, AdminLogService adminLogService) {
+			DatabaseManager dbManager, ConfigurationService configService, AdminLogService adminLogService,
+			NotificationService notificationService) {
 		this.eventDAO = eventDAO;
 		this.attachmentDAO = attachmentDAO;
 		this.customFieldDAO = customFieldDAO;
 		this.dbManager = dbManager;
 		this.configService = configService;
 		this.adminLogService = adminLogService;
+		this.notificationService = notificationService;
 	}
 
 	public int createOrUpdateEvent(Event event, boolean isUpdate, User adminUser, HttpServletRequest request) {
@@ -120,7 +124,7 @@ public class EventService {
 			Map<String, Object> payload = Map.of("type", "alert", "payload",
 					Map.of("message", notificationMessage, "url", "/veranstaltungen/details?id=" + eventId));
 
-			NotificationService.getInstance().sendNotificationToUser(event.getLeaderUserId(), payload);
+			notificationService.sendNotificationToUser(event.getLeaderUserId(), payload);
 			logger.info("Sent sign-off notification to event leader (ID: {}) for event '{}'", event.getLeaderUserId(),
 					event.getName());
 		}

@@ -61,9 +61,11 @@
 		<error-code>403</error-code>
 		<location>/views/error/error403.jsp</location>
 	</error-page>
+	<!-- ADDED: Catch-all for 404s to forward to the React app's index.html -->
+	<!-- This allows React Router to handle client-side routing. -->
 	<error-page>
 		<error-code>404</error-code>
-		<location>/views/error/error404.jsp</location>
+		<location>/index.html</location>
 	</error-page>
 	<error-page>
 		<error-code>500</error-code>

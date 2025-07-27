@@ -1,3 +1,0 @@
-<%@ page pageEncoding="UTF-8"%>
-<!-- The confirmation modal is dynamically created and added to the body by main.js -->
-<!-- This file is a placeholder for any other future global modals. -->

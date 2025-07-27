@@ -14,6 +14,25 @@ services:
       - "3306:3306"
     volumes:
       - technikteam-db-data:/var/lib/mysql
+    networks:
+      - technikteam-net
+
+  web:
+    build: .
+    container_name: technikteam-web
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./resources/uploads:/usr/local/tomcat/uploads
+    depends_on:
+      - db
+    networks:
+      - technikteam-net
+
+networks:
+  technikteam-net:
+    driver: bridge
 
 volumes:
   technikteam-db-data:

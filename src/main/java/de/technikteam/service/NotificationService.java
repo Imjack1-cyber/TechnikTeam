@@ -1,7 +1,10 @@
+// src/main/java/de/technikteam/service/NotificationService.java
 package de.technikteam.service;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.model.User;
 import jakarta.servlet.AsyncContext;
@@ -17,19 +20,16 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+@Singleton
 public class NotificationService {
 	private static final Logger logger = LogManager.getLogger(NotificationService.class);
-	private static final NotificationService INSTANCE = new NotificationService();
 	private final Gson gson;
 
 	private final Map<Integer, List<AsyncContext>> contextsByUser = new ConcurrentHashMap<>();
 
-	private NotificationService() {
+	@Inject
+	public NotificationService() {
 		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
-	}
-
-	public static NotificationService getInstance() {
-		return INSTANCE;
 	}
 
 	public void register(HttpServletRequest request) {

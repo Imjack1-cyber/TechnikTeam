@@ -63,7 +63,10 @@
 }
 
 /* Messages & Banners */
-.success-message, .error-message, .info-message, .password-reset-alert {
+.success-message,
+.error-message,
+.info-message,
+.password-reset-alert {
 	padding: 1rem;
 	margin-bottom: 1.5rem;
 	border-radius: var(--border-radius);
@@ -82,7 +85,8 @@
 	background-color: var(--danger-color);
 }
 
-.info-message, .password-reset-alert {
+.info-message,
+.password-reset-alert {
 	background-color: var(--info-color);
 	color: #000;
 }
@@ -138,7 +142,9 @@
 	color: var(--text-muted-color);
 }
 
-.form-group input, .form-group select, .form-group textarea {
+.form-group input,
+.form-group select,
+.form-group textarea {
 	width: 100%;
 	padding: 0.75rem;
 	border: 1px solid var(--border-color);
@@ -155,13 +161,15 @@ fieldset {
 	margin: 0;
 }
 
-[data-theme="dark"] .form-group textarea, [data-theme="dark"] #editor {
+[data-theme="dark"] .form-group textarea,
+[data-theme="dark"] #editor {
 	color: var(--text-color);
 	background-color: var(--surface-color);
 }
 
-.form-group input:focus, .form-group select:focus, .form-group textarea:focus
-	{
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
 	outline: none;
 	border-color: var(--primary-color);
 	box-shadow: 0 0 0 3px var(--primary-color-light);
@@ -303,7 +311,8 @@ fieldset {
 	border-collapse: collapse;
 }
 
-.data-table th, .data-table td {
+.data-table th,
+.data-table td {
 	padding: 1rem;
 	text-align: left;
 	border-bottom: 1px solid var(--border-color);
@@ -370,10 +379,11 @@ fieldset {
 	display: none;
 }
 
-@media ( min-width : 992px) {
+@media (min-width : 992px) {
 	.mobile-card-list {
 		display: none !important;
 	}
+
 	.desktop-table-wrapper {
 		display: block !important;
 	}

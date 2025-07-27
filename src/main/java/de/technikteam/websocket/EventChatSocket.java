@@ -1,3 +1,4 @@
+// src/main/java/de/technikteam/websocket/EventChatSocket.java
 package de.technikteam.websocket;
 
 import com.google.gson.Gson;
@@ -8,7 +9,6 @@ import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.config.Permissions;
 import de.technikteam.dao.EventChatDAO;
 import de.technikteam.dao.EventDAO;
-import de.technikteam.dao.FileDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.Event;
 import de.technikteam.model.EventChatMessage;
@@ -34,21 +34,22 @@ public class EventChatSocket {
 	private static final Logger logger = LogManager.getLogger(EventChatSocket.class);
 	private static final Pattern MENTION_PATTERN = Pattern.compile("@(\\w+)");
 
+	// Injected dependencies
 	private static EventChatDAO chatDAO;
 	private static EventDAO eventDAO;
 	private static UserDAO userDAO;
-	private static FileDAO fileDAO;
 	private static AdminLogService adminLogService;
+	private static NotificationService notificationService;
 	private static Gson gson;
 
 	@Inject
 	public static void setDependencies(EventChatDAO injectedChatDAO, EventDAO injectedEventDAO, UserDAO injectedUserDAO,
-			FileDAO injectedFileDAO, AdminLogService injectedAdminLogService) {
+			AdminLogService injectedAdminLogService, NotificationService injectedNotificationService) {
 		chatDAO = injectedChatDAO;
 		eventDAO = injectedEventDAO;
 		userDAO = injectedUserDAO;
-		fileDAO = injectedFileDAO;
 		adminLogService = injectedAdminLogService;
+		notificationService = injectedNotificationService;
 		gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
@@ -135,7 +136,7 @@ public class EventChatSocket {
 						event.getName());
 				Map<String, Object> notificationPayload = Map.of("type", "mention", "payload",
 						Map.of("message", notificationMessage, "url", "/veranstaltungen/details?id=" + event.getId()));
-				NotificationService.getInstance().sendNotificationToUser(mentionedUser.getId(), notificationPayload);
+				notificationService.sendNotificationToUser(mentionedUser.getId(), notificationPayload);
 			}
 		}
 	}

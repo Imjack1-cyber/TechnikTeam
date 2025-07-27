@@ -6,11 +6,10 @@ import com.google.gson.reflect.TypeToken;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import de.technikteam.dao.EventDAO;
+import de.technikteam.dao.MaintenanceLogDAO;
 import de.technikteam.dao.StorageDAO;
-import de.technikteam.model.ApiResponse;
-import de.technikteam.model.Event;
-import de.technikteam.model.StorageItem;
-import de.technikteam.model.User;
+import de.technikteam.dao.StorageLogDAO;
+import de.technikteam.model.*;
 import de.technikteam.service.StorageService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -35,13 +34,18 @@ public class PublicStorageResource extends HttpServlet {
 	private final StorageDAO storageDAO;
 	private final EventDAO eventDAO;
 	private final StorageService storageService;
+	private final StorageLogDAO storageLogDAO;
+	private final MaintenanceLogDAO maintenanceLogDAO;
 	private final Gson gson;
 
 	@Inject
-	public PublicStorageResource(StorageDAO storageDAO, EventDAO eventDAO, StorageService storageService, Gson gson) {
+	public PublicStorageResource(StorageDAO storageDAO, EventDAO eventDAO, StorageService storageService,
+			StorageLogDAO storageLogDAO, MaintenanceLogDAO maintenanceLogDAO, Gson gson) {
 		this.storageDAO = storageDAO;
 		this.eventDAO = eventDAO;
 		this.storageService = storageService;
+		this.storageLogDAO = storageLogDAO;
+		this.maintenanceLogDAO = maintenanceLogDAO;
 		this.gson = gson;
 	}
 
@@ -53,6 +57,25 @@ public class PublicStorageResource extends HttpServlet {
 			return;
 		}
 
+		String pathInfo = req.getPathInfo();
+		if (pathInfo == null || pathInfo.equals("/")) {
+			handleGetStorageList(req, resp);
+		} else {
+			String[] pathParts = pathInfo.substring(1).split("/");
+			Integer itemId = parseId(pathParts[0]);
+			if (itemId != null) {
+				if (pathParts.length == 2 && "history".equals(pathParts[1])) {
+					handleGetHistory(resp, itemId);
+				} else {
+					sendJsonError(resp, HttpServletResponse.SC_NOT_FOUND, "Endpoint not found.");
+				}
+			} else {
+				sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Invalid item ID format.");
+			}
+		}
+	}
+
+	private void handleGetStorageList(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		Map<String, List<StorageItem>> storageData = storageDAO.getAllItemsGroupedByLocation();
 		List<Event> activeEvents = eventDAO.getActiveEvents();
 
@@ -62,6 +85,17 @@ public class PublicStorageResource extends HttpServlet {
 
 		sendJsonResponse(resp, HttpServletResponse.SC_OK,
 				new ApiResponse(true, "Storage data retrieved.", responseData));
+	}
+
+	private void handleGetHistory(HttpServletResponse resp, int itemId) throws IOException {
+		List<StorageLogEntry> transactionHistory = storageLogDAO.getHistoryForItem(itemId);
+		List<MaintenanceLogEntry> maintenanceHistory = maintenanceLogDAO.getHistoryForItem(itemId);
+
+		Map<String, Object> historyData = new HashMap<>();
+		historyData.put("transactions", transactionHistory);
+		historyData.put("maintenance", maintenanceHistory);
+
+		sendJsonResponse(resp, HttpServletResponse.SC_OK, new ApiResponse(true, "History retrieved.", historyData));
 	}
 
 	@Override
@@ -94,8 +128,13 @@ public class PublicStorageResource extends HttpServlet {
 
 			Integer eventId = null;
 			if (payload.get("eventId") != null && !payload.get("eventId").toString().isEmpty()) {
-				eventId = ((Double) payload.get("eventId")).intValue();
-				if (eventId == 0)
+				Object eventIdObj = payload.get("eventId");
+				if (eventIdObj instanceof Double) {
+					eventId = ((Double) eventIdObj).intValue();
+				} else if (eventIdObj instanceof String) {
+					eventId = Integer.parseInt((String) eventIdObj);
+				}
+				if (eventId != null && eventId == 0)
 					eventId = null;
 			}
 
@@ -113,6 +152,14 @@ public class PublicStorageResource extends HttpServlet {
 			logger.error("Error during storage transaction processing via API.", e);
 			sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
 					"Ein unerwarteter Fehler ist aufgetreten: " + e.getMessage());
+		}
+	}
+
+	private Integer parseId(String pathSegment) {
+		try {
+			return Integer.parseInt(pathSegment);
+		} catch (NumberFormatException e) {
+			return null;
 		}
 	}
 
