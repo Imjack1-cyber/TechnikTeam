@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import useApi from '../../hooks/useApi';
-import apiClient from '../../services/apiClient';
-import Modal from '../../components/ui/Modal';
+import useApi from '@/hooks/useApi';
+import apiClient from '@/services/apiClient';
+import Modal from '@/components/ui/Modal';
 
 const AdminMeetingsPage = () => {
     const { courseId } = useParams();

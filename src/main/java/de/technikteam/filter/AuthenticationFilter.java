@@ -2,37 +2,35 @@
 package de.technikteam.filter;
 
 import de.technikteam.model.User;
+import jakarta.servlet.*;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import jakarta.servlet.Filter;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.FilterConfig;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
-
+/**
+ * A legacy filter for handling session-based authentication. This is now ONLY
+ * used for non-React pages/servlets like /notifications. It must ignore API
+ * paths meant for JWT auth.
+ */
 public class AuthenticationFilter implements Filter {
 
-	private static final Logger logger = LogManager.getLogger(AuthenticationFilter.class.getName());
+	private static final Logger logger = LogManager.getLogger(AuthenticationFilter.class);
 
-	private static final Set<String> PUBLIC_PATHS = new HashSet<>(Arrays.asList("/login", "/logout"));
-
-	// CORRECTED: Added "/api/v1/auth/passkey" to the public prefixes
-	private static final Set<String> PUBLIC_RESOURCE_PREFIXES = new HashSet<>(Arrays.asList("/css", "/js", "/images",
-			"/error", "/vendor", "/api/v1/auth/login", "/api/v1/public/calendar.ics", "/api/v1/auth/passkey"));
+	private Set<String> publicPaths;
+	private static final Set<String> IGNORED_PREFIXES = new HashSet<>(Arrays.asList("/api/v1/"));
 
 	@Override
 	public void init(FilterConfig filterConfig) throws ServletException {
-		logger.info("AuthenticationFilter initialized by Guice.");
+		logger.info("Session-based AuthenticationFilter initialized.");
+		String contextPath = filterConfig.getServletContext().getContextPath();
+		publicPaths = new HashSet<>(Arrays.asList(contextPath + "/login", contextPath + "/logout"));
 	}
 
 	@Override
@@ -40,44 +38,30 @@ public class AuthenticationFilter implements Filter {
 			throws IOException, ServletException {
 
 		HttpServletRequest request = (HttpServletRequest) req;
-		HttpServletResponse response = (HttpServletResponse) res;
+		String path = request.getRequestURI();
+
+		// Let the request pass if it's an API path meant for JWT auth or a public
+		// resource path.
+		if (IGNORED_PREFIXES.stream().anyMatch(p -> path.startsWith(request.getContextPath() + p))) {
+			chain.doFilter(req, res);
+			return;
+		}
+
+		// For all other paths (e.g., /notifications), check for a session.
 		HttpSession session = request.getSession(false);
+		User user = (session != null) ? (User) session.getAttribute("user") : null;
 
-		String contextPath = request.getContextPath();
-		String requestUri = request.getRequestURI();
-
-		String path = requestUri.substring(contextPath.length());
-		int semicolonIndex = path.indexOf(';');
-		if (semicolonIndex != -1) {
-			path = path.substring(0, semicolonIndex);
-		}
-
-		logger.trace("AuthenticationFilter processing request for path: '{}'", path);
-
-		final String finalPath = path;
-		boolean isPublicResource = PUBLIC_PATHS.contains(finalPath)
-				|| PUBLIC_RESOURCE_PREFIXES.stream().anyMatch(prefix -> finalPath.startsWith(prefix));
-
-		User user = null;
-		boolean isLoggedIn = (session != null && (user = (User) session.getAttribute("user")) != null);
-
-		if (isLoggedIn) {
+		if (user != null) {
 			request.setAttribute("user", user);
-		}
-
-		if (isLoggedIn || isPublicResource) {
-			logger.trace("Access granted for path '{}'. LoggedIn: {}, IsPublic: {}", finalPath, isLoggedIn,
-					isPublicResource);
-			chain.doFilter(request, response);
+			chain.doFilter(req, res);
 		} else {
-			logger.warn("Unauthorized access attempt by a guest to protected path: '{}'. Redirecting to login page.",
-					finalPath);
-			response.sendRedirect(contextPath + "/login");
+			// If it's not an ignored path and there's no session, it's unauthorized.
+			logger.warn("Session-based authentication failed for path: {}. No user in session.", path);
+			((HttpServletResponse) res).sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session not authenticated.");
 		}
 	}
 
 	@Override
 	public void destroy() {
-		logger.info("AuthenticationFilter destroyed.");
 	}
 }

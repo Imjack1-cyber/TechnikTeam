@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import apiClient from '../services/apiClient';
-import useApi from '../hooks/useApi';
-import useWebSocket from '../hooks/useWebSocket';
-import { useAuthStore } from '../store/authStore';
-import StatusBadge from '../components/ui/StatusBadge';
+import apiClient from '@/services/apiClient';
+import useApi from '@/hooks/useApi';
+import useWebSocket from '@/hooks/useWebSocket';
+import { useAuthStore } from '@/store/authStore';
+import StatusBadge from '@/components/ui/StatusBadge';
 
 const EventDetailsPage = () => {
 	const { eventId } = useParams();

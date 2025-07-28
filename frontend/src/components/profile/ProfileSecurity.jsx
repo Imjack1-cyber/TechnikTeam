@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import apiClient from '../../services/apiClient';
-import { passkeyService } from '../../services/passkeyService';
+import apiClient from '@/services/apiClient';
+import { passkeyService } from '@/services/passkeyService';
 
 const ProfileSecurity = ({ passkeys, onUpdate }) => {
 

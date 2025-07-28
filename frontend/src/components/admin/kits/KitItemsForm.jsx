@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import apiClient from '../../../services/apiClient';
+import apiClient from '@/services/apiClient';
 
 const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
 	const [items, setItems] = useState(kit.items || []);
@@ -26,7 +26,6 @@ const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
 		setIsSubmitting(true);
 		setError('');
 
-		// Filter out empty rows before submitting
 		const validItems = items.filter(item => item.itemId && item.quantity > 0)
 			.map(item => ({ itemId: parseInt(item.itemId), quantity: parseInt(item.quantity) }));
 
@@ -34,7 +33,6 @@ const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
 			const result = await apiClient.put(`/kits/${kit.id}/items`, validItems);
 			if (result.success) {
 				onUpdateSuccess();
-				// Optionally show a success toast
 			} else {
 				throw new Error(result.message);
 			}

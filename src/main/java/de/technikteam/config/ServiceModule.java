@@ -14,6 +14,8 @@ import de.technikteam.filter.ApiAuthFilter;
 import de.technikteam.filter.CharacterEncodingFilter;
 import de.technikteam.filter.CorsFilter;
 import de.technikteam.service.*;
+import de.technikteam.servlet.NotificationServlet;
+
 import java.time.LocalDateTime;
 import java.util.Arrays;
 
@@ -26,18 +28,19 @@ public class ServiceModule extends ServletModule {
 		bind(ApiAuthFilter.class).in(Scopes.SINGLETON);
 		bind(AdminFilter.class).in(Scopes.SINGLETON);
 
-		// Apply filters to all requests
+		// Apply universal filters
 		filter("/*").through(CharacterEncodingFilter.class);
 		filter("/api/*").through(CorsFilter.class);
 
-		// Secure all API endpoints except the login and public calendar
+		// Secure all API endpoints that require a JWT.
+		// NOTE: Login, passkey actions, and the public calendar are NOT in this list.
 		String[] securedApiPaths = { "/api/v1/public/*", "/api/v1/users/*", "/api/v1/wiki/*", "/api/v1/feedback/*",
 				"/api/v1/profile-requests/*", "/api/v1/courses/*", "/api/v1/meetings/*", "/api/v1/storage/*",
 				"/api/v1/kits/*", "/api/v1/achievements/*", "/api/v1/events/*", "/api/v1/logs", "/api/v1/reports/*",
 				"/api/v1/system/stats", "/api/v1/matrix/*", "/api/v1/files/*" };
 		filter(Arrays.asList(securedApiPaths)).through(ApiAuthFilter.class);
 
-		// Secure all admin API endpoints
+		// Apply an additional admin check on top of the auth check for these paths.
 		String[] adminApiPaths = { "/api/v1/users/*", "/api/v1/wiki/*", "/api/v1/feedback/*",
 				"/api/v1/profile-requests/*", "/api/v1/courses/*", "/api/v1/meetings/*", "/api/v1/storage/*",
 				"/api/v1/kits/*", "/api/v1/achievements/*", "/api/v1/events/*", "/api/v1/logs", "/api/v1/reports/*",
@@ -93,7 +96,10 @@ public class ServiceModule extends ServletModule {
 		bind(TodoDAO.class).in(Scopes.SINGLETON);
 		bind(WikiDAO.class).in(Scopes.SINGLETON);
 
-		// --- API v1 Servlet Bindings ---
+		// --- SERVLET BINDINGS ---
+		serve("/notifications").with(NotificationServlet.class);
+
+		// API v1 Servlet Bindings
 		serve("/api/v1/public/dashboard").with(PublicDashboardResource.class);
 		serve("/api/v1/public/events/*").with(PublicEventResource.class);
 		serve("/api/v1/public/meetings/*").with(PublicMeetingResource.class);

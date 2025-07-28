@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import useApi from '../hooks/useApi';
-import apiClient from '../services/apiClient';
-import StatusBadge from '../components/ui/StatusBadge';
+import useApi from '@/hooks/useApi';
+import apiClient from '@/services/apiClient';
+import StatusBadge from '@/components/ui/StatusBadge';
 
 const FeedbackPage = () => {
 	const { data: submissions, loading, error, reload } = useApi(() => apiClient.get('/public/feedback/user'));

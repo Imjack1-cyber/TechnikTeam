@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import useApi from '../hooks/useApi';
-import apiClient from '../services/apiClient';
+import useApi from '@/hooks/useApi';
+import apiClient from '@/services/apiClient';
 
 const LehrgaengePage = () => {
 	const { data: meetings, loading, error, reload } = useApi(() => apiClient.get('/public/meetings'));

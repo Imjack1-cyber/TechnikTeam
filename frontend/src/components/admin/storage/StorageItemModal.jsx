@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import Modal from '../../ui/Modal';
-import apiClient from '../../../services/apiClient';
+import Modal from '@/components/ui/Modal';
+import apiClient from '@/services/apiClient';
 
 const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edit' }) => {
 	const [mode, setMode] = useState(initialMode);
@@ -10,7 +10,6 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 
 	useEffect(() => {
 		setMode(initialMode);
-		// Reset form data when the item or mode changes
 		if (initialMode === 'create') {
 			setFormData({ name: '', location: '', quantity: 1, maxQuantity: 1 });
 		} else if (item) {
@@ -44,7 +43,7 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 		try {
 			const result = (mode === 'create')
 				? await apiClient.post('/storage', data)
-				: await apiClient.post(`/storage/${item.id}`, data); // POST for multipart form data
+				: await apiClient.post(`/storage/${item.id}`, data);
 
 			if (result.success) {
 				onSuccess();

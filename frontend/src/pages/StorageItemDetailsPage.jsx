@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import useApi from '../hooks/useApi';
-import apiClient from '../services/apiClient';
-import Lightbox from '../components/ui/Lightbox';
+import useApi from '@/hooks/useApi';
+import apiClient from '@/services/apiClient';
+import Lightbox from '@/components/ui/Lightbox';
 
 const StorageItemDetailsPage = () => {
 	const { itemId } = useParams();

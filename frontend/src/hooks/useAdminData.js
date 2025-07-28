@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
-import apiClient from '../services/apiClient';
+import apiClient from '@/services/apiClient';
 
 /**
  * A custom hook to fetch and cache shared data needed for admin forms,
- * such as lists of roles, permissions, and all storage items.
+ * such as lists of roles and permissions.
+ * Assumes a new endpoint /api/v1/users/form-data exists.
  */
 const useAdminData = () => {
 	const [data, setData] = useState({
 		roles: [],
 		groupedPermissions: {},
-		storageItems: [],
 		loading: true,
 		error: null,
 	});
@@ -17,28 +17,22 @@ const useAdminData = () => {
 	useEffect(() => {
 		const fetchData = async () => {
 			try {
-				// Use Promise.all to fetch data concurrently
-				const [usersFormData, storageItemsData] = await Promise.all([
-					apiClient.get('/users/form-data'),
-					apiClient.get('/storage')
-				]);
-
-				if (usersFormData.success && storageItemsData.success) {
+				// This is a hypothetical combined endpoint for efficiency.
+				const result = await apiClient.get('/users/form-data');
+				if (result.success) {
 					setData({
-						roles: usersFormData.data.roles,
-						groupedPermissions: usersFormData.data.groupedPermissions,
-						storageItems: storageItemsData.data,
+						roles: result.data.roles,
+						groupedPermissions: result.data.groupedPermissions,
 						loading: false,
 						error: null,
 					});
 				} else {
-					throw new Error('Failed to fetch one or more admin data sources.');
+					throw new Error(result.message);
 				}
 			} catch (err) {
 				setData({
 					roles: [],
 					groupedPermissions: {},
-					storageItems: [],
 					loading: false,
 					error: err.message || 'Failed to fetch admin form data.',
 				});

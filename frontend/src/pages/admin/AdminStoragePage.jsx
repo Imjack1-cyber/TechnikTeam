@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import useApi from '../../hooks/useApi';
-import apiClient from '../../services/apiClient';
-import StorageItemModal from '../../components/admin/storage/StorageItemModal';
-import Lightbox from '../../components/ui/Lightbox';
-import StatusBadge from '../../components/ui/StatusBadge';
+import useApi from '@/hooks/useApi';
+import apiClient from '@/services/apiClient';
+import StorageItemModal from '@/components/admin/storage/StorageItemModal';
+import Lightbox from '@/components/ui/Lightbox';
+import StatusBadge from '@/components/ui/StatusBadge';
 
 const AdminStoragePage = () => {
 	const { data: items, loading, error, reload } = useApi(() => apiClient.get('/storage'));

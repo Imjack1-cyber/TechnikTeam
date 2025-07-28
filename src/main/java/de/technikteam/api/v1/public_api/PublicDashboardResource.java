@@ -1,4 +1,4 @@
-// src/main/java/de/technikteam/api/v1/public/PublicDashboardResource.java
+// src/main/java/de/technikteam/api/v1/public_api/PublicDashboardResource.java
 package de.technikteam.api.v1.public_api;
 
 import com.google.gson.Gson;
@@ -25,56 +25,60 @@ import java.util.Map;
 
 @Singleton
 public class PublicDashboardResource extends HttpServlet {
-    private static final long serialVersionUID = 1L;
-    private static final Logger logger = LogManager.getLogger(PublicDashboardResource.class);
+	private static final long serialVersionUID = 1L;
+	private static final Logger logger = LogManager.getLogger(PublicDashboardResource.class);
 
-    private final EventDAO eventDAO;
-    private final EventTaskDAO eventTaskDAO;
-    private final Gson gson;
+	private final EventDAO eventDAO;
+	private final EventTaskDAO eventTaskDAO;
+	private final Gson gson;
 
-    @Inject
-    public PublicDashboardResource(EventDAO eventDAO, EventTaskDAO eventTaskDAO, Gson gson) {
-        this.eventDAO = eventDAO;
-        this.eventTaskDAO = eventTaskDAO;
-        this.gson = gson;
-    }
+	@Inject
+	public PublicDashboardResource(EventDAO eventDAO, EventTaskDAO eventTaskDAO, Gson gson) {
+		this.eventDAO = eventDAO;
+		this.eventTaskDAO = eventTaskDAO;
+		this.gson = gson;
+	}
 
-    @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        User user = (User) req.getSession().getAttribute("user");
-        if (user == null) {
-            sendJsonError(resp, HttpServletResponse.SC_UNAUTHORIZED, "Authentication required.");
-            return;
-        }
+	@Override
+	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		// CORRECTED: Get user from request attribute, not session.
+		// The ApiAuthFilter puts the user here after validating the JWT.
+		User user = (User) req.getAttribute("user");
+		if (user == null) {
+			sendJsonError(resp, HttpServletResponse.SC_UNAUTHORIZED, "Authentication required.");
+			return;
+		}
 
-        try {
-            List<Event> assignedEvents = eventDAO.getAssignedEventsForUser(user.getId(), 5);
-            List<EventTask> openTasks = eventTaskDAO.getOpenTasksForUser(user.getId());
-            List<Event> upcomingEvents = eventDAO.getUpcomingEventsForUser(user, 5);
+		try {
+			List<Event> assignedEvents = eventDAO.getAssignedEventsForUser(user.getId(), 5);
+			List<EventTask> openTasks = eventTaskDAO.getOpenTasksForUser(user.getId());
+			List<Event> upcomingEvents = eventDAO.getUpcomingEventsForUser(user, 5);
 
-            Map<String, Object> dashboardData = new HashMap<>();
-            dashboardData.put("assignedEvents", assignedEvents);
-            dashboardData.put("openTasks", openTasks);
-            dashboardData.put("upcomingEvents", upcomingEvents);
+			Map<String, Object> dashboardData = new HashMap<>();
+			dashboardData.put("assignedEvents", assignedEvents);
+			dashboardData.put("openTasks", openTasks);
+			dashboardData.put("upcomingEvents", upcomingEvents);
 
-            sendJsonResponse(resp, HttpServletResponse.SC_OK, new ApiResponse(true, "Dashboard data retrieved.", dashboardData));
-        } catch (Exception e) {
-            logger.error("Error fetching dashboard data for user {}", user.getUsername(), e);
-            sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to retrieve dashboard data.");
-        }
-    }
-    
-    private void sendJsonResponse(HttpServletResponse resp, int statusCode, ApiResponse apiResponse) throws IOException {
-        resp.setStatus(statusCode);
-        resp.setContentType("application/json");
-        resp.setCharacterEncoding("UTF-8");
-        try (PrintWriter out = resp.getWriter()) {
-            out.print(gson.toJson(apiResponse));
-            out.flush();
-        }
-    }
+			sendJsonResponse(resp, HttpServletResponse.SC_OK,
+					new ApiResponse(true, "Dashboard data retrieved.", dashboardData));
+		} catch (Exception e) {
+			logger.error("Error fetching dashboard data for user {}", user.getUsername(), e);
+			sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to retrieve dashboard data.");
+		}
+	}
 
-    private void sendJsonError(HttpServletResponse resp, int statusCode, String message) throws IOException {
-        sendJsonResponse(resp, statusCode, new ApiResponse(false, message, null));
-    }
+	private void sendJsonResponse(HttpServletResponse resp, int statusCode, ApiResponse apiResponse)
+			throws IOException {
+		resp.setStatus(statusCode);
+		resp.setContentType("application/json");
+		resp.setCharacterEncoding("UTF-8");
+		try (PrintWriter out = resp.getWriter()) {
+			out.print(gson.toJson(apiResponse));
+			out.flush();
+		}
+	}
+
+	private void sendJsonError(HttpServletResponse resp, int statusCode, String message) throws IOException {
+		sendJsonResponse(resp, statusCode, new ApiResponse(false, message, null));
+	}
 }

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import apiClient from '../services/apiClient';
-import { useAuthStore } from '../store/authStore';
+import apiClient from '@/services/apiClient';
+import { useAuthStore } from '@/store/authStore';
 
 const DashboardPage = () => {
 	const { user } = useAuthStore();

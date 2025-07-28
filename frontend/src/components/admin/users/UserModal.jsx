@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../../ui/Modal';
-import PermissionsTab from './PermissionsTab';
+import PermissionsTab from './PermissionTab';
 import apiClient from '../../../services/apiClient';
 
 const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions, isLoadingData }) => {
@@ -12,8 +12,7 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
 	const isEditMode = !!user;
 
 	useEffect(() => {
-		if (isEditMode) {
-			// Fetch full user data including permissions when editing
+		if (isEditMode && user) {
 			const fetchUserData = async () => {
 				try {
 					const result = await apiClient.get(`/users/${user.id}`);
@@ -33,7 +32,6 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
 			};
 			fetchUserData();
 		} else {
-			// Set defaults for new user
 			setFormData({
 				username: '',
 				password: '',

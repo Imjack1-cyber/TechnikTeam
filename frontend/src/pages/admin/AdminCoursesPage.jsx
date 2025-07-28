@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import useApi from '../../hooks/useApi';
-import apiClient from '../../services/apiClient';
-import Modal from '../../components/ui/Modal';
+import useApi from '@/hooks/useApi';
+import apiClient from '@/services/apiClient';
+import Modal from '@/components/ui/Modal';
 
 const AdminCoursesPage = () => {
 	const { data: courses, loading, error, reload } = useApi(() => apiClient.get('/courses'));

@@ -6,14 +6,13 @@ const Sidebar = () => {
 	const { user, navigationItems, logout } = useAuthStore();
 
 	if (!user || !navigationItems) {
-		return null; // Or a loading spinner
+		return null;
 	}
 
 	const userNavItems = navigationItems.filter(item => item.requiredPermission === null);
 	const adminNavItems = navigationItems.filter(item => item.requiredPermission !== null);
 
 	const handleLogout = () => {
-		// Here you might want a confirmation modal in a real app
 		logout();
 	};
 
@@ -28,7 +27,7 @@ const Sidebar = () => {
 				<ul>
 					{userNavItems.length > 0 && <li className="nav-section-title">Benutzerbereich</li>}
 					{userNavItems.map(item => (
-						<li key={item.label}>
+						<li key={`${item.label}-${item.url}`}>
 							<NavLink to={item.url} className={({ isActive }) => isActive ? 'active-nav-link' : ''}>
 								<i className={`fas ${item.icon} fa-fw`}></i> {item.label}
 							</NavLink>
@@ -37,7 +36,7 @@ const Sidebar = () => {
 
 					{adminNavItems.length > 0 && <li className="nav-section-title">Admin-Bereich</li>}
 					{adminNavItems.map(item => (
-						<li key={item.label}>
+						<li key={`${item.label}-${item.url}`}>
 							<NavLink to={item.url} className={({ isActive }) => isActive ? 'active-nav-link' : ''}>
 								<i className={`fas ${item.icon} fa-fw`}></i> {item.label}
 							</NavLink>

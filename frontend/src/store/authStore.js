@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import apiClient from '../services/apiClient';
-import { jwtDecode } from 'jwt-decode';
 
 const hasAdminAccess = (permissions) => {
 	if (!permissions || permissions.length === 0) {
@@ -10,7 +9,6 @@ const hasAdminAccess = (permissions) => {
 	if (permissions.includes('ACCESS_ADMIN_PANEL')) {
 		return true;
 	}
-	// A simplified check that mirrors the backend's User.hasAdminAccess() logic
 	const adminPermissions = ['_CREATE', '_UPDATE', '_DELETE', '_MANAGE', 'LOG_READ', 'REPORT_READ', 'SYSTEM_READ', 'QUALIFICATION_UPDATE'];
 	return permissions.some(p => adminPermissions.some(ap => p.includes(ap)));
 };
@@ -44,17 +42,17 @@ export const useAuthStore = create(
 			},
 			fetchUserSession: async () => {
 				try {
-					const { data } = await apiClient.get('/users/me');
+					const result = await apiClient.get('/users/me');
 
-					if (data.user && data.navigation) {
+					if (result.success && result.data.user && result.data.navigation) {
 						set({
-							user: data.user,
-							navigationItems: data.navigation,
+							user: result.data.user,
+							navigationItems: result.data.navigation,
 							isAuthenticated: true,
-							isAdmin: hasAdminAccess(data.user.permissions || [])
+							isAdmin: hasAdminAccess(result.data.user.permissions || [])
 						});
 					} else {
-						throw new Error("Invalid session data from server.");
+						throw new Error(result.message || "Invalid session data from server.");
 					}
 
 				} catch (error) {
@@ -71,3 +69,15 @@ export const useAuthStore = create(
 		}
 	)
 );
+
+export const initializeAuth = () => {
+	const { token, fetchUserSession, logout } = useAuthStore.getState();
+	if (token) {
+		// We don't need to decode here anymore, fetchUserSession is the source of truth.
+		// If it fails, the interceptor in apiClient will trigger the logout.
+		fetchUserSession().catch(() => {
+			console.log("Token invalid on initial load, logging out.");
+			logout();
+		});
+	}
+};

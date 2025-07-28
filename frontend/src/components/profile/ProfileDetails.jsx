@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import apiClient from '../../services/apiClient';
+import apiClient from '@/services/apiClient';
 
 const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 	const [isEditing, setIsEditing] = useState(false);

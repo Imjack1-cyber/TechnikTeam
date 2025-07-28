@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import apiClient from '../services/apiClient';
-import useApi from '../hooks/useApi';
-import Modal from '../components/ui/Modal';
-import Lightbox from '../components/ui/Lightbox';
+import apiClient from '@/services/apiClient';
+import useApi from '@/hooks/useApi';
+import Modal from '@/components/ui/Modal';
+import Lightbox from '@/components/ui/Lightbox';
 
 const StoragePage = () => {
 	const { data, loading, error, reload } = useApi(() => apiClient.get('/public/storage'));

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
-import useApi from '../hooks/useApi';
-import apiClient from '../services/apiClient';
+import useApi from '@/hooks/useApi';
+import apiClient from '@/services/apiClient';
 
 const MeetingDetailsPage = () => {
 	const { meetingId } = useParams();

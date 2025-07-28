@@ -1,6 +1,6 @@
 import React from 'react';
-import useApi from '../../hooks/useApi';
-import apiClient from '../../services/apiClient';
+import useApi from '@/hooks/useApi';
+import apiClient from '@/services/apiClient';
 
 const AdminLogPage = () => {
 	const { data: logs, loading, error } = useApi(() => apiClient.get('/logs'));

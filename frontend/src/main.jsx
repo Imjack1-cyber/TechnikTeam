@@ -4,7 +4,6 @@ import { RouterProvider } from 'react-router-dom';
 import router from './router';
 import { useAuthStore } from './store/authStore';
 
-// Initialize auth state by checking for a token and fetching user data if it exists.
 const initializeApp = async () => {
 	const { token, fetchUserSession } = useAuthStore.getState();
 	if (token) {
@@ -12,7 +11,6 @@ const initializeApp = async () => {
 			await fetchUserSession();
 		} catch (error) {
 			console.log("Session token is invalid or expired. User is logged out.");
-			// The 401 interceptor in apiClient will trigger the logout.
 		}
 	}
 };

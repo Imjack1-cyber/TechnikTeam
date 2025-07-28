@@ -1,10 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import useApi from '../../hooks/useApi';
-import apiClient from '../../services/apiClient';
-import { useAuthStore } from '../../store/authStore';
-import Widget from '../../components/admin/dashboard/Widget';
-import EventTrendChart from '../../components/admin/dashboard/EventTrendChart';
+import useApi from '@/hooks/useApi';
+import apiClient from '@/services/apiClient';
+import { useAuthStore } from '@/store/authStore';
+import Widget from '@/components/admin/dashboard/Widget';
+import EventTrendChart from '@/components/admin/dashboard/EventTrendChart';
 
 const AdminDashboardPage = () => {
 	const { user } = useAuthStore();

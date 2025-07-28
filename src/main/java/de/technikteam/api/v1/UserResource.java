@@ -8,10 +8,12 @@ import com.google.inject.Singleton;
 import de.technikteam.dao.RoleDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
+import de.technikteam.model.NavigationItem;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.LoginAttemptService;
 import de.technikteam.service.UserService;
+import de.technikteam.util.NavigationRegistry;
 import de.technikteam.util.PasswordPolicyValidator;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -52,20 +54,34 @@ public class UserResource extends HttpServlet {
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains("USER_READ")) {
-			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+		User authenticatedUser = (User) req.getAttribute("user");
+		if (authenticatedUser == null) {
+			sendJsonError(resp, HttpServletResponse.SC_UNAUTHORIZED, "Authentication required.");
 			return;
 		}
 
 		String pathInfo = req.getPathInfo();
 
 		try {
+			// Handle GET /api/v1/users/me
+			if ("/me".equals(pathInfo)) {
+				handleGetCurrentUser(req, resp, authenticatedUser);
+				return;
+			}
+
+			// All other GET requests require USER_READ permission
+			if (!authenticatedUser.getPermissions().contains("USER_READ")) {
+				sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
+				return;
+			}
+
 			if (pathInfo == null || pathInfo.equals("/")) {
+				// Get all users
 				List<User> users = userDAO.getAllUsers();
 				sendJsonResponse(resp, HttpServletResponse.SC_OK,
 						new ApiResponse(true, "Users retrieved successfully", users));
 			} else {
+				// Get single user by ID
 				Integer userId = parseIdFromPath(pathInfo);
 				if (userId != null) {
 					User user = userDAO.getUserById(userId);
@@ -83,6 +99,18 @@ public class UserResource extends HttpServlet {
 			logger.error("Error processing GET request for users", e);
 			sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "An internal server error occurred.");
 		}
+	}
+
+	private void handleGetCurrentUser(HttpServletRequest req, HttpServletResponse resp, User authenticatedUser)
+			throws IOException {
+		// The user object from the filter is already complete with permissions.
+		// We just need to add the navigation items.
+		List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(authenticatedUser);
+
+		Map<String, Object> responseData = Map.of("user", authenticatedUser, "navigation", navigationItems);
+
+		sendJsonResponse(resp, HttpServletResponse.SC_OK,
+				new ApiResponse(true, "Current user session retrieved.", responseData));
 	}
 
 	@Override

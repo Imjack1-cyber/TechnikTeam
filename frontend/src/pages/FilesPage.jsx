@@ -1,6 +1,6 @@
 import React from 'react';
-import useApi from '../hooks/useApi';
-import apiClient from '../services/apiClient';
+import useApi from '@/hooks/useApi';
+import apiClient from '@/services/apiClient';
 
 const FilesPage = () => {
 	// NOTE: This assumes the backend exposes a public endpoint at /api/v1/public/files

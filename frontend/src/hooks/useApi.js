@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import apiClient from '../services/apiClient';
+import apiClient from '@/services/apiClient';
 
 /**
  * A custom React hook to manage the state of an API call.

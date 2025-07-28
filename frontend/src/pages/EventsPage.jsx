@@ -1,9 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import apiClient from '../services/apiClient';
-import useApi from '../hooks/useApi';
-import Modal from '../components/ui/Modal';
-import StatusBadge from '../components/ui/StatusBadge';
+import apiClient from '@/services/apiClient';
+import useApi from '@/hooks/useApi';
+import Modal from '@/components/ui/Modal';
+import StatusBadge from '@/components/ui/StatusBadge';
 
 const EventsPage = () => {
 	const { data: events, loading, error, reload } = useApi(

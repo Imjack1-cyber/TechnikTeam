@@ -1,8 +1,8 @@
 import React from 'react';
-import useApi from '../../hooks/useApi';
-import apiClient from '../../services/apiClient';
-import EventTrendChart from '../../components/admin/dashboard/EventTrendChart';
-import UserActivityChart from '../../components/admin/reports/UserActivityChart';
+import useApi from '@/hooks/useApi';
+import apiClient from '@/services/apiClient';
+import EventTrendChart from '@/components/admin/dashboard/EventTrendChart';
+import UserActivityChart from '@/components/admin/reports/UserActivityChart';
 
 const AdminReportsPage = () => {
 	// The dashboard endpoint already provides all the necessary summary data
