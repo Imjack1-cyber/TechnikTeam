@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 
 const MeetingDetailsPage = () => {
 	const { meetingId } = useParams();
-	const { data, loading, error } = useApi(() => apiClient.get(`/meetings/${meetingId}`));
+	const apiCall = useCallback(() => apiClient.get(`/meetings/${meetingId}`), [meetingId]);
+	const { data, loading, error } = useApi(apiCall);
 
 	if (loading) return <div>Lade Meeting-Details...</div>;
 	if (error) return <div className="error-message">{error}</div>;

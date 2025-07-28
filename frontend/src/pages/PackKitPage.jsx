@@ -1,17 +1,16 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 
 const PackKitPage = () => {
 	const { kitId } = useParams();
-	const { data: kitData, loading, error } = useApi(() => apiClient.get(`/kits/${kitId}`));
+	const apiCall = useCallback(() => apiClient.get(`/kits/${kitId}`), [kitId]);
+	const { data: kit, loading, error } = useApi(apiCall);
 
 	if (loading) return <div>Lade Packliste...</div>;
 	if (error) return <div className="error-message">{error}</div>;
-	if (!kitData) return <div className="error-message">Kit nicht gefunden.</div>;
-
-	const kit = kitData; // API returns the full kit object
+	if (!kit) return <div className="error-message">Kit nicht gefunden.</div>;
 
 	return (
 		<div className="card">

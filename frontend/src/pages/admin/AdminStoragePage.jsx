@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
@@ -7,7 +7,8 @@ import Lightbox from '../../components/ui/Lightbox';
 import StatusBadge from '../../components/ui/StatusBadge';
 
 const AdminStoragePage = () => {
-	const { data: items, loading, error, reload } = useApi(() => apiClient.get('/storage'));
+	const apiCall = useCallback(() => apiClient.get('/storage'), []);
+	const { data: items, loading, error, reload } = useApi(apiCall);
 	const [modalState, setModalState] = useState({ isOpen: false, item: null, mode: 'edit' });
 	const [lightboxSrc, setLightboxSrc] = useState('');
 

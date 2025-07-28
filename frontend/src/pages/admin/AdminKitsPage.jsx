@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import useApi from '../../hooks/useApi';
 import useAdminData from '../../hooks/useAdminData';
 import apiClient from '../../services/apiClient';
@@ -43,8 +43,9 @@ const KitAccordion = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems })
 };
 
 const AdminKitsPage = () => {
-	const { data: kits, loading, error, reload } = useApi(() => apiClient.get('/kits'));
-	const { storageItems, loading: itemsLoading } = useAdminData();
+	const apiCall = useCallback(() => apiClient.get('/kits'), []);
+	const { data: kits, loading, error, reload } = useApi(apiCall);
+	const { storageItems } = useAdminData();
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingKit, setEditingKit] = useState(null);
 

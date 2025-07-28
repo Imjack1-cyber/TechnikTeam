@@ -73,3 +73,5 @@ technikteam6.txt
 technik_team_db.txt
 ProjectTree.ps1
 .env
+combine_code_gui.ps1
+config.json

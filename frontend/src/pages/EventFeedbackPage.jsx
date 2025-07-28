@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
@@ -12,7 +12,8 @@ const EventFeedbackPage = () => {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
 
-	const { data, loading, error: fetchError } = useApi(() => apiClient.get(`/public/feedback/forms?eventId=${eventId}`));
+	const apiCall = useCallback(() => apiClient.get(`/public/feedback/forms?eventId=${eventId}`), [eventId]);
+	const { data, loading, error: fetchError } = useApi(apiCall);
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
@@ -86,4 +87,4 @@ const EventFeedbackPage = () => {
 	);
 };
 
-export default EventFeedbackPage; 
+export default EventFeedbackPage;

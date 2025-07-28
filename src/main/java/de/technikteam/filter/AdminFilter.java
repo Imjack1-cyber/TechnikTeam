@@ -27,21 +27,19 @@ public class AdminFilter implements Filter {
 		HttpServletResponse response = (HttpServletResponse) res;
 		String path = request.getRequestURI().substring(request.getContextPath().length());
 
-		// The user object is now expected to be in the request attribute,
-		// placed there by either ApiAuthFilter (for JWT) or AuthenticationFilter (for
-		// session).
+		// CRITICAL FIX: Get the full user object directly from the request attribute.
+		// The ApiAuthFilter is responsible for placing a *fully populated* user object here.
 		User user = (User) request.getAttribute("user");
 
-		// If no user object is present after authentication filters, it's an internal
-		// error or misconfiguration.
 		if (user == null) {
 			logger.error(
-					"AdminFilter Error: User object not found in request attribute for protected path '{}'. This should have been set by an authentication filter.",
+					"AdminFilter Error: User object not found in request attribute for protected admin path '{}'. ApiAuthFilter might not have run or failed.",
 					path);
 			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
 			return;
 		}
 
+		// Use the business logic method on the User object itself.
 		if (user.hasAdminAccess()) {
 			logger.trace("ADMIN area access GRANTED for user '{}' to path '{}'.", user.getUsername(), path);
 			chain.doFilter(request, response);

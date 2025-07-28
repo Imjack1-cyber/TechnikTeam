@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import AttendanceModal from '../../components/admin/matrix/AttendanceModal';
 
 const AdminMatrixPage = () => {
-	const { data, loading, error, reload } = useApi(() => apiClient.get('/matrix'));
+	const apiCall = useCallback(() => apiClient.get('/matrix'), []);
+	const { data, loading, error, reload } = useApi(apiCall);
 	const [modalData, setModalData] = useState(null);
 
 	const openModal = (cellData) => {
@@ -18,7 +19,7 @@ const AdminMatrixPage = () => {
 
 	const handleSuccess = () => {
 		closeModal();
-		reload(); // Reload all data to reflect changes
+		reload();
 	};
 
 	if (loading) return <div>Lade Matrix-Daten...</div>;

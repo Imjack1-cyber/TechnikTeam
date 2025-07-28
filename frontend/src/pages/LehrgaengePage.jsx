@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 
 const LehrgaengePage = () => {
-	const { data: meetings, loading, error, reload } = useApi(() => apiClient.get('/public/meetings'));
+	const apiCall = useCallback(() => apiClient.get('/public/meetings'), []);
+	const { data: meetings, loading, error, reload } = useApi(apiCall);
 
 	const handleAction = async (meetingId, action) => {
 		const endpoint = `/public/meetings/${meetingId}/${action}`;

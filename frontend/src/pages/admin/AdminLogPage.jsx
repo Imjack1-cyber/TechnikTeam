@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 
 const AdminLogPage = () => {
-	const { data: logs, loading, error } = useApi(() => apiClient.get('/logs'));
+	const apiCall = useCallback(() => apiClient.get('/logs'), []);
+	const { data: logs, loading, error } = useApi(apiCall);
 
 	const renderTable = () => {
 		if (loading) return <tr><td colSpan="4">Lade Logs...</td></tr>;

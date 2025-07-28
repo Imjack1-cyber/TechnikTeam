@@ -28,6 +28,7 @@ public class ServiceModule extends ServletModule {
 		bind(ApiAuthFilter.class).in(Scopes.SINGLETON);
 		bind(AdminFilter.class).in(Scopes.SINGLETON);
 
+		// --- Filter Chain Configuration ---
 		filter("/*").through(CharacterEncodingFilter.class);
 		filter("/api/*").through(CorsFilter.class);
 
@@ -46,7 +47,7 @@ public class ServiceModule extends ServletModule {
 		bind(Gson.class).toInstance(
 				new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create());
 
-		// --- Service and DAO Bindings ---
+		// --- Service and DAO Bindings (ALL SINGLETONS) ---
 		bind(LoginAttemptService.class).in(Scopes.SINGLETON);
 		bind(AuthService.class).in(Scopes.SINGLETON);
 		bind(ConfigurationService.class).in(Scopes.SINGLETON);
@@ -94,15 +95,17 @@ public class ServiceModule extends ServletModule {
 		// --- SERVLET BINDINGS ---
 		serve("/notifications").with(NotificationServlet.class);
 
-		// --- API v1 SERVLET BINDINGS (CORRECTED) ---
+		// --- API v1 SERVLET BINDINGS ---
 		serve("/api/v1/public/dashboard").with(PublicDashboardResource.class);
 		serve("/api/v1/public/events", "/api/v1/public/events/*").with(PublicEventResource.class);
 		serve("/api/v1/public/meetings", "/api/v1/public/meetings/*").with(PublicMeetingResource.class);
 		serve("/api/v1/public/storage", "/api/v1/public/storage/*").with(PublicStorageResource.class);
 		serve("/api/v1/public/profile", "/api/v1/public/profile/*").with(PublicProfileResource.class);
 		serve("/api/v1/public/calendar.ics").with(PublicCalendarResource.class);
-		serve("/api/v1/public/files/*").with(PublicFileStreamResource.class);
+		serve("/api/v1/public/files", "/api/v1/public/files/*").with(PublicFilesResource.class);
+		serve("/api/v1/public/calendar/entries").with(PublicCalendarEntriesResource.class);
 		serve("/api/v1/public/feedback", "/api/v1/public/feedback/*").with(PublicFeedbackResource.class);
+		serve("/api/v1/public/files/*").with(PublicFileStreamResource.class);
 
 		serve("/api/v1/auth/login").with(AuthResource.class);
 		serve("/api/v1/auth/passkey/register/start").with(RegistrationStartServlet.class);
@@ -110,10 +113,7 @@ public class ServiceModule extends ServletModule {
 		serve("/api/v1/auth/passkey/login/start").with(AuthenticationStartServlet.class);
 		serve("/api/v1/auth/passkey/login/finish").with(AuthenticationFinishServlet.class);
 
-		// CORRECTED: Added explicit binding for the new form-data endpoint
-		serve("/api/v1/users/form-data").with(AdminFormDataResource.class);
 		serve("/api/v1/users", "/api/v1/users/*").with(UserResource.class);
-
 		serve("/api/v1/wiki", "/api/v1/wiki/*").with(WikiResource.class);
 		serve("/api/v1/feedback", "/api/v1/feedback/*").with(FeedbackResource.class);
 		serve("/api/v1/profile-requests", "/api/v1/profile-requests/*").with(ProfileRequestResource.class);

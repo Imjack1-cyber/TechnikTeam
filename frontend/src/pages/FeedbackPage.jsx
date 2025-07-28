@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import StatusBadge from '../components/ui/StatusBadge';
 
 const FeedbackPage = () => {
-	const { data: submissions, loading, error, reload } = useApi(() => apiClient.get('/public/feedback/user'));
+	const apiCall = useCallback(() => apiClient.get('/public/feedback/user'), []);
+	const { data: submissions, loading, error, reload } = useApi(apiCall);
 	const [subject, setSubject] = useState('');
 	const [content, setContent] = useState('');
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,7 +24,7 @@ const FeedbackPage = () => {
 				setSubmitSuccess('Vielen Dank! Dein Feedback wurde erfolgreich übermittelt.');
 				setSubject('');
 				setContent('');
-				reload(); // Reload the list of submissions
+				reload();
 			} else {
 				throw new Error(result.message);
 			}

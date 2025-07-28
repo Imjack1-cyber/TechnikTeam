@@ -1,5 +1,25 @@
 {
     "SourceDirectory":  "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam",
     "OutputFile":  "technikteam.txt",
-    "MaxFileSizeKB":  475
+    "MaxFileSizeKB":  475,
+    "ExcludedDirectories":  [
+                                "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\.metadata",
+                                "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\.settings",
+                                "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\frontend\\node_modules",
+                                "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\resources",
+                                "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\src\\test",
+                                "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\target"
+                            ],
+    "ExtensionFilterList":  [
+                                ".java",
+                                ".jsp",
+                                ".js",
+                                ".jsx",
+                                ".css",
+                                ".sql",
+                                ".txt",
+                                ".html",
+                                ".md"
+                            ],
+    "ExtensionFilterMode":  "include"
 }

@@ -1,20 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import Modal from '../../components/ui/Modal';
-import useAdminData from '../../hooks/useAdminData';
 
 const AdminMeetingsPage = () => {
 	const { courseId } = useParams();
-	const { data: meetingsData, loading, error, reload } = useApi(() => apiClient.get(`/meetings?courseId=${courseId}`));
-	const { data: adminUsersData } = useApi(() => apiClient.get('/users')); // Fetch all users for leader dropdown
+	const meetingsApiCall = useCallback(() => apiClient.get(`/meetings?courseId=${courseId}`), [courseId]);
+	const usersApiCall = useCallback(() => apiClient.get('/users'), []);
+
+	const { data: meetingsData, loading, error, reload } = useApi(meetingsApiCall);
+	const { data: allUsers } = useApi(usersApiCall);
 
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingMeeting, setEditingMeeting] = useState(null);
 	const [formError, setFormError] = useState('');
 
-	// Attempt to get the course name from the first meeting, or use a fallback.
 	const courseName = meetingsData?.[0]?.parentCourseName || 'Lehrgang';
 
 	const handleOpenNewModal = () => {
@@ -128,7 +129,7 @@ const AdminMeetingsPage = () => {
 							<label htmlFor="leader-modal">Leitende Person</label>
 							<select name="leaderUserId" id="leader-modal" defaultValue={editingMeeting?.leaderUserId}>
 								<option value="">(Keine)</option>
-								{adminUsersData?.data?.map(user => <option key={user.id} value={user.id}>{user.username}</option>)}
+								{allUsers?.map(user => <option key={user.id} value={user.id}>{user.username}</option>)}
 							</select>
 						</div>
 						<div className="form-group">

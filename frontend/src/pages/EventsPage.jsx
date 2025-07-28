@@ -6,13 +6,12 @@ import Modal from '../components/ui/Modal';
 import StatusBadge from '../components/ui/StatusBadge';
 
 const EventsPage = () => {
-	const { data: events, loading, error, reload } = useApi(
-		useCallback(() => apiClient.get('/public/events'), [])
-	);
+	const apiCall = useCallback(() => apiClient.get('/public/events'), []);
+	const { data: events, loading, error, reload } = useApi(apiCall);
 
 	const [modalState, setModalState] = useState({
 		isOpen: false,
-		type: null, // 'signup' or 'signoff'
+		type: null,
 		event: null,
 		customFields: [],
 	});
@@ -21,7 +20,6 @@ const EventsPage = () => {
 
 	const openSignupModal = async (event) => {
 		try {
-			// This endpoint is hypothetical in the backend code, but we assume it exists
 			const result = await apiClient.get(`/public/events/${event.id}/custom-fields`);
 			setModalState({
 				isOpen: true,

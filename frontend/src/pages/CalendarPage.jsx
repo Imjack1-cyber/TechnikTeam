@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import CalendarDesktopView from '../components/calendar/CalendarDesktopView';
 import CalendarMobileView from '../components/calendar/CalendarMobileView';
 
 const CalendarPage = () => {
-	const { data: calendarEntries, loading, error } = useApi(() => apiClient.get('/public/calendar/entries'));
+	const apiCall = useCallback(() => apiClient.get('/public/calendar/entries'), []);
+	const { data: calendarEntries, loading, error } = useApi(apiCall);
 
 	if (loading) {
 		return <div>Lade Kalenderdaten...</div>;

@@ -5,10 +5,13 @@ import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import de.technikteam.dao.PermissionDAO;
 import de.technikteam.dao.RoleDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.NavigationItem;
+import de.technikteam.model.Permission;
+import de.technikteam.model.Role;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.LoginAttemptService;
@@ -37,16 +40,18 @@ public class UserResource extends HttpServlet {
 	private final UserService userService;
 	private final UserDAO userDAO;
 	private final RoleDAO roleDAO;
+	private final PermissionDAO permissionDAO;
 	private final AdminLogService adminLogService;
 	private final LoginAttemptService loginAttemptService;
 	private final Gson gson;
 
 	@Inject
-	public UserResource(UserService userService, UserDAO userDAO, RoleDAO roleDAO, AdminLogService adminLogService,
-			LoginAttemptService loginAttemptService, Gson gson) {
+	public UserResource(UserService userService, UserDAO userDAO, RoleDAO roleDAO, PermissionDAO permissionDAO,
+			AdminLogService adminLogService, LoginAttemptService loginAttemptService, Gson gson) {
 		this.userService = userService;
 		this.userDAO = userDAO;
 		this.roleDAO = roleDAO;
+		this.permissionDAO = permissionDAO;
 		this.adminLogService = adminLogService;
 		this.loginAttemptService = loginAttemptService;
 		this.gson = gson;
@@ -63,25 +68,26 @@ public class UserResource extends HttpServlet {
 		String pathInfo = req.getPathInfo();
 
 		try {
-			// Handle GET /api/v1/users/me
 			if ("/me".equals(pathInfo)) {
-				handleGetCurrentUser(req, resp, authenticatedUser);
+				handleGetCurrentUser(resp, authenticatedUser);
 				return;
 			}
 
-			// All other GET requests require USER_READ permission
+			if ("/form-data".equals(pathInfo)) {
+				handleGetFormData(resp);
+				return;
+			}
+
 			if (!authenticatedUser.getPermissions().contains("USER_READ")) {
 				sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 				return;
 			}
 
 			if (pathInfo == null || pathInfo.equals("/")) {
-				// Get all users
 				List<User> users = userDAO.getAllUsers();
 				sendJsonResponse(resp, HttpServletResponse.SC_OK,
 						new ApiResponse(true, "Users retrieved successfully", users));
 			} else {
-				// Get single user by ID
 				Integer userId = parseIdFromPath(pathInfo);
 				if (userId != null) {
 					User user = userDAO.getUserById(userId);
@@ -101,17 +107,25 @@ public class UserResource extends HttpServlet {
 		}
 	}
 
-	private void handleGetCurrentUser(HttpServletRequest req, HttpServletResponse resp, User authenticatedUser)
-			throws IOException {
-		// The user object from the filter is already complete with permissions.
-		// We just need to add the navigation items.
+	private void handleGetCurrentUser(HttpServletResponse resp, User authenticatedUser) throws IOException {
+		// The user object from the filter is now fully populated with permissions.
 		List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(authenticatedUser);
-
 		Map<String, Object> responseData = Map.of("user", authenticatedUser, "navigation", navigationItems);
-
 		sendJsonResponse(resp, HttpServletResponse.SC_OK,
 				new ApiResponse(true, "Current user session retrieved.", responseData));
 	}
+
+	private void handleGetFormData(HttpServletResponse resp) throws IOException {
+		List<Role> roles = roleDAO.getAllRoles();
+		List<Permission> permissions = permissionDAO.getAllPermissions();
+		Map<String, List<Permission>> groupedPermissions = permissions.stream()
+				.collect(Collectors.groupingBy(p -> p.getPermissionKey().split("_")[0]));
+
+		Map<String, Object> formData = Map.of("roles", roles, "groupedPermissions", groupedPermissions);
+		sendJsonResponse(resp, HttpServletResponse.SC_OK, new ApiResponse(true, "Form data retrieved", formData));
+	}
+
+	// doPost, doPut, doDelete and other helper methods remain unchanged...
 
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -159,6 +173,7 @@ public class UserResource extends HttpServlet {
 			Map<String, Object> payloadMap = gson.fromJson(jsonPayload, Map.class);
 			String password = (String) payloadMap.get("password");
 
+			@SuppressWarnings("unchecked")
 			List<Double> permissionIdDoubles = (List<Double>) payloadMap.get("permissionIds");
 			String[] permissionIds = permissionIdDoubles.stream().map(d -> Integer.toString(d.intValue()))
 					.toArray(String[]::new);
@@ -261,6 +276,7 @@ public class UserResource extends HttpServlet {
 			updatedUser.setId(userId);
 
 			Map<String, Object> payloadMap = gson.fromJson(jsonPayload, Map.class);
+			@SuppressWarnings("unchecked")
 			List<Double> permissionIdDoubles = (List<Double>) payloadMap.get("permissionIds");
 			String[] permissionIds = permissionIdDoubles.stream().map(d -> Integer.toString(d.intValue()))
 					.toArray(String[]::new);

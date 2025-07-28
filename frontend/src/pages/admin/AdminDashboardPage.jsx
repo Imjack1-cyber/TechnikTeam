@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
@@ -8,7 +8,8 @@ import EventTrendChart from '../../components/admin/dashboard/EventTrendChart';
 
 const AdminDashboardPage = () => {
 	const { user } = useAuthStore();
-	const { data: dashboardData, loading, error } = useApi(() => apiClient.get('/reports/dashboard'));
+	const apiCall = useCallback(() => apiClient.get('/reports/dashboard'), []);
+	const { data: dashboardData, loading, error } = useApi(apiCall);
 
 	const renderWidgetContent = (widgetData, renderItem, emptyMessage) => {
 		if (!widgetData || widgetData.length === 0) {

@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import EventTrendChart from '../../components/admin/dashboard/EventTrendChart';
 import UserActivityChart from '../../components/admin/reports/UserActivityChart';
 
 const AdminReportsPage = () => {
-	const { data: reportData, loading, error } = useApi(() => apiClient.get('/reports/dashboard'));
+	const apiCall = useCallback(() => apiClient.get('/reports/dashboard'), []);
+	const { data: reportData, loading, error } = useApi(apiCall);
 
 	if (loading) return <div>Lade Berichte...</div>;
 	if (error) return <div className="error-message">{error}</div>;

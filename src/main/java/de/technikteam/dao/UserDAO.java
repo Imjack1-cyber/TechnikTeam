@@ -1,3 +1,4 @@
+// src/main/java/de/technikteam/dao/UserDAO.java
 package de.technikteam.dao;
 
 import com.google.inject.Inject;
@@ -245,7 +246,7 @@ public class UserDAO {
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				if (resultSet.next()) {
 					User user = mapResultSetToUser(resultSet);
-					user.setPermissions(getPermissionsForUser(userId));
+					user.setPermissions(getPermissionsForUser(userId)); // Always attach permissions
 					return user;
 				}
 			}

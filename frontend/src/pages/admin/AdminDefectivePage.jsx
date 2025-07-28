@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import StorageItemModal from '../../components/admin/storage/StorageItemModal';
 
 const AdminDefectivePage = () => {
-	const { data: items, loading, error, reload } = useApi(() => apiClient.get('/storage?status=defective'));
+	const apiCall = useCallback(() => apiClient.get('/storage?status=defective'), []);
+	const { data: items, loading, error, reload } = useApi(apiCall);
 	const [modalState, setModalState] = useState({ isOpen: false, item: null, mode: 'defect' });
 
 	const openModal = (mode, item) => {

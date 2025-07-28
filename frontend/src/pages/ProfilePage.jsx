@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import ProfileDetails from '../components/profile/ProfileDetails';
@@ -8,7 +8,8 @@ import ProfileAchievements from '../components/profile/ProfileAchievements';
 import ProfileEventHistory from '../components/profile/ProfileEventHistory';
 
 const ProfilePage = () => {
-	const { data: profileData, loading, error, reload } = useApi(() => apiClient.get('/public/profile'));
+	const apiCall = useCallback(() => apiClient.get('/public/profile'), []);
+	const { data: profileData, loading, error, reload } = useApi(apiCall);
 
 	if (loading) {
 		return (

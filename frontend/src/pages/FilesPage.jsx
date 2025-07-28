@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 
 const FilesPage = () => {
-	const { data: fileData, loading, error } = useApi(() => apiClient.get('/public/files'));
+	const apiCall = useCallback(() => apiClient.get('/public/files'), []);
+	const { data: fileData, loading, error } = useApi(apiCall);
 
 	const renderContent = () => {
 		if (loading) return <div className="card"><p>Lade Dateien...</p></div>;

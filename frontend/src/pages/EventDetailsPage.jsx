@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import apiClient from '../services/apiClient';
 import useApi from '../hooks/useApi';
@@ -9,7 +9,8 @@ import StatusBadge from '../components/ui/StatusBadge';
 const EventDetailsPage = () => {
 	const { eventId } = useParams();
 	const { user } = useAuthStore();
-	const { data: event, loading, error, reload } = useApi(() => apiClient.get(`/public/events/${eventId}`));
+	const apiCall = useCallback(() => apiClient.get(`/public/events/${eventId}`), [eventId]);
+	const { data: event, loading, error, reload } = useApi(apiCall);
 
 	const [chatMessages, setChatMessages] = useState([]);
 	const [chatInput, setChatInput] = useState('');

@@ -40,7 +40,7 @@ public class ApiAuthFilter implements Filter {
 			return;
 		}
 
-		String token = authHeader.substring(7); // "Bearer ".length()
+		String token = authHeader.substring(7);
 		User user = authService.validateTokenAndGetUser(token);
 
 		if (user == null) {
@@ -48,10 +48,13 @@ public class ApiAuthFilter implements Filter {
 			return;
 		}
 
-		// Add the authenticated user to the request attributes for the resource to use.
+		// Set the user as a request attribute for direct access in servlets.
 		request.setAttribute("user", user);
 
-		chain.doFilter(request, response);
+		// CRITICAL FIX: Wrap the request in our custom security context wrapper.
+		// This makes the user available to other filters (like AdminFilter) and the
+		// container.
+		chain.doFilter(new AuthenticatedUserRequest(httpRequest, user), response);
 	}
 
 	@Override

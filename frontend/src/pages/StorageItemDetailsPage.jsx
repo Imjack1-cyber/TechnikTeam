@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
@@ -9,8 +9,11 @@ const StorageItemDetailsPage = () => {
 	const [activeTab, setActiveTab] = useState('history');
 	const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
-	const { data: itemData, loading: itemLoading, error: itemError } = useApi(() => apiClient.get(`/storage/${itemId}`));
-	const { data: historyData, loading: historyLoading, error: historyError } = useApi(() => apiClient.get(`/public/storage/${itemId}/history`));
+	const fetchItemCall = useCallback(() => apiClient.get(`/storage/${itemId}`), [itemId]);
+	const fetchHistoryCall = useCallback(() => apiClient.get(`/public/storage/${itemId}/history`), [itemId]);
+
+	const { data: itemData, loading: itemLoading, error: itemError } = useApi(fetchItemCall);
+	const { data: historyData, loading: historyLoading, error: historyError } = useApi(fetchHistoryCall);
 
 	if (itemLoading || historyLoading) return <div>Lade Artikeldetails...</div>;
 	if (itemError) return <div className="error-message">{itemError}</div>;

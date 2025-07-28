@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
@@ -6,7 +6,8 @@ import { useAuthStore } from '../store/authStore';
 
 const DashboardPage = () => {
 	const { user } = useAuthStore();
-	const { data: dashboardData, loading, error } = useApi(() => apiClient.get('/public/dashboard'));
+	const apiCall = useCallback(() => apiClient.get('/public/dashboard'), []);
+	const { data: dashboardData, loading, error } = useApi(apiCall);
 
 	if (loading) {
 		return (

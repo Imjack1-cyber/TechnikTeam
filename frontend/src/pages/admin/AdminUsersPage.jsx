@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import UserModal from '../../components/admin/users/UserModal';
 import useAdminData from '../../hooks/useAdminData';
 
 const AdminUsersPage = () => {
-	const { data: users, loading, error, reload } = useApi(() => apiClient.get('/users'));
-	const adminFormData = useAdminData(); // Fetch roles and permissions
+	const apiCall = useCallback(() => apiClient.get('/users'), []);
+	const { data: users, loading, error, reload } = useApi(apiCall);
+	const adminFormData = useAdminData();
 
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingUser, setEditingUser] = useState(null);
@@ -28,7 +29,7 @@ const AdminUsersPage = () => {
 
 	const handleSuccess = () => {
 		handleCloseModal();
-		reload(); // Refresh the user list
+		reload();
 	};
 
 	const handleDelete = async (user) => {

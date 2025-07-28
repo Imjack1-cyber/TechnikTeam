@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import apiClient from '../services/apiClient';
 import useApi from '../hooks/useApi';
@@ -6,7 +6,8 @@ import Modal from '../components/ui/Modal';
 import Lightbox from '../components/ui/Lightbox';
 
 const StoragePage = () => {
-	const { data, loading, error, reload } = useApi(() => apiClient.get('/public/storage'));
+	const apiCall = useCallback(() => apiClient.get('/public/storage'), []);
+	const { data, loading, error, reload } = useApi(apiCall);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [selectedItem, setSelectedItem] = useState(null);
 	const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -31,7 +32,7 @@ const StoragePage = () => {
 		const transactionData = {
 			itemId: selectedItem.id,
 			quantity: parseInt(formData.get('quantity'), 10),
-			type: submitter.value, // 'checkout' or 'checkin'
+			type: submitter.value,
 			notes: formData.get('notes'),
 			eventId: formData.get('eventId') ? parseInt(formData.get('eventId'), 10) : null,
 		};
@@ -40,7 +41,7 @@ const StoragePage = () => {
 			const result = await apiClient.post('/public/storage/transactions', transactionData);
 			if (result.success) {
 				setIsModalOpen(false);
-				reload(); // Reload the storage data
+				reload();
 			} else {
 				throw new Error(result.message);
 			}
