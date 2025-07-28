@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import de.technikteam.config.Permissions;
 import de.technikteam.dao.CourseDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Course;
@@ -20,7 +21,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.List;
-import java.util.Map; // <-- This was the missing import
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -50,7 +51,8 @@ public class CourseResource extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains("COURSE_READ")) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains(Permissions.COURSE_READ))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -88,7 +90,8 @@ public class CourseResource extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains("COURSE_CREATE")) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains(Permissions.COURSE_CREATE))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -100,8 +103,6 @@ public class CourseResource extends HttpServlet {
 			if (courseDAO.createCourse(newCourse)) {
 				adminLogService.log(adminUser.getUsername(), "CREATE_COURSE_API",
 						"Course template '" + newCourse.getName() + "' created via API.");
-				// We don't know the new ID, so we return a generic success message.
-				// A better approach would be for the DAO to return the created object.
 				sendJsonResponse(resp, HttpServletResponse.SC_CREATED,
 						new ApiResponse(true, "Course created successfully", null));
 			} else {
@@ -123,7 +124,8 @@ public class CourseResource extends HttpServlet {
 	@Override
 	protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains("COURSE_UPDATE")) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains(Permissions.COURSE_UPDATE))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -162,7 +164,8 @@ public class CourseResource extends HttpServlet {
 	@Override
 	protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains("COURSE_DELETE")) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains(Permissions.COURSE_DELETE))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}

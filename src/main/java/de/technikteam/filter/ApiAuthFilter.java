@@ -48,12 +48,10 @@ public class ApiAuthFilter implements Filter {
 			return;
 		}
 
-		// Set the user as a request attribute for direct access in servlets.
-		request.setAttribute("user", user);
-
-		// CRITICAL FIX: Wrap the request in our custom security context wrapper.
-		// This makes the user available to other filters (like AdminFilter) and the
-		// container.
+		// The AuthenticatedUserRequest wrapper is now the sole carrier of the user
+		// principal.
+		// Setting the attribute on the original request is no longer necessary and
+		// could be unreliable.
 		chain.doFilter(new AuthenticatedUserRequest(httpRequest, user), response);
 	}
 

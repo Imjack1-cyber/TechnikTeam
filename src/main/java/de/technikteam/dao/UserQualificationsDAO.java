@@ -12,7 +12,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.sql.Types;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -48,8 +47,8 @@ public class UserQualificationsDAO {
 		List<UserQualification> qualifications = new ArrayList<>();
 		String sql = "SELECT uq.user_id, uq.course_id, c.name, uq.status, uq.completion_date, uq.remarks FROM user_qualifications uq JOIN courses c ON uq.course_id = c.id";
 		try (Connection conn = dbManager.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery()) {
 			while (rs.next()) {
 				qualifications.add(mapResultSetToUserQualification(rs));
 			}

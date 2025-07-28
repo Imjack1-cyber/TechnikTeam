@@ -1,4 +1,3 @@
-// src/main/java/de/technikteam/filter/AuthenticationFilter.java
 package de.technikteam.filter;
 
 import de.technikteam.model.User;
@@ -23,14 +22,11 @@ public class AuthenticationFilter implements Filter {
 
 	private static final Logger logger = LogManager.getLogger(AuthenticationFilter.class);
 
-	private Set<String> publicPaths;
-	private static final Set<String> IGNORED_PREFIXES = new HashSet<>(Arrays.asList("/api/v1/"));
+	private static final Set<String> IGNORED_API_PREFIXES = new HashSet<>(Arrays.asList("/api/v1/"));
 
 	@Override
 	public void init(FilterConfig filterConfig) throws ServletException {
 		logger.info("Session-based AuthenticationFilter initialized.");
-		String contextPath = filterConfig.getServletContext().getContextPath();
-		publicPaths = new HashSet<>(Arrays.asList(contextPath + "/login", contextPath + "/logout"));
 	}
 
 	@Override
@@ -39,15 +35,15 @@ public class AuthenticationFilter implements Filter {
 
 		HttpServletRequest request = (HttpServletRequest) req;
 		String path = request.getRequestURI();
+		String contextPath = request.getContextPath();
 
-		// Let the request pass if it's an API path meant for JWT auth or a public
-		// resource path.
-		if (IGNORED_PREFIXES.stream().anyMatch(p -> path.startsWith(request.getContextPath() + p))) {
+		// Let the request pass if it's an API path meant for JWT auth.
+		if (IGNORED_API_PREFIXES.stream().anyMatch(p -> path.startsWith(contextPath + p))) {
 			chain.doFilter(req, res);
 			return;
 		}
 
-		// For all other paths (e.g., /notifications), check for a session.
+		// For all other paths, check for a session.
 		HttpSession session = request.getSession(false);
 		User user = (session != null) ? (User) session.getAttribute("user") : null;
 

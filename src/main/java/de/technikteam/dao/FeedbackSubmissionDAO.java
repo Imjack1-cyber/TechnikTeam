@@ -37,8 +37,8 @@ public class FeedbackSubmissionDAO {
 		List<FeedbackSubmission> submissions = new ArrayList<>();
 		String sql = "SELECT fs.*, u.username FROM feedback_submissions fs JOIN users u ON fs.user_id = u.id ORDER BY FIELD(fs.status, 'NEW', 'VIEWED', 'PLANNED', 'REJECTED', 'COMPLETED'), fs.display_order ASC";
 		try (Connection conn = dbManager.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery()) {
 			while (rs.next()) {
 				submissions.add(mapResultSetToSubmission(rs));
 			}

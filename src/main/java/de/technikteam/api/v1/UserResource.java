@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import de.technikteam.config.Permissions;
 import de.technikteam.dao.PermissionDAO;
 import de.technikteam.dao.RoleDAO;
 import de.technikteam.dao.UserDAO;
@@ -78,7 +79,8 @@ public class UserResource extends HttpServlet {
 				return;
 			}
 
-			if (!authenticatedUser.getPermissions().contains("USER_READ")) {
+			if (!authenticatedUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+					&& !authenticatedUser.getPermissions().contains("USER_READ")) {
 				sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 				return;
 			}
@@ -162,7 +164,8 @@ public class UserResource extends HttpServlet {
 	}
 
 	private void handleCreateUser(HttpServletRequest req, HttpServletResponse resp, User adminUser) throws IOException {
-		if (adminUser == null || !adminUser.getPermissions().contains("USER_CREATE")) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains("USER_CREATE"))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -211,7 +214,8 @@ public class UserResource extends HttpServlet {
 
 	private void handleResetPassword(HttpServletRequest req, HttpServletResponse resp, User adminUser, int userId)
 			throws IOException {
-		if (adminUser == null || !adminUser.getPermissions().contains("USER_PASSWORD_RESET")) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains("USER_PASSWORD_RESET"))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -259,7 +263,8 @@ public class UserResource extends HttpServlet {
 	@Override
 	protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains("USER_UPDATE")) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains("USER_UPDATE"))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -303,7 +308,8 @@ public class UserResource extends HttpServlet {
 	@Override
 	protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains("USER_DELETE")) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains("USER_DELETE"))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}

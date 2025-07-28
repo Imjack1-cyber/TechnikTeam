@@ -26,8 +26,8 @@ public class ReportDAO {
 				+ "LEFT JOIN event_assignments ea ON e.id = ea.event_id " + "GROUP BY e.id, e.name "
 				+ "ORDER BY participant_count DESC, e.event_datetime DESC";
 		try (Connection conn = dbManager.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery()) {
 			while (rs.next()) {
 				Map<String, Object> row = new HashMap<>();
 				row.put("event_name", rs.getString("event_name"));
@@ -48,8 +48,8 @@ public class ReportDAO {
 				+ "LEFT JOIN meeting_attendance ma ON u.id = ma.user_id AND ma.attended = 1 "
 				+ "GROUP BY u.id, u.username " + "ORDER BY events_signed_up DESC, meetings_attended DESC";
 		try (Connection conn = dbManager.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery()) {
 			while (rs.next()) {
 				Map<String, Object> row = new HashMap<>();
 				row.put("username", rs.getString("username"));
@@ -70,8 +70,8 @@ public class ReportDAO {
 				+ "WHERE sl.quantity_change < 0 " + "GROUP BY si.id, si.name "
 				+ "ORDER BY total_quantity_checked_out DESC";
 		try (Connection conn = dbManager.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery()) {
 			while (rs.next()) {
 				Map<String, Object> row = new HashMap<>();
 				row.put("item_name", rs.getString("item_name"));
@@ -87,8 +87,8 @@ public class ReportDAO {
 	public double getTotalInventoryValue() {
 		String sql = "SELECT SUM(quantity * price_eur) AS total_value FROM storage_items";
 		try (Connection conn = dbManager.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery()) {
 			if (rs.next()) {
 				return rs.getDouble("total_value");
 			}

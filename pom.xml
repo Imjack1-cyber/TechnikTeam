@@ -165,13 +165,6 @@
             <artifactId>jackson-annotations</artifactId>
             <version>${jackson.version}</version>
         </dependency>
-
-		<!-- Frontend Dependencies (WebJars) -->
-        <dependency>
-            <groupId>org.webjars.npm</groupId>
-            <artifactId>sortablejs</artifactId>
-            <version>1.15.2</version>
-        </dependency>
     </dependencies>
 
     <build>

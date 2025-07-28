@@ -3,9 +3,10 @@ package de.technikteam.api.v1;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
-import com.google.gson.reflect.TypeToken; // <-- MISSING IMPORT ADDED
+import com.google.gson.reflect.TypeToken;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import de.technikteam.config.Permissions;
 import de.technikteam.dao.MaintenanceLogDAO;
 import de.technikteam.dao.StorageDAO;
 import de.technikteam.model.ApiResponse;
@@ -27,7 +28,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.reflect.Type; // <-- MISSING IMPORT ADDED
+import java.lang.reflect.Type;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
@@ -63,7 +64,8 @@ public class StorageResource extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains("STORAGE_READ")) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains("STORAGE_READ"))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -102,7 +104,8 @@ public class StorageResource extends HttpServlet {
 		boolean isUpdate = (pathInfo != null && !pathInfo.equals("/"));
 		User adminUser = (User) req.getAttribute("user");
 		String requiredPermission = isUpdate ? "STORAGE_UPDATE" : "STORAGE_CREATE";
-		if (adminUser == null || !adminUser.getPermissions().contains(requiredPermission)) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains(requiredPermission))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -173,7 +176,8 @@ public class StorageResource extends HttpServlet {
 	@Override
 	protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains("STORAGE_UPDATE")) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains("STORAGE_UPDATE"))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -186,7 +190,6 @@ public class StorageResource extends HttpServlet {
 
 		try {
 			String jsonPayload = req.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
-			// CORRECTED: Added the necessary Type object for Gson deserialization.
 			Type type = new TypeToken<Map<String, Object>>() {
 			}.getType();
 			Map<String, Object> payload = gson.fromJson(jsonPayload, type);
@@ -258,7 +261,8 @@ public class StorageResource extends HttpServlet {
 	@Override
 	protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains("STORAGE_DELETE")) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains("STORAGE_DELETE"))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}

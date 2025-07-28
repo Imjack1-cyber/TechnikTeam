@@ -98,8 +98,8 @@ public class InventoryKitDAO {
 		Map<Integer, InventoryKit> kitMap = new LinkedHashMap<>();
 		String sql = "SELECT k.id, k.name, k.description, k.location, ki.item_id, ki.quantity, si.name as item_name FROM inventory_kits k LEFT JOIN inventory_kit_items ki ON k.id = ki.kit_id LEFT JOIN storage_items si ON ki.item_id = si.id ORDER BY k.name, si.name";
 		try (Connection conn = dbManager.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery()) {
 			while (rs.next()) {
 				int kitId = rs.getInt("id");
 				InventoryKit kit = kitMap.computeIfAbsent(kitId, id -> {
@@ -183,8 +183,8 @@ public class InventoryKitDAO {
 		List<InventoryKit> kits = new ArrayList<>();
 		String sql = "SELECT * FROM inventory_kits ORDER BY name";
 		try (Connection conn = dbManager.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery()) {
 			while (rs.next()) {
 				kits.add(mapResultSetToKit(rs));
 			}

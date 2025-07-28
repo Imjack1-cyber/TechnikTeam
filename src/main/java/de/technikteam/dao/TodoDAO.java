@@ -32,8 +32,8 @@ public class TodoDAO {
 				+ "ORDER BY c.display_order, t.display_order";
 
 		try (Connection conn = dbManager.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery()) {
 
 			while (rs.next()) {
 				int categoryId = rs.getInt("cat_id");

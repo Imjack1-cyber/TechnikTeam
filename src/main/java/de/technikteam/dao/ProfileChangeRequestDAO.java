@@ -51,8 +51,8 @@ public class ProfileChangeRequestDAO {
 		List<ProfileChangeRequest> requests = new ArrayList<>();
 		String sql = "SELECT pcr.*, u.username as username FROM profile_change_requests pcr JOIN users u ON pcr.user_id = u.id WHERE pcr.status = 'PENDING' ORDER BY pcr.requested_at ASC";
 		try (Connection conn = dbManager.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery()) {
 			while (rs.next()) {
 				requests.add(mapResultSetToRequest(rs));
 			}

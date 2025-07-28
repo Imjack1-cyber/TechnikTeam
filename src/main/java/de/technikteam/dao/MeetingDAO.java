@@ -84,8 +84,8 @@ public class MeetingDAO {
 		List<Meeting> meetings = new ArrayList<>();
 		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id ORDER BY m.meeting_datetime DESC";
 		try (Connection conn = dbManager.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery()) {
 			while (rs.next())
 				meetings.add(mapResultSetToMeeting(rs));
 		} catch (SQLException e) {
@@ -170,8 +170,8 @@ public class MeetingDAO {
 		List<Meeting> meetings = new ArrayList<>();
 		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id WHERE m.meeting_datetime >= NOW() - INTERVAL 1 DAY ORDER BY m.meeting_datetime ASC";
 		try (Connection conn = dbManager.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery()) {
 			while (rs.next()) {
 				meetings.add(mapResultSetToMeeting(rs));
 			}

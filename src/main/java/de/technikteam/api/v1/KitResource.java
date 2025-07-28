@@ -6,6 +6,7 @@ import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import de.technikteam.config.Permissions;
 import de.technikteam.dao.InventoryKitDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.InventoryKit;
@@ -49,7 +50,8 @@ public class KitResource extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains("KIT_READ")) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains(Permissions.KIT_READ))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -84,7 +86,8 @@ public class KitResource extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains("KIT_CREATE")) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains(Permissions.KIT_CREATE))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -115,7 +118,8 @@ public class KitResource extends HttpServlet {
 	@Override
 	protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains("KIT_UPDATE")) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains(Permissions.KIT_UPDATE))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -197,7 +201,8 @@ public class KitResource extends HttpServlet {
 	@Override
 	protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains("KIT_DELETE")) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains(Permissions.KIT_DELETE))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}

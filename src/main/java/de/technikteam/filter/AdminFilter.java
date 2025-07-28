@@ -27,26 +27,24 @@ public class AdminFilter implements Filter {
 		HttpServletResponse response = (HttpServletResponse) res;
 		String path = request.getRequestURI().substring(request.getContextPath().length());
 
-		// CRITICAL FIX: Get the full user object directly from the request attribute.
-		// The ApiAuthFilter is responsible for placing a *fully populated* user object here.
 		User user = (User) request.getAttribute("user");
 
 		if (user == null) {
 			logger.error(
-					"AdminFilter Error: User object not found in request attribute for protected admin path '{}'. ApiAuthFilter might not have run or failed.",
+					"AdminFilter Error: User object not found in request attribute for protected admin path '{}'. This indicates a failure in the upstream authentication filter.",
 					path);
-			response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
+			// A missing user principal is an authentication failure, not authorization.
+			response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authentication context is missing.");
 			return;
 		}
 
-		// Use the business logic method on the User object itself.
 		if (user.hasAdminAccess()) {
 			logger.trace("ADMIN area access GRANTED for user '{}' to path '{}'.", user.getUsername(), path);
 			chain.doFilter(request, response);
 		} else {
 			logger.warn(
-					"ADMIN access DENIED for user '{}' (Role: '{}') to path '{}'. No relevant admin permissions found.",
-					user.getUsername(), user.getRoleName(), path);
+					"ADMIN access DENIED for user '{}' (Permissions: {}) to path '{}'. No relevant admin permissions found.",
+					user.getUsername(), user.getPermissions(), path);
 			response.sendError(HttpServletResponse.SC_FORBIDDEN,
 					"You do not have permission to access this administrative area.");
 		}

@@ -57,8 +57,8 @@ public class FileDAO {
 	public Map<String, List<File>> getAllFilesGroupedByCategory(User user) {
 		Map<Integer, String> categoryIdToNameMap = new HashMap<>();
 		try (Connection conn = dbManager.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery("SELECT id, name FROM file_categories")) {
+				PreparedStatement stmt = conn.prepareStatement("SELECT id, name FROM file_categories");
+				ResultSet rs = stmt.executeQuery()) {
 			while (rs.next()) {
 				categoryIdToNameMap.put(rs.getInt("id"), rs.getString("name"));
 			}
@@ -68,15 +68,15 @@ public class FileDAO {
 		}
 
 		List<File> files = new ArrayList<>();
-		String sql = "SELECT * FROM files ";
+		StringBuilder sql = new StringBuilder("SELECT * FROM files ");
 		if (!user.getPermissions().contains("ACCESS_ADMIN_PANEL")) {
-			sql += "WHERE required_role = 'NUTZER' ";
+			sql.append("WHERE required_role = 'NUTZER' ");
 		}
-		sql += "ORDER BY filename";
+		sql.append("ORDER BY filename");
 
 		try (Connection conn = dbManager.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
+				PreparedStatement stmt = conn.prepareStatement(sql.toString());
+				ResultSet rs = stmt.executeQuery()) {
 			while (rs.next()) {
 				File file = new File();
 				file.setId(rs.getInt("id"));
@@ -168,8 +168,8 @@ public class FileDAO {
 		List<FileCategory> categories = new ArrayList<>();
 		String sql = "SELECT * FROM file_categories ORDER BY name";
 		try (Connection conn = dbManager.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery()) {
 			while (rs.next()) {
 				FileCategory cat = new FileCategory();
 				cat.setId(rs.getInt("id"));

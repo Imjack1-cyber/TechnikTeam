@@ -32,6 +32,13 @@ public class User {
 	 * access to the admin panel. This prevents logic duplication in filters and
 	 * navigation builders.
 	 *
+	 * The logic is as follows: 1. A user is an admin if they have the global
+	 * 'ACCESS_ADMIN_PANEL' permission. 2. If not, a user is also considered an
+	 * admin if they have *any* CRUD-like or management-level permission (e.g.,
+	 * USER_CREATE, EVENT_MANAGE_ASSIGNMENTS, LOG_READ). 3. Simple file read/update
+	 * permissions are excluded from this check to allow granting those without
+	 * giving full admin area access.
+	 *
 	 * @return true if the user has any admin-level permission, false otherwise.
 	 */
 	public boolean hasAdminAccess() {

@@ -96,23 +96,29 @@ public class ServiceModule extends ServletModule {
 		serve("/notifications").with(NotificationServlet.class);
 
 		// --- API v1 SERVLET BINDINGS ---
+
+		// Public API (requires login, but not admin rights)
 		serve("/api/v1/public/dashboard").with(PublicDashboardResource.class);
 		serve("/api/v1/public/events", "/api/v1/public/events/*").with(PublicEventResource.class);
 		serve("/api/v1/public/meetings", "/api/v1/public/meetings/*").with(PublicMeetingResource.class);
 		serve("/api/v1/public/storage", "/api/v1/public/storage/*").with(PublicStorageResource.class);
 		serve("/api/v1/public/profile", "/api/v1/public/profile/*").with(PublicProfileResource.class);
 		serve("/api/v1/public/calendar.ics").with(PublicCalendarResource.class);
-		serve("/api/v1/public/files", "/api/v1/public/files/*").with(PublicFilesResource.class);
 		serve("/api/v1/public/calendar/entries").with(PublicCalendarEntriesResource.class);
 		serve("/api/v1/public/feedback", "/api/v1/public/feedback/*").with(PublicFeedbackResource.class);
-		serve("/api/v1/public/files/*").with(PublicFileStreamResource.class);
 
+		// CORRECTED: Unambiguous mappings for public file resources
+		serve("/api/v1/public/files").with(PublicFilesResource.class);
+		serve("/api/v1/public/files/download/*", "/api/v1/public/files/images/*").with(PublicFileStreamResource.class);
+
+		// Authentication (does not require login token)
 		serve("/api/v1/auth/login").with(AuthResource.class);
 		serve("/api/v1/auth/passkey/register/start").with(RegistrationStartServlet.class);
 		serve("/api/v1/auth/passkey/register/finish").with(RegistrationFinishServlet.class);
 		serve("/api/v1/auth/passkey/login/start").with(AuthenticationStartServlet.class);
 		serve("/api/v1/auth/passkey/login/finish").with(AuthenticationFinishServlet.class);
 
+		// Admin API (requires admin rights, handled by AdminFilter)
 		serve("/api/v1/users", "/api/v1/users/*").with(UserResource.class);
 		serve("/api/v1/wiki", "/api/v1/wiki/*").with(WikiResource.class);
 		serve("/api/v1/feedback", "/api/v1/feedback/*").with(FeedbackResource.class);

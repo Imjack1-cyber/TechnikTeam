@@ -104,8 +104,8 @@ public class EventDAO {
 		List<Event> events = new ArrayList<>();
 		String sql = "SELECT e.*, u.username as leader_username FROM events e LEFT JOIN users u ON e.leader_user_id = u.id ORDER BY e.event_datetime DESC";
 		try (Connection connection = dbManager.getConnection();
-				Statement statement = connection.createStatement();
-				ResultSet resultSet = statement.executeQuery(sql)) {
+				PreparedStatement statement = connection.prepareStatement(sql);
+				ResultSet resultSet = statement.executeQuery()) {
 			while (resultSet.next()) {
 				events.add(mapResultSetToEvent(resultSet));
 			}
@@ -119,8 +119,8 @@ public class EventDAO {
 		List<Event> events = new ArrayList<>();
 		String sql = "SELECT * FROM events WHERE status IN ('GEPLANT', 'KOMPLETT', 'LAUFEND') ORDER BY event_datetime ASC";
 		try (Connection connection = dbManager.getConnection();
-				Statement statement = connection.createStatement();
-				ResultSet resultSet = statement.executeQuery(sql)) {
+				PreparedStatement statement = connection.prepareStatement(sql);
+				ResultSet resultSet = statement.executeQuery()) {
 			while (resultSet.next()) {
 				events.add(mapResultSetToEvent(resultSet));
 			}
@@ -359,8 +359,8 @@ public class EventDAO {
 		List<Event> events = new ArrayList<>();
 		String sql = "SELECT * FROM events WHERE status NOT IN ('ABGESCHLOSSEN', 'ABGESAGT') AND event_datetime >= NOW() - INTERVAL 1 DAY ORDER BY event_datetime ASC";
 		try (Connection connection = dbManager.getConnection();
-				Statement statement = connection.createStatement();
-				ResultSet resultSet = statement.executeQuery(sql)) {
+				PreparedStatement statement = connection.prepareStatement(sql);
+				ResultSet resultSet = statement.executeQuery()) {
 			while (resultSet.next()) {
 				events.add(mapResultSetToEvent(resultSet));
 			}

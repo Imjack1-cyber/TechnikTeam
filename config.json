@@ -1,4 +1,4 @@
-{
+﻿{
     "SourceDirectory":  "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam",
     "OutputFile":  "technikteam.txt",
     "MaxFileSizeKB":  475,
@@ -10,6 +10,14 @@
                                 "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\src\\test",
                                 "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\target"
                             ],
+    "ExcludedFiles":  [
+                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\technikteam.txt",
+                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\technikteam-1.txt",
+                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\technikteam-2.txt",
+                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\technikteam-3.txt",
+                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\technikteam-4.txt",
+                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\technikteam-5.txt"
+                      ],
     "ExtensionFilterList":  [
                                 ".java",
                                 ".jsp",
@@ -19,7 +27,8 @@
                                 ".sql",
                                 ".txt",
                                 ".html",
-                                ".md"
+                                ".md",
+                                ".xml"
                             ],
     "ExtensionFilterMode":  "include"
 }

@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import de.technikteam.config.Permissions;
 import de.technikteam.dao.AchievementDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Achievement;
@@ -46,7 +47,8 @@ public class AchievementResource extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains("ACHIEVEMENT_VIEW")) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains(Permissions.ACHIEVEMENT_VIEW))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -80,7 +82,8 @@ public class AchievementResource extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains("ACHIEVEMENT_CREATE")) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains(Permissions.ACHIEVEMENT_CREATE))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -114,7 +117,8 @@ public class AchievementResource extends HttpServlet {
 	@Override
 	protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains("ACHIEVEMENT_UPDATE")) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains(Permissions.ACHIEVEMENT_UPDATE))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -149,7 +153,8 @@ public class AchievementResource extends HttpServlet {
 	@Override
 	protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains("ACHIEVEMENT_DELETE")) {
+		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
+				&& !adminUser.getPermissions().contains(Permissions.ACHIEVEMENT_DELETE))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
