@@ -101,3 +101,5 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 		</div>
 	);
 };
+
+export default ProfileDetails;
