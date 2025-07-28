@@ -2,7 +2,6 @@
 package de.technikteam.api.v1;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -64,8 +63,8 @@ public class StorageResource extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
-				&& !adminUser.getPermissions().contains("STORAGE_READ"))) {
+		if (adminUser == null
+				|| (!adminUser.hasAdminAccess() && !adminUser.getPermissions().contains(Permissions.STORAGE_READ))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -103,9 +102,9 @@ public class StorageResource extends HttpServlet {
 		String pathInfo = req.getPathInfo();
 		boolean isUpdate = (pathInfo != null && !pathInfo.equals("/"));
 		User adminUser = (User) req.getAttribute("user");
-		String requiredPermission = isUpdate ? "STORAGE_UPDATE" : "STORAGE_CREATE";
-		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
-				&& !adminUser.getPermissions().contains(requiredPermission))) {
+		String requiredPermission = isUpdate ? Permissions.STORAGE_UPDATE : Permissions.STORAGE_CREATE;
+		if (adminUser == null
+				|| (!adminUser.hasAdminAccess() && !adminUser.getPermissions().contains(requiredPermission))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -169,15 +168,11 @@ public class StorageResource extends HttpServlet {
 		}
 	}
 
-	/**
-	 * Handles PUT requests for partial updates (e.g., status changes). Replaces the
-	 * need for a PATCH method, which is not standard in HttpServlet.
-	 */
 	@Override
 	protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
-				&& !adminUser.getPermissions().contains("STORAGE_UPDATE"))) {
+		if (adminUser == null
+				|| (!adminUser.hasAdminAccess() && !adminUser.getPermissions().contains(Permissions.STORAGE_UPDATE))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -261,8 +256,8 @@ public class StorageResource extends HttpServlet {
 	@Override
 	protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
-				&& !adminUser.getPermissions().contains("STORAGE_DELETE"))) {
+		if (adminUser == null
+				|| (!adminUser.hasAdminAccess() && !adminUser.getPermissions().contains(Permissions.STORAGE_DELETE))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}

@@ -79,8 +79,8 @@ public class UserResource extends HttpServlet {
 				return;
 			}
 
-			if (!authenticatedUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
-					&& !authenticatedUser.getPermissions().contains("USER_READ")) {
+			if (!authenticatedUser.hasAdminAccess()
+					&& !authenticatedUser.getPermissions().contains(Permissions.USER_READ)) {
 				sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 				return;
 			}
@@ -110,7 +110,6 @@ public class UserResource extends HttpServlet {
 	}
 
 	private void handleGetCurrentUser(HttpServletResponse resp, User authenticatedUser) throws IOException {
-		// The user object from the filter is now fully populated with permissions.
 		List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(authenticatedUser);
 		Map<String, Object> responseData = Map.of("user", authenticatedUser, "navigation", navigationItems);
 		sendJsonResponse(resp, HttpServletResponse.SC_OK,
@@ -126,8 +125,6 @@ public class UserResource extends HttpServlet {
 		Map<String, Object> formData = Map.of("roles", roles, "groupedPermissions", groupedPermissions);
 		sendJsonResponse(resp, HttpServletResponse.SC_OK, new ApiResponse(true, "Form data retrieved", formData));
 	}
-
-	// doPost, doPut, doDelete and other helper methods remain unchanged...
 
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -164,8 +161,8 @@ public class UserResource extends HttpServlet {
 	}
 
 	private void handleCreateUser(HttpServletRequest req, HttpServletResponse resp, User adminUser) throws IOException {
-		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
-				&& !adminUser.getPermissions().contains("USER_CREATE"))) {
+		if (adminUser == null
+				|| (!adminUser.hasAdminAccess() && !adminUser.getPermissions().contains(Permissions.USER_CREATE))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -173,6 +170,7 @@ public class UserResource extends HttpServlet {
 		try {
 			String jsonPayload = req.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
 			User newUser = gson.fromJson(jsonPayload, User.class);
+			@SuppressWarnings("unchecked")
 			Map<String, Object> payloadMap = gson.fromJson(jsonPayload, Map.class);
 			String password = (String) payloadMap.get("password");
 
@@ -214,8 +212,8 @@ public class UserResource extends HttpServlet {
 
 	private void handleResetPassword(HttpServletRequest req, HttpServletResponse resp, User adminUser, int userId)
 			throws IOException {
-		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
-				&& !adminUser.getPermissions().contains("USER_PASSWORD_RESET"))) {
+		if (adminUser == null || (!adminUser.hasAdminAccess()
+				&& !adminUser.getPermissions().contains(Permissions.USER_PASSWORD_RESET))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -263,8 +261,8 @@ public class UserResource extends HttpServlet {
 	@Override
 	protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
-				&& !adminUser.getPermissions().contains("USER_UPDATE"))) {
+		if (adminUser == null
+				|| (!adminUser.hasAdminAccess() && !adminUser.getPermissions().contains(Permissions.USER_UPDATE))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -280,6 +278,7 @@ public class UserResource extends HttpServlet {
 			User updatedUser = gson.fromJson(jsonPayload, User.class);
 			updatedUser.setId(userId);
 
+			@SuppressWarnings("unchecked")
 			Map<String, Object> payloadMap = gson.fromJson(jsonPayload, Map.class);
 			@SuppressWarnings("unchecked")
 			List<Double> permissionIdDoubles = (List<Double>) payloadMap.get("permissionIds");
@@ -308,8 +307,8 @@ public class UserResource extends HttpServlet {
 	@Override
 	protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
-				&& !adminUser.getPermissions().contains("USER_DELETE"))) {
+		if (adminUser == null
+				|| (!adminUser.hasAdminAccess() && !adminUser.getPermissions().contains(Permissions.USER_DELETE))) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}

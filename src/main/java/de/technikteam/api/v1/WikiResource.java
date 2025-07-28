@@ -153,6 +153,7 @@ public class WikiResource extends HttpServlet {
 
 		try {
 			String jsonPayload = req.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
+			@SuppressWarnings("unchecked")
 			Map<String, String> payload = gson.fromJson(jsonPayload, Map.class);
 			String content = payload.get("content");
 

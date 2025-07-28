@@ -12,7 +12,7 @@ public class EventTask {
 	private int id;
 	private int eventId;
 	private String description;
-	private String details; 
+	private String details;
 	private String status;
 	private String eventName;
 
@@ -22,8 +22,6 @@ public class EventTask {
 	private List<User> assignedUsers;
 	private List<StorageItem> requiredItems;
 	private List<InventoryKit> requiredKits;
-
-	private String assignedUsernames;
 
 	public String getAssignedUsernames() {
 		if (assignedUsers != null && !assignedUsers.isEmpty()) {
@@ -70,10 +68,6 @@ public class EventTask {
 
 	public void setStatus(String status) {
 		this.status = status;
-	}
-
-	public void setAssignedUsernames(String assignedUsernames) {
-		this.assignedUsernames = assignedUsernames;
 	}
 
 	public String getEventName() {

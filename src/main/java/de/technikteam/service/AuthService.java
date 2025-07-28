@@ -16,7 +16,6 @@ import org.apache.logging.log4j.Logger;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
-import java.util.Set;
 
 @Singleton
 public class AuthService {
@@ -53,9 +52,8 @@ public class AuthService {
 			DecodedJWT decodedJWT = verifier.verify(token);
 			int userId = Integer.parseInt(decodedJWT.getSubject());
 
-			// The userDAO.getUserById() method is already designed to fetch the user AND
-			// their permissions.
-			// This single call is sufficient and correct.
+			// The userDAO.getUserById() method has been refactored to be atomic.
+			// This single call is now sufficient and robust.
 			User user = userDAO.getUserById(userId);
 
 			if (user == null) {
@@ -63,9 +61,6 @@ public class AuthService {
 				return null;
 			}
 
-			// The user object returned from getUserById now contains the full set of
-			// permissions.
-			// The downstream filters will now work correctly.
 			return user;
 		} catch (JWTVerificationException e) {
 			logger.warn("JWT verification failed: {}", e.getMessage());

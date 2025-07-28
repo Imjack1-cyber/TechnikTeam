@@ -26,10 +26,10 @@ public class SystemInfoService {
 		OperatingSystemMXBean osBean = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean.class);
 		File root = new File("/");
 
-		stats.setCpuLoad(osBean.getSystemCpuLoad() * 100.0);
+		stats.setCpuLoad(osBean.getCpuLoad() * 100.0);
 
-		long totalMemoryBytes = osBean.getTotalPhysicalMemorySize();
-		long freeMemoryBytes = osBean.getFreePhysicalMemorySize();
+		long totalMemoryBytes = Runtime.getRuntime().totalMemory();
+		long freeMemoryBytes = Runtime.getRuntime().freeMemory();
 		stats.setTotalMemory(totalMemoryBytes / GIGA_BYTE);
 		stats.setUsedMemory((totalMemoryBytes - freeMemoryBytes) / GIGA_BYTE);
 

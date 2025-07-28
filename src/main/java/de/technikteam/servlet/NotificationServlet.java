@@ -10,7 +10,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -29,10 +28,11 @@ public class NotificationServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 
-		// The legacy AuthenticationFilter places the user object in the request attribute
+		// The legacy AuthenticationFilter places the user object in the request
+		// attribute
 		// after validating the session.
 		de.technikteam.model.User user = (de.technikteam.model.User) request.getAttribute("user");
-		
+
 		if (user == null) {
 			logger.warn("Unauthorized attempt to connect to SSE stream. No authenticated user found by filter.");
 			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -47,7 +47,8 @@ public class NotificationServlet extends HttpServlet {
 		response.setHeader("Connection", "keep-alive");
 
 		// This call relies on the user object being in the session, which the
-		// AuthenticationFilter has already verified exists. The NotificationService will
+		// AuthenticationFilter has already verified exists. The NotificationService
+		// will
 		// get the session from the request's AsyncContext.
 		notificationService.register(request);
 	}

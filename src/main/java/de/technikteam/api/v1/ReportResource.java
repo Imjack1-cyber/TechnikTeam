@@ -4,7 +4,6 @@ package de.technikteam.api.v1;
 import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import de.technikteam.config.Permissions;
 import de.technikteam.dao.ReportDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
@@ -39,8 +38,7 @@ public class ReportResource extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
-				&& !adminUser.getPermissions().contains(Permissions.REPORT_READ))) {
+		if (adminUser == null || !adminUser.getPermissions().contains("REPORT_READ")) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}

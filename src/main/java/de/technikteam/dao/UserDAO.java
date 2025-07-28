@@ -54,25 +54,42 @@ public class UserDAO {
 	}
 
 	public User validateUser(String username, String password) {
-		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ?";
-		try (Connection connection = dbManager.getConnection()) {
-			try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-				preparedStatement.setString(1, username);
-				try (ResultSet resultSet = preparedStatement.executeQuery()) {
-					if (resultSet.next()) {
-						String storedHash = resultSet.getString("password_hash");
-						if (passwordEncoder.matches(password, storedHash)) {
-							User user = mapResultSetToUser(resultSet);
-							user.setPermissions(getPermissionsForUser(user.getId(), connection));
-							return user;
+		String sql = "SELECT u.*, r.role_name, p.permission_key " + "FROM users u "
+				+ "LEFT JOIN roles r ON u.role_id = r.id " + "LEFT JOIN user_permissions up ON u.id = up.user_id "
+				+ "LEFT JOIN permissions p ON up.permission_id = p.id " + "WHERE u.username = ?";
+
+		User user = null;
+		Set<String> permissions = new HashSet<>();
+
+		try (Connection connection = dbManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setString(1, username);
+			try (ResultSet resultSet = preparedStatement.executeQuery()) {
+				String storedHash = null;
+				boolean firstRow = true;
+				while (resultSet.next()) {
+					if (firstRow) {
+						storedHash = resultSet.getString("password_hash");
+						if (storedHash == null || !passwordEncoder.matches(password, storedHash)) {
+							return null;
 						}
+						user = mapResultSetToUser(resultSet);
+						firstRow = false;
+					}
+					String permissionKey = resultSet.getString("permission_key");
+					if (permissionKey != null) {
+						permissions.add(permissionKey);
 					}
 				}
 			}
+			if (user != null) {
+				user.setPermissions(permissions);
+			}
 		} catch (SQLException exception) {
 			logger.error("SQL error during user validation for username: {}", username, exception);
+			return null;
 		}
-		return null;
+		return user;
 	}
 
 	public User getUserByUsername(String username) {
@@ -91,27 +108,21 @@ public class UserDAO {
 		return null;
 	}
 
-	private Set<String> getPermissionsForUser(int userId, Connection connection) throws SQLException {
+	public Set<String> getPermissionsForUser(int userId) {
 		Set<String> permissions = new HashSet<>();
 		String sql = "SELECT p.permission_key FROM permissions p JOIN user_permissions up ON p.id = up.permission_id WHERE up.user_id = ?";
-		try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+		try (Connection connection = dbManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 			preparedStatement.setInt(1, userId);
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				while (resultSet.next()) {
 					permissions.add(resultSet.getString("permission_key"));
 				}
 			}
-		}
-		return permissions;
-	}
-
-	public Set<String> getPermissionsForUser(int userId) {
-		try (Connection connection = dbManager.getConnection()) {
-			return getPermissionsForUser(userId, connection);
 		} catch (SQLException exception) {
 			logger.error("Could not fetch permissions for user ID: {}", userId, exception);
-			return new HashSet<>();
 		}
+		return permissions;
 	}
 
 	public boolean updateUserPermissions(int userId, String[] permissionIds, Connection conn) throws SQLException {
@@ -246,21 +257,32 @@ public class UserDAO {
 	}
 
 	public User getUserById(int userId) {
-		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = ?";
-		try (Connection connection = dbManager.getConnection()) {
-			try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-				preparedStatement.setInt(1, userId);
-				try (ResultSet resultSet = preparedStatement.executeQuery()) {
-					if (resultSet.next()) {
-						User user = mapResultSetToUser(resultSet);
-						user.setPermissions(getPermissionsForUser(userId, connection));
-						return user;
+		String sql = "SELECT u.*, r.role_name, p.permission_key " + "FROM users u "
+				+ "LEFT JOIN roles r ON u.role_id = r.id " + "LEFT JOIN user_permissions up ON u.id = up.user_id "
+				+ "LEFT JOIN permissions p ON up.permission_id = p.id " + "WHERE u.id = ?";
+		User user = null;
+		Set<String> permissions = new HashSet<>();
+		try (Connection connection = dbManager.getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			preparedStatement.setInt(1, userId);
+			try (ResultSet resultSet = preparedStatement.executeQuery()) {
+				while (resultSet.next()) {
+					if (user == null) {
+						user = mapResultSetToUser(resultSet);
+					}
+					String permissionKey = resultSet.getString("permission_key");
+					if (permissionKey != null) {
+						permissions.add(permissionKey);
 					}
 				}
 			}
+			if (user != null) {
+				user.setPermissions(permissions);
+			}
 		} catch (SQLException exception) {
-			logger.error("SQL error fetching user by ID: {}", userId, exception);
+			logger.error("SQL error fetching user by ID with permissions: {}", userId, exception);
+			return null;
 		}
-		return null;
+		return user;
 	}
 }

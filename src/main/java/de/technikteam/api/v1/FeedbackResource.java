@@ -23,13 +23,11 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Type;
-import java.sql.Connection;
-import java.sql.SQLException;
+import java.sql.Connection; // <-- MISSING IMPORT ADDED
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -204,6 +202,7 @@ public class FeedbackResource extends HttpServlet {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	private void handleReorder(HttpServletRequest req, HttpServletResponse resp, User adminUser) throws IOException {
 		try (Connection conn = dbManager.getConnection()) {
 			conn.setAutoCommit(false);
@@ -215,10 +214,13 @@ public class FeedbackResource extends HttpServlet {
 
 				int submissionId = ((Double) data.get("submissionId")).intValue();
 				String newStatus = (String) data.get("newStatus");
-				List<Double> orderedIdsDouble = (List<Double>) data.get("orderedIds");
-				if (orderedIdsDouble == null) {
-					throw new IllegalArgumentException("orderedIds list is missing in the payload.");
+				Object orderedIdsObject = data.get("orderedIds");
+
+				if (!(orderedIdsObject instanceof List)) {
+					throw new IllegalArgumentException("orderedIds list is missing or not a list in the payload.");
 				}
+				
+				List<Double> orderedIdsDouble = (List<Double>) orderedIdsObject;
 				List<Integer> orderedIds = orderedIdsDouble.stream().map(Double::intValue).collect(Collectors.toList());
 
 				submissionDAO.updateStatus(submissionId, newStatus, conn);

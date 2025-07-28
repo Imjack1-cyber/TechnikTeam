@@ -5,7 +5,6 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import de.technikteam.config.Permissions;
 import de.technikteam.dao.FileDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.FileCategory;
@@ -24,7 +23,6 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.reflect.Type;
 import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.List;
@@ -58,8 +56,7 @@ public class FileResource extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
-				&& !adminUser.getPermissions().contains(Permissions.FILE_READ))) {
+		if (adminUser == null || !adminUser.getPermissions().contains("FILE_READ")) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -151,8 +148,7 @@ public class FileResource extends HttpServlet {
 	private void handleCreateFile(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException, ServletException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
-				&& !adminUser.getPermissions().contains(Permissions.FILE_CREATE))) {
+		if (adminUser == null || !adminUser.getPermissions().contains("FILE_CREATE")) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -193,8 +189,7 @@ public class FileResource extends HttpServlet {
 	private void handleUpdateFile(HttpServletRequest req, HttpServletResponse resp, int fileId)
 			throws IOException, ServletException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
-				&& !adminUser.getPermissions().contains(Permissions.FILE_UPDATE))) {
+		if (adminUser == null || !adminUser.getPermissions().contains("FILE_UPDATE")) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -221,8 +216,7 @@ public class FileResource extends HttpServlet {
 	private void handleReassignCategory(HttpServletRequest req, HttpServletResponse resp, int fileId)
 			throws IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
-				&& !adminUser.getPermissions().contains(Permissions.FILE_UPDATE))) {
+		if (adminUser == null || !adminUser.getPermissions().contains("FILE_UPDATE")) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -248,8 +242,7 @@ public class FileResource extends HttpServlet {
 
 	private void handleCreateCategory(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
-				&& !adminUser.getPermissions().contains(Permissions.FILE_CREATE))) {
+		if (adminUser == null || !adminUser.getPermissions().contains("FILE_CREATE")) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -275,8 +268,7 @@ public class FileResource extends HttpServlet {
 	}
 
 	private void handleDeleteFile(HttpServletResponse resp, User adminUser, int fileId) throws IOException {
-		if (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
-				&& !adminUser.getPermissions().contains(Permissions.FILE_DELETE)) {
+		if (!adminUser.getPermissions().contains("FILE_DELETE")) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
@@ -296,8 +288,7 @@ public class FileResource extends HttpServlet {
 	}
 
 	private void handleDeleteCategory(HttpServletResponse resp, User adminUser, int categoryId) throws IOException {
-		if (!adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL)
-				&& !adminUser.getPermissions().contains(Permissions.FILE_DELETE)) {
+		if (!adminUser.getPermissions().contains("FILE_DELETE")) {
 			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
 			return;
 		}
