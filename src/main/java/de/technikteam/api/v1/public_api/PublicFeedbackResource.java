@@ -45,7 +45,7 @@ public class PublicFeedbackResource extends HttpServlet {
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		User user = (User) req.getSession().getAttribute("user");
+		User user = (User) req.getAttribute("user");
 		if (user == null) {
 			sendJsonError(resp, HttpServletResponse.SC_UNAUTHORIZED, "Authentication required.");
 			return;
@@ -53,12 +53,10 @@ public class PublicFeedbackResource extends HttpServlet {
 
 		String pathInfo = req.getPathInfo();
 		if ("/user".equals(pathInfo)) {
-			// GET /api/v1/public/feedback/user
 			List<FeedbackSubmission> submissions = submissionDAO.getSubmissionsByUserId(user.getId());
 			sendJsonResponse(resp, HttpServletResponse.SC_OK,
 					new ApiResponse(true, "Submissions retrieved.", submissions));
 		} else if ("/forms".equals(pathInfo)) {
-			// GET /api/v1/public/feedback/forms?eventId={id}
 			handleGetEventFeedbackForm(req, resp, user);
 		} else {
 			sendJsonError(resp, HttpServletResponse.SC_NOT_FOUND, "Endpoint not found.");
@@ -67,7 +65,7 @@ public class PublicFeedbackResource extends HttpServlet {
 
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		User user = (User) req.getSession().getAttribute("user");
+		User user = (User) req.getAttribute("user");
 		if (user == null) {
 			sendJsonError(resp, HttpServletResponse.SC_UNAUTHORIZED, "Authentication required.");
 			return;

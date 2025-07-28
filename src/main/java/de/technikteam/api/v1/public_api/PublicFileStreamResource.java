@@ -49,7 +49,7 @@ public class PublicFileStreamResource extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		User user = (User) request.getSession().getAttribute("user");
+		User user = (User) request.getAttribute("user");
 		if (user == null) {
 			response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authentication required.");
 			return;

@@ -1,5 +1,9 @@
 package de.technikteam.listener;
 
+import com.google.inject.Injector;
+import de.technikteam.config.GuiceConfig;
+import de.technikteam.dao.DatabaseManager;
+
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Enumeration;
@@ -11,13 +15,6 @@ import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
 import jakarta.servlet.annotation.WebListener;
 
-/**
- * This is an application lifecycle listener that performs crucial cleanup tasks
- * when the web application is shut down or undeployed from the server. Its
- * primary purpose is to manually deregister the JDBC driver that was loaded by
- * this application's classloader. This prevents potential memory leaks in
- * application servers like Tomcat.
- */
 @WebListener
 public class AppContextListener implements ServletContextListener {
 
@@ -32,6 +29,23 @@ public class AppContextListener implements ServletContextListener {
 	public void contextDestroyed(ServletContextEvent sce) {
 		logger.info(">>>>>>>>>> TechnikTeam Application Context Being Destroyed. Cleaning up resources... <<<<<<<<<<");
 
+		// --- Step 1: Cleanly shut down the Hikari Connection Pool ---
+		Injector injector = GuiceConfig.getInjectorInstance();
+		if (injector != null) {
+			try {
+				DatabaseManager dbManager = injector.getInstance(DatabaseManager.class);
+				if (dbManager != null) {
+					logger.info("Attempting to shut down the database connection pool...");
+					dbManager.closeDataSource();
+				}
+			} catch (Exception e) {
+				logger.error("Error while shutting down the connection pool.", e);
+			}
+		} else {
+			logger.warn("Guice Injector was not available. Could not shut down connection pool gracefully.");
+		}
+
+		// --- Step 2: Deregister JDBC drivers (legacy cleanup) ---
 		Enumeration<java.sql.Driver> drivers = DriverManager.getDrivers();
 		while (drivers.hasMoreElements()) {
 			java.sql.Driver driver = drivers.nextElement();

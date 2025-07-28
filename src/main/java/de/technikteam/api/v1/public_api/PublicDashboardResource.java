@@ -41,8 +41,6 @@ public class PublicDashboardResource extends HttpServlet {
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		// CORRECTED: Get user from request attribute, not session.
-		// The ApiAuthFilter puts the user here after validating the JWT.
 		User user = (User) req.getAttribute("user");
 		if (user == null) {
 			sendJsonError(resp, HttpServletResponse.SC_UNAUTHORIZED, "Authentication required.");

@@ -35,7 +35,7 @@ public class PublicMeetingResource extends HttpServlet {
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		User user = (User) req.getSession().getAttribute("user");
+		User user = (User) req.getAttribute("user");
 		if (user == null) {
 			sendJsonError(resp, HttpServletResponse.SC_UNAUTHORIZED, "Authentication required.");
 			return;
@@ -47,7 +47,7 @@ public class PublicMeetingResource extends HttpServlet {
 
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		User user = (User) req.getSession().getAttribute("user");
+		User user = (User) req.getAttribute("user");
 		if (user == null) {
 			sendJsonError(resp, HttpServletResponse.SC_UNAUTHORIZED, "Authentication required.");
 			return;

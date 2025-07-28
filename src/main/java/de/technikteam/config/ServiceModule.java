@@ -28,26 +28,21 @@ public class ServiceModule extends ServletModule {
 		bind(ApiAuthFilter.class).in(Scopes.SINGLETON);
 		bind(AdminFilter.class).in(Scopes.SINGLETON);
 
-		// Apply universal filters
 		filter("/*").through(CharacterEncodingFilter.class);
 		filter("/api/*").through(CorsFilter.class);
 
-		// Secure all API endpoints that require a JWT.
-		// NOTE: Login, passkey actions, and the public calendar are NOT in this list.
 		String[] securedApiPaths = { "/api/v1/public/*", "/api/v1/users/*", "/api/v1/wiki/*", "/api/v1/feedback/*",
 				"/api/v1/profile-requests/*", "/api/v1/courses/*", "/api/v1/meetings/*", "/api/v1/storage/*",
 				"/api/v1/kits/*", "/api/v1/achievements/*", "/api/v1/events/*", "/api/v1/logs", "/api/v1/reports/*",
 				"/api/v1/system/stats", "/api/v1/matrix/*", "/api/v1/files/*" };
 		filter(Arrays.asList(securedApiPaths)).through(ApiAuthFilter.class);
 
-		// Apply an additional admin check on top of the auth check for these paths.
 		String[] adminApiPaths = { "/api/v1/users/*", "/api/v1/wiki/*", "/api/v1/feedback/*",
 				"/api/v1/profile-requests/*", "/api/v1/courses/*", "/api/v1/meetings/*", "/api/v1/storage/*",
 				"/api/v1/kits/*", "/api/v1/achievements/*", "/api/v1/events/*", "/api/v1/logs", "/api/v1/reports/*",
 				"/api/v1/system/stats", "/api/v1/matrix/*", "/api/v1/files/*" };
 		filter(Arrays.asList(adminApiPaths)).through(AdminFilter.class);
 
-		// --- Shared Instances ---
 		bind(Gson.class).toInstance(
 				new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create());
 
@@ -99,15 +94,15 @@ public class ServiceModule extends ServletModule {
 		// --- SERVLET BINDINGS ---
 		serve("/notifications").with(NotificationServlet.class);
 
-		// API v1 Servlet Bindings
+		// --- API v1 SERVLET BINDINGS (CORRECTED) ---
 		serve("/api/v1/public/dashboard").with(PublicDashboardResource.class);
-		serve("/api/v1/public/events/*").with(PublicEventResource.class);
-		serve("/api/v1/public/meetings/*").with(PublicMeetingResource.class);
-		serve("/api/v1/public/storage/*").with(PublicStorageResource.class);
-		serve("/api/v1/public/profile/*").with(PublicProfileResource.class);
+		serve("/api/v1/public/events", "/api/v1/public/events/*").with(PublicEventResource.class);
+		serve("/api/v1/public/meetings", "/api/v1/public/meetings/*").with(PublicMeetingResource.class);
+		serve("/api/v1/public/storage", "/api/v1/public/storage/*").with(PublicStorageResource.class);
+		serve("/api/v1/public/profile", "/api/v1/public/profile/*").with(PublicProfileResource.class);
 		serve("/api/v1/public/calendar.ics").with(PublicCalendarResource.class);
 		serve("/api/v1/public/files/*").with(PublicFileStreamResource.class);
-		serve("/api/v1/public/feedback/*").with(PublicFeedbackResource.class);
+		serve("/api/v1/public/feedback", "/api/v1/public/feedback/*").with(PublicFeedbackResource.class);
 
 		serve("/api/v1/auth/login").with(AuthResource.class);
 		serve("/api/v1/auth/passkey/register/start").with(RegistrationStartServlet.class);
@@ -115,20 +110,23 @@ public class ServiceModule extends ServletModule {
 		serve("/api/v1/auth/passkey/login/start").with(AuthenticationStartServlet.class);
 		serve("/api/v1/auth/passkey/login/finish").with(AuthenticationFinishServlet.class);
 
-		serve("/api/v1/users/*").with(UserResource.class);
-		serve("/api/v1/wiki/*").with(WikiResource.class);
-		serve("/api/v1/feedback/*").with(FeedbackResource.class);
-		serve("/api/v1/profile-requests/*").with(ProfileRequestResource.class);
-		serve("/api/v1/courses/*").with(CourseResource.class);
-		serve("/api/v1/meetings/*").with(MeetingResource.class);
-		serve("/api/v1/storage/*").with(StorageResource.class);
-		serve("/api/v1/kits/*").with(KitResource.class);
-		serve("/api/v1/achievements/*").with(AchievementResource.class);
-		serve("/api/v1/events/*").with(EventResource.class);
+		// CORRECTED: Added explicit binding for the new form-data endpoint
+		serve("/api/v1/users/form-data").with(AdminFormDataResource.class);
+		serve("/api/v1/users", "/api/v1/users/*").with(UserResource.class);
+
+		serve("/api/v1/wiki", "/api/v1/wiki/*").with(WikiResource.class);
+		serve("/api/v1/feedback", "/api/v1/feedback/*").with(FeedbackResource.class);
+		serve("/api/v1/profile-requests", "/api/v1/profile-requests/*").with(ProfileRequestResource.class);
+		serve("/api/v1/courses", "/api/v1/courses/*").with(CourseResource.class);
+		serve("/api/v1/meetings", "/api/v1/meetings/*").with(MeetingResource.class);
+		serve("/api/v1/storage", "/api/v1/storage/*").with(StorageResource.class);
+		serve("/api/v1/kits", "/api/v1/kits/*").with(KitResource.class);
+		serve("/api/v1/achievements", "/api/v1/achievements/*").with(AchievementResource.class);
+		serve("/api/v1/events", "/api/v1/events/*").with(EventResource.class);
 		serve("/api/v1/logs").with(LogResource.class);
-		serve("/api/v1/reports/*").with(ReportResource.class);
+		serve("/api/v1/reports", "/api/v1/reports/*").with(ReportResource.class);
 		serve("/api/v1/system/stats").with(SystemResource.class);
-		serve("/api/v1/matrix/*").with(MatrixResource.class);
-		serve("/api/v1/files/*").with(FileResource.class);
+		serve("/api/v1/matrix", "/api/v1/matrix/*").with(MatrixResource.class);
+		serve("/api/v1/files", "/api/v1/files/*").with(FileResource.class);
 	}
 }
