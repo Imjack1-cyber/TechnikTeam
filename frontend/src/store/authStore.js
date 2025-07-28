@@ -65,7 +65,7 @@ export const useAuthStore = create(
 		{
 			name: 'auth-storage',
 			storage: createJSONStorage(() => localStorage),
-			partialize: (state) => ({ token: state.token }), // Only persist the token
+			partialize: (state) => ({ token: state.token }),
 		}
 	)
 );
@@ -73,8 +73,6 @@ export const useAuthStore = create(
 export const initializeAuth = () => {
 	const { token, fetchUserSession, logout } = useAuthStore.getState();
 	if (token) {
-		// We don't need to decode here anymore, fetchUserSession is the source of truth.
-		// If it fails, the interceptor in apiClient will trigger the logout.
 		fetchUserSession().catch(() => {
 			console.log("Token invalid on initial load, logging out.");
 			logout();

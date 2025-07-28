@@ -1,16 +1,14 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import useApi from '@/hooks/useApi';
-import apiClient from '@/services/apiClient';
-import Lightbox from '@/components/ui/Lightbox';
+import useApi from '../hooks/useApi';
+import apiClient from '../services/apiClient';
+import Lightbox from '../components/ui/Lightbox';
 
 const StorageItemDetailsPage = () => {
 	const { itemId } = useParams();
 	const [activeTab, setActiveTab] = useState('history');
 	const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
-	// NOTE: This assumes an endpoint at `/api/v1/public/storage/${itemId}` will be created.
-	// The current backend only provides this for admins.
 	const { data: itemData, loading: itemLoading, error: itemError } = useApi(() => apiClient.get(`/storage/${itemId}`));
 	const { data: historyData, loading: historyLoading, error: historyError } = useApi(() => apiClient.get(`/public/storage/${itemId}/history`));
 
@@ -18,7 +16,7 @@ const StorageItemDetailsPage = () => {
 	if (itemError) return <div className="error-message">{itemError}</div>;
 	if (!itemData) return <div className="error-message">Artikel nicht gefunden.</div>;
 
-	const item = itemData; // Assuming the API returns the item object directly in `data`
+	const item = itemData;
 	const { transactions, maintenance } = historyData || { transactions: [], maintenance: [] };
 
 	return (

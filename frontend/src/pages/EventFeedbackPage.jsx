@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import useApi from '@/hooks/useApi';
-import apiClient from '@/services/apiClient';
+import useApi from '../hooks/useApi';
+import apiClient from '../services/apiClient';
 
 const EventFeedbackPage = () => {
 	const { eventId } = useParams();
@@ -30,7 +30,6 @@ const EventFeedbackPage = () => {
 				comments
 			});
 			if (result.success) {
-				// In a real app, a success toast would be shown before navigating
 				navigate('/profil');
 			} else {
 				throw new Error(result.message);
@@ -87,4 +86,4 @@ const EventFeedbackPage = () => {
 	);
 };
 
-export default EventFeedbackPage;
+export default EventFeedbackPage; 

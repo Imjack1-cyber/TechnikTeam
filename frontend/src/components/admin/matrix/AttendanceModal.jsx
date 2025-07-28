@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import Modal from '@/components/ui/Modal';
-import apiClient from '@/services/apiClient';
+import Modal from '../../ui/Modal';
+import apiClient from '../../../services/apiClient';
 
 const AttendanceModal = ({ isOpen, onClose, onSuccess, cellData }) => {
 	const [attended, setAttended] = useState(cellData.attended);

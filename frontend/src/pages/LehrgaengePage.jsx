@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import useApi from '@/hooks/useApi';
-import apiClient from '@/services/apiClient';
+import useApi from '../hooks/useApi';
+import apiClient from '../services/apiClient';
 
 const LehrgaengePage = () => {
 	const { data: meetings, loading, error, reload } = useApi(() => apiClient.get('/public/meetings'));
@@ -14,15 +14,13 @@ const LehrgaengePage = () => {
 		try {
 			const result = await apiClient.post(endpoint, {});
 			if (result.success) {
-				// In a real app, show a toast notification here.
 				console.log(successMessage);
-				reload(); // Refresh the list to show the new status
+				reload();
 			} else {
 				throw new Error(result.message);
 			}
 		} catch (err) {
 			console.error(err);
-			// In a real app, show an error toast here.
 			alert(err.message || failureMessage);
 		}
 	};
@@ -95,7 +93,6 @@ const LehrgaengePage = () => {
 					</tbody>
 				</table>
 			</div>
-			{/* A mobile card view could be rendered here as well */}
 		</div>
 	);
 };

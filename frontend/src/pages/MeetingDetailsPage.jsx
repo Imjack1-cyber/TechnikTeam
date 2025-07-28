@@ -1,13 +1,10 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
-import useApi from '@/hooks/useApi';
-import apiClient from '@/services/apiClient';
+import useApi from '../hooks/useApi';
+import apiClient from '../services/apiClient';
 
 const MeetingDetailsPage = () => {
 	const { meetingId } = useParams();
-
-	// NOTE: Assumes a public API endpoint at `/api/v1/public/meetings/${meetingId}` will be created.
-	// The backend code currently only provides an admin version of this.
 	const { data, loading, error } = useApi(() => apiClient.get(`/meetings/${meetingId}`));
 
 	if (loading) return <div>Lade Meeting-Details...</div>;
@@ -17,7 +14,6 @@ const MeetingDetailsPage = () => {
 	const { meeting, attachments } = data;
 
 	const renderMarkdown = (content) => {
-		// In a real app, use a library like `marked` or `react-markdown`
 		return { __html: (content || '').replace(/\n/g, '<br />') };
 	};
 

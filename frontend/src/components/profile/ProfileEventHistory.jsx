@@ -42,7 +42,6 @@ const ProfileEventHistory = ({ eventHistory }) => {
 					</table>
 				</div>
 			</div>
-			{/* A mobile-specific view could be added here if needed */}
 		</div>
 	);
 };

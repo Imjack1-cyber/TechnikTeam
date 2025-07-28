@@ -1,33 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import apiClient from '@/services/apiClient';
-import { useAuthStore } from '@/store/authStore';
+import useApi from '../hooks/useApi';
+import apiClient from '../services/apiClient';
+import { useAuthStore } from '../store/authStore';
 
 const DashboardPage = () => {
 	const { user } = useAuthStore();
-	const [dashboardData, setDashboardData] = useState(null);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState('');
-
-	useEffect(() => {
-		const fetchDashboardData = async () => {
-			try {
-				setLoading(true);
-				const result = await apiClient.get('/public/dashboard');
-				if (result.success) {
-					setDashboardData(result.data);
-				} else {
-					throw new Error(result.message);
-				}
-			} catch (err) {
-				setError(err.message || 'Fehler beim Laden der Dashboard-Daten.');
-			} finally {
-				setLoading(false);
-			}
-		};
-
-		fetchDashboardData();
-	}, []);
+	const { data: dashboardData, loading, error } = useApi(() => apiClient.get('/public/dashboard'));
 
 	if (loading) {
 		return (
@@ -57,7 +36,7 @@ const DashboardPage = () => {
 							<ul className="details-list">
 								{dashboardData.assignedEvents.map(event => (
 									<li key={event.id}>
-										<Link to={`/events/details/${event.id}`}>{event.name}</Link>
+										<Link to={`/veranstaltungen/details/${event.id}`}>{event.name}</Link>
 										<small>{new Date(event.eventDateTime).toLocaleString('de-DE')}</small>
 									</li>
 								))}
@@ -66,7 +45,7 @@ const DashboardPage = () => {
 							<p>Du bist derzeit für keine kommenden Events fest eingeteilt.</p>
 						)}
 					</div>
-					<Link to="/events" className="btn btn-small" style={{ marginTop: '1rem' }}>Alle Veranstaltungen anzeigen</Link>
+					<Link to="/veranstaltungen" className="btn btn-small" style={{ marginTop: '1rem' }}>Alle Veranstaltungen anzeigen</Link>
 				</div>
 
 				<div className="card" id="open-tasks-widget">
@@ -76,7 +55,7 @@ const DashboardPage = () => {
 							<ul className="details-list">
 								{dashboardData.openTasks.map(task => (
 									<li key={task.id}>
-										<Link to={`/events/details/${task.eventId}`}>
+										<Link to={`/veranstaltungen/details/${task.eventId}`}>
 											{task.description}
 											<small style={{ display: 'block', color: 'var(--text-muted-color)' }}>
 												Für Event: {task.eventName}
@@ -98,7 +77,7 @@ const DashboardPage = () => {
 							<ul className="details-list">
 								{dashboardData.upcomingEvents.map(event => (
 									<li key={event.id}>
-										<Link to={`/events/details/${event.id}`}>{event.name}</Link>
+										<Link to={`/veranstaltungen/details/${event.id}`}>{event.name}</Link>
 										<small>{new Date(event.eventDateTime).toLocaleString('de-DE')}</small>
 									</li>
 								))}

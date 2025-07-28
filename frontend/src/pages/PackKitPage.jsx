@@ -1,20 +1,17 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
-import useApi from '@/hooks/useApi';
-import apiClient from '@/services/apiClient';
+import useApi from '../hooks/useApi';
+import apiClient from '../services/apiClient';
 
 const PackKitPage = () => {
 	const { kitId } = useParams();
-
-	// NOTE: This assumes a public API endpoint at `/api/v1/public/kits/${kitId}` will be created.
-	// This endpoint should return the kit's details and its list of items.
 	const { data: kitData, loading, error } = useApi(() => apiClient.get(`/kits/${kitId}`));
 
 	if (loading) return <div>Lade Packliste...</div>;
 	if (error) return <div className="error-message">{error}</div>;
 	if (!kitData) return <div className="error-message">Kit nicht gefunden.</div>;
 
-	const { kit, items } = kitData; // Assuming API returns { kit: {...}, items: [...] }
+	const kit = kitData; // API returns the full kit object
 
 	return (
 		<div className="card">
@@ -39,10 +36,10 @@ const PackKitPage = () => {
 
 			<h3 style={{ marginTop: '2rem' }}>Inhalt zum Einpacken</h3>
 			<ul className="details-list">
-				{!items || items.length === 0 ? (
+				{!kit.items || kit.items.length === 0 ? (
 					<li>Dieses Kit hat keinen definierten Inhalt.</li>
 				) : (
-					items.map(item => (
+					kit.items.map(item => (
 						<li key={item.itemId}>
 							<label style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer', width: '100%' }}>
 								<input type="checkbox" style={{ width: '1.5rem', height: '1.5rem', flexShrink: 0 }} />

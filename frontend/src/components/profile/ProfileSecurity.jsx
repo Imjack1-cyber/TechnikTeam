@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import apiClient from '@/services/apiClient';
-import { passkeyService } from '@/services/passkeyService';
+import apiClient from '../../services/apiClient';
+import { passkeyService } from '../../services/passkeyService';
 
 const ProfileSecurity = ({ passkeys, onUpdate }) => {
 
@@ -11,18 +11,15 @@ const ProfileSecurity = ({ passkeys, onUpdate }) => {
 
 		try {
 			await passkeyService.registerPasskey(deviceName);
-			// In a real app, show a success toast.
 			console.log('Passkey registered!');
-			onUpdate(); // Reload profile data to show the new key
+			onUpdate();
 		} catch (error) {
-			// In a real app, show an error toast.
 			console.error(error);
 			alert(`Fehler bei der Registrierung: ${error.message}`);
 		}
 	};
 
 	const handleDeletePasskey = async (id) => {
-		// In a real app, use a confirmation modal.
 		if (window.confirm('Diesen Passkey wirklich entfernen?')) {
 			try {
 				const result = await apiClient.delete(`/public/profile/passkeys/${id}`);

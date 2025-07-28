@@ -36,23 +36,21 @@ const useWebSocket = (url, onMessage) => {
 			socket.onclose = () => {
 				console.warn('WebSocket connection closed. Attempting to reconnect...');
 				setReadyState(WebSocket.CLOSED);
-				// Automatically try to reconnect after a delay
 				setTimeout(connect, 5000);
 			};
 
 			socket.onerror = (error) => {
 				console.error('WebSocket error:', error);
 				setReadyState(WebSocket.CLOSED);
-				socket.close(); // Ensure it's closed before reconnecting
+				socket.close();
 			};
 		};
 
 		connect();
 
-		// Cleanup function to close the socket when the component unmounts
 		return () => {
 			if (socketRef.current) {
-				socketRef.current.onclose = null; // Prevent reconnect logic on manual close
+				socketRef.current.onclose = null;
 				socketRef.current.close();
 			}
 		};

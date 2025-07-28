@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import useApi from '@/hooks/useApi';
-import apiClient from '@/services/apiClient';
-import UserModal from '@/components/admin/users/UserModal';
-import useAdminData from '@/hooks/useAdminData';
+import useApi from '../../hooks/useApi';
+import apiClient from '../../services/apiClient';
+import UserModal from '../../components/admin/users/UserModal';
+import useAdminData from '../../hooks/useAdminData';
 
 const AdminUsersPage = () => {
 	const { data: users, loading, error, reload } = useApi(() => apiClient.get('/users'));

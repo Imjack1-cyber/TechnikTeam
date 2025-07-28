@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import apiClient from '@/services/apiClient';
+import apiClient from '../services/apiClient';
 
 const PasswordPage = () => {
 	const [currentPassword, setCurrentPassword] = useState('');

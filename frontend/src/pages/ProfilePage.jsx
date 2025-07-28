@@ -1,11 +1,11 @@
 import React from 'react';
-import useApi from '@/hooks/useApi';
-import apiClient from '@/services/apiClient';
-import ProfileDetails from '@/components/profile/ProfileDetails';
-import ProfileSecurity from '@/components/profile/ProfileSecurity';
-import ProfileQualifications from '@/components/profile/ProfileQualifications';
-import ProfileAchievements from '@/components/profile/ProfileAchievements';
-import ProfileEventHistory from '@/components/profile/ProfileEventHistory';
+import useApi from '../hooks/useApi';
+import apiClient from '../services/apiClient';
+import ProfileDetails from '../components/profile/ProfileDetails';
+import ProfileSecurity from '../components/profile/ProfileSecurity';
+import ProfileQualifications from '../components/profile/ProfileQualifications';
+import ProfileAchievements from '../components/profile/ProfileAchievements';
+import ProfileEventHistory from '../components/profile/ProfileEventHistory';
 
 const ProfilePage = () => {
 	const { data: profileData, loading, error, reload } = useApi(() => apiClient.get('/public/profile'));

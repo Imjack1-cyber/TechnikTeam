@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import apiClient from '@/services/apiClient';
+import apiClient from '../../../services/apiClient';
 
 const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
 	const [items, setItems] = useState(kit.items || []);

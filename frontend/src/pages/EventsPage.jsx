@@ -1,9 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import apiClient from '@/services/apiClient';
-import useApi from '@/hooks/useApi';
-import Modal from '@/components/ui/Modal';
-import StatusBadge from '@/components/ui/StatusBadge';
+import apiClient from '../services/apiClient';
+import useApi from '../hooks/useApi';
+import Modal from '../components/ui/Modal';
+import StatusBadge from '../components/ui/StatusBadge';
 
 const EventsPage = () => {
 	const { data: events, loading, error, reload } = useApi(
@@ -21,6 +21,7 @@ const EventsPage = () => {
 
 	const openSignupModal = async (event) => {
 		try {
+			// This endpoint is hypothetical in the backend code, but we assume it exists
 			const result = await apiClient.get(`/public/events/${event.id}/custom-fields`);
 			setModalState({
 				isOpen: true,
@@ -30,7 +31,6 @@ const EventsPage = () => {
 			});
 		} catch (e) {
 			console.error("Could not load custom fields", e);
-			// Open modal even if fields fail to load
 			setModalState({ isOpen: true, type: 'signup', event, customFields: [] });
 		}
 	};

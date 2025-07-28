@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import useApi from '@/hooks/useApi';
-import apiClient from '@/services/apiClient';
-import AttendanceModal from '@/components/admin/matrix/AttendanceModal';
+import useApi from '../../hooks/useApi';
+import apiClient from '../../services/apiClient';
+import AttendanceModal from '../../components/admin/matrix/AttendanceModal';
 
 const AdminMatrixPage = () => {
 	const { data, loading, error, reload } = useApi(() => apiClient.get('/matrix'));

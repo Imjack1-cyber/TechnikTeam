@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import apiClient from '@/services/apiClient';
+import apiClient from '../../services/apiClient';
 
 const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 	const [isEditing, setIsEditing] = useState(false);
@@ -35,7 +35,7 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 			const result = await apiClient.post('/public/profile/request-change', formData);
 			if (result.success) {
 				setIsEditing(false);
-				onUpdate(); // Reload profile data
+				onUpdate();
 			} else {
 				throw new Error(result.message);
 			}
@@ -52,7 +52,7 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 		try {
 			const result = await apiClient.put('/public/profile/chat-color', { chatColor: newColor });
 			if (result.success) {
-				onUpdate(); // Reload to reflect change
+				onUpdate();
 			} else {
 				throw new Error(result.message);
 			}

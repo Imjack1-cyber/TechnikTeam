@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import Modal from '@/components/ui/Modal';
-import apiClient from '@/services/apiClient';
+import Modal from '../../ui/Modal';
+import apiClient from '../../../services/apiClient';
 
 const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edit' }) => {
 	const [mode, setMode] = useState(initialMode);

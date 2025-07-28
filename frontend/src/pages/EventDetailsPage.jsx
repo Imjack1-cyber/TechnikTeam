@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import apiClient from '@/services/apiClient';
-import useApi from '@/hooks/useApi';
-import useWebSocket from '@/hooks/useWebSocket';
-import { useAuthStore } from '@/store/authStore';
-import StatusBadge from '@/components/ui/StatusBadge';
+import apiClient from '../services/apiClient';
+import useApi from '../hooks/useApi';
+import useWebSocket from '../hooks/useWebSocket';
+import { useAuthStore } from '../store/authStore';
+import StatusBadge from '../components/ui/StatusBadge';
 
 const EventDetailsPage = () => {
 	const { eventId } = useParams();
@@ -44,8 +44,7 @@ const EventDetailsPage = () => {
 	if (!event) return <div className="error-message">Event nicht gefunden.</div>;
 
 	const renderMarkdown = (content) => {
-		// In a real app, use a library like `marked` or `react-markdown`
-		return { __html: content.replace(/\n/g, '<br />') };
+		return { __html: (content || '').replace(/\n/g, '<br />') };
 	};
 
 	return (
@@ -148,7 +147,6 @@ const EventDetailsPage = () => {
 						</form>
 					</div>
 				)}
-
 			</div>
 		</div>
 	);

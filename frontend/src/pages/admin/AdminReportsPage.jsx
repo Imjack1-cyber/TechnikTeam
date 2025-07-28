@@ -1,11 +1,10 @@
 import React from 'react';
-import useApi from '@/hooks/useApi';
-import apiClient from '@/services/apiClient';
-import EventTrendChart from '@/components/admin/dashboard/EventTrendChart';
-import UserActivityChart from '@/components/admin/reports/UserActivityChart';
+import useApi from '../../hooks/useApi';
+import apiClient from '../../services/apiClient';
+import EventTrendChart from '../../components/admin/dashboard/EventTrendChart';
+import UserActivityChart from '../../components/admin/reports/UserActivityChart';
 
 const AdminReportsPage = () => {
-	// The dashboard endpoint already provides all the necessary summary data
 	const { data: reportData, loading, error } = useApi(() => apiClient.get('/reports/dashboard'));
 
 	if (loading) return <div>Lade Berichte...</div>;
@@ -14,7 +13,6 @@ const AdminReportsPage = () => {
 
 	const { eventTrend, userActivity, totalInventoryValue } = reportData;
 
-	// Direct link to the backend for CSV export
 	const getCsvLink = (reportType) => `/api/v1/reports/${reportType}?export=csv`;
 
 	return (

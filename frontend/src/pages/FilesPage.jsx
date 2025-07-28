@@ -1,10 +1,8 @@
 import React from 'react';
-import useApi from '@/hooks/useApi';
-import apiClient from '@/services/apiClient';
+import useApi from '../hooks/useApi';
+import apiClient from '../services/apiClient';
 
 const FilesPage = () => {
-	// NOTE: This assumes the backend exposes a public endpoint at /api/v1/public/files
-	// which returns files grouped by category based on the authenticated user's role.
 	const { data: fileData, loading, error } = useApi(() => apiClient.get('/public/files'));
 
 	const renderContent = () => {
@@ -27,7 +25,6 @@ const FilesPage = () => {
 									<i className="fas fa-download"></i> {file.filename}
 								</a>
 							</div>
-							{/* Additional actions like 'Edit' could be added here based on permissions */}
 						</li>
 					))}
 				</ul>

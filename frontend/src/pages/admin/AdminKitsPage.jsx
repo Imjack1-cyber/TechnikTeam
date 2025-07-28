@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import useApi from '@/hooks/useApi';
-import useAdminData from '@/hooks/useAdminData';
-import apiClient from '@/services/apiClient';
-import KitModal from '@/components/admin/kits/KitModal';
-import KitItemsForm from '@/components/admin/kits/KitItemsForm';
-import Modal from '@/components/ui/Modal';
+import useApi from '../../hooks/useApi';
+import useAdminData from '../../hooks/useAdminData';
+import apiClient from '../../services/apiClient';
+import KitModal from '../../components/admin/kits/KitModal';
+import KitItemsForm from '../../components/admin/kits/KitItemsForm';
+import Modal from '../../components/ui/Modal';
 import QRCode from 'qrcode.react';
 
 const KitAccordion = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems }) => {

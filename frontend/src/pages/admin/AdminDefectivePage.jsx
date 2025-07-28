@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import useApi from '@/hooks/useApi';
-import apiClient from '@/services/apiClient';
-import StorageItemModal from '@/components/admin/storage/StorageItemModal';
+import useApi from '../../hooks/useApi';
+import apiClient from '../../services/apiClient';
+import StorageItemModal from '../../components/admin/storage/StorageItemModal';
 
 const AdminDefectivePage = () => {
 	const { data: items, loading, error, reload } = useApi(() => apiClient.get('/storage?status=defective'));

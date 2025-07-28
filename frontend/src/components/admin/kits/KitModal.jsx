@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import Modal from '@/components/ui/Modal';
-import apiClient from '@/services/apiClient';
+import Modal from '../../ui/Modal';
+import apiClient from '../../../services/apiClient';
 
 const KitModal = ({ isOpen, onClose, onSuccess, kit }) => {
 	const isEditMode = !!kit;
