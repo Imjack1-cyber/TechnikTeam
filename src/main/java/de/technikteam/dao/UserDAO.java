@@ -54,15 +54,18 @@ public class UserDAO {
 	}
 
 	public User validateUser(String username, String password) {
-		String sql = "SELECT u.*, r.role_name, p.permission_key " + "FROM users u "
-				+ "LEFT JOIN roles r ON u.role_id = r.id " + "LEFT JOIN user_permissions up ON u.id = up.user_id "
-				+ "LEFT JOIN permissions p ON up.permission_id = p.id " + "WHERE u.username = ?";
-
+		String sql = "SELECT u.*, r.role_name, p.permission_key " +
+					 "FROM users u " +
+					 "LEFT JOIN roles r ON u.role_id = r.id " +
+					 "LEFT JOIN user_permissions up ON u.id = up.user_id " +
+					 "LEFT JOIN permissions p ON up.permission_id = p.id " +
+					 "WHERE u.username = ?";
+		
 		User user = null;
 		Set<String> permissions = new HashSet<>();
 
 		try (Connection connection = dbManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			 PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 			preparedStatement.setString(1, username);
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				String storedHash = null;
@@ -71,6 +74,7 @@ public class UserDAO {
 					if (firstRow) {
 						storedHash = resultSet.getString("password_hash");
 						if (storedHash == null || !passwordEncoder.matches(password, storedHash)) {
+							// Password doesn't match, no need to process further.
 							return null;
 						}
 						user = mapResultSetToUser(resultSet);
@@ -107,12 +111,12 @@ public class UserDAO {
 		}
 		return null;
 	}
-
+	
 	public Set<String> getPermissionsForUser(int userId) {
 		Set<String> permissions = new HashSet<>();
 		String sql = "SELECT p.permission_key FROM permissions p JOIN user_permissions up ON p.id = up.permission_id WHERE up.user_id = ?";
 		try (Connection connection = dbManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			 PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 			preparedStatement.setInt(1, userId);
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				while (resultSet.next()) {
@@ -257,13 +261,16 @@ public class UserDAO {
 	}
 
 	public User getUserById(int userId) {
-		String sql = "SELECT u.*, r.role_name, p.permission_key " + "FROM users u "
-				+ "LEFT JOIN roles r ON u.role_id = r.id " + "LEFT JOIN user_permissions up ON u.id = up.user_id "
-				+ "LEFT JOIN permissions p ON up.permission_id = p.id " + "WHERE u.id = ?";
+		String sql = "SELECT u.*, r.role_name, p.permission_key " +
+					 "FROM users u " +
+					 "LEFT JOIN roles r ON u.role_id = r.id " +
+					 "LEFT JOIN user_permissions up ON u.id = up.user_id " +
+					 "LEFT JOIN permissions p ON up.permission_id = p.id " +
+					 "WHERE u.id = ?";
 		User user = null;
 		Set<String> permissions = new HashSet<>();
 		try (Connection connection = dbManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+			 PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 			preparedStatement.setInt(1, userId);
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				while (resultSet.next()) {
