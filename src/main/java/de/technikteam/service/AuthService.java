@@ -6,18 +6,18 @@ import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
-@Singleton
+@Service
 public class AuthService {
 	private static final Logger logger = LogManager.getLogger(AuthService.class);
 	private static final String JWT_ISSUER = "TechnikTeamApp";
@@ -26,7 +26,7 @@ public class AuthService {
 	private final JWTVerifier verifier;
 	private final UserDAO userDAO;
 
-	@Inject
+	@Autowired
 	public AuthService(UserDAO userDAO, ConfigurationService configService) {
 		this.userDAO = userDAO;
 		String secret = configService.getProperty("jwt.secret");
@@ -52,15 +52,13 @@ public class AuthService {
 			DecodedJWT decodedJWT = verifier.verify(token);
 			int userId = Integer.parseInt(decodedJWT.getSubject());
 
-			// The userDAO.getUserById() method has been refactored to be atomic.
-			// This single call is now sufficient and robust.
 			User user = userDAO.getUserById(userId);
 
 			if (user == null) {
 				logger.warn("JWT validation successful, but user with ID {} no longer exists.", userId);
 				return null;
 			}
-
+			
 			return user;
 		} catch (JWTVerificationException e) {
 			logger.warn("JWT verification failed: {}", e.getMessage());

@@ -1,24 +1,24 @@
 package de.technikteam.service;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import de.technikteam.dao.AchievementDAO;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.model.Event;
 import de.technikteam.model.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-@Singleton
+@Service
 public class AchievementService {
 	private static final Logger logger = LogManager.getLogger(AchievementService.class);
 
 	private final AchievementDAO achievementDAO;
 	private final EventDAO eventDAO;
 
-	@Inject
+	@Autowired
 	public AchievementService(AchievementDAO achievementDAO, EventDAO eventDAO) {
 		this.achievementDAO = achievementDAO;
 		this.eventDAO = eventDAO;

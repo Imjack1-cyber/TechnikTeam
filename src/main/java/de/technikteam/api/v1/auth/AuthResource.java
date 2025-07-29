@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,45 +48,42 @@ public class AuthResource {
             required = true,
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(
-                    type = "object",
-                    requiredProperties = {"username", "password"},
-                    properties = {
-                        @Schema(name = "username", type = "string", example = "admin"),
-                        @Schema(name = "password", type = "string", format = "password", example = "admin123")
-                    }
-                )
+                schema = @Schema(implementation = LoginRequest.class)
             )
         ),
         responses = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Login successful, JWT returned."),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid input, e.g., blank username or password."),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Invalid credentials."),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Account is temporarily locked.")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Account is temporarily locked."),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error during authentication.")
         }
     )
-    public ResponseEntity<ApiResponse> login(@RequestBody Map<String, String> credentials) {
-        String username = credentials.get("username");
-        String password = credentials.get("password");
+    public ResponseEntity<ApiResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
+        try {
+            String username = loginRequest.username();
+            String password = loginRequest.password();
 
-        if (username == null || password == null) {
-            return ResponseEntity.badRequest().body(new ApiResponse(false, "Username and password are required.", null));
-        }
+            if (loginAttemptService.isLockedOut(username)) {
+                logger.warn("Blocked login attempt for locked-out user '{}'", username);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Account is temporarily locked.", null));
+            }
 
-        if (loginAttemptService.isLockedOut(username)) {
-            logger.warn("Blocked login attempt for locked-out user '{}'", username);
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Account is temporarily locked.", null));
-        }
-
-        User user = userDAO.validateUser(username, password);
-        if (user != null) {
-            loginAttemptService.clearLoginAttempts(username);
-            String token = authService.generateToken(user);
-            logger.info("JWT generated successfully for user '{}'", username);
-            return ResponseEntity.ok(new ApiResponse(true, "Login successful", Map.of("token", token)));
-        } else {
-            loginAttemptService.recordFailedLogin(username);
-            logger.warn("Failed API login attempt for user '{}'", username);
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponse(false, "Invalid credentials.", null));
+            User user = userDAO.validateUser(username, password);
+            if (user != null) {
+                loginAttemptService.clearLoginAttempts(username);
+                String token = authService.generateToken(user);
+                logger.info("JWT generated successfully for user '{}'", username);
+                return ResponseEntity.ok(new ApiResponse(true, "Login successful", Map.of("token", token)));
+            } else {
+                loginAttemptService.recordFailedLogin(username);
+                logger.warn("Failed API login attempt for user '{}'", username);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponse(false, "Invalid credentials.", null));
+            }
+        } catch (Exception e) {
+            logger.error("An unexpected error occurred during login for user '{}'", loginRequest.username(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiResponse(false, "An internal server error occurred.", null));
         }
     }
 }

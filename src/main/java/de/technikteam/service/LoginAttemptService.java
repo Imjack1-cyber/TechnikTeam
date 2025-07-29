@@ -1,14 +1,14 @@
 package de.technikteam.service;
 
-import com.google.inject.Singleton;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.stereotype.Service;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-@Singleton
+@Service
 public class LoginAttemptService {
 
 	private static final Logger logger = LogManager.getLogger(LoginAttemptService.class);

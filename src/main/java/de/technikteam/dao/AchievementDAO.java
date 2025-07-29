@@ -1,21 +1,21 @@
 package de.technikteam.dao;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import de.technikteam.model.Achievement;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-@Singleton
+@Repository
 public class AchievementDAO {
 	private static final Logger logger = LogManager.getLogger(AchievementDAO.class);
 	private final DatabaseManager dbManager;
 
-	@Inject
+	@Autowired
 	public AchievementDAO(DatabaseManager dbManager) {
 		this.dbManager = dbManager;
 	}

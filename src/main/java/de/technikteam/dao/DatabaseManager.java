@@ -1,25 +1,25 @@
 package de.technikteam.dao;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import de.technikteam.service.ConfigurationService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 
-@Singleton
+@Component
 public class DatabaseManager {
 
 	private static final Logger logger = LogManager.getLogger(DatabaseManager.class);
 	private final HikariDataSource dataSource;
 
-	@Inject
+	@Autowired
 	public DatabaseManager(ConfigurationService configService) {
-		logger.info("Initializing Guice-managed Database Connection Pool...");
+		logger.info("Initializing Spring-managed Database Connection Pool...");
 
 		try {
 			HikariConfig hikariConfig = new HikariConfig();
@@ -36,10 +36,10 @@ public class DatabaseManager {
 			this.dataSource = new HikariDataSource(hikariConfig);
 
 			logger.info("================================================================");
-			logger.info("GUICE DATABASE CONNECTION POOL INITIALIZED SUCCESSFULLY.");
+			logger.info("SPRING DATABASE CONNECTION POOL INITIALIZED SUCCESSFULLY.");
 			logger.info("================================================================");
 		} catch (Exception e) {
-			logger.fatal("Failed to initialize Guice-managed database pool!", e);
+			logger.fatal("Failed to initialize Spring-managed database pool!", e);
 			throw new RuntimeException("Could not initialize database pool", e);
 		}
 	}

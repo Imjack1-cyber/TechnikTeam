@@ -1,15 +1,15 @@
 // src/main/java/de/technikteam/service/ConfigurationService.java
 package de.technikteam.service;
 
-import com.google.inject.Singleton;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
-@Singleton
+@Service
 public class ConfigurationService {
 	private static final Logger logger = LogManager.getLogger(ConfigurationService.class);
 	private final Properties properties = new Properties();
