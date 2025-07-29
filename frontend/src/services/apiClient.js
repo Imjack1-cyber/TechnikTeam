@@ -1,5 +1,6 @@
 import { useAuthStore } from '../store/authStore';
 
+// The base URL for all API requests. The Vite proxy handles forwarding this to the backend.
 const BASE_URL = '/api/v1';
 
 const apiClient = {
@@ -25,6 +26,8 @@ const apiClient = {
 				headers: headers,
 			});
 
+			// If the JWT is expired or invalid, the backend will return a 401.
+			// The frontend should log the user out.
 			if (response.status === 401) {
 				logout();
 				throw new Error('Unauthorized: Session has expired. Please log in again.');
@@ -43,7 +46,7 @@ const apiClient = {
 			return result;
 
 		} catch (error) {
-			console.error(`API Client Error: ${options.method || 'GET'} ${endpoint}`, error);
+			console.error(`API Client Error: ${options.method || 'GET'} ${BASE_URL}${endpoint}`, error);
 			throw error;
 		}
 	},

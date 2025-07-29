@@ -2,13 +2,16 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import apiClient from '../services/apiClient';
 
+// Helper function to determine if a user has admin-level access based on permissions.
 const hasAdminAccess = (permissions) => {
 	if (!permissions || permissions.length === 0) {
 		return false;
 	}
+	// Check for the master admin permission
 	if (permissions.includes('ACCESS_ADMIN_PANEL')) {
 		return true;
 	}
+	// Check for any other management-level permissions
 	const adminPermissions = ['_CREATE', '_UPDATE', '_DELETE', '_MANAGE', 'LOG_READ', 'REPORT_READ', 'SYSTEM_READ', 'QUALIFICATION_UPDATE'];
 	return permissions.some(p => adminPermissions.some(ap => p.includes(ap)));
 };
@@ -69,13 +72,3 @@ export const useAuthStore = create(
 		}
 	)
 );
-
-export const initializeAuth = () => {
-	const { token, fetchUserSession, logout } = useAuthStore.getState();
-	if (token) {
-		fetchUserSession().catch(() => {
-			console.log("Token invalid on initial load, logging out.");
-			logout();
-		});
-	}
-};

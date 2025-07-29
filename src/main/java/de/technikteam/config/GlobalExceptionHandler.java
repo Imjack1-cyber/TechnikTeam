@@ -30,7 +30,6 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ApiResponse> handleAllExceptions(Exception ex) {
-		// In a real application, you would log the exception here
 		ApiResponse apiResponse = new ApiResponse(false, "An unexpected internal server error occurred.",
 				ex.getMessage());
 		return new ResponseEntity<>(apiResponse, HttpStatus.INTERNAL_SERVER_ERROR);

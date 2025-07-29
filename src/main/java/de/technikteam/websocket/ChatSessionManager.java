@@ -1,8 +1,10 @@
 package de.technikteam.websocket;
 
-import jakarta.websocket.Session;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.stereotype.Component;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
 import java.util.Map;
@@ -11,27 +13,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
- * Manages WebSocket sessions for event-specific chat rooms using a thread-safe
- * Singleton pattern. It maps event IDs to a set of active sessions, allowing
- * for targeted broadcasting of messages.
+ * Manages WebSocket sessions for event-specific chat rooms as a thread-safe
+ * Spring Component. It maps event IDs to a set of active sessions, allowing for
+ * targeted broadcasting of messages.
  */
-public final class ChatSessionManager {
+@Component
+public class ChatSessionManager {
 	private static final Logger logger = LogManager.getLogger(ChatSessionManager.class);
-	private static final ChatSessionManager INSTANCE = new ChatSessionManager();
 
-	private final Map<String, Set<Session>> sessionsByEvent = new ConcurrentHashMap<>();
-
-	private ChatSessionManager() {
-	}
-
-	/**
-	 * Gets the singleton instance of the ChatSessionManager.
-	 *
-	 * @return The single instance of this class.
-	 */
-	public static ChatSessionManager getInstance() {
-		return INSTANCE;
-	}
+	private final Map<String, Set<WebSocketSession>> sessionsByEvent = new ConcurrentHashMap<>();
 
 	/**
 	 * Adds a new WebSocket session to a specific event chat room.
@@ -39,7 +29,7 @@ public final class ChatSessionManager {
 	 * @param eventId The ID of the event chat room.
 	 * @param session The WebSocket session to add.
 	 */
-	public void addSession(String eventId, Session session) {
+	public void addSession(String eventId, WebSocketSession session) {
 		sessionsByEvent.computeIfAbsent(eventId, k -> new CopyOnWriteArraySet<>()).add(session);
 		logger.info("Session {} registered for event chat [{}].", session.getId(), eventId);
 	}
@@ -51,8 +41,8 @@ public final class ChatSessionManager {
 	 * @param eventId The ID of the event chat room.
 	 * @param session The WebSocket session to remove.
 	 */
-	public void removeSession(String eventId, Session session) {
-		Set<Session> sessions = sessionsByEvent.get(eventId);
+	public void removeSession(String eventId, WebSocketSession session) {
+		Set<WebSocketSession> sessions = sessionsByEvent.get(eventId);
 		if (sessions != null) {
 			sessions.remove(session);
 			logger.info("Session {} removed from event chat [{}].", session.getId(), eventId);
@@ -70,38 +60,16 @@ public final class ChatSessionManager {
 	 * @param message The message to broadcast.
 	 */
 	public void broadcast(String eventId, String message) {
-		Set<Session> sessions = sessionsByEvent.get(eventId);
+		Set<WebSocketSession> sessions = sessionsByEvent.get(eventId);
 		if (sessions != null) {
 			logger.debug("Broadcasting to {} sessions in event chat [{}].", sessions.size(), eventId);
-			for (Session session : sessions) {
+			TextMessage textMessage = new TextMessage(message);
+			for (WebSocketSession session : sessions) {
 				if (session.isOpen()) {
 					try {
-						session.getBasicRemote().sendText(message);
+						session.sendMessage(textMessage);
 					} catch (IOException e) {
 						logger.error("Error broadcasting to session {}:", session.getId(), e);
-					}
-				}
-			}
-		}
-	}
-
-	/**
-	 * Broadcasts a message to all open sessions in an event chat room, except for
-	 * the originating session.
-	 *
-	 * @param eventId        The ID of the event chat room.
-	 * @param message        The message to broadcast.
-	 * @param excludeSession The session to exclude from the broadcast.
-	 */
-	public void broadcastExcept(String eventId, String message, Session excludeSession) {
-		Set<Session> sessions = sessionsByEvent.get(eventId);
-		if (sessions != null) {
-			for (Session session : sessions) {
-				if (session.isOpen() && !session.getId().equals(excludeSession.getId())) {
-					try {
-						session.getBasicRemote().sendText(message);
-					} catch (IOException e) {
-						logger.error("Error broadcasting (except self) to session {}:", session.getId(), e);
 					}
 				}
 			}

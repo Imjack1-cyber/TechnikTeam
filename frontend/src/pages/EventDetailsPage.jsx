@@ -16,12 +16,29 @@ const EventDetailsPage = () => {
 	const [chatInput, setChatInput] = useState('');
 
 	const websocketProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+	// Construct the WebSocket URL to connect to the Vite proxy, which will forward it to the Spring backend.
+	// The hardcoded '/TechnikTeam' context path is removed, as the proxy now handles it.
 	const websocketUrl = event && event.status === 'LAUFEND'
-		? `${websocketProtocol}//${window.location.host}/TechnikTeam/ws/chat/${eventId}`
+		? `${websocketProtocol}//${window.location.host}/ws/chat/${eventId}`
 		: null;
 
 	const handleChatMessage = (message) => {
-		setChatMessages(prevMessages => [...prevMessages, message.payload]);
+		// Assuming the backend sends messages with a 'type' and 'payload'
+		if (message.type === 'new_message') {
+			setChatMessages(prevMessages => [...prevMessages, message.payload]);
+		} else if (message.type === 'message_soft_deleted') {
+			setChatMessages(prev => prev.map(msg =>
+				msg.id === message.payload.messageId
+					? { ...msg, isDeleted: true, deletedByUsername: message.payload.deletedByUsername }
+					: msg
+			));
+		} else if (message.type === 'message_updated') {
+			setChatMessages(prev => prev.map(msg =>
+				msg.id === message.payload.messageId
+					? { ...msg, messageText: message.payload.newText, edited: true }
+					: msg
+			));
+		}
 	};
 
 	const { readyState, sendMessage } = useWebSocket(websocketUrl, handleChatMessage);
@@ -119,7 +136,7 @@ const EventDetailsPage = () => {
 						<div id="chat-box" style={{ height: '300px', overflowY: 'auto', border: '1px solid var(--border-color)', padding: '0.5rem', marginBottom: '1rem', background: 'var(--bg-color)' }}>
 							{chatMessages.map(msg => (
 								<div key={msg.id} className={`chat-message-container ${msg.userId === user.id ? 'current-user' : ''}`}>
-									<div className="chat-bubble" style={{ backgroundColor: msg.userId === user.id ? 'var(--primary-color)' : msg.chatColor }}>
+									<div className="chat-bubble" style={{ backgroundColor: msg.userId === user.id ? 'var(--primary-color)' : msg.chatColor || '#e9ecef' }}>
 										{!msg.isDeleted ? (
 											<>
 												{msg.userId !== user.id && <strong className="chat-username">{msg.username}</strong>}
@@ -127,7 +144,7 @@ const EventDetailsPage = () => {
 												<span className="chat-timestamp">{new Date(msg.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</span>
 											</>
 										) : (
-											<span className="chat-deleted-info">Nachricht gelöscht</span>
+											<span className="chat-deleted-info">Nachricht von {msg.deletedByUsername} gelöscht</span>
 										)}
 									</div>
 								</div>
@@ -153,4 +170,4 @@ const EventDetailsPage = () => {
 	);
 };
 
-export default EventDetailsPage;
+export default EventDetailsPage; 

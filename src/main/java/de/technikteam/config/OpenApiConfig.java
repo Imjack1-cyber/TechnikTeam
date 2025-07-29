@@ -8,11 +8,6 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/**
- * Configuration for springdoc-openapi (Swagger UI). This class defines the
- * basic API information (title, version) and configures JWT Bearer
- * authentication so it can be used in the Swagger UI.
- */
 @Configuration
 public class OpenApiConfig {
 

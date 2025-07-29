@@ -8,10 +8,16 @@ export default defineConfig({
 	server: {
 		port: 3000,
 		proxy: {
+			// Proxy all API requests starting with /api to the Spring Boot backend
 			'/api': {
-				target: 'http://localhost:8080/',
+				target: 'http://localhost:8080/TechnikTeam',
 				changeOrigin: true,
 				secure: false,
+			},
+			// Proxy all WebSocket connections to the Spring Boot backend
+			'/ws': {
+				target: 'ws://localhost:8080/TechnikTeam',
+				ws: true, // Enable WebSocket proxying
 			},
 		},
 	},
