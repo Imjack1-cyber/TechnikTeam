@@ -50,6 +50,7 @@ public final class NavigationRegistry {
 		ALL_ITEMS.add(new NavigationItem("Aktions-Log", "/admin/log", "fa-clipboard-list", Permissions.LOG_READ));
 		ALL_ITEMS.add(new NavigationItem("System", "/admin/system", "fa-server", Permissions.SYSTEM_READ));
 		ALL_ITEMS.add(new NavigationItem("Wiki", "/admin/wiki", "fa-book-reader", Permissions.ACCESS_ADMIN_PANEL));
+		ALL_ITEMS.add(new NavigationItem("API Docs", "/swagger-ui.html", "fa-code", Permissions.ACCESS_ADMIN_PANEL));
 	}
 
 	private NavigationRegistry() {

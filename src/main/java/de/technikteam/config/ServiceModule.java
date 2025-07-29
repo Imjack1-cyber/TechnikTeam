@@ -15,6 +15,8 @@ import de.technikteam.filter.CharacterEncodingFilter;
 import de.technikteam.filter.CorsFilter;
 import de.technikteam.service.*;
 import de.technikteam.servlet.NotificationServlet;
+import de.technikteam.servlet.SwaggerUIServlet;
+import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -22,6 +24,9 @@ import java.util.Arrays;
 public class ServiceModule extends ServletModule {
 	@Override
 	protected void configureServlets() {
+		// --- Eager Singleton for OpenAPI initialization ---
+		bind(BootstrapServlet.class).asEagerSingleton();
+
 		// --- Filter Bindings ---
 		bind(CharacterEncodingFilter.class).in(Scopes.SINGLETON);
 		bind(CorsFilter.class).in(Scopes.SINGLETON);
@@ -30,18 +35,20 @@ public class ServiceModule extends ServletModule {
 
 		// --- Filter Chain Configuration ---
 		filter("/*").through(CharacterEncodingFilter.class);
-		filter("/api/*").through(CorsFilter.class);
+		filter("/api/*", "/swagger-ui/*").through(CorsFilter.class);
 
 		String[] securedApiPaths = { "/api/v1/public/*", "/api/v1/users/*", "/api/v1/wiki/*", "/api/v1/feedback/*",
 				"/api/v1/profile-requests/*", "/api/v1/courses/*", "/api/v1/meetings/*", "/api/v1/storage/*",
 				"/api/v1/kits/*", "/api/v1/achievements/*", "/api/v1/events/*", "/api/v1/logs", "/api/v1/reports/*",
-				"/api/v1/system/stats", "/api/v1/matrix/*", "/api/v1/files/*" };
+				"/api/v1/system/stats", "/api/v1/matrix/*", "/api/v1/files/*", "/api/v1/openapi.json",
+				"/swagger-ui/*" };
 		filter(Arrays.asList(securedApiPaths)).through(ApiAuthFilter.class);
 
 		String[] adminApiPaths = { "/api/v1/users/*", "/api/v1/wiki/*", "/api/v1/feedback/*",
 				"/api/v1/profile-requests/*", "/api/v1/courses/*", "/api/v1/meetings/*", "/api/v1/storage/*",
 				"/api/v1/kits/*", "/api/v1/achievements/*", "/api/v1/events/*", "/api/v1/logs", "/api/v1/reports/*",
-				"/api/v1/system/stats", "/api/v1/matrix/*", "/api/v1/files/*" };
+				"/api/v1/system/stats", "/api/v1/matrix/*", "/api/v1/files/*", "/api/v1/openapi.json",
+				"/swagger-ui/*" };
 		filter(Arrays.asList(adminApiPaths)).through(AdminFilter.class);
 
 		bind(Gson.class).toInstance(
@@ -94,31 +101,30 @@ public class ServiceModule extends ServletModule {
 
 		// --- SERVLET BINDINGS ---
 		serve("/notifications").with(NotificationServlet.class);
+		serve("/swagger-ui/*").with(SwaggerUIServlet.class);
 
 		// --- API v1 SERVLET BINDINGS ---
+		// The OpenApiResource is not a standard HttpServlet and must be bound directly.
+		bind(OpenApiResource.class).in(Scopes.SINGLETON);
+		serve("/api/v1/openapi.json").with(OpenApiResource.class);
 
-		// Public API (requires login, but not admin rights)
 		serve("/api/v1/public/dashboard").with(PublicDashboardResource.class);
 		serve("/api/v1/public/events", "/api/v1/public/events/*").with(PublicEventResource.class);
 		serve("/api/v1/public/meetings", "/api/v1/public/meetings/*").with(PublicMeetingResource.class);
 		serve("/api/v1/public/storage", "/api/v1/public/storage/*").with(PublicStorageResource.class);
 		serve("/api/v1/public/profile", "/api/v1/public/profile/*").with(PublicProfileResource.class);
 		serve("/api/v1/public/calendar.ics").with(PublicCalendarResource.class);
+		serve("/api/v1/public/files").with(PublicFilesResource.class);
 		serve("/api/v1/public/calendar/entries").with(PublicCalendarEntriesResource.class);
 		serve("/api/v1/public/feedback", "/api/v1/public/feedback/*").with(PublicFeedbackResource.class);
-
-		// CORRECTED: Unambiguous mappings for public file resources
-		serve("/api/v1/public/files").with(PublicFilesResource.class);
 		serve("/api/v1/public/files/download/*", "/api/v1/public/files/images/*").with(PublicFileStreamResource.class);
 
-		// Authentication (does not require login token)
 		serve("/api/v1/auth/login").with(AuthResource.class);
 		serve("/api/v1/auth/passkey/register/start").with(RegistrationStartServlet.class);
 		serve("/api/v1/auth/passkey/register/finish").with(RegistrationFinishServlet.class);
 		serve("/api/v1/auth/passkey/login/start").with(AuthenticationStartServlet.class);
 		serve("/api/v1/auth/passkey/login/finish").with(AuthenticationFinishServlet.class);
 
-		// Admin API (requires admin rights, handled by AdminFilter)
 		serve("/api/v1/users", "/api/v1/users/*").with(UserResource.class);
 		serve("/api/v1/wiki", "/api/v1/wiki/*").with(WikiResource.class);
 		serve("/api/v1/feedback", "/api/v1/feedback/*").with(FeedbackResource.class);

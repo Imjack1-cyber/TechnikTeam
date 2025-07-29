@@ -10,6 +10,12 @@ import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
 import de.technikteam.service.AuthService;
 import de.technikteam.service.LoginAttemptService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse as OAApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,6 +29,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Singleton
+@Tag(name = "Authentication")
 public class AuthResource extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LogManager.getLogger(AuthResource.class);
@@ -41,6 +48,32 @@ public class AuthResource extends HttpServlet {
 	}
 
 	@Override
+	@Operation(
+		summary = "User Login",
+		description = "Authenticates a user with username and password, returning a JWT if successful.",
+		tags = {"Authentication"},
+		requestBody = @RequestBody(
+			description = "User credentials for login.",
+			required = true,
+			content = @Content(
+				mediaType = "application/json",
+				schema = @Schema(
+					type = "object",
+					requiredProperties = {"username", "password"},
+					properties = {
+						@Schema(name = "username", type = "string", example = "admin"),
+						@Schema(name = "password", type = "string", format = "password", example = "admin123")
+					}
+				)
+			)
+		),
+		responses = {
+			@OAApiResponse(responseCode = "200", description = "Login successful, JWT returned.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = de.technikteam.model.ApiResponse.class))),
+			@OAApiResponse(responseCode = "400", description = "Missing username or password."),
+			@OAApiResponse(responseCode = "401", description = "Invalid credentials."),
+			@OAApiResponse(responseCode = "403", description = "Account is temporarily locked due to too many failed attempts.")
+		}
+	)
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		String jsonPayload = req.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
 		Type type = new TypeToken<Map<String, String>>() {
