@@ -1,64 +1,36 @@
 package de.technikteam.dao;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import de.technikteam.model.InventoryKit;
 import de.technikteam.model.InventoryKitItem;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.stereotype.Repository;
 
-import java.sql.*;
+import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-@Singleton
+@Repository
 public class InventoryKitDAO {
 	private static final Logger logger = LogManager.getLogger(InventoryKitDAO.class);
-	private final DatabaseManager dbManager;
+	private final JdbcTemplate jdbcTemplate;
 
-	@Inject
-	public InventoryKitDAO(DatabaseManager dbManager) {
-		this.dbManager = dbManager;
+	@Autowired
+	public InventoryKitDAO(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
 	}
 
-	public int createKit(InventoryKit kit) {
-		String sql = "INSERT INTO inventory_kits (name, description, location) VALUES (?, ?, ?)";
-		try (Connection conn = dbManager.getConnection();
-				PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-			pstmt.setString(1, kit.getName());
-			pstmt.setString(2, kit.getDescription());
-			pstmt.setString(3, kit.getLocation());
-			int affectedRows = pstmt.executeUpdate();
-			if (affectedRows > 0) {
-				try (ResultSet rs = pstmt.getGeneratedKeys()) {
-					if (rs.next()) {
-						return rs.getInt(1);
-					}
-				}
-			}
-		} catch (SQLException e) {
-			logger.error("Error creating inventory kit '{}'", kit.getName(), e);
-		}
-		return 0;
-	}
-
-	public boolean updateKit(InventoryKit kit) {
-		String sql = "UPDATE inventory_kits SET name = ?, description = ?, location = ? WHERE id = ?";
-		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setString(1, kit.getName());
-			pstmt.setString(2, kit.getDescription());
-			pstmt.setString(3, kit.getLocation());
-			pstmt.setInt(4, kit.getId());
-			return pstmt.executeUpdate() > 0;
-		} catch (SQLException e) {
-			logger.error("Error updating inventory kit ID {}", kit.getId(), e);
-			return false;
-		}
-	}
-
-	private InventoryKit mapResultSetToKit(ResultSet rs) throws SQLException {
+	private final RowMapper<InventoryKit> kitRowMapper = (rs, rowNum) -> {
 		InventoryKit kit = new InventoryKit();
 		kit.setId(rs.getInt("id"));
 		kit.setName(rs.getString("name"));
@@ -66,29 +38,54 @@ public class InventoryKitDAO {
 		kit.setLocation(rs.getString("location"));
 		kit.setItems(new ArrayList<>());
 		return kit;
+	};
+
+	public int createKit(InventoryKit kit) {
+		String sql = "INSERT INTO inventory_kits (name, description, location) VALUES (?, ?, ?)";
+		try {
+			KeyHolder keyHolder = new GeneratedKeyHolder();
+			jdbcTemplate.update(connection -> {
+				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+				ps.setString(1, kit.getName());
+				ps.setString(2, kit.getDescription());
+				ps.setString(3, kit.getLocation());
+				return ps;
+			}, keyHolder);
+			return Objects.requireNonNull(keyHolder.getKey()).intValue();
+		} catch (Exception e) {
+			logger.error("Error creating inventory kit '{}'", kit.getName(), e);
+			return 0;
+		}
+	}
+
+	public boolean updateKit(InventoryKit kit) {
+		String sql = "UPDATE inventory_kits SET name = ?, description = ?, location = ? WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, kit.getName(), kit.getDescription(), kit.getLocation(), kit.getId()) > 0;
+		} catch (Exception e) {
+			logger.error("Error updating inventory kit ID {}", kit.getId(), e);
+			return false;
+		}
 	}
 
 	public InventoryKit getKitById(int kitId) {
 		String sql = "SELECT * FROM inventory_kits WHERE id = ?";
-		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, kitId);
-			try (ResultSet rs = pstmt.executeQuery()) {
-				if (rs.next()) {
-					return mapResultSetToKit(rs);
-				}
-			}
-		} catch (SQLException e) {
+		try {
+			return jdbcTemplate.queryForObject(sql, kitRowMapper, kitId);
+		} catch (EmptyResultDataAccessException e) {
+			return null;
+		} catch (Exception e) {
 			logger.error("Error fetching kit by ID {}", kitId, e);
+			return null;
 		}
-		return null;
 	}
 
 	public boolean deleteKit(int kitId) {
 		String sql = "DELETE FROM inventory_kits WHERE id = ?";
-		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, kitId);
-			return pstmt.executeUpdate() > 0;
-		} catch (SQLException e) {
+		try {
+			jdbcTemplate.update("DELETE FROM inventory_kit_items WHERE kit_id = ?", kitId);
+			return jdbcTemplate.update(sql, kitId) > 0;
+		} catch (Exception e) {
 			logger.error("Error deleting inventory kit ID {}", kitId, e);
 			return false;
 		}
@@ -97,100 +94,76 @@ public class InventoryKitDAO {
 	public List<InventoryKit> getAllKitsWithItems() {
 		Map<Integer, InventoryKit> kitMap = new LinkedHashMap<>();
 		String sql = "SELECT k.id, k.name, k.description, k.location, ki.item_id, ki.quantity, si.name as item_name FROM inventory_kits k LEFT JOIN inventory_kit_items ki ON k.id = ki.kit_id LEFT JOIN storage_items si ON ki.item_id = si.id ORDER BY k.name, si.name";
-		try (Connection conn = dbManager.getConnection();
-				PreparedStatement stmt = conn.prepareStatement(sql);
-				ResultSet rs = stmt.executeQuery()) {
-			while (rs.next()) {
-				int kitId = rs.getInt("id");
-				InventoryKit kit = kitMap.computeIfAbsent(kitId, id -> {
-					try {
-						return mapResultSetToKit(rs);
-					} catch (SQLException e) {
-						throw new RuntimeException(e);
-					}
-				});
-				if (rs.getInt("item_id") > 0) {
-					InventoryKitItem item = new InventoryKitItem();
-					item.setKitId(kitId);
-					item.setItemId(rs.getInt("item_id"));
-					item.setQuantity(rs.getInt("quantity"));
-					item.setItemName(rs.getString("item_name"));
-					kit.getItems().add(item);
+
+		jdbcTemplate.query(sql, rs -> {
+			int kitId = rs.getInt("id");
+			InventoryKit kit = kitMap.computeIfAbsent(kitId, id -> {
+				try {
+					return kitRowMapper.mapRow(rs, 0);
+				} catch (SQLException e) {
+					throw new RuntimeException(e);
 				}
+			});
+			if (rs.getInt("item_id") > 0) {
+				InventoryKitItem item = new InventoryKitItem();
+				item.setKitId(kitId);
+				item.setItemId(rs.getInt("item_id"));
+				item.setQuantity(rs.getInt("quantity"));
+				item.setItemName(rs.getString("item_name"));
+				kit.getItems().add(item);
 			}
-		} catch (SQLException e) {
-			logger.error("Error fetching all kits with their items", e);
-		}
+		});
 		return new ArrayList<>(kitMap.values());
 	}
 
 	public List<InventoryKitItem> getItemsForKit(int kitId) {
-		List<InventoryKitItem> items = new ArrayList<>();
 		String sql = "SELECT iki.*, si.name as item_name FROM inventory_kit_items iki JOIN storage_items si ON iki.item_id = si.id WHERE iki.kit_id = ?";
-		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, kitId);
-			try (ResultSet rs = pstmt.executeQuery()) {
-				while (rs.next()) {
-					InventoryKitItem item = new InventoryKitItem();
-					item.setKitId(rs.getInt("kit_id"));
-					item.setItemId(rs.getInt("item_id"));
-					item.setQuantity(rs.getInt("quantity"));
-					item.setItemName(rs.getString("item_name"));
-					items.add(item);
-				}
-			}
-		} catch (SQLException e) {
+		try {
+			return jdbcTemplate.query(sql, (rs, rowNum) -> {
+				InventoryKitItem item = new InventoryKitItem();
+				item.setKitId(rs.getInt("kit_id"));
+				item.setItemId(rs.getInt("item_id"));
+				item.setQuantity(rs.getInt("quantity"));
+				item.setItemName(rs.getString("item_name"));
+				return item;
+			}, kitId);
+		} catch (Exception e) {
 			logger.error("Error fetching items for kit ID {}", kitId, e);
+			return List.of();
 		}
-		return items;
 	}
 
 	public boolean updateKitItems(int kitId, String[] itemIds, String[] quantities) {
-		String deleteSql = "DELETE FROM inventory_kit_items WHERE kit_id = ?";
-		String insertSql = "INSERT INTO inventory_kit_items (kit_id, item_id, quantity) VALUES (?, ?, ?)";
-		try (Connection conn = dbManager.getConnection()) {
-			conn.setAutoCommit(false);
-			try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
-				deleteStmt.setInt(1, kitId);
-				deleteStmt.executeUpdate();
-			}
+		try {
+			jdbcTemplate.update("DELETE FROM inventory_kit_items WHERE kit_id = ?", kitId);
 			if (itemIds != null && quantities != null && itemIds.length == quantities.length) {
-				try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
-					for (int i = 0; i < itemIds.length; i++) {
-						if (itemIds[i] == null || itemIds[i].isEmpty())
-							continue;
-						int itemId = Integer.parseInt(itemIds[i]);
-						int quantity = Integer.parseInt(quantities[i]);
+				String insertSql = "INSERT INTO inventory_kit_items (kit_id, item_id, quantity) VALUES (?, ?, ?)";
+				jdbcTemplate.batchUpdate(insertSql, List.of(itemIds), 100, (ps, itemIdStr) -> {
+					if (itemIdStr != null && !itemIdStr.isEmpty()) {
+						int index = List.of(itemIds).indexOf(itemIdStr);
+						int quantity = Integer.parseInt(quantities[index]);
 						if (quantity > 0) {
-							insertStmt.setInt(1, kitId);
-							insertStmt.setInt(2, itemId);
-							insertStmt.setInt(3, quantity);
-							insertStmt.addBatch();
+							ps.setInt(1, kitId);
+							ps.setInt(2, Integer.parseInt(itemIdStr));
+							ps.setInt(3, quantity);
 						}
 					}
-					insertStmt.executeBatch();
-				}
+				});
 			}
-			conn.commit();
 			return true;
-		} catch (SQLException | NumberFormatException e) {
+		} catch (Exception e) {
 			logger.error("Error during transaction for updating kit items for kit ID {}", kitId, e);
 			return false;
 		}
 	}
 
 	public List<InventoryKit> getAllKits() {
-		List<InventoryKit> kits = new ArrayList<>();
 		String sql = "SELECT * FROM inventory_kits ORDER BY name";
-		try (Connection conn = dbManager.getConnection();
-				PreparedStatement stmt = conn.prepareStatement(sql);
-				ResultSet rs = stmt.executeQuery()) {
-			while (rs.next()) {
-				kits.add(mapResultSetToKit(rs));
-			}
-		} catch (SQLException e) {
+		try {
+			return jdbcTemplate.query(sql, kitRowMapper);
+		} catch (Exception e) {
 			logger.error("Error fetching all inventory kits", e);
+			return List.of();
 		}
-		return kits;
 	}
 }

@@ -1,82 +1,52 @@
-// src/main/java/de/technikteam/api/v1/public_api/PublicDashboardResource.java
 package de.technikteam.api.v1.public_api;
 
-import com.google.gson.Gson;
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.EventTaskDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Event;
 import de.technikteam.model.EventTask;
 import de.technikteam.model.User;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Singleton
-public class PublicDashboardResource extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(PublicDashboardResource.class);
+@RestController
+@RequestMapping("/api/v1/public/dashboard")
+@Tag(name = "Public Dashboard", description = "Endpoints for the user-facing dashboard.")
+@SecurityRequirement(name = "bearerAuth")
+public class PublicDashboardResource {
 
 	private final EventDAO eventDAO;
 	private final EventTaskDAO eventTaskDAO;
-	private final Gson gson;
 
-	@Inject
-	public PublicDashboardResource(EventDAO eventDAO, EventTaskDAO eventTaskDAO, Gson gson) {
+	@Autowired
+	public PublicDashboardResource(EventDAO eventDAO, EventTaskDAO eventTaskDAO) {
 		this.eventDAO = eventDAO;
 		this.eventTaskDAO = eventTaskDAO;
-		this.gson = gson;
 	}
 
-	@Override
-	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		User user = (User) req.getAttribute("user");
-		if (user == null) {
-			sendJsonError(resp, HttpServletResponse.SC_UNAUTHORIZED, "Authentication required.");
-			return;
-		}
+	@GetMapping
+	@Operation(summary = "Get dashboard data", description = "Retrieves all necessary data for the user's main dashboard view.")
+	public ResponseEntity<ApiResponse> getDashboardData(@AuthenticationPrincipal User user) {
+		List<Event> assignedEvents = eventDAO.getAssignedEventsForUser(user.getId(), 5);
+		List<EventTask> openTasks = eventTaskDAO.getOpenTasksForUser(user.getId());
+		List<Event> upcomingEvents = eventDAO.getAllActiveAndUpcomingEvents(); // Simplified for now
 
-		try {
-			List<Event> assignedEvents = eventDAO.getAssignedEventsForUser(user.getId(), 5);
-			List<EventTask> openTasks = eventTaskDAO.getOpenTasksForUser(user.getId());
-			List<Event> upcomingEvents = eventDAO.getUpcomingEventsForUser(user, 5);
+		Map<String, Object> dashboardData = new HashMap<>();
+		dashboardData.put("assignedEvents", assignedEvents);
+		dashboardData.put("openTasks", openTasks);
+		dashboardData.put("upcomingEvents", upcomingEvents);
 
-			Map<String, Object> dashboardData = new HashMap<>();
-			dashboardData.put("assignedEvents", assignedEvents);
-			dashboardData.put("openTasks", openTasks);
-			dashboardData.put("upcomingEvents", upcomingEvents);
-
-			sendJsonResponse(resp, HttpServletResponse.SC_OK,
-					new ApiResponse(true, "Dashboard data retrieved.", dashboardData));
-		} catch (Exception e) {
-			logger.error("Error fetching dashboard data for user {}", user.getUsername(), e);
-			sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to retrieve dashboard data.");
-		}
-	}
-
-	private void sendJsonResponse(HttpServletResponse resp, int statusCode, ApiResponse apiResponse)
-			throws IOException {
-		resp.setStatus(statusCode);
-		resp.setContentType("application/json");
-		resp.setCharacterEncoding("UTF-8");
-		try (PrintWriter out = resp.getWriter()) {
-			out.print(gson.toJson(apiResponse));
-			out.flush();
-		}
-	}
-
-	private void sendJsonError(HttpServletResponse resp, int statusCode, String message) throws IOException {
-		sendJsonResponse(resp, statusCode, new ApiResponse(false, message, null));
+		return ResponseEntity.ok(new ApiResponse(true, "Dashboard data retrieved.", dashboardData));
 	}
 }

@@ -1,21 +1,21 @@
 package de.technikteam.service;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import de.technikteam.dao.PasskeyDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import java.util.UUID;
 
-@Singleton
+@Service
 public class PasskeyService {
 	private static final Logger logger = LogManager.getLogger(PasskeyService.class);
 	private final PasskeyDAO passkeyDAO;
 	private final UserDAO userDAO;
 
-	@Inject
+	@Autowired
 	public PasskeyService(PasskeyDAO passkeyDAO, UserDAO userDAO) {
 		this.passkeyDAO = passkeyDAO;
 		this.userDAO = userDAO;
@@ -50,7 +50,7 @@ public class PasskeyService {
 
 	public User finishAuthentication(String credentialData) {
 		logger.info("Simulating passkey authentication finish.");
-		User user = userDAO.getUserById(1); 
+		User user = userDAO.getUserById(1);
 		if (user != null) {
 			user.setPermissions(userDAO.getPermissionsForUser(user.getId()));
 			logger.info("Simulated passkey login successful for user '{}'", user.getUsername());

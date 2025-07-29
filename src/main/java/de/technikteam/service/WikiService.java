@@ -1,22 +1,22 @@
 package de.technikteam.service;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import de.technikteam.dao.WikiDAO;
 import de.technikteam.model.WikiEntry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-@Singleton
+@Service
 public class WikiService {
 	private static final Logger logger = LogManager.getLogger(WikiService.class);
 	private final WikiDAO wikiDAO;
 
-	@Inject
+	@Autowired
 	public WikiService(WikiDAO wikiDAO) {
 		this.wikiDAO = wikiDAO;
 	}

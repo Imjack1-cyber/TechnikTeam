@@ -1,128 +1,93 @@
-// src/main/java/de/technikteam/service/EventService.java
 package de.technikteam.service;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
-import de.technikteam.dao.*;
-import de.technikteam.model.*;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.Part;
+import de.technikteam.dao.AttachmentDAO;
+import de.technikteam.dao.EventCustomFieldDAO;
+import de.technikteam.dao.EventDAO;
+import de.technikteam.model.Attachment;
+import de.technikteam.model.Event;
+import de.technikteam.model.EventCustomField;
+import de.technikteam.model.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
-@Singleton
+@Service
 public class EventService {
 	private static final Logger logger = LogManager.getLogger(EventService.class);
 
 	private final EventDAO eventDAO;
 	private final AttachmentDAO attachmentDAO;
 	private final EventCustomFieldDAO customFieldDAO;
-	private final DatabaseManager dbManager;
 	private final ConfigurationService configService;
 	private final AdminLogService adminLogService;
 	private final NotificationService notificationService;
 
-	@Inject
+	@Autowired
 	public EventService(EventDAO eventDAO, AttachmentDAO attachmentDAO, EventCustomFieldDAO customFieldDAO,
-			DatabaseManager dbManager, ConfigurationService configService, AdminLogService adminLogService,
+			ConfigurationService configService, AdminLogService adminLogService,
 			NotificationService notificationService) {
 		this.eventDAO = eventDAO;
 		this.attachmentDAO = attachmentDAO;
 		this.customFieldDAO = customFieldDAO;
-		this.dbManager = dbManager;
 		this.configService = configService;
 		this.adminLogService = adminLogService;
 		this.notificationService = notificationService;
 	}
 
-	public int createOrUpdateEvent(Event event, boolean isUpdate, User adminUser, HttpServletRequest request) {
-		try (Connection conn = dbManager.getConnection()) {
-			conn.setAutoCommit(false);
-			try {
-				int eventId;
-				if (isUpdate) {
-					if (eventDAO.updateEvent(event, conn)) {
-						eventId = event.getId();
-						adminLogService.log(adminUser.getUsername(), "UPDATE_EVENT",
-								"Event '" + event.getName() + "' (ID: " + eventId + ") aktualisiert.");
-					} else {
-						throw new SQLException("Failed to update the core event record.");
-					}
-				} else {
-					eventId = eventDAO.createEvent(event, conn);
-					if (eventId > 0) {
-						event.setId(eventId);
-						adminLogService.log(adminUser.getUsername(), "CREATE_EVENT",
-								"Event '" + event.getName() + "' (ID: " + eventId + ") erstellt.");
-					} else {
-						throw new SQLException("Failed to create the core event record.");
-					}
-				}
+	@Transactional
+	public int createOrUpdateEvent(Event event, boolean isUpdate, User adminUser, String[] requiredCourseIds,
+			String[] requiredPersons, String[] itemIds, String[] quantities, List<EventCustomField> customFields,
+			MultipartFile file, String requiredRole) throws SQLException, IOException {
 
-				String[] requiredCourseIds = request.getParameterValues("requiredCourseId");
-				String[] requiredPersons = request.getParameterValues("requiredPersons");
-				eventDAO.saveSkillRequirements(eventId, requiredCourseIds, requiredPersons, conn);
-
-				String[] itemIds = request.getParameterValues("itemId");
-				String[] quantities = request.getParameterValues("itemQuantity");
-				eventDAO.saveReservations(eventId, itemIds, quantities, conn);
-
-				String[] customFieldNames = request.getParameterValues("customFieldName");
-				String[] customFieldTypes = request.getParameterValues("customFieldType");
-				if (customFieldNames != null) {
-					List<EventCustomField> customFields = new ArrayList<>();
-					for (int i = 0; i < customFieldNames.length; i++) {
-						if (customFieldNames[i] != null && !customFieldNames[i].trim().isEmpty()) {
-							EventCustomField cf = new EventCustomField();
-							cf.setFieldName(customFieldNames[i]);
-							cf.setFieldType(customFieldTypes[i]);
-							cf.setRequired(true);
-							customFields.add(cf);
-						}
-					}
-					customFieldDAO.saveCustomFieldsForEvent(eventId, customFields, conn);
-				}
-
-				Part filePart = request.getPart("attachment");
-				if (filePart != null && filePart.getSize() > 0) {
-					String requiredRole = request.getParameter("requiredRole");
-					handleAttachmentUpload(filePart, eventId, requiredRole, adminUser, conn);
-				}
-
-				conn.commit();
-				logger.info("Transaction for event ID {} committed successfully.", eventId);
-				return eventId;
-
-			} catch (Exception e) {
-				conn.rollback();
-				logger.error("Error in event service transaction. Rolling back.", e);
-				return 0;
-			}
-		} catch (SQLException e) {
-			logger.error("Failed to get DB connection for event service transaction.", e);
-			return 0;
+		int eventId;
+		if (isUpdate) {
+			eventDAO.updateEvent(event);
+			eventId = event.getId();
+			adminLogService.log(adminUser.getUsername(), "UPDATE_EVENT",
+					"Event '" + event.getName() + "' (ID: " + eventId + ") aktualisiert.");
+		} else {
+			eventId = eventDAO.createEvent(event);
+			event.setId(eventId);
+			adminLogService.log(adminUser.getUsername(), "CREATE_EVENT",
+					"Event '" + event.getName() + "' (ID: " + eventId + ") erstellt.");
 		}
+
+		eventDAO.saveSkillRequirements(eventId, requiredCourseIds, requiredPersons);
+		eventDAO.saveReservations(eventId, itemIds, quantities);
+		if (customFields != null) {
+			customFieldDAO.saveCustomFieldsForEvent(eventId, customFields);
+		}
+
+		if (file != null && !file.isEmpty()) {
+			handleAttachmentUpload(file, eventId, requiredRole, adminUser);
+		}
+
+		logger.info("Transaction for event ID {} committed successfully.", eventId);
+		return eventId;
 	}
 
 	public void signOffUserFromRunningEvent(int userId, String username, int eventId, String reason) {
 		eventDAO.signOffFromEvent(userId, eventId);
-
 		Event event = eventDAO.getEventById(eventId);
 		if (event != null && event.getLeaderUserId() > 0) {
 			String notificationMessage = String.format("%s hat sich vom laufenden Event '%s' abgemeldet. Grund: %s",
 					username, event.getName(), reason);
 
 			Map<String, Object> payload = Map.of("type", "alert", "payload",
-					Map.of("message", notificationMessage, "url", "/veranstaltungen/details?id=" + eventId));
+					Map.of("message", notificationMessage, "url", "/veranstaltungen/details/" + eventId));
 
 			notificationService.sendNotificationToUser(event.getLeaderUserId(), payload);
 			logger.info("Sent sign-off notification to event leader (ID: {}) for event '{}'", event.getLeaderUserId(),
@@ -130,27 +95,29 @@ public class EventService {
 		}
 	}
 
-	private void handleAttachmentUpload(Part filePart, int eventId, String requiredRole, User adminUser,
-			Connection conn) throws IOException, SQLException {
-		String uploadDir = configService.getProperty("upload.directory") + File.separator + "events";
-		new File(uploadDir).mkdirs();
+	private void handleAttachmentUpload(MultipartFile file, int eventId, String requiredRole, User adminUser)
+			throws IOException {
+		String uploadDir = configService.getProperty("upload.directory");
+		String originalFileName = Paths.get(file.getOriginalFilename()).getFileName().toString();
+		String uniqueFileName = UUID.randomUUID() + "-" + originalFileName.replaceAll("[^a-zA-Z0-9.\\-_]", "_");
 
-		String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
-		File targetFile = new File(uploadDir, fileName);
-		filePart.write(targetFile.getAbsolutePath());
+		Path targetPath = Paths.get(uploadDir, "events", uniqueFileName);
+		Files.createDirectories(targetPath.getParent());
+		Files.copy(file.getInputStream(), targetPath);
 
 		Attachment attachment = new Attachment();
 		attachment.setParentId(eventId);
 		attachment.setParentType("EVENT");
-		attachment.setFilename(fileName);
-		attachment.setFilepath("events/" + fileName);
+		attachment.setFilename(originalFileName);
+		attachment.setFilepath("events/" + uniqueFileName);
 		attachment.setRequiredRole(requiredRole);
 
-		if (attachmentDAO.addAttachment(attachment, conn)) {
+		if (attachmentDAO.addAttachment(attachment)) {
 			adminLogService.log(adminUser.getUsername(), "ADD_EVENT_ATTACHMENT",
-					"Anhang '" + fileName + "' zu Event ID " + eventId + " hinzugefügt.");
+					"Anhang '" + originalFileName + "' zu Event ID " + eventId + " hinzugefügt.");
 		} else {
-			throw new SQLException("Failed to save attachment to database.");
+			Files.deleteIfExists(targetPath);
+			throw new RuntimeException("Failed to save attachment to database.");
 		}
 	}
 }

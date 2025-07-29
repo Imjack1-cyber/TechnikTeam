@@ -1,47 +1,57 @@
-// src/main/java/de/technikteam/api/v1/public_api/PublicCalendarResource.java
 package de.technikteam.api.v1.public_api;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.MeetingDAO;
 import de.technikteam.model.Event;
 import de.technikteam.model.Meeting;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import net.fortuna.ical4j.data.CalendarOutputter;
 import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.DateTime;
 import net.fortuna.ical4j.model.component.VEvent;
 import net.fortuna.ical4j.model.property.*;
 import net.fortuna.ical4j.util.RandomUidGenerator;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.io.IOException;
+import java.io.ByteArrayOutputStream;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.List;
 
-@Singleton
-public class PublicCalendarResource extends HttpServlet {
-	private static final long serialVersionUID = 1L;
+@RestController
+@RequestMapping("/api/v1/public")
+@Tag(name = "Public Calendar", description = "Endpoints for calendar data.")
+@SecurityRequirement(name = "bearerAuth")
+public class PublicCalendarResource {
+
 	private final EventDAO eventDAO;
 	private final MeetingDAO meetingDAO;
 
-	@Inject
+	@Autowired
 	public PublicCalendarResource(EventDAO eventDAO, MeetingDAO meetingDAO) {
 		this.eventDAO = eventDAO;
 		this.meetingDAO = meetingDAO;
 	}
 
-	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-
+	@GetMapping("/calendar.ics")
+	@Operation(summary = "Get iCalendar Feed", description = "Provides an iCalendar (.ics) feed of all upcoming events and meetings.", responses = {
+			@ApiResponse(responseCode = "200", description = "iCalendar feed generated successfully", content = @Content(mediaType = "text/calendar")),
+			@ApiResponse(responseCode = "500", description = "Internal server error while generating the feed") })
+	public ResponseEntity<byte[]> getICalendarFeed(HttpServletRequest request) {
 		try {
 			Calendar calendar = new Calendar();
 			calendar.getProperties().add(new ProdId("-//TechnikTeam Calendar//iCal4j 3.2.4//DE"));
@@ -56,28 +66,20 @@ public class PublicCalendarResource extends HttpServlet {
 			for (Event event : events) {
 				VEvent vEvent = new VEvent();
 				vEvent.getProperties().add(uidGenerator.generateUid());
-
 				if (event.getEventDateTime() != null) {
-					ZonedDateTime zdtStart = event.getEventDateTime().atZone(systemZone);
-					Date utilDateStart = Date.from(zdtStart.toInstant());
-					vEvent.getProperties().add(new DtStart(new DateTime(utilDateStart)));
+					vEvent.getProperties().add(new DtStart(
+							new DateTime(Date.from(event.getEventDateTime().atZone(systemZone).toInstant()))));
 				}
 				if (event.getEndDateTime() != null) {
-					ZonedDateTime zdtEnd = event.getEndDateTime().atZone(systemZone);
-					Date utilDateEnd = Date.from(zdtEnd.toInstant());
-					vEvent.getProperties().add(new DtEnd(new DateTime(utilDateEnd)));
+					vEvent.getProperties().add(
+							new DtEnd(new DateTime(Date.from(event.getEndDateTime().atZone(systemZone).toInstant()))));
 				}
-
 				vEvent.getProperties().add(new Summary(event.getName()));
 				if (event.getDescription() != null)
 					vEvent.getProperties().add(new Description(event.getDescription()));
 				if (event.getLocation() != null)
 					vEvent.getProperties().add(new Location(event.getLocation()));
-				try {
-					vEvent.getProperties()
-							.add(new Url(new URI(baseUrl + "/veranstaltungen/details?id=" + event.getId())));
-				} catch (URISyntaxException ignored) {
-				}
+				vEvent.getProperties().add(new Url(new URI(baseUrl + "/veranstaltungen/details/" + event.getId())));
 				calendar.getComponents().add(vEvent);
 			}
 
@@ -86,37 +88,35 @@ public class PublicCalendarResource extends HttpServlet {
 				String title = meeting.getParentCourseName() + ": " + meeting.getName();
 				VEvent vMeeting = new VEvent();
 				vMeeting.getProperties().add(uidGenerator.generateUid());
-
 				if (meeting.getMeetingDateTime() != null) {
-					ZonedDateTime zdtStart = meeting.getMeetingDateTime().atZone(systemZone);
-					Date utilDateStart = Date.from(zdtStart.toInstant());
-					vMeeting.getProperties().add(new DtStart(new DateTime(utilDateStart)));
+					vMeeting.getProperties().add(new DtStart(
+							new DateTime(Date.from(meeting.getMeetingDateTime().atZone(systemZone).toInstant()))));
 				}
 				if (meeting.getEndDateTime() != null) {
-					ZonedDateTime zdtEnd = meeting.getEndDateTime().atZone(systemZone);
-					Date utilDateEnd = Date.from(zdtEnd.toInstant());
-					vMeeting.getProperties().add(new DtEnd(new DateTime(utilDateEnd)));
+					vMeeting.getProperties().add(new DtEnd(
+							new DateTime(Date.from(meeting.getEndDateTime().atZone(systemZone).toInstant()))));
 				}
-
 				vMeeting.getProperties().add(new Summary(title));
 				if (meeting.getDescription() != null)
 					vMeeting.getProperties().add(new Description(meeting.getDescription()));
 				if (meeting.getLocation() != null)
 					vMeeting.getProperties().add(new Location(meeting.getLocation()));
-				try {
-					vMeeting.getProperties().add(new Url(new URI(baseUrl + "/meetingDetails?id=" + meeting.getId())));
-				} catch (URISyntaxException ignored) {
-				}
+				vMeeting.getProperties().add(new Url(new URI(baseUrl + "/lehrgaenge/details/" + meeting.getId())));
 				calendar.getComponents().add(vMeeting);
 			}
 
-			response.setContentType("text/calendar; charset=utf-8");
-			response.setHeader("Content-Disposition", "inline; filename=\"technikteam-calendar.ics\"");
+			ByteArrayOutputStream boas = new ByteArrayOutputStream();
 			CalendarOutputter outputter = new CalendarOutputter();
-			outputter.output(calendar, response.getOutputStream());
+			outputter.output(calendar, boas);
+
+			HttpHeaders headers = new HttpHeaders();
+			headers.setContentType(MediaType.parseMediaType("text/calendar"));
+			headers.setContentDispositionFormData("attachment", "technikteam-calendar.ics");
+
+			return new ResponseEntity<>(boas.toByteArray(), headers, HttpStatus.OK);
 
 		} catch (Exception e) {
-			throw new ServletException("Error generating iCal feed", e);
+			return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 }

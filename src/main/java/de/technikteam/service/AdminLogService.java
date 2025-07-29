@@ -1,18 +1,18 @@
 package de.technikteam.service;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import de.technikteam.dao.AdminLogDAO;
 import de.technikteam.model.AdminLog;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
-@Singleton
+@Service
 public class AdminLogService {
 	private static final Logger logger = LogManager.getLogger(AdminLogService.class);
 	private final AdminLogDAO logDAO;
 
-	@Inject
+	@Autowired
 	public AdminLogService(AdminLogDAO logDAO) {
 		this.logDAO = logDAO;
 	}
@@ -21,6 +21,7 @@ public class AdminLogService {
 		if (input == null) {
 			return "";
 		}
+		// Replace newlines and carriage returns to prevent log injection
 		return input.replace('\n', '_').replace('\r', '_');
 	}
 

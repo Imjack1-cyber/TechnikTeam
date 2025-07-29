@@ -2,29 +2,27 @@ package de.technikteam.dao;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import com.google.inject.Inject;
 import de.technikteam.model.Role;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+@Repository
 public class RoleDAO {
 	private static final Logger logger = LogManager.getLogger(RoleDAO.class);
-	private final DatabaseManager dbManager;
+	private final JdbcTemplate jdbcTemplate;
 	private final LoadingCache<String, List<Role>> roleCache;
 	private static final String ALL_ROLES_KEY = "ALL_ROLES";
 
-	@Inject
-	public RoleDAO(DatabaseManager dbManager) {
-		this.dbManager = dbManager;
-		this.roleCache = Caffeine.newBuilder().expireAfterWrite(1, TimeUnit.HOURS).maximumSize(1) 
+	@Autowired
+	public RoleDAO(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
+		this.roleCache = Caffeine.newBuilder().expireAfterWrite(1, TimeUnit.HOURS).maximumSize(1)
 				.build(key -> fetchAllRolesFromDb());
 	}
 
@@ -35,21 +33,17 @@ public class RoleDAO {
 
 	private List<Role> fetchAllRolesFromDb() {
 		logger.info("Cache miss for roles. Fetching all roles from database.");
-		List<Role> roles = new ArrayList<>();
 		String sql = "SELECT id, role_name FROM roles ORDER BY role_name";
-		try (Connection conn = dbManager.getConnection();
-				PreparedStatement pstmt = conn.prepareStatement(sql);
-				ResultSet rs = pstmt.executeQuery()) {
-
-			while (rs.next()) {
+		try {
+			return jdbcTemplate.query(sql, (rs, rowNum) -> {
 				Role role = new Role();
 				role.setId(rs.getInt("id"));
 				role.setRoleName(rs.getString("role_name"));
-				roles.add(role);
-			}
-		} catch (SQLException e) {
+				return role;
+			});
+		} catch (Exception e) {
 			logger.error("Error fetching all roles from DB", e);
+			return List.of();
 		}
-		return roles;
 	}
 }

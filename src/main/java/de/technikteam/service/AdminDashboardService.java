@@ -1,14 +1,14 @@
 package de.technikteam.service;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import de.technikteam.dao.AdminLogDAO;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.ReportDAO;
 import de.technikteam.dao.StorageDAO;
 import de.technikteam.model.DashboardDataDTO;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
-@Singleton
+@Service
 public class AdminDashboardService {
 	private final EventDAO eventDAO;
 	private final StorageDAO storageDAO;
@@ -18,7 +18,7 @@ public class AdminDashboardService {
 	private static final int WIDGET_LIMIT = 5;
 	private static final int TREND_MONTHS = 12;
 
-	@Inject
+	@Autowired
 	public AdminDashboardService(EventDAO eventDAO, StorageDAO storageDAO, AdminLogDAO adminLogDAO,
 			ReportDAO reportDAO) {
 		this.eventDAO = eventDAO;

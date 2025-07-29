@@ -1,22 +1,19 @@
 package de.technikteam.dao;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
-@Singleton
+@Repository
 public class StatisticsDAO {
 	private static final Logger logger = LogManager.getLogger(StatisticsDAO.class);
-	private final DatabaseManager dbManager;
+	private final JdbcTemplate jdbcTemplate;
 
-	@Inject
-	public StatisticsDAO(DatabaseManager dbManager) {
-		this.dbManager = dbManager;
+	@Autowired
+	public StatisticsDAO(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
 	}
 
 	public int getUserCount() {
@@ -28,15 +25,12 @@ public class StatisticsDAO {
 	}
 
 	private int getCount(String sql) {
-		try (Connection conn = dbManager.getConnection();
-				PreparedStatement pstmt = conn.prepareStatement(sql);
-				ResultSet rs = pstmt.executeQuery()) {
-			if (rs.next()) {
-				return rs.getInt(1);
-			}
-		} catch (SQLException e) {
+		try {
+			Integer count = jdbcTemplate.queryForObject(sql, Integer.class);
+			return count != null ? count : 0;
+		} catch (Exception e) {
 			logger.error("SQL error executing count query: {}", sql, e);
+			return 0;
 		}
-		return 0;
 	}
 }

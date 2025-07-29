@@ -1,58 +1,38 @@
 package de.technikteam.api.v1.public_api;
 
-import com.google.gson.Gson;
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import de.technikteam.dao.FileDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.List;
 import java.util.Map;
 
-@Singleton
-public class PublicFilesResource extends HttpServlet {
-	private static final long serialVersionUID = 1L;
+@RestController
+@RequestMapping("/api/v1/public/files")
+@Tag(name = "Public Files", description = "Endpoints for downloading files and viewing images.")
+@SecurityRequirement(name = "bearerAuth")
+public class PublicFilesResource {
 
 	private final FileDAO fileDAO;
-	private final Gson gson;
 
-	@Inject
-	public PublicFilesResource(FileDAO fileDAO, Gson gson) {
+	@Autowired
+	public PublicFilesResource(FileDAO fileDAO) {
 		this.fileDAO = fileDAO;
-		this.gson = gson;
 	}
 
-	@Override
-	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		User user = (User) req.getAttribute("user");
-		if (user == null) {
-			sendJsonError(resp, HttpServletResponse.SC_UNAUTHORIZED, "Authentication required.");
-			return;
-		}
-
+	@GetMapping
+	@Operation(summary = "Get all accessible files", description = "Retrieves all files grouped by category that the authenticated user is authorized to view.")
+	public ResponseEntity<ApiResponse> getAllAccessibleFiles(@AuthenticationPrincipal User user) {
 		Map<String, List<de.technikteam.model.File>> groupedFiles = fileDAO.getAllFilesGroupedByCategory(user);
-		sendJsonResponse(resp, HttpServletResponse.SC_OK,
-				new ApiResponse(true, "Files retrieved successfully.", groupedFiles));
-	}
-
-	private void sendJsonResponse(HttpServletResponse resp, int statusCode, ApiResponse apiResponse)
-			throws IOException {
-		resp.setStatus(statusCode);
-		resp.setContentType("application/json");
-		resp.setCharacterEncoding("UTF-8");
-		try (PrintWriter out = resp.getWriter()) {
-			out.print(gson.toJson(apiResponse));
-			out.flush();
-		}
-	}
-
-	private void sendJsonError(HttpServletResponse resp, int statusCode, String message) throws IOException {
-		sendJsonResponse(resp, statusCode, new ApiResponse(false, message, null));
+		return ResponseEntity.ok(new ApiResponse(true, "Files retrieved successfully.", groupedFiles));
 	}
 }

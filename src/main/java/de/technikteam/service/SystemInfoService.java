@@ -4,6 +4,7 @@ import com.sun.management.OperatingSystemMXBean;
 import de.technikteam.model.SystemStatsDTO;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,10 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 
-/**
- * A service to gather system statistics from the underlying OS. This version is
- * made more platform-independent and robust for Windows environments.
- */
+@Service
 public class SystemInfoService {
 	private static final Logger logger = LogManager.getLogger(SystemInfoService.class);
 	private static final long GIGA_BYTE = 1024L * 1024L * 1024L;
@@ -39,7 +37,6 @@ public class SystemInfoService {
 		stats.setUsedDiskSpace((totalDiskBytes - usableDiskBytes) / GIGA_BYTE);
 
 		stats.setUptime(getSystemUptime());
-
 		stats.setBatteryPercentage(getBatteryPercentage());
 
 		return stats;

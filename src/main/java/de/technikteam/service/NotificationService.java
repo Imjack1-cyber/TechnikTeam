@@ -1,115 +1,116 @@
-// src/main/java/de/technikteam/service/NotificationService.java
 package de.technikteam.service;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.model.User;
-import jakarta.servlet.AsyncContext;
-import jakarta.servlet.http.HttpServletRequest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-@Singleton
+@Service
 public class NotificationService {
 	private static final Logger logger = LogManager.getLogger(NotificationService.class);
 	private final Gson gson;
 
-	private final Map<Integer, List<AsyncContext>> contextsByUser = new ConcurrentHashMap<>();
+	private final Map<Integer, List<SseEmitter>> emittersByUser = new ConcurrentHashMap<>();
 
-	@Inject
 	public NotificationService() {
 		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
-	public void register(HttpServletRequest request) {
-		User user = (User) request.getSession().getAttribute("user");
+	public SseEmitter register(User user) {
 		if (user == null) {
 			logger.warn("Attempt to register for notifications from a non-authenticated session.");
-			return;
+			return null;
 		}
 
-		AsyncContext asyncContext = request.startAsync();
-		asyncContext.setTimeout(0);
+		// Timeout set to a very long value. The connection will be kept alive by
+		// heartbeats.
+		SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
+		int userId = user.getId();
 
-		contextsByUser.computeIfAbsent(user.getId(), k -> new CopyOnWriteArrayList<>()).add(asyncContext);
-		logger.info("New client registered for SSE notifications for user ID {}. Total clients for user: {}",
-				user.getId(), contextsByUser.get(user.getId()).size());
+		emitter.onCompletion(() -> {
+			logger.info("SSE Emitter completed for user {}", userId);
+			removeEmitter(userId, emitter);
+		});
+		emitter.onTimeout(() -> {
+			logger.warn("SSE Emitter timed out for user {}", userId);
+			emitter.complete();
+		});
+		emitter.onError(e -> {
+			logger.error("SSE Emitter error for user {}: {}", userId, e.getMessage());
+			emitter.complete();
+		});
+
+		emittersByUser.computeIfAbsent(userId, k -> new CopyOnWriteArrayList<>()).add(emitter);
+
+		logger.info("New client registered for SSE notifications for user ID {}. Total clients for user: {}", userId,
+				emittersByUser.get(userId).size());
+
+		// Send a confirmation event
+		try {
+			emitter.send(SseEmitter.event().name("connected").data("Connection established"));
+		} catch (IOException e) {
+			logger.error("Error sending connection confirmation to user {}", userId, e);
+			emitter.complete();
+		}
+
+		return emitter;
 	}
 
-	/**
-	 * Broadcasts a generic message to all connected clients.
-	 * 
-	 * @param message The plain text message to send.
-	 */
-	public void broadcastGenericMessage(String message) {
-		logger.info("Broadcasting generic notification to all clients: {}", message);
-		Map<String, Object> payload = Map.of("type", "generic", "payload", Map.of("message", message));
-		broadcast(gson.toJson(payload));
-	}
-
-	/**
-	 * Broadcasts a specific UI update event to all connected clients.
-	 * 
-	 * @param type    The type of UI update (e.g., "user_updated",
-	 *                "event_status_updated").
-	 * @param payload The data associated with the update.
-	 */
 	public void broadcastUIUpdate(String type, Object payload) {
 		logger.info("Broadcasting UI update of type '{}' to all clients.", type);
-		Map<String, Object> message = Map.of("type", "ui_update", "payload",
-				Map.of("updateType", type, "data", payload));
-		broadcast(gson.toJson(message));
+		Map<String, Object> message = Map.of("updateType", type, "data", payload);
+		SseEmitter.SseEventBuilder event = SseEmitter.event().name("ui_update").data(message);
+
+		emittersByUser.values().forEach(emitterList -> emitterList.forEach(emitter -> {
+			try {
+				emitter.send(event);
+			} catch (IOException e) {
+				logger.warn("Failed to send broadcast to a client (likely disconnected), removing it. Error: {}",
+						e.getMessage());
+				emitter.complete();
+			}
+		}));
 	}
 
 	public void sendNotificationToUser(int userId, Map<String, Object> payload) {
-		List<AsyncContext> userContexts = contextsByUser.get(userId);
-		if (userContexts != null && !userContexts.isEmpty()) {
-			String jsonMessage = gson.toJson(payload);
-			logger.info("Sending targeted notification to user ID {}: {}", userId, jsonMessage);
-			userContexts.forEach(context -> sendMessageToContext(context, jsonMessage, userContexts));
+		List<SseEmitter> userEmitters = emittersByUser.get(userId);
+		if (userEmitters != null && !userEmitters.isEmpty()) {
+			SseEmitter.SseEventBuilder event = SseEmitter.event().name("notification").data(payload);
+			logger.info("Sending targeted notification to user ID {}: {}", userId, payload);
+
+			userEmitters.forEach(emitter -> {
+				try {
+					emitter.send(event);
+				} catch (IOException e) {
+					logger.warn(
+							"Failed to send targeted notification to user {} (client likely disconnected), removing it. Error: {}",
+							userId, e.getMessage());
+					emitter.complete();
+				}
+			});
 		} else {
 			logger.debug("No active SSE clients found for user ID {} to send notification.", userId);
 		}
 	}
 
-	public void sendEventInvitation(int userId, String eventName, int eventId) {
-		String message = String.format("Du wurdest zum Event '%s' eingeladen!", eventName);
-		Map<String, Object> payload = Map.of("type", "event_invitation", "payload",
-				Map.of("message", message, "url", "/veranstaltungen/details?id=" + eventId));
-		sendNotificationToUser(userId, payload);
-	}
-
-	/**
-	 * Sends a pre-formatted JSON message to all connected clients.
-	 * 
-	 * @param jsonMessage The JSON string to broadcast.
-	 */
-	private void broadcast(String jsonMessage) {
-		contextsByUser.values().forEach(contextList -> {
-			contextList.forEach(context -> sendMessageToContext(context, jsonMessage, contextList));
-		});
-	}
-
-	private void sendMessageToContext(AsyncContext context, String message, List<AsyncContext> contextList) {
-		try {
-			PrintWriter writer = context.getResponse().getWriter();
-			writer.write("data: " + message + "\n\n");
-			writer.flush();
-		} catch (IOException | IllegalStateException e) {
-			logger.warn("Failed to send notification to a client (likely disconnected), removing it. Error: {}",
-					e.getMessage());
-			contextList.remove(context);
+	private void removeEmitter(int userId, SseEmitter emitter) {
+		List<SseEmitter> userEmitters = emittersByUser.get(userId);
+		if (userEmitters != null) {
+			userEmitters.remove(emitter);
+			if (userEmitters.isEmpty()) {
+				emittersByUser.remove(userId);
+			}
 		}
 	}
 }

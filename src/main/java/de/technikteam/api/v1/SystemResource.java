@@ -1,58 +1,34 @@
-// src/main/java/de/technikteam/api/v1/SystemResource.java
 package de.technikteam.api.v1;
 
-import com.google.gson.Gson;
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.SystemStatsDTO;
-import de.technikteam.model.User;
 import de.technikteam.service.SystemInfoService;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-
-@Singleton
-public class SystemResource extends HttpServlet {
-	private static final long serialVersionUID = 1L;
+@RestController
+@RequestMapping("/api/v1/system")
+@Tag(name = "Admin System", description = "Endpoints for retrieving system information and statistics.")
+@SecurityRequirement(name = "bearerAuth")
+public class SystemResource {
 
 	private final SystemInfoService systemInfoService;
-	private final Gson gson;
 
-	@Inject
-	public SystemResource(SystemInfoService systemInfoService, Gson gson) {
+	@Autowired
+	public SystemResource(SystemInfoService systemInfoService) {
 		this.systemInfoService = systemInfoService;
-		this.gson = gson;
 	}
 
-	@Override
-	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		User adminUser = (User) req.getAttribute("user");
-		if (adminUser == null || !adminUser.getPermissions().contains("SYSTEM_READ")) {
-			sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Access Denied");
-			return;
-		}
-
+	@GetMapping("/stats")
+	@Operation(summary = "Get system statistics", description = "Retrieves current system statistics like CPU load, memory usage, and disk space.")
+	public ResponseEntity<ApiResponse> getSystemStats() {
 		SystemStatsDTO stats = systemInfoService.getSystemStats();
-		sendJsonResponse(resp, HttpServletResponse.SC_OK, new ApiResponse(true, "System stats retrieved", stats));
-	}
-
-	private void sendJsonResponse(HttpServletResponse resp, int statusCode, ApiResponse apiResponse)
-			throws IOException {
-		resp.setStatus(statusCode);
-		resp.setContentType("application/json");
-		resp.setCharacterEncoding("UTF-8");
-		try (PrintWriter out = resp.getWriter()) {
-			out.print(gson.toJson(apiResponse));
-			out.flush();
-		}
-	}
-
-	private void sendJsonError(HttpServletResponse resp, int statusCode, String message) throws IOException {
-		sendJsonResponse(resp, statusCode, new ApiResponse(false, message, null));
+		return ResponseEntity.ok(new ApiResponse(true, "System stats retrieved", stats));
 	}
 }

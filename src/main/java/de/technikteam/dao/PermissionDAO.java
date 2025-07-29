@@ -1,59 +1,50 @@
 package de.technikteam.dao;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import de.technikteam.model.Permission;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
-import java.sql.*;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-@Singleton
+@Repository
 public class PermissionDAO {
 	private static final Logger logger = LogManager.getLogger(PermissionDAO.class);
-	private final DatabaseManager dbManager;
+	private final JdbcTemplate jdbcTemplate;
 
-	@Inject
-	public PermissionDAO(DatabaseManager dbManager) {
-		this.dbManager = dbManager;
+	@Autowired
+	public PermissionDAO(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
 	}
 
 	public List<Permission> getAllPermissions() {
-		List<Permission> permissions = new ArrayList<>();
 		String sql = "SELECT * FROM permissions ORDER BY description";
-		try (Connection conn = dbManager.getConnection();
-				PreparedStatement pstmt = conn.prepareStatement(sql);
-				ResultSet rs = pstmt.executeQuery()) {
-			while (rs.next()) {
+		try {
+			return jdbcTemplate.query(sql, (rs, rowNum) -> {
 				Permission p = new Permission();
 				p.setId(rs.getInt("id"));
 				p.setPermissionKey(rs.getString("permission_key"));
 				p.setDescription(rs.getString("description"));
-				permissions.add(p);
-			}
-		} catch (SQLException e) {
+				return p;
+			});
+		} catch (Exception e) {
 			logger.error("Error fetching all permissions", e);
+			return List.of();
 		}
-		return permissions;
 	}
 
 	public Set<Integer> getPermissionIdsForUser(int userId) {
-		Set<Integer> permissionIds = new HashSet<>();
 		String sql = "SELECT permission_id FROM user_permissions WHERE user_id = ?";
-		try (Connection conn = dbManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, userId);
-			try (ResultSet rs = pstmt.executeQuery()) {
-				while (rs.next()) {
-					permissionIds.add(rs.getInt("permission_id"));
-				}
-			}
-		} catch (SQLException e) {
+		try {
+			List<Integer> ids = jdbcTemplate.queryForList(sql, Integer.class, userId);
+			return new HashSet<>(ids);
+		} catch (Exception e) {
 			logger.error("Error fetching permission IDs for user {}", userId, e);
+			return Set.of();
 		}
-		return permissionIds;
 	}
 }

@@ -1,41 +1,42 @@
 package de.technikteam.api.v1.public_api;
 
-import com.google.gson.Gson;
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.MeetingDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Event;
 import de.technikteam.model.Meeting;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Singleton
-public class PublicCalendarEntriesResource extends HttpServlet {
-	private static final long serialVersionUID = 1L;
+@RestController
+@RequestMapping("/api/v1/public/calendar")
+@Tag(name = "Public Calendar", description = "Endpoints for calendar data.")
+@SecurityRequirement(name = "bearerAuth")
+public class PublicCalendarEntriesResource { // Renamed from PublicCalendarEntriesResource to match Path
 
 	private final EventDAO eventDAO;
 	private final MeetingDAO meetingDAO;
-	private final Gson gson;
 
-	@Inject
-	public PublicCalendarEntriesResource(EventDAO eventDAO, MeetingDAO meetingDAO, Gson gson) {
+	@Autowired
+	public PublicCalendarEntriesResource(EventDAO eventDAO, MeetingDAO meetingDAO) {
 		this.eventDAO = eventDAO;
 		this.meetingDAO = meetingDAO;
-		this.gson = gson;
 	}
 
-	@Override
-	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+	@GetMapping("/entries")
+	@Operation(summary = "Get calendar entries", description = "Retrieves a combined list of upcoming events and meetings for display in a calendar.")
+	public ResponseEntity<ApiResponse> getCalendarEntries() {
 		List<Map<String, Object>> entries = new ArrayList<>();
 
 		List<Event> events = eventDAO.getAllActiveAndUpcomingEvents();
@@ -62,18 +63,6 @@ public class PublicCalendarEntriesResource extends HttpServlet {
 			entries.add(entry);
 		}
 
-		sendJsonResponse(resp, HttpServletResponse.SC_OK,
-				new ApiResponse(true, "Calendar entries retrieved.", entries));
-	}
-
-	private void sendJsonResponse(HttpServletResponse resp, int statusCode, ApiResponse apiResponse)
-			throws IOException {
-		resp.setStatus(statusCode);
-		resp.setContentType("application/json");
-		resp.setCharacterEncoding("UTF-8");
-		try (PrintWriter out = resp.getWriter()) {
-			out.print(gson.toJson(apiResponse));
-			out.flush();
-		}
+		return ResponseEntity.ok(new ApiResponse(true, "Calendar entries retrieved.", entries));
 	}
 }

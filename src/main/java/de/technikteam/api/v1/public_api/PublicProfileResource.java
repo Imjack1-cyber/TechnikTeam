@@ -1,31 +1,33 @@
-// src/main/java/de/technikteam/api/v1/public_api/PublicProfileResource.java
 package de.technikteam.api.v1.public_api;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
+import de.technikteam.api.v1.dto.PasswordChangeRequest;
+import de.technikteam.api.v1.dto.ProfileChangeRequestDTO;
 import de.technikteam.dao.*;
-import de.technikteam.model.*;
+import de.technikteam.model.ApiResponse;
+import de.technikteam.model.ProfileChangeRequest;
+import de.technikteam.model.User;
 import de.technikteam.util.PasswordPolicyValidator;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+import com.google.gson.Gson;
 
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
-@Singleton
-public class PublicProfileResource extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LogManager.getLogger(PublicProfileResource.class);
+@RestController
+@RequestMapping("/api/v1/public/profile")
+@Tag(name = "Public Profile", description = "Endpoints for managing the current user's profile.")
+@SecurityRequirement(name = "bearerAuth")
+public class PublicProfileResource {
 
 	private final UserDAO userDAO;
 	private final EventDAO eventDAO;
@@ -35,7 +37,7 @@ public class PublicProfileResource extends HttpServlet {
 	private final ProfileChangeRequestDAO requestDAO;
 	private final Gson gson;
 
-	@Inject
+	@Autowired
 	public PublicProfileResource(UserDAO userDAO, EventDAO eventDAO, UserQualificationsDAO qualificationsDAO,
 			AchievementDAO achievementDAO, PasskeyDAO passkeyDAO, ProfileChangeRequestDAO requestDAO, Gson gson) {
 		this.userDAO = userDAO;
@@ -47,211 +49,99 @@ public class PublicProfileResource extends HttpServlet {
 		this.gson = gson;
 	}
 
-	@Override
-	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		User user = (User) req.getAttribute("user");
-		if (user == null) {
-			sendJsonError(resp, HttpServletResponse.SC_UNAUTHORIZED, "Authentication required.");
-			return;
+	@GetMapping
+	@Operation(summary = "Get current user's profile data", description = "Retrieves a comprehensive set of data for the authenticated user's profile page.")
+	public ResponseEntity<ApiResponse> getMyProfile(@AuthenticationPrincipal User user) {
+		Map<String, Object> profileData = new HashMap<>();
+		profileData.put("user", user);
+		profileData.put("eventHistory", eventDAO.getEventHistoryForUser(user.getId()));
+		profileData.put("qualifications", qualificationsDAO.getQualificationsForUser(user.getId()));
+		profileData.put("achievements", achievementDAO.getAchievementsForUser(user.getId()));
+		profileData.put("passkeys", passkeyDAO.getCredentialsByUserId(user.getId()));
+		profileData.put("hasPendingRequest", requestDAO.hasPendingRequest(user.getId()));
+
+		return ResponseEntity.ok(new ApiResponse(true, "Profile data retrieved.", profileData));
+	}
+
+	@PostMapping("/request-change")
+	@Operation(summary = "Request a profile data change", description = "Submits a request for an administrator to approve changes to the user's profile data.")
+	public ResponseEntity<ApiResponse> requestProfileChange(@Valid @RequestBody ProfileChangeRequestDTO requestDTO,
+			@AuthenticationPrincipal User currentUser) {
+		Map<String, String> changes = new HashMap<>();
+		if (requestDTO.email() != null && !Objects.equals(currentUser.getEmail(), requestDTO.email())) {
+			changes.put("email", requestDTO.email());
+		}
+		if (requestDTO.classYear() != null && currentUser.getClassYear() != requestDTO.classYear()) {
+			changes.put("classYear", String.valueOf(requestDTO.classYear()));
+		}
+		if (requestDTO.className() != null && !Objects.equals(currentUser.getClassName(), requestDTO.className())) {
+			changes.put("className", requestDTO.className());
 		}
 
-		try {
-			Map<String, Object> profileData = new HashMap<>();
-			profileData.put("user", user);
-			profileData.put("eventHistory", eventDAO.getEventHistoryForUser(user.getId()));
-			profileData.put("qualifications", qualificationsDAO.getQualificationsForUser(user.getId()));
-			profileData.put("achievements", achievementDAO.getAchievementsForUser(user.getId()));
-			profileData.put("passkeys", passkeyDAO.getCredentialsByUserId(user.getId()));
-			profileData.put("hasPendingRequest", requestDAO.hasPendingRequest(user.getId()));
+		if (changes.isEmpty()) {
+			return ResponseEntity.ok(new ApiResponse(true, "No changes detected.", null));
+		}
 
-			sendJsonResponse(resp, HttpServletResponse.SC_OK,
-					new ApiResponse(true, "Profile data retrieved.", profileData));
-		} catch (Exception e) {
-			logger.error("Error fetching profile data for user {}", user.getUsername(), e);
-			sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to retrieve profile data.");
+		ProfileChangeRequest pcr = new ProfileChangeRequest();
+		pcr.setUserId(currentUser.getId());
+		pcr.setRequestedChanges(gson.toJson(changes));
+
+		if (requestDAO.createRequest(pcr)) {
+			return ResponseEntity.ok(new ApiResponse(true, "Change request submitted successfully.", null));
+		} else {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new ApiResponse(false, "Could not save your request.", null));
 		}
 	}
 
-	@Override
-	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		User user = (User) req.getAttribute("user");
-		if (user == null) {
-			sendJsonError(resp, HttpServletResponse.SC_UNAUTHORIZED, "Authentication required.");
-			return;
-		}
-
-		String pathInfo = req.getPathInfo();
-		if (pathInfo == null || !pathInfo.equals("/request-change")) {
-			sendJsonError(resp, HttpServletResponse.SC_NOT_FOUND,
-					"Endpoint not found. Use POST /api/v1/public/profile/request-change for this action.");
-			return;
-		}
-
-		handleProfileChangeRequest(req, resp, user);
-	}
-
-	@Override
-	protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		User user = (User) req.getAttribute("user");
-		if (user == null) {
-			sendJsonError(resp, HttpServletResponse.SC_UNAUTHORIZED, "Authentication required.");
-			return;
-		}
-
-		String pathInfo = req.getPathInfo();
-		if (pathInfo == null) {
-			sendJsonError(resp, HttpServletResponse.SC_NOT_FOUND, "Endpoint not found.");
-			return;
-		}
-
-		switch (pathInfo) {
-		case "/chat-color":
-			handleUpdateChatColor(req, resp, user);
-			break;
-		case "/password":
-			handleUpdatePassword(req, resp, user);
-			break;
-		default:
-			sendJsonError(resp, HttpServletResponse.SC_NOT_FOUND, "Endpoint not found.");
-		}
-	}
-
-	@Override
-	protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		User user = (User) req.getAttribute("user");
-		if (user == null) {
-			sendJsonError(resp, HttpServletResponse.SC_UNAUTHORIZED, "Authentication required.");
-			return;
-		}
-
-		String pathInfo = req.getPathInfo();
-		if (pathInfo == null || !pathInfo.startsWith("/passkeys/")) {
-			sendJsonError(resp, HttpServletResponse.SC_NOT_FOUND,
-					"Endpoint not found. Use DELETE /api/v1/public/profile/passkeys/{id}.");
-			return;
-		}
-
-		try {
-			int credentialId = Integer.parseInt(pathInfo.substring("/passkeys/".length()));
-			handleDeletePasskey(resp, user, credentialId);
-		} catch (NumberFormatException e) {
-			sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Invalid passkey credential ID.");
-		}
-	}
-
-	private void handleProfileChangeRequest(HttpServletRequest req, HttpServletResponse resp, User currentUser)
-			throws IOException {
-		try {
-			String jsonPayload = req.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
-			Map<String, String> requestedData = gson.fromJson(jsonPayload, new TypeToken<Map<String, String>>() {
-			}.getType());
-
-			Map<String, String> changes = new HashMap<>();
-			String newEmail = requestedData.get("email");
-			if (!Objects.equals(currentUser.getEmail(), newEmail)) {
-				changes.put("email", newEmail);
-			}
-
-			int newClassYear = Integer.parseInt(requestedData.getOrDefault("classYear", "0"));
-			if (currentUser.getClassYear() != newClassYear) {
-				changes.put("classYear", String.valueOf(newClassYear));
-			}
-
-			String newClassName = requestedData.get("className");
-			if (!Objects.equals(currentUser.getClassName(), newClassName)) {
-				changes.put("className", newClassName);
-			}
-
-			if (changes.isEmpty()) {
-				sendJsonResponse(resp, HttpServletResponse.SC_OK, new ApiResponse(true, "No changes detected.", null));
-				return;
-			}
-
-			ProfileChangeRequest pcr = new ProfileChangeRequest();
-			pcr.setUserId(currentUser.getId());
-			pcr.setRequestedChanges(gson.toJson(changes));
-
-			if (requestDAO.createRequest(pcr)) {
-				sendJsonResponse(resp, HttpServletResponse.SC_OK,
-						new ApiResponse(true, "Change request submitted successfully.", null));
-			} else {
-				sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Could not save your request.");
-			}
-		} catch (Exception e) {
-			logger.error("Error processing profile change request for user {}", currentUser.getUsername(), e);
-			sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "An error occurred.");
-		}
-	}
-
-	private void handleUpdateChatColor(HttpServletRequest req, HttpServletResponse resp, User user) throws IOException {
-		String jsonPayload = req.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
-		Map<String, String> payload = gson.fromJson(jsonPayload, new TypeToken<Map<String, String>>() {
-		}.getType());
+	@PutMapping("/chat-color")
+	@Operation(summary = "Update chat color", description = "Updates the user's preferred color for chat messages.")
+	public ResponseEntity<ApiResponse> updateChatColor(@RequestBody Map<String, String> payload,
+			@AuthenticationPrincipal User user) {
 		String chatColor = payload.get("chatColor");
-
 		if (userDAO.updateUserChatColor(user.getId(), chatColor)) {
-			sendJsonResponse(resp, HttpServletResponse.SC_OK, new ApiResponse(true, "Chat color updated.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Chat color updated.", null));
 		} else {
-			sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Could not save chat color.");
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new ApiResponse(false, "Could not save chat color.", null));
 		}
 	}
 
-	private void handleUpdatePassword(HttpServletRequest req, HttpServletResponse resp, User user) throws IOException {
-		try {
-			String jsonPayload = req.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
-			Map<String, String> payload = gson.fromJson(jsonPayload, new TypeToken<Map<String, String>>() {
-			}.getType());
-			String currentPassword = payload.get("currentPassword");
-			String newPassword = payload.get("newPassword");
-			String confirmPassword = payload.get("confirmPassword");
-
-			if (userDAO.validateUser(user.getUsername(), currentPassword) == null) {
-				sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Das aktuelle Passwort ist nicht korrekt.");
-				return;
-			}
-			if (!newPassword.equals(confirmPassword)) {
-				sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Die neuen Passwörter stimmen nicht überein.");
-				return;
-			}
-			PasswordPolicyValidator.ValidationResult validationResult = PasswordPolicyValidator.validate(newPassword);
-			if (!validationResult.isValid()) {
-				sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, validationResult.getMessage());
-				return;
-			}
-			if (userDAO.changePassword(user.getId(), newPassword)) {
-				sendJsonResponse(resp, HttpServletResponse.SC_OK,
-						new ApiResponse(true, "Ihr Passwort wurde erfolgreich geändert.", null));
-			} else {
-				sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-						"Passwort konnte nicht geändert werden.");
-			}
-		} catch (Exception e) {
-			logger.error("Error processing password change for user {}", user.getUsername(), e);
-			sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Ein interner Fehler ist aufgetreten.");
+	@PutMapping("/password")
+	@Operation(summary = "Change password", description = "Allows the authenticated user to change their own password after verifying their current one.")
+	public ResponseEntity<ApiResponse> updatePassword(@Valid @RequestBody PasswordChangeRequest request,
+			@AuthenticationPrincipal User user) {
+		if (userDAO.validateUser(user.getUsername(), request.currentPassword()) == null) {
+			return ResponseEntity.badRequest()
+					.body(new ApiResponse(false, "Das aktuelle Passwort ist nicht korrekt.", null));
 		}
-	}
-
-	private void handleDeletePasskey(HttpServletResponse resp, User user, int credentialId) throws IOException {
-		if (passkeyDAO.deleteCredential(credentialId, user.getId())) {
-			sendJsonResponse(resp, HttpServletResponse.SC_OK,
-					new ApiResponse(true, "Passkey successfully removed.", null));
+		if (!request.newPassword().equals(request.confirmPassword())) {
+			return ResponseEntity.badRequest()
+					.body(new ApiResponse(false, "Die neuen Passwörter stimmen nicht überein.", null));
+		}
+		PasswordPolicyValidator.ValidationResult validationResult = PasswordPolicyValidator
+				.validate(request.newPassword());
+		if (!validationResult.isValid()) {
+			return ResponseEntity.badRequest().body(new ApiResponse(false, validationResult.getMessage(), null));
+		}
+		if (userDAO.changePassword(user.getId(), request.newPassword())) {
+			return ResponseEntity.ok(new ApiResponse(true, "Ihr Passwort wurde erfolgreich geändert.", null));
 		} else {
-			sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Could not remove passkey.");
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new ApiResponse(false, "Passwort konnte nicht geändert werden.", null));
 		}
 	}
 
-	private void sendJsonResponse(HttpServletResponse resp, int statusCode, ApiResponse apiResponse)
-			throws IOException {
-		resp.setStatus(statusCode);
-		resp.setContentType("application/json");
-		resp.setCharacterEncoding("UTF-8");
-		try (PrintWriter out = resp.getWriter()) {
-			out.print(gson.toJson(apiResponse));
-			out.flush();
+	@DeleteMapping("/passkeys/{id}")
+	@Operation(summary = "Delete a passkey", description = "Removes a registered passkey/credential for the current user.")
+	public ResponseEntity<ApiResponse> deletePasskey(
+			@Parameter(description = "The database ID of the passkey credential to delete") @PathVariable int id,
+			@AuthenticationPrincipal User user) {
+		if (passkeyDAO.deleteCredential(id, user.getId())) {
+			return ResponseEntity.ok(new ApiResponse(true, "Passkey successfully removed.", null));
+		} else {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new ApiResponse(false, "Could not remove passkey.", null));
 		}
-	}
-
-	private void sendJsonError(HttpServletResponse resp, int statusCode, String message) throws IOException {
-		sendJsonResponse(resp, statusCode, new ApiResponse(false, message, null));
 	}
 }
