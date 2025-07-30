@@ -7,21 +7,18 @@ import de.technikteam.model.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Repository
 public class EventTaskDAO {
@@ -87,7 +84,8 @@ public class EventTaskDAO {
 		if (userIds == null || userIds.length == 0)
 			return;
 		String sql = "INSERT INTO event_task_assignments (task_id, user_id) VALUES (?, ?)";
-		jdbcTemplate.batchUpdate(sql, List.of(userIds), 100, (ps, userId) -> {
+		List<Integer> userIdList = Arrays.stream(userIds).boxed().collect(Collectors.toList());
+		jdbcTemplate.batchUpdate(sql, userIdList, 100, (ps, userId) -> {
 			ps.setInt(1, taskId);
 			ps.setInt(2, userId);
 		});
@@ -97,9 +95,10 @@ public class EventTaskDAO {
 		if (itemIds == null || itemQuantities == null || itemIds.length != itemQuantities.length)
 			return;
 		String sql = "INSERT INTO event_task_storage_items (task_id, item_id, quantity) VALUES (?, ?, ?)";
-		jdbcTemplate.batchUpdate(sql, List.of(itemIds), 100, (ps, itemIdStr) -> {
+		List<String> itemIdList = List.of(itemIds);
+		jdbcTemplate.batchUpdate(sql, itemIdList, 100, (ps, itemIdStr) -> {
 			if (itemIdStr != null && !itemIdStr.isEmpty()) {
-				int index = List.of(itemIds).indexOf(itemIdStr);
+				int index = itemIdList.indexOf(itemIdStr);
 				ps.setInt(1, taskId);
 				ps.setInt(2, Integer.parseInt(itemIdStr));
 				ps.setInt(3, Integer.parseInt(itemQuantities[index]));
@@ -111,7 +110,8 @@ public class EventTaskDAO {
 		if (kitIds == null || kitIds.length == 0)
 			return;
 		String sql = "INSERT INTO event_task_kits (task_id, kit_id) VALUES (?, ?)";
-		jdbcTemplate.batchUpdate(sql, List.of(kitIds), 100, (ps, kitIdStr) -> {
+		List<String> kitIdList = List.of(kitIds);
+		jdbcTemplate.batchUpdate(sql, kitIdList, 100, (ps, kitIdStr) -> {
 			if (kitIdStr != null && !kitIdStr.isEmpty()) {
 				ps.setInt(1, taskId);
 				ps.setInt(2, Integer.parseInt(kitIdStr));
@@ -120,12 +120,10 @@ public class EventTaskDAO {
 	}
 
 	public List<EventTask> getTasksForEvent(int eventId) {
-		// Implementation detail: It's more efficient to fetch all data and process in
-		// Java than to do N+1 queries.
 		Map<Integer, EventTask> tasksById = new LinkedHashMap<>();
 		String sql = "SELECT t.*, u.id as user_id, u.username, si.id as item_id, si.name as item_name, tsi.quantity as item_quantity, ik.id as kit_id, ik.name as kit_name FROM event_tasks t LEFT JOIN event_task_assignments ta ON t.id = ta.task_id LEFT JOIN users u ON ta.user_id = u.id LEFT JOIN event_task_storage_items tsi ON t.id = tsi.task_id LEFT JOIN storage_items si ON tsi.item_id = si.id LEFT JOIN event_task_kits tk ON t.id = tk.task_id LEFT JOIN inventory_kits ik ON tk.kit_id = ik.id WHERE t.event_id = ? ORDER BY t.display_order ASC, t.id ASC, u.username, si.name, ik.name";
 
-		jdbcTemplate.query(sql, rs -> {
+		jdbcTemplate.query(sql, (ResultSet rs) -> {
 			int currentTaskId = rs.getInt("id");
 			EventTask task = tasksById.computeIfAbsent(currentTaskId, id -> mapResultSetToTask(rs));
 
@@ -156,6 +154,25 @@ public class EventTaskDAO {
 		return new ArrayList<>(tasksById.values());
 	}
 
+	private EventTask mapResultSetToTask(ResultSet rs) {
+		try {
+			EventTask task = new EventTask();
+			task.setId(rs.getInt("id"));
+			task.setEventId(rs.getInt("event_id"));
+			task.setDescription(rs.getString("description"));
+			task.setDetails(rs.getString("details"));
+			task.setStatus(rs.getString("status"));
+			task.setDisplayOrder(rs.getInt("display_order"));
+			task.setRequiredPersons(rs.getInt("required_persons"));
+			task.setAssignedUsers(new ArrayList<>());
+			task.setRequiredItems(new ArrayList<>());
+			task.setRequiredKits(new ArrayList<>());
+			return task;
+		} catch (SQLException e) {
+			throw new RuntimeException("Failed to map ResultSet to EventTask", e);
+		}
+	}
+
 	public boolean deleteTask(int taskId) {
 		String sql = "DELETE FROM event_tasks WHERE id = ?";
 		return jdbcTemplate.update(sql, taskId) > 0;
@@ -177,24 +194,5 @@ public class EventTaskDAO {
 			task.setEventName(rs.getString("event_name"));
 			return task;
 		}, userId);
-	}
-
-	private EventTask mapResultSetToTask(ResultSet rs) {
-		try {
-			EventTask task = new EventTask();
-			task.setId(rs.getInt("id"));
-			task.setEventId(rs.getInt("event_id"));
-			task.setDescription(rs.getString("description"));
-			task.setDetails(rs.getString("details"));
-			task.setStatus(rs.getString("status"));
-			task.setDisplayOrder(rs.getInt("display_order"));
-			task.setRequiredPersons(rs.getInt("required_persons"));
-			task.setAssignedUsers(new ArrayList<>());
-			task.setRequiredItems(new ArrayList<>());
-			task.setRequiredKits(new ArrayList<>());
-			return task;
-		} catch (SQLException e) {
-			throw new RuntimeException("Failed to map ResultSet to EventTask", e);
-		}
 	}
 }

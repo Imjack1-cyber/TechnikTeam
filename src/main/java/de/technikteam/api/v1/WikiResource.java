@@ -1,5 +1,4 @@
 
-###74. File:src/main/java/de/technikteam/api/v1/WikiResource.java(complete)```java
 package de.technikteam.api.v1;
 
 import de.technikteam.api.v1.dto.WikiUpdateRequest;

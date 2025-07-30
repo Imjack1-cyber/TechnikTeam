@@ -294,6 +294,23 @@ public class EventDAO {
 		}
 	}
 
+	public List<Event> getAssignedEventsForUser(int userId, int limit) {
+		String sql = "SELECT e.* FROM events e JOIN event_assignments ea ON e.id = ea.event_id WHERE ea.user_id = ? AND e.event_datetime >= NOW() ORDER BY e.event_datetime ASC";
+		if (limit > 0) {
+			sql += " LIMIT ?";
+		}
+		try {
+            if (limit > 0) {
+			    return jdbcTemplate.query(sql, eventRowMapper, userId, limit);
+            } else {
+                return jdbcTemplate.query(sql, eventRowMapper, userId);
+            }
+		} catch (Exception e) {
+			logger.error("Error fetching assigned events for user {}", userId, e);
+            return List.of();
+		}
+	}
+
 	public List<Event> getUpcomingEvents(int limit) {
 		String sql = "SELECT * FROM events WHERE event_datetime > NOW() ORDER BY event_datetime ASC LIMIT ?";
 		try {

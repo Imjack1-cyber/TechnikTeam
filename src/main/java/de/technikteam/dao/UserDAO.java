@@ -1,32 +1,36 @@
-// src/main/java/de/technikteam/dao/UserDAO.java
 package de.technikteam.dao;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import de.technikteam.model.User;
 import de.technikteam.util.DaoUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.stereotype.Repository;
 
-import java.sql.*;
-import java.util.HashSet;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Set;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.*;
 
-@Singleton
+@Repository
 public class UserDAO {
 	private static final Logger logger = LogManager.getLogger(UserDAO.class);
 	private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-	private final DatabaseManager dbManager;
+	private final JdbcTemplate jdbcTemplate;
 
-	@Inject
-	public UserDAO(DatabaseManager dbManager) {
-		this.dbManager = dbManager;
+	@Autowired
+	public UserDAO(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
 	}
 
-	private User mapResultSetToUser(ResultSet resultSet) throws SQLException {
+	private final RowMapper<User> userRowMapper = (resultSet, rowNum) -> {
 		User user = new User();
 		user.setId(resultSet.getInt("id"));
 		user.setUsername(resultSet.getString("username"));
@@ -51,143 +55,95 @@ public class UserDAO {
 			user.setEmail(resultSet.getString("email"));
 		}
 		return user;
-	}
+	};
 
 	public User validateUser(String username, String password) {
-		String sql = "SELECT u.*, r.role_name, p.permission_key " +
-					 "FROM users u " +
-					 "LEFT JOIN roles r ON u.role_id = r.id " +
-					 "LEFT JOIN user_permissions up ON u.id = up.user_id " +
-					 "LEFT JOIN permissions p ON up.permission_id = p.id " +
-					 "WHERE u.username = ?";
-		
-		User user = null;
-		Set<String> permissions = new HashSet<>();
+		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ?";
+		try {
+			User user = jdbcTemplate.queryForObject(sql, userRowMapper, username);
+			String storedHash = jdbcTemplate.queryForObject("SELECT password_hash FROM users WHERE id = ?",
+					String.class, user.getId());
 
-		try (Connection connection = dbManager.getConnection();
-			 PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-			preparedStatement.setString(1, username);
-			try (ResultSet resultSet = preparedStatement.executeQuery()) {
-				String storedHash = null;
-				boolean firstRow = true;
-				while (resultSet.next()) {
-					if (firstRow) {
-						storedHash = resultSet.getString("password_hash");
-						if (storedHash == null || !passwordEncoder.matches(password, storedHash)) {
-							// Password doesn't match, no need to process further.
-							return null;
-						}
-						user = mapResultSetToUser(resultSet);
-						firstRow = false;
-					}
-					String permissionKey = resultSet.getString("permission_key");
-					if (permissionKey != null) {
-						permissions.add(permissionKey);
-					}
-				}
+			if (storedHash != null && passwordEncoder.matches(password, storedHash)) {
+				user.setPermissions(getPermissionsForUser(user.getId()));
+				return user;
 			}
-			if (user != null) {
-				user.setPermissions(permissions);
-			}
-		} catch (SQLException exception) {
-			logger.error("SQL error during user validation for username: {}", username, exception);
-			return null;
+		} catch (EmptyResultDataAccessException e) {
+			return null; // User not found is a valid outcome
+		} catch (Exception e) {
+			logger.error("SQL error during user validation for username: {}", username, e);
 		}
-		return user;
+		return null;
 	}
 
 	public User getUserByUsername(String username) {
 		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ?";
-		try (Connection connection = dbManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-			preparedStatement.setString(1, username);
-			try (ResultSet resultSet = preparedStatement.executeQuery()) {
-				if (resultSet.next()) {
-					return mapResultSetToUser(resultSet);
-				}
-			}
-		} catch (SQLException exception) {
-			logger.error("SQL error fetching user by username: {}", username, exception);
+		try {
+			return jdbcTemplate.queryForObject(sql, userRowMapper, username);
+		} catch (EmptyResultDataAccessException e) {
+			return null;
+		} catch (Exception e) {
+			logger.error("SQL error fetching user by username: {}", username, e);
+			return null;
 		}
-		return null;
 	}
-	
+
 	public Set<String> getPermissionsForUser(int userId) {
-		Set<String> permissions = new HashSet<>();
 		String sql = "SELECT p.permission_key FROM permissions p JOIN user_permissions up ON p.id = up.permission_id WHERE up.user_id = ?";
-		try (Connection connection = dbManager.getConnection();
-			 PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-			preparedStatement.setInt(1, userId);
-			try (ResultSet resultSet = preparedStatement.executeQuery()) {
-				while (resultSet.next()) {
-					permissions.add(resultSet.getString("permission_key"));
-				}
-			}
-		} catch (SQLException exception) {
-			logger.error("Could not fetch permissions for user ID: {}", userId, exception);
+		try {
+			return new HashSet<>(jdbcTemplate.queryForList(sql, String.class, userId));
+		} catch (Exception e) {
+			logger.error("Could not fetch permissions for user ID: {}", userId, e);
+			return new HashSet<>();
 		}
-		return permissions;
 	}
 
-	public boolean updateUserPermissions(int userId, String[] permissionIds, Connection conn) throws SQLException {
-		String deleteSql = "DELETE FROM user_permissions WHERE user_id = ?";
-		try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
-			deleteStmt.setInt(1, userId);
-			deleteStmt.executeUpdate();
-		}
-		if (permissionIds != null && permissionIds.length > 0) {
-			String insertSql = "INSERT INTO user_permissions (user_id, permission_id) VALUES (?, ?)";
-			try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
-				for (String permId : permissionIds) {
-					insertStmt.setInt(1, userId);
-					insertStmt.setInt(2, Integer.parseInt(permId));
-					insertStmt.addBatch();
-				}
-				insertStmt.executeBatch();
+	public boolean updateUserPermissions(int userId, String[] permissionIds) {
+		try {
+			jdbcTemplate.update("DELETE FROM user_permissions WHERE user_id = ?", userId);
+			if (permissionIds != null && permissionIds.length > 0) {
+				String insertSql = "INSERT INTO user_permissions (user_id, permission_id) VALUES (?, ?)";
+				jdbcTemplate.batchUpdate(insertSql, List.of(permissionIds), 100, (ps, permId) -> {
+					ps.setInt(1, userId);
+					ps.setInt(2, Integer.parseInt(permId));
+				});
 			}
+			return true;
+		} catch (Exception e) {
+			logger.error("Error updating user permissions for user {}", userId, e);
+			return false;
 		}
-		return true;
 	}
 
-	public int createUser(User user, String password, Connection connection) throws SQLException {
+	public int createUser(User user, String password) {
 		String hashedPassword = passwordEncoder.encode(password);
 		String sql = "INSERT INTO users (username, password_hash, role_id, class_year, class_name, email, theme) VALUES (?, ?, ?, ?, ?, ?, ?)";
-		try (PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-			preparedStatement.setString(1, user.getUsername());
-			preparedStatement.setString(2, hashedPassword);
-			preparedStatement.setInt(3, user.getRoleId());
-			preparedStatement.setInt(4, user.getClassYear());
-			preparedStatement.setString(5, user.getClassName());
-			preparedStatement.setString(6, user.getEmail());
-			preparedStatement.setString(7, "light");
-			if (preparedStatement.executeUpdate() > 0) {
-				try (ResultSet generatedKeys = preparedStatement.getGeneratedKeys()) {
-					if (generatedKeys.next()) {
-						return generatedKeys.getInt(1);
-					}
-				}
-			}
-		}
-		return 0;
-	}
-
-	public boolean updateUser(User user, Connection connection) throws SQLException {
-		String sql = "UPDATE users SET username = ?, role_id = ?, class_year = ?, class_name = ?, email = ? WHERE id = ?";
-		try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-			preparedStatement.setString(1, user.getUsername());
-			preparedStatement.setInt(2, user.getRoleId());
-			preparedStatement.setInt(3, user.getClassYear());
-			preparedStatement.setString(4, user.getClassName());
-			preparedStatement.setString(5, user.getEmail());
-			preparedStatement.setInt(6, user.getId());
-			return preparedStatement.executeUpdate() > 0;
+		KeyHolder keyHolder = new GeneratedKeyHolder();
+		try {
+			jdbcTemplate.update(connection -> {
+				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+				ps.setString(1, user.getUsername());
+				ps.setString(2, hashedPassword);
+				ps.setInt(3, user.getRoleId());
+				ps.setInt(4, user.getClassYear());
+				ps.setString(5, user.getClassName());
+				ps.setString(6, user.getEmail());
+				ps.setString(7, "light");
+				return ps;
+			}, keyHolder);
+			return Objects.requireNonNull(keyHolder.getKey()).intValue();
+		} catch (Exception e) {
+			logger.error("Error creating user {}", user.getUsername(), e);
+			return 0;
 		}
 	}
 
 	public boolean updateUser(User user) {
-		try (Connection connection = dbManager.getConnection()) {
-			return updateUser(user, connection);
-		} catch (SQLException e) {
+		String sql = "UPDATE users SET username = ?, role_id = ?, class_year = ?, class_name = ?, email = ? WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, user.getUsername(), user.getRoleId(), user.getClassYear(),
+					user.getClassName(), user.getEmail(), user.getId()) > 0;
+		} catch (Exception e) {
 			logger.error("SQL error updating user with ID: {}", user.getId(), e);
 			return false;
 		}
@@ -195,38 +151,30 @@ public class UserDAO {
 
 	public boolean updateUserTheme(int userId, String theme) {
 		String sql = "UPDATE users SET theme = ? WHERE id = ?";
-		try (Connection connection = dbManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-			preparedStatement.setString(1, theme);
-			preparedStatement.setInt(2, userId);
-			return preparedStatement.executeUpdate() > 0;
-		} catch (SQLException exception) {
-			logger.error("Error updating theme for user ID {}", userId, exception);
+		try {
+			return jdbcTemplate.update(sql, theme, userId) > 0;
+		} catch (Exception e) {
+			logger.error("Error updating theme for user ID {}", userId, e);
 			return false;
 		}
 	}
 
 	public boolean updateUserChatColor(int userId, String chatColor) {
 		String sql = "UPDATE users SET chat_color = ? WHERE id = ?";
-		try (Connection connection = dbManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-			preparedStatement.setString(1, chatColor);
-			preparedStatement.setInt(2, userId);
-			return preparedStatement.executeUpdate() > 0;
-		} catch (SQLException exception) {
-			logger.error("Error updating chat color for user ID {}", userId, exception);
+		try {
+			return jdbcTemplate.update(sql, chatColor, userId) > 0;
+		} catch (Exception e) {
+			logger.error("Error updating chat color for user ID {}", userId, e);
 			return false;
 		}
 	}
 
 	public boolean deleteUser(int userId) {
 		String sql = "DELETE FROM users WHERE id = ?";
-		try (Connection connection = dbManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-			preparedStatement.setInt(1, userId);
-			return preparedStatement.executeUpdate() > 0;
-		} catch (SQLException exception) {
-			logger.error("SQL error deleting user with ID: {}", userId, exception);
+		try {
+			return jdbcTemplate.update(sql, userId) > 0;
+		} catch (Exception e) {
+			logger.error("SQL error deleting user with ID: {}", userId, e);
 			return false;
 		}
 	}
@@ -234,62 +182,37 @@ public class UserDAO {
 	public boolean changePassword(int userId, String newPassword) {
 		String hashedPassword = passwordEncoder.encode(newPassword);
 		String sql = "UPDATE users SET password_hash = ? WHERE id = ?";
-		try (Connection connection = dbManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-			preparedStatement.setString(1, hashedPassword);
-			preparedStatement.setInt(2, userId);
-			return preparedStatement.executeUpdate() > 0;
-		} catch (SQLException exception) {
-			logger.error("SQL error changing password for user ID: {}", userId, exception);
+		try {
+			return jdbcTemplate.update(sql, hashedPassword, userId) > 0;
+		} catch (Exception e) {
+			logger.error("SQL error changing password for user ID: {}", userId, e);
 			return false;
 		}
 	}
 
 	public List<User> getAllUsers() {
-		List<User> users = new ArrayList<>();
 		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id ORDER BY u.username";
-		try (Connection connection = dbManager.getConnection();
-				PreparedStatement preparedStatement = connection.prepareStatement(sql);
-				ResultSet resultSet = preparedStatement.executeQuery()) {
-			while (resultSet.next()) {
-				users.add(mapResultSetToUser(resultSet));
-			}
-		} catch (SQLException exception) {
-			logger.error("SQL error fetching all users", exception);
+		try {
+			return jdbcTemplate.query(sql, userRowMapper);
+		} catch (Exception e) {
+			logger.error("SQL error fetching all users", e);
+			return List.of();
 		}
-		return users;
 	}
 
 	public User getUserById(int userId) {
-		String sql = "SELECT u.*, r.role_name, p.permission_key " +
-					 "FROM users u " +
-					 "LEFT JOIN roles r ON u.role_id = r.id " +
-					 "LEFT JOIN user_permissions up ON u.id = up.user_id " +
-					 "LEFT JOIN permissions p ON up.permission_id = p.id " +
-					 "WHERE u.id = ?";
-		User user = null;
-		Set<String> permissions = new HashSet<>();
-		try (Connection connection = dbManager.getConnection();
-			 PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-			preparedStatement.setInt(1, userId);
-			try (ResultSet resultSet = preparedStatement.executeQuery()) {
-				while (resultSet.next()) {
-					if (user == null) {
-						user = mapResultSetToUser(resultSet);
-					}
-					String permissionKey = resultSet.getString("permission_key");
-					if (permissionKey != null) {
-						permissions.add(permissionKey);
-					}
-				}
-			}
+		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = ?";
+		try {
+			User user = jdbcTemplate.queryForObject(sql, userRowMapper, userId);
 			if (user != null) {
-				user.setPermissions(permissions);
+				user.setPermissions(getPermissionsForUser(userId));
 			}
-		} catch (SQLException exception) {
-			logger.error("SQL error fetching user by ID with permissions: {}", userId, exception);
+			return user;
+		} catch (EmptyResultDataAccessException e) {
+			return null;
+		} catch (Exception e) {
+			logger.error("SQL error fetching user by ID with permissions: {}", userId, e);
 			return null;
 		}
-		return user;
 	}
 }

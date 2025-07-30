@@ -23,7 +23,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/public/calendar")
 @Tag(name = "Public Calendar", description = "Endpoints for calendar data.")
 @SecurityRequirement(name = "bearerAuth")
-public class PublicCalendarEntriesResource { // Renamed from PublicCalendarEntriesResource to match Path
+public class PublicCalendarEntriesResource {
 
 	private final EventDAO eventDAO;
 	private final MeetingDAO meetingDAO;

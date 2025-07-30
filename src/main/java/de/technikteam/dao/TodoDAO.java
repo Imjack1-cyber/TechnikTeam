@@ -1,5 +1,3 @@
-
-###37. File:src/main/java/de/technikteam/dao/TodoDAO.java(complete)```java
 package de.technikteam.dao;
 
 import de.technikteam.model.TodoCategory;
