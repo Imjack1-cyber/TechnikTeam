@@ -5,12 +5,14 @@ import apiClient from '../../services/apiClient';
 import StorageItemModal from '../../components/admin/storage/StorageItemModal';
 import Lightbox from '../../components/ui/Lightbox';
 import StatusBadge from '../../components/ui/StatusBadge';
+import { useToast } from '../../context/ToastContext';
 
 const AdminStoragePage = () => {
 	const apiCall = useCallback(() => apiClient.get('/storage'), []);
 	const { data: items, loading, error, reload } = useApi(apiCall);
 	const [modalState, setModalState] = useState({ isOpen: false, item: null, mode: 'edit' });
 	const [lightboxSrc, setLightboxSrc] = useState('');
+	const { addToast } = useToast();
 
 	const openModal = (mode, item = null) => {
 		setModalState({ isOpen: true, item, mode });
@@ -28,10 +30,15 @@ const AdminStoragePage = () => {
 	const handleDelete = async (item) => {
 		if (window.confirm(`Artikel '${item.name}' wirklich löschen?`)) {
 			try {
-				await apiClient.delete(`/storage/${item.id}`);
-				reload();
+				const result = await apiClient.delete(`/storage/${item.id}`);
+				if (result.success) {
+					addToast('Artikel gelöscht.', 'success');
+					reload();
+				} else {
+					throw new Error(result.message);
+				}
 			} catch (err) {
-				alert(`Fehler: ${err.message}`);
+				addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error');
 			}
 		}
 	};

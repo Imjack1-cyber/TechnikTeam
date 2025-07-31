@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import apiClient from '../services/apiClient';
+import { useToast } from '../context/ToastContext';
 
 const PasswordPage = () => {
 	const [currentPassword, setCurrentPassword] = useState('');
@@ -8,13 +9,16 @@ const PasswordPage = () => {
 	const [confirmPassword, setConfirmPassword] = useState('');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState('');
-	const [success, setSuccess] = useState('');
+	const { addToast } = useToast();
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
 		setError('');
-		setSuccess('');
 
+		if (newPassword.length < 10) {
+			setError('Das neue Passwort muss mindestens 10 Zeichen lang sein.');
+			return;
+		}
 		if (newPassword !== confirmPassword) {
 			setError('Die neuen Passwörter stimmen nicht überein.');
 			return;
@@ -30,7 +34,7 @@ const PasswordPage = () => {
 			});
 
 			if (result.success) {
-				setSuccess('Ihr Passwort wurde erfolgreich geändert.');
+				addToast('Ihr Passwort wurde erfolgreich geändert.', 'success');
 				setCurrentPassword('');
 				setNewPassword('');
 				setConfirmPassword('');
@@ -53,7 +57,6 @@ const PasswordPage = () => {
 				</p>
 
 				{error && <p className="error-message">{error}</p>}
-				{success && <p className="success-message">{success}</p>}
 
 				<form onSubmit={handleSubmit}>
 					<div className="form-group">

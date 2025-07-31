@@ -1,4 +1,3 @@
-
 package de.technikteam.api.v1;
 
 import de.technikteam.api.v1.dto.WikiUpdateRequest;
@@ -16,6 +15,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +26,7 @@ import java.util.Optional;
 @RequestMapping("/api/v1/wiki")
 @Tag(name = "Admin Wiki", description = "Endpoints for managing the technical documentation wiki.")
 @SecurityRequirement(name = "bearerAuth")
+@PreAuthorize("hasAuthority('ACCESS_ADMIN_PANEL')")
 public class WikiResource {
 
 	private final WikiService wikiService;

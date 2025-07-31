@@ -10,11 +10,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
+import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.sql.Types;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Repository
@@ -67,17 +72,26 @@ public class FileDAO {
 		}
 	}
 
-	public boolean createFile(File file) {
+	public int createFile(File file) {
 		String sql = "INSERT INTO files (filename, filepath, category_id, required_role) VALUES (?, ?, ?, ?)";
+		KeyHolder keyHolder = new GeneratedKeyHolder();
 		try {
-			Object categoryId = file.getCategoryId() > 0 ? file.getCategoryId() : null;
-			int[] types = { Types.VARCHAR, Types.VARCHAR, Types.INTEGER, Types.VARCHAR };
-			return jdbcTemplate.update(sql,
-					new Object[] { file.getFilename(), file.getFilepath(), categoryId, file.getRequiredRole() },
-					types) > 0;
+			jdbcTemplate.update(connection -> {
+				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+				ps.setString(1, file.getFilename());
+				ps.setString(2, file.getFilepath());
+				if (file.getCategoryId() > 0) {
+					ps.setInt(3, file.getCategoryId());
+				} else {
+					ps.setNull(3, Types.INTEGER);
+				}
+				ps.setString(4, file.getRequiredRole());
+				return ps;
+			}, keyHolder);
+			return Objects.requireNonNull(keyHolder.getKey()).intValue();
 		} catch (Exception e) {
 			logger.error("Error creating file record for '{}'", file.getFilename(), e);
-			return false;
+			return 0;
 		}
 	}
 

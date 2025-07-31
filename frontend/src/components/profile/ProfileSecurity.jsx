@@ -2,8 +2,10 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import apiClient from '../../services/apiClient';
 import { passkeyService } from '../../services/passkeyService';
+import { useToast } from '../../context/ToastContext';
 
 const ProfileSecurity = ({ passkeys, onUpdate }) => {
+	const { addToast } = useToast();
 
 	const handleRegisterPasskey = async () => {
 		const deviceName = prompt('Bitte geben Sie einen Namen für dieses Gerät ein (z.B. "Mein Laptop"):', 'Mein Gerät');
@@ -11,11 +13,11 @@ const ProfileSecurity = ({ passkeys, onUpdate }) => {
 
 		try {
 			await passkeyService.registerPasskey(deviceName);
-			console.log('Passkey registered!');
+			addToast('Passkey erfolgreich registriert!', 'success');
 			onUpdate();
 		} catch (error) {
 			console.error(error);
-			alert(`Fehler bei der Registrierung: ${error.message}`);
+			addToast(`Fehler bei der Registrierung: ${error.message}`, 'error');
 		}
 	};
 
@@ -24,13 +26,14 @@ const ProfileSecurity = ({ passkeys, onUpdate }) => {
 			try {
 				const result = await apiClient.delete(`/public/profile/passkeys/${id}`);
 				if (result.success) {
+					addToast('Passkey erfolgreich entfernt.', 'success');
 					onUpdate();
 				} else {
 					throw new Error(result.message);
 				}
 			} catch (error) {
 				console.error(error);
-				alert(`Fehler beim Entfernen: ${error.message}`);
+				addToast(`Fehler beim Entfernen: ${error.message}`, 'error');
 			}
 		}
 	};

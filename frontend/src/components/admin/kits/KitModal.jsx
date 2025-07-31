@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Modal from '../../ui/Modal';
 import apiClient from '../../../services/apiClient';
+import { useToast } from '../../../context/ToastContext';
 
 const KitModal = ({ isOpen, onClose, onSuccess, kit }) => {
 	const isEditMode = !!kit;
@@ -11,6 +12,7 @@ const KitModal = ({ isOpen, onClose, onSuccess, kit }) => {
 	});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
+	const { addToast } = useToast();
 
 	const handleChange = (e) => {
 		setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -27,6 +29,7 @@ const KitModal = ({ isOpen, onClose, onSuccess, kit }) => {
 				: await apiClient.post('/kits', formData);
 
 			if (result.success) {
+				addToast(`Kit erfolgreich ${isEditMode ? 'aktualisiert' : 'erstellt'}.`, 'success');
 				onSuccess();
 			} else {
 				throw new Error(result.message);

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { passkeyService } from '../services/passkeyService'; // Assuming you have a passkey service
 
 const LoginPage = () => {
 	const [username, setUsername] = useState('');
 	const [password, setPassword] = useState('');
+	const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState('');
 	const navigate = useNavigate();
@@ -33,6 +35,29 @@ const LoginPage = () => {
 		}
 	};
 
+	const handlePasskeyLogin = async () => {
+		setIsLoading(true);
+		setError('');
+		if (!username) {
+			setError('Bitte geben Sie zuerst Ihren Benutzernamen ein.');
+			setIsLoading(false);
+			return;
+		}
+		try {
+			await passkeyService.loginWithPasskey(username);
+			// The login function in passkeyService should set the auth state
+		} catch (err) {
+			setError(err.message || 'Passkey-Login fehlgeschlagen.');
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+
+	const togglePasswordVisibility = () => {
+		setIsPasswordVisible(!isPasswordVisible);
+	};
+
 	return (
 		<div className="login-page-container">
 			<div className="login-box">
@@ -50,7 +75,7 @@ const LoginPage = () => {
 							value={username}
 							onChange={(e) => setUsername(e.target.value)}
 							required
-							autoComplete="username"
+							autoComplete="username webauthn"
 							autoFocus
 							disabled={isLoading}
 						/>
@@ -59,7 +84,7 @@ const LoginPage = () => {
 						<label htmlFor="password">Passwort</label>
 						<div className="password-input-wrapper">
 							<input
-								type="password"
+								type={isPasswordVisible ? 'text' : 'password'}
 								id="password"
 								name="password"
 								value={password}
@@ -68,8 +93,8 @@ const LoginPage = () => {
 								autoComplete="current-password"
 								disabled={isLoading}
 							/>
-							<span className="password-toggle-icon">
-								<i className="fas fa-eye"></i>
+							<span className="password-toggle-icon" onClick={togglePasswordVisibility} title="Passwort anzeigen/verbergen">
+								<i className={`fas ${isPasswordVisible ? 'fa-eye-slash' : 'fa-eye'}`}></i>
 							</span>
 						</div>
 					</div>
@@ -86,6 +111,15 @@ const LoginPage = () => {
 						) : (
 							'Anmelden'
 						)}
+					</button>
+					<button
+						type="button"
+						className="btn btn-secondary"
+						style={{ width: '100%' }}
+						onClick={handlePasskeyLogin}
+						disabled={isLoading}
+					>
+						<i className="fas fa-fingerprint"></i> Mit Passkey anmelden
 					</button>
 				</form>
 			</div>

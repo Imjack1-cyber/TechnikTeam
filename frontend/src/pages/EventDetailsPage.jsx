@@ -10,20 +10,17 @@ const EventDetailsPage = () => {
 	const { eventId } = useParams();
 	const { user } = useAuthStore();
 	const apiCall = useCallback(() => apiClient.get(`/public/events/${eventId}`), [eventId]);
-	const { data: event, loading, error, reload } = useApi(apiCall);
+	const { data: event, loading, error } = useApi(apiCall);
 
 	const [chatMessages, setChatMessages] = useState([]);
 	const [chatInput, setChatInput] = useState('');
 
 	const websocketProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-	// Construct the WebSocket URL to connect to the Vite proxy, which will forward it to the Spring backend.
-	// The hardcoded '/TechnikTeam' context path is removed, as the proxy now handles it.
-	const websocketUrl = event && event.status === 'LAUFEND'
+	const websocketUrl = event && (event.status === 'LAUFEND' || event.status === 'GEPLANT')
 		? `${websocketProtocol}//${window.location.host}/ws/chat/${eventId}`
 		: null;
 
 	const handleChatMessage = (message) => {
-		// Assuming the backend sends messages with a 'type' and 'payload'
 		if (message.type === 'new_message') {
 			setChatMessages(prevMessages => [...prevMessages, message.payload]);
 		} else if (message.type === 'message_soft_deleted') {
@@ -130,13 +127,13 @@ const EventDetailsPage = () => {
 					)}
 				</div>
 
-				{event.status === 'LAUFEND' && (
+				{(event.status === 'LAUFEND' || event.status === 'GEPLANT') && (
 					<div className="card" style={{ gridColumn: '1 / -1' }}>
 						<h2 className="card-title">Event-Chat</h2>
-						<div id="chat-box" style={{ height: '300px', overflowY: 'auto', border: '1px solid var(--border-color)', padding: '0.5rem', marginBottom: '1rem', background: 'var(--bg-color)' }}>
+						<div id="chat-box" style={{ height: '300px', overflowY: 'auto', border: '1px solid var(--border-color)', padding: '0.5rem', marginBottom: '1rem', background: 'var(--bg-color)', display: 'flex', flexDirection: 'column' }}>
 							{chatMessages.map(msg => (
 								<div key={msg.id} className={`chat-message-container ${msg.userId === user.id ? 'current-user' : ''}`}>
-									<div className="chat-bubble" style={{ backgroundColor: msg.userId === user.id ? 'var(--primary-color)' : msg.chatColor || '#e9ecef' }}>
+									<div className="chat-bubble" style={{ backgroundColor: msg.userId === user.id ? 'var(--primary-color)' : msg.chatColor || '#e9ecef', color: msg.userId === user.id ? '#fff' : 'var(--text-color)' }}>
 										{!msg.isDeleted ? (
 											<>
 												{msg.userId !== user.id && <strong className="chat-username">{msg.username}</strong>}
@@ -160,6 +157,7 @@ const EventDetailsPage = () => {
 								value={chatInput}
 								onChange={(e) => setChatInput(e.target.value)}
 								autoComplete="off"
+								disabled={readyState !== WebSocket.OPEN}
 							/>
 							<button type="submit" className="btn" disabled={readyState !== WebSocket.OPEN}>Senden</button>
 						</form>
@@ -170,4 +168,4 @@ const EventDetailsPage = () => {
 	);
 };
 
-export default EventDetailsPage; 
+export default EventDetailsPage;

@@ -6,6 +6,7 @@ import KitModal from '../../components/admin/kits/KitModal';
 import KitItemsForm from '../../components/admin/kits/KitItemsForm';
 import Modal from '../../components/ui/Modal';
 import QRCode from 'qrcode.react';
+import { useToast } from '../../context/ToastContext';
 
 const KitAccordion = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems }) => {
 	const [isOpen, setIsOpen] = useState(false);
@@ -14,10 +15,11 @@ const KitAccordion = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems })
 
 	return (
 		<div className="kit-container" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1.5rem', marginBottom: '1.5rem' }}>
-			<div className="kit-header" onClick={() => setIsOpen(!isOpen)}>
+			<div className="kit-header" onClick={() => setIsOpen(!isOpen)} style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
 				<div>
 					<h3>
-						<i className={`fas ${isOpen ? 'fa-chevron-up' : 'fa-chevron-down'} toggle-icon`}></i> {kit.name}
+						<i className={`fas ${isOpen ? 'fa-chevron-down' : 'fa-chevron-right'}`} style={{ marginRight: '0.75rem', transition: 'transform 0.2s' }}></i>
+						{kit.name}
 					</h3>
 					<p style={{ margin: '-0.5rem 0 0 1.75rem', color: 'var(--text-muted-color)' }}>{kit.description}</p>
 				</div>
@@ -48,6 +50,7 @@ const AdminKitsPage = () => {
 	const { storageItems } = useAdminData();
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingKit, setEditingKit] = useState(null);
+	const { addToast } = useToast();
 
 	const openModal = (kit = null) => {
 		setEditingKit(kit);
@@ -67,10 +70,15 @@ const AdminKitsPage = () => {
 	const handleDelete = async (kit) => {
 		if (window.confirm(`Kit '${kit.name}' wirklich löschen?`)) {
 			try {
-				await apiClient.delete(`/kits/${kit.id}`);
-				reload();
+				const result = await apiClient.delete(`/kits/${kit.id}`);
+				if (result.success) {
+					addToast('Kit erfolgreich gelöscht.', 'success');
+					reload();
+				} else {
+					throw new Error(result.message);
+				}
 			} catch (err) {
-				alert(`Error: ${err.message}`);
+				addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error');
 			}
 		}
 	};

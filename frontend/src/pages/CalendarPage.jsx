@@ -23,7 +23,7 @@ const CalendarPage = () => {
 			</h1>
 			<p>
 				Übersicht aller anstehenden Veranstaltungen und Lehrgänge.
-				<a href="/api/v1/public/calendar.ics" className="btn btn-small btn-info" style={{ marginLeft: '1rem' }}>
+				<a href="/api/v1/public/calendar.ics" className="btn btn-small" style={{ marginLeft: '1rem', backgroundColor: 'var(--success-color)' }}>
 					<i className="fas fa-rss"></i> Kalender abonnieren
 				</a>
 			</p>

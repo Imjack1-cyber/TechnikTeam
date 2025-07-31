@@ -2,18 +2,20 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../../ui/Modal';
 import PermissionsTab from './PermissionTab';
 import apiClient from '../../../services/apiClient';
+import { useToast } from '../../../context/ToastContext';
 
 const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions, isLoadingData }) => {
 	const [activeTab, setActiveTab] = useState('general');
 	const [formData, setFormData] = useState({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
+	const { addToast } = useToast();
 
 	const isEditMode = !!user;
 
 	useEffect(() => {
-		if (isEditMode && user) {
-			const fetchUserData = async () => {
+		const fetchUserData = async () => {
+			if (isEditMode && user) {
 				try {
 					const result = await apiClient.get(`/users/${user.id}`);
 					if (result.success) {
@@ -29,20 +31,20 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
 				} catch (err) {
 					setError('Could not load user details.');
 				}
-			};
-			fetchUserData();
-		} else {
-			setFormData({
-				username: '',
-				password: '',
-				roleId: roles.find(r => r.roleName === 'NUTZER')?.id || '',
-				classYear: '',
-				className: '',
-				email: '',
-				permissionIds: new Set()
-			});
-		}
-	}, [user, isEditMode, roles]);
+			} else {
+				setFormData({
+					username: '',
+					password: '',
+					roleId: roles.find(r => r.roleName === 'NUTZER')?.id || '',
+					classYear: '',
+					className: '',
+					email: '',
+					permissionIds: new Set()
+				});
+			}
+		};
+		fetchUserData();
+	}, [user, isEditMode, roles, isOpen]);
 
 	const handleChange = (e) => {
 		setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -67,11 +69,11 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
 
 		const payload = {
 			...formData,
-			permissionIds: Array.from(formData.permissionIds)
+			permissionIds: Array.from(formData.permissionIds || [])
 		};
 
-		if (!isEditMode && !payload.password) {
-			setError('Password is required for a new user.');
+		if (!isEditMode && (!payload.password || payload.password.length < 10)) {
+			setError('Password is required for a new user and must be at least 10 characters.');
 			setIsSubmitting(false);
 			return;
 		}
@@ -82,6 +84,7 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
 				: await apiClient.post('/users', payload);
 
 			if (result.success) {
+				addToast(`User ${isEditMode ? 'updated' : 'created'} successfully`, 'success');
 				onSuccess();
 			} else {
 				throw new Error(result.message);

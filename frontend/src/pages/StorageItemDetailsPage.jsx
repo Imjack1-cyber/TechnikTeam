@@ -9,7 +9,7 @@ const StorageItemDetailsPage = () => {
 	const [activeTab, setActiveTab] = useState('history');
 	const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
-	const fetchItemCall = useCallback(() => apiClient.get(`/storage/${itemId}`), [itemId]);
+	const fetchItemCall = useCallback(() => apiClient.get(`/public/storage/${itemId}`), [itemId]);
 	const fetchHistoryCall = useCallback(() => apiClient.get(`/public/storage/${itemId}/history`), [itemId]);
 
 	const { data: itemData, loading: itemLoading, error: itemError } = useApi(fetchItemCall);

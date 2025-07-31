@@ -62,7 +62,7 @@ public class DateFormatter {
 		if (start == null) {
 			return "";
 		}
-		
+
 		if (end == null) {
 			return formatDateTime(start) + " Uhr";
 		}

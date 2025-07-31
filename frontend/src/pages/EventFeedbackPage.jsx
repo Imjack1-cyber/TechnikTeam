@@ -2,10 +2,12 @@ import React, { useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
+import { useToast } from '../context/ToastContext';
 
 const EventFeedbackPage = () => {
 	const { eventId } = useParams();
 	const navigate = useNavigate();
+	const { addToast } = useToast();
 
 	const [rating, setRating] = useState(0);
 	const [comments, setComments] = useState('');
@@ -31,6 +33,7 @@ const EventFeedbackPage = () => {
 				comments
 			});
 			if (result.success) {
+				addToast('Vielen Dank für dein Feedback!', 'success');
 				navigate('/profil');
 			} else {
 				throw new Error(result.message);

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import apiClient from '../../services/apiClient';
+import { useToast } from '../../context/ToastContext';
 
 const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 	const [isEditing, setIsEditing] = useState(false);
@@ -8,13 +9,27 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 		classYear: user.classYear || '',
 		className: user.className || ''
 	});
+	const [profilePicture, setProfilePicture] = useState(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
+	const { addToast } = useToast();
 
 	const handleEditToggle = () => setIsEditing(!isEditing);
 
 	const handleChange = (e) => {
 		setFormData({ ...formData, [e.target.name]: e.target.value });
+	};
+
+	const handleFileChange = (e) => {
+		const file = e.target.files[0];
+		if (file && file.size > 2 * 1024 * 1024) { // 2MB limit
+			setError('Profilbild darf maximal 2MB groß sein.');
+			e.target.value = null;
+			setProfilePicture(null);
+		} else {
+			setError('');
+			setProfilePicture(file);
+		}
 	};
 
 	const handleCancel = () => {
@@ -23,6 +38,7 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 			classYear: user.classYear || '',
 			className: user.className || ''
 		});
+		setProfilePicture(null);
 		setIsEditing(false);
 	};
 
@@ -31,9 +47,16 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 		setIsSubmitting(true);
 		setError('');
 
+		const data = new FormData();
+		data.append('profileData', new Blob([JSON.stringify(formData)], { type: 'application/json' }));
+		if (profilePicture) {
+			data.append('profilePicture', profilePicture);
+		}
+
 		try {
-			const result = await apiClient.post('/public/profile/request-change', formData);
+			const result = await apiClient.post('/public/profile/request-change', data);
 			if (result.success) {
+				addToast('Änderungsantrag erfolgreich eingereicht.', 'success');
 				setIsEditing(false);
 				onUpdate();
 			} else {
@@ -52,12 +75,13 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 		try {
 			const result = await apiClient.put('/public/profile/chat-color', { chatColor: newColor });
 			if (result.success) {
+				addToast('Chat-Farbe gespeichert', 'success');
 				onUpdate();
 			} else {
 				throw new Error(result.message);
 			}
 		} catch (err) {
-			console.error(err);
+			addToast(err.message || 'Fehler beim Speichern', 'error');
 		}
 	}
 
@@ -71,9 +95,15 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 			<form onSubmit={handleSubmit}>
 				<ul className="details-list">
 					<li><strong>Benutzername:</strong> <span>{user.username}</span></li>
-					<li><strong>Jahrgang:</strong> <input type="number" name="classYear" value={formData.classYear} onChange={handleChange} readOnly={!isEditing} className="form-group editable-field" /></li>
-					<li><strong>Klasse:</strong> <input type="text" name="className" value={formData.className} onChange={handleChange} readOnly={!isEditing} className="form-group editable-field" /></li>
-					<li><strong>E-Mail:</strong> <input type="email" name="email" value={formData.email} onChange={handleChange} readOnly={!isEditing} className="form-group editable-field" /></li>
+					<li><strong>Jahrgang:</strong> <input type="number" name="classYear" value={formData.classYear} onChange={handleChange} readOnly={!isEditing} style={{ border: isEditing ? '' : 'none', background: isEditing ? '' : 'transparent' }} /></li>
+					<li><strong>Klasse:</strong> <input type="text" name="className" value={formData.className} onChange={handleChange} readOnly={!isEditing} style={{ border: isEditing ? '' : 'none', background: isEditing ? '' : 'transparent' }} /></li>
+					<li><strong>E-Mail:</strong> <input type="email" name="email" value={formData.email} onChange={handleChange} readOnly={!isEditing} style={{ border: isEditing ? '' : 'none', background: isEditing ? '' : 'transparent' }} /></li>
+					{isEditing && (
+						<li>
+							<strong>Profilbild:</strong>
+							<input type="file" name="profilePicture" onChange={handleFileChange} accept="image/jpeg, image/png" />
+						</li>
+					)}
 				</ul>
 				{!hasPendingRequest && (
 					<div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem' }}>

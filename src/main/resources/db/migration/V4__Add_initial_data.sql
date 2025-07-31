@@ -1,5 +1,7 @@
+-- Flyway migration V4: Add essential seed data.
+
 -- Add default roles
-INSERT INTO `roles` (`id`, `role_name`) VALUES (1, 'ADMIN'), (3, 'NUTZER');
+INSERT INTO `roles` (`id`, `role_name`) VALUES (1, 'ADMIN'), (2, 'NUTZER');
 
 -- Add all permissions
 INSERT INTO `permissions` (`id`, `permission_key`, `description`) VALUES
@@ -39,12 +41,14 @@ INSERT INTO `permissions` (`id`, `permission_key`, `description`) VALUES
 (34, 'ACHIEVEMENT_UPDATE', 'Kann bestehende Erfolge und Abzeichen bearbeiten.'),
 (35, 'ACHIEVEMENT_DELETE', 'Kann Erfolge und Abzeichen löschen.'),
 (36, 'FILE_MANAGE', 'Kann die Datei-Verwaltungsseite einsehen und grundlegende Operationen durchführen.'),
-(37, 'FILE_UPDATE', 'Kann den Inhalt von Dateien (z.B. im Markdown-Editor) bearbeiten und neue Versionen hochladen.');
+(37, 'FILE_UPDATE', 'Kann den Inhalt von Dateien (z.B. im Markdown-Editor) bearbeiten und neue Versionen hochladen.'),
+(38, 'ACHIEVEMENT_VIEW', 'Ermöglicht das Anzeigen des Admin-Menüpunkts für Abzeichen.'),
+(39, 'ADMIN_DASHBOARD_ACCESS', 'Ermöglicht das Anzeigen des Admin-Menüpunkts für das Dashboard.');
 
--- Create the default admin user with username 'admin' and password 'password'
--- The password hash is for 'password'
+-- Create the default admin user with username 'admin' and password 'admin123'
+-- The password hash is for 'admin123'
 INSERT INTO `users` (`id`, `username`, `password_hash`, `role_id`, `theme`) VALUES
 (1, 'admin', '$2a$10$odf1koglTR0zdzyPbDDkzOuw2XSKu19ylygl561RQ336KpABBFccu', 1, 'light');
 
--- Grant all permissions to the admin user
-INSERT INTO `user_permissions` (`user_id`, `permission_id`) SELECT 1, id FROM `permissions`;
+-- Grant the master admin permission to the admin user
+INSERT INTO `user_permissions` (`user_id`, `permission_id`) VALUES (1, 1);

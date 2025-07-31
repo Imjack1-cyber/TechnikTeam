@@ -4,6 +4,7 @@ import apiClient from '../services/apiClient';
 import useApi from '../hooks/useApi';
 import Modal from '../components/ui/Modal';
 import Lightbox from '../components/ui/Lightbox';
+import { useToast } from '../context/ToastContext';
 
 const StoragePage = () => {
 	const apiCall = useCallback(() => apiClient.get('/public/storage'), []);
@@ -13,6 +14,7 @@ const StoragePage = () => {
 	const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 	const [lightboxSrc, setLightboxSrc] = useState('');
 	const [transactionError, setTransactionError] = useState('');
+	const { addToast } = useToast();
 
 	const handleActionClick = (item) => {
 		setSelectedItem(item);
@@ -29,9 +31,16 @@ const StoragePage = () => {
 		e.preventDefault();
 		const submitter = e.nativeEvent.submitter;
 		const formData = new FormData(e.target);
+		const quantity = parseInt(formData.get('quantity'), 10);
+
+		if (isNaN(quantity) || quantity < 1) {
+			setTransactionError("Bitte geben Sie eine gültige Anzahl an.");
+			return;
+		}
+
 		const transactionData = {
 			itemId: selectedItem.id,
-			quantity: parseInt(formData.get('quantity'), 10),
+			quantity: quantity,
 			type: submitter.value,
 			notes: formData.get('notes'),
 			eventId: formData.get('eventId') ? parseInt(formData.get('eventId'), 10) : null,
@@ -40,6 +49,7 @@ const StoragePage = () => {
 		try {
 			const result = await apiClient.post('/public/storage/transactions', transactionData);
 			if (result.success) {
+				addToast(result.message, 'success');
 				setIsModalOpen(false);
 				reload();
 			} else {
@@ -81,7 +91,7 @@ const StoragePage = () => {
 										<td className="item-name-cell">
 											<Link to={`/lager/details/${item.id}`}>{item.name}</Link>
 											{item.imagePath && (
-												<button className="camera-btn" title="Bild anzeigen" onClick={() => handleImageClick(item.imagePath)}>
+												<button className="btn btn-small btn-secondary" style={{ marginLeft: '0.5rem', padding: '0.2rem 0.5rem' }} title="Bild anzeigen" onClick={() => handleImageClick(item.imagePath)}>
 													<i className="fas fa-camera"></i>
 												</button>
 											)}
@@ -94,8 +104,8 @@ const StoragePage = () => {
 											</span>
 										</td>
 										<td>
-											<span className="inventory-details">{item.availableQuantity} / {item.maxQuantity}</span>
-											{item.defectiveQuantity > 0 && <span className="inventory-details text-danger">({item.defectiveQuantity} defekt)</span>}
+											<span>{item.availableQuantity} / {item.maxQuantity}</span>
+											{item.defectiveQuantity > 0 && <span className="text-danger"> ({item.defectiveQuantity} defekt)</span>}
 										</td>
 										<td>
 											<button className="btn btn-small" onClick={() => handleActionClick(item)}>Aktion</button>

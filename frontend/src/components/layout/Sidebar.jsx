@@ -16,6 +16,21 @@ const Sidebar = () => {
 		logout();
 	};
 
+	const renderNavItem = (item) => {
+		if (item.url.startsWith('/swagger-ui.html')) {
+			return (
+				<a href={item.url} target="_blank" rel="noopener noreferrer">
+					<i className={`fas ${item.icon} fa-fw`}></i> {item.label}
+				</a>
+			);
+		}
+		return (
+			<NavLink to={item.url} className={({ isActive }) => isActive ? 'active-nav-link' : ''}>
+				<i className={`fas ${item.icon} fa-fw`}></i> {item.label}
+			</NavLink>
+		);
+	};
+
 	return (
 		<aside className="sidebar">
 			<header className="sidebar-header">
@@ -28,18 +43,14 @@ const Sidebar = () => {
 					{userNavItems.length > 0 && <li className="nav-section-title">Benutzerbereich</li>}
 					{userNavItems.map(item => (
 						<li key={`${item.label}-${item.url}`}>
-							<NavLink to={item.url} className={({ isActive }) => isActive ? 'active-nav-link' : ''}>
-								<i className={`fas ${item.icon} fa-fw`}></i> {item.label}
-							</NavLink>
+							{renderNavItem(item)}
 						</li>
 					))}
 
 					{adminNavItems.length > 0 && <li className="nav-section-title">Admin-Bereich</li>}
 					{adminNavItems.map(item => (
 						<li key={`${item.label}-${item.url}`}>
-							<NavLink to={item.url} className={({ isActive }) => isActive ? 'active-nav-link' : ''}>
-								<i className={`fas ${item.icon} fa-fw`}></i> {item.label}
-							</NavLink>
+							{renderNavItem(item)}
 						</li>
 					))}
 				</ul>
@@ -48,7 +59,7 @@ const Sidebar = () => {
 				<div className="user-info">
 					Angemeldet als: <strong>{user.username}</strong>
 				</div>
-				<div className="sidebar-controls">
+				<div style={{ display: 'flex', gap: '0.5rem' }}>
 					<NavLink to="/profil" className="btn btn-secondary btn-small" style={{ flexGrow: 1 }}>Profil</NavLink>
 					<button onClick={handleLogout} className="btn btn-danger-outline btn-small" style={{ flexGrow: 1 }}>Logout</button>
 				</div>

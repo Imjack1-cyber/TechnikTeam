@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useAuthStore } from '../store/authStore';
 
 /**
  * A custom hook to manage a WebSocket connection.
@@ -9,12 +10,16 @@ import { useState, useEffect, useRef } from 'react';
 const useWebSocket = (url, onMessage) => {
 	const [readyState, setReadyState] = useState(WebSocket.CONNECTING);
 	const socketRef = useRef(null);
+	const token = useAuthStore.getState().token;
 
 	useEffect(() => {
-		if (!url) return;
+		if (!url || !token) return;
 
 		const connect = () => {
-			const socket = new WebSocket(url);
+			// Append token for authentication during handshake
+			const authenticatedUrl = new URL(url);
+			authenticatedUrl.searchParams.append('token', token);
+			const socket = new WebSocket(authenticatedUrl);
 			socketRef.current = socket;
 
 			socket.onopen = () => {
@@ -33,10 +38,15 @@ const useWebSocket = (url, onMessage) => {
 				}
 			};
 
-			socket.onclose = () => {
-				console.warn('WebSocket connection closed. Attempting to reconnect...');
+			socket.onclose = (event) => {
+				if (event.code === 4001) { // Custom code for auth failure
+					console.error('WebSocket connection closed due to authentication failure.');
+					// Don't reconnect on auth failure
+				} else {
+					console.warn('WebSocket connection closed. Attempting to reconnect...');
+					setTimeout(connect, 5000);
+				}
 				setReadyState(WebSocket.CLOSED);
-				setTimeout(connect, 5000);
 			};
 
 			socket.onerror = (error) => {
@@ -50,11 +60,11 @@ const useWebSocket = (url, onMessage) => {
 
 		return () => {
 			if (socketRef.current) {
-				socketRef.current.onclose = null;
+				socketRef.current.onclose = null; // Prevent reconnect attempts on component unmount
 				socketRef.current.close();
 			}
 		};
-	}, [url, onMessage]);
+	}, [url, onMessage, token]);
 
 	const sendMessage = (messageObject) => {
 		if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import Modal from '../../components/ui/Modal';
+import { useToast } from '../../context/ToastContext';
 
 const AdminCoursesPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/courses'), []);
@@ -10,6 +11,7 @@ const AdminCoursesPage = () => {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingCourse, setEditingCourse] = useState(null);
 	const [formError, setFormError] = useState('');
+	const { addToast } = useToast();
 
 	const handleOpenNewModal = () => {
 		setEditingCourse(null);
@@ -38,6 +40,7 @@ const AdminCoursesPage = () => {
 				: await apiClient.post('/courses', data);
 
 			if (result.success) {
+				addToast(`Vorlage erfolgreich ${editingCourse ? 'aktualisiert' : 'erstellt'}.`, 'success');
 				handleCloseModal();
 				reload();
 			} else {
@@ -51,17 +54,22 @@ const AdminCoursesPage = () => {
 	const handleDelete = async (course) => {
 		if (window.confirm(`Vorlage '${course.name}' wirklich löschen? Alle zugehörigen Meetings und Qualifikationen werden auch gelöscht!`)) {
 			try {
-				await apiClient.delete(`/courses/${course.id}`);
-				reload();
+				const result = await apiClient.delete(`/courses/${course.id}`);
+				if (result.success) {
+					addToast('Vorlage erfolgreich gelöscht.', 'success');
+					reload();
+				} else {
+					throw new Error(result.message);
+				}
 			} catch (err) {
-				alert(`Fehler: ${err.message}`);
+				addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error');
 			}
 		}
 	};
 
 	return (
 		<div>
-			<h1>Lehrgangs-Vorlagen verwalten</h1>
+			<h1><i className="fas fa-book"></i> Lehrgangs-Vorlagen verwalten</h1>
 			<p>Dies sind die übergeordneten Lehrgänge. Einzelne Termine (Meetings) werden für jede Vorlage separat verwaltet.</p>
 
 			<div className="table-controls">

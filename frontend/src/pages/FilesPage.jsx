@@ -18,7 +18,7 @@ const FilesPage = () => {
 				<h2>
 					<i className="fas fa-folder"></i> {categoryName}
 				</h2>
-				<ul className="file-list">
+				<ul className="details-list">
 					{files.map(file => (
 						<li key={file.id} style={{ padding: '0.75rem 0' }}>
 							<div>
@@ -35,7 +35,7 @@ const FilesPage = () => {
 
 	return (
 		<div>
-			<h1>Dateien & Dokumente</h1>
+			<h1><i className="fas fa-folder-open"></i> Dateien & Dokumente</h1>
 			<p>Hier können Sie zentrale Dokumente und Vorlagen herunterladen.</p>
 			{renderContent()}
 		</div>

@@ -1,0 +1,78 @@
+-- Flyway migration V2: Add all primary keys, unique constraints, and indexes.
+
+START TRANSACTION;
+
+ALTER TABLE `achievements` ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `achievement_key` (`achievement_key`);
+ALTER TABLE `admin_logs` ADD PRIMARY KEY (`id`);
+ALTER TABLE `attachments` ADD PRIMARY KEY (`id`), ADD KEY `idx_attachments_parent` (`parent_type`,`parent_id`);
+ALTER TABLE `courses` ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `name` (`name`), ADD UNIQUE KEY `abbreviation` (`abbreviation`);
+ALTER TABLE `course_attendance` ADD PRIMARY KEY (`user_id`,`course_id`), ADD KEY `course_id` (`course_id`);
+ALTER TABLE `events` ADD PRIMARY KEY (`id`), ADD KEY `fk_event_leader` (`leader_user_id`);
+ALTER TABLE `event_assignments` ADD PRIMARY KEY (`assignment_id`), ADD UNIQUE KEY `unique_assignment` (`event_id`,`user_id`), ADD KEY `user_id` (`user_id`);
+ALTER TABLE `event_attendance` ADD PRIMARY KEY (`user_id`,`event_id`), ADD KEY `event_id` (`event_id`);
+ALTER TABLE `event_chat_messages` ADD PRIMARY KEY (`id`), ADD KEY `event_id` (`event_id`), ADD KEY `event_chat_messages_ibfk_2` (`user_id`);
+ALTER TABLE `event_custom_fields` ADD PRIMARY KEY (`id`), ADD KEY `event_id` (`event_id`);
+ALTER TABLE `event_custom_field_responses` ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `field_id` (`field_id`,`user_id`), ADD KEY `user_id` (`user_id`);
+ALTER TABLE `event_skill_requirements` ADD PRIMARY KEY (`id`), ADD KEY `event_id` (`event_id`), ADD KEY `required_course_id` (`required_course_id`);
+ALTER TABLE `event_storage_reservations` ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `unique_event_item` (`event_id`,`item_id`), ADD KEY `item_id` (`item_id`);
+ALTER TABLE `event_tasks` ADD PRIMARY KEY (`id`), ADD KEY `event_id` (`event_id`);
+ALTER TABLE `event_task_assignments` ADD PRIMARY KEY (`task_id`,`user_id`), ADD KEY `user_id` (`user_id`);
+ALTER TABLE `event_task_kits` ADD PRIMARY KEY (`task_id`,`kit_id`), ADD KEY `kit_id` (`kit_id`);
+ALTER TABLE `event_task_storage_items` ADD PRIMARY KEY (`task_id`,`item_id`), ADD KEY `item_id` (`item_id`);
+ALTER TABLE `feedback_forms` ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `event_id_unique` (`event_id`);
+ALTER TABLE `feedback_responses` ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `form_user_unique` (`form_id`,`user_id`), ADD KEY `user_id` (`user_id`);
+ALTER TABLE `feedback_submissions` ADD PRIMARY KEY (`id`), ADD KEY `user_id` (`user_id`);
+ALTER TABLE `files` ADD PRIMARY KEY (`id`), ADD KEY `category_id` (`category_id`);
+ALTER TABLE `file_categories` ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `name` (`name`);
+ALTER TABLE `inventory_kits` ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `name` (`name`);
+ALTER TABLE `inventory_kit_items` ADD PRIMARY KEY (`kit_id`,`item_id`), ADD KEY `item_id` (`item_id`);
+ALTER TABLE `maintenance_log` ADD PRIMARY KEY (`id`), ADD KEY `item_id` (`item_id`), ADD KEY `user_id` (`user_id`);
+ALTER TABLE `meetings` ADD PRIMARY KEY (`id`), ADD KEY `course_id` (`course_id`), ADD KEY `fk_meeting_leader` (`leader_user_id`);
+ALTER TABLE `meeting_attendance` ADD PRIMARY KEY (`user_id`,`meeting_id`), ADD KEY `meeting_id` (`meeting_id`);
+ALTER TABLE `permissions` ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `permission_key_unique` (`permission_key`);
+ALTER TABLE `profile_change_requests` ADD PRIMARY KEY (`id`), ADD KEY `user_id` (`user_id`), ADD KEY `status` (`status`), ADD KEY `profile_change_requests_ibfk_2` (`reviewed_by_admin_id`);
+ALTER TABLE `roles` ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `role_name_unique` (`role_name`);
+ALTER TABLE `shared_documents` ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `document_name` (`document_name`), ADD UNIQUE KEY `idx_doc_name` (`document_name`);
+ALTER TABLE `storage_items` ADD PRIMARY KEY (`id`), ADD KEY `fk_holder_user` (`current_holder_user_id`), ADD KEY `fk_assigned_event` (`assigned_event_id`);
+ALTER TABLE `storage_log` ADD PRIMARY KEY (`id`), ADD KEY `item_id` (`item_id`), ADD KEY `user_id` (`user_id`), ADD KEY `fk_log_event` (`event_id`);
+ALTER TABLE `todo_categories` ADD KEY `idx_todo_categories_display_order` (`display_order`);
+ALTER TABLE `todo_tasks` ADD KEY `idx_todo_tasks_display_order` (`display_order`);
+ALTER TABLE `users` ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `username` (`username`), ADD UNIQUE KEY `email` (`email`), ADD KEY `fk_user_role` (`role_id`);
+ALTER TABLE `user_achievements` ADD PRIMARY KEY (`user_id`,`achievement_id`), ADD KEY `achievement_id` (`achievement_id`);
+ALTER TABLE `user_passkeys` ADD PRIMARY KEY (`id`), ADD KEY `user_id` (`user_id`);
+ALTER TABLE `user_permissions` ADD PRIMARY KEY (`user_id`,`permission_id`), ADD KEY `permission_id` (`permission_id`);
+ALTER TABLE `user_qualifications` ADD PRIMARY KEY (`user_id`,`course_id`), ADD KEY `course_id` (`course_id`);
+ALTER TABLE `wiki_documentation` ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `idx_wiki_file_path` (`file_path`);
+
+-- Add all auto-increment settings
+ALTER TABLE `achievements` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `admin_logs` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `attachments` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `courses` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `events` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `event_assignments` MODIFY `assignment_id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `event_chat_messages` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `event_custom_fields` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `event_custom_field_responses` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `event_skill_requirements` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `event_storage_reservations` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `event_tasks` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `feedback_forms` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `feedback_responses` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `feedback_submissions` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `files` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `file_categories` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `inventory_kits` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `maintenance_log` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `meetings` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `permissions` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `profile_change_requests` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `roles` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `shared_documents` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `storage_items` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `storage_log` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `users` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `user_passkeys` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `wiki_documentation` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+COMMIT;

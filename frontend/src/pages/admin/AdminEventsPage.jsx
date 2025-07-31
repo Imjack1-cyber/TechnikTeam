@@ -1,0 +1,100 @@
+import React, { useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import useApi from '../../hooks/useApi';
+import apiClient from '../../services/apiClient';
+import useAdminData from '../../hooks/useAdminData';
+import Modal from '../../components/ui/Modal';
+import StatusBadge from '../../components/ui/StatusBadge';
+import EventModal from '../../components/admin/events/EventModal';
+import { useToast } from '../../context/ToastContext';
+
+const AdminEventsPage = () => {
+	const apiCall = useCallback(() => apiClient.get('/events'), []);
+	const { data: events, loading, error, reload } = useApi(apiCall);
+	const adminFormData = useAdminData();
+	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [editingEvent, setEditingEvent] = useState(null);
+	const { addToast } = useToast();
+
+	const openModal = (event = null) => {
+		setEditingEvent(event);
+		setIsModalOpen(true);
+	};
+
+	const closeModal = () => {
+		setEditingEvent(null);
+		setIsModalOpen(false);
+	};
+
+	const handleSuccess = () => {
+		closeModal();
+		reload();
+	};
+
+	const handleDelete = async (event) => {
+		if (window.confirm(`Event '${event.name}' wirklich löschen?`)) {
+			try {
+				const result = await apiClient.delete(`/events/${event.id}`);
+				if (result.success) {
+					addToast('Event erfolgreich gelöscht', 'success');
+					reload();
+				} else {
+					throw new Error(result.message);
+				}
+			} catch (err) {
+				addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error');
+			}
+		}
+	};
+
+	return (
+		<div>
+			<h1><i className="fas fa-calendar-plus"></i> Event-Verwaltung</h1>
+			<p>Hier können alle Veranstaltungen geplant, bearbeitet und verwaltet werden.</p>
+			<div className="table-controls">
+				<button onClick={() => openModal()} className="btn btn-success">
+					<i className="fas fa-plus"></i> Neues Event erstellen
+				</button>
+			</div>
+
+			<div className="desktop-table-wrapper">
+				<table className="data-table">
+					<thead>
+						<tr>
+							<th>Event-Name</th>
+							<th>Datum & Uhrzeit</th>
+							<th>Status</th>
+							<th>Aktionen</th>
+						</tr>
+					</thead>
+					<tbody>
+						{loading && <tr><td colSpan="4">Lade Events...</td></tr>}
+						{error && <tr><td colSpan="4" className="error-message">{error}</td></tr>}
+						{events?.map(event => (
+							<tr key={event.id}>
+								<td><Link to={`/veranstaltungen/details/${event.id}`}>{event.name}</Link></td>
+								<td>{new Date(event.eventDateTime).toLocaleString('de-DE')}</td>
+								<td><StatusBadge status={event.status} /></td>
+								<td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+									<button onClick={() => openModal(event)} className="btn btn-small">Bearbeiten</button>
+									<button onClick={() => handleDelete(event)} className="btn btn-small btn-danger">Löschen</button>
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+			{isModalOpen && (
+				<EventModal
+					isOpen={isModalOpen}
+					onClose={closeModal}
+					onSuccess={handleSuccess}
+					event={editingEvent}
+					adminFormData={adminFormData}
+				/>
+			)}
+		</div>
+	);
+};
+
+export default AdminEventsPage;

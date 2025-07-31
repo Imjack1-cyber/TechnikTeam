@@ -4,10 +4,12 @@ import apiClient from '../services/apiClient';
 import useApi from '../hooks/useApi';
 import Modal from '../components/ui/Modal';
 import StatusBadge from '../components/ui/StatusBadge';
+import { useToast } from '../context/ToastContext';
 
 const EventsPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/public/events'), []);
 	const { data: events, loading, error, reload } = useApi(apiCall);
+	const { addToast } = useToast();
 
 	const [modalState, setModalState] = useState({
 		isOpen: false,
@@ -52,6 +54,7 @@ const EventsPage = () => {
 		try {
 			const result = await apiClient.post(`/public/events/${modalState.event.id}/signup`, customFieldData);
 			if (result.success) {
+				addToast('Erfolgreich angemeldet!', 'success');
 				closeModal();
 				reload();
 			} else {
@@ -68,11 +71,12 @@ const EventsPage = () => {
 		e.preventDefault();
 		setIsSubmitting(true);
 		setFormError('');
-		const reason = new FormData(e.target).get('reason');
+		const reason = new FormData(e.target).get('reason') || '';
 
 		try {
 			const result = await apiClient.post(`/public/events/${modalState.event.id}/signoff`, { reason });
 			if (result.success) {
+				addToast('Erfolgreich abgemeldet.', 'success');
 				closeModal();
 				reload();
 			} else {
@@ -100,7 +104,7 @@ const EventsPage = () => {
 				</button>
 			);
 		}
-		if (event.userAttendanceStatus === 'ANGEMELDET') {
+		if (event.userAttendanceStatus === 'ANGEMELDET' || event.userAttendanceStatus === 'ZUGEWIESEN') {
 			return (
 				<button type="button" className="btn btn-small btn-danger" onClick={() => openSignoffModal(event)}>
 					Abmelden
@@ -121,7 +125,7 @@ const EventsPage = () => {
 
 	return (
 		<>
-			<h1>Anstehende Veranstaltungen</h1>
+			<h1><i className="fas fa-calendar-check"></i> Anstehende Veranstaltungen</h1>
 			<div className="desktop-table-wrapper">
 				<table className="data-table">
 					<thead>
@@ -166,25 +170,22 @@ const EventsPage = () => {
 						</button>
 					</form>
 				)}
-				{modalState.type === 'signoff' && modalState.event?.status === 'LAUFEND' && (
+				{modalState.type === 'signoff' && (
 					<form onSubmit={handleSignoffSubmit}>
-						<p className="info-message">Da das Event bereits läuft, ist eine Begründung für die Abmeldung erforderlich.</p>
-						<div className="form-group">
-							<label htmlFor="signoff-reason">Begründung</label>
-							<textarea id="signoff-reason" name="reason" rows="3" required></textarea>
-						</div>
+						{modalState.event?.status === 'LAUFEND' && (
+							<>
+								<p className="info-message">Da das Event bereits läuft, ist eine Begründung für die Abmeldung erforderlich.</p>
+								<div className="form-group">
+									<label htmlFor="signoff-reason">Begründung</label>
+									<textarea id="signoff-reason" name="reason" rows="3" required></textarea>
+								</div>
+							</>
+						)}
+						{modalState.event?.status !== 'LAUFEND' && <p>Möchtest du dich wirklich von diesem Event abmelden?</p>}
 						<button type="submit" className="btn btn-danger" disabled={isSubmitting}>
 							{isSubmitting ? 'Wird abgemeldet...' : 'Jetzt abmelden'}
 						</button>
 					</form>
-				)}
-				{modalState.type === 'signoff' && modalState.event?.status !== 'LAUFEND' && (
-					<div>
-						<p>Möchtest du dich wirklich von diesem Event abmelden?</p>
-						<button className="btn btn-danger" onClick={() => handleSignoffSubmit(new Event('submit'))} disabled={isSubmitting}>
-							Ja, abmelden
-						</button>
-					</div>
 				)}
 			</Modal>
 		</>

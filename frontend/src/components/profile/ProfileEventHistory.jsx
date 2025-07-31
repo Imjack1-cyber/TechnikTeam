@@ -8,7 +8,7 @@ const ProfileEventHistory = ({ eventHistory }) => {
 	};
 
 	return (
-		<div className="card" id="profile-history-container">
+		<div className="card" style={{ gridColumn: '1 / -1' }} id="profile-history-container">
 			<h2 className="card-title">Meine Event-Historie</h2>
 			<div className="desktop-table-wrapper">
 				<div className="table-wrapper" style={{ maxHeight: '500px', overflowY: 'auto' }}>
@@ -33,7 +33,9 @@ const ProfileEventHistory = ({ eventHistory }) => {
 										<td>
 											{event.status === 'ABGESCHLOSSEN' && event.userAttendanceStatus === 'ZUGEWIESEN' ? (
 												<Link to={`/feedback/event/${event.id}`} className="btn btn-small">Feedback geben</Link>
-											) : null}
+											) : (
+												<span className="text-muted">-</span>
+											)}
 										</td>
 									</tr>
 								))

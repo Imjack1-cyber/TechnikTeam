@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import StatusBadge from '../components/ui/StatusBadge';
+import { useToast } from '../context/ToastContext';
 
 const FeedbackPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/public/feedback/user'), []);
@@ -10,18 +11,17 @@ const FeedbackPage = () => {
 	const [content, setContent] = useState('');
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState('');
-	const [submitSuccess, setSubmitSuccess] = useState('');
+	const { addToast } = useToast();
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
 		setIsSubmitting(true);
 		setSubmitError('');
-		setSubmitSuccess('');
 
 		try {
 			const result = await apiClient.post('/public/feedback/general', { subject, content });
 			if (result.success) {
-				setSubmitSuccess('Vielen Dank! Dein Feedback wurde erfolgreich übermittelt.');
+				addToast('Vielen Dank! Dein Feedback wurde erfolgreich übermittelt.', 'success');
 				setSubject('');
 				setContent('');
 				reload();
@@ -37,13 +37,12 @@ const FeedbackPage = () => {
 
 	return (
 		<div>
-			<h1>Feedback & Wünsche</h1>
+			<h1><i className="fas fa-lightbulb"></i> Feedback & Wünsche</h1>
 			<div className="responsive-dashboard-grid">
 				<div className="card">
 					<h2 className="card-title">Neues Feedback einreichen</h2>
 					<p>Hast du eine Idee, einen Verbesserungsvorschlag oder ist dir ein Fehler aufgefallen?</p>
 
-					{submitSuccess && <p className="success-message">{submitSuccess}</p>}
 					{submitError && <p className="error-message">{submitError}</p>}
 
 					<form onSubmit={handleSubmit}>

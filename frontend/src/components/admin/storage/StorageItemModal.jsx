@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../../ui/Modal';
 import apiClient from '../../../services/apiClient';
+import { useToast } from '../../../context/ToastContext';
 
 const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edit' }) => {
 	const [mode, setMode] = useState(initialMode);
 	const [formData, setFormData] = useState({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
+	const { addToast } = useToast();
 
 	useEffect(() => {
 		setMode(initialMode);
@@ -46,6 +48,7 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 				: await apiClient.post(`/storage/${item.id}`, data);
 
 			if (result.success) {
+				addToast(`Artikel ${mode === 'create' ? 'erstellt' : 'aktualisiert'}.`, 'success');
 				onSuccess();
 			} else {
 				throw new Error(result.message);
@@ -70,8 +73,10 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 
 		try {
 			const result = await apiClient.put(`/storage/${item.id}`, payload);
-			if (result.success) onSuccess();
-			else throw new Error(result.message);
+			if (result.success) {
+				addToast('Defekt-Status erfolgreich aktualisiert.', 'success');
+				onSuccess();
+			} else throw new Error(result.message);
 		} catch (err) {
 			setError(err.message || 'Fehler beim Melden des Defekts.');
 		} finally {
@@ -92,8 +97,10 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 
 		try {
 			const result = await apiClient.put(`/storage/${item.id}`, payload);
-			if (result.success) onSuccess();
-			else throw new Error(result.message);
+			if (result.success) {
+				addToast('Reparatur erfolgreich verbucht.', 'success');
+				onSuccess();
+			} else throw new Error(result.message);
 		} catch (err) {
 			setError(err.message || 'Fehler beim Buchen der Reparatur.');
 		} finally {

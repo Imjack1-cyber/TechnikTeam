@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import Modal from '../../ui/Modal';
 import apiClient from '../../../services/apiClient';
+import { useToast } from '../../../context/ToastContext';
 
 const AttendanceModal = ({ isOpen, onClose, onSuccess, cellData }) => {
 	const [attended, setAttended] = useState(cellData.attended);
 	const [remarks, setRemarks] = useState(cellData.remarks);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
+	const { addToast } = useToast();
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
@@ -23,6 +25,7 @@ const AttendanceModal = ({ isOpen, onClose, onSuccess, cellData }) => {
 		try {
 			const result = await apiClient.put('/matrix/attendance', payload);
 			if (result.success) {
+				addToast('Teilnahme erfolgreich gespeichert.', 'success');
 				onSuccess();
 			} else {
 				throw new Error(result.message);

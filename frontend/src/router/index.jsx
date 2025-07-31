@@ -1,34 +1,49 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
+
+// Layouts and Core Components
 import App from '../App';
-import LoginPage from '../pages/LoginPage';
-import DashboardPage from '../pages/DashboardPage';
-import StoragePage from '../pages/StoragePage';
-import StorageItemDetailsPage from '../pages/StorageItemDetailsPage';
-import EventsPage from '../pages/EventsPage';
-import EventDetailsPage from '../pages/EventDetailsPage';
-import LehrgaengePage from '../pages/LehrgaengePage';
-import MeetingDetailsPage from '../pages/MeetingDetailsPage';
-import ProfilePage from '../pages/ProfilePage';
-import PasswordPage from '../pages/PasswordPage';
-import FilesPage from '../pages/FilesPage';
-import FeedbackPage from '../pages/FeedbackPage';
-import EventFeedbackPage from '../pages/EventFeedbackPage';
-import CalendarPage from '../pages/CalendarPage';
-import PackKitPage from '../pages/PackKitPage';
-import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
-import AdminUsersPage from '../pages/admin/AdminUsersPage';
-import AdminCoursesPage from '../pages/admin/AdminCoursesPage';
-import AdminMeetingsPage from '../pages/admin/AdminMeetingsPage';
-import AdminStoragePage from '../pages/admin/AdminStoragePage';
-import AdminDefectivePage from '../pages/admin/AdminDefectivePage';
-import AdminLogPage from '../pages/admin/AdminLogPage';
-import AdminKitsPage from '../pages/admin/AdminKitsPage';
-import AdminMatrixPage from '../pages/admin/AdminMatrixPage';
-import AdminReportsPage from '../pages/admin/AdminReportsPage';
+import MinimalLayout from '../components/layout/MinimalLayout';
 import ProtectedRoute from './ProtectedRoute';
 import AdminRoute from './AdminRoute';
-import MinimalLayout from '../components/layout/MinimalLayout';
+
+// Eagerly load the LoginPage
+import LoginPage from '../pages/LoginPage';
+
+// Lazy load all other pages
+const DashboardPage = lazy(() => import('../pages/DashboardPage'));
+const StoragePage = lazy(() => import('../pages/StoragePage'));
+const StorageItemDetailsPage = lazy(() => import('../pages/StorageItemDetailsPage'));
+const EventsPage = lazy(() => import('../pages/EventsPage'));
+const EventDetailsPage = lazy(() => import('../pages/EventDetailsPage'));
+const LehrgaengePage = lazy(() => import('../pages/LehrgaengePage'));
+const MeetingDetailsPage = lazy(() => import('../pages/MeetingDetailsPage'));
+const ProfilePage = lazy(() => import('../pages/ProfilePage'));
+const PasswordPage = lazy(() => import('../pages/PasswordPage'));
+const FilesPage = lazy(() => import('../pages/FilesPage'));
+const FeedbackPage = lazy(() => import('../pages/FeedbackPage'));
+const EventFeedbackPage = lazy(() => import('../pages/EventFeedbackPage'));
+const CalendarPage = lazy(() => import('../pages/CalendarPage'));
+const PackKitPage = lazy(() => import('../pages/PackKitPage'));
+
+// Admin Pages
+const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage'));
+const AdminUsersPage = lazy(() => import('../pages/admin/AdminUsersPage'));
+const AdminRequestsPage = lazy(() => import('../pages/admin/AdminRequestsPage'));
+const AdminEventsPage = lazy(() => import('../pages/admin/AdminEventsPage'));
+const AdminCoursesPage = lazy(() => import('../pages/admin/AdminCoursesPage'));
+const AdminMeetingsPage = lazy(() => import('../pages/admin/AdminMeetingsPage'));
+const AdminStoragePage = lazy(() => import('../pages/admin/AdminStoragePage'));
+const AdminDefectivePage = lazy(() => import('../pages/admin/AdminDefectivePage'));
+const AdminLogPage = lazy(() => import('../pages/admin/AdminLogPage'));
+const AdminKitsPage = lazy(() => import('../pages/admin/AdminKitsPage'));
+const AdminMatrixPage = lazy(() => import('../pages/admin/AdminMatrixPage'));
+const AdminReportsPage = lazy(() => import('../pages/admin/AdminReportsPage'));
+const AdminSystemPage = lazy(() => import('../pages/admin/AdminSystemPage'));
+const AdminFilesPage = lazy(() => import('../pages/admin/AdminFilesPage'));
+const AdminFeedbackPage = lazy(() => import('../pages/admin/AdminFeedbackPage'));
+const AdminAchievementsPage = lazy(() => import('../pages/admin/AdminAchievementsPage'));
+const AdminWikiPage = lazy(() => import('../pages/admin/AdminWikiPage'));
 
 const router = createBrowserRouter([
 	{
@@ -62,14 +77,21 @@ const router = createBrowserRouter([
 					{ index: true, element: <Navigate to="/admin/dashboard" replace /> },
 					{ path: 'dashboard', element: <AdminDashboardPage /> },
 					{ path: 'mitglieder', element: <AdminUsersPage /> },
+					{ path: 'requests', element: <AdminRequestsPage /> },
+					{ path: 'veranstaltungen', element: <AdminEventsPage /> },
 					{ path: 'lehrgaenge', element: <AdminCoursesPage /> },
 					{ path: 'lehrgaenge/:courseId/meetings', element: <AdminMeetingsPage /> },
 					{ path: 'lager', element: <AdminStoragePage /> },
-					{ path: 'defekte', element: <AdminDefectivePage /> },
-					{ path: 'log', element: <AdminLogPage /> },
+					{ path: 'dateien', element: <AdminFilesPage /> },
 					{ path: 'kits', element: <AdminKitsPage /> },
+					{ path: 'feedback', element: <AdminFeedbackPage /> },
+					{ path: 'achievements', element: <AdminAchievementsPage /> },
+					{ path: 'defekte', element: <AdminDefectivePage /> },
 					{ path: 'matrix', element: <AdminMatrixPage /> },
 					{ path: 'berichte', element: <AdminReportsPage /> },
+					{ path: 'log', element: <AdminLogPage /> },
+					{ path: 'system', element: <AdminSystemPage /> },
+					{ path: 'wiki', element: <AdminWikiPage /> },
 				],
 			},
 		],
@@ -90,7 +112,7 @@ const router = createBrowserRouter([
 	},
 	{
 		path: '/login',
-		element: <LoginPage />,
+		element: <Suspense fallback={<div>Laden...</div>}><LoginPage /></Suspense>,
 	},
 	{
 		path: '*',

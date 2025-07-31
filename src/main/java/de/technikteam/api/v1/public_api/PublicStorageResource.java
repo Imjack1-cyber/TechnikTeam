@@ -1,6 +1,10 @@
 package de.technikteam.api.v1.public_api;
 
+import de.technikteam.dao.EventDAO;
+import de.technikteam.dao.StorageDAO;
 import de.technikteam.model.ApiResponse;
+import de.technikteam.model.Event;
+import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
 import de.technikteam.service.StorageService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,6 +15,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -20,10 +26,27 @@ import java.util.Map;
 public class PublicStorageResource {
 
 	private final StorageService storageService;
+	private final StorageDAO storageDAO;
+	private final EventDAO eventDAO;
 
 	@Autowired
-	public PublicStorageResource(StorageService storageService) {
+	public PublicStorageResource(StorageService storageService, StorageDAO storageDAO, EventDAO eventDAO) {
 		this.storageService = storageService;
+		this.storageDAO = storageDAO;
+		this.eventDAO = eventDAO;
+	}
+
+	@GetMapping
+	@Operation(summary = "Get all storage data for display", description = "Retrieves all storage items grouped by location and a list of active events for the transaction modal.")
+	public ResponseEntity<ApiResponse> getStoragePageData() {
+		Map<String, List<StorageItem>> storageData = storageDAO.getAllItemsGroupedByLocation();
+		List<Event> activeEvents = eventDAO.getActiveEvents();
+
+		Map<String, Object> responseData = new HashMap<>();
+		responseData.put("storageData", storageData);
+		responseData.put("activeEvents", activeEvents);
+
+		return ResponseEntity.ok(new ApiResponse(true, "Storage data retrieved.", responseData));
 	}
 
 	@PostMapping("/transactions")
@@ -44,8 +67,6 @@ public class PublicStorageResource {
 				return ResponseEntity
 						.ok(new ApiResponse(true, "Erfolgreich " + quantity + " Stück " + action + ".", null));
 			} else {
-				// This path should ideally not be reached if exceptions are thrown for
-				// failures.
 				return ResponseEntity.badRequest().body(new ApiResponse(false, "Transaktion fehlgeschlagen.", null));
 			}
 		} catch (IllegalArgumentException | IllegalStateException e) {

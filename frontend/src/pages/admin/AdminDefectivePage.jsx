@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import StorageItemModal from '../../components/admin/storage/StorageItemModal';
+import { useToast } from '../../context/ToastContext';
 
 const AdminDefectivePage = () => {
 	const apiCall = useCallback(() => apiClient.get('/storage?status=defective'), []);
 	const { data: items, loading, error, reload } = useApi(apiCall);
 	const [modalState, setModalState] = useState({ isOpen: false, item: null, mode: 'defect' });
+	const { addToast } = useToast();
 
 	const openModal = (mode, item) => {
 		setModalState({ isOpen: true, item, mode });
@@ -18,6 +20,7 @@ const AdminDefectivePage = () => {
 	};
 
 	const handleSuccess = () => {
+		addToast('Status erfolgreich aktualisiert', 'success');
 		closeModal();
 		reload();
 	};

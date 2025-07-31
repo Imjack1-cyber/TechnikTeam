@@ -5,7 +5,7 @@ import apiClient from '../services/apiClient';
 
 const MeetingDetailsPage = () => {
 	const { meetingId } = useParams();
-	const apiCall = useCallback(() => apiClient.get(`/meetings/${meetingId}`), [meetingId]);
+	const apiCall = useCallback(() => apiClient.get(`/public/meetings/${meetingId}`), [meetingId]);
 	const { data, loading, error } = useApi(apiCall);
 
 	if (loading) return <div>Lade Meeting-Details...</div>;

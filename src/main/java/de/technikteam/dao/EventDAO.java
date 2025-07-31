@@ -52,6 +52,31 @@ public class EventDAO {
 	private final RowMapper<User> simpleUserRowMapper = (rs, rowNum) -> new User(rs.getInt("id"),
 			rs.getString("username"), rs.getString("role"));
 
+	public List<Event> getUpcomingEventsForUser(User user) {
+		String sql = "SELECT e.*, u_leader.username AS leader_username, " + "COALESCE("
+				+ "    (SELECT 'ZUGEWIESEN' FROM event_assignments WHERE event_id = e.id AND user_id = ?), "
+				+ "    (SELECT signup_status FROM event_attendance WHERE event_id = e.id AND user_id = ?), "
+				+ "    'OFFEN'" + ") AS user_attendance_status, " + "(" + "    SELECT COUNT(*) = 0 "
+				+ "    FROM event_skill_requirements esr " + "    WHERE esr.event_id = e.id " + "    AND NOT EXISTS ("
+				+ "        SELECT 1 FROM user_qualifications uq "
+				+ "        WHERE uq.user_id = ? AND uq.course_id = esr.required_course_id AND uq.status = 'BESTANDEN'"
+				+ "    )" + ") AS is_user_qualified " + "FROM events e "
+				+ "LEFT JOIN users u_leader ON e.leader_user_id = u_leader.id "
+				+ "WHERE e.status IN ('GEPLANT', 'LAUFEND') AND e.event_datetime >= NOW() - INTERVAL 1 DAY "
+				+ "ORDER BY e.event_datetime ASC";
+		try {
+			return jdbcTemplate.query(sql, (rs, rowNum) -> {
+				Event event = eventRowMapper.mapRow(rs, rowNum);
+				event.setUserAttendanceStatus(rs.getString("user_attendance_status"));
+				event.setUserQualified(rs.getBoolean("is_user_qualified"));
+				return event;
+			}, user.getId(), user.getId(), user.getId());
+		} catch (Exception e) {
+			logger.error("Error fetching upcoming events for user {}: {}", user.getUsername(), e.getMessage());
+			return List.of();
+		}
+	}
+
 	public List<Event> getEventHistoryForUser(int userId) {
 		String sql = "SELECT e.*, COALESCE( (SELECT 'ZUGEWIESEN' FROM event_assignments WHERE event_id = e.id AND user_id = ?), (SELECT signup_status FROM event_attendance WHERE event_id = e.id AND user_id = ?), 'OFFEN' ) AS user_status FROM events e WHERE EXISTS ( SELECT 1 FROM event_attendance WHERE event_id = e.id AND user_id = ? UNION SELECT 1 FROM event_assignments WHERE event_id = e.id AND user_id = ? ) ORDER BY e.event_datetime DESC";
 		try {
@@ -300,14 +325,14 @@ public class EventDAO {
 			sql += " LIMIT ?";
 		}
 		try {
-            if (limit > 0) {
-			    return jdbcTemplate.query(sql, eventRowMapper, userId, limit);
-            } else {
-                return jdbcTemplate.query(sql, eventRowMapper, userId);
-            }
+			if (limit > 0) {
+				return jdbcTemplate.query(sql, eventRowMapper, userId, limit);
+			} else {
+				return jdbcTemplate.query(sql, eventRowMapper, userId);
+			}
 		} catch (Exception e) {
 			logger.error("Error fetching assigned events for user {}", userId, e);
-            return List.of();
+			return List.of();
 		}
 	}
 

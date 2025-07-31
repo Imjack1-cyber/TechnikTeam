@@ -23,7 +23,7 @@ const AdminLogPage = () => {
 
 	return (
 		<div>
-			<h1>Admin Aktions-Protokoll</h1>
+			<h1><i className="fas fa-clipboard-list"></i> Admin Aktions-Protokoll</h1>
 			<div className="desktop-table-wrapper">
 				<table className="data-table">
 					<thead>

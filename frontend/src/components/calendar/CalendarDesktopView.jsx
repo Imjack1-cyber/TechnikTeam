@@ -20,8 +20,8 @@ const CalendarDesktopView = ({ entries }) => {
 
 	const firstDayOfMonth = startOfMonth(currentDate);
 	const lastDayOfMonth = endOfMonth(currentDate);
-	const firstDayOfGrid = startOfWeek(firstDayOfMonth, { locale: de });
-	const lastDayOfGrid = endOfWeek(lastDayOfMonth, { locale: de });
+	const firstDayOfGrid = startOfWeek(firstDayOfMonth, { weekStartsOn: 1 }); // Monday start
+	const lastDayOfGrid = endOfWeek(lastDayOfMonth, { weekStartsOn: 1 });
 	const daysInGrid = eachDayOfInterval({ start: firstDayOfGrid, end: lastDayOfGrid });
 
 	const eventsByDate = useMemo(() => {
@@ -42,17 +42,17 @@ const CalendarDesktopView = ({ entries }) => {
 
 	return (
 		<div>
-			<div className="calendar-controls">
+			<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+				<h2 style={{ margin: 0, border: 'none' }}>{format(currentDate, 'MMMM yyyy', { locale: de })}</h2>
 				<div>
 					<button onClick={handlePrevMonth} className="btn btn-secondary">{'<'}</button>
-					<button onClick={handleNextMonth} className="btn btn-secondary" style={{ marginLeft: '0.5rem' }}>{'>'}</button>
-					<button onClick={handleToday} className="btn btn-secondary" style={{ marginLeft: '0.5rem' }}>Heute</button>
+					<button onClick={handleToday} className="btn btn-secondary" style={{ margin: '0 0.5rem' }}>Heute</button>
+					<button onClick={handleNextMonth} className="btn btn-secondary">{'>'}</button>
 				</div>
-				<h2>{format(currentDate, 'MMMM yyyy', { locale: de })}</h2>
 			</div>
-			<div className="calendar-grid">
-				{['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'].map(day => (
-					<div key={day} className="calendar-header">{day}</div>
+			<div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', backgroundColor: 'var(--border-color)', border: '1px solid var(--border-color)' }}>
+				{['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map(day => (
+					<div key={day} style={{ textAlign: 'center', padding: '0.5rem', backgroundColor: 'var(--bg-color)', fontWeight: 'bold' }}>{day}</div>
 				))}
 				{daysInGrid.map(day => {
 					const dateKey = format(day, 'yyyy-MM-dd');
@@ -60,14 +60,32 @@ const CalendarDesktopView = ({ entries }) => {
 					return (
 						<div
 							key={dateKey}
-							className={`calendar-day ${!isSameMonth(day, currentDate) ? 'other-month' : ''} ${isToday(day) ? 'today' : ''}`}
+							style={{
+								backgroundColor: 'var(--surface-color)',
+								minHeight: '120px',
+								padding: '0.5rem',
+								opacity: isSameMonth(day, currentDate) ? 1 : 0.5,
+								borderTop: isToday(day) ? '2px solid var(--primary-color)' : 'none'
+							}}
 						>
-							<div className="day-number">{format(day, 'd')}</div>
+							<div style={{ fontWeight: isToday(day) ? 'bold' : 'normal' }}>{format(day, 'd')}</div>
 							{dayEvents.map(event => (
 								<Link
 									key={`${event.type}-${event.id}`}
 									to={event.url}
-									className={event.type === 'Event' ? 'calendar-event' : 'calendar-meeting'}
+									style={{
+										display: 'block',
+										fontSize: '0.8rem',
+										padding: '0.2rem 0.4rem',
+										borderRadius: '4px',
+										marginBottom: '0.25rem',
+										whiteSpace: 'nowrap',
+										overflow: 'hidden',
+										textOverflow: 'ellipsis',
+										backgroundColor: event.type === 'Event' ? 'var(--danger-color)' : 'var(--primary-color)',
+										color: '#fff'
+									}}
+									title={event.title}
 								>
 									{event.title}
 								</Link>

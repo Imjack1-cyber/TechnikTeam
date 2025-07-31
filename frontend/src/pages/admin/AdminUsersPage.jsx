@@ -3,11 +3,13 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import UserModal from '../../components/admin/users/UserModal';
 import useAdminData from '../../hooks/useAdminData';
+import { useToast } from '../../context/ToastContext';
 
 const AdminUsersPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/users'), []);
 	const { data: users, loading, error, reload } = useApi(apiCall);
 	const adminFormData = useAdminData();
+	const { addToast } = useToast();
 
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingUser, setEditingUser] = useState(null);
@@ -35,10 +37,15 @@ const AdminUsersPage = () => {
 	const handleDelete = async (user) => {
 		if (window.confirm(`Benutzer '${user.username}' wirklich löschen?`)) {
 			try {
-				await apiClient.delete(`/users/${user.id}`);
-				reload();
+				const result = await apiClient.delete(`/users/${user.id}`);
+				if (result.success) {
+					addToast('Benutzer erfolgreich gelöscht.', 'success');
+					reload();
+				} else {
+					throw new Error(result.message);
+				}
 			} catch (err) {
-				alert(`Error: ${err.message}`);
+				addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error');
 			}
 		}
 	};
@@ -49,9 +56,12 @@ const AdminUsersPage = () => {
 				const result = await apiClient.post(`/users/${user.id}/reset-password`);
 				if (result.success) {
 					alert(`Neues Passwort für ${user.username}: ${result.data.newPassword}`);
+					addToast('Passwort zurückgesetzt.', 'success');
+				} else {
+					throw new Error(result.message);
 				}
 			} catch (err) {
-				alert(`Error: ${err.message}`);
+				addToast(`Fehler: ${err.message}`, 'error');
 			}
 		}
 	};

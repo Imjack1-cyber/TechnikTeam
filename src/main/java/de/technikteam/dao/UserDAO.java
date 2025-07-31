@@ -39,6 +39,9 @@ public class UserDAO {
 		if (DaoUtils.hasColumn(resultSet, "theme")) {
 			user.setTheme(resultSet.getString("theme"));
 		}
+		if (DaoUtils.hasColumn(resultSet, "profile_picture_path")) {
+			user.setProfilePicturePath(resultSet.getString("profile_picture_path"));
+		}
 		if (DaoUtils.hasColumn(resultSet, "role_name")) {
 			user.setRoleName(resultSet.getString("role_name"));
 		}
@@ -60,7 +63,7 @@ public class UserDAO {
 	public User validateUser(String username, String password) {
 		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ?";
 		try {
-			User user = jdbcTemplate.queryForObject(sql, userRowMapper, username);
+			User user = jdbcTemplate.queryForObject(sql, this.userRowMapper, username);
 			String storedHash = jdbcTemplate.queryForObject("SELECT password_hash FROM users WHERE id = ?",
 					String.class, user.getId());
 
@@ -139,10 +142,10 @@ public class UserDAO {
 	}
 
 	public boolean updateUser(User user) {
-		String sql = "UPDATE users SET username = ?, role_id = ?, class_year = ?, class_name = ?, email = ? WHERE id = ?";
+		String sql = "UPDATE users SET username = ?, role_id = ?, class_year = ?, class_name = ?, email = ?, profile_picture_path = ? WHERE id = ?";
 		try {
 			return jdbcTemplate.update(sql, user.getUsername(), user.getRoleId(), user.getClassYear(),
-					user.getClassName(), user.getEmail(), user.getId()) > 0;
+					user.getClassName(), user.getEmail(), user.getProfilePicturePath(), user.getId()) > 0;
 		} catch (Exception e) {
 			logger.error("SQL error updating user with ID: {}", user.getId(), e);
 			return false;

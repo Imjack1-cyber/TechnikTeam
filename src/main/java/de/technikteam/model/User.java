@@ -17,6 +17,7 @@ public class User {
 	private String email;
 	private String chatColor;
 	private String theme;
+	private String profilePicturePath;
 
 	public User() {
 	}
@@ -136,6 +137,14 @@ public class User {
 
 	public void setTheme(String theme) {
 		this.theme = theme;
+	}
+
+	public String getProfilePicturePath() {
+		return profilePicturePath;
+	}
+
+	public void setProfilePicturePath(String profilePicturePath) {
+		this.profilePicturePath = profilePicturePath;
 	}
 
 	public String getFormattedCreatedAt() {

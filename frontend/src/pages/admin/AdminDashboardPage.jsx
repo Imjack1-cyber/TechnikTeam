@@ -32,47 +32,42 @@ const AdminDashboardPage = () => {
 			<p>Hier können Sie die Anwendung verwalten. Wählen Sie eine Option aus der Navigation oder nutzen Sie den Schnellzugriff.</p>
 
 			<div className="dashboard-grid">
-				<Widget icon="fa-calendar-check" title="Nächste Einsätze" linkTo="/veranstaltungen" linkText="Alle Veranstaltungen anzeigen">
+				<Widget icon="fa-calendar-alt" title="Anstehende Events" linkTo="/admin/veranstaltungen" linkText="Alle Events anzeigen">
 					{renderWidgetContent(
 						dashboardData?.upcomingEvents,
 						(event) => (
 							<li key={event.id}>
 								<Link to={`/veranstaltungen/details/${event.id}`}>{event.name}</Link>
-								<small>{new Date(event.eventDateTime).toLocaleString('de-DE')}</small>
+								<small>{new Date(event.eventDateTime).toLocaleDateString('de-DE')}</small>
 							</li>
 						),
-						'Keine anstehenden Einsätze gefunden.'
+						'Keine anstehenden Events.'
 					)}
 				</Widget>
 
-				<Widget icon="fa-battery-quarter" title="Niedriger Lagerbestand" linkTo="/lager" linkText="Lagerübersicht anzeigen">
+				<Widget icon="fa-box-open" title="Niedriger Lagerbestand" linkTo="/admin/lager" linkText="Lager verwalten">
 					{renderWidgetContent(
 						dashboardData?.lowStockItems,
 						(item) => (
 							<li key={item.id}>
 								<Link to={`/lager/details/${item.id}`}>{item.name}</Link>
-								<span className="status-badge status-warn">
-									{item.maxQuantity > 0 ? `${Math.round((item.availableQuantity / item.maxQuantity) * 100)}%` : 'N/A'}
-								</span>
+								<span className="status-badge status-warn">{item.availableQuantity} / {item.maxQuantity}</span>
 							</li>
 						),
 						'Alle Artikel sind ausreichend vorhanden.'
 					)}
 				</Widget>
 
-				<Widget icon="fa-history" title="Letzte Aktivitäten" linkTo="/admin/log" linkText="Vollständiges Log anzeigen">
+				<Widget icon="fa-history" title="Letzte Aktionen" linkTo="/admin/log" linkText="Alle Logs anzeigen">
 					{renderWidgetContent(
 						dashboardData?.recentLogs,
 						(log) => (
 							<li key={log.id}>
-								<div>
-									<strong>{log.actionType}</strong> von <em>{log.adminUsername}</em>
-									<small style={{ display: 'block', color: 'var(--text-muted-color)' }}>{log.details}</small>
-								</div>
+								<span><strong>{log.adminUsername}</strong>: {log.actionType}</span>
 								<small>{new Date(log.actionTimestamp).toLocaleString('de-DE')}</small>
 							</li>
 						),
-						'Keine aktuellen Aktivitäten protokolliert.'
+						'Keine Aktionen protokolliert.'
 					)}
 				</Widget>
 			</div>
