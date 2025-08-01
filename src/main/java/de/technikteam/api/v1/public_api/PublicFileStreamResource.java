@@ -38,7 +38,6 @@ import java.nio.file.Paths;
 @RestController
 @RequestMapping("/api/v1/public/files")
 @Tag(name = "Public Files", description = "Endpoints for downloading files and viewing images.")
-@SecurityRequirement(name = "bearerAuth")
 public class PublicFileStreamResource {
 	private static final Logger logger = LogManager.getLogger(PublicFileStreamResource.class);
 
@@ -46,7 +45,6 @@ public class PublicFileStreamResource {
 	private final AttachmentDAO attachmentDAO;
 	private final EventDAO eventDAO;
 	private final MeetingDAO meetingDAO;
-	private final ConfigurationService configService;
 	private final Path fileStorageLocation;
 
 	@Autowired
@@ -56,13 +54,12 @@ public class PublicFileStreamResource {
 		this.attachmentDAO = attachmentDAO;
 		this.eventDAO = eventDAO;
 		this.meetingDAO = meetingDAO;
-		this.configService = configService;
 		this.fileStorageLocation = Paths.get(configService.getProperty("upload.directory")).toAbsolutePath()
 				.normalize();
 	}
 
 	@GetMapping("/download/{id}")
-	@Operation(summary = "Download a file", description = "Downloads a file (general or attachment) by its database ID after checking permissions.")
+	@Operation(summary = "Download a file", description = "Downloads a file (general or attachment) by its database ID after checking permissions.", security = @SecurityRequirement(name = "bearerAuth"))
 	@ApiResponse(responseCode = "200", description = "File content", content = @Content(mediaType = "application/octet-stream"))
 	public ResponseEntity<Resource> downloadFile(
 			@Parameter(description = "ID of the file or attachment record") @PathVariable int id,
@@ -95,11 +92,19 @@ public class PublicFileStreamResource {
 	}
 
 	@GetMapping("/images/{filename:.+}")
-	@Operation(summary = "Get an image", description = "Retrieves an image for display. The filename usually corresponds to a storage item's image path.")
+	@Operation(summary = "Get an inventory image", description = "Retrieves an inventory image for display. The filename usually corresponds to a storage item's image path.", security = @SecurityRequirement(name = "bearerAuth"))
 	@ApiResponse(responseCode = "200", description = "Image content", content = @Content(mediaType = "image/*"))
 	public ResponseEntity<Resource> getImage(
 			@Parameter(description = "The filename of the image") @PathVariable String filename) {
 		return serveFile("images/" + filename, filename, true);
+	}
+
+	@GetMapping("/avatars/{filename:.+}")
+	@Operation(summary = "Get a user avatar", description = "Retrieves a user's profile picture for display. This endpoint is not secured as avatars are considered public.")
+	@ApiResponse(responseCode = "200", description = "Image content", content = @Content(mediaType = "image/*"))
+	public ResponseEntity<Resource> getAvatar(
+			@Parameter(description = "The filename of the avatar") @PathVariable String filename) {
+		return serveFile("avatars/" + filename, filename, true);
 	}
 
 	private boolean isUserAuthorizedForAttachment(User user, Attachment attachment) {
@@ -119,7 +124,7 @@ public class PublicFileStreamResource {
 		try {
 			Path filePath = this.fileStorageLocation.resolve(relativePath).normalize();
 			if (!filePath.startsWith(this.fileStorageLocation)) {
-				logger.fatal("CRITICAL: Path Traversal Attack Detected! Attempted to access '{}'", filePath);
+				logger.warn("Path Traversal Attack attempt detected for path '{}'", filePath);
 				return ResponseEntity.status(403).build();
 			}
 

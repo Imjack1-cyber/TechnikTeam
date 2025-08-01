@@ -1,11 +1,13 @@
 package de.technikteam.api.v1.public_api;
 
+import com.google.gson.Gson;
 import de.technikteam.api.v1.dto.PasswordChangeRequest;
 import de.technikteam.api.v1.dto.ProfileChangeRequestDTO;
 import de.technikteam.dao.*;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.ProfileChangeRequest;
 import de.technikteam.model.User;
+import de.technikteam.service.ProfileRequestService;
 import de.technikteam.util.PasswordPolicyValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -17,7 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import com.google.gson.Gson;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -35,17 +37,20 @@ public class PublicProfileResource {
 	private final AchievementDAO achievementDAO;
 	private final PasskeyDAO passkeyDAO;
 	private final ProfileChangeRequestDAO requestDAO;
+	private final ProfileRequestService profileRequestService;
 	private final Gson gson;
 
 	@Autowired
 	public PublicProfileResource(UserDAO userDAO, EventDAO eventDAO, UserQualificationsDAO qualificationsDAO,
-			AchievementDAO achievementDAO, PasskeyDAO passkeyDAO, ProfileChangeRequestDAO requestDAO, Gson gson) {
+			AchievementDAO achievementDAO, PasskeyDAO passkeyDAO, ProfileChangeRequestDAO requestDAO,
+			ProfileRequestService profileRequestService, Gson gson) {
 		this.userDAO = userDAO;
 		this.eventDAO = eventDAO;
 		this.qualificationsDAO = qualificationsDAO;
 		this.achievementDAO = achievementDAO;
 		this.passkeyDAO = passkeyDAO;
 		this.requestDAO = requestDAO;
+		this.profileRequestService = profileRequestService;
 		this.gson = gson;
 	}
 
@@ -64,34 +69,31 @@ public class PublicProfileResource {
 	}
 
 	@PostMapping("/request-change")
-	@Operation(summary = "Request a profile data change", description = "Submits a request for an administrator to approve changes to the user's profile data.")
-	public ResponseEntity<ApiResponse> requestProfileChange(@Valid @RequestBody ProfileChangeRequestDTO requestDTO,
+	@Operation(summary = "Request a profile data change", description = "Submits a request for an administrator to approve changes to the user's profile data, including an optional profile picture.")
+	public ResponseEntity<ApiResponse> requestProfileChange(
+			@RequestPart("profileData") @Valid ProfileChangeRequestDTO requestDTO,
+			@RequestPart(value = "profilePicture", required = false) MultipartFile profilePicture,
 			@AuthenticationPrincipal User currentUser) {
-		Map<String, String> changes = new HashMap<>();
-		if (requestDTO.email() != null && !Objects.equals(currentUser.getEmail(), requestDTO.email())) {
-			changes.put("email", requestDTO.email());
-		}
-		if (requestDTO.classYear() != null && currentUser.getClassYear() != requestDTO.classYear()) {
-			changes.put("classYear", String.valueOf(requestDTO.classYear()));
-		}
-		if (requestDTO.className() != null && !Objects.equals(currentUser.getClassName(), requestDTO.className())) {
-			changes.put("className", requestDTO.className());
-		}
-
-		if (changes.isEmpty()) {
-			return ResponseEntity.ok(new ApiResponse(true, "No changes detected.", null));
-		}
-
-		ProfileChangeRequest pcr = new ProfileChangeRequest();
-		pcr.setUserId(currentUser.getId());
-		pcr.setRequestedChanges(gson.toJson(changes));
-
-		if (requestDAO.createRequest(pcr)) {
+		try {
+			profileRequestService.createChangeRequest(currentUser, requestDTO, profilePicture);
 			return ResponseEntity.ok(new ApiResponse(true, "Change request submitted successfully.", null));
-		} else {
+		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Could not save your request.", null));
+					.body(new ApiResponse(false, "Could not save your request: " + e.getMessage(), null));
 		}
+	}
+
+	@PutMapping("/theme")
+	@Operation(summary = "Update user theme", description = "Updates the user's preferred theme (light/dark).")
+	public ResponseEntity<ApiResponse> updateUserTheme(@RequestBody Map<String, String> payload,
+			@AuthenticationPrincipal User user) {
+		String theme = payload.get("theme");
+		if (theme != null && (theme.equals("light") || theme.equals("dark"))) {
+			if (userDAO.updateUserTheme(user.getId(), theme)) {
+				return ResponseEntity.ok(new ApiResponse(true, "Theme updated.", null));
+			}
+		}
+		return ResponseEntity.badRequest().body(new ApiResponse(false, "Invalid theme specified.", null));
 	}
 
 	@PutMapping("/chat-color")

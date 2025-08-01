@@ -24,6 +24,7 @@ export const useAuthStore = create(
 			navigationItems: [],
 			isAuthenticated: false,
 			isAdmin: false,
+			theme: 'light', // Add theme to state
 			login: async (username, password) => {
 				try {
 					const response = await apiClient.post('/auth/login', { username, password });
@@ -41,19 +42,27 @@ export const useAuthStore = create(
 				}
 			},
 			logout: () => {
-				set({ token: null, user: null, navigationItems: [], isAuthenticated: false, isAdmin: false });
+				set({ token: null, user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, theme: 'light' });
+				localStorage.removeItem('theme'); // Clean up local storage on logout
+				document.documentElement.setAttribute('data-theme', 'light');
 			},
 			fetchUserSession: async () => {
 				try {
 					const result = await apiClient.get('/users/me');
 
 					if (result.success && result.data.user && result.data.navigation) {
+						const user = result.data.user;
+						const newTheme = user.theme || 'light';
 						set({
-							user: result.data.user,
+							user: user,
 							navigationItems: result.data.navigation,
 							isAuthenticated: true,
-							isAdmin: hasAdminAccess(result.data.user.permissions || [])
+							isAdmin: hasAdminAccess(user.permissions || []),
+							theme: newTheme,
 						});
+						// Apply theme immediately
+						document.documentElement.setAttribute('data-theme', newTheme);
+						localStorage.setItem('theme', newTheme);
 					} else {
 						throw new Error(result.message || "Invalid session data from server.");
 					}
@@ -62,6 +71,30 @@ export const useAuthStore = create(
 					console.error("Could not fetch user session. Token might be invalid.", error);
 					get().logout();
 					throw error;
+				}
+			},
+			setTheme: async (newTheme) => {
+				const oldTheme = get().theme;
+				// Optimistic UI update
+				set(state => ({
+					theme: newTheme,
+					user: state.user ? { ...state.user, theme: newTheme } : null
+				}));
+				document.documentElement.setAttribute('data-theme', newTheme);
+				localStorage.setItem('theme', newTheme);
+
+				try {
+					// Persist to backend
+					await apiClient.put('/public/profile/theme', { theme: newTheme });
+				} catch (error) {
+					console.error("Failed to save theme preference:", error);
+					// Revert on failure
+					set(state => ({
+						theme: oldTheme,
+						user: state.user ? { ...state.user, theme: oldTheme } : null
+					}));
+					document.documentElement.setAttribute('data-theme', oldTheme);
+					localStorage.setItem('theme', oldTheme);
 				}
 			},
 		}),

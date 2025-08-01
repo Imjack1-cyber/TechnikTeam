@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import ThemeSwitcher from '../ui/ThemeSwitcher';
 
 const Sidebar = () => {
 	const { user, navigationItems, logout } = useAuthStore();
@@ -59,9 +60,10 @@ const Sidebar = () => {
 				<div className="user-info">
 					Angemeldet als: <strong>{user.username}</strong>
 				</div>
-				<div style={{ display: 'flex', gap: '0.5rem' }}>
+				<div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
 					<NavLink to="/profil" className="btn btn-secondary btn-small" style={{ flexGrow: 1 }}>Profil</NavLink>
 					<button onClick={handleLogout} className="btn btn-danger-outline btn-small" style={{ flexGrow: 1 }}>Logout</button>
+					<ThemeSwitcher />
 				</div>
 			</div>
 		</aside>
