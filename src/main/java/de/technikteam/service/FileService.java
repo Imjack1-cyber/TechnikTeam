@@ -17,7 +17,6 @@ import java.util.UUID;
 public class FileService {
 
 	private final FileDAO fileDAO;
-	private final ConfigurationService configService;
 	private final AdminLogService adminLogService;
 	private final Path fileStorageLocation;
 
@@ -26,7 +25,6 @@ public class FileService {
 	@Autowired
 	public FileService(FileDAO fileDAO, ConfigurationService configService, AdminLogService adminLogService) {
 		this.fileDAO = fileDAO;
-		this.configService = configService;
 		this.adminLogService = adminLogService;
 		this.fileStorageLocation = Paths.get(configService.getProperty("upload.directory")).toAbsolutePath()
 				.normalize();

@@ -2,8 +2,6 @@ package de.technikteam.dao;
 
 import de.technikteam.model.TodoCategory;
 import de.technikteam.model.TodoTask;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -21,7 +19,6 @@ import java.util.Objects;
 
 @Repository
 public class TodoDAO {
-	private static final Logger logger = LogManager.getLogger(TodoDAO.class);
 	private final JdbcTemplate jdbcTemplate;
 
 	@Autowired

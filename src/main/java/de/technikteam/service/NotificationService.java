@@ -19,12 +19,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @Service
 public class NotificationService {
 	private static final Logger logger = LogManager.getLogger(NotificationService.class);
-	private final Gson gson;
 
 	private final Map<Integer, List<SseEmitter>> emittersByUser = new ConcurrentHashMap<>();
 
 	public NotificationService() {
-		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+		new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
 	public SseEmitter register(User user) {

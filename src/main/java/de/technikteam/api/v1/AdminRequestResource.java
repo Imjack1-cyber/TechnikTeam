@@ -3,7 +3,6 @@ package de.technikteam.api.v1;
 import de.technikteam.dao.ProfileChangeRequestDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.ProfileChangeRequest;
-import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.ProfileRequestService;
 import io.swagger.v3.oas.annotations.Operation;

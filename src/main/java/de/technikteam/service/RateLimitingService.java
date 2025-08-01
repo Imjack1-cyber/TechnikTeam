@@ -20,7 +20,7 @@ public class RateLimitingService {
 
 	private Bucket newBucket(String apiKey) {
 		// Example: 10 requests per minute
-		Bandwidth limit = Bandwidth.classic(10, Refill.greedy(10, Duration.ofMinutes(1)));
+		Bandwidth limit = Bandwidth.simple(10, Duration.ofMinutes(1));
 		return Bucket.builder().addLimit(limit).build();
 	}
 }

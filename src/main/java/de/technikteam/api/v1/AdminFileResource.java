@@ -4,7 +4,6 @@ import de.technikteam.api.v1.dto.CategoryRequest;
 import de.technikteam.dao.FileDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.FileCategory;
-import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.FileService;

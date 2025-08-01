@@ -6,15 +6,12 @@ import de.technikteam.dao.StorageLogDAO;
 import de.technikteam.model.Event;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class StorageService {
-	private static final Logger logger = LogManager.getLogger(StorageService.class);
 
 	private final StorageDAO storageDAO;
 	private final StorageLogDAO storageLogDAO;
