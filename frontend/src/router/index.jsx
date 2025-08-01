@@ -4,11 +4,14 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 // Layouts and Core Components
 import App from '../App';
 import MinimalLayout from '../components/layout/MinimalLayout';
+import ErrorLayout from '../components/layout/ErrorLayout';
 import ProtectedRoute from './ProtectedRoute';
 import AdminRoute from './AdminRoute';
 
-// Eagerly load the LoginPage
+// Eagerly load the LoginPage and Error Pages
 import LoginPage from '../pages/LoginPage';
+import ErrorPage from '../pages/error/ErrorPage';
+import NotFoundPage from '../pages/error/NotFoundPage';
 
 // Lazy load all other pages
 const DashboardPage = lazy(() => import('../pages/DashboardPage'));
@@ -53,6 +56,7 @@ const router = createBrowserRouter([
 				<App />
 			</ProtectedRoute>
 		),
+		errorElement: <ErrorLayout><ErrorPage /></ErrorLayout>,
 		children: [
 			{ index: true, element: <Navigate to="/home" replace /> },
 			{ path: 'home', element: <DashboardPage /> },
@@ -116,7 +120,7 @@ const router = createBrowserRouter([
 	},
 	{
 		path: '*',
-		element: <Navigate to="/" replace />,
+		element: <ErrorLayout><NotFoundPage /></ErrorLayout>,
 	}
 ]);
 

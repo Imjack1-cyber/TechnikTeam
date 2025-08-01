@@ -35,6 +35,13 @@ const { token, logout } = useAuthStore.getState();
 		if (response.status === 204) {
 			return { success: true, message: 'Operation successful.', data: null };
 		}
+        
+        // Check if the response is JSON before trying to parse it
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            // This is likely a proxy error (e.g., 502 Bad Gateway) returning an HTML page
+            throw new Error(`Server connection failed with status: ${response.status}. The backend might be offline.`);
+        }
 
 		const result = await response.json();
 
@@ -45,8 +52,13 @@ const { token, logout } = useAuthStore.getState();
 		return result;
 
 	} catch (error) {
+		// Differentiate between application errors and network errors
+        if (error instanceof TypeError && error.message === 'Failed to fetch') {
+            console.error(`API Client Network Error: ${options.method || 'GET'} ${BASE_URL}${endpoint}`, error);
+            throw new Error('Network error: The backend server is not reachable. Please check if the server is running.');
+        }
 		console.error(`API Client Error: ${options.method || 'GET'} ${BASE_URL}${endpoint}`, error);
-		throw error;
+		throw error; // Re-throw other errors (like the ones we created above)
 	}
 },
 

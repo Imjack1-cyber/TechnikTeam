@@ -222,37 +222,94 @@
 	}
 }
 
-/* --- 8. ERROR PAGES --- */
-.error-page-container {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	text-align: center;
-	min-height: 70vh;
-	padding: 2rem;
+/* --- 8. CREATIVE ERROR PAGES --- */
+.error-page-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 2rem;
+    font-family: 'Courier New', Courier, monospace;
+    background-color: #0d1117;
+    color: #c9d1d9;
 }
 
-.error-code {
-	font-size: 5rem;
-	font-weight: 800;
-	line-height: 1;
-	margin: 0;
-	color: var(--text-muted-color);
+.terminal {
+    background-color: #010409;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 800px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
-.error-page-container h2 {
-	font-size: 1.75rem;
-	border: none;
-	margin: 0 0 1.5rem 0;
+.terminal-header {
+    display: flex;
+    align-items: center;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #30363d;
+    margin-bottom: 1rem;
 }
 
-.error-message-text {
-	max-width: 600px;
-	font-size: 1.1rem;
-	line-height: 1.6;
-	margin-bottom: 2rem;
+.terminal-header span {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
 }
+.terminal-header .red { background-color: #ff5f56; }
+.terminal-header .yellow { background-color: #ffbd2e; }
+.terminal-header .green { background-color: #27c93f; }
+
+.terminal-header .title {
+    color: #8b949e;
+    margin: 0 auto;
+}
+
+.terminal-body {
+    min-height: 200px;
+}
+
+.terminal-line {
+    display: flex;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.terminal-prompt {
+    color: #58a6ff;
+    margin-right: 0.5rem;
+}
+
+.terminal-line .cursor {
+    display: inline-block;
+    width: 8px;
+    height: 1.2em;
+    background-color: #c9d1d9;
+    animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+    from, to { background-color: transparent; }
+    50% { background-color: #c9d1d9; }
+}
+
+.error-page-wrapper .btn {
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+    margin-top: 1.5rem;
+}
+
+.error-page-wrapper .btn.visible {
+    opacity: 1;
+}
+
+.terminal-line.info { color: #8b949e; }
+.terminal-line.ok { color: #56d364; }
+.terminal-line.warn { color: #f0b72f; }
+.terminal-line.fail { color: #f87171; }
+
 
 /* --- 10. CHAT INTERFACE --- */
 .chat-message-container {
