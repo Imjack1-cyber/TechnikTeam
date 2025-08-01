@@ -2,6 +2,7 @@ package de.technikteam.service;
 
 import de.technikteam.dao.FileDAO;
 import de.technikteam.model.User;
+import de.technikteam.util.FileSignatureValidator;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -10,8 +11,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -23,12 +22,6 @@ public class FileService {
 	private final Path fileStorageLocation;
 
 	private static final long MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
-	private static final List<String> ALLOWED_MIME_TYPES = Arrays.asList("application/pdf", "image/jpeg", "image/png",
-			"image/gif", "application/msword", // .doc
-			"application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
-			"application/vnd.ms-excel", // .xls
-			"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" // .xlsx
-	);
 
 	@Autowired
 	public FileService(FileDAO fileDAO, ConfigurationService configService, AdminLogService adminLogService) {
@@ -46,8 +39,8 @@ public class FileService {
 		if (multipartFile.getSize() > MAX_FILE_SIZE_BYTES) {
 			throw new IOException("File size exceeds the limit of 10MB.");
 		}
-		if (!ALLOWED_MIME_TYPES.contains(multipartFile.getContentType())) {
-			throw new IOException("Invalid file type. Allowed types are PDF, images, and Office documents.");
+		if (!FileSignatureValidator.isFileTypeAllowed(multipartFile)) {
+			throw new IOException("Invalid or spoofed file type detected.");
 		}
 
 		String originalFileName = FilenameUtils.getName(multipartFile.getOriginalFilename());

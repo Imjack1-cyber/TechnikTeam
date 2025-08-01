@@ -9,7 +9,9 @@ import de.technikteam.model.EventCustomField;
 import de.technikteam.model.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.html.PolicyFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -34,23 +36,31 @@ public class EventService {
 	private final ConfigurationService configService;
 	private final AdminLogService adminLogService;
 	private final NotificationService notificationService;
+	private final PolicyFactory richTextPolicy;
 
 	@Autowired
 	public EventService(EventDAO eventDAO, AttachmentDAO attachmentDAO, EventCustomFieldDAO customFieldDAO,
 			ConfigurationService configService, AdminLogService adminLogService,
-			NotificationService notificationService) {
+			NotificationService notificationService, @Qualifier("richTextPolicy") PolicyFactory richTextPolicy) {
 		this.eventDAO = eventDAO;
 		this.attachmentDAO = attachmentDAO;
 		this.customFieldDAO = customFieldDAO;
 		this.configService = configService;
 		this.adminLogService = adminLogService;
 		this.notificationService = notificationService;
+		this.richTextPolicy = richTextPolicy;
 	}
 
 	@Transactional
 	public int createOrUpdateEvent(Event event, boolean isUpdate, User adminUser, String[] requiredCourseIds,
 			String[] requiredPersons, String[] itemIds, String[] quantities, List<EventCustomField> customFields,
 			MultipartFile file, String requiredRole) throws SQLException, IOException {
+
+		// Sanitize HTML content before saving
+		if (event.getDescription() != null) {
+			String sanitizedDescription = richTextPolicy.sanitize(event.getDescription());
+			event.setDescription(sanitizedDescription);
+		}
 
 		int eventId;
 		if (isUpdate) {

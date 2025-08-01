@@ -196,6 +196,12 @@ CREATE TABLE `inventory_kit_items` (
   `quantity` int(11) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE `login_attempts` (
+  `username` varchar(50) NOT NULL,
+  `attempts` int(11) NOT NULL DEFAULT 0,
+  `last_attempt` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE `maintenance_log` (
   `id` int(11) NOT NULL,
   `item_id` int(11) NOT NULL,

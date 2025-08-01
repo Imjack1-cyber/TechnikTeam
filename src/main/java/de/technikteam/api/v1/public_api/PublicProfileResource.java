@@ -6,6 +6,7 @@ import de.technikteam.api.v1.dto.ProfileChangeRequestDTO;
 import de.technikteam.dao.*;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import de.technikteam.service.ProfileRequestService;
 import de.technikteam.util.PasswordPolicyValidator;
 import io.swagger.v3.oas.annotations.Operation;
@@ -52,7 +53,8 @@ public class PublicProfileResource {
 
 	@GetMapping
 	@Operation(summary = "Get current user's profile data", description = "Retrieves a comprehensive set of data for the authenticated user's profile page.")
-	public ResponseEntity<ApiResponse> getMyProfile(@AuthenticationPrincipal User user) {
+	public ResponseEntity<ApiResponse> getMyProfile(@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		Map<String, Object> profileData = new HashMap<>();
 		profileData.put("user", user);
 		profileData.put("eventHistory", eventDAO.getEventHistoryForUser(user.getId()));
@@ -69,9 +71,9 @@ public class PublicProfileResource {
 	public ResponseEntity<ApiResponse> requestProfileChange(
 			@RequestPart("profileData") @Valid ProfileChangeRequestDTO requestDTO,
 			@RequestPart(value = "profilePicture", required = false) MultipartFile profilePicture,
-			@AuthenticationPrincipal User user) { // <-- CORRECTED: The variable name is 'user'
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
-			profileRequestService.createChangeRequest(user, requestDTO, profilePicture); // <-- CORRECTED: Pass 'user'
+			profileRequestService.createChangeRequest(securityUser.getUser(), requestDTO, profilePicture);
 			return ResponseEntity.ok(new ApiResponse(true, "Change request submitted successfully.", null));
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -82,7 +84,8 @@ public class PublicProfileResource {
 	@PutMapping("/theme")
 	@Operation(summary = "Update user theme", description = "Updates the user's preferred theme (light/dark).")
 	public ResponseEntity<ApiResponse> updateUserTheme(@RequestBody Map<String, String> payload,
-			@AuthenticationPrincipal User user) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		String theme = payload.get("theme");
 		if (theme != null && (theme.equals("light") || theme.equals("dark"))) {
 			if (userDAO.updateUserTheme(user.getId(), theme)) {
@@ -95,7 +98,8 @@ public class PublicProfileResource {
 	@PutMapping("/chat-color")
 	@Operation(summary = "Update chat color", description = "Updates the user's preferred color for chat messages.")
 	public ResponseEntity<ApiResponse> updateChatColor(@RequestBody Map<String, String> payload,
-			@AuthenticationPrincipal User user) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		String chatColor = payload.get("chatColor");
 		if (userDAO.updateUserChatColor(user.getId(), chatColor)) {
 			return ResponseEntity.ok(new ApiResponse(true, "Chat color updated.", null));
@@ -108,7 +112,8 @@ public class PublicProfileResource {
 	@PutMapping("/password")
 	@Operation(summary = "Change password", description = "Allows the authenticated user to change their own password after verifying their current one.")
 	public ResponseEntity<ApiResponse> updatePassword(@Valid @RequestBody PasswordChangeRequest request,
-			@AuthenticationPrincipal User user) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		if (userDAO.validateUser(user.getUsername(), request.currentPassword()) == null) {
 			return ResponseEntity.badRequest()
 					.body(new ApiResponse(false, "Das aktuelle Passwort ist nicht korrekt.", null));
@@ -134,7 +139,8 @@ public class PublicProfileResource {
 	@Operation(summary = "Delete a passkey", description = "Removes a registered passkey/credential for the current user.")
 	public ResponseEntity<ApiResponse> deletePasskey(
 			@Parameter(description = "The database ID of the passkey credential to delete") @PathVariable int id,
-			@AuthenticationPrincipal User user) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		if (passkeyDAO.deleteCredential(id, user.getId())) {
 			return ResponseEntity.ok(new ApiResponse(true, "Passkey successfully removed.", null));
 		} else {

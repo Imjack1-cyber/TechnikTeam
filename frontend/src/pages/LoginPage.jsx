@@ -29,6 +29,7 @@ const LoginPage = () => {
 		try {
 			await login(username, password);
 		} catch (err) {
+			console.error(err);
 			setError(err.message || 'Login fehlgeschlagen. Bitte überprüfen Sie Ihre Eingaben.');
 		} finally {
 			setIsLoading(false);
@@ -47,7 +48,8 @@ const LoginPage = () => {
 			await passkeyService.loginWithPasskey(username);
 			// The login function in passkeyService should set the auth state
 		} catch (err) {
-			setError(err.message || 'Passkey-Login fehlgeschlagen.');
+			console.error(err);
+			setError(err.message || 'Passkey-Login fehlgeschlagen. Stellen Sie sicher, dass für diesen Benutzer ein Passkey registriert ist.');
 		} finally {
 			setIsLoading(false);
 		}

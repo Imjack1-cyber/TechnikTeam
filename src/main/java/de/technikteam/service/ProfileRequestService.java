@@ -7,6 +7,7 @@ import de.technikteam.dao.ProfileChangeRequestDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ProfileChangeRequest;
 import de.technikteam.model.User;
+import de.technikteam.util.FileSignatureValidator;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -60,6 +61,9 @@ public class ProfileRequestService {
 		}
 
 		if (profilePicture != null && !profilePicture.isEmpty()) {
+			if (!FileSignatureValidator.isFileTypeAllowed(profilePicture)) {
+				throw new IOException("Invalid profile picture file type. Only JPG and PNG are allowed.");
+			}
 			String tempPath = saveTemporaryProfilePicture(profilePicture);
 			changes.put("profilePicturePath", tempPath);
 		}

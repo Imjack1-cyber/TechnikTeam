@@ -44,11 +44,3 @@ INSERT INTO `permissions` (`id`, `permission_key`, `description`) VALUES
 (37, 'FILE_UPDATE', 'Kann den Inhalt von Dateien (z.B. im Markdown-Editor) bearbeiten und neue Versionen hochladen.'),
 (38, 'ACHIEVEMENT_VIEW', 'Ermöglicht das Anzeigen des Admin-Menüpunkts für Abzeichen.'),
 (39, 'ADMIN_DASHBOARD_ACCESS', 'Ermöglicht das Anzeigen des Admin-Menüpunkts für das Dashboard.');
-
--- Create the default admin user with username 'admin' and password 'admin123'
--- The password hash is for 'admin123'
-INSERT INTO `users` (`id`, `username`, `password_hash`, `role_id`, `theme`) VALUES
-(1, 'admin', '$2a$10$odf1koglTR0zdzyPbDDkzOuw2XSKu19ylygl561RQ336KpABBFccu', 1, 'light');
-
--- Grant the master admin permission to the admin user
-INSERT INTO `user_permissions` (`user_id`, `permission_id`) VALUES (1, 1);

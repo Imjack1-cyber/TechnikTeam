@@ -1,86 +1,117 @@
 import { useAuthStore } from '../store/authStore';
 
-// The base URL for all API requests. The Vite proxy handles forwarding this to the backend.
 const BASE_URL = '/api/v1';
 
+// This will be populated after the initial page load
+let csrfToken = '';
+
 const apiClient = {
-async request(endpoint, options = {}) {
-const { token, logout } = useAuthStore.getState();
-	const headers = {
-		'Content-Type': 'application/json',
-		...options.headers,
-	};
+	// Function to fetch the CSRF token, typically called once on app initialization
+	async fetchCsrfToken() {
+		try {
+			// A simple GET request to a protected endpoint will return the CSRF cookie
+			await this.get('/users/me'); // Using /me as it's a guaranteed protected route
+		} catch (error) {
+			console.warn("Could not pre-fetch CSRF token. It will be fetched on the first state-changing request.", error);
+		}
+	},
 
-	if (token) {
-		headers['Authorization'] = `Bearer ${token}`;
-	}
+	request: async function(endpoint, options = {}) {
+		const { logout } = useAuthStore.getState();
+		const headers = {
+			'Content-Type': 'application/json',
+			...options.headers,
+		};
 
-	if (options.body instanceof FormData) {
-		delete headers['Content-Type'];
-	}
-
-	try {
-		const response = await fetch(`${BASE_URL}${endpoint}`, {
-			...options,
-			headers: headers,
-		});
-
-		// If the JWT is expired or invalid, the backend will return a 401.
-		// The frontend should log the user out.
-		if (response.status === 401) {
-			logout();
-			throw new Error('Unauthorized: Session has expired. Please log in again.');
+		if (options.body instanceof FormData) {
+			delete headers['Content-Type'];
 		}
 
-		if (response.status === 204) {
-			return { success: true, message: 'Operation successful.', data: null };
-		}
-        
-        // Check if the response is JSON before trying to parse it
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-            // This is likely a proxy error (e.g., 502 Bad Gateway) returning an HTML page
-            throw new Error(`Server connection failed with status: ${response.status}. The backend might be offline.`);
-        }
-
-		const result = await response.json();
-
-		if (!response.ok) {
-			throw new Error(result.message || `HTTP error! status: ${response.status}`);
+		// Add CSRF token for state-changing methods
+		const method = options.method || 'GET';
+		if (['POST', 'PUT', 'DELETE'].includes(method.toUpperCase())) {
+			// Find the XSRF-TOKEN from cookies
+			const match = document.cookie.match(new RegExp('(^| )' + 'XSRF-TOKEN' + '=([^;]+)'));
+			if (match) {
+				csrfToken = match[2];
+			}
+			if (csrfToken) {
+				headers['X-XSRF-TOKEN'] = csrfToken;
+			} else {
+				console.warn('CSRF token not found. State-changing requests may fail.');
+			}
 		}
 
-		return result;
+		try {
+			const response = await fetch(`${BASE_URL}${endpoint}`, {
+				...options,
+				headers: headers,
+				credentials: 'include' // Crucial for sending HttpOnly cookies
+			});
 
-	} catch (error) {
-		// Differentiate between application errors and network errors
-        if (error instanceof TypeError && error.message === 'Failed to fetch') {
-            console.error(`API Client Network Error: ${options.method || 'GET'} ${BASE_URL}${endpoint}`, error);
-            throw new Error('Network error: The backend server is not reachable. Please check if the server is running.');
-        }
-		console.error(`API Client Error: ${options.method || 'GET'} ${BASE_URL}${endpoint}`, error);
-		throw error; // Re-throw other errors (like the ones we created above)
-	}
-},
+			if (response.status === 401) {
+				logout();
+				throw new Error('Nicht authorisiert. Ihre Sitzung ist möglicherweise abgelaufen.');
+			}
+			if (response.status === 403) {
+				throw new Error('Zugriff verweigert. Sie haben nicht die erforderlichen Berechtigungen.');
+			}
 
-get(endpoint) {
-	return this.request(endpoint, { method: 'GET' });
-},
+			if (response.status === 204) {
+				return { success: true, message: 'Operation successful.', data: null };
+			}
 
-post(endpoint, body) {
-	const options = {
-		method: 'POST',
-		body: body instanceof FormData ? body : JSON.stringify(body),
-	};
-	return this.request(endpoint, options);
-},
+			const contentType = response.headers.get("content-type");
+			if (!contentType || !contentType.includes("application/json")) {
+				const textError = await response.text();
+				console.error("Non-JSON API response:", textError);
+				throw new Error(`Serververbindung fehlgeschlagen (Status: ${response.status}). Das Backend ist möglicherweise offline.`);
+			}
 
-put(endpoint, body) {
-	return this.request(endpoint, { method: 'PUT', body: JSON.stringify(body) });
-},
+			const result = await response.json();
 
-delete(endpoint) {
-	return this.request(endpoint, { method: 'DELETE' });
-},
+			if (!response.ok) {
+				// Use a user-friendly generic message for server errors
+				if (response.status >= 500) {
+					throw new Error("Ein interner Serverfehler ist aufgetreten. Bitte versuchen Sie es später erneut.");
+				}
+				throw new Error(result.message || `Ein Fehler ist aufgetreten (Status: ${response.status})`);
+			}
+
+			return result;
+
+		} catch (error) {
+			if (error instanceof TypeError && error.message === 'Failed to fetch') {
+				console.error(`API Client Network Error: ${options.method || 'GET'} ${BASE_URL}${endpoint}`, error);
+				throw new Error('Netzwerkfehler: Das Backend ist nicht erreichbar. Bitte überprüfen Sie, ob der Server läuft.');
+			}
+			console.error(`API Client Error: ${options.method || 'GET'} ${BASE_URL}${endpoint}`, error);
+			throw error;
+		}
+	},
+
+	get(endpoint) {
+		return this.request(endpoint, { method: 'GET' });
+	},
+
+	post(endpoint, body) {
+		const options = {
+			method: 'POST',
+			body: body instanceof FormData ? body : JSON.stringify(body),
+		};
+		return this.request(endpoint, options);
+	},
+
+	put(endpoint, body) {
+		return this.request(endpoint, { method: 'PUT', body: JSON.stringify(body) });
+	},
+
+	delete(endpoint) {
+		return this.request(endpoint, { method: 'DELETE' });
+	},
 };
+
+// Pre-fetch the CSRF token when the module is loaded
+apiClient.fetchCsrfToken();
 
 export default apiClient;

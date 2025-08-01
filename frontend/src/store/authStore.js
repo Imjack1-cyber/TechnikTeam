@@ -2,16 +2,13 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import apiClient from '../services/apiClient';
 
-// Helper function to determine if a user has admin-level access based on permissions.
 const hasAdminAccess = (permissions) => {
 	if (!permissions || permissions.length === 0) {
 		return false;
 	}
-	// Check for the master admin permission
 	if (permissions.includes('ACCESS_ADMIN_PANEL')) {
 		return true;
 	}
-	// Check for any other management-level permissions
 	const adminPermissions = ['_CREATE', '_UPDATE', '_DELETE', '_MANAGE', 'LOG_READ', 'REPORT_READ', 'SYSTEM_READ', 'QUALIFICATION_UPDATE'];
 	return permissions.some(p => adminPermissions.some(ap => p.includes(ap)));
 };
@@ -19,19 +16,17 @@ const hasAdminAccess = (permissions) => {
 export const useAuthStore = create(
 	persist(
 		(set, get) => ({
-			token: null,
 			user: null,
 			navigationItems: [],
 			isAuthenticated: false,
 			isAdmin: false,
-			theme: 'light', // Add theme to state
+			theme: 'light',
 			login: async (username, password) => {
 				try {
+					// The login endpoint now returns the user object on success and sets the cookie
 					const response = await apiClient.post('/auth/login', { username, password });
-					if (response.success && response.data.token) {
-						const token = response.data.token;
-						set({ token });
-						await get().fetchUserSession();
+					if (response.success && response.data) {
+						await get().fetchUserSession(); // Fetch full session data to be sure
 						return true;
 					}
 					throw new Error(response.message || 'Login failed');
@@ -41,10 +36,16 @@ export const useAuthStore = create(
 					throw error;
 				}
 			},
-			logout: () => {
-				set({ token: null, user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, theme: 'light' });
-				localStorage.removeItem('theme'); // Clean up local storage on logout
-				document.documentElement.setAttribute('data-theme', 'light');
+			logout: async () => {
+				try {
+					await apiClient.post('/auth/logout');
+				} catch (error) {
+					console.error("Logout API call failed, clearing state anyway.", error);
+				} finally {
+					set({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, theme: 'light' });
+					localStorage.removeItem('theme');
+					document.documentElement.setAttribute('data-theme', 'light');
+				}
 			},
 			fetchUserSession: async () => {
 				try {
@@ -60,7 +61,6 @@ export const useAuthStore = create(
 							isAdmin: hasAdminAccess(user.permissions || []),
 							theme: newTheme,
 						});
-						// Apply theme immediately
 						document.documentElement.setAttribute('data-theme', newTheme);
 						localStorage.setItem('theme', newTheme);
 					} else {
@@ -75,7 +75,6 @@ export const useAuthStore = create(
 			},
 			setTheme: async (newTheme) => {
 				const oldTheme = get().theme;
-				// Optimistic UI update
 				set(state => ({
 					theme: newTheme,
 					user: state.user ? { ...state.user, theme: newTheme } : null
@@ -84,11 +83,9 @@ export const useAuthStore = create(
 				localStorage.setItem('theme', newTheme);
 
 				try {
-					// Persist to backend
 					await apiClient.put('/public/profile/theme', { theme: newTheme });
 				} catch (error) {
 					console.error("Failed to save theme preference:", error);
-					// Revert on failure
 					set(state => ({
 						theme: oldTheme,
 						user: state.user ? { ...state.user, theme: oldTheme } : null
@@ -101,7 +98,8 @@ export const useAuthStore = create(
 		{
 			name: 'auth-storage',
 			storage: createJSONStorage(() => localStorage),
-			partialize: (state) => ({ token: state.token }),
+			// We only persist non-sensitive UI state like theme. User/session data is fetched on load.
+			partialize: (state) => ({ theme: state.theme }),
 		}
 	)
 );

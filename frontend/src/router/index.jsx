@@ -49,6 +49,7 @@ const AdminAchievementsPage = lazy(() => import('../pages/admin/AdminAchievement
 const AdminWikiPage = lazy(() => import('../pages/admin/AdminWikiPage'));
 
 import ErrorTrigger from '../pages/error/ErrorTrigger';
+import ForbiddenPage from '../pages/error/ForbiddenPage';
 
 const router = createBrowserRouter([
 	{
@@ -120,6 +121,10 @@ const router = createBrowserRouter([
 	{
 		path: '/login',
 		element: <Suspense fallback={<div>Laden...</div>}><LoginPage /></Suspense>,
+	},
+	{
+		path: '/forbidden',
+		element: <ErrorLayout><ForbiddenPage /></ErrorLayout>,
 	},
 	{
 		path: '*',

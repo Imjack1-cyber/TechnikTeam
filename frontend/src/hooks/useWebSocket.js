@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { useAuthStore } from '../store/authStore';
 
 /**
  * A custom hook to manage a WebSocket connection.
@@ -10,16 +9,13 @@ import { useAuthStore } from '../store/authStore';
 const useWebSocket = (url, onMessage) => {
 	const [readyState, setReadyState] = useState(WebSocket.CONNECTING);
 	const socketRef = useRef(null);
-	const token = useAuthStore.getState().token;
 
 	useEffect(() => {
-		if (!url || !token) return;
+		if (!url) return;
 
 		const connect = () => {
-			// Append token for authentication during handshake
-			const authenticatedUrl = new URL(url);
-			authenticatedUrl.searchParams.append('token', token);
-			const socket = new WebSocket(authenticatedUrl);
+			// Authentication is now handled by the HttpOnly cookie, so no token is needed in the URL.
+			const socket = new WebSocket(url);
 			socketRef.current = socket;
 
 			socket.onopen = () => {
@@ -39,9 +35,8 @@ const useWebSocket = (url, onMessage) => {
 			};
 
 			socket.onclose = (event) => {
-				if (event.code === 4001) { // Custom code for auth failure
-					console.error('WebSocket connection closed due to authentication failure.');
-					// Don't reconnect on auth failure
+				if (event.code === 4001 || event.code === 403) {
+					console.error('WebSocket connection closed due to authentication/authorization failure.');
 				} else {
 					console.warn('WebSocket connection closed. Attempting to reconnect...');
 					setTimeout(connect, 5000);
@@ -64,7 +59,7 @@ const useWebSocket = (url, onMessage) => {
 				socketRef.current.close();
 			}
 		};
-	}, [url, onMessage, token]);
+	}, [url, onMessage]);
 
 	const sendMessage = (messageObject) => {
 		if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {

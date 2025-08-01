@@ -4,8 +4,10 @@ import de.technikteam.dao.AttachmentDAO;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.FileDAO;
 import de.technikteam.dao.MeetingDAO;
+import de.technikteam.dao.UserDAO;
 import de.technikteam.model.Attachment;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import de.technikteam.service.ConfigurationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -42,15 +44,17 @@ public class PublicFileStreamResource {
 	private static final Logger logger = LogManager.getLogger(PublicFileStreamResource.class);
 
 	private final FileDAO fileDAO;
+	private final UserDAO userDAO;
 	private final AttachmentDAO attachmentDAO;
 	private final EventDAO eventDAO;
 	private final MeetingDAO meetingDAO;
 	private final Path fileStorageLocation;
 
 	@Autowired
-	public PublicFileStreamResource(FileDAO fileDAO, AttachmentDAO attachmentDAO, EventDAO eventDAO,
+	public PublicFileStreamResource(FileDAO fileDAO, UserDAO userDAO, AttachmentDAO attachmentDAO, EventDAO eventDAO,
 			MeetingDAO meetingDAO, ConfigurationService configService) {
 		this.fileDAO = fileDAO;
+		this.userDAO = userDAO;
 		this.attachmentDAO = attachmentDAO;
 		this.eventDAO = eventDAO;
 		this.meetingDAO = meetingDAO;
@@ -63,8 +67,8 @@ public class PublicFileStreamResource {
 	@ApiResponse(responseCode = "200", description = "File content", content = @Content(mediaType = "application/octet-stream"))
 	public ResponseEntity<Resource> downloadFile(
 			@Parameter(description = "ID of the file or attachment record") @PathVariable int id,
-			@AuthenticationPrincipal User user) {
-
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		String filePathFromDb = null;
 		String filenameForDownload = null;
 		boolean isAuthorized = false;
@@ -79,7 +83,7 @@ public class PublicFileStreamResource {
 			if (dbFile != null) {
 				filePathFromDb = dbFile.getFilepath();
 				filenameForDownload = dbFile.getFilename();
-				isAuthorized = user.hasAdminAccess() || "NUTZER".equalsIgnoreCase(dbFile.getRequiredRole());
+				isAuthorized = "NUTZER".equalsIgnoreCase(dbFile.getRequiredRole()) || user.hasAdminAccess();
 			}
 		}
 
@@ -99,12 +103,17 @@ public class PublicFileStreamResource {
 		return serveFile("images/" + filename, filename, true);
 	}
 
-	@GetMapping("/avatars/{filename:.+}")
-	@Operation(summary = "Get a user avatar", description = "Retrieves a user's profile picture for display. This endpoint is not secured as avatars are considered public.")
+	@GetMapping("/avatars/user/{userId}")
+	@Operation(summary = "Get a user avatar", description = "Retrieves a user's profile picture for display. This endpoint is secured and requires authentication.")
 	@ApiResponse(responseCode = "200", description = "Image content", content = @Content(mediaType = "image/*"))
+	@SecurityRequirement(name = "bearerAuth")
 	public ResponseEntity<Resource> getAvatar(
-			@Parameter(description = "The filename of the avatar") @PathVariable String filename) {
-		return serveFile("avatars/" + filename, filename, true);
+			@Parameter(description = "The ID of the user whose avatar is requested") @PathVariable int userId) {
+		User user = userDAO.getUserById(userId);
+		if (user == null || user.getProfilePicturePath() == null || user.getProfilePicturePath().isBlank()) {
+			return ResponseEntity.notFound().build();
+		}
+		return serveFile("avatars/" + user.getProfilePicturePath(), user.getProfilePicturePath(), true);
 	}
 
 	private boolean isUserAuthorizedForAttachment(User user, Attachment attachment) {

@@ -3,6 +3,7 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import UserModal from '../../components/admin/users/UserModal';
 import useAdminData from '../../hooks/useAdminData';
+import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 
 const AdminUsersPage = () => {
@@ -13,6 +14,7 @@ const AdminUsersPage = () => {
 
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingUser, setEditingUser] = useState(null);
+	const [resetPasswordInfo, setResetPasswordInfo] = useState({ user: null, password: '' });
 
 	const handleOpenNewUserModal = () => {
 		setEditingUser(null);
@@ -27,6 +29,10 @@ const AdminUsersPage = () => {
 	const handleCloseModal = () => {
 		setIsModalOpen(false);
 		setEditingUser(null);
+	};
+
+	const handleClosePasswordModal = () => {
+		setResetPasswordInfo({ user: null, password: '' });
 	};
 
 	const handleSuccess = () => {
@@ -55,7 +61,7 @@ const AdminUsersPage = () => {
 			try {
 				const result = await apiClient.post(`/users/${user.id}/reset-password`);
 				if (result.success) {
-					alert(`Neues Passwort für ${user.username}: ${result.data.newPassword}`);
+					setResetPasswordInfo({ user: user, password: result.data.newPassword });
 					addToast('Passwort zurückgesetzt.', 'success');
 				} else {
 					throw new Error(result.message);
@@ -64,6 +70,11 @@ const AdminUsersPage = () => {
 				addToast(`Fehler: ${err.message}`, 'error');
 			}
 		}
+	};
+
+	const copyToClipboard = () => {
+		navigator.clipboard.writeText(resetPasswordInfo.password);
+		addToast('Passwort in die Zwischenablage kopiert.', 'info');
 	};
 
 	const renderTable = () => {
@@ -122,6 +133,19 @@ const AdminUsersPage = () => {
 					groupedPermissions={adminFormData.groupedPermissions}
 					isLoadingData={adminFormData.loading}
 				/>
+			)}
+
+			{resetPasswordInfo.user && (
+				<Modal isOpen={!!resetPasswordInfo.user} onClose={handleClosePasswordModal} title="Passwort wurde zurückgesetzt">
+					<p>Das neue, temporäre Passwort für <strong>{resetPasswordInfo.user.username}</strong> ist:</p>
+					<div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: 'var(--border-radius)', fontFamily: 'monospace', margin: '1rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+						<span>{resetPasswordInfo.password}</span>
+						<button className="btn btn-small" onClick={copyToClipboard} title="In die Zwischenablage kopieren">
+							<i className="fas fa-copy"></i>
+						</button>
+					</div>
+					<p className="text-danger" style={{ fontWeight: 'bold' }}>Dieses Passwort wird nur einmal angezeigt! Bitte geben Sie es sicher an den Benutzer weiter.</p>
+				</Modal>
 			)}
 		</div>
 	);

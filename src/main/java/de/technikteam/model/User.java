@@ -1,5 +1,6 @@
 package de.technikteam.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import de.technikteam.config.Permissions;
 
 import java.time.LocalDateTime;
@@ -18,6 +19,8 @@ public class User {
 	private String chatColor;
 	private String theme;
 	private String profilePicturePath;
+
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String passwordHash;
 
 	public User() {

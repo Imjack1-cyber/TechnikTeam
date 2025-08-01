@@ -26,6 +26,7 @@ ALTER TABLE `files` ADD PRIMARY KEY (`id`), ADD KEY `category_id` (`category_id`
 ALTER TABLE `file_categories` ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `name` (`name`);
 ALTER TABLE `inventory_kits` ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `name` (`name`);
 ALTER TABLE `inventory_kit_items` ADD PRIMARY KEY (`kit_id`,`item_id`), ADD KEY `item_id` (`item_id`);
+ALTER TABLE `login_attempts` ADD PRIMARY KEY (`username`);
 ALTER TABLE `maintenance_log` ADD PRIMARY KEY (`id`), ADD KEY `item_id` (`item_id`), ADD KEY `user_id` (`user_id`);
 ALTER TABLE `meetings` ADD PRIMARY KEY (`id`), ADD KEY `course_id` (`course_id`), ADD KEY `fk_meeting_leader` (`leader_user_id`);
 ALTER TABLE `meeting_attendance` ADD PRIMARY KEY (`user_id`,`meeting_id`), ADD KEY `meeting_id` (`meeting_id`);

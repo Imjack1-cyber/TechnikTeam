@@ -3,6 +3,7 @@ package de.technikteam.security;
 import de.technikteam.service.AuthService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -30,14 +32,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 	protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
 			@NonNull FilterChain filterChain) throws ServletException, IOException {
 
-		final String authHeader = request.getHeader("Authorization");
-
-		if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+		if (request.getCookies() == null) {
 			filterChain.doFilter(request, response);
 			return;
 		}
 
-		final String token = authHeader.substring(7);
+		final String token = Arrays.stream(request.getCookies())
+				.filter(cookie -> AuthService.AUTH_COOKIE_NAME.equals(cookie.getName())).map(Cookie::getValue)
+				.findFirst().orElse(null);
+
+		if (token == null) {
+			filterChain.doFilter(request, response);
+			return;
+		}
+
 		UserDetails userDetails = authService.validateTokenAndGetUser(token);
 
 		if (userDetails != null && SecurityContextHolder.getContext().getAuthentication() == null) {

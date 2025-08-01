@@ -5,6 +5,8 @@ import useApi from '../hooks/useApi';
 import useWebSocket from '../hooks/useWebSocket';
 import { useAuthStore } from '../store/authStore';
 import StatusBadge from '../components/ui/StatusBadge';
+import ReactMarkdown from 'react-markdown';
+import rehypeSanitize from 'rehype-sanitize';
 
 const EventDetailsPage = () => {
 	const { eventId } = useParams();
@@ -58,10 +60,6 @@ const EventDetailsPage = () => {
 	if (error) return <div className="error-message">{error}</div>;
 	if (!event) return <div className="error-message">Event nicht gefunden.</div>;
 
-	const renderMarkdown = (content) => {
-		return { __html: (content || '').replace(/\n/g, '<br />') };
-	};
-
 	return (
 		<div>
 			<div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -76,7 +74,11 @@ const EventDetailsPage = () => {
 			<div className="responsive-dashboard-grid">
 				<div className="card">
 					<h2 className="card-title">Beschreibung</h2>
-					<div className="markdown-content" dangerouslySetInnerHTML={renderMarkdown(event.description || 'Keine Beschreibung.')} />
+					<div className="markdown-content">
+						<ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+							{event.description || 'Keine Beschreibung.'}
+						</ReactMarkdown>
+					</div>
 				</div>
 
 				<div className="card">
@@ -118,7 +120,11 @@ const EventDetailsPage = () => {
 									<h4 style={{ margin: 0 }}>{task.description}</h4>
 									<StatusBadge status={task.status} />
 								</div>
-								<div className="markdown-content" dangerouslySetInnerHTML={renderMarkdown(task.details || '')} />
+								<div className="markdown-content">
+									<ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+										{task.details || ''}
+									</ReactMarkdown>
+								</div>
 								<p><strong>Zugewiesen an:</strong> {task.assignedUsers.map(u => u.username).join(', ') || 'Niemand'}</p>
 							</div>
 						))
@@ -137,7 +143,11 @@ const EventDetailsPage = () => {
 										{!msg.isDeleted ? (
 											<>
 												{msg.userId !== user.id && <strong className="chat-username">{msg.username}</strong>}
-												<span className="chat-text" dangerouslySetInnerHTML={renderMarkdown(msg.messageText)} />
+												<span className="chat-text">
+													<ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+														{msg.messageText}
+													</ReactMarkdown>
+												</span>
 												<span className="chat-timestamp">{new Date(msg.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</span>
 											</>
 										) : (

@@ -11,12 +11,14 @@ import de.technikteam.dao.UserDAO;
 import de.technikteam.model.Event;
 import de.technikteam.model.EventChatMessage;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.NotificationService;
-import de.technikteam.util.MarkdownUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.html.PolicyFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
@@ -42,17 +44,19 @@ public class EventChatSocketHandler extends TextWebSocketHandler {
 	private final NotificationService notificationService;
 	private final ChatSessionManager sessionManager;
 	private final Gson gson;
+	private final PolicyFactory inlineFormattingPolicy;
 
 	@Autowired
 	public EventChatSocketHandler(EventChatDAO chatDAO, EventDAO eventDAO, UserDAO userDAO,
-			AdminLogService adminLogService, NotificationService notificationService,
-			ChatSessionManager sessionManager) {
+			AdminLogService adminLogService, NotificationService notificationService, ChatSessionManager sessionManager,
+			@Qualifier("inlineFormattingPolicy") PolicyFactory inlineFormattingPolicy) {
 		this.chatDAO = chatDAO;
 		this.eventDAO = eventDAO;
 		this.userDAO = userDAO;
 		this.adminLogService = adminLogService;
 		this.notificationService = notificationService;
 		this.sessionManager = sessionManager;
+		this.inlineFormattingPolicy = inlineFormattingPolicy;
 		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
@@ -108,7 +112,7 @@ public class EventChatSocketHandler extends TextWebSocketHandler {
 
 	private void handleNewMessage(User user, String eventId, Map<String, Object> payload) {
 		String messageText = (String) payload.get("messageText");
-		String sanitizedMessage = MarkdownUtil.sanitize(messageText);
+		String sanitizedMessage = inlineFormattingPolicy.sanitize(messageText);
 		EventChatMessage newMessage = new EventChatMessage();
 		newMessage.setEventId(Integer.parseInt(eventId));
 		newMessage.setUserId(user.getId());
@@ -125,7 +129,7 @@ public class EventChatSocketHandler extends TextWebSocketHandler {
 	private void handleUpdateMessage(User user, String eventId, Map<String, Object> payload) {
 		int messageId = ((Double) payload.get("messageId")).intValue();
 		String newText = (String) payload.get("newText");
-		String sanitizedText = MarkdownUtil.sanitize(newText);
+		String sanitizedText = inlineFormattingPolicy.sanitize(newText);
 		if (chatDAO.updateMessage(messageId, user.getId(), sanitizedText)) {
 			Map<String, Object> broadcastPayload = Map.of("type", "message_updated", "payload",
 					Map.of("messageId", messageId, "newText", sanitizedText));
@@ -182,8 +186,8 @@ public class EventChatSocketHandler extends TextWebSocketHandler {
 	private User getUserFromSession(WebSocketSession session) {
 		if (session.getPrincipal() instanceof Authentication) {
 			Authentication auth = (Authentication) session.getPrincipal();
-			if (auth.getPrincipal() instanceof User) {
-				return (User) auth.getPrincipal();
+			if (auth.getPrincipal() instanceof SecurityUser) {
+				return ((SecurityUser) auth.getPrincipal()).getUser();
 			}
 		}
 		return null;
