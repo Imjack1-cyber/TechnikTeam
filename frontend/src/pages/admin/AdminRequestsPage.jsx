@@ -4,12 +4,14 @@ import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
 
 const AdminRequestsPage = () => {
-	const apiCall = useCallback(() => apiClient.get('/profile-requests'), []);
+	// Corrected API endpoint
+	const apiCall = useCallback(() => apiClient.get('/requests/pending'), []);
 	const { data: requests, loading, error, reload } = useApi(apiCall);
 	const { addToast } = useToast();
 
 	const handleAction = async (requestId, action) => {
-		const endpoint = `/profile-requests/${requestId}/${action}`;
+		// Corrected API endpoint
+		const endpoint = `/requests/${requestId}/${action}`;
 		const confirmationText = action === 'approve'
 			? 'Änderungen wirklich übernehmen?'
 			: 'Antrag wirklich ablehnen?';

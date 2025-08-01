@@ -8,7 +8,8 @@ import EventTrendChart from '../../components/admin/dashboard/EventTrendChart';
 
 const AdminDashboardPage = () => {
 	const { user } = useAuthStore();
-	const apiCall = useCallback(() => apiClient.get('/reports/dashboard'), []);
+	// This single endpoint now provides all necessary data for the dashboard.
+	const apiCall = useCallback(() => apiClient.get('/admin/dashboard'), []);
 	const { data: dashboardData, loading, error } = useApi(apiCall);
 
 	const renderWidgetContent = (widgetData, renderItem, emptyMessage) => {

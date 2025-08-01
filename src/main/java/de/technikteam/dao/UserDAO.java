@@ -36,6 +36,7 @@ public class UserDAO {
 		user.setUsername(resultSet.getString("username"));
 		user.setRoleId(resultSet.getInt("role_id"));
 		user.setChatColor(resultSet.getString("chat_color"));
+		user.setPasswordHash(resultSet.getString("password_hash")); // Set password hash
 		if (DaoUtils.hasColumn(resultSet, "theme")) {
 			user.setTheme(resultSet.getString("theme"));
 		}
@@ -64,8 +65,7 @@ public class UserDAO {
 		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ?";
 		try {
 			User user = jdbcTemplate.queryForObject(sql, this.userRowMapper, username);
-			String storedHash = jdbcTemplate.queryForObject("SELECT password_hash FROM users WHERE id = ?",
-					String.class, user.getId());
+			String storedHash = user.getPassword(); // Use hash from the mapped user object
 
 			if (storedHash != null && passwordEncoder.matches(password, storedHash)) {
 				user.setPermissions(getPermissionsForUser(user.getId()));
@@ -80,9 +80,14 @@ public class UserDAO {
 	}
 
 	public User getUserByUsername(String username) {
+		// THIS IS THE CRITICAL FIX: Ensure this query joins roles to get the role_name
 		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ?";
 		try {
-			return jdbcTemplate.queryForObject(sql, userRowMapper, username);
+			User user = jdbcTemplate.queryForObject(sql, userRowMapper, username);
+			if (user != null) {
+				user.setPermissions(getPermissionsForUser(user.getId()));
+			}
+			return user;
 		} catch (EmptyResultDataAccessException e) {
 			return null;
 		} catch (Exception e) {

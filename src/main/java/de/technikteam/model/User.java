@@ -1,11 +1,17 @@
 package de.technikteam.model;
 
 import de.technikteam.config.Permissions;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-public class User {
+public class User implements UserDetails {
 	private int id;
 	private String username;
 	private int roleId;
@@ -18,6 +24,7 @@ public class User {
 	private String chatColor;
 	private String theme;
 	private String profilePicturePath;
+	private String passwordHash; // Field for UserDetails, though not directly used in JWT payload
 
 	public User() {
 	}
@@ -28,20 +35,6 @@ public class User {
 		this.roleName = roleName;
 	}
 
-	/**
-	 * A central method to determine if the user has any permission that grants them
-	 * access to the admin panel. This prevents logic duplication in filters and
-	 * navigation builders.
-	 *
-	 * The logic is as follows: 1. A user is an admin if they have the global
-	 * 'ACCESS_ADMIN_PANEL' permission. 2. If not, a user is also considered an
-	 * admin if they have *any* CRUD-like or management-level permission (e.g.,
-	 * USER_CREATE, EVENT_MANAGE_ASSIGNMENTS, LOG_READ). 3. Simple file read/update
-	 * permissions are excluded from this check to allow granting those without
-	 * giving full admin area access.
-	 *
-	 * @return true if the user has any admin-level permission, false otherwise.
-	 */
 	public boolean hasAdminAccess() {
 		if (permissions == null) {
 			return false;
@@ -51,16 +44,54 @@ public class User {
 						|| p.contains("_MANAGE") || p.contains("_CREATE") || p.contains("_DELETE")));
 	}
 
+	// --- UserDetails Implementation ---
+
+	@Override
+	public Collection<? extends GrantedAuthority> getAuthorities() {
+		if (permissions == null) {
+			return Collections.emptyList();
+		}
+		return permissions.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList());
+	}
+
+	@Override
+	public String getPassword() {
+		return passwordHash; // Hashed password from DB
+	}
+
+	@Override
+	public String getUsername() {
+		return username;
+	}
+
+	@Override
+	public boolean isAccountNonExpired() {
+		return true;
+	}
+
+	@Override
+	public boolean isAccountNonLocked() {
+		return true;
+	}
+
+	@Override
+	public boolean isCredentialsNonExpired() {
+		return true;
+	}
+
+	@Override
+	public boolean isEnabled() {
+		return true;
+	}
+
+	// --- Standard Getters and Setters ---
+
 	public int getId() {
 		return id;
 	}
 
 	public void setId(int id) {
 		this.id = id;
-	}
-
-	public String getUsername() {
-		return username;
 	}
 
 	public void setUsername(String username) {
@@ -145,6 +176,10 @@ public class User {
 
 	public void setProfilePicturePath(String profilePicturePath) {
 		this.profilePicturePath = profilePicturePath;
+	}
+
+	public void setPasswordHash(String passwordHash) {
+		this.passwordHash = passwordHash;
 	}
 
 	public String getFormattedCreatedAt() {

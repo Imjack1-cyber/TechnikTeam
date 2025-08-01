@@ -2,11 +2,8 @@ package de.technikteam.api.v1.public_api;
 
 import de.technikteam.dao.EventCustomFieldDAO;
 import de.technikteam.dao.EventDAO;
-import de.technikteam.model.ApiResponse;
-import de.technikteam.model.Event;
-import de.technikteam.model.EventCustomField;
-import de.technikteam.model.EventCustomFieldResponse;
-import de.technikteam.model.User;
+import de.technikteam.model.*;
+import de.technikteam.security.CurrentUser;
 import de.technikteam.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -14,7 +11,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -39,7 +35,7 @@ public class PublicEventResource {
 
 	@GetMapping
 	@Operation(summary = "Get upcoming events for user", description = "Retrieves a list of upcoming events, indicating the user's current attendance and qualification status for each.")
-	public ResponseEntity<ApiResponse> getUpcomingEventsForUser(@AuthenticationPrincipal User user) {
+	public ResponseEntity<ApiResponse> getUpcomingEventsForUser(@CurrentUser User user) {
 		List<Event> events = eventDAO.getUpcomingEventsForUser(user);
 		return ResponseEntity.ok(new ApiResponse(true, "Events retrieved successfully.", events));
 	}
@@ -58,7 +54,7 @@ public class PublicEventResource {
 	@PostMapping("/{id}/signup")
 	@Operation(summary = "Sign up for an event", description = "Allows the current user to sign up for an event and submit custom field responses.")
 	public ResponseEntity<ApiResponse> signUpForEvent(@Parameter(description = "ID of the event") @PathVariable int id,
-			@AuthenticationPrincipal User user, @RequestBody Map<String, String> customFieldResponses) {
+			@CurrentUser User user, @RequestBody Map<String, String> customFieldResponses) {
 		eventDAO.signUpForEvent(user.getId(), id);
 		if (customFieldResponses != null) {
 			customFieldResponses.forEach((key, value) -> {
@@ -78,7 +74,7 @@ public class PublicEventResource {
 	@PostMapping("/{id}/signoff")
 	@Operation(summary = "Sign off from an event", description = "Allows the current user to sign off from an event.")
 	public ResponseEntity<ApiResponse> signOffFromEvent(
-			@Parameter(description = "ID of the event") @PathVariable int id, @AuthenticationPrincipal User user,
+			@Parameter(description = "ID of the event") @PathVariable int id, @CurrentUser User user,
 			@RequestBody Map<String, String> payload) {
 		String reason = payload.get("reason");
 		Event event = eventDAO.getEventById(id);

@@ -4,6 +4,7 @@ import de.technikteam.dao.ProfileChangeRequestDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.ProfileChangeRequest;
 import de.technikteam.model.User;
+import de.technikteam.security.CurrentUser;
 import de.technikteam.service.ProfileRequestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -13,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -46,8 +46,7 @@ public class AdminRequestResource {
 	@PostMapping("/{id}/approve")
 	@Operation(summary = "Approve a request", description = "Approves a profile change request and applies the changes to the user's profile.")
 	public ResponseEntity<ApiResponse> approveRequest(
-			@Parameter(description = "ID of the request to approve") @PathVariable int id,
-			@AuthenticationPrincipal User admin) {
+			@Parameter(description = "ID of the request to approve") @PathVariable int id, @CurrentUser User admin) {
 		try {
 			if (requestService.approveRequest(id, admin)) {
 				return ResponseEntity.ok(new ApiResponse(true, "Request approved and user updated.", null));
@@ -65,8 +64,7 @@ public class AdminRequestResource {
 	@PostMapping("/{id}/reject")
 	@Operation(summary = "Reject a request", description = "Rejects a profile change request.")
 	public ResponseEntity<ApiResponse> rejectRequest(
-			@Parameter(description = "ID of the request to reject") @PathVariable int id,
-			@AuthenticationPrincipal User admin) {
+			@Parameter(description = "ID of the request to reject") @PathVariable int id, @CurrentUser User admin) {
 		try {
 			if (requestService.denyRequest(id, admin)) {
 				return ResponseEntity.ok(new ApiResponse(true, "Request rejected.", null));

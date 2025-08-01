@@ -5,6 +5,7 @@ import de.technikteam.dao.WikiDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
 import de.technikteam.model.WikiEntry;
+import de.technikteam.security.CurrentUser;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.WikiService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,7 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -60,7 +60,7 @@ public class WikiResource {
 	@PostMapping
 	@Operation(summary = "Create a new wiki page", description = "Creates a new documentation page in the wiki.")
 	public ResponseEntity<ApiResponse> createWikiEntry(@Valid @RequestBody WikiEntry newEntry,
-			@AuthenticationPrincipal User adminUser) {
+			@CurrentUser User adminUser) {
 		if (newEntry.getFilePath() == null || newEntry.getFilePath().isBlank()) {
 			return ResponseEntity.badRequest().body(new ApiResponse(false, "File path cannot be empty.", null));
 		}
@@ -85,7 +85,7 @@ public class WikiResource {
 	@Operation(summary = "Update a wiki page", description = "Updates the content of an existing wiki page.")
 	public ResponseEntity<ApiResponse> updateWikiEntry(
 			@Parameter(description = "ID of the wiki page to update") @PathVariable int id,
-			@Valid @RequestBody WikiUpdateRequest updateRequest, @AuthenticationPrincipal User adminUser) {
+			@Valid @RequestBody WikiUpdateRequest updateRequest, @CurrentUser User adminUser) {
 
 		if (wikiDAO.updateWikiContent(id, updateRequest.content())) {
 			adminLogService.log(adminUser.getUsername(), "UPDATE_WIKI_PAGE", "Updated wiki page ID: " + id);
@@ -100,7 +100,7 @@ public class WikiResource {
 	@Operation(summary = "Delete a wiki page", description = "Permanently deletes a wiki page.")
 	public ResponseEntity<ApiResponse> deleteWikiEntry(
 			@Parameter(description = "ID of the wiki page to delete") @PathVariable int id,
-			@AuthenticationPrincipal User adminUser) {
+			@CurrentUser User adminUser) {
 
 		Optional<WikiEntry> entryToDelete = wikiDAO.getWikiEntryById(id);
 		if (entryToDelete.isEmpty()) {

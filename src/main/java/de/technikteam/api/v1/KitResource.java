@@ -4,6 +4,7 @@ import de.technikteam.dao.InventoryKitDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.InventoryKit;
 import de.technikteam.model.User;
+import de.technikteam.security.CurrentUser;
 import de.technikteam.service.AdminLogService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -12,7 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -44,8 +44,7 @@ public class KitResource {
 	@PostMapping
 	@Operation(summary = "Create a new kit")
 	@PreAuthorize("hasAuthority('KIT_CREATE')")
-	public ResponseEntity<ApiResponse> createKit(@RequestBody InventoryKit kit,
-			@AuthenticationPrincipal User adminUser) {
+	public ResponseEntity<ApiResponse> createKit(@RequestBody InventoryKit kit, @CurrentUser User adminUser) {
 		int newId = kitDAO.createKit(kit);
 		if (newId > 0) {
 			kit.setId(newId);
@@ -59,7 +58,7 @@ public class KitResource {
 	@Operation(summary = "Update a kit's metadata")
 	@PreAuthorize("hasAuthority('KIT_UPDATE')")
 	public ResponseEntity<ApiResponse> updateKit(@PathVariable int id, @RequestBody InventoryKit kit,
-			@AuthenticationPrincipal User adminUser) {
+			@CurrentUser User adminUser) {
 		kit.setId(id);
 		if (kitDAO.updateKit(kit)) {
 			adminLogService.log(adminUser.getUsername(), "UPDATE_KIT_API", "Kit '" + kit.getName() + "' updated.");
@@ -72,7 +71,7 @@ public class KitResource {
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete a kit")
 	@PreAuthorize("hasAuthority('KIT_DELETE')")
-	public ResponseEntity<ApiResponse> deleteKit(@PathVariable int id, @AuthenticationPrincipal User adminUser) {
+	public ResponseEntity<ApiResponse> deleteKit(@PathVariable int id, @CurrentUser User adminUser) {
 		InventoryKit kit = kitDAO.getKitById(id);
 		if (kit != null && kitDAO.deleteKit(id)) {
 			adminLogService.log(adminUser.getUsername(), "DELETE_KIT_API", "Kit '" + kit.getName() + "' deleted.");

@@ -5,6 +5,7 @@ import de.technikteam.dao.MeetingDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Meeting;
 import de.technikteam.model.User;
+import de.technikteam.security.CurrentUser;
 import de.technikteam.service.AdminLogService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -14,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -57,7 +57,7 @@ public class MeetingResource {
 	@Operation(summary = "Create a new meeting")
 	@PreAuthorize("hasAuthority('COURSE_CREATE')")
 	public ResponseEntity<ApiResponse> createMeeting(@Valid @RequestBody MeetingRequest request,
-			@AuthenticationPrincipal User adminUser) {
+			@CurrentUser User adminUser) {
 		Meeting meeting = new Meeting();
 		meeting.setCourseId(request.courseId());
 		meeting.setName(request.name());
@@ -82,7 +82,7 @@ public class MeetingResource {
 	@Operation(summary = "Update a meeting")
 	@PreAuthorize("hasAuthority('COURSE_UPDATE')")
 	public ResponseEntity<ApiResponse> updateMeeting(@PathVariable int id, @Valid @RequestBody MeetingRequest request,
-			@AuthenticationPrincipal User adminUser) {
+			@CurrentUser User adminUser) {
 		Meeting meeting = new Meeting();
 		meeting.setId(id);
 		meeting.setCourseId(request.courseId());
@@ -105,7 +105,7 @@ public class MeetingResource {
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete a meeting")
 	@PreAuthorize("hasAuthority('COURSE_DELETE')")
-	public ResponseEntity<ApiResponse> deleteMeeting(@PathVariable int id, @AuthenticationPrincipal User adminUser) {
+	public ResponseEntity<ApiResponse> deleteMeeting(@PathVariable int id, @CurrentUser User adminUser) {
 		Meeting meeting = meetingDAO.getMeetingById(id);
 		if (meeting != null && meetingDAO.deleteMeeting(id)) {
 			adminLogService.log(adminUser.getUsername(), "DELETE_MEETING_API",

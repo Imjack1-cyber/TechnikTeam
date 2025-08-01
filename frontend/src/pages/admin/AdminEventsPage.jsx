@@ -84,7 +84,8 @@ const AdminEventsPage = () => {
 					</tbody>
 				</table>
 			</div>
-			{isModalOpen && (
+			{/* Prevent modal from rendering before its required data is available */}
+			{isModalOpen && !adminFormData.loading && (
 				<EventModal
 					isOpen={isModalOpen}
 					onClose={closeModal}
