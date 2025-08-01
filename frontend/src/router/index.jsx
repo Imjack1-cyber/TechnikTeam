@@ -48,6 +48,8 @@ const AdminFeedbackPage = lazy(() => import('../pages/admin/AdminFeedbackPage'))
 const AdminAchievementsPage = lazy(() => import('../pages/admin/AdminAchievementsPage'));
 const AdminWikiPage = lazy(() => import('../pages/admin/AdminWikiPage'));
 
+import ErrorTrigger from '../pages/error/ErrorTrigger';
+
 const router = createBrowserRouter([
 	{
 		path: '/',
@@ -73,6 +75,7 @@ const router = createBrowserRouter([
 			{ path: 'feedback/event/:eventId', element: <EventFeedbackPage /> },
 			{ path: 'kalender', element: <CalendarPage /> },
 			{ path: 'my-feedback', element: <Navigate to="/feedback" replace /> },
+			{ path: 'test-500', element: <ErrorTrigger /> },
 
 			{
 				path: 'admin',

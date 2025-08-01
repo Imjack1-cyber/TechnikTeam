@@ -6,7 +6,6 @@ import { useAuthStore } from '../../store/authStore';
 const ForbiddenPage = () => {
 	const user = useAuthStore(state => state.user);
 
-	// useMemo ensures the 'lines' array is not re-created on every render
 	const lines = useMemo(() => [
 		{ text: 'Attempting to access restricted area...', className: 'info' },
 		{ text: `Authenticating user: ${user?.username || 'GUEST'}`, className: 'info', delayAfter: 500 },
@@ -20,7 +19,7 @@ const ForbiddenPage = () => {
 	const { containerRef, renderedLines, isComplete } = useTypingAnimation(lines);
 
 	return (
-		<div className="terminal">
+		<div className="full-screen-terminal">
 			<div className="terminal-header">
 				<span className="red"></span>
 				<span className="yellow"></span>
@@ -36,9 +35,11 @@ const ForbiddenPage = () => {
 					</div>
 				))}
 			</div>
-			<Link to="/home" className={`btn ${isComplete ? 'visible' : ''}`}>
-				<i className="fas fa-arrow-left"></i> Return to Safety
-			</Link>
+			<div className="terminal-footer">
+				<Link to="/home" className={`btn ${isComplete ? 'visible' : ''}`}>
+					<i className="fas fa-arrow-left"></i> Return to Safety
+				</Link>
+			</div>
 		</div>
 	);
 };

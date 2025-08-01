@@ -225,31 +225,65 @@
 /* --- 8. CREATIVE ERROR PAGES --- */
 .error-page-wrapper {
     display: flex;
+    /* Centering is now optional and handled by the element itself */
+    min-height: 100vh;
+    width: 100%;
+    padding: 0; /* Remove padding for full-screen pages */
+    font-family: 'Courier New', Courier, monospace;
+    background-color: var(--bg-color);
+}
+
+.error-page-wrapper.center {
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
     padding: 2rem;
-    font-family: 'Courier New', Courier, monospace;
-    background-color: #0d1117;
-    color: #c9d1d9;
 }
 
 .terminal {
-    background-color: #010409;
-    border: 1px solid #30363d;
+    background-color: var(--terminal-bg);
+    border: 1px solid var(--terminal-border);
     border-radius: 8px;
     padding: 1.5rem;
     width: 100%;
     max-width: 800px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    box-shadow: var(--shadow-lg);
 }
+
+.full-screen-terminal {
+    width: 100%;
+    height: 100vh;
+    background-color: var(--terminal-bg);
+    color: var(--terminal-text);
+    display: flex;
+    flex-direction: column;
+}
+
+.full-screen-terminal .terminal-header {
+    flex-shrink: 0;
+}
+.full-screen-terminal .terminal-body {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+.full-screen-terminal .terminal-footer {
+    flex-shrink: 0;
+    padding: 1.5rem;
+    border-top: 1px solid var(--terminal-border);
+}
+
 
 .terminal-header {
     display: flex;
     align-items: center;
     padding-bottom: 1rem;
-    border-bottom: 1px solid #30363d;
+    border-bottom: 1px solid var(--terminal-border);
     margin-bottom: 1rem;
+    background-color: var(--terminal-header-bg);
+    margin: -1.5rem -1.5rem 1rem -1.5rem;
+    padding: 1rem 1.5rem;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
 }
 
 .terminal-header span {
@@ -263,12 +297,13 @@
 .terminal-header .green { background-color: #27c93f; }
 
 .terminal-header .title {
-    color: #8b949e;
+    color: var(--terminal-text-muted);
     margin: 0 auto;
 }
 
 .terminal-body {
     min-height: 200px;
+    color: var(--terminal-text);
 }
 
 .terminal-line {
@@ -278,7 +313,7 @@
 }
 
 .terminal-prompt {
-    color: #58a6ff;
+    color: var(--terminal-prompt);
     margin-right: 0.5rem;
 }
 
@@ -286,13 +321,13 @@
     display: inline-block;
     width: 8px;
     height: 1.2em;
-    background-color: #c9d1d9;
+    background-color: var(--terminal-text);
     animation: blink 1s step-end infinite;
 }
 
 @keyframes blink {
     from, to { background-color: transparent; }
-    50% { background-color: #c9d1d9; }
+    50% { background-color: var(--terminal-text); }
 }
 
 .error-page-wrapper .btn {
@@ -300,15 +335,19 @@
     transition: opacity 0.5s ease-in-out;
     margin-top: 1.5rem;
 }
+.full-screen-terminal .btn {
+    margin-top: 0;
+}
+
 
 .error-page-wrapper .btn.visible {
     opacity: 1;
 }
 
-.terminal-line.info { color: #8b949e; }
-.terminal-line.ok { color: #56d364; }
-.terminal-line.warn { color: #f0b72f; }
-.terminal-line.fail { color: #f87171; }
+.terminal-line.info { color: var(--text-muted-color); }
+.terminal-line.ok { color: var(--success-color); }
+.terminal-line.warn { color: var(--warning-color); }
+.terminal-line.fail { color: var(--danger-color); }
 
 
 /* --- 10. CHAT INTERFACE --- */

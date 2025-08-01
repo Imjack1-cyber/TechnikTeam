@@ -32,6 +32,13 @@
 	--sidebar-active-border: var(--primary-color);
 	--sidebar-active-text: var(--primary-color);
 	--sidebar-active-icon: var(--primary-color);
+    /* Terminal Colors */
+    --terminal-bg: #010409;
+    --terminal-header-bg: #0d1117;
+    --terminal-border: #30363d;
+    --terminal-text: #c9d1d9;
+    --terminal-text-muted: #8b949e;
+    --terminal-prompt: #58a6ff;
 }
 
 [data-theme="dark"] {
@@ -58,7 +65,18 @@
 	--sidebar-active-border: var(--primary-color);
 	--sidebar-active-text: var(--primary-color);
 	--sidebar-active-icon: var(--primary-color);
+    /* Terminal Colors remain dark, as it's a specific component style */
 }
+
+[data-theme="light"] {
+    --terminal-bg: #ffffff;
+    --terminal-header-bg: #f8f9fa;
+    --terminal-border: #dee2e6;
+    --terminal-text: #212529;
+    --terminal-text-muted: #6c757d;
+    --terminal-prompt: #0056b3;
+}
+
 
 /* --- 2. BASE & TYPOGRAPHY --- */
 *,
@@ -151,6 +169,13 @@ a:hover {
 	flex-grow: 1;
 	overflow-y: auto;
 	min-height: 0;
+}
+
+/* Add centering for error page content */
+.main-content.center-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .card {

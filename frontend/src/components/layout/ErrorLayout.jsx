@@ -9,19 +9,19 @@ const ErrorLayout = ({ children }) => {
 	useEffect(() => {
 		const savedTheme = userTheme || localStorage.getItem('theme') || 'light';
 		document.documentElement.setAttribute('data-theme', savedTheme);
+		// Add a class to the body for specific error page styling if needed
 		document.body.classList.add('error-page-active');
 
-		// Cleanup function
+		// Cleanup function to remove the class when the component unmounts
 		return () => {
 			document.body.classList.remove('error-page-active');
-			// Optional: reset theme if leaving error state is desired,
-			// but it's generally fine to leave it.
 		};
 	}, [userTheme]);
 
 	return (
+		// The wrapper no longer centers content by default.
+		// It now provides a full-page container for its children.
 		<div className="error-page-wrapper">
-			{/* Render children directly. If Outlet is needed, routing must be nested. */}
 			{children || <Outlet />}
 		</div>
 	);
