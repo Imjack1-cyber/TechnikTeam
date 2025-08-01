@@ -5,13 +5,13 @@ import de.technikteam.dao.MeetingDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Meeting;
 import de.technikteam.model.User;
-import de.technikteam.security.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -33,7 +33,7 @@ public class PublicMeetingResource {
 
 	@GetMapping
 	@Operation(summary = "Get upcoming meetings for user", description = "Retrieves a list of upcoming meetings, indicating the user's current attendance status for each.")
-	public ResponseEntity<ApiResponse> getUpcomingMeetings(@CurrentUser User user) {
+	public ResponseEntity<ApiResponse> getUpcomingMeetings(@AuthenticationPrincipal User user) {
 		List<Meeting> meetings = meetingDAO.getUpcomingMeetingsForUser(user);
 		return ResponseEntity.ok(new ApiResponse(true, "Meetings retrieved.", meetings));
 	}
@@ -43,7 +43,7 @@ public class PublicMeetingResource {
 	public ResponseEntity<ApiResponse> handleMeetingAction(
 			@Parameter(description = "ID of the meeting") @PathVariable int id,
 			@Parameter(description = "Action to perform. Must be 'signup' or 'signoff'.") @PathVariable String action,
-			@CurrentUser User user) {
+			@AuthenticationPrincipal User user) {
 
 		boolean success;
 		if ("signup".equalsIgnoreCase(action)) {

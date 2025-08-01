@@ -33,7 +33,7 @@ A comprehensive web application designed to manage a school's event technology c
 ## Technology Stack
 
 *   **Backend**: Spring Boot 3.3, Java 21
-    *   **Security**: Spring Security 6 with JWT Authentication
+    *   **Security**: Spring Security 6 with JWT Authentication via HttpOnly Cookies
     *   **Database**: Spring Data JDBC, MariaDB/MySQL
     *   **Migrations**: Flyway
     *   **Real-time**: Spring WebSocket
@@ -65,9 +65,11 @@ Follow these steps to get a local instance of the application running for develo
 1.  Navigate to the project's root directory.
 2.  Open `src/main/resources/application.properties`.
 3.  Update the `spring.datasource.*` properties to match your database connection details.
-4.  Set a strong, unique secret for `jwt.secret`. This is critical for security.
+4.  Set a strong, unique secret for `jwt.secret`. This is critical for security. It **must** be at least 32 characters long.
 5.  Set the `upload.directory` to an absolute path on your local machine. This directory must exist and be writable by the application.
 6.  The application uses Flyway for database migrations. The necessary tables will be created automatically when the application starts for the first time.
+
+**First-time Setup Note:** The initial database migration will create a default `admin` user. For security, this user is created with a strong, random password that is printed to the console **only once** on the very first startup. Please copy this password immediately and store it securely.
 
 ### 4. Backend Launch
 1.  From the project's root directory, run the Spring Boot application using Maven:
@@ -95,7 +97,4 @@ Follow these steps to get a local instance of the application running for develo
 
 Once both servers are running, open `http://localhost:3000` in your browser.
 
-*   **Default Admin**: If you used the provided Flyway migration scripts, a default admin user will be created.
-    *   **Username**: `admin`
-    *   **Password**: `admin123`
 *   **API Documentation**: Full, interactive API documentation is available via Swagger UI at `http://localhost:8080/TechnikTeam/swagger-ui.html` once the backend is running.

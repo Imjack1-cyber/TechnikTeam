@@ -2,12 +2,14 @@ package de.technikteam.service;
 
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -28,9 +30,10 @@ public class AuthService {
 	public AuthService(UserDAO userDAO, ConfigurationService configService) {
 		this.userDAO = userDAO;
 		String secret = configService.getProperty("jwt.secret");
-		if (secret == null || secret.isBlank()) {
-			logger.fatal("JWT secret is not configured in application.properties. Application cannot start securely.");
-			throw new RuntimeException("JWT secret is not configured.");
+		if (secret == null || secret.isBlank() || secret.length() < 32) {
+			logger.fatal(
+					"JWT secret is not configured or is too short (must be at least 32 characters). Application cannot start securely.");
+			throw new RuntimeException("JWT secret is not configured or is insecure.");
 		}
 		this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
 	}
@@ -39,12 +42,11 @@ public class AuthService {
 		Instant now = Instant.now();
 		Instant expiry = now.plus(8, ChronoUnit.HOURS);
 
-		return Jwts.builder().issuer(JWT_ISSUER).subject(String.valueOf(user.getId()))
-				.claim("username", user.getUsername()).claim("role", user.getRoleName()).issuedAt(Date.from(now))
+		return Jwts.builder().issuer(JWT_ISSUER).subject(String.valueOf(user.getId())).issuedAt(Date.from(now))
 				.expiration(Date.from(expiry)).signWith(secretKey).compact();
 	}
 
-	public User validateTokenAndGetUser(String token) {
+	public UserDetails validateTokenAndGetUser(String token) {
 		try {
 			Claims claims = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
 
@@ -55,7 +57,7 @@ public class AuthService {
 				logger.warn("JWT validation successful, but user with ID {} no longer exists.", userId);
 				return null;
 			}
-			return user;
+			return new SecurityUser(user);
 		} catch (Exception e) {
 			logger.warn("JWT verification failed: {}", e.getMessage());
 			return null;

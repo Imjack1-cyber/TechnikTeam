@@ -154,20 +154,29 @@ FILE: pom.xml
     </dependencies>
 
     <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
+	    <plugins>
+	        <plugin>
+	            <groupId>org.springframework.boot</groupId>
+	            <artifactId>spring-boot-maven-plugin</artifactId>
+	        </plugin>
+	        
+	        <plugin>
+			    <groupId>org.flywaydb</groupId>
+			    <artifactId>flyway-maven-plugin</artifactId>
+			    <configuration>
+			        <configFile>flyway.conf</configFile>
+			    </configuration>
+			</plugin>
+	        
+	        <plugin>
+	            <artifactId>maven-compiler-plugin</artifactId>
+	            <configuration>
+	                <source>${java.version}</source>
+	                <target>${java.version}</target>
+	            </configuration>
+	        </plugin>
+    </plugins>
+</build>
 </project>
 ========================================================================
 FILE: README.md
@@ -274,6 +283,14 @@ Once both servers are running, open `http://localhost:3000` in your browser.
     *   **Username**: `admin`
     *   **Password**: `admin123`
 *   **API Documentation**: Full, interactive API documentation is available via Swagger UI at `http://localhost:8080/TechnikTeam/swagger-ui.html` once the backend is running.
+========================================================================
+FILE: run_combine_code_gui.txt
+========================================================================
+
+powershell -ExecutionPolicy Bypass -File combine_code_gui.ps1
+
+target,.settings,.metadata,resources,.gitattributes.txt,.project.mpp,dbscript.txt,readme.md,.gitignore.txt,.classpath.class,run_combine_src_only.txt,combine_src_only.ps1,technikteam.txt,technikteam1.txt,technikteam2.txt,filecombiner.exe,combine_code_gui.ps1
+
 ========================================================================
 FILE: frontend\eslint.config.js
 ========================================================================
@@ -426,6 +443,13 @@ FILE: frontend\public\style1.css
 	--sidebar-active-border: var(--primary-color);
 	--sidebar-active-text: var(--primary-color);
 	--sidebar-active-icon: var(--primary-color);
+    /* Terminal Colors */
+    --terminal-bg: #010409;
+    --terminal-header-bg: #0d1117;
+    --terminal-border: #30363d;
+    --terminal-text: #c9d1d9;
+    --terminal-text-muted: #8b949e;
+    --terminal-prompt: #58a6ff;
 }
 
 [data-theme="dark"] {
@@ -452,7 +476,18 @@ FILE: frontend\public\style1.css
 	--sidebar-active-border: var(--primary-color);
 	--sidebar-active-text: var(--primary-color);
 	--sidebar-active-icon: var(--primary-color);
+    /* Terminal Colors remain dark, as it's a specific component style */
 }
+
+[data-theme="light"] {
+    --terminal-bg: #ffffff;
+    --terminal-header-bg: #f8f9fa;
+    --terminal-border: #dee2e6;
+    --terminal-text: #212529;
+    --terminal-text-muted: #6c757d;
+    --terminal-prompt: #0056b3;
+}
+
 
 /* --- 2. BASE & TYPOGRAPHY --- */
 *,
@@ -547,6 +582,13 @@ a:hover {
 	min-height: 0;
 }
 
+/* Add centering for error page content */
+.main-content.center-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
 .card {
 	background: var(--surface-color);
 	border-radius: var(--border-radius);
@@ -595,7 +637,8 @@ FILE: frontend\public\style2.css
 	background: var(--sidebar-bg);
 	border-right: 1px solid var(--sidebar-border);
 	z-index: 1010;
-	transition: left 0.3s ease-in-out, background-color 0.3s, border-color 0.3s;
+	transition: left 0.3s ease-in-out, background-color 0.3s, border-color
+		0.3s;
 	display: flex;
 	flex-direction: column;
 }
@@ -724,12 +767,20 @@ body.nav-open .sidebar {
 	cursor: pointer;
 	padding: 0.5rem;
 	z-index: 1020;
+	/* --- STYLE UPDATE --- */
+	width: 44px; /* Larger touch target */
+	height: 44px; /* Larger touch target */
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
 }
 
 .mobile-nav-toggle .line {
 	width: 25px;
 	height: 3px;
-	background-color: var(--primary-color);
+	/* --- STYLE UPDATE --- */
+	background-color: var(--primary-color); /* More visible color */
 	margin: 5px 0;
 	border-radius: 3px;
 	transition: all 0.3s;
@@ -769,32 +820,26 @@ body.nav-open .page-overlay {
 	display: block;
 }
 
-@media (min-width : 992px) {
-
-	.mobile-header,
-	.page-overlay {
+@media ( min-width : 992px) {
+	.mobile-header, .page-overlay {
 		display: none !important;
 	}
-
 	.sidebar {
 		left: 0;
 	}
-
 	.main-content-wrapper {
 		margin-left: var(--sidebar-width);
 		height: 100vh;
 	}
-
 	.sidebar .mobile-only {
 		display: none !important;
 	}
 }
 
-@media (max-width : 991.98px) {
+@media ( max-width : 991.98px) {
 	.sidebar .desktop-only {
 		display: none !important;
 	}
-
 	.main-content-wrapper {
 		height: 100vh;
 	}
@@ -1421,37 +1466,133 @@ FILE: frontend\public\style4.css
 	}
 }
 
-/* --- 8. ERROR PAGES --- */
-.error-page-container {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	text-align: center;
-	min-height: 70vh;
-	padding: 2rem;
+/* --- 8. CREATIVE ERROR PAGES --- */
+.error-page-wrapper {
+    display: flex;
+    /* Centering is now optional and handled by the element itself */
+    min-height: 100vh;
+    width: 100%;
+    padding: 0; /* Remove padding for full-screen pages */
+    font-family: 'Courier New', Courier, monospace;
+    background-color: var(--bg-color);
 }
 
-.error-code {
-	font-size: 5rem;
-	font-weight: 800;
-	line-height: 1;
-	margin: 0;
-	color: var(--text-muted-color);
+.error-page-wrapper.center {
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
 }
 
-.error-page-container h2 {
-	font-size: 1.75rem;
-	border: none;
-	margin: 0 0 1.5rem 0;
+.terminal {
+    background-color: var(--terminal-bg);
+    border: 1px solid var(--terminal-border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 800px;
+    box-shadow: var(--shadow-lg);
 }
 
-.error-message-text {
-	max-width: 600px;
-	font-size: 1.1rem;
-	line-height: 1.6;
-	margin-bottom: 2rem;
+.full-screen-terminal {
+    width: 100%;
+    height: 100vh;
+    background-color: var(--terminal-bg);
+    color: var(--terminal-text);
+    display: flex;
+    flex-direction: column;
 }
+
+.full-screen-terminal .terminal-header {
+    flex-shrink: 0;
+}
+.full-screen-terminal .terminal-body {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+.full-screen-terminal .terminal-footer {
+    flex-shrink: 0;
+    padding: 1.5rem;
+    border-top: 1px solid var(--terminal-border);
+}
+
+
+.terminal-header {
+    display: flex;
+    align-items: center;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--terminal-border);
+    margin-bottom: 1rem;
+    background-color: var(--terminal-header-bg);
+    margin: -1.5rem -1.5rem 1rem -1.5rem;
+    padding: 1rem 1.5rem;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.terminal-header span {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+.terminal-header .red { background-color: #ff5f56; }
+.terminal-header .yellow { background-color: #ffbd2e; }
+.terminal-header .green { background-color: #27c93f; }
+
+.terminal-header .title {
+    color: var(--terminal-text-muted);
+    margin: 0 auto;
+}
+
+.terminal-body {
+    min-height: 200px;
+    color: var(--terminal-text);
+}
+
+.terminal-line {
+    display: flex;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.terminal-prompt {
+    color: var(--terminal-prompt);
+    margin-right: 0.5rem;
+}
+
+.terminal-line .cursor {
+    display: inline-block;
+    width: 8px;
+    height: 1.2em;
+    background-color: var(--terminal-text);
+    animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+    from, to { background-color: transparent; }
+    50% { background-color: var(--terminal-text); }
+}
+
+.error-page-wrapper .btn {
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+    margin-top: 1.5rem;
+}
+.full-screen-terminal .btn {
+    margin-top: 0;
+}
+
+
+.error-page-wrapper .btn.visible {
+    opacity: 1;
+}
+
+.terminal-line.info { color: var(--text-muted-color); }
+.terminal-line.ok { color: var(--success-color); }
+.terminal-line.warn { color: var(--warning-color); }
+.terminal-line.fail { color: var(--danger-color); }
+
 
 /* --- 10. CHAT INTERFACE --- */
 .chat-message-container {
@@ -3288,6 +3429,40 @@ const CalendarMobileView = ({ entries }) => {
 
 export default CalendarMobileView;
 ========================================================================
+FILE: frontend\src\components\layout\ErrorLayout.jsx
+========================================================================
+
+import React, { useEffect } from 'react';
+import { Outlet } from 'react-router-dom';
+import { useAuthStore } from '../../store/authStore';
+
+const ErrorLayout = ({ children }) => {
+	// Attempt to get the user's theme. Fallback to localStorage or light theme.
+	const userTheme = useAuthStore.getState().user?.theme;
+
+	useEffect(() => {
+		const savedTheme = userTheme || localStorage.getItem('theme') || 'light';
+		document.documentElement.setAttribute('data-theme', savedTheme);
+		// Add a class to the body for specific error page styling if needed
+		document.body.classList.add('error-page-active');
+
+		// Cleanup function to remove the class when the component unmounts
+		return () => {
+			document.body.classList.remove('error-page-active');
+		};
+	}, [userTheme]);
+
+	return (
+		// The wrapper no longer centers content by default.
+		// It now provides a full-page container for its children.
+		<div className="error-page-wrapper">
+			{children || <Outlet />}
+		</div>
+	);
+};
+
+export default ErrorLayout;
+========================================================================
 FILE: frontend\src\components\layout\Header.jsx
 ========================================================================
 
@@ -3340,6 +3515,7 @@ FILE: frontend\src\components\layout\Sidebar.jsx
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import ThemeSwitcher from '../ui/ThemeSwitcher';
 
 const Sidebar = () => {
 	const { user, navigationItems, logout } = useAuthStore();
@@ -3398,9 +3574,10 @@ const Sidebar = () => {
 				<div className="user-info">
 					Angemeldet als: <strong>{user.username}</strong>
 				</div>
-				<div style={{ display: 'flex', gap: '0.5rem' }}>
+				<div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
 					<NavLink to="/profil" className="btn btn-secondary btn-small" style={{ flexGrow: 1 }}>Profil</NavLink>
 					<button onClick={handleLogout} className="btn btn-danger-outline btn-small" style={{ flexGrow: 1 }}>Logout</button>
+					<ThemeSwitcher />
 				</div>
 			</div>
 		</aside>
@@ -3452,6 +3629,7 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 		classYear: user.classYear || '',
 		className: user.className || ''
 	});
+	const [profilePicture, setProfilePicture] = useState(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
 	const { addToast } = useToast();
@@ -3462,12 +3640,25 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 		setFormData({ ...formData, [e.target.name]: e.target.value });
 	};
 
+	const handleFileChange = (e) => {
+		const file = e.target.files[0];
+		if (file && file.size > 2 * 1024 * 1024) { // 2MB limit
+			setError('Profilbild darf maximal 2MB groß sein.');
+			e.target.value = null;
+			setProfilePicture(null);
+		} else {
+			setError('');
+			setProfilePicture(file);
+		}
+	};
+
 	const handleCancel = () => {
 		setFormData({
 			email: user.email || '',
 			classYear: user.classYear || '',
 			className: user.className || ''
 		});
+		setProfilePicture(null);
 		setIsEditing(false);
 	};
 
@@ -3476,8 +3667,14 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 		setIsSubmitting(true);
 		setError('');
 
+		const data = new FormData();
+		data.append('profileData', new Blob([JSON.stringify(formData)], { type: 'application/json' }));
+		if (profilePicture) {
+			data.append('profilePicture', profilePicture);
+		}
+
 		try {
-			const result = await apiClient.post('/public/profile/request-change', formData);
+			const result = await apiClient.post('/public/profile/request-change', data);
 			if (result.success) {
 				addToast('Änderungsantrag erfolgreich eingereicht.', 'success');
 				setIsEditing(false);
@@ -3521,6 +3718,12 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 					<li><strong>Jahrgang:</strong> <input type="number" name="classYear" value={formData.classYear} onChange={handleChange} readOnly={!isEditing} style={{ border: isEditing ? '' : 'none', background: isEditing ? '' : 'transparent' }} /></li>
 					<li><strong>Klasse:</strong> <input type="text" name="className" value={formData.className} onChange={handleChange} readOnly={!isEditing} style={{ border: isEditing ? '' : 'none', background: isEditing ? '' : 'transparent' }} /></li>
 					<li><strong>E-Mail:</strong> <input type="email" name="email" value={formData.email} onChange={handleChange} readOnly={!isEditing} style={{ border: isEditing ? '' : 'none', background: isEditing ? '' : 'transparent' }} /></li>
+					{isEditing && (
+						<li>
+							<strong>Profilbild:</strong>
+							<input type="file" name="profilePicture" onChange={handleFileChange} accept="image/jpeg, image/png" />
+						</li>
+					)}
 				</ul>
 				{!hasPendingRequest && (
 					<div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem' }}>
@@ -3840,6 +4043,34 @@ const StatusBadge = ({ status }) => {
 
 export default StatusBadge;
 ========================================================================
+FILE: frontend\src\components\ui\ThemeSwitcher.jsx
+========================================================================
+
+import React from 'react';
+import { useAuthStore } from '../../store/authStore';
+
+const ThemeSwitcher = () => {
+	const { theme, setTheme } = useAuthStore();
+
+	const toggleTheme = () => {
+		const newTheme = theme === 'light' ? 'dark' : 'light';
+		setTheme(newTheme);
+	};
+
+	return (
+		<button
+			onClick={toggleTheme}
+			className="btn btn-secondary btn-small"
+			title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+			style={{ padding: '0.4rem 0.6rem' }}
+		>
+			<i className={`fas ${theme === 'light' ? 'fa-moon' : 'fa-sun'}`}></i>
+		</button>
+	);
+};
+
+export default ThemeSwitcher;
+========================================================================
 FILE: frontend\src\components\ui\ToastContainer.jsx
 ========================================================================
 
@@ -3938,11 +4169,51 @@ FILE: frontend\src\hooks\useAdminData.js
 
 import { useState, useEffect } from 'react';
 import apiClient from '../services/apiClient';
+import { useAuthStore } from '../store/authStore';
 
-/**
- * A custom hook to fetch and cache shared data needed for admin forms,
- * such as lists of roles, permissions, and all storage items.
- */
+// Granular hooks for specific data needs
+export const useAdminRolesAndPermissions = () => {
+	const [data, setData] = useState({ roles: [], groupedPermissions: {}, loading: true, error: null });
+	useEffect(() => {
+		const fetchData = async () => {
+			try {
+				const result = await apiClient.get('/users/form-data');
+				if (result.success) {
+					setData({ roles: result.data.roles, groupedPermissions: result.data.groupedPermissions, loading: false, error: null });
+				} else { throw new Error(result.message); }
+			} catch (err) {
+				setData({ roles: [], groupedPermissions: {}, loading: false, error: err.message });
+			}
+		};
+		fetchData();
+	}, []);
+	return data;
+};
+
+export const useAdminCourses = () => {
+	const [data, setData] = useState({ courses: [], loading: true, error: null });
+	const canRead = useAuthStore(state => state.user.permissions.includes('COURSE_READ'));
+	useEffect(() => {
+		if (!canRead) {
+			setData({ courses: [], loading: false, error: null });
+			return;
+		}
+		const fetchData = async () => {
+			try {
+				const result = await apiClient.get('/courses');
+				if (result.success) {
+					setData({ courses: result.data, loading: false, error: null });
+				} else { throw new Error(result.message); }
+			} catch (err) {
+				setData({ courses: [], loading: false, error: err.message });
+			}
+		};
+		fetchData();
+	}, [canRead]);
+	return data;
+};
+
+// Main hook remains for components that need everything
 const useAdminData = () => {
 	const [data, setData] = useState({
 		roles: [],
@@ -3954,15 +4225,22 @@ const useAdminData = () => {
 		error: null,
 	});
 
+	const canReadCourses = useAuthStore(state => state.user.permissions.includes('COURSE_READ'));
+	const canReadStorage = useAuthStore(state => state.user.permissions.includes('STORAGE_READ'));
+	const canReadUsers = useAuthStore(state => state.user.permissions.includes('USER_READ'));
+
+
 	useEffect(() => {
 		const fetchData = async () => {
 			try {
-				const [usersFormData, storageItemsData, coursesData, usersData] = await Promise.all([
-					apiClient.get('/users/form-data'),
-					apiClient.get('/storage'),
-					apiClient.get('/courses'),
-					apiClient.get('/users')
-				]);
+				const promises = [
+					apiClient.get('/users/form-data'), // roles & permissions
+					canReadStorage ? apiClient.get('/storage') : Promise.resolve({ success: true, data: [] }),
+					canReadCourses ? apiClient.get('/courses') : Promise.resolve({ success: true, data: [] }),
+					canReadUsers ? apiClient.get('/users') : Promise.resolve({ success: true, data: [] }),
+				];
+
+				const [usersFormData, storageItemsData, coursesData, usersData] = await Promise.all(promises);
 
 				if (usersFormData.success && storageItemsData.success && coursesData.success && usersData.success) {
 					setData({
@@ -3987,7 +4265,7 @@ const useAdminData = () => {
 		};
 
 		fetchData();
-	}, []);
+	}, [canReadCourses, canReadStorage, canReadUsers]);
 
 	return data;
 };
@@ -4035,6 +4313,75 @@ const useApi = (apiCall) => {
 };
 
 export default useApi;
+========================================================================
+FILE: frontend\src\hooks\useTypingAnimation.js
+========================================================================
+
+import { useState, useEffect, useRef } from 'react';
+
+const useTypingAnimation = (lines) => {
+	const [renderedLines, setRenderedLines] = useState([]);
+	const [isComplete, setIsComplete] = useState(false);
+	const containerRef = useRef(null);
+	const timeoutIds = useRef([]);
+
+	useEffect(() => {
+		let isCancelled = false;
+
+		const typeLine = (lineIndex) => {
+			if (isCancelled || lineIndex >= lines.length) {
+				setIsComplete(true);
+				return;
+			}
+
+			const currentLine = lines[lineIndex];
+			setRenderedLines(prev => {
+				const newLines = [...prev];
+				newLines[lineIndex] = { ...currentLine, text: '' }; // Initialize line
+				return newLines;
+			});
+
+			let charIndex = 0;
+			const typeChar = () => {
+				if (isCancelled) return;
+
+				setRenderedLines(prev => {
+					const newLines = [...prev];
+					newLines[lineIndex] = {
+						...currentLine,
+						text: currentLine.text.substring(0, charIndex + 1),
+					};
+					return newLines;
+				});
+
+				if (containerRef.current) {
+					containerRef.current.scrollTop = containerRef.current.scrollHeight;
+				}
+
+				if (charIndex < currentLine.text.length - 1) {
+					charIndex++;
+					const timeoutId = setTimeout(typeChar, currentLine.speed || 30);
+					timeoutIds.current.push(timeoutId);
+				} else {
+					const timeoutId = setTimeout(() => typeLine(lineIndex + 1), currentLine.delayAfter || 300);
+					timeoutIds.current.push(timeoutId);
+				}
+			};
+			typeChar();
+		};
+
+		typeLine(0);
+
+		return () => {
+			isCancelled = true;
+			timeoutIds.current.forEach(clearTimeout);
+		};
+	}, [lines]);
+
+	return { containerRef, renderedLines, isComplete };
+};
+
+export default useTypingAnimation;
 ========================================================================
 FILE: frontend\src\hooks\useWebSocket.js
 ========================================================================
@@ -4942,27 +5289,13 @@ const LehrgaengePage = () => {
 		return <span className="text-muted">Offen</span>;
 	};
 
-	const renderContent = () => {
-		if (loading) return <tr><td colSpan="5" style={{ textAlign: 'center' }}>Lade Lehrgänge...</td></tr>;
-		if (error) return <tr><td colSpan="5" className="error-message">{error}</td></tr>;
-		if (!meetings || meetings.length === 0) {
-			return <tr><td colSpan="5" style={{ textAlign: 'center' }}>Derzeit stehen keine Lehrgänge oder Meetings an.</td></tr>;
-		}
-
-		return meetings.map(meeting => (
-			<tr key={meeting.id}>
-				<td><Link to={`/lehrgaenge/details/${meeting.id}`}>{meeting.name}</Link></td>
-				<td>{meeting.parentCourseName}</td>
-				<td>{new Date(meeting.meetingDateTime).toLocaleString('de-DE')}</td>
-				<td>{renderUserStatus(meeting.userAttendanceStatus)}</td>
-				<td>{renderActionButtons(meeting)}</td>
-			</tr>
-		));
-	};
+	if (loading) return <div>Lade Lehrgänge...</div>;
+	if (error) return <div className="error-message">{error}</div>;
 
 	return (
 		<div>
 			<h1><i className="fas fa-graduation-cap"></i> Anstehende Lehrgänge & Meetings</h1>
+
 			<div className="desktop-table-wrapper">
 				<table className="data-table">
 					<thead>
@@ -4975,9 +5308,37 @@ const LehrgaengePage = () => {
 						</tr>
 					</thead>
 					<tbody>
-						{renderContent()}
+						{!meetings || meetings.length === 0 ? (
+							<tr><td colSpan="5" style={{ textAlign: 'center' }}>Derzeit stehen keine Lehrgänge oder Meetings an.</td></tr>
+						) : (
+							meetings.map(meeting => (
+								<tr key={meeting.id}>
+									<td><Link to={`/lehrgaenge/details/${meeting.id}`}>{meeting.name}</Link></td>
+									<td>{meeting.parentCourseName}</td>
+									<td>{new Date(meeting.meetingDateTime).toLocaleString('de-DE')}</td>
+									<td>{renderUserStatus(meeting.userAttendanceStatus)}</td>
+									<td>{renderActionButtons(meeting)}</td>
+								</tr>
+							))
+						)}
 					</tbody>
 				</table>
+			</div>
+
+			<div className="mobile-card-list">
+				{!meetings || meetings.length === 0 ? (
+					<div className="card"><p>Derzeit stehen keine Lehrgänge oder Meetings an.</p></div>
+				) : (
+					meetings.map(meeting => (
+						<div className="list-item-card" key={meeting.id}>
+							<h3 className="card-title"><Link to={`/lehrgaenge/details/${meeting.id}`}>{meeting.name}</Link></h3>
+							<div className="card-row"><strong>Kurs:</strong> <span>{meeting.parentCourseName}</span></div>
+							<div className="card-row"><strong>Wann:</strong> <span>{new Date(meeting.meetingDateTime).toLocaleString('de-DE')}</span></div>
+							<div className="card-row"><strong>Status:</strong> <span>{renderUserStatus(meeting.userAttendanceStatus)}</span></div>
+							<div className="card-actions">{renderActionButtons(meeting)}</div>
+						</div>
+					))
+				)}
 			</div>
 		</div>
 	);
@@ -4991,6 +5352,7 @@ FILE: frontend\src\pages\LoginPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { passkeyService } from '../services/passkeyService'; // Assuming you have a passkey service
 
 const LoginPage = () => {
 	const [username, setUsername] = useState('');
@@ -5024,6 +5386,25 @@ const LoginPage = () => {
 		}
 	};
 
+	const handlePasskeyLogin = async () => {
+		setIsLoading(true);
+		setError('');
+		if (!username) {
+			setError('Bitte geben Sie zuerst Ihren Benutzernamen ein.');
+			setIsLoading(false);
+			return;
+		}
+		try {
+			await passkeyService.loginWithPasskey(username);
+			// The login function in passkeyService should set the auth state
+		} catch (err) {
+			setError(err.message || 'Passkey-Login fehlgeschlagen.');
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+
 	const togglePasswordVisibility = () => {
 		setIsPasswordVisible(!isPasswordVisible);
 	};
@@ -5045,7 +5426,7 @@ const LoginPage = () => {
 							value={username}
 							onChange={(e) => setUsername(e.target.value)}
 							required
-							autoComplete="username"
+							autoComplete="username webauthn"
 							autoFocus
 							disabled={isLoading}
 						/>
@@ -5081,6 +5462,15 @@ const LoginPage = () => {
 						) : (
 							'Anmelden'
 						)}
+					</button>
+					<button
+						type="button"
+						className="btn btn-secondary"
+						style={{ width: '100%' }}
+						onClick={handlePasskeyLogin}
+						disabled={isLoading}
+					>
+						<i className="fas fa-fingerprint"></i> Mit Passkey anmelden
 					</button>
 				</form>
 			</div>
@@ -5983,7 +6373,8 @@ import EventTrendChart from '../../components/admin/dashboard/EventTrendChart';
 
 const AdminDashboardPage = () => {
 	const { user } = useAuthStore();
-	const apiCall = useCallback(() => apiClient.get('/reports/dashboard'), []);
+	// This single endpoint now provides all necessary data for the dashboard.
+	const apiCall = useCallback(() => apiClient.get('/admin/dashboard'), []);
 	const { data: dashboardData, loading, error } = useApi(apiCall);
 
 	const renderWidgetContent = (widgetData, renderItem, emptyMessage) => {
@@ -6229,7 +6620,8 @@ const AdminEventsPage = () => {
 					</tbody>
 				</table>
 			</div>
-			{isModalOpen && (
+			{/* Prevent modal from rendering before its required data is available */}
+			{isModalOpen && !adminFormData.loading && (
 				<EventModal
 					isOpen={isModalOpen}
 					onClose={closeModal}
@@ -7052,12 +7444,14 @@ import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
 
 const AdminRequestsPage = () => {
-	const apiCall = useCallback(() => apiClient.get('/profile-requests'), []);
+	// Corrected API endpoint
+	const apiCall = useCallback(() => apiClient.get('/requests/pending'), []);
 	const { data: requests, loading, error, reload } = useApi(apiCall);
 	const { addToast } = useToast();
 
 	const handleAction = async (requestId, action) => {
-		const endpoint = `/profile-requests/${requestId}/${action}`;
+		// Corrected API endpoint
+		const endpoint = `/requests/${requestId}/${action}`;
 		const confirmationText = action === 'approve'
 			? 'Änderungen wirklich übernehmen?'
 			: 'Antrag wirklich ablehnen?';
@@ -7638,18 +8032,197 @@ const AdminWikiPage = () => {
 
 export default AdminWikiPage;
 ========================================================================
+FILE: frontend\src\pages\error\ErrorPage.jsx
+========================================================================
+
+import React, { useMemo } from 'react';
+import { useRouteError, Link } from 'react-router-dom';
+import useTypingAnimation from '../../hooks/useTypingAnimation';
+
+const ErrorPage = () => {
+	const error = useRouteError();
+	console.error(error);
+
+	// Safely determine the error message to display
+	const errorMessage = useMemo(() => {
+		if (typeof error === 'string') return error;
+		if (error instanceof Error) return error.message;
+		if (error?.statusText) return error.statusText;
+		if (error?.message) return error.message;
+		return "An unknown error occurred.";
+	}, [error]);
+
+	// useMemo ensures the 'lines' array is not re-created on every render
+	const lines = useMemo(() => [
+		{ text: 'INITIATING SYSTEM DIAGNOSTIC...', className: 'info' },
+		{ text: 'Scanning memory modules...', className: 'info', delayAfter: 500 },
+		{ text: '[OK] Memory integrity check passed.', className: 'ok' },
+		{ text: 'Checking application state...', className: 'info', delayAfter: 500 },
+		{ text: `[FAIL] Unhandled exception detected: ${errorMessage}`, className: 'fail', delayAfter: 800 },
+		{ text: 'ERROR 500: Internal Server Error.', className: 'fail' },
+		{ text: 'A critical error occurred while processing the request.', className: 'info' },
+		{ text: 'The system administrator has been notified.', className: 'info' },
+		{ text: 'Preparing recovery options...', className: 'warn' },
+	], [errorMessage]);
+
+	const { containerRef, renderedLines, isComplete } = useTypingAnimation(lines);
+
+	return (
+		<div className="terminal">
+			<div className="terminal-header">
+				<span className="red"></span>
+				<span className="yellow"></span>
+				<span className="green"></span>
+				<div className="title">SYSTEM_DIAGNOSTIC.LOG</div>
+			</div>
+			<div className="terminal-body" ref={containerRef}>
+				{renderedLines.map((line, index) => (
+					<div key={index} className={`terminal-line ${line.className}`}>
+						<span className="terminal-prompt">{'>'}</span>
+						<span>{line.text}</span>
+						{index === renderedLines.length - 1 && !isComplete && <span className="cursor"></span>}
+					</div>
+				))}
+			</div>
+			<Link to="/home" className={`btn ${isComplete ? 'visible' : ''}`}>
+				<i className="fas fa-home"></i> Go to Dashboard
+			</Link>
+		</div>
+	);
+};
+
+export default ErrorPage;
+========================================================================
+FILE: frontend\src\pages\error\ErrorTrigger.jsx
+========================================================================
+
+import { useEffect } from 'react';
+
+const ErrorTrigger = () => {
+	useEffect(() => {
+		// This will cause a rendering error that the boundary will catch.
+		throw new Error("This is a simulated rendering error for testing the 500 page.");
+	}, []);
+
+	return <div>You should not see this.</div>;
+};
+
+export default ErrorTrigger;
+========================================================================
+FILE: frontend\src\pages\error\ForbiddenPage.jsx
+========================================================================
+
+import React, { useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import useTypingAnimation from '../../hooks/useTypingAnimation';
+import { useAuthStore } from '../../store/authStore';
+
+const ForbiddenPage = () => {
+	const user = useAuthStore(state => state.user);
+
+	const lines = useMemo(() => [
+		{ text: 'Attempting to access restricted area...', className: 'info' },
+		{ text: `Authenticating user: ${user?.username || 'GUEST'}`, className: 'info', delayAfter: 500 },
+		{ text: 'Checking clearance level...', className: 'info', delayAfter: 800 },
+		{ text: '[ACCESS DENIED]', className: 'fail', speed: 80 },
+		{ text: 'ERROR 403: Insufficient permissions.', className: 'fail' },
+		{ text: 'Your current role does not grant access to this resource.', className: 'warn' },
+		{ text: 'This attempt has been logged.', className: 'info' },
+	], [user]);
+
+	const { containerRef, renderedLines, isComplete } = useTypingAnimation(lines);
+
+	return (
+		<div className="full-screen-terminal">
+			<div className="terminal-header">
+				<span className="red"></span>
+				<span className="yellow"></span>
+				<span className="green"></span>
+				<div className="title">SECURITY.LOG</div>
+			</div>
+			<div className="terminal-body" ref={containerRef}>
+				{renderedLines.map((line, index) => (
+					<div key={index} className={`terminal-line ${line.className}`}>
+						<span className="terminal-prompt">{'>'}</span>
+						<span>{line.text}</span>
+						{index === renderedLines.length - 1 && !isComplete && <span className="cursor"></span>}
+					</div>
+				))}
+			</div>
+			<div className="terminal-footer">
+				<Link to="/home" className={`btn ${isComplete ? 'visible' : ''}`}>
+					<i className="fas fa-arrow-left"></i> Return to Safety
+				</Link>
+			</div>
+		</div>
+	);
+};
+
+export default ForbiddenPage;
+========================================================================
+FILE: frontend\src\pages\error\NotFoundPage.jsx
+========================================================================
+
+import React, { useMemo } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import useTypingAnimation from '../../hooks/useTypingAnimation';
+
+const NotFoundPage = () => {
+	const location = useLocation();
+	const path = location.pathname;
+
+	// useMemo ensures the 'lines' array is not re-created on every render
+	const lines = useMemo(() => [
+		{ text: `Executing command: find . -name "${path}"`, className: 'info', delayAfter: 800 },
+		{ text: `find: ‘${path}’: No such file or directory`, className: 'warn', delayAfter: 500 },
+		{ text: 'ERROR 404: Resource not found.', className: 'fail' },
+		{ text: 'Suggestion: The requested resource is unavailable. Try returning to the dashboard.', className: 'info' },
+		{ text: `Executing: cd /home`, className: 'info' },
+	], [path]);
+
+	const { containerRef, renderedLines, isComplete } = useTypingAnimation(lines);
+
+	return (
+		<div className="terminal">
+			<div className="terminal-header">
+				<span className="red"></span>
+				<span className="yellow"></span>
+				<span className="green"></span>
+				<div className="title">bash</div>
+			</div>
+			<div className="terminal-body" ref={containerRef}>
+				{renderedLines.map((line, index) => (
+					<div key={index} className={`terminal-line ${line.className}`}>
+						<span className="terminal-prompt">{index < 1 ? '$' : '>'}</span>
+						<span>{line.text}</span>
+						{index === renderedLines.length - 1 && !isComplete && <span className="cursor"></span>}
+					</div>
+				))}
+			</div>
+			<Link to="/home" className={`btn ${isComplete ? 'visible' : ''}`}>
+				<i className="fas fa-home"></i> Go to Dashboard
+			</Link>
+		</div>
+	);
+};
+
+export default NotFoundPage;
+========================================================================
 FILE: frontend\src\router\AdminRoute.jsx
 ========================================================================
 
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import ForbiddenPage from '../pages/error/ForbiddenPage'; // Import the Forbidden page
 
 const AdminRoute = () => {
 	const isAdmin = useAuthStore((state) => state.isAdmin);
 
+	// Check for authentication is handled by ProtectedRoute, this just checks for admin role.
 	if (!isAdmin) {
-		return <Navigate to="/home" replace />;
+		// Instead of redirecting, show a proper 403 Forbidden page.
+		return <ForbiddenPage />;
 	}
 
 	return <Outlet />;
@@ -7666,11 +8239,14 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 // Layouts and Core Components
 import App from '../App';
 import MinimalLayout from '../components/layout/MinimalLayout';
+import ErrorLayout from '../components/layout/ErrorLayout';
 import ProtectedRoute from './ProtectedRoute';
 import AdminRoute from './AdminRoute';
 
-// Eagerly load the LoginPage
+// Eagerly load the LoginPage and Error Pages
 import LoginPage from '../pages/LoginPage';
+import ErrorPage from '../pages/error/ErrorPage';
+import NotFoundPage from '../pages/error/NotFoundPage';
 
 // Lazy load all other pages
 const DashboardPage = lazy(() => import('../pages/DashboardPage'));
@@ -7707,6 +8283,8 @@ const AdminFeedbackPage = lazy(() => import('../pages/admin/AdminFeedbackPage'))
 const AdminAchievementsPage = lazy(() => import('../pages/admin/AdminAchievementsPage'));
 const AdminWikiPage = lazy(() => import('../pages/admin/AdminWikiPage'));
 
+import ErrorTrigger from '../pages/error/ErrorTrigger';
+
 const router = createBrowserRouter([
 	{
 		path: '/',
@@ -7715,6 +8293,7 @@ const router = createBrowserRouter([
 				<App />
 			</ProtectedRoute>
 		),
+		errorElement: <ErrorLayout><ErrorPage /></ErrorLayout>,
 		children: [
 			{ index: true, element: <Navigate to="/home" replace /> },
 			{ path: 'home', element: <DashboardPage /> },
@@ -7731,6 +8310,7 @@ const router = createBrowserRouter([
 			{ path: 'feedback/event/:eventId', element: <EventFeedbackPage /> },
 			{ path: 'kalender', element: <CalendarPage /> },
 			{ path: 'my-feedback', element: <Navigate to="/feedback" replace /> },
+			{ path: 'test-500', element: <ErrorTrigger /> },
 
 			{
 				path: 'admin',
@@ -7778,7 +8358,7 @@ const router = createBrowserRouter([
 	},
 	{
 		path: '*',
-		element: <Navigate to="/" replace />,
+		element: <ErrorLayout><NotFoundPage /></ErrorLayout>,
 	}
 ]);
 
@@ -7844,6 +8424,13 @@ const { token, logout } = useAuthStore.getState();
 		if (response.status === 204) {
 			return { success: true, message: 'Operation successful.', data: null };
 		}
+        
+        // Check if the response is JSON before trying to parse it
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            // This is likely a proxy error (e.g., 502 Bad Gateway) returning an HTML page
+            throw new Error(`Server connection failed with status: ${response.status}. The backend might be offline.`);
+        }
 
 		const result = await response.json();
 
@@ -7854,8 +8441,13 @@ const { token, logout } = useAuthStore.getState();
 		return result;
 
 	} catch (error) {
+		// Differentiate between application errors and network errors
+        if (error instanceof TypeError && error.message === 'Failed to fetch') {
+            console.error(`API Client Network Error: ${options.method || 'GET'} ${BASE_URL}${endpoint}`, error);
+            throw new Error('Network error: The backend server is not reachable. Please check if the server is running.');
+        }
 		console.error(`API Client Error: ${options.method || 'GET'} ${BASE_URL}${endpoint}`, error);
-		throw error;
+		throw error; // Re-throw other errors (like the ones we created above)
 	}
 },
 
@@ -7886,6 +8478,7 @@ FILE: frontend\src\services\passkeyService.js
 ========================================================================
 
 import apiClient from './apiClient';
+import { useAuthStore } from '../store/authStore';
 
 const bufferDecode = (value) => Uint8Array.from(atob(value.replace(/_/g, '/').replace(/-/g, '+')), c => c.charCodeAt(0));
 const bufferEncode = (value) => btoa(String.fromCharCode.apply(null, new Uint8Array(value))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
@@ -7898,8 +8491,7 @@ const registerPasskey = async (deviceName) => {
 			throw new Error(createOptionsResponse.message);
 		}
 
-		// The actual options are nested in the 'data' field of the ApiResponse
-		const createOptions = createOptionsResponse.data;
+		const createOptions = JSON.parse(createOptionsResponse.data);
 
 		createOptions.challenge = bufferDecode(createOptions.challenge);
 		createOptions.user.id = bufferDecode(createOptions.user.id);
@@ -7930,8 +8522,54 @@ const registerPasskey = async (deviceName) => {
 	}
 };
 
+const loginWithPasskey = async (username) => {
+	try {
+		const getOptionsResponse = await apiClient.post(`/auth/passkey/login/start?username=${encodeURIComponent(username)}`);
+		if (!getOptionsResponse.success) {
+			throw new Error(getOptionsResponse.message);
+		}
+
+		const getOptions = JSON.parse(getOptionsResponse.data);
+		getOptions.challenge = bufferDecode(getOptions.challenge);
+		if (getOptions.allowCredentials) {
+			for (let cred of getOptions.allowCredentials) {
+				cred.id = bufferDecode(cred.id);
+			}
+		}
+
+		const credential = await navigator.credentials.get({ publicKey: getOptions });
+
+		const credentialForServer = {
+			id: credential.id,
+			rawId: bufferEncode(credential.rawId),
+			type: credential.type,
+			response: {
+				authenticatorData: bufferEncode(credential.response.authenticatorData),
+				clientDataJSON: bufferEncode(credential.response.clientDataJSON),
+				signature: bufferEncode(credential.response.signature),
+				userHandle: credential.response.userHandle ? bufferEncode(credential.response.userHandle) : null,
+			},
+		};
+
+		const result = await apiClient.post('/auth/passkey/login/finish', credentialForServer);
+		if (result.success && result.data.token) {
+			const { token, fetchUserSession } = useAuthStore.getState();
+			useAuthStore.setState({ token: result.data.token });
+			await fetchUserSession();
+			return true;
+		} else {
+			throw new Error(result.message || 'Passkey login failed on server.');
+		}
+
+	} catch (err) {
+		console.error('Passkey login process failed:', err);
+		throw err;
+	}
+};
+
 export const passkeyService = {
 	registerPasskey,
+	loginWithPasskey,
 };
 ========================================================================
 FILE: frontend\src\store\authStore.js
@@ -7963,6 +8601,7 @@ export const useAuthStore = create(
 			navigationItems: [],
 			isAuthenticated: false,
 			isAdmin: false,
+			theme: 'light', // Add theme to state
 			login: async (username, password) => {
 				try {
 					const response = await apiClient.post('/auth/login', { username, password });
@@ -7980,19 +8619,27 @@ export const useAuthStore = create(
 				}
 			},
 			logout: () => {
-				set({ token: null, user: null, navigationItems: [], isAuthenticated: false, isAdmin: false });
+				set({ token: null, user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, theme: 'light' });
+				localStorage.removeItem('theme'); // Clean up local storage on logout
+				document.documentElement.setAttribute('data-theme', 'light');
 			},
 			fetchUserSession: async () => {
 				try {
 					const result = await apiClient.get('/users/me');
 
 					if (result.success && result.data.user && result.data.navigation) {
+						const user = result.data.user;
+						const newTheme = user.theme || 'light';
 						set({
-							user: result.data.user,
+							user: user,
 							navigationItems: result.data.navigation,
 							isAuthenticated: true,
-							isAdmin: hasAdminAccess(result.data.user.permissions || [])
+							isAdmin: hasAdminAccess(user.permissions || []),
+							theme: newTheme,
 						});
+						// Apply theme immediately
+						document.documentElement.setAttribute('data-theme', newTheme);
+						localStorage.setItem('theme', newTheme);
 					} else {
 						throw new Error(result.message || "Invalid session data from server.");
 					}
@@ -8001,6 +8648,30 @@ export const useAuthStore = create(
 					console.error("Could not fetch user session. Token might be invalid.", error);
 					get().logout();
 					throw error;
+				}
+			},
+			setTheme: async (newTheme) => {
+				const oldTheme = get().theme;
+				// Optimistic UI update
+				set(state => ({
+					theme: newTheme,
+					user: state.user ? { ...state.user, theme: newTheme } : null
+				}));
+				document.documentElement.setAttribute('data-theme', newTheme);
+				localStorage.setItem('theme', newTheme);
+
+				try {
+					// Persist to backend
+					await apiClient.put('/public/profile/theme', { theme: newTheme });
+				} catch (error) {
+					console.error("Failed to save theme preference:", error);
+					// Revert on failure
+					set(state => ({
+						theme: oldTheme,
+						user: state.user ? { ...state.user, theme: oldTheme } : null
+					}));
+					document.documentElement.setAttribute('data-theme', oldTheme);
+					localStorage.setItem('theme', oldTheme);
 				}
 			},
 		}),
@@ -8102,6 +8773,49 @@ public class AdminAchievementResource {
 	}
 }
 ========================================================================
+FILE: src\main\java\de\technikteam\api\v1\AdminDashboardResource.java
+========================================================================
+
+package de.technikteam.api.v1;
+
+import de.technikteam.model.ApiResponse;
+import de.technikteam.security.SecurityUser;
+import de.technikteam.service.AdminDashboardService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1/admin/dashboard")
+@Tag(name = "Admin Dashboard", description = "Endpoints for the administrative dashboard.")
+@SecurityRequirement(name = "bearerAuth")
+public class AdminDashboardResource {
+
+	private final AdminDashboardService dashboardService;
+
+	@Autowired
+	public AdminDashboardResource(AdminDashboardService dashboardService) {
+		this.dashboardService = dashboardService;
+	}
+
+	@GetMapping
+	@Operation(summary = "Get all data for the admin dashboard")
+	@PreAuthorize("hasAuthority('ADMIN_DASHBOARD_ACCESS')")
+	public ResponseEntity<ApiResponse> getDashboardData(@AuthenticationPrincipal SecurityUser securityUser) {
+		// The service method doesn't require the user, but this demonstrates the
+		// pattern.
+		return ResponseEntity
+				.ok(new ApiResponse(true, "Dashboard data retrieved.", dashboardService.getDashboardData()));
+	}
+}
+========================================================================
 FILE: src\main\java\de\technikteam\api\v1\AdminEventResource.java
 ========================================================================
 
@@ -8112,6 +8826,7 @@ import de.technikteam.dao.EventDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Event;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import de.technikteam.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -8155,8 +8870,9 @@ public class AdminEventResource {
 	@PreAuthorize("hasAuthority('EVENT_CREATE')")
 	public ResponseEntity<ApiResponse> createEvent(@RequestPart("eventData") EventUpdateRequest eventData,
 			@RequestPart(value = "file", required = false) MultipartFile file,
-			@AuthenticationPrincipal User adminUser) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
+			User adminUser = securityUser.getUser();
 			Event event = new Event();
 			mapDtoToEvent(eventData, event);
 
@@ -8179,8 +8895,9 @@ public class AdminEventResource {
 	public ResponseEntity<ApiResponse> updateEvent(@PathVariable int id,
 			@RequestPart("eventData") EventUpdateRequest eventData,
 			@RequestPart(value = "file", required = false) MultipartFile file,
-			@AuthenticationPrincipal User adminUser) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
+			User adminUser = securityUser.getUser();
 			Event event = eventDAO.getEventById(id);
 			if (event == null) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -8288,6 +9005,7 @@ import de.technikteam.dao.FileDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.FileCategory;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.FileService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -8328,9 +9046,10 @@ public class AdminFileResource {
 	@PreAuthorize("hasAuthority('FILE_CREATE')")
 	public ResponseEntity<ApiResponse> uploadFile(@RequestParam("file") MultipartFile file,
 			@RequestParam(required = false) Integer categoryId, @RequestParam String requiredRole,
-			@AuthenticationPrincipal User adminUser) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
-			de.technikteam.model.File savedFile = fileService.storeFile(file, categoryId, requiredRole, adminUser);
+			de.technikteam.model.File savedFile = fileService.storeFile(file, categoryId, requiredRole,
+					securityUser.getUser());
 			return new ResponseEntity<>(new ApiResponse(true, "File uploaded successfully.", savedFile),
 					HttpStatus.CREATED);
 		} catch (Exception e) {
@@ -8342,9 +9061,10 @@ public class AdminFileResource {
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete a file")
 	@PreAuthorize("hasAuthority('FILE_DELETE')")
-	public ResponseEntity<ApiResponse> deleteFile(@PathVariable int id, @AuthenticationPrincipal User adminUser) {
+	public ResponseEntity<ApiResponse> deleteFile(@PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
-			if (fileService.deleteFile(id, adminUser)) {
+			if (fileService.deleteFile(id, securityUser.getUser())) {
 				return ResponseEntity.ok(new ApiResponse(true, "File deleted successfully", Map.of("deletedId", id)));
 			} else {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -8359,9 +9079,9 @@ public class AdminFileResource {
 	@PostMapping("/categories")
 	@Operation(summary = "Create a new file category")
 	public ResponseEntity<ApiResponse> createCategory(@Valid @RequestBody CategoryRequest request,
-			@AuthenticationPrincipal User adminUser) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		if (fileDAO.createCategory(request.name())) {
-			adminLogService.log(adminUser.getUsername(), "CREATE_FILE_CATEGORY_API",
+			adminLogService.log(securityUser.getUser().getUsername(), "CREATE_FILE_CATEGORY_API",
 					"Category '" + request.name() + "' created.");
 			return new ResponseEntity<>(new ApiResponse(true, "Category created.", null), HttpStatus.CREATED);
 		}
@@ -8371,10 +9091,11 @@ public class AdminFileResource {
 
 	@DeleteMapping("/categories/{id}")
 	@Operation(summary = "Delete a file category")
-	public ResponseEntity<ApiResponse> deleteCategory(@PathVariable int id, @AuthenticationPrincipal User adminUser) {
+	public ResponseEntity<ApiResponse> deleteCategory(@PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		String categoryName = fileDAO.getCategoryNameById(id);
 		if (categoryName != null && fileDAO.deleteCategory(id)) {
-			adminLogService.log(adminUser.getUsername(), "DELETE_FILE_CATEGORY_API",
+			adminLogService.log(securityUser.getUser().getUsername(), "DELETE_FILE_CATEGORY_API",
 					"Category '" + categoryName + "' deleted.");
 			return ResponseEntity.ok(new ApiResponse(true, "Category deleted.", Map.of("deletedId", id)));
 		}
@@ -8384,8 +9105,9 @@ public class AdminFileResource {
 
 	@GetMapping
 	@Operation(summary = "Get all files grouped by category (Admin View)")
-	public ResponseEntity<ApiResponse> getAllFiles(@AuthenticationPrincipal User user) {
-		Map<String, List<de.technikteam.model.File>> groupedFiles = fileDAO.getAllFilesGroupedByCategory(user);
+	public ResponseEntity<ApiResponse> getAllFiles(@AuthenticationPrincipal SecurityUser securityUser) {
+		Map<String, List<de.technikteam.model.File>> groupedFiles = fileDAO
+				.getAllFilesGroupedByCategory(securityUser.getUser());
 		return ResponseEntity.ok(new ApiResponse(true, "Files retrieved", groupedFiles));
 	}
 
@@ -8464,17 +9186,20 @@ import de.technikteam.dao.ProfileChangeRequestDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.ProfileChangeRequest;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import de.technikteam.service.ProfileRequestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -8504,15 +9229,18 @@ public class AdminRequestResource {
 	@Operation(summary = "Approve a request", description = "Approves a profile change request and applies the changes to the user's profile.")
 	public ResponseEntity<ApiResponse> approveRequest(
 			@Parameter(description = "ID of the request to approve") @PathVariable int id,
-			@AuthenticationPrincipal User admin) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
-			if (requestService.approveRequest(id, admin)) {
+			if (requestService.approveRequest(id, securityUser.getUser())) {
 				return ResponseEntity.ok(new ApiResponse(true, "Request approved and user updated.", null));
 			}
 			return ResponseEntity.internalServerError()
 					.body(new ApiResponse(false, "Failed to approve request.", null));
 		} catch (IllegalStateException e) {
 			return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
+		} catch (IOException e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new ApiResponse(false, "A file system error occurred: " + e.getMessage(), null));
 		}
 	}
 
@@ -8520,14 +9248,17 @@ public class AdminRequestResource {
 	@Operation(summary = "Reject a request", description = "Rejects a profile change request.")
 	public ResponseEntity<ApiResponse> rejectRequest(
 			@Parameter(description = "ID of the request to reject") @PathVariable int id,
-			@AuthenticationPrincipal User admin) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
-			if (requestService.denyRequest(id, admin)) {
+			if (requestService.denyRequest(id, securityUser.getUser())) {
 				return ResponseEntity.ok(new ApiResponse(true, "Request rejected.", null));
 			}
 			return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to reject request.", null));
 		} catch (IllegalStateException e) {
 			return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
+		} catch (IOException e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new ApiResponse(false, "A file system error occurred: " + e.getMessage(), null));
 		}
 	}
 }
@@ -8961,81 +9692,6 @@ public class MeetingResource {
 	}
 }
 ========================================================================
-FILE: src\main\java\de\technikteam\api\v1\ProfileRequestResource.java
-========================================================================
-
-package de.technikteam.api.v1;
-
-import de.technikteam.dao.ProfileChangeRequestDAO;
-import de.technikteam.model.ApiResponse;
-import de.technikteam.model.ProfileChangeRequest;
-import de.technikteam.model.User;
-import de.technikteam.service.ProfileRequestService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Map;
-
-@RestController
-@RequestMapping("/api/v1/profile-requests")
-@Tag(name = "Admin Profile Requests", description = "Endpoints for managing user profile change requests.")
-@SecurityRequirement(name = "bearerAuth")
-public class ProfileRequestResource {
-
-	private final ProfileChangeRequestDAO requestDAO;
-	private final ProfileRequestService requestService;
-
-	@Autowired
-	public ProfileRequestResource(ProfileChangeRequestDAO requestDAO, ProfileRequestService requestService) {
-		this.requestDAO = requestDAO;
-		this.requestService = requestService;
-	}
-
-	@GetMapping
-	@Operation(summary = "Get all pending profile change requests")
-	public ResponseEntity<ApiResponse> getPendingRequests() {
-		List<ProfileChangeRequest> pendingRequests = requestDAO.getPendingRequests();
-		return ResponseEntity.ok(new ApiResponse(true, "Pending requests retrieved.", pendingRequests));
-	}
-
-	@PostMapping("/{id}/approve")
-	@Operation(summary = "Approve a profile change request")
-	public ResponseEntity<ApiResponse> approveRequest(@PathVariable int id, @AuthenticationPrincipal User adminUser) {
-		try {
-			if (requestService.approveRequest(id, adminUser)) {
-				return ResponseEntity.ok(new ApiResponse(true, "Change request approved.", Map.of("requestId", id)));
-			} else {
-				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-						.body(new ApiResponse(false, "Failed to apply changes or update the request.", null));
-			}
-		} catch (IllegalStateException e) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, e.getMessage(), null));
-		}
-	}
-
-	@PostMapping("/{id}/deny")
-	@Operation(summary = "Deny a profile change request")
-	public ResponseEntity<ApiResponse> denyRequest(@PathVariable int id, @AuthenticationPrincipal User adminUser) {
-		try {
-			if (requestService.denyRequest(id, adminUser)) {
-				return ResponseEntity.ok(new ApiResponse(true, "Change request denied.", Map.of("requestId", id)));
-			} else {
-				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-						.body(new ApiResponse(false, "Failed to deny the request.", null));
-			}
-		} catch (IllegalStateException e) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, e.getMessage(), null));
-		}
-	}
-}
-========================================================================
 FILE: src\main\java\de\technikteam\api\v1\ReportResource.java
 ========================================================================
 
@@ -9221,6 +9877,7 @@ import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.NavigationItem;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.LoginAttemptService;
 import de.technikteam.service.UserService;
@@ -9234,6 +9891,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -9263,7 +9921,8 @@ public class UserResource {
 
 	@GetMapping("/me")
 	@Operation(summary = "Get current user session", description = "Retrieves the user object and navigation items for the currently authenticated user.", security = @SecurityRequirement(name = "bearerAuth"))
-	public ResponseEntity<ApiResponse> getCurrentUser(@AuthenticationPrincipal User authenticatedUser) {
+	public ResponseEntity<ApiResponse> getCurrentUser(@AuthenticationPrincipal SecurityUser securityUser) {
+		User authenticatedUser = securityUser.getUser();
 		List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(authenticatedUser);
 		Map<String, Object> responseData = Map.of("user", authenticatedUser, "navigation", navigationItems);
 		return ResponseEntity.ok(new ApiResponse(true, "Current user session retrieved.", responseData));
@@ -9271,6 +9930,7 @@ public class UserResource {
 
 	@GetMapping
 	@Operation(summary = "Get all users", description = "Retrieves a list of all users in the system.", security = @SecurityRequirement(name = "bearerAuth"))
+	@PreAuthorize("hasAuthority('USER_READ')")
 	public ResponseEntity<ApiResponse> getAllUsers() {
 		List<User> users = userDAO.getAllUsers();
 		return ResponseEntity.ok(new ApiResponse(true, "Users retrieved successfully", users));
@@ -9278,6 +9938,7 @@ public class UserResource {
 
 	@GetMapping("/{id}")
 	@Operation(summary = "Get user by ID", description = "Retrieves a single user by their ID, including their permissions.", security = @SecurityRequirement(name = "bearerAuth"))
+	@PreAuthorize("hasAuthority('USER_READ')")
 	public ResponseEntity<ApiResponse> getUserById(
 			@Parameter(description = "ID of the user to retrieve") @PathVariable int id) {
 		User user = userDAO.getUserById(id);
@@ -9290,8 +9951,9 @@ public class UserResource {
 
 	@PostMapping
 	@Operation(summary = "Create a new user", description = "Creates a new user with a specified role and individual permissions.", security = @SecurityRequirement(name = "bearerAuth"))
+	@PreAuthorize("hasAuthority('USER_CREATE')")
 	public ResponseEntity<ApiResponse> createUser(@Valid @RequestBody UserCreateRequest createRequest,
-			@AuthenticationPrincipal User adminUser) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		PasswordPolicyValidator.ValidationResult validationResult = PasswordPolicyValidator
 				.validate(createRequest.password());
 		if (!validationResult.isValid()) {
@@ -9309,7 +9971,7 @@ public class UserResource {
 		String[] permissionIds = createRequest.permissionIds().stream().map(String::valueOf).toArray(String[]::new);
 
 		int newUserId = userService.createUserWithPermissions(newUser, createRequest.password(), permissionIds,
-				adminUser.getUsername());
+				securityUser.getUsername());
 		if (newUserId > 0) {
 			User createdUser = userDAO.getUserById(newUserId);
 			return new ResponseEntity<>(new ApiResponse(true, "User created successfully", createdUser),
@@ -9322,9 +9984,10 @@ public class UserResource {
 
 	@PutMapping("/{id}")
 	@Operation(summary = "Update a user", description = "Updates an existing user's profile details, role, and individual permissions.", security = @SecurityRequirement(name = "bearerAuth"))
+	@PreAuthorize("hasAuthority('USER_UPDATE')")
 	public ResponseEntity<ApiResponse> updateUser(
 			@Parameter(description = "ID of the user to update") @PathVariable int id,
-			@Valid @RequestBody UserUpdateRequest updateRequest, @AuthenticationPrincipal User adminUser) {
+			@Valid @RequestBody UserUpdateRequest updateRequest, @AuthenticationPrincipal SecurityUser securityUser) {
 
 		User userToUpdate = userDAO.getUserById(id);
 		if (userToUpdate == null) {
@@ -9340,7 +10003,7 @@ public class UserResource {
 		String[] permissionIds = updateRequest.permissionIds().stream().map(String::valueOf).toArray(String[]::new);
 
 		if (userService.updateUserWithPermissions(userToUpdate, permissionIds)) {
-			adminLogService.log(adminUser.getUsername(), "UPDATE_USER_API",
+			adminLogService.log(securityUser.getUsername(), "UPDATE_USER_API",
 					"User '" + userToUpdate.getUsername() + "' (ID: " + id + ") updated via API.");
 			User refreshedUser = userDAO.getUserById(id);
 			return ResponseEntity.ok(new ApiResponse(true, "User updated successfully", refreshedUser));
@@ -9352,11 +10015,12 @@ public class UserResource {
 
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete a user", description = "Permanently deletes a user from the system.", security = @SecurityRequirement(name = "bearerAuth"))
+	@PreAuthorize("hasAuthority('USER_DELETE')")
 	public ResponseEntity<ApiResponse> deleteUser(
 			@Parameter(description = "ID of the user to delete") @PathVariable int id,
-			@AuthenticationPrincipal User adminUser) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
 
-		if (adminUser.getId() == id) {
+		if (securityUser.getUser().getId() == id) {
 			return ResponseEntity.badRequest()
 					.body(new ApiResponse(false, "You cannot delete your own account.", null));
 		}
@@ -9368,7 +10032,7 @@ public class UserResource {
 		}
 
 		if (userDAO.deleteUser(id)) {
-			adminLogService.log(adminUser.getUsername(), "DELETE_USER_API",
+			adminLogService.log(securityUser.getUsername(), "DELETE_USER_API",
 					"User '" + userToDelete.getUsername() + "' (ID: " + id + ") deleted via API.");
 			return ResponseEntity.ok(new ApiResponse(true, "User deleted successfully", Map.of("deletedUserId", id)));
 		} else {
@@ -9379,9 +10043,10 @@ public class UserResource {
 
 	@PostMapping("/{id}/reset-password")
 	@Operation(summary = "Reset user's password", description = "Resets a user's password to a new, randomly generated password.", security = @SecurityRequirement(name = "bearerAuth"))
+	@PreAuthorize("hasAuthority('USER_PASSWORD_RESET')")
 	public ResponseEntity<ApiResponse> resetPassword(
 			@Parameter(description = "ID of the user whose password will be reset") @PathVariable int id,
-			@AuthenticationPrincipal User adminUser) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
 
 		User userToReset = userDAO.getUserById(id);
 		if (userToReset == null) {
@@ -9391,7 +10056,7 @@ public class UserResource {
 
 		String newPassword = generateRandomPassword(12);
 		if (userDAO.changePassword(id, newPassword)) {
-			adminLogService.log(adminUser.getUsername(), "RESET_PASSWORD_API",
+			adminLogService.log(securityUser.getUsername(), "RESET_PASSWORD_API",
 					"Password for user '" + userToReset.getUsername() + "' (ID: " + id + ") reset via API.");
 			return ResponseEntity
 					.ok(new ApiResponse(true, "Password for " + userToReset.getUsername() + " has been reset.",
@@ -9404,9 +10069,10 @@ public class UserResource {
 
 	@PostMapping("/{id}/unlock")
 	@Operation(summary = "Unlock a user account", description = "Unlocks a user account that was locked due to too many failed login attempts.", security = @SecurityRequirement(name = "bearerAuth"))
+	@PreAuthorize("hasAuthority('USER_UPDATE')")
 	public ResponseEntity<ApiResponse> unlockUser(
 			@Parameter(description = "ID of the user to unlock") @PathVariable int id,
-			@AuthenticationPrincipal User adminUser) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
 
 		User userToUnlock = userDAO.getUserById(id);
 		if (userToUnlock == null) {
@@ -9415,7 +10081,7 @@ public class UserResource {
 		}
 
 		loginAttemptService.clearLoginAttempts(userToUnlock.getUsername());
-		adminLogService.log(adminUser.getUsername(), "UNLOCK_USER_API",
+		adminLogService.log(securityUser.getUsername(), "UNLOCK_USER_API",
 				"User account '" + userToUnlock.getUsername() + "' (ID: " + id + ") unlocked via API.");
 		return ResponseEntity.ok(new ApiResponse(true,
 				"User account '" + userToUnlock.getUsername() + "' has been unlocked.", Map.of("unlockedUserId", id)));
@@ -9716,8 +10382,6 @@ import de.technikteam.service.AuthService;
 import de.technikteam.service.PasskeyService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.apache.logging.log4j.LogManager;
@@ -10272,11 +10936,7 @@ package de.technikteam.api.v1.public_api;
 
 import de.technikteam.dao.EventCustomFieldDAO;
 import de.technikteam.dao.EventDAO;
-import de.technikteam.model.ApiResponse;
-import de.technikteam.model.Event;
-import de.technikteam.model.EventCustomField;
-import de.technikteam.model.EventCustomFieldResponse;
-import de.technikteam.model.User;
+import de.technikteam.model.*;
 import de.technikteam.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -10553,7 +11213,6 @@ import java.nio.file.Paths;
 @RestController
 @RequestMapping("/api/v1/public/files")
 @Tag(name = "Public Files", description = "Endpoints for downloading files and viewing images.")
-@SecurityRequirement(name = "bearerAuth")
 public class PublicFileStreamResource {
 	private static final Logger logger = LogManager.getLogger(PublicFileStreamResource.class);
 
@@ -10561,7 +11220,6 @@ public class PublicFileStreamResource {
 	private final AttachmentDAO attachmentDAO;
 	private final EventDAO eventDAO;
 	private final MeetingDAO meetingDAO;
-	private final ConfigurationService configService;
 	private final Path fileStorageLocation;
 
 	@Autowired
@@ -10571,13 +11229,12 @@ public class PublicFileStreamResource {
 		this.attachmentDAO = attachmentDAO;
 		this.eventDAO = eventDAO;
 		this.meetingDAO = meetingDAO;
-		this.configService = configService;
 		this.fileStorageLocation = Paths.get(configService.getProperty("upload.directory")).toAbsolutePath()
 				.normalize();
 	}
 
 	@GetMapping("/download/{id}")
-	@Operation(summary = "Download a file", description = "Downloads a file (general or attachment) by its database ID after checking permissions.")
+	@Operation(summary = "Download a file", description = "Downloads a file (general or attachment) by its database ID after checking permissions.", security = @SecurityRequirement(name = "bearerAuth"))
 	@ApiResponse(responseCode = "200", description = "File content", content = @Content(mediaType = "application/octet-stream"))
 	public ResponseEntity<Resource> downloadFile(
 			@Parameter(description = "ID of the file or attachment record") @PathVariable int id,
@@ -10610,11 +11267,19 @@ public class PublicFileStreamResource {
 	}
 
 	@GetMapping("/images/{filename:.+}")
-	@Operation(summary = "Get an image", description = "Retrieves an image for display. The filename usually corresponds to a storage item's image path.")
+	@Operation(summary = "Get an inventory image", description = "Retrieves an inventory image for display. The filename usually corresponds to a storage item's image path.", security = @SecurityRequirement(name = "bearerAuth"))
 	@ApiResponse(responseCode = "200", description = "Image content", content = @Content(mediaType = "image/*"))
 	public ResponseEntity<Resource> getImage(
 			@Parameter(description = "The filename of the image") @PathVariable String filename) {
 		return serveFile("images/" + filename, filename, true);
+	}
+
+	@GetMapping("/avatars/{filename:.+}")
+	@Operation(summary = "Get a user avatar", description = "Retrieves a user's profile picture for display. This endpoint is not secured as avatars are considered public.")
+	@ApiResponse(responseCode = "200", description = "Image content", content = @Content(mediaType = "image/*"))
+	public ResponseEntity<Resource> getAvatar(
+			@Parameter(description = "The filename of the avatar") @PathVariable String filename) {
+		return serveFile("avatars/" + filename, filename, true);
 	}
 
 	private boolean isUserAuthorizedForAttachment(User user, Attachment attachment) {
@@ -10634,7 +11299,7 @@ public class PublicFileStreamResource {
 		try {
 			Path filePath = this.fileStorageLocation.resolve(relativePath).normalize();
 			if (!filePath.startsWith(this.fileStorageLocation)) {
-				logger.fatal("CRITICAL: Path Traversal Attack Detected! Attempted to access '{}'", filePath);
+				logger.warn("Path Traversal Attack attempt detected for path '{}'", filePath);
 				return ResponseEntity.status(403).build();
 			}
 
@@ -10737,12 +11402,13 @@ FILE: src\main\java\de\technikteam\api\v1\public_api\PublicProfileResource.java
 
 package de.technikteam.api.v1.public_api;
 
+import com.google.gson.Gson;
 import de.technikteam.api.v1.dto.PasswordChangeRequest;
 import de.technikteam.api.v1.dto.ProfileChangeRequestDTO;
 import de.technikteam.dao.*;
 import de.technikteam.model.ApiResponse;
-import de.technikteam.model.ProfileChangeRequest;
 import de.technikteam.model.User;
+import de.technikteam.service.ProfileRequestService;
 import de.technikteam.util.PasswordPolicyValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -10754,11 +11420,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import com.google.gson.Gson;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/v1/public/profile")
@@ -10772,18 +11437,19 @@ public class PublicProfileResource {
 	private final AchievementDAO achievementDAO;
 	private final PasskeyDAO passkeyDAO;
 	private final ProfileChangeRequestDAO requestDAO;
-	private final Gson gson;
+	private final ProfileRequestService profileRequestService;
 
 	@Autowired
 	public PublicProfileResource(UserDAO userDAO, EventDAO eventDAO, UserQualificationsDAO qualificationsDAO,
-			AchievementDAO achievementDAO, PasskeyDAO passkeyDAO, ProfileChangeRequestDAO requestDAO, Gson gson) {
+			AchievementDAO achievementDAO, PasskeyDAO passkeyDAO, ProfileChangeRequestDAO requestDAO,
+			ProfileRequestService profileRequestService, Gson gson) {
 		this.userDAO = userDAO;
 		this.eventDAO = eventDAO;
 		this.qualificationsDAO = qualificationsDAO;
 		this.achievementDAO = achievementDAO;
 		this.passkeyDAO = passkeyDAO;
 		this.requestDAO = requestDAO;
-		this.gson = gson;
+		this.profileRequestService = profileRequestService;
 	}
 
 	@GetMapping
@@ -10801,34 +11467,31 @@ public class PublicProfileResource {
 	}
 
 	@PostMapping("/request-change")
-	@Operation(summary = "Request a profile data change", description = "Submits a request for an administrator to approve changes to the user's profile data.")
-	public ResponseEntity<ApiResponse> requestProfileChange(@Valid @RequestBody ProfileChangeRequestDTO requestDTO,
-			@AuthenticationPrincipal User currentUser) {
-		Map<String, String> changes = new HashMap<>();
-		if (requestDTO.email() != null && !Objects.equals(currentUser.getEmail(), requestDTO.email())) {
-			changes.put("email", requestDTO.email());
-		}
-		if (requestDTO.classYear() != null && currentUser.getClassYear() != requestDTO.classYear()) {
-			changes.put("classYear", String.valueOf(requestDTO.classYear()));
-		}
-		if (requestDTO.className() != null && !Objects.equals(currentUser.getClassName(), requestDTO.className())) {
-			changes.put("className", requestDTO.className());
-		}
-
-		if (changes.isEmpty()) {
-			return ResponseEntity.ok(new ApiResponse(true, "No changes detected.", null));
-		}
-
-		ProfileChangeRequest pcr = new ProfileChangeRequest();
-		pcr.setUserId(currentUser.getId());
-		pcr.setRequestedChanges(gson.toJson(changes));
-
-		if (requestDAO.createRequest(pcr)) {
+	@Operation(summary = "Request a profile data change", description = "Submits a request for an administrator to approve changes to the user's profile data, including an optional profile picture.")
+	public ResponseEntity<ApiResponse> requestProfileChange(
+			@RequestPart("profileData") @Valid ProfileChangeRequestDTO requestDTO,
+			@RequestPart(value = "profilePicture", required = false) MultipartFile profilePicture,
+			@AuthenticationPrincipal User user) { // <-- CORRECTED: The variable name is 'user'
+		try {
+			profileRequestService.createChangeRequest(user, requestDTO, profilePicture); // <-- CORRECTED: Pass 'user'
 			return ResponseEntity.ok(new ApiResponse(true, "Change request submitted successfully.", null));
-		} else {
+		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Could not save your request.", null));
+					.body(new ApiResponse(false, "Could not save your request: " + e.getMessage(), null));
 		}
+	}
+
+	@PutMapping("/theme")
+	@Operation(summary = "Update user theme", description = "Updates the user's preferred theme (light/dark).")
+	public ResponseEntity<ApiResponse> updateUserTheme(@RequestBody Map<String, String> payload,
+			@AuthenticationPrincipal User user) {
+		String theme = payload.get("theme");
+		if (theme != null && (theme.equals("light") || theme.equals("dark"))) {
+			if (userDAO.updateUserTheme(user.getId(), theme)) {
+				return ResponseEntity.ok(new ApiResponse(true, "Theme updated.", null));
+			}
+		}
+		return ResponseEntity.badRequest().body(new ApiResponse(false, "Invalid theme specified.", null));
 	}
 
 	@PutMapping("/chat-color")
@@ -12777,643 +13440,6 @@ public class FileDAO {
 		} catch (Exception e) {
 			logger.error("Error fetching category name for ID: {}", categoryId, e);
 			return null;
-		}
-	}
-}
-========================================================================
-FILE: src\main\java\de\technikteam\dao\InventoryKitDAO.java
-========================================================================
-
-package de.technikteam.dao;
-
-import de.technikteam.model.InventoryKit;
-import de.technikteam.model.InventoryKitItem;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
-import org.springframework.stereotype.Repository;
-
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.*;
-
-@Repository
-public class InventoryKitDAO {
-	private static final Logger logger = LogManager.getLogger(InventoryKitDAO.class);
-	private final JdbcTemplate jdbcTemplate;
-
-	@Autowired
-	public InventoryKitDAO(JdbcTemplate jdbcTemplate) {
-		this.jdbcTemplate = jdbcTemplate;
-	}
-
-	private final RowMapper<InventoryKit> kitRowMapper = (rs, rowNum) -> {
-		InventoryKit kit = new InventoryKit();
-		kit.setId(rs.getInt("id"));
-		kit.setName(rs.getString("name"));
-		kit.setDescription(rs.getString("description"));
-		kit.setLocation(rs.getString("location"));
-		kit.setItems(new ArrayList<>());
-		return kit;
-	};
-
-	public int createKit(InventoryKit kit) {
-		String sql = "INSERT INTO inventory_kits (name, description, location) VALUES (?, ?, ?)";
-		try {
-			KeyHolder keyHolder = new GeneratedKeyHolder();
-			jdbcTemplate.update(connection -> {
-				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-				ps.setString(1, kit.getName());
-				ps.setString(2, kit.getDescription());
-				ps.setString(3, kit.getLocation());
-				return ps;
-			}, keyHolder);
-			return Objects.requireNonNull(keyHolder.getKey()).intValue();
-		} catch (Exception e) {
-			logger.error("Error creating inventory kit '{}'", kit.getName(), e);
-			return 0;
-		}
-	}
-
-	public boolean updateKit(InventoryKit kit) {
-		String sql = "UPDATE inventory_kits SET name = ?, description = ?, location = ? WHERE id = ?";
-		try {
-			return jdbcTemplate.update(sql, kit.getName(), kit.getDescription(), kit.getLocation(), kit.getId()) > 0;
-		} catch (Exception e) {
-			logger.error("Error updating inventory kit ID {}", kit.getId(), e);
-			return false;
-		}
-	}
-
-	public InventoryKit getKitById(int kitId) {
-		String sql = "SELECT * FROM inventory_kits WHERE id = ?";
-		try {
-			return jdbcTemplate.queryForObject(sql, kitRowMapper, kitId);
-		} catch (EmptyResultDataAccessException e) {
-			return null; // Expected case when not found
-		} catch (Exception e) {
-			logger.error("Error fetching kit by ID {}", kitId, e);
-			return null;
-		}
-	}
-
-	public boolean deleteKit(int kitId) {
-		String sql = "DELETE FROM inventory_kits WHERE id = ?";
-		try {
-			// First, delete dependencies in the linking table
-			jdbcTemplate.update("DELETE FROM inventory_kit_items WHERE kit_id = ?", kitId);
-			// Then, delete the kit itself
-			return jdbcTemplate.update(sql, kitId) > 0;
-		} catch (Exception e) {
-			logger.error("Error deleting inventory kit ID {}", kitId, e);
-			return false;
-		}
-	}
-
-	public List<InventoryKit> getAllKitsWithItems() {
-		Map<Integer, InventoryKit> kitMap = new LinkedHashMap<>();
-		String sql = "SELECT k.id, k.name, k.description, k.location, ki.item_id, ki.quantity, si.name as item_name FROM inventory_kits k LEFT JOIN inventory_kit_items ki ON k.id = ki.kit_id LEFT JOIN storage_items si ON ki.item_id = si.id ORDER BY k.name, si.name";
-
-		jdbcTemplate.query(sql, (ResultSet rs) -> {
-			int kitId = rs.getInt("id");
-			InventoryKit kit = kitMap.computeIfAbsent(kitId, id -> {
-				try {
-					return kitRowMapper.mapRow(rs, 0);
-				} catch (SQLException e) {
-					// This is a safe way to handle checked exceptions within a lambda
-					throw new RuntimeException("Failed to map ResultSet to InventoryKit", e);
-				}
-			});
-			if (rs.getInt("item_id") > 0) {
-				InventoryKitItem item = new InventoryKitItem();
-				item.setKitId(kitId);
-				item.setItemId(rs.getInt("item_id"));
-				item.setQuantity(rs.getInt("quantity"));
-				item.setItemName(rs.getString("item_name"));
-				kit.getItems().add(item);
-			}
-		});
-		return new ArrayList<>(kitMap.values());
-	}
-}
-========================================================================
-FILE: src\main\java\de\technikteam\dao\MaintenanceLogDAO.java
-========================================================================
-
-package de.technikteam.dao;
-
-import de.technikteam.model.MaintenanceLogEntry;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Repository;
-
-import java.util.List;
-
-@Repository
-public class MaintenanceLogDAO {
-	private static final Logger logger = LogManager.getLogger(MaintenanceLogDAO.class);
-	private final JdbcTemplate jdbcTemplate;
-
-	@Autowired
-	public MaintenanceLogDAO(JdbcTemplate jdbcTemplate) {
-		this.jdbcTemplate = jdbcTemplate;
-	}
-
-	public boolean createLog(MaintenanceLogEntry log) {
-		String sql = "INSERT INTO maintenance_log (item_id, user_id, action, notes, cost) VALUES (?, ?, ?, ?, ?)";
-		try {
-			return jdbcTemplate.update(sql, log.getItemId(), log.getUserId(), log.getAction(), log.getNotes(),
-					log.getCost()) > 0;
-		} catch (Exception e) {
-			logger.error("Error creating maintenance log for item {}", log.getItemId(), e);
-			return false;
-		}
-	}
-
-	public List<MaintenanceLogEntry> getHistoryForItem(int itemId) {
-		String sql = "SELECT ml.*, u.username FROM maintenance_log ml JOIN users u ON ml.user_id = u.id WHERE ml.item_id = ? ORDER BY ml.log_date DESC";
-		try {
-			return jdbcTemplate.query(sql, (rs, rowNum) -> {
-				MaintenanceLogEntry entry = new MaintenanceLogEntry();
-				entry.setId(rs.getInt("id"));
-				entry.setItemId(rs.getInt("item_id"));
-				entry.setUserId(rs.getInt("user_id"));
-				entry.setUsername(rs.getString("username"));
-				entry.setLogDate(rs.getTimestamp("log_date").toLocalDateTime());
-				entry.setAction(rs.getString("action"));
-				entry.setNotes(rs.getString("notes"));
-				entry.setCost(rs.getDouble("cost"));
-				return entry;
-			}, itemId);
-		} catch (Exception e) {
-			logger.error("Error fetching maintenance history for item {}", itemId, e);
-			return List.of();
-		}
-	}
-}
-========================================================================
-FILE: src\main\java\de\technikteam\dao\MeetingAttendanceDAO.java
-========================================================================
-
-package de.technikteam.dao;
-
-import de.technikteam.model.MeetingAttendance;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.stereotype.Repository;
-
-import java.util.List;
-
-@Repository
-public class MeetingAttendanceDAO {
-	private static final Logger logger = LogManager.getLogger(MeetingAttendanceDAO.class);
-	private final JdbcTemplate jdbcTemplate;
-
-	@Autowired
-	public MeetingAttendanceDAO(JdbcTemplate jdbcTemplate) {
-		this.jdbcTemplate = jdbcTemplate;
-	}
-
-	public boolean setAttendance(int userId, int meetingId, boolean attended, String remarks) {
-		String sql = "INSERT INTO meeting_attendance (user_id, meeting_id, attended, remarks) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE attended = VALUES(attended), remarks = VALUES(remarks)";
-		try {
-			jdbcTemplate.update(sql, userId, meetingId, attended, remarks);
-			return true;
-		} catch (Exception e) {
-			logger.error("SQL error setting attendance for user {} at meeting {}", userId, meetingId, e);
-			return false;
-		}
-	}
-
-	public List<MeetingAttendance> getAllAttendance() {
-		String sql = "SELECT * FROM meeting_attendance";
-		try {
-			return jdbcTemplate.query(sql, (rs, rowNum) -> {
-				MeetingAttendance attendance = new MeetingAttendance();
-				attendance.setUserId(rs.getInt("user_id"));
-				attendance.setMeetingId(rs.getInt("meeting_id"));
-				attendance.setAttended(rs.getBoolean("attended"));
-				attendance.setRemarks(rs.getString("remarks"));
-				return attendance;
-			});
-		} catch (Exception e) {
-			logger.error("SQL error fetching all attendance records.", e);
-			return List.of();
-		}
-	}
-}
-========================================================================
-FILE: src\main\java\de\technikteam\dao\MeetingDAO.java
-========================================================================
-
-package de.technikteam.dao;
-
-import de.technikteam.model.Meeting;
-import de.technikteam.model.User;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
-import org.springframework.stereotype.Repository;
-
-import java.sql.*;
-import java.util.List;
-import java.util.Objects;
-
-@Repository
-public class MeetingDAO {
-	private static final Logger logger = LogManager.getLogger(MeetingDAO.class);
-	private final JdbcTemplate jdbcTemplate;
-
-	@Autowired
-	public MeetingDAO(JdbcTemplate jdbcTemplate) {
-		this.jdbcTemplate = jdbcTemplate;
-	}
-
-	private final RowMapper<Meeting> meetingRowMapper = (rs, rowNum) -> {
-		Meeting meeting = new Meeting();
-		meeting.setId(rs.getInt("id"));
-		meeting.setCourseId(rs.getInt("course_id"));
-		meeting.setName(rs.getString("name"));
-		meeting.setMeetingDateTime(rs.getTimestamp("meeting_datetime").toLocalDateTime());
-		if (rs.getTimestamp("end_datetime") != null)
-			meeting.setEndDateTime(rs.getTimestamp("end_datetime").toLocalDateTime());
-		meeting.setLeaderUserId(rs.getInt("leader_user_id"));
-		meeting.setDescription(rs.getString("description"));
-		meeting.setLocation(rs.getString("location"));
-		meeting.setParentCourseName(rs.getString("parent_course_name"));
-		meeting.setLeaderUsername(rs.getString("leader_username"));
-		return meeting;
-	};
-
-	public int createMeeting(Meeting meeting) {
-		String sql = "INSERT INTO meetings (course_id, name, meeting_datetime, end_datetime, leader_user_id, description, location) VALUES (?, ?, ?, ?, ?, ?, ?)";
-		KeyHolder keyHolder = new GeneratedKeyHolder();
-		try {
-			jdbcTemplate.update(connection -> {
-				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-				ps.setInt(1, meeting.getCourseId());
-				ps.setString(2, meeting.getName());
-				ps.setTimestamp(3, Timestamp.valueOf(meeting.getMeetingDateTime()));
-				if (meeting.getEndDateTime() != null)
-					ps.setTimestamp(4, Timestamp.valueOf(meeting.getEndDateTime()));
-				else
-					ps.setNull(4, Types.TIMESTAMP);
-				if (meeting.getLeaderUserId() > 0)
-					ps.setInt(5, meeting.getLeaderUserId());
-				else
-					ps.setNull(5, Types.INTEGER);
-				ps.setString(6, meeting.getDescription());
-				ps.setString(7, meeting.getLocation());
-				return ps;
-			}, keyHolder);
-			return Objects.requireNonNull(keyHolder.getKey()).intValue();
-		} catch (Exception e) {
-			logger.error("Error creating meeting: {}", meeting.getName(), e);
-			return 0;
-		}
-	}
-
-	public Meeting getMeetingById(int meetingId) {
-		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id WHERE m.id = ?";
-		try {
-			return jdbcTemplate.queryForObject(sql, meetingRowMapper, meetingId);
-		} catch (EmptyResultDataAccessException e) {
-			return null;
-		} catch (Exception e) {
-			logger.error("Error fetching meeting by ID: {}", meetingId, e);
-			return null;
-		}
-	}
-
-	public List<Meeting> getMeetingsForCourse(int courseId) {
-		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id WHERE m.course_id = ? ORDER BY meeting_datetime ASC";
-		try {
-			return jdbcTemplate.query(sql, meetingRowMapper, courseId);
-		} catch (Exception e) {
-			logger.error("Error fetching meetings for course ID: {}", courseId, e);
-			return List.of();
-		}
-	}
-
-	public boolean updateMeeting(Meeting meeting) {
-		String sql = "UPDATE meetings SET name = ?, meeting_datetime = ?, end_datetime = ?, leader_user_id = ?, description = ?, location = ? WHERE id = ?";
-		try {
-			return jdbcTemplate.update(sql, meeting.getName(), Timestamp.valueOf(meeting.getMeetingDateTime()),
-					meeting.getEndDateTime() != null ? Timestamp.valueOf(meeting.getEndDateTime()) : null,
-					meeting.getLeaderUserId() > 0 ? meeting.getLeaderUserId() : null, meeting.getDescription(),
-					meeting.getLocation(), meeting.getId()) > 0;
-		} catch (Exception e) {
-			logger.error("Error updating meeting ID: {}", meeting.getId(), e);
-			return false;
-		}
-	}
-
-	public boolean deleteMeeting(int meetingId) {
-		String sql = "DELETE FROM meetings WHERE id = ?";
-		try {
-			jdbcTemplate.update("DELETE FROM meeting_attendance WHERE meeting_id = ?", meetingId);
-			return jdbcTemplate.update(sql, meetingId) > 0;
-		} catch (Exception e) {
-			logger.error("Error deleting meeting ID: {}", meetingId, e);
-			return false;
-		}
-	}
-
-	public List<Meeting> getUpcomingMeetingsForUser(User user) {
-		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username, ma.attended FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id LEFT JOIN meeting_attendance ma ON m.id = ma.meeting_id AND ma.user_id = ? WHERE m.meeting_datetime >= NOW() ORDER BY m.meeting_datetime ASC";
-		try {
-			return jdbcTemplate.query(sql, (rs, rowNum) -> {
-				Meeting meeting = meetingRowMapper.mapRow(rs, rowNum);
-				if (rs.getObject("attended") != null) {
-					meeting.setUserAttendanceStatus(rs.getBoolean("attended") ? "ANGEMELDET" : "ABGEMELDET");
-				} else {
-					meeting.setUserAttendanceStatus("OFFEN");
-				}
-				return meeting;
-			}, user.getId());
-		} catch (Exception e) {
-			logger.error("Error fetching upcoming meetings for user {}", user.getId(), e);
-			return List.of();
-		}
-	}
-
-	public List<Meeting> getAllUpcomingMeetings() {
-		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id WHERE m.meeting_datetime >= NOW() - INTERVAL 1 DAY ORDER BY m.meeting_datetime ASC";
-		try {
-			return jdbcTemplate.query(sql, meetingRowMapper);
-		} catch (Exception e) {
-			logger.error("Error fetching upcoming meetings for calendar.", e);
-			return List.of();
-		}
-	}
-
-	public boolean isUserAssociatedWithMeeting(int meetingId, int userId) {
-		String sql = "SELECT COUNT(*) FROM meeting_attendance WHERE meeting_id = ? AND user_id = ?";
-		try {
-			Integer count = jdbcTemplate.queryForObject(sql, Integer.class, meetingId, userId);
-			return count != null && count > 0;
-		} catch (Exception e) {
-			logger.error("Error checking user association for meeting {} and user {}", meetingId, userId, e);
-			return false;
-		}
-	}
-}
-========================================================================
-FILE: src\main\java\de\technikteam\dao\PasskeyDAO.java
-========================================================================
-
-package de.technikteam.dao;
-
-import de.technikteam.model.PasskeyCredential;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.stereotype.Repository;
-
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.List;
-import java.util.Optional;
-
-@Repository
-public class PasskeyDAO {
-	private static final Logger logger = LogManager.getLogger(PasskeyDAO.class);
-	private final JdbcTemplate jdbcTemplate;
-
-	@Autowired
-	public PasskeyDAO(JdbcTemplate jdbcTemplate) {
-		this.jdbcTemplate = jdbcTemplate;
-	}
-
-	private final RowMapper<PasskeyCredential> credentialRowMapper = (rs, rowNum) -> new PasskeyCredential(
-			rs.getInt("id"), rs.getInt("user_id"), rs.getString("name"), rs.getString("user_handle"),
-			rs.getString("credential_id"), rs.getString("public_key"), rs.getLong("signature_count"),
-			rs.getTimestamp("created_at").toLocalDateTime());
-
-	public boolean saveCredential(PasskeyCredential credential) {
-		String sql = "INSERT INTO user_passkeys (user_id, name, user_handle, credential_id, public_key, signature_count) VALUES (?, ?, ?, ?, ?, ?)";
-		try {
-			return jdbcTemplate.update(sql, credential.getUserId(), credential.getName(), credential.getUserHandle(),
-					credential.getCredentialId(), credential.getPublicKey(), credential.getSignatureCount()) > 0;
-		} catch (Exception e) {
-			logger.error("Error saving passkey credential for user {}", credential.getUserId(), e);
-			return false;
-		}
-	}
-
-	public List<PasskeyCredential> getCredentialsByUserId(int userId) {
-		String sql = "SELECT * FROM user_passkeys WHERE user_id = ?";
-		try {
-			return jdbcTemplate.query(sql, credentialRowMapper, userId);
-		} catch (Exception e) {
-			logger.error("Error retrieving passkey credentials for user {}", userId, e);
-			return List.of();
-		}
-	}
-
-	public Optional<PasskeyCredential> getCredentialById(String credentialId) {
-		String sql = "SELECT * FROM user_passkeys WHERE credential_id = ?";
-		try {
-			return Optional.ofNullable(jdbcTemplate.queryForObject(sql, credentialRowMapper, credentialId));
-		} catch (EmptyResultDataAccessException e) {
-			return Optional.empty();
-		} catch (Exception e) {
-			logger.error("Error retrieving credential by ID", e);
-			return Optional.empty();
-		}
-	}
-
-	public boolean deleteCredential(int credentialDbId, int userId) {
-		String sql = "DELETE FROM user_passkeys WHERE id = ? AND user_id = ?";
-		try {
-			return jdbcTemplate.update(sql, credentialDbId, userId) > 0;
-		} catch (Exception e) {
-			logger.error("Error deleting credential ID {} for user {}", credentialDbId, userId, e);
-			return false;
-		}
-	}
-
-	public boolean updateSignatureCount(String credentialId, long newSignatureCount) {
-		String sql = "UPDATE user_passkeys SET signature_count = ? WHERE credential_id = ?";
-		try {
-			return jdbcTemplate.update(sql, newSignatureCount, credentialId) > 0;
-		} catch (Exception e) {
-			logger.error("Error updating signature count for credential", e);
-			return false;
-		}
-	}
-}
-========================================================================
-FILE: src\main\java\de\technikteam\dao\PermissionDAO.java
-========================================================================
-
-package de.technikteam.dao;
-
-import de.technikteam.model.Permission;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Repository;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-@Repository
-public class PermissionDAO {
-	private static final Logger logger = LogManager.getLogger(PermissionDAO.class);
-	private final JdbcTemplate jdbcTemplate;
-
-	@Autowired
-	public PermissionDAO(JdbcTemplate jdbcTemplate) {
-		this.jdbcTemplate = jdbcTemplate;
-	}
-
-	public List<Permission> getAllPermissions() {
-		String sql = "SELECT * FROM permissions ORDER BY description";
-		try {
-			return jdbcTemplate.query(sql, (rs, rowNum) -> {
-				Permission p = new Permission();
-				p.setId(rs.getInt("id"));
-				p.setPermissionKey(rs.getString("permission_key"));
-				p.setDescription(rs.getString("description"));
-				return p;
-			});
-		} catch (Exception e) {
-			logger.error("Error fetching all permissions", e);
-			return List.of();
-		}
-	}
-
-	public Set<Integer> getPermissionIdsForUser(int userId) {
-		String sql = "SELECT permission_id FROM user_permissions WHERE user_id = ?";
-		try {
-			List<Integer> ids = jdbcTemplate.queryForList(sql, Integer.class, userId);
-			return new HashSet<>(ids);
-		} catch (Exception e) {
-			logger.error("Error fetching permission IDs for user {}", userId, e);
-			return Set.of();
-		}
-	}
-}
-========================================================================
-FILE: src\main\java\de\technikteam\dao\ProfileChangeRequestDAO.java
-========================================================================
-
-package de.technikteam.dao;
-
-import de.technikteam.model.ProfileChangeRequest;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.stereotype.Repository;
-
-import java.util.List;
-
-@Repository
-public class ProfileChangeRequestDAO {
-	private static final Logger logger = LogManager.getLogger(ProfileChangeRequestDAO.class);
-	private final JdbcTemplate jdbcTemplate;
-
-	@Autowired
-	public ProfileChangeRequestDAO(JdbcTemplate jdbcTemplate) {
-		this.jdbcTemplate = jdbcTemplate;
-	}
-
-	private final RowMapper<ProfileChangeRequest> requestRowMapper = (rs, rowNum) -> {
-		ProfileChangeRequest request = new ProfileChangeRequest();
-		request.setId(rs.getInt("id"));
-		request.setUserId(rs.getInt("user_id"));
-		request.setRequestedChanges(rs.getString("requested_changes"));
-		request.setStatus(rs.getString("status"));
-		request.setRequestedAt(rs.getTimestamp("requested_at").toLocalDateTime());
-		request.setUsername(rs.getString("username"));
-		if (rs.getObject("reviewed_by_admin_id") != null) {
-			request.setReviewedByAdminId(rs.getInt("reviewed_by_admin_id"));
-		}
-		if (rs.getTimestamp("reviewed_at") != null) {
-			request.setReviewedAt(rs.getTimestamp("reviewed_at").toLocalDateTime());
-		}
-		if (rs.getMetaData().getColumnCount() > 8) { // Simple check if admin_username is present
-			request.setReviewedByAdminName(rs.getString("admin_username"));
-		}
-		return request;
-	};
-
-	public boolean createRequest(ProfileChangeRequest request) {
-		String sql = "INSERT INTO profile_change_requests (user_id, requested_changes, status) VALUES (?, ?, 'PENDING')";
-		try {
-			return jdbcTemplate.update(sql, request.getUserId(), request.getRequestedChanges()) > 0;
-		} catch (Exception e) {
-			logger.error("Error creating profile change request for user {}", request.getUserId(), e);
-			return false;
-		}
-	}
-
-	public ProfileChangeRequest getRequestById(int id) {
-		String sql = "SELECT pcr.*, u.username as username, a.username as admin_username FROM profile_change_requests pcr JOIN users u ON pcr.user_id = u.id LEFT JOIN users a ON pcr.reviewed_by_admin_id = a.id WHERE pcr.id = ?";
-		try {
-			return jdbcTemplate.queryForObject(sql, requestRowMapper, id);
-		} catch (EmptyResultDataAccessException e) {
-			return null;
-		} catch (Exception e) {
-			logger.error("Error fetching request by ID {}", id, e);
-			return null;
-		}
-	}
-
-	public List<ProfileChangeRequest> getPendingRequests() {
-		String sql = "SELECT pcr.*, u.username as username FROM profile_change_requests pcr JOIN users u ON pcr.user_id = u.id WHERE pcr.status = 'PENDING' ORDER BY pcr.requested_at ASC";
-		try {
-			return jdbcTemplate.query(sql, requestRowMapper);
-		} catch (Exception e) {
-			logger.error("Error fetching pending requests", e);
-			return List.of();
-		}
-	}
-
-	public boolean hasPendingRequest(int userId) {
-		String sql = "SELECT COUNT(*) FROM profile_change_requests WHERE user_id = ? AND status = 'PENDING'";
-		try {
-			Integer count = jdbcTemplate.queryForObject(sql, Integer.class, userId);
-			return count != null && count > 0;
-		} catch (Exception e) {
-			logger.error("Error checking for pending request for user {}", userId, e);
-			return false;
-		}
-	}
-
-	public boolean updateRequestStatus(int requestId, String status, int adminId) {
-		String sql = "UPDATE profile_change_requests SET status = ?, reviewed_by_admin_id = ?, reviewed_at = NOW() WHERE id = ?";
-		try {
-			return jdbcTemplate.update(sql, status, adminId, requestId) > 0;
-		} catch (Exception e) {
-			logger.error("Error updating status for request {}", requestId, e);
-			return false;
 		}
 	}
 }

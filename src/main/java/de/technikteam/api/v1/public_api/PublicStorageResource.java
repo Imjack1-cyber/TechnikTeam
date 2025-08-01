@@ -6,13 +6,13 @@ import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Event;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
-import de.technikteam.security.CurrentUser;
 import de.technikteam.service.StorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -52,7 +52,7 @@ public class PublicStorageResource {
 	@PostMapping("/transactions")
 	@Operation(summary = "Perform a storage transaction", description = "Checks out or checks in a specified quantity of a storage item.")
 	public ResponseEntity<ApiResponse> performTransaction(@RequestBody Map<String, Object> payload,
-			@CurrentUser User user) {
+			@AuthenticationPrincipal User user) {
 		try {
 			int itemId = ((Number) payload.get("itemId")).intValue();
 			int quantity = ((Number) payload.get("quantity")).intValue();

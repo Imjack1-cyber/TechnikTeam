@@ -2,9 +2,12 @@ package de.technikteam.security;
 
 import de.technikteam.model.User;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.stream.Collectors;
 
 public class SecurityUser implements UserDetails {
 
@@ -20,12 +23,15 @@ public class SecurityUser implements UserDetails {
 
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
-		return user.getAuthorities();
+		if (user.getPermissions() == null) {
+			return Collections.emptyList();
+		}
+		return user.getPermissions().stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList());
 	}
 
 	@Override
 	public String getPassword() {
-		return user.getPassword();
+		return user.getPasswordHash();
 	}
 
 	@Override

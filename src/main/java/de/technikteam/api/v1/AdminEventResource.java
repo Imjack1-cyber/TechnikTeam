@@ -5,7 +5,7 @@ import de.technikteam.dao.EventDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Event;
 import de.technikteam.model.User;
-import de.technikteam.security.CurrentUser;
+import de.technikteam.security.SecurityUser;
 import de.technikteam.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -47,8 +48,10 @@ public class AdminEventResource {
 	@Operation(summary = "Create a new event", description = "Creates a new event with attachments, skill requirements, and item reservations.")
 	@PreAuthorize("hasAuthority('EVENT_CREATE')")
 	public ResponseEntity<ApiResponse> createEvent(@RequestPart("eventData") EventUpdateRequest eventData,
-			@RequestPart(value = "file", required = false) MultipartFile file, @CurrentUser User adminUser) {
+			@RequestPart(value = "file", required = false) MultipartFile file,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
+			User adminUser = securityUser.getUser();
 			Event event = new Event();
 			mapDtoToEvent(eventData, event);
 
@@ -70,8 +73,10 @@ public class AdminEventResource {
 	@PreAuthorize("hasAuthority('EVENT_UPDATE')")
 	public ResponseEntity<ApiResponse> updateEvent(@PathVariable int id,
 			@RequestPart("eventData") EventUpdateRequest eventData,
-			@RequestPart(value = "file", required = false) MultipartFile file, @CurrentUser User adminUser) {
+			@RequestPart(value = "file", required = false) MultipartFile file,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
+			User adminUser = securityUser.getUser();
 			Event event = eventDAO.getEventById(id);
 			if (event == null) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND)

@@ -6,7 +6,7 @@ import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.NavigationItem;
 import de.technikteam.model.User;
-import de.technikteam.security.CurrentUser;
+import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.LoginAttemptService;
 import de.technikteam.service.UserService;
@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.SecureRandom;
@@ -49,7 +50,8 @@ public class UserResource {
 
 	@GetMapping("/me")
 	@Operation(summary = "Get current user session", description = "Retrieves the user object and navigation items for the currently authenticated user.", security = @SecurityRequirement(name = "bearerAuth"))
-	public ResponseEntity<ApiResponse> getCurrentUser(@CurrentUser User authenticatedUser) {
+	public ResponseEntity<ApiResponse> getCurrentUser(@AuthenticationPrincipal SecurityUser securityUser) {
+		User authenticatedUser = securityUser.getUser();
 		List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(authenticatedUser);
 		Map<String, Object> responseData = Map.of("user", authenticatedUser, "navigation", navigationItems);
 		return ResponseEntity.ok(new ApiResponse(true, "Current user session retrieved.", responseData));
@@ -80,7 +82,7 @@ public class UserResource {
 	@Operation(summary = "Create a new user", description = "Creates a new user with a specified role and individual permissions.", security = @SecurityRequirement(name = "bearerAuth"))
 	@PreAuthorize("hasAuthority('USER_CREATE')")
 	public ResponseEntity<ApiResponse> createUser(@Valid @RequestBody UserCreateRequest createRequest,
-			@CurrentUser User adminUser) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		PasswordPolicyValidator.ValidationResult validationResult = PasswordPolicyValidator
 				.validate(createRequest.password());
 		if (!validationResult.isValid()) {
@@ -98,7 +100,7 @@ public class UserResource {
 		String[] permissionIds = createRequest.permissionIds().stream().map(String::valueOf).toArray(String[]::new);
 
 		int newUserId = userService.createUserWithPermissions(newUser, createRequest.password(), permissionIds,
-				adminUser.getUsername());
+				securityUser.getUsername());
 		if (newUserId > 0) {
 			User createdUser = userDAO.getUserById(newUserId);
 			return new ResponseEntity<>(new ApiResponse(true, "User created successfully", createdUser),
@@ -114,7 +116,7 @@ public class UserResource {
 	@PreAuthorize("hasAuthority('USER_UPDATE')")
 	public ResponseEntity<ApiResponse> updateUser(
 			@Parameter(description = "ID of the user to update") @PathVariable int id,
-			@Valid @RequestBody UserUpdateRequest updateRequest, @CurrentUser User adminUser) {
+			@Valid @RequestBody UserUpdateRequest updateRequest, @AuthenticationPrincipal SecurityUser securityUser) {
 
 		User userToUpdate = userDAO.getUserById(id);
 		if (userToUpdate == null) {
@@ -130,7 +132,7 @@ public class UserResource {
 		String[] permissionIds = updateRequest.permissionIds().stream().map(String::valueOf).toArray(String[]::new);
 
 		if (userService.updateUserWithPermissions(userToUpdate, permissionIds)) {
-			adminLogService.log(adminUser.getUsername(), "UPDATE_USER_API",
+			adminLogService.log(securityUser.getUsername(), "UPDATE_USER_API",
 					"User '" + userToUpdate.getUsername() + "' (ID: " + id + ") updated via API.");
 			User refreshedUser = userDAO.getUserById(id);
 			return ResponseEntity.ok(new ApiResponse(true, "User updated successfully", refreshedUser));
@@ -144,9 +146,10 @@ public class UserResource {
 	@Operation(summary = "Delete a user", description = "Permanently deletes a user from the system.", security = @SecurityRequirement(name = "bearerAuth"))
 	@PreAuthorize("hasAuthority('USER_DELETE')")
 	public ResponseEntity<ApiResponse> deleteUser(
-			@Parameter(description = "ID of the user to delete") @PathVariable int id, @CurrentUser User adminUser) {
+			@Parameter(description = "ID of the user to delete") @PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 
-		if (adminUser.getId() == id) {
+		if (securityUser.getUser().getId() == id) {
 			return ResponseEntity.badRequest()
 					.body(new ApiResponse(false, "You cannot delete your own account.", null));
 		}
@@ -158,7 +161,7 @@ public class UserResource {
 		}
 
 		if (userDAO.deleteUser(id)) {
-			adminLogService.log(adminUser.getUsername(), "DELETE_USER_API",
+			adminLogService.log(securityUser.getUsername(), "DELETE_USER_API",
 					"User '" + userToDelete.getUsername() + "' (ID: " + id + ") deleted via API.");
 			return ResponseEntity.ok(new ApiResponse(true, "User deleted successfully", Map.of("deletedUserId", id)));
 		} else {
@@ -172,7 +175,7 @@ public class UserResource {
 	@PreAuthorize("hasAuthority('USER_PASSWORD_RESET')")
 	public ResponseEntity<ApiResponse> resetPassword(
 			@Parameter(description = "ID of the user whose password will be reset") @PathVariable int id,
-			@CurrentUser User adminUser) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
 
 		User userToReset = userDAO.getUserById(id);
 		if (userToReset == null) {
@@ -182,7 +185,7 @@ public class UserResource {
 
 		String newPassword = generateRandomPassword(12);
 		if (userDAO.changePassword(id, newPassword)) {
-			adminLogService.log(adminUser.getUsername(), "RESET_PASSWORD_API",
+			adminLogService.log(securityUser.getUsername(), "RESET_PASSWORD_API",
 					"Password for user '" + userToReset.getUsername() + "' (ID: " + id + ") reset via API.");
 			return ResponseEntity
 					.ok(new ApiResponse(true, "Password for " + userToReset.getUsername() + " has been reset.",
@@ -195,9 +198,10 @@ public class UserResource {
 
 	@PostMapping("/{id}/unlock")
 	@Operation(summary = "Unlock a user account", description = "Unlocks a user account that was locked due to too many failed login attempts.", security = @SecurityRequirement(name = "bearerAuth"))
-	@PreAuthorize("hasAuthority('USER_UPDATE')") // Reuse USER_UPDATE for unlocking
+	@PreAuthorize("hasAuthority('USER_UPDATE')")
 	public ResponseEntity<ApiResponse> unlockUser(
-			@Parameter(description = "ID of the user to unlock") @PathVariable int id, @CurrentUser User adminUser) {
+			@Parameter(description = "ID of the user to unlock") @PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 
 		User userToUnlock = userDAO.getUserById(id);
 		if (userToUnlock == null) {
@@ -206,7 +210,7 @@ public class UserResource {
 		}
 
 		loginAttemptService.clearLoginAttempts(userToUnlock.getUsername());
-		adminLogService.log(adminUser.getUsername(), "UNLOCK_USER_API",
+		adminLogService.log(securityUser.getUsername(), "UNLOCK_USER_API",
 				"User account '" + userToUnlock.getUsername() + "' (ID: " + id + ") unlocked via API.");
 		return ResponseEntity.ok(new ApiResponse(true,
 				"User account '" + userToUnlock.getUsername() + "' has been unlocked.", Map.of("unlockedUserId", id)));

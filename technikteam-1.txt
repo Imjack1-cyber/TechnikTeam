@@ -1,5 +1,642 @@
 ﻿
 ========================================================================
+FILE: src\main\java\de\technikteam\dao\InventoryKitDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import de.technikteam.model.InventoryKit;
+import de.technikteam.model.InventoryKitItem;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.stereotype.Repository;
+
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.*;
+
+@Repository
+public class InventoryKitDAO {
+	private static final Logger logger = LogManager.getLogger(InventoryKitDAO.class);
+	private final JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	public InventoryKitDAO(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
+	}
+
+	private final RowMapper<InventoryKit> kitRowMapper = (rs, rowNum) -> {
+		InventoryKit kit = new InventoryKit();
+		kit.setId(rs.getInt("id"));
+		kit.setName(rs.getString("name"));
+		kit.setDescription(rs.getString("description"));
+		kit.setLocation(rs.getString("location"));
+		kit.setItems(new ArrayList<>());
+		return kit;
+	};
+
+	public int createKit(InventoryKit kit) {
+		String sql = "INSERT INTO inventory_kits (name, description, location) VALUES (?, ?, ?)";
+		try {
+			KeyHolder keyHolder = new GeneratedKeyHolder();
+			jdbcTemplate.update(connection -> {
+				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+				ps.setString(1, kit.getName());
+				ps.setString(2, kit.getDescription());
+				ps.setString(3, kit.getLocation());
+				return ps;
+			}, keyHolder);
+			return Objects.requireNonNull(keyHolder.getKey()).intValue();
+		} catch (Exception e) {
+			logger.error("Error creating inventory kit '{}'", kit.getName(), e);
+			return 0;
+		}
+	}
+
+	public boolean updateKit(InventoryKit kit) {
+		String sql = "UPDATE inventory_kits SET name = ?, description = ?, location = ? WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, kit.getName(), kit.getDescription(), kit.getLocation(), kit.getId()) > 0;
+		} catch (Exception e) {
+			logger.error("Error updating inventory kit ID {}", kit.getId(), e);
+			return false;
+		}
+	}
+
+	public InventoryKit getKitById(int kitId) {
+		String sql = "SELECT * FROM inventory_kits WHERE id = ?";
+		try {
+			return jdbcTemplate.queryForObject(sql, kitRowMapper, kitId);
+		} catch (EmptyResultDataAccessException e) {
+			return null; // Expected case when not found
+		} catch (Exception e) {
+			logger.error("Error fetching kit by ID {}", kitId, e);
+			return null;
+		}
+	}
+
+	public boolean deleteKit(int kitId) {
+		String sql = "DELETE FROM inventory_kits WHERE id = ?";
+		try {
+			// First, delete dependencies in the linking table
+			jdbcTemplate.update("DELETE FROM inventory_kit_items WHERE kit_id = ?", kitId);
+			// Then, delete the kit itself
+			return jdbcTemplate.update(sql, kitId) > 0;
+		} catch (Exception e) {
+			logger.error("Error deleting inventory kit ID {}", kitId, e);
+			return false;
+		}
+	}
+
+	public List<InventoryKit> getAllKitsWithItems() {
+		Map<Integer, InventoryKit> kitMap = new LinkedHashMap<>();
+		String sql = "SELECT k.id, k.name, k.description, k.location, ki.item_id, ki.quantity, si.name as item_name FROM inventory_kits k LEFT JOIN inventory_kit_items ki ON k.id = ki.kit_id LEFT JOIN storage_items si ON ki.item_id = si.id ORDER BY k.name, si.name";
+
+		jdbcTemplate.query(sql, (ResultSet rs) -> {
+			int kitId = rs.getInt("id");
+			InventoryKit kit = kitMap.computeIfAbsent(kitId, id -> {
+				try {
+					return kitRowMapper.mapRow(rs, 0);
+				} catch (SQLException e) {
+					// This is a safe way to handle checked exceptions within a lambda
+					throw new RuntimeException("Failed to map ResultSet to InventoryKit", e);
+				}
+			});
+			if (rs.getInt("item_id") > 0) {
+				InventoryKitItem item = new InventoryKitItem();
+				item.setKitId(kitId);
+				item.setItemId(rs.getInt("item_id"));
+				item.setQuantity(rs.getInt("quantity"));
+				item.setItemName(rs.getString("item_name"));
+				kit.getItems().add(item);
+			}
+		});
+		return new ArrayList<>(kitMap.values());
+	}
+}
+========================================================================
+FILE: src\main\java\de\technikteam\dao\MaintenanceLogDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import de.technikteam.model.MaintenanceLogEntry;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public class MaintenanceLogDAO {
+	private static final Logger logger = LogManager.getLogger(MaintenanceLogDAO.class);
+	private final JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	public MaintenanceLogDAO(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
+	}
+
+	public boolean createLog(MaintenanceLogEntry log) {
+		String sql = "INSERT INTO maintenance_log (item_id, user_id, action, notes, cost) VALUES (?, ?, ?, ?, ?)";
+		try {
+			return jdbcTemplate.update(sql, log.getItemId(), log.getUserId(), log.getAction(), log.getNotes(),
+					log.getCost()) > 0;
+		} catch (Exception e) {
+			logger.error("Error creating maintenance log for item {}", log.getItemId(), e);
+			return false;
+		}
+	}
+
+	public List<MaintenanceLogEntry> getHistoryForItem(int itemId) {
+		String sql = "SELECT ml.*, u.username FROM maintenance_log ml JOIN users u ON ml.user_id = u.id WHERE ml.item_id = ? ORDER BY ml.log_date DESC";
+		try {
+			return jdbcTemplate.query(sql, (rs, rowNum) -> {
+				MaintenanceLogEntry entry = new MaintenanceLogEntry();
+				entry.setId(rs.getInt("id"));
+				entry.setItemId(rs.getInt("item_id"));
+				entry.setUserId(rs.getInt("user_id"));
+				entry.setUsername(rs.getString("username"));
+				entry.setLogDate(rs.getTimestamp("log_date").toLocalDateTime());
+				entry.setAction(rs.getString("action"));
+				entry.setNotes(rs.getString("notes"));
+				entry.setCost(rs.getDouble("cost"));
+				return entry;
+			}, itemId);
+		} catch (Exception e) {
+			logger.error("Error fetching maintenance history for item {}", itemId, e);
+			return List.of();
+		}
+	}
+}
+========================================================================
+FILE: src\main\java\de\technikteam\dao\MeetingAttendanceDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import de.technikteam.model.MeetingAttendance;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public class MeetingAttendanceDAO {
+	private static final Logger logger = LogManager.getLogger(MeetingAttendanceDAO.class);
+	private final JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	public MeetingAttendanceDAO(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
+	}
+
+	public boolean setAttendance(int userId, int meetingId, boolean attended, String remarks) {
+		String sql = "INSERT INTO meeting_attendance (user_id, meeting_id, attended, remarks) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE attended = VALUES(attended), remarks = VALUES(remarks)";
+		try {
+			jdbcTemplate.update(sql, userId, meetingId, attended, remarks);
+			return true;
+		} catch (Exception e) {
+			logger.error("SQL error setting attendance for user {} at meeting {}", userId, meetingId, e);
+			return false;
+		}
+	}
+
+	public List<MeetingAttendance> getAllAttendance() {
+		String sql = "SELECT * FROM meeting_attendance";
+		try {
+			return jdbcTemplate.query(sql, (rs, rowNum) -> {
+				MeetingAttendance attendance = new MeetingAttendance();
+				attendance.setUserId(rs.getInt("user_id"));
+				attendance.setMeetingId(rs.getInt("meeting_id"));
+				attendance.setAttended(rs.getBoolean("attended"));
+				attendance.setRemarks(rs.getString("remarks"));
+				return attendance;
+			});
+		} catch (Exception e) {
+			logger.error("SQL error fetching all attendance records.", e);
+			return List.of();
+		}
+	}
+}
+========================================================================
+FILE: src\main\java\de\technikteam\dao\MeetingDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import de.technikteam.model.Meeting;
+import de.technikteam.model.User;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.stereotype.Repository;
+
+import java.sql.*;
+import java.util.List;
+import java.util.Objects;
+
+@Repository
+public class MeetingDAO {
+	private static final Logger logger = LogManager.getLogger(MeetingDAO.class);
+	private final JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	public MeetingDAO(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
+	}
+
+	private final RowMapper<Meeting> meetingRowMapper = (rs, rowNum) -> {
+		Meeting meeting = new Meeting();
+		meeting.setId(rs.getInt("id"));
+		meeting.setCourseId(rs.getInt("course_id"));
+		meeting.setName(rs.getString("name"));
+		meeting.setMeetingDateTime(rs.getTimestamp("meeting_datetime").toLocalDateTime());
+		if (rs.getTimestamp("end_datetime") != null)
+			meeting.setEndDateTime(rs.getTimestamp("end_datetime").toLocalDateTime());
+		meeting.setLeaderUserId(rs.getInt("leader_user_id"));
+		meeting.setDescription(rs.getString("description"));
+		meeting.setLocation(rs.getString("location"));
+		meeting.setParentCourseName(rs.getString("parent_course_name"));
+		meeting.setLeaderUsername(rs.getString("leader_username"));
+		return meeting;
+	};
+
+	public int createMeeting(Meeting meeting) {
+		String sql = "INSERT INTO meetings (course_id, name, meeting_datetime, end_datetime, leader_user_id, description, location) VALUES (?, ?, ?, ?, ?, ?, ?)";
+		KeyHolder keyHolder = new GeneratedKeyHolder();
+		try {
+			jdbcTemplate.update(connection -> {
+				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+				ps.setInt(1, meeting.getCourseId());
+				ps.setString(2, meeting.getName());
+				ps.setTimestamp(3, Timestamp.valueOf(meeting.getMeetingDateTime()));
+				if (meeting.getEndDateTime() != null)
+					ps.setTimestamp(4, Timestamp.valueOf(meeting.getEndDateTime()));
+				else
+					ps.setNull(4, Types.TIMESTAMP);
+				if (meeting.getLeaderUserId() > 0)
+					ps.setInt(5, meeting.getLeaderUserId());
+				else
+					ps.setNull(5, Types.INTEGER);
+				ps.setString(6, meeting.getDescription());
+				ps.setString(7, meeting.getLocation());
+				return ps;
+			}, keyHolder);
+			return Objects.requireNonNull(keyHolder.getKey()).intValue();
+		} catch (Exception e) {
+			logger.error("Error creating meeting: {}", meeting.getName(), e);
+			return 0;
+		}
+	}
+
+	public Meeting getMeetingById(int meetingId) {
+		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id WHERE m.id = ?";
+		try {
+			return jdbcTemplate.queryForObject(sql, meetingRowMapper, meetingId);
+		} catch (EmptyResultDataAccessException e) {
+			return null;
+		} catch (Exception e) {
+			logger.error("Error fetching meeting by ID: {}", meetingId, e);
+			return null;
+		}
+	}
+
+	public List<Meeting> getMeetingsForCourse(int courseId) {
+		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id WHERE m.course_id = ? ORDER BY meeting_datetime ASC";
+		try {
+			return jdbcTemplate.query(sql, meetingRowMapper, courseId);
+		} catch (Exception e) {
+			logger.error("Error fetching meetings for course ID: {}", courseId, e);
+			return List.of();
+		}
+	}
+
+	public boolean updateMeeting(Meeting meeting) {
+		String sql = "UPDATE meetings SET name = ?, meeting_datetime = ?, end_datetime = ?, leader_user_id = ?, description = ?, location = ? WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, meeting.getName(), Timestamp.valueOf(meeting.getMeetingDateTime()),
+					meeting.getEndDateTime() != null ? Timestamp.valueOf(meeting.getEndDateTime()) : null,
+					meeting.getLeaderUserId() > 0 ? meeting.getLeaderUserId() : null, meeting.getDescription(),
+					meeting.getLocation(), meeting.getId()) > 0;
+		} catch (Exception e) {
+			logger.error("Error updating meeting ID: {}", meeting.getId(), e);
+			return false;
+		}
+	}
+
+	public boolean deleteMeeting(int meetingId) {
+		String sql = "DELETE FROM meetings WHERE id = ?";
+		try {
+			jdbcTemplate.update("DELETE FROM meeting_attendance WHERE meeting_id = ?", meetingId);
+			return jdbcTemplate.update(sql, meetingId) > 0;
+		} catch (Exception e) {
+			logger.error("Error deleting meeting ID: {}", meetingId, e);
+			return false;
+		}
+	}
+
+	public List<Meeting> getUpcomingMeetingsForUser(User user) {
+		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username, ma.attended FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id LEFT JOIN meeting_attendance ma ON m.id = ma.meeting_id AND ma.user_id = ? WHERE m.meeting_datetime >= NOW() ORDER BY m.meeting_datetime ASC";
+		try {
+			return jdbcTemplate.query(sql, (rs, rowNum) -> {
+				Meeting meeting = meetingRowMapper.mapRow(rs, rowNum);
+				if (rs.getObject("attended") != null) {
+					meeting.setUserAttendanceStatus(rs.getBoolean("attended") ? "ANGEMELDET" : "ABGEMELDET");
+				} else {
+					meeting.setUserAttendanceStatus("OFFEN");
+				}
+				return meeting;
+			}, user.getId());
+		} catch (Exception e) {
+			logger.error("Error fetching upcoming meetings for user {}", user.getId(), e);
+			return List.of();
+		}
+	}
+
+	public List<Meeting> getAllUpcomingMeetings() {
+		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id WHERE m.meeting_datetime >= NOW() - INTERVAL 1 DAY ORDER BY m.meeting_datetime ASC";
+		try {
+			return jdbcTemplate.query(sql, meetingRowMapper);
+		} catch (Exception e) {
+			logger.error("Error fetching upcoming meetings for calendar.", e);
+			return List.of();
+		}
+	}
+
+	public boolean isUserAssociatedWithMeeting(int meetingId, int userId) {
+		String sql = "SELECT COUNT(*) FROM meeting_attendance WHERE meeting_id = ? AND user_id = ?";
+		try {
+			Integer count = jdbcTemplate.queryForObject(sql, Integer.class, meetingId, userId);
+			return count != null && count > 0;
+		} catch (Exception e) {
+			logger.error("Error checking user association for meeting {} and user {}", meetingId, userId, e);
+			return false;
+		}
+	}
+}
+========================================================================
+FILE: src\main\java\de\technikteam\dao\PasskeyDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import de.technikteam.model.PasskeyCredential;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Repository;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public class PasskeyDAO {
+	private static final Logger logger = LogManager.getLogger(PasskeyDAO.class);
+	private final JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	public PasskeyDAO(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
+	}
+
+	private final RowMapper<PasskeyCredential> credentialRowMapper = (rs, rowNum) -> new PasskeyCredential(
+			rs.getInt("id"), rs.getInt("user_id"), rs.getString("name"), rs.getString("user_handle"),
+			rs.getString("credential_id"), rs.getString("public_key"), rs.getLong("signature_count"),
+			rs.getTimestamp("created_at").toLocalDateTime());
+
+	public boolean saveCredential(PasskeyCredential credential) {
+		String sql = "INSERT INTO user_passkeys (user_id, name, user_handle, credential_id, public_key, signature_count) VALUES (?, ?, ?, ?, ?, ?)";
+		try {
+			return jdbcTemplate.update(sql, credential.getUserId(), credential.getName(), credential.getUserHandle(),
+					credential.getCredentialId(), credential.getPublicKey(), credential.getSignatureCount()) > 0;
+		} catch (Exception e) {
+			logger.error("Error saving passkey credential for user {}", credential.getUserId(), e);
+			return false;
+		}
+	}
+
+	public List<PasskeyCredential> getCredentialsByUserId(int userId) {
+		String sql = "SELECT * FROM user_passkeys WHERE user_id = ?";
+		try {
+			return jdbcTemplate.query(sql, credentialRowMapper, userId);
+		} catch (Exception e) {
+			logger.error("Error retrieving passkey credentials for user {}", userId, e);
+			return List.of();
+		}
+	}
+
+	public Optional<PasskeyCredential> getCredentialById(String credentialId) {
+		String sql = "SELECT * FROM user_passkeys WHERE credential_id = ?";
+		try {
+			return Optional.ofNullable(jdbcTemplate.queryForObject(sql, credentialRowMapper, credentialId));
+		} catch (EmptyResultDataAccessException e) {
+			return Optional.empty();
+		} catch (Exception e) {
+			logger.error("Error retrieving credential by ID", e);
+			return Optional.empty();
+		}
+	}
+
+	public boolean deleteCredential(int credentialDbId, int userId) {
+		String sql = "DELETE FROM user_passkeys WHERE id = ? AND user_id = ?";
+		try {
+			return jdbcTemplate.update(sql, credentialDbId, userId) > 0;
+		} catch (Exception e) {
+			logger.error("Error deleting credential ID {} for user {}", credentialDbId, userId, e);
+			return false;
+		}
+	}
+
+	public boolean updateSignatureCount(String credentialId, long newSignatureCount) {
+		String sql = "UPDATE user_passkeys SET signature_count = ? WHERE credential_id = ?";
+		try {
+			return jdbcTemplate.update(sql, newSignatureCount, credentialId) > 0;
+		} catch (Exception e) {
+			logger.error("Error updating signature count for credential", e);
+			return false;
+		}
+	}
+}
+========================================================================
+FILE: src\main\java\de\technikteam\dao\PermissionDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import de.technikteam.model.Permission;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+@Repository
+public class PermissionDAO {
+	private static final Logger logger = LogManager.getLogger(PermissionDAO.class);
+	private final JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	public PermissionDAO(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
+	}
+
+	public List<Permission> getAllPermissions() {
+		String sql = "SELECT * FROM permissions ORDER BY description";
+		try {
+			return jdbcTemplate.query(sql, (rs, rowNum) -> {
+				Permission p = new Permission();
+				p.setId(rs.getInt("id"));
+				p.setPermissionKey(rs.getString("permission_key"));
+				p.setDescription(rs.getString("description"));
+				return p;
+			});
+		} catch (Exception e) {
+			logger.error("Error fetching all permissions", e);
+			return List.of();
+		}
+	}
+
+	public Set<Integer> getPermissionIdsForUser(int userId) {
+		String sql = "SELECT permission_id FROM user_permissions WHERE user_id = ?";
+		try {
+			List<Integer> ids = jdbcTemplate.queryForList(sql, Integer.class, userId);
+			return new HashSet<>(ids);
+		} catch (Exception e) {
+			logger.error("Error fetching permission IDs for user {}", userId, e);
+			return Set.of();
+		}
+	}
+}
+========================================================================
+FILE: src\main\java\de\technikteam\dao\ProfileChangeRequestDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import de.technikteam.model.ProfileChangeRequest;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public class ProfileChangeRequestDAO {
+	private static final Logger logger = LogManager.getLogger(ProfileChangeRequestDAO.class);
+	private final JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	public ProfileChangeRequestDAO(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
+	}
+
+	private final RowMapper<ProfileChangeRequest> requestRowMapper = (rs, rowNum) -> {
+		ProfileChangeRequest request = new ProfileChangeRequest();
+		request.setId(rs.getInt("id"));
+		request.setUserId(rs.getInt("user_id"));
+		request.setRequestedChanges(rs.getString("requested_changes"));
+		request.setStatus(rs.getString("status"));
+		request.setRequestedAt(rs.getTimestamp("requested_at").toLocalDateTime());
+		request.setUsername(rs.getString("username"));
+		if (rs.getObject("reviewed_by_admin_id") != null) {
+			request.setReviewedByAdminId(rs.getInt("reviewed_by_admin_id"));
+		}
+		if (rs.getTimestamp("reviewed_at") != null) {
+			request.setReviewedAt(rs.getTimestamp("reviewed_at").toLocalDateTime());
+		}
+		if (rs.getMetaData().getColumnCount() > 8) { // Simple check if admin_username is present
+			request.setReviewedByAdminName(rs.getString("admin_username"));
+		}
+		return request;
+	};
+
+	public boolean createRequest(ProfileChangeRequest request) {
+		String sql = "INSERT INTO profile_change_requests (user_id, requested_changes, status) VALUES (?, ?, 'PENDING')";
+		try {
+			return jdbcTemplate.update(sql, request.getUserId(), request.getRequestedChanges()) > 0;
+		} catch (Exception e) {
+			logger.error("Error creating profile change request for user {}", request.getUserId(), e);
+			return false;
+		}
+	}
+
+	public ProfileChangeRequest getRequestById(int id) {
+		String sql = "SELECT pcr.*, u.username as username, a.username as admin_username FROM profile_change_requests pcr JOIN users u ON pcr.user_id = u.id LEFT JOIN users a ON pcr.reviewed_by_admin_id = a.id WHERE pcr.id = ?";
+		try {
+			return jdbcTemplate.queryForObject(sql, requestRowMapper, id);
+		} catch (EmptyResultDataAccessException e) {
+			return null;
+		} catch (Exception e) {
+			logger.error("Error fetching request by ID {}", id, e);
+			return null;
+		}
+	}
+
+	public List<ProfileChangeRequest> getPendingRequests() {
+		String sql = "SELECT pcr.*, u.username as username FROM profile_change_requests pcr JOIN users u ON pcr.user_id = u.id WHERE pcr.status = 'PENDING' ORDER BY pcr.requested_at ASC";
+		try {
+			return jdbcTemplate.query(sql, requestRowMapper);
+		} catch (Exception e) {
+			logger.error("Error fetching pending requests", e);
+			return List.of();
+		}
+	}
+
+	public boolean hasPendingRequest(int userId) {
+		String sql = "SELECT COUNT(*) FROM profile_change_requests WHERE user_id = ? AND status = 'PENDING'";
+		try {
+			Integer count = jdbcTemplate.queryForObject(sql, Integer.class, userId);
+			return count != null && count > 0;
+		} catch (Exception e) {
+			logger.error("Error checking for pending request for user {}", userId, e);
+			return false;
+		}
+	}
+
+	public boolean updateRequestStatus(int requestId, String status, int adminId) {
+		String sql = "UPDATE profile_change_requests SET status = ?, reviewed_by_admin_id = ?, reviewed_at = NOW() WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, status, adminId, requestId) > 0;
+		} catch (Exception e) {
+			logger.error("Error updating status for request {}", requestId, e);
+			return false;
+		}
+	}
+}
+========================================================================
 FILE: src\main\java\de\technikteam\dao\ReportDAO.java
 ========================================================================
 
@@ -557,8 +1194,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Repository;
 
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
 
@@ -579,8 +1214,12 @@ public class UserDAO {
 		user.setUsername(resultSet.getString("username"));
 		user.setRoleId(resultSet.getInt("role_id"));
 		user.setChatColor(resultSet.getString("chat_color"));
+		user.setPasswordHash(resultSet.getString("password_hash"));
 		if (DaoUtils.hasColumn(resultSet, "theme")) {
 			user.setTheme(resultSet.getString("theme"));
+		}
+		if (DaoUtils.hasColumn(resultSet, "profile_picture_path")) {
+			user.setProfilePicturePath(resultSet.getString("profile_picture_path"));
 		}
 		if (DaoUtils.hasColumn(resultSet, "role_name")) {
 			user.setRoleName(resultSet.getString("role_name"));
@@ -604,15 +1243,14 @@ public class UserDAO {
 		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ?";
 		try {
 			User user = jdbcTemplate.queryForObject(sql, this.userRowMapper, username);
-			String storedHash = jdbcTemplate.queryForObject("SELECT password_hash FROM users WHERE id = ?",
-					String.class, user.getId());
+			String storedHash = user.getPasswordHash();
 
 			if (storedHash != null && passwordEncoder.matches(password, storedHash)) {
 				user.setPermissions(getPermissionsForUser(user.getId()));
 				return user;
 			}
 		} catch (EmptyResultDataAccessException e) {
-			return null; // User not found is a valid outcome
+			return null;
 		} catch (Exception e) {
 			logger.error("SQL error during user validation for username: {}", username, e);
 		}
@@ -622,7 +1260,11 @@ public class UserDAO {
 	public User getUserByUsername(String username) {
 		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ?";
 		try {
-			return jdbcTemplate.queryForObject(sql, userRowMapper, username);
+			User user = jdbcTemplate.queryForObject(sql, userRowMapper, username);
+			if (user != null) {
+				user.setPermissions(getPermissionsForUser(user.getId()));
+			}
+			return user;
 		} catch (EmptyResultDataAccessException e) {
 			return null;
 		} catch (Exception e) {
@@ -682,10 +1324,10 @@ public class UserDAO {
 	}
 
 	public boolean updateUser(User user) {
-		String sql = "UPDATE users SET username = ?, role_id = ?, class_year = ?, class_name = ?, email = ? WHERE id = ?";
+		String sql = "UPDATE users SET username = ?, role_id = ?, class_year = ?, class_name = ?, email = ?, profile_picture_path = ? WHERE id = ?";
 		try {
 			return jdbcTemplate.update(sql, user.getUsername(), user.getRoleId(), user.getClassYear(),
-					user.getClassName(), user.getEmail(), user.getId()) > 0;
+					user.getClassName(), user.getEmail(), user.getProfilePicturePath(), user.getId()) > 0;
 		} catch (Exception e) {
 			logger.error("SQL error updating user with ID: {}", user.getId(), e);
 			return false;
@@ -3505,6 +4147,8 @@ public class User {
 	private String email;
 	private String chatColor;
 	private String theme;
+	private String profilePicturePath;
+	private String passwordHash;
 
 	public User() {
 	}
@@ -3515,20 +4159,6 @@ public class User {
 		this.roleName = roleName;
 	}
 
-	/**
-	 * A central method to determine if the user has any permission that grants them
-	 * access to the admin panel. This prevents logic duplication in filters and
-	 * navigation builders.
-	 *
-	 * The logic is as follows: 1. A user is an admin if they have the global
-	 * 'ACCESS_ADMIN_PANEL' permission. 2. If not, a user is also considered an
-	 * admin if they have *any* CRUD-like or management-level permission (e.g.,
-	 * USER_CREATE, EVENT_MANAGE_ASSIGNMENTS, LOG_READ). 3. Simple file read/update
-	 * permissions are excluded from this check to allow granting those without
-	 * giving full admin area access.
-	 *
-	 * @return true if the user has any admin-level permission, false otherwise.
-	 */
 	public boolean hasAdminAccess() {
 		if (permissions == null) {
 			return false;
@@ -3624,6 +4254,22 @@ public class User {
 
 	public void setTheme(String theme) {
 		this.theme = theme;
+	}
+
+	public String getProfilePicturePath() {
+		return profilePicturePath;
+	}
+
+	public void setProfilePicturePath(String profilePicturePath) {
+		this.profilePicturePath = profilePicturePath;
+	}
+
+	public String getPasswordHash() {
+		return passwordHash;
+	}
+
+	public void setPasswordHash(String passwordHash) {
+		this.passwordHash = passwordHash;
 	}
 
 	public String getFormattedCreatedAt() {
@@ -3743,7 +4389,6 @@ FILE: src\main\java\de\technikteam\security\JwtAuthFilter.java
 
 package de.technikteam.security;
 
-import de.technikteam.model.User;
 import de.technikteam.service.AuthService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -3753,6 +4398,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -3781,10 +4427,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 		}
 
 		final String token = authHeader.substring(7);
-		User user = authService.validateTokenAndGetUser(token);
+		UserDetails userDetails = authService.validateTokenAndGetUser(token);
 
-		if (user != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-			UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(user, null, null);
+		if (userDetails != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+			UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null,
+					userDetails.getAuthorities());
 			authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 			SecurityContextHolder.getContext().setAuthentication(authToken);
 		}
@@ -3798,12 +4445,16 @@ FILE: src\main\java\de\technikteam\security\SecurityConfig.java
 
 package de.technikteam.security;
 
+import de.technikteam.dao.UserDAO;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -3811,30 +4462,109 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity(prePostEnabled = true)
+@EnableMethodSecurity(prePostEnabled = true, securedEnabled = true)
 public class SecurityConfig {
 
 	private final JwtAuthFilter jwtAuthFilter;
+	private final UserDAO userDAO;
 
-	public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
+	public SecurityConfig(JwtAuthFilter jwtAuthFilter, UserDAO userDAO) {
 		this.jwtAuthFilter = jwtAuthFilter;
+		this.userDAO = userDAO;
 	}
 
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-		http.csrf(csrf -> csrf.disable())
-				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/api/v1/auth/**", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
+		http.csrf(AbstractHttpConfigurer::disable)
+				.authorizeHttpRequests(auth -> auth.requestMatchers("/api/v1/auth/**", "/api/v1/public/calendar.ics",
+						"/api/v1/public/files/avatars/**", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
 						.permitAll().anyRequest().authenticated())
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+				.httpBasic(AbstractHttpConfigurer::disable).formLogin(AbstractHttpConfigurer::disable);
 
 		return http.build();
 	}
 
 	@Bean
+	public UserDetailsService userDetailsService() {
+		return username -> {
+			de.technikteam.model.User user = userDAO.getUserByUsername(username);
+			if (user == null) {
+				throw new UsernameNotFoundException("User not found: " + username);
+			}
+			return new SecurityUser(user);
+		};
+	}
+
+	@Bean
 	public PasswordEncoder passwordEncoder() {
 		return new BCryptPasswordEncoder();
+	}
+}
+========================================================================
+FILE: src\main\java\de\technikteam\security\SecurityUser.java
+========================================================================
+
+package de.technikteam.security;
+
+import de.technikteam.model.User;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.stream.Collectors;
+
+public class SecurityUser implements UserDetails {
+
+	private final User user;
+
+	public SecurityUser(User user) {
+		this.user = user;
+	}
+
+	public User getUser() {
+		return user;
+	}
+
+	@Override
+	public Collection<? extends GrantedAuthority> getAuthorities() {
+		if (user.getPermissions() == null) {
+			return Collections.emptyList();
+		}
+		return user.getPermissions().stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList());
+	}
+
+	@Override
+	public String getPassword() {
+		return user.getPasswordHash();
+	}
+
+	@Override
+	public String getUsername() {
+		return user.getUsername();
+	}
+
+	@Override
+	public boolean isAccountNonExpired() {
+		return true;
+	}
+
+	@Override
+	public boolean isAccountNonLocked() {
+		return true;
+	}
+
+	@Override
+	public boolean isCredentialsNonExpired() {
+		return true;
+	}
+
+	@Override
+	public boolean isEnabled() {
+		return true;
 	}
 }
 ========================================================================
@@ -4006,12 +4736,14 @@ package de.technikteam.service;
 
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -4032,9 +4764,10 @@ public class AuthService {
 	public AuthService(UserDAO userDAO, ConfigurationService configService) {
 		this.userDAO = userDAO;
 		String secret = configService.getProperty("jwt.secret");
-		if (secret == null || secret.isBlank()) {
-			logger.fatal("JWT secret is not configured in application.properties. Application cannot start securely.");
-			throw new RuntimeException("JWT secret is not configured.");
+		if (secret == null || secret.isBlank() || secret.length() < 32) {
+			logger.fatal(
+					"JWT secret is not configured or is too short (must be at least 32 characters). Application cannot start securely.");
+			throw new RuntimeException("JWT secret is not configured or is insecure.");
 		}
 		this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
 	}
@@ -4043,12 +4776,11 @@ public class AuthService {
 		Instant now = Instant.now();
 		Instant expiry = now.plus(8, ChronoUnit.HOURS);
 
-		return Jwts.builder().issuer(JWT_ISSUER).subject(String.valueOf(user.getId()))
-				.claim("username", user.getUsername()).claim("role", user.getRoleName()).issuedAt(Date.from(now))
+		return Jwts.builder().issuer(JWT_ISSUER).subject(String.valueOf(user.getId())).issuedAt(Date.from(now))
 				.expiration(Date.from(expiry)).signWith(secretKey).compact();
 	}
 
-	public User validateTokenAndGetUser(String token) {
+	public UserDetails validateTokenAndGetUser(String token) {
 		try {
 			Claims claims = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
 
@@ -4059,7 +4791,7 @@ public class AuthService {
 				logger.warn("JWT validation successful, but user with ID {} no longer exists.", userId);
 				return null;
 			}
-			return user;
+			return new SecurityUser(user);
 		} catch (Exception e) {
 			logger.warn("JWT verification failed: {}", e.getMessage());
 			return null;
@@ -4588,16 +5320,27 @@ package de.technikteam.service;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import de.technikteam.api.v1.dto.ProfileChangeRequestDTO;
 import de.technikteam.dao.ProfileChangeRequestDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ProfileChangeRequest;
 import de.technikteam.model.User;
+import org.apache.commons.io.FilenameUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 
 @Service
 public class ProfileRequestService {
@@ -4606,20 +5349,54 @@ public class ProfileRequestService {
 	private final UserDAO userDAO;
 	private final AdminLogService adminLogService;
 	private final NotificationService notificationService;
+	private final ConfigurationService configService;
 	private final Gson gson;
 
 	@Autowired
 	public ProfileRequestService(ProfileChangeRequestDAO requestDAO, UserDAO userDAO, AdminLogService adminLogService,
-			NotificationService notificationService, Gson gson) {
+			NotificationService notificationService, ConfigurationService configService, Gson gson) {
 		this.requestDAO = requestDAO;
 		this.userDAO = userDAO;
 		this.adminLogService = adminLogService;
 		this.notificationService = notificationService;
+		this.configService = configService;
 		this.gson = gson;
 	}
 
 	@Transactional
-	public boolean approveRequest(int requestId, User adminUser) {
+	public void createChangeRequest(User currentUser, ProfileChangeRequestDTO requestDTO, MultipartFile profilePicture)
+			throws IOException {
+		Map<String, String> changes = new HashMap<>();
+		if (requestDTO.email() != null && !Objects.equals(currentUser.getEmail(), requestDTO.email())) {
+			changes.put("email", requestDTO.email());
+		}
+		if (requestDTO.classYear() != null && currentUser.getClassYear() != requestDTO.classYear()) {
+			changes.put("classYear", String.valueOf(requestDTO.classYear()));
+		}
+		if (requestDTO.className() != null && !Objects.equals(currentUser.getClassName(), requestDTO.className())) {
+			changes.put("className", requestDTO.className());
+		}
+
+		if (profilePicture != null && !profilePicture.isEmpty()) {
+			String tempPath = saveTemporaryProfilePicture(profilePicture);
+			changes.put("profilePicturePath", tempPath);
+		}
+
+		if (changes.isEmpty()) {
+			return; // No changes to request
+		}
+
+		ProfileChangeRequest pcr = new ProfileChangeRequest();
+		pcr.setUserId(currentUser.getId());
+		pcr.setRequestedChanges(gson.toJson(changes));
+
+		if (!requestDAO.createRequest(pcr)) {
+			throw new IOException("Could not save your request to the database.");
+		}
+	}
+
+	@Transactional
+	public boolean approveRequest(int requestId, User adminUser) throws IOException {
 		ProfileChangeRequest pcr = requestDAO.getRequestById(requestId);
 		if (pcr == null || !"PENDING".equals(pcr.getStatus())) {
 			throw new IllegalStateException("Request not found or has already been processed.");
@@ -4635,7 +5412,9 @@ public class ProfileRequestService {
 		}.getType();
 		Map<String, String> changes = gson.fromJson(pcr.getRequestedChanges(), type);
 
-		changes.forEach((field, value) -> {
+		for (Map.Entry<String, String> entry : changes.entrySet()) {
+			String field = entry.getKey();
+			String value = entry.getValue();
 			switch (field) {
 			case "email":
 				userToUpdate.setEmail(value);
@@ -4646,8 +5425,12 @@ public class ProfileRequestService {
 			case "className":
 				userToUpdate.setClassName(value);
 				break;
+			case "profilePicturePath":
+				String permanentPath = makeProfilePicturePermanent(value, userToUpdate.getProfilePicturePath());
+				userToUpdate.setProfilePicturePath(permanentPath);
+				break;
 			}
-		});
+		}
 
 		if (userDAO.updateUser(userToUpdate)
 				&& requestDAO.updateRequestStatus(requestId, "APPROVED", adminUser.getId())) {
@@ -4664,10 +5447,18 @@ public class ProfileRequestService {
 	}
 
 	@Transactional
-	public boolean denyRequest(int requestId, User adminUser) {
+	public boolean denyRequest(int requestId, User adminUser) throws IOException {
 		ProfileChangeRequest pcr = requestDAO.getRequestById(requestId);
 		if (pcr == null || !"PENDING".equals(pcr.getStatus())) {
 			throw new IllegalStateException("Request not found or has already been processed.");
+		}
+
+		// If the request included a temporary file, delete it
+		Type type = new TypeToken<Map<String, String>>() {
+		}.getType();
+		Map<String, String> changes = gson.fromJson(pcr.getRequestedChanges(), type);
+		if (changes.containsKey("profilePicturePath")) {
+			deleteTemporaryProfilePicture(changes.get("profilePicturePath"));
 		}
 
 		if (requestDAO.updateRequestStatus(requestId, "DENIED", adminUser.getId())) {
@@ -4676,6 +5467,46 @@ public class ProfileRequestService {
 			return true;
 		}
 		return false;
+	}
+
+	private String saveTemporaryProfilePicture(MultipartFile file) throws IOException {
+		Path uploadDir = Paths.get(configService.getProperty("upload.directory"));
+		Path tempDir = uploadDir.resolve("temp_avatars");
+		Files.createDirectories(tempDir);
+
+		String extension = FilenameUtils.getExtension(file.getOriginalFilename());
+		String newFilename = UUID.randomUUID().toString() + "." + extension;
+		Path targetPath = tempDir.resolve(newFilename);
+		Files.copy(file.getInputStream(), targetPath);
+		return newFilename;
+	}
+
+	private String makeProfilePicturePermanent(String tempFilename, String oldPermanentFilename) throws IOException {
+		Path uploadDir = Paths.get(configService.getProperty("upload.directory"));
+		Path tempDir = uploadDir.resolve("temp_avatars");
+		Path finalDir = uploadDir.resolve("avatars");
+		Files.createDirectories(finalDir);
+
+		Path sourcePath = tempDir.resolve(tempFilename);
+		Path destinationPath = finalDir.resolve(tempFilename);
+
+		if (Files.exists(sourcePath)) {
+			Files.move(sourcePath, destinationPath, StandardCopyOption.REPLACE_EXISTING);
+
+			// Delete the old profile picture if it exists
+			if (oldPermanentFilename != null && !oldPermanentFilename.isBlank()) {
+				Path oldPath = finalDir.resolve(oldPermanentFilename);
+				Files.deleteIfExists(oldPath);
+			}
+			return tempFilename;
+		}
+		throw new IOException("Temporary profile picture not found: " + tempFilename);
+	}
+
+	private void deleteTemporaryProfilePicture(String tempFilename) throws IOException {
+		Path uploadDir = Paths.get(configService.getProperty("upload.directory"));
+		Path tempFile = uploadDir.resolve("temp_avatars").resolve(tempFilename);
+		Files.deleteIfExists(tempFile);
 	}
 }
 ========================================================================

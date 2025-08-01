@@ -4,7 +4,6 @@ import de.technikteam.dao.CourseDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Course;
 import de.technikteam.model.User;
-import de.technikteam.security.CurrentUser;
 import de.technikteam.service.AdminLogService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -13,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -44,7 +44,8 @@ public class CourseResource {
 	@PostMapping
 	@Operation(summary = "Create a new course template")
 	@PreAuthorize("hasAuthority('COURSE_CREATE')")
-	public ResponseEntity<ApiResponse> createCourse(@RequestBody Course course, @CurrentUser User adminUser) {
+	public ResponseEntity<ApiResponse> createCourse(@RequestBody Course course,
+			@AuthenticationPrincipal User adminUser) {
 		if (courseDAO.createCourse(course)) {
 			adminLogService.log(adminUser.getUsername(), "CREATE_COURSE_API",
 					"Course '" + course.getName() + "' created.");
@@ -58,7 +59,7 @@ public class CourseResource {
 	@Operation(summary = "Update a course template")
 	@PreAuthorize("hasAuthority('COURSE_UPDATE')")
 	public ResponseEntity<ApiResponse> updateCourse(@PathVariable int id, @RequestBody Course course,
-			@CurrentUser User adminUser) {
+			@AuthenticationPrincipal User adminUser) {
 		course.setId(id);
 		if (courseDAO.updateCourse(course)) {
 			adminLogService.log(adminUser.getUsername(), "UPDATE_COURSE_API",
@@ -72,7 +73,7 @@ public class CourseResource {
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete a course template")
 	@PreAuthorize("hasAuthority('COURSE_DELETE')")
-	public ResponseEntity<ApiResponse> deleteCourse(@PathVariable int id, @CurrentUser User adminUser) {
+	public ResponseEntity<ApiResponse> deleteCourse(@PathVariable int id, @AuthenticationPrincipal User adminUser) {
 		Course course = courseDAO.getCourseById(id);
 		if (course != null && courseDAO.deleteCourse(id)) {
 			adminLogService.log(adminUser.getUsername(), "DELETE_COURSE_API",

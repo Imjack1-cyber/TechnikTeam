@@ -1,6 +1,5 @@
 package de.technikteam.security;
 
-import de.technikteam.model.User;
 import de.technikteam.service.AuthService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -43,8 +42,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
 		if (userDetails != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 			UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null,
-					userDetails.getAuthorities() // <-- Crucial change: Pass authorities here
-			);
+					userDetails.getAuthorities());
 			authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 			SecurityContextHolder.getContext().setAuthentication(authToken);
 		}

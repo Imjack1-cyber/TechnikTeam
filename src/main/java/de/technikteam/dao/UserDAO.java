@@ -14,8 +14,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Repository;
 
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
 
@@ -36,7 +34,7 @@ public class UserDAO {
 		user.setUsername(resultSet.getString("username"));
 		user.setRoleId(resultSet.getInt("role_id"));
 		user.setChatColor(resultSet.getString("chat_color"));
-		user.setPasswordHash(resultSet.getString("password_hash")); // Set password hash
+		user.setPasswordHash(resultSet.getString("password_hash"));
 		if (DaoUtils.hasColumn(resultSet, "theme")) {
 			user.setTheme(resultSet.getString("theme"));
 		}
@@ -65,14 +63,14 @@ public class UserDAO {
 		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ?";
 		try {
 			User user = jdbcTemplate.queryForObject(sql, this.userRowMapper, username);
-			String storedHash = user.getPassword(); // Use hash from the mapped user object
+			String storedHash = user.getPasswordHash();
 
 			if (storedHash != null && passwordEncoder.matches(password, storedHash)) {
 				user.setPermissions(getPermissionsForUser(user.getId()));
 				return user;
 			}
 		} catch (EmptyResultDataAccessException e) {
-			return null; // User not found is a valid outcome
+			return null;
 		} catch (Exception e) {
 			logger.error("SQL error during user validation for username: {}", username, e);
 		}
@@ -80,7 +78,6 @@ public class UserDAO {
 	}
 
 	public User getUserByUsername(String username) {
-		// THIS IS THE CRITICAL FIX: Ensure this query joins roles to get the role_name
 		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ?";
 		try {
 			User user = jdbcTemplate.queryForObject(sql, userRowMapper, username);

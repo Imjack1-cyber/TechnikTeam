@@ -1,17 +1,11 @@
 package de.technikteam.model;
 
 import de.technikteam.config.Permissions;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Set;
-import java.util.stream.Collectors;
 
-public class User implements UserDetails {
+public class User {
 	private int id;
 	private String username;
 	private int roleId;
@@ -24,7 +18,7 @@ public class User implements UserDetails {
 	private String chatColor;
 	private String theme;
 	private String profilePicturePath;
-	private String passwordHash; // Field for UserDetails, though not directly used in JWT payload
+	private String passwordHash;
 
 	public User() {
 	}
@@ -44,54 +38,16 @@ public class User implements UserDetails {
 						|| p.contains("_MANAGE") || p.contains("_CREATE") || p.contains("_DELETE")));
 	}
 
-	// --- UserDetails Implementation ---
-
-	@Override
-	public Collection<? extends GrantedAuthority> getAuthorities() {
-		if (permissions == null) {
-			return Collections.emptyList();
-		}
-		return permissions.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList());
-	}
-
-	@Override
-	public String getPassword() {
-		return passwordHash; // Hashed password from DB
-	}
-
-	@Override
-	public String getUsername() {
-		return username;
-	}
-
-	@Override
-	public boolean isAccountNonExpired() {
-		return true;
-	}
-
-	@Override
-	public boolean isAccountNonLocked() {
-		return true;
-	}
-
-	@Override
-	public boolean isCredentialsNonExpired() {
-		return true;
-	}
-
-	@Override
-	public boolean isEnabled() {
-		return true;
-	}
-
-	// --- Standard Getters and Setters ---
-
 	public int getId() {
 		return id;
 	}
 
 	public void setId(int id) {
 		this.id = id;
+	}
+
+	public String getUsername() {
+		return username;
 	}
 
 	public void setUsername(String username) {
@@ -176,6 +132,10 @@ public class User implements UserDetails {
 
 	public void setProfilePicturePath(String profilePicturePath) {
 		this.profilePicturePath = profilePicturePath;
+	}
+
+	public String getPasswordHash() {
+		return passwordHash;
 	}
 
 	public void setPasswordHash(String passwordHash) {

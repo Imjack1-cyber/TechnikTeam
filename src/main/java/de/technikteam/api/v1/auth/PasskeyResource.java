@@ -2,7 +2,6 @@ package de.technikteam.api.v1.auth;
 
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
-import de.technikteam.security.CurrentUser;
 import de.technikteam.service.AuthService;
 import de.technikteam.service.PasskeyService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,6 +13,7 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -36,10 +36,9 @@ public class PasskeyResource {
 	@PostMapping("/register/start")
 	@Operation(summary = "Start passkey registration", description = "Initiates the WebAuthn registration ceremony to create a new passkey.")
 	public ResponseEntity<ApiResponse> startRegistration(@Valid @RequestBody RegistrationStartRequest request,
-			@CurrentUser User currentUser) {
+			@AuthenticationPrincipal User currentUser) {
 		try {
 			String registrationOptionsJson = passkeyService.startRegistration(currentUser);
-			// The actual data is a JSON string that needs to be parsed by the client
 			return ResponseEntity.ok(new ApiResponse(true, "Registration ceremony started.", registrationOptionsJson));
 		} catch (Exception e) {
 			logger.error("Failed to start passkey registration for user {}: {}", currentUser.getUsername(),
@@ -53,7 +52,7 @@ public class PasskeyResource {
 	@Operation(summary = "Finish passkey registration", description = "Completes the WebAuthn registration ceremony and saves the new passkey credential.")
 	public ResponseEntity<ApiResponse> finishRegistration(
 			@Parameter(description = "Name for the new device") @RequestParam String deviceName,
-			@Valid @RequestBody PasskeyRegistrationFinishRequest request, @CurrentUser User currentUser) {
+			@Valid @RequestBody PasskeyRegistrationFinishRequest request, @AuthenticationPrincipal User currentUser) {
 		try {
 			if (passkeyService.finishRegistration(currentUser.getId(), request.toString(), deviceName)) {
 				return ResponseEntity.ok(new ApiResponse(true, "Passkey registered successfully.", null));
