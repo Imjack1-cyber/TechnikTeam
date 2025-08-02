@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -40,27 +41,28 @@ public class AuthResource {
 	@PostMapping("/login")
 	@Operation(summary = "User Login", description = "Authenticates a user with username and password. On success, it sets an HttpOnly cookie with the JWT and returns user session data.", requestBody = @RequestBody(description = "User credentials for login.", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginRequest.class))))
 	public ResponseEntity<ApiResponse> login(
-			@org.springframework.web.bind.annotation.RequestBody LoginRequest loginRequest,
+			@org.springframework.web.bind.annotation.RequestBody LoginRequest loginRequest, HttpServletRequest request,
 			HttpServletResponse response) {
 		String username = loginRequest.username();
 		String password = loginRequest.password();
+		String ipAddress = getClientIp(request);
 
-		if (loginAttemptService.isLockedOut(username)) {
-			logger.warn("Blocked login attempt for locked-out user '{}'", username);
+		if (loginAttemptService.isLockedOut(username, ipAddress)) {
+			logger.warn("Blocked login attempt for locked-out user '{}' from IP {}", username, ipAddress);
 			return new ResponseEntity<>(new ApiResponse(false, "Account is temporarily locked.", null),
 					HttpStatus.FORBIDDEN);
 		}
 
 		User user = userDAO.validateUser(username, password);
 		if (user != null) {
-			loginAttemptService.clearLoginAttempts(username);
+			loginAttemptService.clearLoginAttempts(ipAddress);
 			authService.addJwtCookie(user, response);
 			logger.info("JWT cookie set successfully for user '{}'", username);
 			// Return user data but not the token itself
 			return ResponseEntity.ok(new ApiResponse(true, "Login successful", user));
 		} else {
-			loginAttemptService.recordFailedLogin(username);
-			logger.warn("Failed API login attempt for user '{}'", username);
+			loginAttemptService.recordFailedLogin(username, ipAddress);
+			logger.warn("Failed API login attempt for user '{}' from IP {}", username, ipAddress);
 			return new ResponseEntity<>(new ApiResponse(false, "Invalid credentials.", null), HttpStatus.UNAUTHORIZED);
 		}
 	}
@@ -70,5 +72,13 @@ public class AuthResource {
 	public ResponseEntity<ApiResponse> logout(HttpServletResponse response) {
 		authService.clearJwtCookie(response);
 		return ResponseEntity.ok(new ApiResponse(true, "Logout successful", null));
+	}
+
+	private String getClientIp(HttpServletRequest request) {
+		String xfHeader = request.getHeader("X-Forwarded-For");
+		if (xfHeader == null || xfHeader.isEmpty()) {
+			return request.getRemoteAddr();
+		}
+		return xfHeader.split(",")[0];
 	}
 }

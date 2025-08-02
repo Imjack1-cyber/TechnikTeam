@@ -2,6 +2,8 @@ import React, { useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
+import ReactMarkdown from 'react-markdown';
+import rehypeSanitize from 'rehype-sanitize';
 
 const MeetingDetailsPage = () => {
 	const { meetingId } = useParams();
@@ -13,10 +15,6 @@ const MeetingDetailsPage = () => {
 	if (!data) return <div className="error-message">Meeting nicht gefunden.</div>;
 
 	const { meeting, attachments } = data;
-
-	const renderMarkdown = (content) => {
-		return { __html: (content || '').replace(/\n/g, '<br />') };
-	};
 
 	return (
 		<div>
@@ -37,7 +35,11 @@ const MeetingDetailsPage = () => {
 						<li><strong>Leitung:</strong> <span>{meeting.leaderUsername || 'N/A'}</span></li>
 					</ul>
 					<h3 style={{ marginTop: '2rem' }}>Beschreibung</h3>
-					<div className="markdown-content" dangerouslySetInnerHTML={renderMarkdown(meeting.description || 'Keine Beschreibung für dieses Meeting vorhanden.')} />
+					<div className="markdown-content">
+						<ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+							{meeting.description || 'Keine Beschreibung für dieses Meeting vorhanden.'}
+						</ReactMarkdown>
+					</div>
 				</div>
 
 				<div className="card">

@@ -61,16 +61,16 @@ public class AdminRequestResource {
 		}
 	}
 
-	@PostMapping("/{id}/reject")
-	@Operation(summary = "Reject a request", description = "Rejects a profile change request.")
-	public ResponseEntity<ApiResponse> rejectRequest(
-			@Parameter(description = "ID of the request to reject") @PathVariable int id,
+	@PostMapping("/{id}/deny")
+	@Operation(summary = "Deny a request", description = "Denies a profile change request.")
+	public ResponseEntity<ApiResponse> denyRequest(
+			@Parameter(description = "ID of the request to deny") @PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
 			if (requestService.denyRequest(id, securityUser.getUser())) {
-				return ResponseEntity.ok(new ApiResponse(true, "Request rejected.", null));
+				return ResponseEntity.ok(new ApiResponse(true, "Request denied.", null));
 			}
-			return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to reject request.", null));
+			return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to deny request.", null));
 		} catch (IllegalStateException e) {
 			return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
 		} catch (IOException e) {

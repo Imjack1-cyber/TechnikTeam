@@ -3,6 +3,8 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
 import Modal from '../../components/ui/Modal';
+import ReactMarkdown from 'react-markdown';
+import rehypeSanitize from 'rehype-sanitize';
 
 const WikiPageModal = ({ isOpen, onClose, onSuccess, parentPath }) => {
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -171,7 +173,11 @@ const AdminWikiPage = () => {
 								style={{ flexGrow: 1, fontFamily: 'monospace' }}
 							/>
 						) : (
-							<div className="markdown-content" dangerouslySetInnerHTML={{ __html: selectedEntry.content.replace(/\n/g, '<br/>') }} />
+							<div className="markdown-content">
+								<ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+									{selectedEntry.content}
+								</ReactMarkdown>
+							</div>
 						)}
 					</>
 				) : (

@@ -3,6 +3,7 @@ package de.technikteam.api.v1.public_api;
 import de.technikteam.dao.EventCustomFieldDAO;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.model.*;
+import de.technikteam.security.SecurityUser;
 import de.technikteam.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -35,7 +36,8 @@ public class PublicEventResource {
 
 	@GetMapping
 	@Operation(summary = "Get upcoming events for user", description = "Retrieves a list of upcoming events, indicating the user's current attendance and qualification status for each.")
-	public ResponseEntity<ApiResponse> getUpcomingEventsForUser(@AuthenticationPrincipal User user) {
+	public ResponseEntity<ApiResponse> getUpcomingEventsForUser(@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		List<Event> events = eventDAO.getUpcomingEventsForUser(user);
 		return ResponseEntity.ok(new ApiResponse(true, "Events retrieved successfully.", events));
 	}
@@ -54,7 +56,8 @@ public class PublicEventResource {
 	@PostMapping("/{id}/signup")
 	@Operation(summary = "Sign up for an event", description = "Allows the current user to sign up for an event and submit custom field responses.")
 	public ResponseEntity<ApiResponse> signUpForEvent(@Parameter(description = "ID of the event") @PathVariable int id,
-			@AuthenticationPrincipal User user, @RequestBody Map<String, String> customFieldResponses) {
+			@AuthenticationPrincipal SecurityUser securityUser, @RequestBody Map<String, String> customFieldResponses) {
+		User user = securityUser.getUser();
 		eventDAO.signUpForEvent(user.getId(), id);
 		if (customFieldResponses != null) {
 			customFieldResponses.forEach((key, value) -> {
@@ -74,8 +77,9 @@ public class PublicEventResource {
 	@PostMapping("/{id}/signoff")
 	@Operation(summary = "Sign off from an event", description = "Allows the current user to sign off from an event.")
 	public ResponseEntity<ApiResponse> signOffFromEvent(
-			@Parameter(description = "ID of the event") @PathVariable int id, @AuthenticationPrincipal User user,
-			@RequestBody Map<String, String> payload) {
+			@Parameter(description = "ID of the event") @PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser, @RequestBody Map<String, String> payload) {
+		User user = securityUser.getUser();
 		String reason = payload.get("reason");
 		Event event = eventDAO.getEventById(id);
 		if ("LAUFEND".equals(event.getStatus())) {

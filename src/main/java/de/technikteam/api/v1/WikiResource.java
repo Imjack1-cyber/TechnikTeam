@@ -12,7 +12,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.owasp.html.PolicyFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,12 +34,15 @@ public class WikiResource {
 	private final WikiService wikiService;
 	private final WikiDAO wikiDAO;
 	private final AdminLogService adminLogService;
+	private final PolicyFactory richTextPolicy;
 
 	@Autowired
-	public WikiResource(WikiService wikiService, WikiDAO wikiDAO, AdminLogService adminLogService) {
+	public WikiResource(WikiService wikiService, WikiDAO wikiDAO, AdminLogService adminLogService,
+			@Qualifier("richTextPolicy") PolicyFactory richTextPolicy) {
 		this.wikiService = wikiService;
 		this.wikiDAO = wikiDAO;
 		this.adminLogService = adminLogService;
+		this.richTextPolicy = richTextPolicy;
 	}
 
 	@GetMapping
@@ -69,6 +74,7 @@ public class WikiResource {
 					.body(new ApiResponse(false, "An entry with this file path already exists.", null));
 		}
 
+		newEntry.setContent(richTextPolicy.sanitize(newEntry.getContent()));
 		Optional<WikiEntry> createdEntryOptional = wikiDAO.createWikiEntry(newEntry);
 		if (createdEntryOptional.isPresent()) {
 			adminLogService.log(adminUser.getUsername(), "CREATE_WIKI_PAGE",
@@ -87,7 +93,8 @@ public class WikiResource {
 			@Parameter(description = "ID of the wiki page to update") @PathVariable int id,
 			@Valid @RequestBody WikiUpdateRequest updateRequest, @AuthenticationPrincipal User adminUser) {
 
-		if (wikiDAO.updateWikiContent(id, updateRequest.content())) {
+		String sanitizedContent = richTextPolicy.sanitize(updateRequest.content());
+		if (wikiDAO.updateWikiContent(id, sanitizedContent)) {
 			adminLogService.log(adminUser.getUsername(), "UPDATE_WIKI_PAGE", "Updated wiki page ID: " + id);
 			return ResponseEntity.ok(new ApiResponse(true, "Page updated successfully", null));
 		} else {

@@ -4,197 +4,193 @@ FILE: pom.xml
 ========================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
+
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<modelVersion>4.0.0</modelVersion>
+<parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.3.1</version>
+	<relativePath /> 
+</parent>
 
-    <parent>
+<groupId>de.technikteam</groupId>
+<artifactId>TechnikTeam</artifactId>
+<version>2.0.0-SNAPSHOT</version>
+<packaging>jar</packaging>
+
+<name>TechnikTeam</name>
+
+<properties>
+    <java.version>21</java.version>
+    <springdoc-openapi.version>2.5.0</springdoc-openapi.version>
+    <jjwt.version>0.12.5</jjwt.version>
+    <ical4j.version>3.2.4</ical4j.version>
+    <diffutils.version>1.3.0</diffutils.version>
+    <!-- REMOVED <webauthn.version>2.2.0</webauthn.version> -->
+    <commons-io.version>2.16.1</commons-io.version>
+    <owasp-java-html-sanitizer.version>20230925.1</owasp-java-html-sanitizer.version>
+    <bucket4j.version>8.9.0</bucket4j.version>
+</properties>
+
+<dependencies>
+
+    <!-- Spring Boot Starters -->
+    <dependency>
         <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.1</version>
-		<relativePath /> 
-    </parent>
+        <artifactId>spring-boot-starter-web</artifactId>
+        <exclusions>
+            <exclusion>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-logging</artifactId>
+            </exclusion>
+        </exclusions>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-websocket</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-log4j2</artifactId>
+    </dependency>
 
-    <groupId>de.technikteam</groupId>
-    <artifactId>TechnikTeam</artifactId>
-    <version>2.0.0-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <!-- Database & Migrations -->
+    <dependency>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-core</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-mysql</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.mariadb.jdbc</groupId>
+        <artifactId>mariadb-java-client</artifactId>
+        <scope>runtime</scope>
+    </dependency>
 
-    <name>TechnikTeam</name>
-
-    <properties>
-        <java.version>21</java.version>
-        <springdoc-openapi.version>2.5.0</springdoc-openapi.version>
-        <jjwt.version>0.12.5</jjwt.version>
-        <ical4j.version>3.2.4</ical4j.version>
-        <diffutils.version>1.3.0</diffutils.version>
-        <webauthn.version>2.2.0</webauthn.version>
-        <commons-io.version>2.16.1</commons-io.version>
-        <owasp-html-sanitizer.version>20220608.1</owasp-html-sanitizer.version>
-        <bucket4j.version>8.9.0</bucket4j.version>
-    </properties>
-
-    <dependencies>
-    
-        <!-- Spring Boot Starters -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.springframework.boot</groupId>
-                    <artifactId>spring-boot-starter-logging</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-websocket</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-log4j2</artifactId>
-        </dependency>
-
-        <!-- Database & Migrations -->
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-mysql</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.mariadb.jdbc</groupId>
-            <artifactId>mariadb-java-client</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <!-- Security & Authentication -->
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-api</artifactId>
-            <version>${jjwt.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-impl</artifactId>
-            <version>${jjwt.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-jackson</artifactId>
-            <version>${jjwt.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.yubico</groupId>
-            <artifactId>webauthn-server-core</artifactId>
-            <version>${webauthn.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>32.1.2-jre</version>
-        </dependency>
-        <dependency>
-            <groupId>com.googlecode.java-diff-utils</groupId>
-            <artifactId>diffutils</artifactId>
-            <version>${diffutils.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
-            <artifactId>owasp-java-html-sanitizer</artifactId>
-            <version>${owasp-html-sanitizer.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.bucket4j</groupId>
-            <artifactId>bucket4j-core</artifactId>
-            <version>${bucket4j.version}</version>
-        </dependency>
-
-        <!-- API Documentation -->
-        <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>${springdoc-openapi.version}</version>
-        </dependency>
-
-        <!-- Utilities -->
+    <!-- Security & Authentication -->
+    <dependency>
+        <groupId>io.jsonwebtoken</groupId>
+        <artifactId>jjwt-api</artifactId>
+        <version>${jjwt.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>io.jsonwebtoken</groupId>
+        <artifactId>jjwt-impl</artifactId>
+        <version>${jjwt.version}</version>
+        <scope>runtime</scope>
+    </dependency>
+    <dependency>
+        <groupId>io.jsonwebtoken</groupId>
+        <artifactId>jjwt-jackson</artifactId>
+        <version>${jjwt.version}</version>
+        <scope>runtime</scope>
+    </dependency>
+    <!-- REMOVED YUBICO DEPENDENCY BLOCK -->
+    <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>32.1.2-jre</version>
+    </dependency>
+    <dependency>
+        <groupId>com.googlecode.java-diff-utils</groupId>
+        <artifactId>diffutils</artifactId>
+        <version>${diffutils.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.google.code.gson</groupId>
+        <artifactId>gson</artifactId>
+    </dependency>
 	    <dependency>
-		    <groupId>org.mnode.ical4j</groupId>
-		    <artifactId>ical4j</artifactId>
-		    <version>${ical4j.version}</version>
-		</dependency>
-        <dependency>
-            <groupId>com.github.ben-manes.caffeine</groupId>
-            <artifactId>caffeine</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-            <version>${commons-io.version}</version>
-        </dependency>
-        <dependency>
-		    <groupId>org.apache.logging.log4j</groupId>
-		    <artifactId>log4j-layout-template-json</artifactId>
-		</dependency>
+	    <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
+	    <artifactId>owasp-java-html-sanitizer</artifactId>
+	    <version>20240325.1</version> 
+	</dependency>
+    <dependency>
+        <groupId>com.bucket4j</groupId>
+        <artifactId>bucket4j-core</artifactId>
+        <version>${bucket4j.version}</version>
+    </dependency>
 
-        <!-- Testing -->
-        <dependency>
+    <!-- API Documentation -->
+    <dependency>
+        <groupId>org.springdoc</groupId>
+        <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        <version>${springdoc-openapi.version}</version>
+    </dependency>
+
+    <!-- Utilities -->
+    <dependency>
+	    <groupId>org.mnode.ical4j</groupId>
+	    <artifactId>ical4j</artifactId>
+	    <version>${ical4j.version}</version>
+	</dependency>
+    <dependency>
+        <groupId>com.github.ben-manes.caffeine</groupId>
+        <artifactId>caffeine</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>commons-io</groupId>
+        <artifactId>commons-io</artifactId>
+        <version>${commons-io.version}</version>
+    </dependency>
+    <dependency>
+	    <groupId>org.apache.logging.log4j</groupId>
+	    <artifactId>log4j-layout-template-json</artifactId>
+	</dependency>
+
+    <!-- Testing -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-test</artifactId>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.security</groupId>
+        <artifactId>spring-security-test</artifactId>
+        <scope>test</scope>
+    </dependency>
+</dependencies>
+
+<build>
+    <plugins>
+        <plugin>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-
-    <build>
-	    <plugins>
-	        <plugin>
-	            <groupId>org.springframework.boot</groupId>
-	            <artifactId>spring-boot-maven-plugin</artifactId>
-	        </plugin>
-	        
-	        <plugin>
-			    <groupId>org.flywaydb</groupId>
-			    <artifactId>flyway-maven-plugin</artifactId>
-			    <configuration>
-			        <configFile>flyway.conf</configFile>
-			    </configuration>
-			</plugin>
-	        
-	        <plugin>
-	            <artifactId>maven-compiler-plugin</artifactId>
-	            <configuration>
-	                <source>${java.version}</source>
-	                <target>${java.version}</target>
-	            </configuration>
-	        </plugin>
-    </plugins>
+            <artifactId>spring-boot-maven-plugin</artifactId>
+        </plugin>
+        
+        <plugin>
+		    <groupId>org.flywaydb</groupId>
+		    <artifactId>flyway-maven-plugin</artifactId>
+		    <configuration>
+		        <configFile>flyway.conf</configFile>
+		    </configuration>
+		</plugin>
+        
+        <plugin>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <configuration>
+                <source>${java.version}</source>
+                <target>${java.version}</target>
+            </configuration>
+        </plugin>
+</plugins>
 </build>
 </project>
 ========================================================================
@@ -301,14 +297,6 @@ Follow these steps to get a local instance of the application running for develo
 Once both servers are running, open `http://localhost:3000` in your browser.
 
 *   **API Documentation**: Full, interactive API documentation is available via Swagger UI at `http://localhost:8080/TechnikTeam/swagger-ui.html` once the backend is running.
-========================================================================
-FILE: run_combine_code_gui.txt
-========================================================================
-
-powershell -ExecutionPolicy Bypass -File combine_code_gui.ps1
-
-target,.settings,.metadata,resources,.gitattributes.txt,.project.mpp,dbscript.txt,readme.md,.gitignore.txt,.classpath.class,run_combine_src_only.txt,combine_src_only.ps1,technikteam.txt,technikteam1.txt,technikteam2.txt,filecombiner.exe,combine_code_gui.ps1
-
 ========================================================================
 FILE: frontend\eslint.config.js
 ========================================================================
@@ -2216,19 +2204,21 @@ import ReactDOM from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import router from './router';
 import { useAuthStore } from './store/authStore';
+import apiClient from './services/apiClient'; // Import apiClient here
 
 const initializeApp = async () => {
-	// We check for the user object now instead of the token
+	// Inject the logout function into the apiClient
+	apiClient.setup({ onUnauthorized: useAuthStore.getState().logout });
+
+	// Pre-fetch CSRF token after setup
+	await apiClient.fetchCsrfToken();
+
 	const { user, fetchUserSession } = useAuthStore.getState();
-	// The existence of the user object relies on a valid HttpOnly cookie session.
-	// If the user object is not present, we need to fetch it.
 	if (!user) {
 		try {
 			await fetchUserSession();
 		} catch (error) {
 			console.log("No valid session found. User needs to log in.");
-			// If fetchUserSession fails, it automatically logs the user out in the store,
-			// so no further action is needed here.
 		}
 	}
 };
@@ -3874,43 +3864,10 @@ FILE: frontend\src\components\profile\ProfileSecurity.jsx
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import apiClient from '../../services/apiClient';
-import { passkeyService } from '../../services/passkeyService';
-import { useToast } from '../../context/ToastContext';
+// REMOVED unused imports
 
-const ProfileSecurity = ({ passkeys, onUpdate }) => {
-	const { addToast } = useToast();
-
-	const handleRegisterPasskey = async () => {
-		const deviceName = prompt('Bitte geben Sie einen Namen für dieses Gerät ein (z.B. "Mein Laptop"):', 'Mein Gerät');
-		if (!deviceName) return;
-
-		try {
-			await passkeyService.registerPasskey(deviceName);
-			addToast('Passkey erfolgreich registriert!', 'success');
-			onUpdate();
-		} catch (error) {
-			console.error(error);
-			addToast(`Fehler bei der Registrierung: ${error.message}`, 'error');
-		}
-	};
-
-	const handleDeletePasskey = async (id) => {
-		if (window.confirm('Diesen Passkey wirklich entfernen?')) {
-			try {
-				const result = await apiClient.delete(`/public/profile/passkeys/${id}`);
-				if (result.success) {
-					addToast('Passkey erfolgreich entfernt.', 'success');
-					onUpdate();
-				} else {
-					throw new Error(result.message);
-				}
-			} catch (error) {
-				console.error(error);
-				addToast(`Fehler beim Entfernen: ${error.message}`, 'error');
-			}
-		}
-	};
+const ProfileSecurity = ({ onUpdate }) => {
+	// REMOVED all passkey-related state and handlers
 
 	return (
 		<div className="card" id="profile-security-container">
@@ -3921,27 +3878,13 @@ const ProfileSecurity = ({ passkeys, onUpdate }) => {
 				</li>
 			</ul>
 			<h3 style={{ marginTop: '1.5rem', fontSize: '1.1rem' }}>Passkeys (Passwortloser Login)</h3>
-			<p>Registrieren Sie Geräte für einen schnellen und sicheren Login ohne Passwort.</p>
-			<button onClick={handleRegisterPasskey} className="btn btn-success" style={{ marginBottom: '1rem' }}>
+			{/* REPLACED passkey logic with placeholder */}
+			<p className="text-muted">
+				Dieses Feature wird zurzeit überarbeitet und ist in Kürze wieder verfügbar.
+			</p>
+			<button className="btn btn-success" disabled={true} style={{ marginBottom: '1rem' }}>
 				<i className="fas fa-plus-circle"></i> Neues Gerät registrieren
 			</button>
-			<ul className="details-list">
-				{passkeys.length === 0 ? (
-					<li>Keine Passkeys registriert.</li>
-				) : (
-					passkeys.map(key => (
-						<li key={key.id}>
-							<span>
-								<i className="fas fa-key"></i> {key.name}
-								<small style={{ display: 'block', color: 'var(--text-muted-color)' }}>
-									Registriert am: {new Date(key.createdAt).toLocaleDateString('de-DE')}
-								</small>
-							</span>
-							<button onClick={() => handleDeletePasskey(key.id)} className="btn btn-small btn-danger-outline">Entfernen</button>
-						</li>
-					))
-				)}
-			</ul>
 		</div>
 	);
 };
@@ -5380,7 +5323,7 @@ FILE: frontend\src\pages\LoginPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { passkeyService } from '../services/passkeyService'; // Assuming you have a passkey service
+// import { passkeyService } from '../../services/passkeyService'; // REMOVED
 
 const LoginPage = () => {
 	const [username, setUsername] = useState('');
@@ -5415,25 +5358,7 @@ const LoginPage = () => {
 		}
 	};
 
-	const handlePasskeyLogin = async () => {
-		setIsLoading(true);
-		setError('');
-		if (!username) {
-			setError('Bitte geben Sie zuerst Ihren Benutzernamen ein.');
-			setIsLoading(false);
-			return;
-		}
-		try {
-			await passkeyService.loginWithPasskey(username);
-			// The login function in passkeyService should set the auth state
-		} catch (err) {
-			console.error(err);
-			setError(err.message || 'Passkey-Login fehlgeschlagen. Stellen Sie sicher, dass für diesen Benutzer ein Passkey registriert ist.');
-		} finally {
-			setIsLoading(false);
-		}
-	};
-
+	// REMOVED handlePasskeyLogin function
 
 	const togglePasswordVisibility = () => {
 		setIsPasswordVisible(!isPasswordVisible);
@@ -5456,7 +5381,7 @@ const LoginPage = () => {
 							value={username}
 							onChange={(e) => setUsername(e.target.value)}
 							required
-							autoComplete="username webauthn"
+							autoComplete="username" // REMOVED webauthn
 							autoFocus
 							disabled={isLoading}
 						/>
@@ -5493,14 +5418,15 @@ const LoginPage = () => {
 							'Anmelden'
 						)}
 					</button>
+					{/* MODIFIED Passkey Button */}
 					<button
 						type="button"
 						className="btn btn-secondary"
 						style={{ width: '100%' }}
-						onClick={handlePasskeyLogin}
-						disabled={isLoading}
+						disabled={true}
+						title="Dieses Feature ist in Kürze verfügbar."
 					>
-						<i className="fas fa-fingerprint"></i> Mit Passkey anmelden
+						<i className="fas fa-fingerprint"></i> Mit Passkey anmelden (in Kürze)
 					</button>
 				</form>
 			</div>
@@ -5517,6 +5443,8 @@ import React, { useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
+import ReactMarkdown from 'react-markdown';
+import rehypeSanitize from 'rehype-sanitize';
 
 const MeetingDetailsPage = () => {
 	const { meetingId } = useParams();
@@ -5528,10 +5456,6 @@ const MeetingDetailsPage = () => {
 	if (!data) return <div className="error-message">Meeting nicht gefunden.</div>;
 
 	const { meeting, attachments } = data;
-
-	const renderMarkdown = (content) => {
-		return { __html: (content || '').replace(/\n/g, '<br />') };
-	};
 
 	return (
 		<div>
@@ -5552,7 +5476,11 @@ const MeetingDetailsPage = () => {
 						<li><strong>Leitung:</strong> <span>{meeting.leaderUsername || 'N/A'}</span></li>
 					</ul>
 					<h3 style={{ marginTop: '2rem' }}>Beschreibung</h3>
-					<div className="markdown-content" dangerouslySetInnerHTML={renderMarkdown(meeting.description || 'Keine Beschreibung für dieses Meeting vorhanden.')} />
+					<div className="markdown-content">
+						<ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+							{meeting.description || 'Keine Beschreibung für dieses Meeting vorhanden.'}
+						</ReactMarkdown>
+					</div>
 				</div>
 
 				<div className="card">
@@ -7893,6 +7821,8 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
 import Modal from '../../components/ui/Modal';
+import ReactMarkdown from 'react-markdown';
+import rehypeSanitize from 'rehype-sanitize';
 
 const WikiPageModal = ({ isOpen, onClose, onSuccess, parentPath }) => {
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -8061,7 +7991,11 @@ const AdminWikiPage = () => {
 								style={{ flexGrow: 1, fontFamily: 'monospace' }}
 							/>
 						) : (
-							<div className="markdown-content" dangerouslySetInnerHTML={{ __html: selectedEntry.content.replace(/\n/g, '<br/>') }} />
+							<div className="markdown-content">
+								<ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+									{selectedEntry.content}
+								</ReactMarkdown>
+							</div>
 						)}
 					</>
 				) : (
@@ -8364,7 +8298,6 @@ const router = createBrowserRouter([
 			{ path: 'feedback', element: <FeedbackPage /> },
 			{ path: 'feedback/event/:eventId', element: <EventFeedbackPage /> },
 			{ path: 'kalender', element: <CalendarPage /> },
-			{ path: 'my-feedback', element: <Navigate to="/feedback" replace /> },
 			{ path: 'test-500', element: <ErrorTrigger /> },
 
 			{
@@ -8446,26 +8379,29 @@ export default ProtectedRoute;
 FILE: frontend\src\services\apiClient.js
 ========================================================================
 
-import { useAuthStore } from '../store/authStore';
+// REMOVED: import { useAuthStore } from '../store/authStore';
 
 const BASE_URL = '/api/v1';
 
-// This will be populated after the initial page load
 let csrfToken = '';
+let onUnauthorizedCallback = () => { }; // Placeholder for the logout function
 
 const apiClient = {
-	// Function to fetch the CSRF token, typically called once on app initialization
+	// New function to inject the logout handler from the auth store
+	setup: function(callbacks) {
+		onUnauthorizedCallback = callbacks.onUnauthorized;
+	},
+
 	async fetchCsrfToken() {
 		try {
-			// A simple GET request to a protected endpoint will return the CSRF cookie
-			await this.get('/users/me'); // Using /me as it's a guaranteed protected route
+			await this.get('/users/me');
 		} catch (error) {
 			console.warn("Could not pre-fetch CSRF token. It will be fetched on the first state-changing request.", error);
 		}
 	},
 
 	request: async function(endpoint, options = {}) {
-		const { logout } = useAuthStore.getState();
+		// REMOVED: const { logout } = useAuthStore.getState();
 		const headers = {
 			'Content-Type': 'application/json',
 			...options.headers,
@@ -8475,10 +8411,8 @@ const apiClient = {
 			delete headers['Content-Type'];
 		}
 
-		// Add CSRF token for state-changing methods
 		const method = options.method || 'GET';
 		if (['POST', 'PUT', 'DELETE'].includes(method.toUpperCase())) {
-			// Find the XSRF-TOKEN from cookies
 			const match = document.cookie.match(new RegExp('(^| )' + 'XSRF-TOKEN' + '=([^;]+)'));
 			if (match) {
 				csrfToken = match[2];
@@ -8494,11 +8428,11 @@ const apiClient = {
 			const response = await fetch(`${BASE_URL}${endpoint}`, {
 				...options,
 				headers: headers,
-				credentials: 'include' // Crucial for sending HttpOnly cookies
+				credentials: 'include'
 			});
 
 			if (response.status === 401) {
-				logout();
+				onUnauthorizedCallback(); // Use the injected callback
 				throw new Error('Nicht authorisiert. Ihre Sitzung ist möglicherweise abgelaufen.');
 			}
 			if (response.status === 403) {
@@ -8519,7 +8453,6 @@ const apiClient = {
 			const result = await response.json();
 
 			if (!response.ok) {
-				// Use a user-friendly generic message for server errors
 				if (response.status >= 500) {
 					throw new Error("Ein interner Serverfehler ist aufgetreten. Bitte versuchen Sie es später erneut.");
 				}
@@ -8559,125 +8492,7 @@ const apiClient = {
 	},
 };
 
-// Pre-fetch the CSRF token when the module is loaded
-apiClient.fetchCsrfToken();
-
 export default apiClient;
-========================================================================
-FILE: frontend\src\services\passkeyService.js
-========================================================================
-
-import apiClient from './apiClient';
-import { useAuthStore } from '../store/authStore';
-
-// These functions handle the conversion between ArrayBuffer/Uint8Array and Base64URL encoding
-const bufferDecode = (value) => Uint8Array.from(atob(value.replace(/_/g, '/').replace(/-/g, '+')), c => c.charCodeAt(0));
-const bufferEncode = (value) => btoa(String.fromCharCode.apply(null, new Uint8Array(value))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-
-const registerPasskey = async (deviceName) => {
-	try {
-		// Step 1: Get options from the server
-		const createOptionsResponse = await apiClient.post('/auth/passkey/register/start', { deviceName });
-
-		if (!createOptionsResponse.success) {
-			throw new Error(createOptionsResponse.message);
-		}
-
-		const createOptions = createOptionsResponse.data;
-
-		// Step 2: Decode server options from Base64URL to ArrayBuffers
-		createOptions.challenge = bufferDecode(createOptions.challenge);
-		createOptions.user.id = bufferDecode(createOptions.user.id);
-		if (createOptions.excludeCredentials) {
-			for (let cred of createOptions.excludeCredentials) {
-				cred.id = bufferDecode(cred.id);
-			}
-		}
-
-		// Step 3: Call the WebAuthn API to create the credential
-		const credential = await navigator.credentials.create({ publicKey: createOptions });
-
-		// Step 4: Encode the browser's response to Base64URL for the server
-		const credentialForServer = {
-			id: credential.id,
-			rawId: bufferEncode(credential.rawId),
-			type: credential.type,
-			response: {
-				clientDataJSON: bufferEncode(credential.response.clientDataJSON),
-				attestationObject: bufferEncode(credential.response.attestationObject),
-			},
-		};
-
-		// Step 5: Send the encoded response to the server to finish registration
-		const result = await apiClient.post(`/auth/passkey/register/finish`, credentialForServer);
-
-		if (!result.success) {
-			throw new Error(result.message || 'Registration failed on the server.');
-		}
-
-		return result;
-
-	} catch (err) {
-		console.error('Passkey registration process failed:', err);
-		throw err;
-	}
-};
-
-const loginWithPasskey = async (username) => {
-	try {
-		// Step 1: Get options from the server
-		const getOptionsResponse = await apiClient.post(`/auth/passkey/login/start?username=${encodeURIComponent(username)}`);
-		if (!getOptionsResponse.success) {
-			throw new Error(getOptionsResponse.message);
-		}
-
-		const getOptions = getOptionsResponse.data;
-
-		// Step 2: Decode server options from Base64URL to ArrayBuffers
-		getOptions.challenge = bufferDecode(getOptions.challenge);
-		if (getOptions.allowCredentials) {
-			for (let cred of getOptions.allowCredentials) {
-				cred.id = bufferDecode(cred.id);
-			}
-		}
-
-		// Step 3: Call the WebAuthn API to get the credential assertion
-		const credential = await navigator.credentials.get({ publicKey: getOptions });
-
-		// Step 4: Encode the browser's response to Base64URL for the server
-		const credentialForServer = {
-			id: credential.id,
-			rawId: bufferEncode(credential.rawId),
-			type: credential.type,
-			response: {
-				authenticatorData: bufferEncode(credential.response.authenticatorData),
-				clientDataJSON: bufferEncode(credential.response.clientDataJSON),
-				signature: bufferEncode(credential.response.signature),
-				userHandle: credential.response.userHandle ? bufferEncode(credential.response.userHandle) : null,
-			},
-		};
-
-		// Step 5: Send the encoded assertion to the server to finish login
-		const result = await apiClient.post('/auth/passkey/login/finish', credentialForServer);
-		if (result.success) {
-			// The backend now sets an HttpOnly cookie, we just need to refresh the session state
-			const { fetchUserSession } = useAuthStore.getState();
-			await fetchUserSession();
-			return true;
-		} else {
-			throw new Error(result.message || 'Passkey login failed on server.');
-		}
-
-	} catch (err) {
-		console.error('Passkey login process failed:', err);
-		throw err;
-	}
-};
-
-export const passkeyService = {
-	registerPasskey,
-	loginWithPasskey,
-};
 ========================================================================
 FILE: frontend\src\store\authStore.js
 ========================================================================
@@ -9347,16 +9162,16 @@ public class AdminRequestResource {
 		}
 	}
 
-	@PostMapping("/{id}/reject")
-	@Operation(summary = "Reject a request", description = "Rejects a profile change request.")
-	public ResponseEntity<ApiResponse> rejectRequest(
-			@Parameter(description = "ID of the request to reject") @PathVariable int id,
+	@PostMapping("/{id}/deny")
+	@Operation(summary = "Deny a request", description = "Denies a profile change request.")
+	public ResponseEntity<ApiResponse> denyRequest(
+			@Parameter(description = "ID of the request to deny") @PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
 			if (requestService.denyRequest(id, securityUser.getUser())) {
-				return ResponseEntity.ok(new ApiResponse(true, "Request rejected.", null));
+				return ResponseEntity.ok(new ApiResponse(true, "Request denied.", null));
 			}
-			return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to reject request.", null));
+			return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to deny request.", null));
 		} catch (IllegalStateException e) {
 			return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
 		} catch (IOException e) {
@@ -9688,7 +9503,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.owasp.html.PolicyFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -9707,11 +9524,14 @@ public class MeetingResource {
 
 	private final MeetingDAO meetingDAO;
 	private final AdminLogService adminLogService;
+	private final PolicyFactory richTextPolicy;
 
 	@Autowired
-	public MeetingResource(MeetingDAO meetingDAO, AdminLogService adminLogService) {
+	public MeetingResource(MeetingDAO meetingDAO, AdminLogService adminLogService,
+			@Qualifier("richTextPolicy") PolicyFactory richTextPolicy) {
 		this.meetingDAO = meetingDAO;
 		this.adminLogService = adminLogService;
+		this.richTextPolicy = richTextPolicy;
 	}
 
 	@GetMapping
@@ -9742,7 +9562,7 @@ public class MeetingResource {
 		meeting.setMeetingDateTime(request.meetingDateTime());
 		meeting.setEndDateTime(request.endDateTime());
 		meeting.setLeaderUserId(request.leaderUserId() != null ? request.leaderUserId() : 0);
-		meeting.setDescription(request.description());
+		meeting.setDescription(richTextPolicy.sanitize(request.description()));
 		meeting.setLocation(request.location());
 
 		int newId = meetingDAO.createMeeting(meeting);
@@ -9768,7 +9588,7 @@ public class MeetingResource {
 		meeting.setMeetingDateTime(request.meetingDateTime());
 		meeting.setEndDateTime(request.endDateTime());
 		meeting.setLeaderUserId(request.leaderUserId() != null ? request.leaderUserId() : 0);
-		meeting.setDescription(request.description());
+		meeting.setDescription(richTextPolicy.sanitize(request.description()));
 		meeting.setLocation(request.location());
 
 		if (meetingDAO.updateMeeting(meeting)) {
@@ -10214,7 +10034,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.owasp.html.PolicyFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -10234,12 +10056,15 @@ public class WikiResource {
 	private final WikiService wikiService;
 	private final WikiDAO wikiDAO;
 	private final AdminLogService adminLogService;
+	private final PolicyFactory richTextPolicy;
 
 	@Autowired
-	public WikiResource(WikiService wikiService, WikiDAO wikiDAO, AdminLogService adminLogService) {
+	public WikiResource(WikiService wikiService, WikiDAO wikiDAO, AdminLogService adminLogService,
+			@Qualifier("richTextPolicy") PolicyFactory richTextPolicy) {
 		this.wikiService = wikiService;
 		this.wikiDAO = wikiDAO;
 		this.adminLogService = adminLogService;
+		this.richTextPolicy = richTextPolicy;
 	}
 
 	@GetMapping
@@ -10271,6 +10096,7 @@ public class WikiResource {
 					.body(new ApiResponse(false, "An entry with this file path already exists.", null));
 		}
 
+		newEntry.setContent(richTextPolicy.sanitize(newEntry.getContent()));
 		Optional<WikiEntry> createdEntryOptional = wikiDAO.createWikiEntry(newEntry);
 		if (createdEntryOptional.isPresent()) {
 			adminLogService.log(adminUser.getUsername(), "CREATE_WIKI_PAGE",
@@ -10289,7 +10115,8 @@ public class WikiResource {
 			@Parameter(description = "ID of the wiki page to update") @PathVariable int id,
 			@Valid @RequestBody WikiUpdateRequest updateRequest, @AuthenticationPrincipal User adminUser) {
 
-		if (wikiDAO.updateWikiContent(id, updateRequest.content())) {
+		String sanitizedContent = richTextPolicy.sanitize(updateRequest.content());
+		if (wikiDAO.updateWikiContent(id, sanitizedContent)) {
 			adminLogService.log(adminUser.getUsername(), "UPDATE_WIKI_PAGE", "Updated wiki page ID: " + id);
 			return ResponseEntity.ok(new ApiResponse(true, "Page updated successfully", null));
 		} else {
@@ -10336,6 +10163,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -10366,27 +10194,28 @@ public class AuthResource {
 	@PostMapping("/login")
 	@Operation(summary = "User Login", description = "Authenticates a user with username and password. On success, it sets an HttpOnly cookie with the JWT and returns user session data.", requestBody = @RequestBody(description = "User credentials for login.", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginRequest.class))))
 	public ResponseEntity<ApiResponse> login(
-			@org.springframework.web.bind.annotation.RequestBody LoginRequest loginRequest,
+			@org.springframework.web.bind.annotation.RequestBody LoginRequest loginRequest, HttpServletRequest request,
 			HttpServletResponse response) {
 		String username = loginRequest.username();
 		String password = loginRequest.password();
+		String ipAddress = getClientIp(request);
 
-		if (loginAttemptService.isLockedOut(username)) {
-			logger.warn("Blocked login attempt for locked-out user '{}'", username);
+		if (loginAttemptService.isLockedOut(username, ipAddress)) {
+			logger.warn("Blocked login attempt for locked-out user '{}' from IP {}", username, ipAddress);
 			return new ResponseEntity<>(new ApiResponse(false, "Account is temporarily locked.", null),
 					HttpStatus.FORBIDDEN);
 		}
 
 		User user = userDAO.validateUser(username, password);
 		if (user != null) {
-			loginAttemptService.clearLoginAttempts(username);
+			loginAttemptService.clearLoginAttempts(ipAddress);
 			authService.addJwtCookie(user, response);
 			logger.info("JWT cookie set successfully for user '{}'", username);
 			// Return user data but not the token itself
 			return ResponseEntity.ok(new ApiResponse(true, "Login successful", user));
 		} else {
-			loginAttemptService.recordFailedLogin(username);
-			logger.warn("Failed API login attempt for user '{}'", username);
+			loginAttemptService.recordFailedLogin(username, ipAddress);
+			logger.warn("Failed API login attempt for user '{}' from IP {}", username, ipAddress);
 			return new ResponseEntity<>(new ApiResponse(false, "Invalid credentials.", null), HttpStatus.UNAUTHORIZED);
 		}
 	}
@@ -10396,6 +10225,14 @@ public class AuthResource {
 	public ResponseEntity<ApiResponse> logout(HttpServletResponse response) {
 		authService.clearJwtCookie(response);
 		return ResponseEntity.ok(new ApiResponse(true, "Logout successful", null));
+	}
+
+	private String getClientIp(HttpServletRequest request) {
+		String xfHeader = request.getHeader("X-Forwarded-For");
+		if (xfHeader == null || xfHeader.isEmpty()) {
+			return request.getRemoteAddr();
+		}
+		return xfHeader.split(",")[0];
 	}
 }
 ========================================================================
@@ -10416,191 +10253,6 @@ public record LoginRequest(
 		@NotBlank(message = "Username cannot be blank") @Schema(description = "The user's unique username.", example = "admin", required = true) String username,
 
 		@NotBlank(message = "Password cannot be blank") @Schema(description = "The user's password.", example = "admin123", required = true) String password) {
-}
-========================================================================
-FILE: src\main\java\de\technikteam\api\v1\auth\PasskeyAuthenticationFinishRequest.java
-========================================================================
-
-package de.technikteam.api.v1.auth;
-
-import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-
-public record PasskeyAuthenticationFinishRequest(
-		@NotBlank @Schema(description = "The Base64Url-encoded credential ID from the WebAuthn API.", required = true) String id,
-
-		@NotBlank @Schema(description = "The Base64Url-encoded raw ID from the WebAuthn API.", required = true) String rawId,
-
-		@NotBlank @Schema(description = "The type of credential ('public-key').", required = true) String type,
-
-		@NotNull @Schema(description = "The client's response object containing authenticatorData, clientDataJSON, and signature.", required = true) Response response) {
-	public record Response(
-			@NotBlank @Schema(description = "The Base64Url-encoded authenticatorData.", required = true) String authenticatorData,
-
-			@NotBlank @Schema(description = "The Base64Url-encoded clientDataJSON.", required = true) String clientDataJSON,
-
-			@NotBlank @Schema(description = "The Base64Url-encoded signature.", required = true) String signature,
-
-			@Schema(description = "The Base64Url-encoded userHandle (optional).") String userHandle) {
-	}
-}
-========================================================================
-FILE: src\main\java\de\technikteam\api\v1\auth\PasskeyRegistrationFinishRequest.java
-========================================================================
-
-package de.technikteam.api.v1.auth;
-
-import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-
-public record PasskeyRegistrationFinishRequest(
-		@NotBlank @Schema(description = "The Base64Url-encoded credential ID from the WebAuthn API.", required = true) String id,
-
-		@NotBlank @Schema(description = "The Base64Url-encoded raw ID from the WebAuthn API.", required = true) String rawId,
-
-		@NotBlank @Schema(description = "The type of credential ('public-key').", required = true) String type,
-
-		@NotNull @Schema(description = "The client's response object containing clientDataJSON and attestationObject.", required = true) Response response) {
-	public record Response(
-			@NotBlank @Schema(description = "The Base64Url-encoded clientDataJSON.", required = true) String clientDataJSON,
-
-			@NotBlank @Schema(description = "The Base64Url-encoded attestationObject.", required = true) String attestationObject) {
-	}
-}
-========================================================================
-FILE: src\main\java\de\technikteam\api\v1\auth\PasskeyResource.java
-========================================================================
-
-package de.technikteam.api.v1.auth;
-
-import de.technikteam.model.ApiResponse;
-import de.technikteam.model.User;
-import de.technikteam.security.SecurityUser;
-import de.technikteam.service.AuthService;
-import de.technikteam.service.ChallengeRepository;
-import de.technikteam.service.PasskeyService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.validation.Valid;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
-
-@RestController
-@RequestMapping("/api/v1/auth/passkey")
-@Tag(name = "Passkey Authentication", description = "Endpoints for WebAuthn/Passkey registration and authentication (passwordless login).")
-public class PasskeyResource {
-	private static final Logger logger = LogManager.getLogger(PasskeyResource.class);
-
-	private final PasskeyService passkeyService;
-	private final AuthService authService;
-	private final ChallengeRepository challengeRepository;
-
-	@Autowired
-	public PasskeyResource(PasskeyService passkeyService, AuthService authService,
-			ChallengeRepository challengeRepository) {
-		this.passkeyService = passkeyService;
-		this.authService = authService;
-		this.challengeRepository = challengeRepository;
-	}
-
-	@PostMapping("/register/start")
-	@Operation(summary = "Start passkey registration", description = "Initiates the WebAuthn registration ceremony to create a new passkey.")
-	public ResponseEntity<ApiResponse> startRegistration(@Valid @RequestBody RegistrationStartRequest request,
-			@AuthenticationPrincipal SecurityUser securityUser) {
-		try {
-			// Temporarily store the device name with the challenge
-			challengeRepository.addDeviceName(securityUser.getUsername(), request.deviceName());
-			String registrationOptionsJson = passkeyService.startRegistration(securityUser.getUser());
-			return ResponseEntity.ok(new ApiResponse(true, "Registration ceremony started.", registrationOptionsJson));
-		} catch (Exception e) {
-			logger.error("Failed to start passkey registration for user {}: {}", securityUser.getUsername(),
-					e.getMessage());
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Failed to start passkey registration: " + e.getMessage(), null));
-		}
-	}
-
-	@PostMapping("/register/finish")
-	@Operation(summary = "Finish passkey registration", description = "Completes the WebAuthn registration ceremony and saves the new passkey credential.")
-	public ResponseEntity<ApiResponse> finishRegistration(@RequestBody String credentialJson,
-			@AuthenticationPrincipal SecurityUser securityUser) {
-		try {
-			String deviceName = challengeRepository.getDeviceName(securityUser.getUsername()).orElse("New Device"); // Fallback
-																													// device
-																													// name
-
-			if (passkeyService.finishRegistration(securityUser.getUser().getId(), securityUser.getUsername(),
-					deviceName, credentialJson)) {
-				return ResponseEntity.ok(new ApiResponse(true, "Passkey registered successfully.", null));
-			} else {
-				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-						.body(new ApiResponse(false, "Failed to save passkey credential.", null));
-			}
-		} catch (Exception e) {
-			logger.error("Failed to finish passkey registration for user {}: {}", securityUser.getUsername(),
-					e.getMessage());
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Failed to finish passkey registration: " + e.getMessage(), null));
-		} finally {
-			challengeRepository.removeDeviceName(securityUser.getUsername());
-		}
-	}
-
-	@PostMapping("/login/start")
-	@Operation(summary = "Start passkey authentication", description = "Initiates the WebAuthn authentication ceremony to log in with a passkey.")
-	public ResponseEntity<ApiResponse> startAuthentication(
-			@Parameter(description = "Username for passkey authentication") @RequestParam String username) {
-		try {
-			String authenticationOptionsJson = passkeyService.startAuthentication(username);
-			return ResponseEntity
-					.ok(new ApiResponse(true, "Authentication ceremony started.", authenticationOptionsJson));
-		} catch (Exception e) {
-			logger.error("Failed to start passkey authentication for username {}: {}", username, e.getMessage());
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Failed to start passkey authentication: " + e.getMessage(), null));
-		}
-	}
-
-	@PostMapping("/login/finish")
-	@Operation(summary = "Finish passkey authentication", description = "Completes the WebAuthn authentication ceremony and logs the user in if successful by setting an HttpOnly cookie.")
-	public ResponseEntity<ApiResponse> finishAuthentication(@RequestBody String credentialJson,
-			HttpServletResponse response) {
-		try {
-			User authenticatedUser = passkeyService.finishAuthentication(credentialJson);
-			if (authenticatedUser != null) {
-				authService.addJwtCookie(authenticatedUser, response);
-				return ResponseEntity.ok(new ApiResponse(true, "Login successful", authenticatedUser));
-			} else {
-				return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-						.body(new ApiResponse(false, "Passkey authentication failed.", null));
-			}
-		} catch (Exception e) {
-			logger.error("Failed to finish passkey authentication: {}", e.getMessage());
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Failed to finish passkey authentication: " + e.getMessage(), null));
-		}
-	}
-}
-========================================================================
-FILE: src\main\java\de\technikteam\api\v1\auth\RegistrationStartRequest.java
-========================================================================
-
-package de.technikteam.api.v1.auth;
-
-import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
-
-public record RegistrationStartRequest(
-		@NotBlank(message = "Device name cannot be blank") @Schema(description = "A user-provided name for the new passkey/device (e.g., 'My Laptop').", example = "My MacBook", required = true) String deviceName) {
 }
 ========================================================================
 FILE: src\main\java\de\technikteam\api\v1\dto\CategoryRequest.java
@@ -10994,6 +10646,7 @@ import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Event;
 import de.technikteam.model.EventTask;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -11025,7 +10678,9 @@ public class PublicDashboardResource {
 
 	@GetMapping
 	@Operation(summary = "Get dashboard data", description = "Retrieves all necessary data for the user's main dashboard view.")
-	public ResponseEntity<ApiResponse> getDashboardData(@AuthenticationPrincipal User user) {
+	public ResponseEntity<ApiResponse> getDashboardData(@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
+
 		List<Event> assignedEvents = eventDAO.getAssignedEventsForUser(user.getId(), 5);
 		List<EventTask> openTasks = eventTaskDAO.getOpenTasksForUser(user.getId());
 		List<Event> upcomingEvents = eventDAO.getAllActiveAndUpcomingEvents(); // Simplified for now
@@ -11047,6 +10702,7 @@ package de.technikteam.api.v1.public_api;
 import de.technikteam.dao.EventCustomFieldDAO;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.model.*;
+import de.technikteam.security.SecurityUser;
 import de.technikteam.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -11079,7 +10735,8 @@ public class PublicEventResource {
 
 	@GetMapping
 	@Operation(summary = "Get upcoming events for user", description = "Retrieves a list of upcoming events, indicating the user's current attendance and qualification status for each.")
-	public ResponseEntity<ApiResponse> getUpcomingEventsForUser(@AuthenticationPrincipal User user) {
+	public ResponseEntity<ApiResponse> getUpcomingEventsForUser(@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		List<Event> events = eventDAO.getUpcomingEventsForUser(user);
 		return ResponseEntity.ok(new ApiResponse(true, "Events retrieved successfully.", events));
 	}
@@ -11098,7 +10755,8 @@ public class PublicEventResource {
 	@PostMapping("/{id}/signup")
 	@Operation(summary = "Sign up for an event", description = "Allows the current user to sign up for an event and submit custom field responses.")
 	public ResponseEntity<ApiResponse> signUpForEvent(@Parameter(description = "ID of the event") @PathVariable int id,
-			@AuthenticationPrincipal User user, @RequestBody Map<String, String> customFieldResponses) {
+			@AuthenticationPrincipal SecurityUser securityUser, @RequestBody Map<String, String> customFieldResponses) {
+		User user = securityUser.getUser();
 		eventDAO.signUpForEvent(user.getId(), id);
 		if (customFieldResponses != null) {
 			customFieldResponses.forEach((key, value) -> {
@@ -11118,8 +10776,9 @@ public class PublicEventResource {
 	@PostMapping("/{id}/signoff")
 	@Operation(summary = "Sign off from an event", description = "Allows the current user to sign off from an event.")
 	public ResponseEntity<ApiResponse> signOffFromEvent(
-			@Parameter(description = "ID of the event") @PathVariable int id, @AuthenticationPrincipal User user,
-			@RequestBody Map<String, String> payload) {
+			@Parameter(description = "ID of the event") @PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser, @RequestBody Map<String, String> payload) {
+		User user = securityUser.getUser();
 		String reason = payload.get("reason");
 		Event event = eventDAO.getEventById(id);
 		if ("LAUFEND".equals(event.getStatus())) {
@@ -11149,6 +10808,7 @@ import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.EventFeedbackDAO;
 import de.technikteam.dao.FeedbackSubmissionDAO;
 import de.technikteam.model.*;
+import de.technikteam.security.SecurityUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -11183,7 +10843,8 @@ public class PublicFeedbackResource {
 
 	@GetMapping("/user")
 	@Operation(summary = "Get user's feedback submissions", description = "Retrieves a list of all general feedback submissions made by the current user.")
-	public ResponseEntity<ApiResponse> getMyFeedbackSubmissions(@AuthenticationPrincipal User user) {
+	public ResponseEntity<ApiResponse> getMyFeedbackSubmissions(@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		List<FeedbackSubmission> submissions = submissionDAO.getSubmissionsByUserId(user.getId());
 		return ResponseEntity.ok(new ApiResponse(true, "Submissions retrieved.", submissions));
 	}
@@ -11191,7 +10852,8 @@ public class PublicFeedbackResource {
 	@PostMapping("/general")
 	@Operation(summary = "Submit general feedback", description = "Allows a user to submit a new general feedback entry.")
 	public ResponseEntity<ApiResponse> submitGeneralFeedback(@Valid @RequestBody GeneralFeedbackRequest request,
-			@AuthenticationPrincipal User user) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		FeedbackSubmission submission = new FeedbackSubmission();
 		submission.setUserId(user.getId());
 		submission.setSubject(request.subject());
@@ -11208,7 +10870,9 @@ public class PublicFeedbackResource {
 	@GetMapping("/forms")
 	@Operation(summary = "Get feedback form for an event", description = "Retrieves the feedback form for a specific event and checks if the user has already submitted a response.")
 	public ResponseEntity<ApiResponse> getEventFeedbackForm(
-			@Parameter(description = "ID of the event") @RequestParam int eventId, @AuthenticationPrincipal User user) {
+			@Parameter(description = "ID of the event") @RequestParam int eventId,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		Event event = eventDAO.getEventById(eventId);
 		if (event == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, "Event not found.", null));
@@ -11227,7 +10891,8 @@ public class PublicFeedbackResource {
 	@PostMapping("/event")
 	@Operation(summary = "Submit event feedback", description = "Submits a user's rating and comments for an event feedback form.")
 	public ResponseEntity<ApiResponse> submitEventFeedback(@RequestBody FeedbackResponse response,
-			@AuthenticationPrincipal User user) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		response.setUserId(user.getId());
 		if (eventFeedbackDAO.saveFeedbackResponse(response)) {
 			return ResponseEntity.ok(new ApiResponse(true, "Event feedback submitted.", null));
@@ -11246,6 +10911,7 @@ import de.technikteam.dao.FileDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.File;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -11274,7 +10940,8 @@ public class PublicFilesResource {
 
 	@GetMapping
 	@Operation(summary = "Get all accessible files grouped by category", description = "Retrieves files visible to the current user, grouped by their category.")
-	public ResponseEntity<ApiResponse> getFiles(@AuthenticationPrincipal User user) {
+	public ResponseEntity<ApiResponse> getFiles(@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		Map<String, List<File>> files = fileDAO.getAllFilesGroupedByCategory(user);
 		return ResponseEntity.ok(new ApiResponse(true, "Files retrieved successfully.", files));
 	}
@@ -11459,6 +11126,7 @@ import de.technikteam.dao.MeetingDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Meeting;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -11487,7 +11155,8 @@ public class PublicMeetingResource {
 
 	@GetMapping
 	@Operation(summary = "Get upcoming meetings for user", description = "Retrieves a list of upcoming meetings, indicating the user's current attendance status for each.")
-	public ResponseEntity<ApiResponse> getUpcomingMeetings(@AuthenticationPrincipal User user) {
+	public ResponseEntity<ApiResponse> getUpcomingMeetings(@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		List<Meeting> meetings = meetingDAO.getUpcomingMeetingsForUser(user);
 		return ResponseEntity.ok(new ApiResponse(true, "Meetings retrieved.", meetings));
 	}
@@ -11497,7 +11166,8 @@ public class PublicMeetingResource {
 	public ResponseEntity<ApiResponse> handleMeetingAction(
 			@Parameter(description = "ID of the meeting") @PathVariable int id,
 			@Parameter(description = "Action to perform. Must be 'signup' or 'signoff'.") @PathVariable String action,
-			@AuthenticationPrincipal User user) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 
 		boolean success;
 		if ("signup".equalsIgnoreCase(action)) {
@@ -11542,6 +11212,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11555,19 +11226,19 @@ public class PublicProfileResource {
 	private final EventDAO eventDAO;
 	private final UserQualificationsDAO qualificationsDAO;
 	private final AchievementDAO achievementDAO;
-	private final PasskeyDAO passkeyDAO;
+	// private final PasskeyDAO passkeyDAO; // REMOVED
 	private final ProfileChangeRequestDAO requestDAO;
 	private final ProfileRequestService profileRequestService;
 
 	@Autowired
 	public PublicProfileResource(UserDAO userDAO, EventDAO eventDAO, UserQualificationsDAO qualificationsDAO,
-			AchievementDAO achievementDAO, PasskeyDAO passkeyDAO, ProfileChangeRequestDAO requestDAO,
+			AchievementDAO achievementDAO, /* PasskeyDAO passkeyDAO, */ ProfileChangeRequestDAO requestDAO, // REMOVED
 			ProfileRequestService profileRequestService, Gson gson) {
 		this.userDAO = userDAO;
 		this.eventDAO = eventDAO;
 		this.qualificationsDAO = qualificationsDAO;
 		this.achievementDAO = achievementDAO;
-		this.passkeyDAO = passkeyDAO;
+		// this.passkeyDAO = passkeyDAO; // REMOVED
 		this.requestDAO = requestDAO;
 		this.profileRequestService = profileRequestService;
 	}
@@ -11581,7 +11252,7 @@ public class PublicProfileResource {
 		profileData.put("eventHistory", eventDAO.getEventHistoryForUser(user.getId()));
 		profileData.put("qualifications", qualificationsDAO.getQualificationsForUser(user.getId()));
 		profileData.put("achievements", achievementDAO.getAchievementsForUser(user.getId()));
-		profileData.put("passkeys", passkeyDAO.getCredentialsByUserId(user.getId()));
+		profileData.put("passkeys", Collections.emptyList()); // REMOVED passkeyDAO call, return empty list
 		profileData.put("hasPendingRequest", requestDAO.hasPendingRequest(user.getId()));
 
 		return ResponseEntity.ok(new ApiResponse(true, "Profile data retrieved.", profileData));
@@ -11656,19 +11327,7 @@ public class PublicProfileResource {
 		}
 	}
 
-	@DeleteMapping("/passkeys/{id}")
-	@Operation(summary = "Delete a passkey", description = "Removes a registered passkey/credential for the current user.")
-	public ResponseEntity<ApiResponse> deletePasskey(
-			@Parameter(description = "The database ID of the passkey credential to delete") @PathVariable int id,
-			@AuthenticationPrincipal SecurityUser securityUser) {
-		User user = securityUser.getUser();
-		if (passkeyDAO.deleteCredential(id, user.getId())) {
-			return ResponseEntity.ok(new ApiResponse(true, "Passkey successfully removed.", null));
-		} else {
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Could not remove passkey.", null));
-		}
-	}
+	// REMOVED deletePasskey endpoint
 }
 ========================================================================
 FILE: src\main\java\de\technikteam\api\v1\public_api\PublicStorageResource.java
@@ -11682,6 +11341,7 @@ import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Event;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import de.technikteam.service.StorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -11728,7 +11388,8 @@ public class PublicStorageResource {
 	@PostMapping("/transactions")
 	@Operation(summary = "Perform a storage transaction", description = "Checks out or checks in a specified quantity of a storage item.")
 	public ResponseEntity<ApiResponse> performTransaction(@RequestBody Map<String, Object> payload,
-			@AuthenticationPrincipal User user) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		try {
 			int itemId = ((Number) payload.get("itemId")).intValue();
 			int quantity = ((Number) payload.get("quantity")).intValue();
@@ -12166,7 +11827,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
-
 	private final RateLimitingInterceptor rateLimitingInterceptor;
 
 	@Autowired
@@ -12178,7 +11838,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 	public void addInterceptors(InterceptorRegistry registry) {
 		// Apply rate limiting to sensitive state-changing endpoints
 		registry.addInterceptor(rateLimitingInterceptor).addPathPatterns("/api/v1/users/*/reset-password")
-				.addPathPatterns("/api/v1/public/profile/request-change").addPathPatterns("/api/v1/auth/passkey/**");
+				.addPathPatterns("/api/v1/public/profile/request-change").addPathPatterns("/api/v1/auth/login");
 	}
 }
 ========================================================================
@@ -13217,5 +12877,628 @@ public class EventFeedbackDAO {
 			logger.error("Error checking user feedback submission status.", e);
 			return false;
 		}
+	}
+}
+========================================================================
+FILE: src\main\java\de\technikteam\dao\EventTaskDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import de.technikteam.model.EventTask;
+import de.technikteam.model.InventoryKit;
+import de.technikteam.model.StorageItem;
+import de.technikteam.model.User;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Repository
+public class EventTaskDAO {
+	private static final Logger logger = LogManager.getLogger(EventTaskDAO.class);
+	private final JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	public EventTaskDAO(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
+	}
+
+	@Transactional
+	public int saveTask(EventTask task, int[] userIds, String[] itemIds, String[] itemQuantities, String[] kitIds) {
+		boolean isUpdate = task.getId() > 0;
+		if (isUpdate) {
+			updateTask(task);
+		} else {
+			int newId = createTask(task);
+			task.setId(newId);
+		}
+
+		if (task.getId() == 0) {
+			throw new RuntimeException("Failed to create or find task ID.");
+		}
+
+		clearAssociations(task.getId());
+		saveUserAssignments(task.getId(), userIds);
+		saveItemRequirements(task.getId(), itemIds, itemQuantities);
+		saveKitRequirements(task.getId(), kitIds);
+
+		logger.info("Successfully saved task ID {}", task.getId());
+		return task.getId();
+	}
+
+	private int createTask(EventTask task) {
+		String taskSql = "INSERT INTO event_tasks (event_id, description, details, status, display_order, required_persons) VALUES (?, ?, ?, 'OFFEN', ?, ?)";
+		KeyHolder keyHolder = new GeneratedKeyHolder();
+		jdbcTemplate.update(connection -> {
+			PreparedStatement ps = connection.prepareStatement(taskSql, Statement.RETURN_GENERATED_KEYS);
+			ps.setInt(1, task.getEventId());
+			ps.setString(2, task.getDescription());
+			ps.setString(3, task.getDetails());
+			ps.setInt(4, task.getDisplayOrder());
+			ps.setInt(5, task.getRequiredPersons());
+			return ps;
+		}, keyHolder);
+		return Objects.requireNonNull(keyHolder.getKey()).intValue();
+	}
+
+	private void updateTask(EventTask task) {
+		String taskSql = "UPDATE event_tasks SET description = ?, details = ?, status = ?, display_order = ?, required_persons = ? WHERE id = ?";
+		jdbcTemplate.update(taskSql, task.getDescription(), task.getDetails(), task.getStatus(), task.getDisplayOrder(),
+				task.getRequiredPersons(), task.getId());
+	}
+
+	private void clearAssociations(int taskId) {
+		jdbcTemplate.update("DELETE FROM event_task_assignments WHERE task_id = ?", taskId);
+		jdbcTemplate.update("DELETE FROM event_task_storage_items WHERE task_id = ?", taskId);
+		jdbcTemplate.update("DELETE FROM event_task_kits WHERE task_id = ?", taskId);
+	}
+
+	private void saveUserAssignments(int taskId, int[] userIds) {
+		if (userIds == null || userIds.length == 0)
+			return;
+		String sql = "INSERT INTO event_task_assignments (task_id, user_id) VALUES (?, ?)";
+		List<Integer> userIdList = Arrays.stream(userIds).boxed().collect(Collectors.toList());
+		jdbcTemplate.batchUpdate(sql, userIdList, 100, (ps, userId) -> {
+			ps.setInt(1, taskId);
+			ps.setInt(2, userId);
+		});
+	}
+
+	private void saveItemRequirements(int taskId, String[] itemIds, String[] itemQuantities) {
+		if (itemIds == null || itemQuantities == null || itemIds.length != itemQuantities.length)
+			return;
+		String sql = "INSERT INTO event_task_storage_items (task_id, item_id, quantity) VALUES (?, ?, ?)";
+		List<String> itemIdList = List.of(itemIds);
+		jdbcTemplate.batchUpdate(sql, itemIdList, 100, (ps, itemIdStr) -> {
+			if (itemIdStr != null && !itemIdStr.isEmpty()) {
+				int index = itemIdList.indexOf(itemIdStr);
+				ps.setInt(1, taskId);
+				ps.setInt(2, Integer.parseInt(itemIdStr));
+				ps.setInt(3, Integer.parseInt(itemQuantities[index]));
+			}
+		});
+	}
+
+	private void saveKitRequirements(int taskId, String[] kitIds) {
+		if (kitIds == null || kitIds.length == 0)
+			return;
+		String sql = "INSERT INTO event_task_kits (task_id, kit_id) VALUES (?, ?)";
+		List<String> kitIdList = List.of(kitIds);
+		jdbcTemplate.batchUpdate(sql, kitIdList, 100, (ps, kitIdStr) -> {
+			if (kitIdStr != null && !kitIdStr.isEmpty()) {
+				ps.setInt(1, taskId);
+				ps.setInt(2, Integer.parseInt(kitIdStr));
+			}
+		});
+	}
+
+	public List<EventTask> getTasksForEvent(int eventId) {
+		Map<Integer, EventTask> tasksById = new LinkedHashMap<>();
+		String sql = "SELECT t.*, u.id as user_id, u.username, si.id as item_id, si.name as item_name, tsi.quantity as item_quantity, ik.id as kit_id, ik.name as kit_name FROM event_tasks t LEFT JOIN event_task_assignments ta ON t.id = ta.task_id LEFT JOIN users u ON ta.user_id = u.id LEFT JOIN event_task_storage_items tsi ON t.id = tsi.task_id LEFT JOIN storage_items si ON tsi.item_id = si.id LEFT JOIN event_task_kits tk ON t.id = tk.task_id LEFT JOIN inventory_kits ik ON tk.kit_id = ik.id WHERE t.event_id = ? ORDER BY t.display_order ASC, t.id ASC, u.username, si.name, ik.name";
+
+		jdbcTemplate.query(sql, (ResultSet rs) -> {
+			int currentTaskId = rs.getInt("id");
+			EventTask task = tasksById.computeIfAbsent(currentTaskId, id -> mapResultSetToTask(rs));
+
+			int currentUserId = rs.getInt("user_id");
+			if (currentUserId > 0 && task.getAssignedUsers().stream().noneMatch(u -> u.getId() == currentUserId)) {
+				User user = new User();
+				user.setId(currentUserId);
+				user.setUsername(rs.getString("username"));
+				task.getAssignedUsers().add(user);
+			}
+			int currentItemId = rs.getInt("item_id");
+			if (currentItemId > 0 && task.getRequiredItems().stream().noneMatch(i -> i.getId() == currentItemId)) {
+				StorageItem item = new StorageItem();
+				item.setId(currentItemId);
+				item.setName(rs.getString("item_name"));
+				item.setQuantity(rs.getInt("item_quantity"));
+				task.getRequiredItems().add(item);
+			}
+			int currentKitId = rs.getInt("kit_id");
+			if (currentKitId > 0 && task.getRequiredKits().stream().noneMatch(k -> k.getId() == currentKitId)) {
+				InventoryKit kit = new InventoryKit();
+				kit.setId(currentKitId);
+				kit.setName(rs.getString("kit_name"));
+				task.getRequiredKits().add(kit);
+			}
+		}, eventId);
+
+		return new ArrayList<>(tasksById.values());
+	}
+
+	private EventTask mapResultSetToTask(ResultSet rs) {
+		try {
+			EventTask task = new EventTask();
+			task.setId(rs.getInt("id"));
+			task.setEventId(rs.getInt("event_id"));
+			task.setDescription(rs.getString("description"));
+			task.setDetails(rs.getString("details"));
+			task.setStatus(rs.getString("status"));
+			task.setDisplayOrder(rs.getInt("display_order"));
+			task.setRequiredPersons(rs.getInt("required_persons"));
+			task.setAssignedUsers(new ArrayList<>());
+			task.setRequiredItems(new ArrayList<>());
+			task.setRequiredKits(new ArrayList<>());
+			return task;
+		} catch (SQLException e) {
+			throw new RuntimeException("Failed to map ResultSet to EventTask", e);
+		}
+	}
+
+	public boolean deleteTask(int taskId) {
+		String sql = "DELETE FROM event_tasks WHERE id = ?";
+		return jdbcTemplate.update(sql, taskId) > 0;
+	}
+
+	public boolean updateTaskStatus(int taskId, String status) {
+		String sql = "UPDATE event_tasks SET status = ? WHERE id = ?";
+		return jdbcTemplate.update(sql, status, taskId) > 0;
+	}
+
+	public List<EventTask> getOpenTasksForUser(int userId) {
+		String sql = "SELECT t.*, e.name as event_name FROM event_tasks t JOIN event_task_assignments ta ON t.id = ta.task_id JOIN events e ON t.event_id = e.id WHERE ta.user_id = ? AND t.status = 'OFFEN' ORDER BY e.event_datetime ASC";
+		return jdbcTemplate.query(sql, (rs, rowNum) -> {
+			EventTask task = new EventTask();
+			task.setId(rs.getInt("id"));
+			task.setEventId(rs.getInt("event_id"));
+			task.setDescription(rs.getString("description"));
+			task.setStatus(rs.getString("status"));
+			task.setEventName(rs.getString("event_name"));
+			return task;
+		}, userId);
+	}
+}
+========================================================================
+FILE: src\main\java\de\technikteam\dao\FeedbackSubmissionDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import de.technikteam.model.FeedbackSubmission;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public class FeedbackSubmissionDAO {
+	private static final Logger logger = LogManager.getLogger(FeedbackSubmissionDAO.class);
+	private final JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	public FeedbackSubmissionDAO(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
+	}
+
+	private final RowMapper<FeedbackSubmission> submissionRowMapper = (rs, rowNum) -> {
+		FeedbackSubmission sub = new FeedbackSubmission();
+		sub.setId(rs.getInt("id"));
+		sub.setUserId(rs.getInt("user_id"));
+		sub.setUsername(rs.getString("username"));
+		sub.setSubject(rs.getString("subject"));
+		sub.setDisplayTitle(rs.getString("display_title"));
+		sub.setContent(rs.getString("content"));
+		sub.setSubmittedAt(rs.getTimestamp("submitted_at").toLocalDateTime());
+		sub.setStatus(rs.getString("status"));
+		sub.setDisplayOrder(rs.getInt("display_order"));
+		return sub;
+	};
+
+	public boolean createSubmission(FeedbackSubmission submission) {
+		String sql = "INSERT INTO feedback_submissions (user_id, subject, content) VALUES (?, ?, ?)";
+		try {
+			return jdbcTemplate.update(sql, submission.getUserId(), submission.getSubject(),
+					submission.getContent()) > 0;
+		} catch (Exception e) {
+			logger.error("Error creating feedback submission for user {}", submission.getUserId(), e);
+			return false;
+		}
+	}
+
+	public List<FeedbackSubmission> getAllSubmissions() {
+		String sql = "SELECT fs.*, u.username FROM feedback_submissions fs JOIN users u ON fs.user_id = u.id ORDER BY FIELD(fs.status, 'NEW', 'VIEWED', 'PLANNED', 'REJECTED', 'COMPLETED'), fs.display_order ASC";
+		try {
+			return jdbcTemplate.query(sql, submissionRowMapper);
+		} catch (Exception e) {
+			logger.error("Error fetching all feedback submissions", e);
+			return List.of();
+		}
+	}
+
+	public FeedbackSubmission getSubmissionById(int submissionId) {
+		String sql = "SELECT fs.*, u.username FROM feedback_submissions fs JOIN users u ON fs.user_id = u.id WHERE fs.id = ?";
+		try {
+			return jdbcTemplate.queryForObject(sql, submissionRowMapper, submissionId);
+		} catch (EmptyResultDataAccessException e) {
+			return null;
+		} catch (Exception e) {
+			logger.error("Error fetching feedback submission by ID {}", submissionId, e);
+			return null;
+		}
+	}
+
+	public List<FeedbackSubmission> getSubmissionsByUserId(int userId) {
+		String sql = "SELECT fs.*, u.username FROM feedback_submissions fs JOIN users u ON fs.user_id = u.id WHERE fs.user_id = ? ORDER BY fs.submitted_at DESC";
+		try {
+			return jdbcTemplate.query(sql, submissionRowMapper, userId);
+		} catch (Exception e) {
+			logger.error("Error fetching feedback submissions for user {}", userId, e);
+			return List.of();
+		}
+	}
+
+	public boolean updateStatusAndTitle(int submissionId, String newStatus, String displayTitle) {
+		String sql = "UPDATE feedback_submissions SET status = ?, display_title = ? WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, newStatus, displayTitle, submissionId) > 0;
+		} catch (Exception e) {
+			logger.error("Error updating status and title for submission {}", submissionId, e);
+			return false;
+		}
+	}
+
+	public boolean deleteSubmission(int submissionId) {
+		String sql = "DELETE FROM feedback_submissions WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, submissionId) > 0;
+		} catch (Exception e) {
+			logger.error("Error deleting submission {}", submissionId, e);
+			return false;
+		}
+	}
+
+}
+========================================================================
+FILE: src\main\java\de\technikteam\dao\FileDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import de.technikteam.model.File;
+import de.technikteam.model.FileCategory;
+import de.technikteam.model.User;
+import de.technikteam.util.DaoUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.stereotype.Repository;
+
+import java.sql.PreparedStatement;
+import java.sql.Statement;
+import java.sql.Types;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+@Repository
+public class FileDAO {
+	private static final Logger logger = LogManager.getLogger(FileDAO.class);
+	private final JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	public FileDAO(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
+	}
+
+	private final RowMapper<File> fileRowMapper = (rs, rowNum) -> {
+		File file = new File();
+		file.setId(rs.getInt("id"));
+		file.setFilename(rs.getString("filename"));
+		file.setFilepath(rs.getString("filepath"));
+		file.setUploadedAt(rs.getTimestamp("uploaded_at").toLocalDateTime());
+		file.setCategoryId(rs.getInt("category_id"));
+		if (DaoUtils.hasColumn(rs, "required_role")) {
+			file.setRequiredRole(rs.getString("required_role"));
+		}
+		if (DaoUtils.hasColumn(rs, "category_name")) {
+			file.setCategoryName(
+					rs.getString("category_name") == null ? "Ohne Kategorie" : rs.getString("category_name"));
+		} else {
+			file.setCategoryName("Ohne Kategorie");
+		}
+		return file;
+	};
+
+	public Map<String, List<File>> getAllFilesGroupedByCategory(User user) {
+		List<File> files = getAllFiles(user);
+		return files.stream().collect(Collectors.groupingBy(File::getCategoryName));
+	}
+
+	public List<File> getAllFiles(User user) {
+		StringBuilder sql = new StringBuilder(
+				"SELECT f.*, fc.name as category_name FROM files f LEFT JOIN file_categories fc ON f.category_id = fc.id ");
+		if (!user.hasAdminAccess()) {
+			sql.append("WHERE f.required_role = 'NUTZER' ");
+		}
+		sql.append("ORDER BY fc.name, f.filename");
+
+		try {
+			return jdbcTemplate.query(sql.toString(), fileRowMapper);
+		} catch (Exception e) {
+			logger.error("Error while fetching files.", e);
+			return List.of();
+		}
+	}
+
+	public int createFile(File file) {
+		String sql = "INSERT INTO files (filename, filepath, category_id, required_role) VALUES (?, ?, ?, ?)";
+		KeyHolder keyHolder = new GeneratedKeyHolder();
+		try {
+			jdbcTemplate.update(connection -> {
+				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+				ps.setString(1, file.getFilename());
+				ps.setString(2, file.getFilepath());
+				if (file.getCategoryId() > 0) {
+					ps.setInt(3, file.getCategoryId());
+				} else {
+					ps.setNull(3, Types.INTEGER);
+				}
+				ps.setString(4, file.getRequiredRole());
+				return ps;
+			}, keyHolder);
+			return Objects.requireNonNull(keyHolder.getKey()).intValue();
+		} catch (Exception e) {
+			logger.error("Error creating file record for '{}'", file.getFilename(), e);
+			return 0;
+		}
+	}
+
+	public boolean touchFileRecord(int fileId) {
+		String sql = "UPDATE files SET uploaded_at = CURRENT_TIMESTAMP WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, fileId) > 0;
+		} catch (Exception e) {
+			logger.error("Error touching file record for ID {}", fileId, e);
+			return false;
+		}
+	}
+
+	public boolean reassignFileToCategory(int fileId, int categoryId) {
+		String sql = "UPDATE files SET category_id = ? WHERE id = ?";
+		try {
+			Object newCategoryId = categoryId > 0 ? categoryId : null;
+			return jdbcTemplate.update(sql, newCategoryId, fileId) > 0;
+		} catch (Exception e) {
+			logger.error("Error reassigning file {} to category {}", fileId, categoryId, e);
+			return false;
+		}
+	}
+
+	public List<FileCategory> getAllCategories() {
+		String sql = "SELECT * FROM file_categories ORDER BY name";
+		try {
+			return jdbcTemplate.query(sql, (rs, rowNum) -> {
+				FileCategory cat = new FileCategory();
+				cat.setId(rs.getInt("id"));
+				cat.setName(rs.getString("name"));
+				return cat;
+			});
+		} catch (Exception e) {
+			logger.error("Error fetching file categories.", e);
+			return List.of();
+		}
+	}
+
+	public File getFileById(int fileId) {
+		String sql = "SELECT f.*, fc.name as category_name FROM files f LEFT JOIN file_categories fc ON f.category_id = fc.id WHERE f.id = ?";
+		try {
+			return jdbcTemplate.queryForObject(sql, fileRowMapper, fileId);
+		} catch (EmptyResultDataAccessException e) {
+			return null;
+		} catch (Exception e) {
+			logger.error("Error while fetching file with ID: {}", fileId, e);
+			return null;
+		}
+	}
+
+	public boolean deleteFile(int fileId) {
+		String sql = "DELETE FROM files WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, fileId) > 0;
+		} catch (Exception e) {
+			logger.error("Error while deleting file record with ID: {}", fileId, e);
+			return false;
+		}
+	}
+
+	public boolean createCategory(String categoryName) {
+		String sql = "INSERT INTO file_categories (name) VALUES (?)";
+		try {
+			return jdbcTemplate.update(sql, categoryName) > 0;
+		} catch (Exception e) {
+			logger.error("Error creating file category '{}'", categoryName, e);
+			return false;
+		}
+	}
+
+	public boolean deleteCategory(int categoryId) {
+		String sql = "DELETE FROM file_categories WHERE id = ?";
+		try {
+			// First, un-assign files from this category
+			jdbcTemplate.update("UPDATE files SET category_id = NULL WHERE category_id = ?", categoryId);
+			return jdbcTemplate.update(sql, categoryId) > 0;
+		} catch (Exception e) {
+			logger.error("Error deleting category ID {}", categoryId, e);
+			return false;
+		}
+	}
+
+	public String getCategoryNameById(int categoryId) {
+		String sql = "SELECT name FROM file_categories WHERE id = ?";
+		try {
+			return jdbcTemplate.queryForObject(sql, String.class, categoryId);
+		} catch (EmptyResultDataAccessException e) {
+			return null;
+		} catch (Exception e) {
+			logger.error("Error fetching category name for ID: {}", categoryId, e);
+			return null;
+		}
+	}
+}
+========================================================================
+FILE: src\main\java\de\technikteam\dao\InventoryKitDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import de.technikteam.model.InventoryKit;
+import de.technikteam.model.InventoryKitItem;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.stereotype.Repository;
+
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.*;
+
+@Repository
+public class InventoryKitDAO {
+	private static final Logger logger = LogManager.getLogger(InventoryKitDAO.class);
+	private final JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	public InventoryKitDAO(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
+	}
+
+	private final RowMapper<InventoryKit> kitRowMapper = (rs, rowNum) -> {
+		InventoryKit kit = new InventoryKit();
+		kit.setId(rs.getInt("id"));
+		kit.setName(rs.getString("name"));
+		kit.setDescription(rs.getString("description"));
+		kit.setLocation(rs.getString("location"));
+		kit.setItems(new ArrayList<>());
+		return kit;
+	};
+
+	public int createKit(InventoryKit kit) {
+		String sql = "INSERT INTO inventory_kits (name, description, location) VALUES (?, ?, ?)";
+		try {
+			KeyHolder keyHolder = new GeneratedKeyHolder();
+			jdbcTemplate.update(connection -> {
+				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+				ps.setString(1, kit.getName());
+				ps.setString(2, kit.getDescription());
+				ps.setString(3, kit.getLocation());
+				return ps;
+			}, keyHolder);
+			return Objects.requireNonNull(keyHolder.getKey()).intValue();
+		} catch (Exception e) {
+			logger.error("Error creating inventory kit '{}'", kit.getName(), e);
+			return 0;
+		}
+	}
+
+	public boolean updateKit(InventoryKit kit) {
+		String sql = "UPDATE inventory_kits SET name = ?, description = ?, location = ? WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, kit.getName(), kit.getDescription(), kit.getLocation(), kit.getId()) > 0;
+		} catch (Exception e) {
+			logger.error("Error updating inventory kit ID {}", kit.getId(), e);
+			return false;
+		}
+	}
+
+	public InventoryKit getKitById(int kitId) {
+		String sql = "SELECT * FROM inventory_kits WHERE id = ?";
+		try {
+			return jdbcTemplate.queryForObject(sql, kitRowMapper, kitId);
+		} catch (EmptyResultDataAccessException e) {
+			return null; // Expected case when not found
+		} catch (Exception e) {
+			logger.error("Error fetching kit by ID {}", kitId, e);
+			return null;
+		}
+	}
+
+	public boolean deleteKit(int kitId) {
+		String sql = "DELETE FROM inventory_kits WHERE id = ?";
+		try {
+			// First, delete dependencies in the linking table
+			jdbcTemplate.update("DELETE FROM inventory_kit_items WHERE kit_id = ?", kitId);
+			// Then, delete the kit itself
+			return jdbcTemplate.update(sql, kitId) > 0;
+		} catch (Exception e) {
+			logger.error("Error deleting inventory kit ID {}", kitId, e);
+			return false;
+		}
+	}
+
+	public List<InventoryKit> getAllKitsWithItems() {
+		Map<Integer, InventoryKit> kitMap = new LinkedHashMap<>();
+		String sql = "SELECT k.id, k.name, k.description, k.location, ki.item_id, ki.quantity, si.name as item_name FROM inventory_kits k LEFT JOIN inventory_kit_items ki ON k.id = ki.kit_id LEFT JOIN storage_items si ON ki.item_id = si.id ORDER BY k.name, si.name";
+
+		jdbcTemplate.query(sql, (ResultSet rs) -> {
+			int kitId = rs.getInt("id");
+			InventoryKit kit = kitMap.computeIfAbsent(kitId, id -> {
+				try {
+					return kitRowMapper.mapRow(rs, 0);
+				} catch (SQLException e) {
+					// This is a safe way to handle checked exceptions within a lambda
+					throw new RuntimeException("Failed to map ResultSet to InventoryKit", e);
+				}
+			});
+			if (rs.getInt("item_id") > 0) {
+				InventoryKitItem item = new InventoryKitItem();
+				item.setKitId(kitId);
+				item.setItemId(rs.getInt("item_id"));
+				item.setQuantity(rs.getInt("quantity"));
+				item.setItemName(rs.getString("item_name"));
+				kit.getItems().add(item);
+			}
+		});
+		return new ArrayList<>(kitMap.values());
 	}
 }

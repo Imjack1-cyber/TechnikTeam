@@ -3,19 +3,21 @@ import ReactDOM from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import router from './router';
 import { useAuthStore } from './store/authStore';
+import apiClient from './services/apiClient'; // Import apiClient here
 
 const initializeApp = async () => {
-	// We check for the user object now instead of the token
+	// Inject the logout function into the apiClient
+	apiClient.setup({ onUnauthorized: useAuthStore.getState().logout });
+
+	// Pre-fetch CSRF token after setup
+	await apiClient.fetchCsrfToken();
+
 	const { user, fetchUserSession } = useAuthStore.getState();
-	// The existence of the user object relies on a valid HttpOnly cookie session.
-	// If the user object is not present, we need to fetch it.
 	if (!user) {
 		try {
 			await fetchUserSession();
 		} catch (error) {
 			console.log("No valid session found. User needs to log in.");
-			// If fetchUserSession fails, it automatically logs the user out in the store,
-			// so no further action is needed here.
 		}
 	}
 };

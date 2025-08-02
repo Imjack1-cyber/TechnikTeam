@@ -5,6 +5,7 @@ import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.EventFeedbackDAO;
 import de.technikteam.dao.FeedbackSubmissionDAO;
 import de.technikteam.model.*;
+import de.technikteam.security.SecurityUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -39,7 +40,8 @@ public class PublicFeedbackResource {
 
 	@GetMapping("/user")
 	@Operation(summary = "Get user's feedback submissions", description = "Retrieves a list of all general feedback submissions made by the current user.")
-	public ResponseEntity<ApiResponse> getMyFeedbackSubmissions(@AuthenticationPrincipal User user) {
+	public ResponseEntity<ApiResponse> getMyFeedbackSubmissions(@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		List<FeedbackSubmission> submissions = submissionDAO.getSubmissionsByUserId(user.getId());
 		return ResponseEntity.ok(new ApiResponse(true, "Submissions retrieved.", submissions));
 	}
@@ -47,7 +49,8 @@ public class PublicFeedbackResource {
 	@PostMapping("/general")
 	@Operation(summary = "Submit general feedback", description = "Allows a user to submit a new general feedback entry.")
 	public ResponseEntity<ApiResponse> submitGeneralFeedback(@Valid @RequestBody GeneralFeedbackRequest request,
-			@AuthenticationPrincipal User user) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		FeedbackSubmission submission = new FeedbackSubmission();
 		submission.setUserId(user.getId());
 		submission.setSubject(request.subject());
@@ -64,7 +67,9 @@ public class PublicFeedbackResource {
 	@GetMapping("/forms")
 	@Operation(summary = "Get feedback form for an event", description = "Retrieves the feedback form for a specific event and checks if the user has already submitted a response.")
 	public ResponseEntity<ApiResponse> getEventFeedbackForm(
-			@Parameter(description = "ID of the event") @RequestParam int eventId, @AuthenticationPrincipal User user) {
+			@Parameter(description = "ID of the event") @RequestParam int eventId,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		Event event = eventDAO.getEventById(eventId);
 		if (event == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, "Event not found.", null));
@@ -83,7 +88,8 @@ public class PublicFeedbackResource {
 	@PostMapping("/event")
 	@Operation(summary = "Submit event feedback", description = "Submits a user's rating and comments for an event feedback form.")
 	public ResponseEntity<ApiResponse> submitEventFeedback(@RequestBody FeedbackResponse response,
-			@AuthenticationPrincipal User user) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		response.setUserId(user.getId());
 		if (eventFeedbackDAO.saveFeedbackResponse(response)) {
 			return ResponseEntity.ok(new ApiResponse(true, "Event feedback submitted.", null));

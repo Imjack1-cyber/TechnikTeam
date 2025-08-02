@@ -6,6 +6,7 @@ import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Event;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import de.technikteam.service.StorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -52,7 +53,8 @@ public class PublicStorageResource {
 	@PostMapping("/transactions")
 	@Operation(summary = "Perform a storage transaction", description = "Checks out or checks in a specified quantity of a storage item.")
 	public ResponseEntity<ApiResponse> performTransaction(@RequestBody Map<String, Object> payload,
-			@AuthenticationPrincipal User user) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		try {
 			int itemId = ((Number) payload.get("itemId")).intValue();
 			int quantity = ((Number) payload.get("quantity")).intValue();

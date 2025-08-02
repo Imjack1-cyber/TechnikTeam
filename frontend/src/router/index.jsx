@@ -75,7 +75,6 @@ const router = createBrowserRouter([
 			{ path: 'feedback', element: <FeedbackPage /> },
 			{ path: 'feedback/event/:eventId', element: <EventFeedbackPage /> },
 			{ path: 'kalender', element: <CalendarPage /> },
-			{ path: 'my-feedback', element: <Navigate to="/feedback" replace /> },
 			{ path: 'test-500', element: <ErrorTrigger /> },
 
 			{

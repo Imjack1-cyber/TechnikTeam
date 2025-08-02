@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
 
 @Service
 public class LoginAttemptService {
-
 	private static final Logger logger = LogManager.getLogger(LoginAttemptService.class);
 	private static final int MAX_ATTEMPTS = 5;
 	private static final int LOCKOUT_MINUTES = 30;
@@ -23,7 +22,7 @@ public class LoginAttemptService {
 		this.jdbcTemplate = jdbcTemplate;
 	}
 
-	public boolean isLockedOut(String username) {
+	public boolean isLockedOut(String username, String ipAddress) {
 		String sql = "SELECT last_attempt, attempts FROM login_attempts WHERE username = ?";
 		try {
 			return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
@@ -42,16 +41,17 @@ public class LoginAttemptService {
 		}
 	}
 
-	public void recordFailedLogin(String username) {
-		String sql = "INSERT INTO login_attempts (username, attempts, last_attempt) VALUES (?, 1, ?) "
-				+ "ON DUPLICATE KEY UPDATE attempts = attempts + 1, last_attempt = ?";
+	public void recordFailedLogin(String username, String ipAddress) {
+		String sql = "INSERT INTO login_attempts (username, ip_address, attempts, last_attempt) VALUES (?, ?, 1, ?) "
+				+ "ON DUPLICATE KEY UPDATE attempts = attempts + 1, last_attempt = ?, ip_address = ?";
 		Timestamp now = Timestamp.valueOf(LocalDateTime.now());
-		jdbcTemplate.update(sql, username, now, now);
+		jdbcTemplate.update(sql, username, ipAddress, now, now, ipAddress);
 
 		String checkSql = "SELECT attempts FROM login_attempts WHERE username = ?";
 		Integer currentAttempts = jdbcTemplate.queryForObject(checkSql, Integer.class, username);
 		if (currentAttempts != null && currentAttempts >= MAX_ATTEMPTS) {
-			logger.warn("Locking out user {} due to {} failed login attempts.", username, currentAttempts);
+			logger.warn("Locking out user '{}' (from IP {}) due to {} failed login attempts.", username, ipAddress,
+					currentAttempts);
 		}
 	}
 

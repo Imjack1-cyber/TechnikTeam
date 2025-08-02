@@ -1,23 +1,26 @@
-import { useAuthStore } from '../store/authStore';
+// REMOVED: import { useAuthStore } from '../store/authStore';
 
 const BASE_URL = '/api/v1';
 
-// This will be populated after the initial page load
 let csrfToken = '';
+let onUnauthorizedCallback = () => { }; // Placeholder for the logout function
 
 const apiClient = {
-	// Function to fetch the CSRF token, typically called once on app initialization
+	// New function to inject the logout handler from the auth store
+	setup: function(callbacks) {
+		onUnauthorizedCallback = callbacks.onUnauthorized;
+	},
+
 	async fetchCsrfToken() {
 		try {
-			// A simple GET request to a protected endpoint will return the CSRF cookie
-			await this.get('/users/me'); // Using /me as it's a guaranteed protected route
+			await this.get('/users/me');
 		} catch (error) {
 			console.warn("Could not pre-fetch CSRF token. It will be fetched on the first state-changing request.", error);
 		}
 	},
 
 	request: async function(endpoint, options = {}) {
-		const { logout } = useAuthStore.getState();
+		// REMOVED: const { logout } = useAuthStore.getState();
 		const headers = {
 			'Content-Type': 'application/json',
 			...options.headers,
@@ -27,10 +30,8 @@ const apiClient = {
 			delete headers['Content-Type'];
 		}
 
-		// Add CSRF token for state-changing methods
 		const method = options.method || 'GET';
 		if (['POST', 'PUT', 'DELETE'].includes(method.toUpperCase())) {
-			// Find the XSRF-TOKEN from cookies
 			const match = document.cookie.match(new RegExp('(^| )' + 'XSRF-TOKEN' + '=([^;]+)'));
 			if (match) {
 				csrfToken = match[2];
@@ -46,11 +47,11 @@ const apiClient = {
 			const response = await fetch(`${BASE_URL}${endpoint}`, {
 				...options,
 				headers: headers,
-				credentials: 'include' // Crucial for sending HttpOnly cookies
+				credentials: 'include'
 			});
 
 			if (response.status === 401) {
-				logout();
+				onUnauthorizedCallback(); // Use the injected callback
 				throw new Error('Nicht authorisiert. Ihre Sitzung ist möglicherweise abgelaufen.');
 			}
 			if (response.status === 403) {
@@ -71,7 +72,6 @@ const apiClient = {
 			const result = await response.json();
 
 			if (!response.ok) {
-				// Use a user-friendly generic message for server errors
 				if (response.status >= 500) {
 					throw new Error("Ein interner Serverfehler ist aufgetreten. Bitte versuchen Sie es später erneut.");
 				}
@@ -110,8 +110,5 @@ const apiClient = {
 		return this.request(endpoint, { method: 'DELETE' });
 	},
 };
-
-// Pre-fetch the CSRF token when the module is loaded
-apiClient.fetchCsrfToken();
 
 export default apiClient;

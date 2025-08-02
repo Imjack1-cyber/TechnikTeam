@@ -5,6 +5,7 @@ import de.technikteam.dao.MeetingDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Meeting;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -33,7 +34,8 @@ public class PublicMeetingResource {
 
 	@GetMapping
 	@Operation(summary = "Get upcoming meetings for user", description = "Retrieves a list of upcoming meetings, indicating the user's current attendance status for each.")
-	public ResponseEntity<ApiResponse> getUpcomingMeetings(@AuthenticationPrincipal User user) {
+	public ResponseEntity<ApiResponse> getUpcomingMeetings(@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		List<Meeting> meetings = meetingDAO.getUpcomingMeetingsForUser(user);
 		return ResponseEntity.ok(new ApiResponse(true, "Meetings retrieved.", meetings));
 	}
@@ -43,7 +45,8 @@ public class PublicMeetingResource {
 	public ResponseEntity<ApiResponse> handleMeetingAction(
 			@Parameter(description = "ID of the meeting") @PathVariable int id,
 			@Parameter(description = "Action to perform. Must be 'signup' or 'signoff'.") @PathVariable String action,
-			@AuthenticationPrincipal User user) {
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 
 		boolean success;
 		if ("signup".equalsIgnoreCase(action)) {

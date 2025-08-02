@@ -25,8 +25,7 @@ public final class NavigationRegistry {
 		ALL_ITEMS.add(new NavigationItem("Lager", "/lager", "fa-boxes", null));
 		ALL_ITEMS.add(new NavigationItem("Dateien", "/dateien", "fa-folder-open", null));
 		ALL_ITEMS.add(new NavigationItem("Kalender", "/kalender", "fa-calendar-alt", null));
-		ALL_ITEMS.add(new NavigationItem("Mein Feedback", "/my-feedback", "fa-comment-dots", null));
-		ALL_ITEMS.add(new NavigationItem("Feedback geben", "/feedback", "fa-lightbulb", null));
+		ALL_ITEMS.add(new NavigationItem("Feedback", "/feedback", "fa-lightbulb", null));
 
 		// Admin Section
 		ALL_ITEMS.add(new NavigationItem("Admin Dashboard", "/admin/dashboard", "fa-tachometer-alt",

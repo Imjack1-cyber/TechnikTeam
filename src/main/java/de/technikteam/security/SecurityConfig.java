@@ -36,16 +36,17 @@ public class SecurityConfig {
 		requestHandler.setCsrfRequestAttributeName(null);
 
 		http.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-				.csrfTokenRequestHandler(requestHandler))
-				.authorizeHttpRequests(auth -> auth.requestMatchers("/api/v1/auth/**", "/api/v1/public/calendar.ics",
-						"/api/v1/public/files/avatars/**", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
-						.permitAll().anyRequest().authenticated())
+				.csrfTokenRequestHandler(requestHandler).ignoringRequestMatchers("/api/v1/auth/**") // ADD THIS LINE
+		).authorizeHttpRequests(auth -> auth
+				.requestMatchers("/api/v1/auth/**", "/api/v1/public/calendar.ics", "/api/v1/public/files/avatars/**",
+						"/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
+				.permitAll().anyRequest().authenticated())
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
 				.headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin())
 						.httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000))
 						.contentSecurityPolicy(csp -> csp.policyDirectives(
-								"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self';")))
+								"default-src 'self'; script-src 'self'; style-src 'self' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self';")))
 				.httpBasic(AbstractHttpConfigurer::disable).formLogin(AbstractHttpConfigurer::disable);
 
 		return http.build();

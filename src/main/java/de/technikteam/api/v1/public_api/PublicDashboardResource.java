@@ -6,6 +6,7 @@ import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Event;
 import de.technikteam.model.EventTask;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,7 +38,9 @@ public class PublicDashboardResource {
 
 	@GetMapping
 	@Operation(summary = "Get dashboard data", description = "Retrieves all necessary data for the user's main dashboard view.")
-	public ResponseEntity<ApiResponse> getDashboardData(@AuthenticationPrincipal User user) {
+	public ResponseEntity<ApiResponse> getDashboardData(@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
+
 		List<Event> assignedEvents = eventDAO.getAssignedEventsForUser(user.getId(), 5);
 		List<EventTask> openTasks = eventTaskDAO.getOpenTasksForUser(user.getId());
 		List<Event> upcomingEvents = eventDAO.getAllActiveAndUpcomingEvents(); // Simplified for now

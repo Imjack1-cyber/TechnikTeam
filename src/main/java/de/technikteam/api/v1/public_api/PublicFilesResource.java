@@ -4,6 +4,7 @@ import de.technikteam.dao.FileDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.File;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,7 +33,8 @@ public class PublicFilesResource {
 
 	@GetMapping
 	@Operation(summary = "Get all accessible files grouped by category", description = "Retrieves files visible to the current user, grouped by their category.")
-	public ResponseEntity<ApiResponse> getFiles(@AuthenticationPrincipal User user) {
+	public ResponseEntity<ApiResponse> getFiles(@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
 		Map<String, List<File>> files = fileDAO.getAllFilesGroupedByCategory(user);
 		return ResponseEntity.ok(new ApiResponse(true, "Files retrieved successfully.", files));
 	}

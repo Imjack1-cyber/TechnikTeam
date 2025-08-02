@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -52,13 +53,9 @@ public class AuthService {
 
 	public void addJwtCookie(User user, HttpServletResponse response) {
 		String token = generateToken(user);
-		Cookie cookie = new Cookie(AUTH_COOKIE_NAME, token);
-		cookie.setHttpOnly(true);
-		cookie.setSecure(true); // Should be true in production
-		cookie.setPath("/");
-		cookie.setMaxAge(COOKIE_MAX_AGE_SECONDS);
-		// cookie.setSameSite("Strict"); // Enable for maximum security
-		response.addCookie(cookie);
+		String header = String.format("%s=%s; Path=/; Max-Age=%d; HttpOnly; Secure; SameSite=Strict", AUTH_COOKIE_NAME,
+				token, COOKIE_MAX_AGE_SECONDS);
+		response.addHeader(HttpHeaders.SET_COOKIE, header);
 	}
 
 	public void clearJwtCookie(HttpServletResponse response) {

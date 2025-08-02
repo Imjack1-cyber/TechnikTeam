@@ -10,7 +10,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.owasp.html.PolicyFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,11 +31,14 @@ public class MeetingResource {
 
 	private final MeetingDAO meetingDAO;
 	private final AdminLogService adminLogService;
+	private final PolicyFactory richTextPolicy;
 
 	@Autowired
-	public MeetingResource(MeetingDAO meetingDAO, AdminLogService adminLogService) {
+	public MeetingResource(MeetingDAO meetingDAO, AdminLogService adminLogService,
+			@Qualifier("richTextPolicy") PolicyFactory richTextPolicy) {
 		this.meetingDAO = meetingDAO;
 		this.adminLogService = adminLogService;
+		this.richTextPolicy = richTextPolicy;
 	}
 
 	@GetMapping
@@ -64,7 +69,7 @@ public class MeetingResource {
 		meeting.setMeetingDateTime(request.meetingDateTime());
 		meeting.setEndDateTime(request.endDateTime());
 		meeting.setLeaderUserId(request.leaderUserId() != null ? request.leaderUserId() : 0);
-		meeting.setDescription(request.description());
+		meeting.setDescription(richTextPolicy.sanitize(request.description()));
 		meeting.setLocation(request.location());
 
 		int newId = meetingDAO.createMeeting(meeting);
@@ -90,7 +95,7 @@ public class MeetingResource {
 		meeting.setMeetingDateTime(request.meetingDateTime());
 		meeting.setEndDateTime(request.endDateTime());
 		meeting.setLeaderUserId(request.leaderUserId() != null ? request.leaderUserId() : 0);
-		meeting.setDescription(request.description());
+		meeting.setDescription(richTextPolicy.sanitize(request.description()));
 		meeting.setLocation(request.location());
 
 		if (meetingDAO.updateMeeting(meeting)) {
