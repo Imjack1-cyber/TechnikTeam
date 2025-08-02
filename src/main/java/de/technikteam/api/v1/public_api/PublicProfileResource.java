@@ -21,6 +21,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -34,19 +35,19 @@ public class PublicProfileResource {
 	private final EventDAO eventDAO;
 	private final UserQualificationsDAO qualificationsDAO;
 	private final AchievementDAO achievementDAO;
-	private final PasskeyDAO passkeyDAO;
+	// private final PasskeyDAO passkeyDAO; // REMOVED
 	private final ProfileChangeRequestDAO requestDAO;
 	private final ProfileRequestService profileRequestService;
 
 	@Autowired
 	public PublicProfileResource(UserDAO userDAO, EventDAO eventDAO, UserQualificationsDAO qualificationsDAO,
-			AchievementDAO achievementDAO, PasskeyDAO passkeyDAO, ProfileChangeRequestDAO requestDAO,
+			AchievementDAO achievementDAO, /* PasskeyDAO passkeyDAO, */ ProfileChangeRequestDAO requestDAO, // REMOVED
 			ProfileRequestService profileRequestService, Gson gson) {
 		this.userDAO = userDAO;
 		this.eventDAO = eventDAO;
 		this.qualificationsDAO = qualificationsDAO;
 		this.achievementDAO = achievementDAO;
-		this.passkeyDAO = passkeyDAO;
+		// this.passkeyDAO = passkeyDAO; // REMOVED
 		this.requestDAO = requestDAO;
 		this.profileRequestService = profileRequestService;
 	}
@@ -60,7 +61,7 @@ public class PublicProfileResource {
 		profileData.put("eventHistory", eventDAO.getEventHistoryForUser(user.getId()));
 		profileData.put("qualifications", qualificationsDAO.getQualificationsForUser(user.getId()));
 		profileData.put("achievements", achievementDAO.getAchievementsForUser(user.getId()));
-		profileData.put("passkeys", passkeyDAO.getCredentialsByUserId(user.getId()));
+		profileData.put("passkeys", Collections.emptyList()); // REMOVED passkeyDAO call, return empty list
 		profileData.put("hasPendingRequest", requestDAO.hasPendingRequest(user.getId()));
 
 		return ResponseEntity.ok(new ApiResponse(true, "Profile data retrieved.", profileData));
@@ -135,17 +136,5 @@ public class PublicProfileResource {
 		}
 	}
 
-	@DeleteMapping("/passkeys/{id}")
-	@Operation(summary = "Delete a passkey", description = "Removes a registered passkey/credential for the current user.")
-	public ResponseEntity<ApiResponse> deletePasskey(
-			@Parameter(description = "The database ID of the passkey credential to delete") @PathVariable int id,
-			@AuthenticationPrincipal SecurityUser securityUser) {
-		User user = securityUser.getUser();
-		if (passkeyDAO.deleteCredential(id, user.getId())) {
-			return ResponseEntity.ok(new ApiResponse(true, "Passkey successfully removed.", null));
-		} else {
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Could not remove passkey.", null));
-		}
-	}
+	// REMOVED deletePasskey endpoint
 }

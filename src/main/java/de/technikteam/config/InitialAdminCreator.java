@@ -10,7 +10,6 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.security.SecureRandom;
-import java.util.stream.Collectors;
 
 @Component
 public class InitialAdminCreator implements CommandLineRunner {

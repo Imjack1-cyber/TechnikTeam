@@ -1,5 +1,5 @@
 ﻿{
-    "SourceDirectory":  "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam",
+    "SourceDirectory":  "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\",
     "OutputFile":  "technikteam.txt",
     "MaxFileSizeKB":  475,
     "ExcludedDirectories":  [
@@ -28,7 +28,8 @@
                                 ".txt",
                                 ".html",
                                 ".md",
-                                ".xml"
+                                ".xml",
+                                ".sql"
                             ],
     "ExtensionFilterMode":  "include"
 }

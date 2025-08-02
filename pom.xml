@@ -24,7 +24,7 @@
         <jjwt.version>0.12.5</jjwt.version>
         <ical4j.version>3.2.4</ical4j.version>
         <diffutils.version>1.3.0</diffutils.version>
-        <webauthn.version>2.2.0</webauthn.version>
+        <!-- REMOVED <webauthn.version>2.2.0</webauthn.version> -->
         <commons-io.version>2.16.1</commons-io.version>
         <owasp-html-sanitizer.version>20220608.1</owasp-html-sanitizer.version>
         <bucket4j.version>8.9.0</bucket4j.version>
@@ -97,11 +97,7 @@
             <version>${jjwt.version}</version>
             <scope>runtime</scope>
         </dependency>
-        <dependency>
-            <groupId>com.yubico</groupId>
-            <artifactId>webauthn-server-core</artifactId>
-            <version>${webauthn.version}</version>
-        </dependency>
+        <!-- REMOVED YUBICO DEPENDENCY BLOCK -->
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { passkeyService } from '../services/passkeyService'; // Assuming you have a passkey service
+// import { passkeyService } from '../../services/passkeyService'; // REMOVED
 
 const LoginPage = () => {
 	const [username, setUsername] = useState('');
@@ -36,25 +36,7 @@ const LoginPage = () => {
 		}
 	};
 
-	const handlePasskeyLogin = async () => {
-		setIsLoading(true);
-		setError('');
-		if (!username) {
-			setError('Bitte geben Sie zuerst Ihren Benutzernamen ein.');
-			setIsLoading(false);
-			return;
-		}
-		try {
-			await passkeyService.loginWithPasskey(username);
-			// The login function in passkeyService should set the auth state
-		} catch (err) {
-			console.error(err);
-			setError(err.message || 'Passkey-Login fehlgeschlagen. Stellen Sie sicher, dass für diesen Benutzer ein Passkey registriert ist.');
-		} finally {
-			setIsLoading(false);
-		}
-	};
-
+	// REMOVED handlePasskeyLogin function
 
 	const togglePasswordVisibility = () => {
 		setIsPasswordVisible(!isPasswordVisible);
@@ -77,7 +59,7 @@ const LoginPage = () => {
 							value={username}
 							onChange={(e) => setUsername(e.target.value)}
 							required
-							autoComplete="username webauthn"
+							autoComplete="username" // REMOVED webauthn
 							autoFocus
 							disabled={isLoading}
 						/>
@@ -114,14 +96,15 @@ const LoginPage = () => {
 							'Anmelden'
 						)}
 					</button>
+					{/* MODIFIED Passkey Button */}
 					<button
 						type="button"
 						className="btn btn-secondary"
 						style={{ width: '100%' }}
-						onClick={handlePasskeyLogin}
-						disabled={isLoading}
+						disabled={true}
+						title="Dieses Feature ist in Kürze verfügbar."
 					>
-						<i className="fas fa-fingerprint"></i> Mit Passkey anmelden
+						<i className="fas fa-fingerprint"></i> Mit Passkey anmelden (in Kürze)
 					</button>
 				</form>
 			</div>
