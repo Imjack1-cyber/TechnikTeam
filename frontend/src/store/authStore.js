@@ -43,7 +43,7 @@ export const useAuthStore = create(
 					console.error("Logout API call failed, clearing state anyway.", error);
 				} finally {
 					set({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, theme: 'light' });
-					localStorage.removeItem('theme');
+					localStorage.removeItem('auth-storage');
 					document.documentElement.setAttribute('data-theme', 'light');
 				}
 			},
@@ -62,7 +62,6 @@ export const useAuthStore = create(
 							theme: newTheme,
 						});
 						document.documentElement.setAttribute('data-theme', newTheme);
-						localStorage.setItem('theme', newTheme);
 					} else {
 						throw new Error(result.message || "Invalid session data from server.");
 					}
@@ -74,24 +73,20 @@ export const useAuthStore = create(
 				}
 			},
 			setTheme: async (newTheme) => {
-				const oldTheme = get().theme;
-				set(state => ({
-					theme: newTheme,
-					user: state.user ? { ...state.user, theme: newTheme } : null
-				}));
-				document.documentElement.setAttribute('data-theme', newTheme);
-				localStorage.setItem('theme', newTheme);
-
 				try {
-					await apiClient.put('/public/profile/theme', { theme: newTheme });
+					const result = await apiClient.put('/public/profile/theme', { theme: newTheme });
+					if (result.success && result.data) {
+						const updatedUser = result.data;
+						set({
+							user: updatedUser,
+							theme: updatedUser.theme,
+						});
+						document.documentElement.setAttribute('data-theme', updatedUser.theme);
+					} else {
+						throw new Error(result.message || 'Server failed to save theme.');
+					}
 				} catch (error) {
 					console.error("Failed to save theme preference:", error);
-					set(state => ({
-						theme: oldTheme,
-						user: state.user ? { ...state.user, theme: oldTheme } : null
-					}));
-					document.documentElement.setAttribute('data-theme', oldTheme);
-					localStorage.setItem('theme', oldTheme);
 				}
 			},
 		}),

@@ -90,7 +90,8 @@ public class PublicProfileResource {
 		String theme = payload.get("theme");
 		if (theme != null && (theme.equals("light") || theme.equals("dark"))) {
 			if (userDAO.updateUserTheme(user.getId(), theme)) {
-				return ResponseEntity.ok(new ApiResponse(true, "Theme updated.", null));
+				User updatedUser = userDAO.getUserById(user.getId());
+				return ResponseEntity.ok(new ApiResponse(true, "Theme updated.", updatedUser));
 			}
 		}
 		return ResponseEntity.badRequest().body(new ApiResponse(false, "Invalid theme specified.", null));
@@ -135,6 +136,4 @@ public class PublicProfileResource {
 					.body(new ApiResponse(false, "Passwort konnte nicht geändert werden.", null));
 		}
 	}
-
-	// REMOVED deletePasskey endpoint
 }

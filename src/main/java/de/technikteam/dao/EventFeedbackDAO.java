@@ -73,6 +73,25 @@ public class EventFeedbackDAO {
 		}
 	}
 
+	public FeedbackForm getFormById(int formId) {
+		String sql = "SELECT * FROM feedback_forms WHERE id = ?";
+		try {
+			return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
+				FeedbackForm form = new FeedbackForm();
+				form.setId(rs.getInt("id"));
+				form.setEventId(rs.getInt("event_id"));
+				form.setTitle(rs.getString("title"));
+				form.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+				return form;
+			}, formId);
+		} catch (EmptyResultDataAccessException e) {
+			return null;
+		} catch (Exception e) {
+			logger.error("Error fetching feedback form for form ID {}", formId, e);
+			return null;
+		}
+	}
+
 	public List<FeedbackResponse> getResponsesForForm(int formId) {
 		String sql = "SELECT fr.*, u.username FROM feedback_responses fr JOIN users u ON fr.user_id = u.id WHERE fr.form_id = ?";
 		try {

@@ -55,7 +55,7 @@ public class AuthResource {
 
 		User user = userDAO.validateUser(username, password);
 		if (user != null) {
-			loginAttemptService.clearLoginAttempts(ipAddress);
+			loginAttemptService.clearLoginAttempts(username);
 			authService.addJwtCookie(user, response);
 			logger.info("JWT cookie set successfully for user '{}'", username);
 			// Return user data but not the token itself
@@ -63,7 +63,8 @@ public class AuthResource {
 		} else {
 			loginAttemptService.recordFailedLogin(username, ipAddress);
 			logger.warn("Failed API login attempt for user '{}' from IP {}", username, ipAddress);
-			return new ResponseEntity<>(new ApiResponse(false, "Invalid credentials.", null), HttpStatus.UNAUTHORIZED);
+			return new ResponseEntity<>(new ApiResponse(false, "Falscher Benutzername oder Passwort.", null),
+					HttpStatus.UNAUTHORIZED);
 		}
 	}
 

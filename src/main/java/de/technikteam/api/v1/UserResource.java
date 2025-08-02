@@ -2,6 +2,7 @@ package de.technikteam.api.v1;
 
 import de.technikteam.api.v1.dto.UserCreateRequest;
 import de.technikteam.api.v1.dto.UserUpdateRequest;
+import de.technikteam.config.Permissions;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.NavigationItem;
@@ -148,7 +149,9 @@ public class UserResource {
 			@Parameter(description = "ID of the user to delete") @PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 
-		if (securityUser.getUser().getId() == id) {
+		User adminUser = securityUser.getUser(); // The admin performing the action
+
+		if (adminUser.getId() == id) {
 			return ResponseEntity.badRequest()
 					.body(new ApiResponse(false, "You cannot delete your own account.", null));
 		}
@@ -159,8 +162,21 @@ public class UserResource {
 					.body(new ApiResponse(false, "User to delete not found.", null));
 		}
 
+		// --- REMEDIATION START ---
+		// Check for privilege escalation attempt
+		boolean targetIsSuperAdmin = userToDelete.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL);
+		boolean requesterIsSuperAdmin = adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL);
+
+		if (targetIsSuperAdmin && !requesterIsSuperAdmin) {
+			adminLogService.log(adminUser.getUsername(), "DELETE_USER_DENIED_API",
+					"Denied attempt to delete super-admin '" + userToDelete.getUsername() + "'.");
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false,
+					"You do not have sufficient privileges to delete a super-administrator.", null));
+		}
+		// --- REMEDIATION END ---
+
 		if (userDAO.deleteUser(id)) {
-			adminLogService.log(securityUser.getUsername(), "DELETE_USER_API",
+			adminLogService.log(adminUser.getUsername(), "DELETE_USER_API",
 					"User '" + userToDelete.getUsername() + "' (ID: " + id + ") deleted via API.");
 			return ResponseEntity.ok(new ApiResponse(true, "User deleted successfully", Map.of("deletedUserId", id)));
 		} else {

@@ -18,7 +18,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
 	@Override
 	public void addInterceptors(InterceptorRegistry registry) {
 		// Apply rate limiting to sensitive state-changing endpoints
-		registry.addInterceptor(rateLimitingInterceptor).addPathPatterns("/api/v1/users/*/reset-password")
-				.addPathPatterns("/api/v1/public/profile/request-change").addPathPatterns("/api/v1/auth/login");
+		registry.addInterceptor(rateLimitingInterceptor).addPathPatterns("/api/v1/auth/login")
+				.addPathPatterns("/api/v1/users/**").addPathPatterns("/api/v1/events/**")
+				.addPathPatterns("/api/v1/storage/**").addPathPatterns("/api/v1/kits/**")
+				.addPathPatterns("/api/v1/courses/**").addPathPatterns("/api/v1/meetings/**")
+				.addPathPatterns("/api/v1/feedback/**").addPathPatterns("/api/v1/public/feedback/**")
+				.addPathPatterns("/api/v1/public/profile/**");
 	}
 }

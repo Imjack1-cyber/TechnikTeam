@@ -1,5 +1,6 @@
 package de.technikteam.dao;
 
+import de.technikteam.config.Permissions;
 import de.technikteam.model.User;
 import de.technikteam.util.DaoUtils;
 import org.apache.logging.log4j.LogManager;
@@ -94,9 +95,12 @@ public class UserDAO {
 	}
 
 	public Set<String> getPermissionsForUser(int userId) {
-		String sql = "SELECT p.permission_key FROM permissions p JOIN user_permissions up ON p.id = up.permission_id WHERE up.user_id = ?";
+		String sql = "SELECT p.permission_key FROM permissions p JOIN user_permissions up ON p.id = up.permission_id WHERE up.user_id = ? "
+				+ "UNION " + "SELECT ? FROM users WHERE id = ? AND role_id = 1"; // 1 = ADMIN role ID
 		try {
-			return new HashSet<>(jdbcTemplate.queryForList(sql, String.class, userId));
+			List<String> permissionsList = jdbcTemplate.queryForList(sql, String.class, userId,
+					Permissions.ACCESS_ADMIN_PANEL, userId);
+			return new HashSet<>(permissionsList);
 		} catch (Exception e) {
 			logger.error("Could not fetch permissions for user ID: {}", userId, e);
 			return new HashSet<>();

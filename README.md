@@ -69,7 +69,7 @@ Follow these steps to get a local instance of the application running for develo
 5.  Set the `upload.directory` to an absolute path on your local machine. This directory must exist and be writable by the application.
 6.  The application uses Flyway for database migrations. The necessary tables will be created automatically when the application starts for the first time.
 
-**First-time Setup Note:** The initial database migration will create a default `admin` user. For security, this user is created with a strong, random password that is printed to the console **only once** on the very first startup. Please copy this password immediately and store it securely.
+**First-time Setup Note:** The application includes a component (`InitialAdminCreator.java`) that checks if an 'admin' user exists on first startup. If not, it creates a default `admin` user with full permissions and a strong, random password. This password is printed to the console **only once** on the very first startup. Please copy this password immediately and store it securely. Note that a Flyway migration (`V22`) is included to remove any legacy, insecurely created admin users from previous development versions.
 
 ### 4. Backend Launch
 1.  From the project's root directory, run the Spring Boot application using Maven:
