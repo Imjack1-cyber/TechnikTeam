@@ -37,7 +37,7 @@ public class PublicMeetingResource {
 	public ResponseEntity<ApiResponse> getUpcomingMeetings(@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 		List<Meeting> meetings = meetingDAO.getUpcomingMeetingsForUser(user);
-		return ResponseEntity.ok(new ApiResponse(true, "Meetings retrieved.", meetings));
+		return ResponseEntity.ok(new ApiResponse(true, "Termine erfolgreich abgerufen.", meetings));
 	}
 
 	@PostMapping("/{id}/{action}")
@@ -54,13 +54,14 @@ public class PublicMeetingResource {
 		} else if ("signoff".equalsIgnoreCase(action)) {
 			success = attendanceDAO.setAttendance(user.getId(), id, false, "");
 		} else {
-			return ResponseEntity.badRequest().body(new ApiResponse(false, "Unknown action.", null));
+			return ResponseEntity.badRequest().body(new ApiResponse(false, "Unbekannte Aktion.", null));
 		}
 
 		if (success) {
-			return ResponseEntity.ok(new ApiResponse(true, "Action completed successfully.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Aktion erfolgreich ausgeführt.", null));
 		} else {
-			return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to process action.", null));
+			return ResponseEntity.internalServerError()
+					.body(new ApiResponse(false, "Aktion konnte nicht verarbeitet werden.", null));
 		}
 	}
 }

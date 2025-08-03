@@ -29,7 +29,7 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
 						});
 					}
 				} catch (err) {
-					setError('Could not load user details.');
+					setError('Benutzerdetails konnten nicht geladen werden.');
 				}
 			} else {
 				setFormData({
@@ -73,7 +73,7 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
 		};
 
 		if (!isEditMode && (!payload.password || payload.password.length < 10)) {
-			setError('Password is required for a new user and must be at least 10 characters.');
+			setError('Für neue Benutzer ist ein Passwort erforderlich, das mindestens 10 Zeichen lang sein muss.');
 			setIsSubmitting(false);
 			return;
 		}
@@ -84,13 +84,13 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
 				: await apiClient.post('/users', payload);
 
 			if (result.success) {
-				addToast(`User ${isEditMode ? 'updated' : 'created'} successfully`, 'success');
+				addToast(`Benutzer erfolgreich ${isEditMode ? 'aktualisiert' : 'erstellt'}.`, 'success');
 				onSuccess();
 			} else {
 				throw new Error(result.message);
 			}
 		} catch (err) {
-			setError(err.message || 'An error occurred.');
+			setError(err.message || 'Ein Fehler ist aufgetreten.');
 		} finally {
 			setIsSubmitting(false);
 		}

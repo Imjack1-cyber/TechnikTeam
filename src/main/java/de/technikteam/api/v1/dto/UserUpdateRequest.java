@@ -9,15 +9,15 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 public record UserUpdateRequest(
-		@NotBlank(message = "Username cannot be blank") @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters") @Schema(description = "The user's unique username.", required = true) String username,
+		@NotBlank(message = "Benutzername darf nicht leer sein") @Size(min = 3, max = 50, message = "Benutzername muss zwischen 3 und 50 Zeichen lang sein") @Schema(description = "The user's unique username.", required = true) String username,
 
-		@NotNull(message = "Role ID cannot be null") @Schema(description = "The ID of the user's role.", required = true) Integer roleId,
+		@NotNull(message = "Rollen-ID darf nicht null sein") @Schema(description = "The ID of the user's role.", required = true) Integer roleId,
 
-		@Email(message = "Must be a valid email format") @Schema(description = "The user's email address.") String email,
+		@Email(message = "Muss ein gültiges E-Mail-Format sein") @Schema(description = "The user's email address.") String email,
 
 		@Schema(description = "The user's class year.") Integer classYear,
 
 		@Schema(description = "The user's class name.") String className,
 
-		@NotNull(message = "Permission list cannot be null") @Schema(description = "A list of IDs for the user's individual permissions.") List<Integer> permissionIds) {
+		@NotNull(message = "Berechtigungsliste darf nicht null sein") @Schema(description = "A list of IDs for the user's individual permissions.") List<Integer> permissionIds) {
 }

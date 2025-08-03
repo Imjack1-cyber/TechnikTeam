@@ -60,7 +60,7 @@ public class MatrixResource {
 		responseData.put("meetingsByCourse", meetingsByCourse);
 		responseData.put("attendanceMap", attendanceMap);
 
-		return ResponseEntity.ok(new ApiResponse(true, "Matrix data retrieved", responseData));
+		return ResponseEntity.ok(new ApiResponse(true, "Matrixdaten erfolgreich abgerufen.", responseData));
 	}
 
 	@PutMapping("/attendance")
@@ -70,8 +70,9 @@ public class MatrixResource {
 		boolean success = meetingAttendanceDAO.setAttendance(attendance.getUserId(), attendance.getMeetingId(),
 				attendance.getAttended(), attendance.getRemarks());
 		if (success) {
-			return ResponseEntity.ok(new ApiResponse(true, "Attendance updated.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Teilnahme aktualisiert.", null));
 		}
-		return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to update attendance.", null));
+		return ResponseEntity.internalServerError()
+				.body(new ApiResponse(false, "Fehler beim Aktualisieren der Teilnahme.", null));
 	}
 }

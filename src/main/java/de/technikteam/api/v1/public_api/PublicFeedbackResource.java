@@ -43,7 +43,7 @@ public class PublicFeedbackResource {
 	public ResponseEntity<ApiResponse> getMyFeedbackSubmissions(@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 		List<FeedbackSubmission> submissions = submissionDAO.getSubmissionsByUserId(user.getId());
-		return ResponseEntity.ok(new ApiResponse(true, "Submissions retrieved.", submissions));
+		return ResponseEntity.ok(new ApiResponse(true, "Einreichungen erfolgreich abgerufen.", submissions));
 	}
 
 	@PostMapping("/general")
@@ -57,10 +57,11 @@ public class PublicFeedbackResource {
 		submission.setContent(request.content());
 
 		if (submissionDAO.createSubmission(submission)) {
-			return new ResponseEntity<>(new ApiResponse(true, "Feedback submitted successfully.", submission),
+			return new ResponseEntity<>(new ApiResponse(true, "Feedback erfolgreich übermittelt.", submission),
 					HttpStatus.CREATED);
 		} else {
-			return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to save feedback.", null));
+			return ResponseEntity.internalServerError()
+					.body(new ApiResponse(false, "Feedback konnte nicht gespeichert werden.", null));
 		}
 	}
 
@@ -72,17 +73,18 @@ public class PublicFeedbackResource {
 		User user = securityUser.getUser();
 		Event event = eventDAO.getEventById(eventId);
 		if (event == null) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, "Event not found.", null));
+			return ResponseEntity.status(HttpStatus.NOT_FOUND)
+					.body(new ApiResponse(false, "Veranstaltung nicht gefunden.", null));
 		}
 		FeedbackForm form = eventFeedbackDAO.getFeedbackFormForEvent(eventId);
 		if (form == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)
-					.body(new ApiResponse(false, "No feedback form for this event.", null));
+					.body(new ApiResponse(false, "Kein Feedback-Formular für diese Veranstaltung.", null));
 		}
 		boolean alreadySubmitted = eventFeedbackDAO.hasUserSubmittedFeedback(form.getId(), user.getId());
 
 		Map<String, Object> responseData = Map.of("event", event, "form", form, "alreadySubmitted", alreadySubmitted);
-		return ResponseEntity.ok(new ApiResponse(true, "Form data retrieved.", responseData));
+		return ResponseEntity.ok(new ApiResponse(true, "Formulardaten erfolgreich abgerufen.", responseData));
 	}
 
 	@PostMapping("/event")
@@ -96,20 +98,20 @@ public class PublicFeedbackResource {
 		FeedbackForm form = eventFeedbackDAO.getFormById(response.getFormId());
 		if (form == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)
-					.body(new ApiResponse(false, "Feedback form not found.", null));
+					.body(new ApiResponse(false, "Feedback-Formular nicht gefunden.", null));
 		}
 		// Check if user was actually assigned to the event for which they are giving
 		// feedback
 		if (!eventDAO.isUserAssociatedWithEvent(form.getEventId(), user.getId())) {
-			return ResponseEntity.status(HttpStatus.FORBIDDEN)
-					.body(new ApiResponse(false, "You can only submit feedback for events you attended.", null));
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false,
+					"Sie können nur Feedback für Veranstaltungen abgeben, an denen Sie teilgenommen haben.", null));
 		}
 		// --- REMEDIATION END ---
 
 		if (eventFeedbackDAO.saveFeedbackResponse(response)) {
-			return ResponseEntity.ok(new ApiResponse(true, "Event feedback submitted.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Event-Feedback erfolgreich übermittelt.", null));
 		}
 		return ResponseEntity.internalServerError()
-				.body(new ApiResponse(false, "Failed to save event feedback.", null));
+				.body(new ApiResponse(false, "Event-Feedback konnte nicht gespeichert werden.", null));
 	}
 }

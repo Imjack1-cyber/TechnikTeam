@@ -43,8 +43,8 @@ public class AuthService {
 		String secret = configService.getProperty("jwt.secret");
 		if (secret == null || secret.isBlank() || secret.length() < 32) {
 			logger.fatal(
-					"JWT secret is not configured or is too short (must be at least 32 characters). Application cannot start securely.");
-			throw new RuntimeException("JWT secret is not configured or is insecure.");
+					"JWT-Secret ist nicht konfiguriert oder zu kurz (muss mindestens 32 Zeichen lang sein). Die Anwendung kann nicht sicher gestartet werden.");
+			throw new RuntimeException("JWT-Secret ist nicht konfiguriert oder unsicher.");
 		}
 		this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
 	}
@@ -81,12 +81,12 @@ public class AuthService {
 			User user = userDAO.getUserById(userId);
 
 			if (user == null) {
-				logger.warn("JWT validation successful, but user with ID {} no longer exists.", userId);
+				logger.warn("JWT-Validierung erfolgreich, aber Benutzer mit ID {} existiert nicht mehr.", userId);
 				return null;
 			}
 			return new SecurityUser(user);
 		} catch (Exception e) {
-			logger.warn("JWT verification failed: {}", e.getMessage());
+			logger.warn("JWT-Verifizierung fehlgeschlagen: {}", e.getMessage());
 			return null;
 		}
 	}

@@ -41,7 +41,7 @@ public class AdminEventResource {
 	@PreAuthorize("hasAuthority('EVENT_READ')")
 	public ResponseEntity<ApiResponse> getAllEvents() {
 		List<Event> events = eventDAO.getAllEvents();
-		return ResponseEntity.ok(new ApiResponse(true, "Events retrieved.", events));
+		return ResponseEntity.ok(new ApiResponse(true, "Veranstaltungen erfolgreich abgerufen.", events));
 	}
 
 	@PostMapping
@@ -60,11 +60,12 @@ public class AdminEventResource {
 					eventData.requiredPersons().toArray(new String[0]), eventData.itemIds().toArray(new String[0]),
 					eventData.quantities().toArray(new String[0]), null, file, eventData.requiredRole());
 
-			return new ResponseEntity<>(new ApiResponse(true, "Event created successfully", Map.of("id", newEventId)),
+			return new ResponseEntity<>(
+					new ApiResponse(true, "Veranstaltung erfolgreich erstellt.", Map.of("id", newEventId)),
 					HttpStatus.CREATED);
 		} catch (Exception e) {
 			return ResponseEntity.internalServerError()
-					.body(new ApiResponse(false, "Failed to create event: " + e.getMessage(), null));
+					.body(new ApiResponse(false, "Fehler beim Erstellen der Veranstaltung: " + e.getMessage(), null));
 		}
 	}
 
@@ -80,7 +81,7 @@ public class AdminEventResource {
 			Event event = eventDAO.getEventById(id);
 			if (event == null) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND)
-						.body(new ApiResponse(false, "Event not found", null));
+						.body(new ApiResponse(false, "Veranstaltung nicht gefunden.", null));
 			}
 			mapDtoToEvent(eventData, event);
 			event.setId(id); // Ensure ID is set for update
@@ -90,10 +91,10 @@ public class AdminEventResource {
 					eventData.requiredPersons().toArray(new String[0]), eventData.itemIds().toArray(new String[0]),
 					eventData.quantities().toArray(new String[0]), null, file, eventData.requiredRole());
 
-			return ResponseEntity.ok(new ApiResponse(true, "Event updated successfully", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Veranstaltung erfolgreich aktualisiert.", null));
 		} catch (Exception e) {
-			return ResponseEntity.internalServerError()
-					.body(new ApiResponse(false, "Failed to update event: " + e.getMessage(), null));
+			return ResponseEntity.internalServerError().body(
+					new ApiResponse(false, "Fehler beim Aktualisieren der Veranstaltung: " + e.getMessage(), null));
 		}
 	}
 
@@ -102,9 +103,10 @@ public class AdminEventResource {
 	@PreAuthorize("hasAuthority('EVENT_DELETE')")
 	public ResponseEntity<ApiResponse> deleteEvent(@PathVariable int id) {
 		if (eventDAO.deleteEvent(id)) {
-			return ResponseEntity.ok(new ApiResponse(true, "Event deleted successfully.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Veranstaltung erfolgreich gelöscht.", null));
 		} else {
-			return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to delete event.", null));
+			return ResponseEntity.internalServerError()
+					.body(new ApiResponse(false, "Fehler beim Löschen der Veranstaltung.", null));
 		}
 	}
 

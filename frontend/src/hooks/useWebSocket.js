@@ -19,7 +19,7 @@ const useWebSocket = (url, onMessage) => {
 			socketRef.current = socket;
 
 			socket.onopen = () => {
-				console.log('WebSocket connection established.');
+				console.log('WebSocket-Verbindung hergestellt.');
 				setReadyState(WebSocket.OPEN);
 			};
 
@@ -30,22 +30,22 @@ const useWebSocket = (url, onMessage) => {
 						onMessage(data);
 					}
 				} catch (error) {
-					console.error('Error parsing WebSocket message:', error);
+					console.error('Fehler beim Parsen der WebSocket-Nachricht:', error);
 				}
 			};
 
 			socket.onclose = (event) => {
 				if (event.code === 4001 || event.code === 403) {
-					console.error('WebSocket connection closed due to authentication/authorization failure.');
+					console.error('WebSocket-Verbindung aufgrund von Authentifizierungs-/Autorisierungsfehler geschlossen.');
 				} else {
-					console.warn('WebSocket connection closed. Attempting to reconnect...');
+					console.warn('WebSocket-Verbindung geschlossen. Versuche erneute Verbindung...');
 					setTimeout(connect, 5000);
 				}
 				setReadyState(WebSocket.CLOSED);
 			};
 
 			socket.onerror = (error) => {
-				console.error('WebSocket error:', error);
+				console.error('WebSocket-Fehler:', error);
 				setReadyState(WebSocket.CLOSED);
 				socket.close();
 			};
@@ -65,7 +65,7 @@ const useWebSocket = (url, onMessage) => {
 		if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
 			socketRef.current.send(JSON.stringify(messageObject));
 		} else {
-			console.error('WebSocket is not open. Cannot send message.');
+			console.error('WebSocket ist nicht geöffnet. Nachricht kann nicht gesendet werden.');
 		}
 	};
 

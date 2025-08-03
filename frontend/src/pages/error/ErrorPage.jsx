@@ -12,20 +12,20 @@ const ErrorPage = () => {
 		if (error instanceof Error) return error.message;
 		if (error?.statusText) return error.statusText;
 		if (error?.message) return error.message;
-		return "An unknown error occurred.";
+		return "Ein unbekannter Fehler ist aufgetreten.";
 	}, [error]);
 
 	// useMemo ensures the 'lines' array is not re-created on every render
 	const lines = useMemo(() => [
-		{ text: 'INITIATING SYSTEM DIAGNOSTIC...', className: 'info' },
-		{ text: 'Scanning memory modules...', className: 'info', delayAfter: 500 },
-		{ text: '[OK] Memory integrity check passed.', className: 'ok' },
-		{ text: 'Checking application state...', className: 'info', delayAfter: 500 },
-		{ text: `[FAIL] Unhandled exception detected: ${errorMessage}`, className: 'fail', delayAfter: 800 },
-		{ text: 'ERROR 500: Internal Server Error.', className: 'fail' },
-		{ text: 'A critical error occurred while processing the request.', className: 'info' },
-		{ text: 'The system administrator has been notified.', className: 'info' },
-		{ text: 'Preparing recovery options...', className: 'warn' },
+		{ text: 'SYSTEMDIAGNOSE WIRD GESTARTET...', className: 'info' },
+		{ text: 'Speichermodule werden gescannt...', className: 'info', delayAfter: 500 },
+		{ text: '[OK] Speicherintegritätsprüfung bestanden.', className: 'ok' },
+		{ text: 'Anwendungsstatus wird überprüft...', className: 'info', delayAfter: 500 },
+		{ text: `[FEHLER] Unbehandelte Ausnahme erkannt: ${errorMessage}`, className: 'fail', delayAfter: 800 },
+		{ text: 'FEHLER 500: Interner Serverfehler.', className: 'fail' },
+		{ text: 'Ein kritischer Fehler ist bei der Verarbeitung der Anfrage aufgetreten.', className: 'info' },
+		{ text: 'Der Systemadministrator wurde benachrichtigt.', className: 'info' },
+		{ text: 'Wiederherstellungsoptionen werden vorbereitet...', className: 'warn' },
 	], [errorMessage]);
 
 	const { containerRef, renderedLines, isComplete } = useTypingAnimation(lines);
@@ -48,7 +48,7 @@ const ErrorPage = () => {
 				))}
 			</div>
 			<Link to="/home" className={`btn ${isComplete ? 'visible' : ''}`}>
-				<i className="fas fa-home"></i> Go to Dashboard
+				<i className="fas fa-home"></i> Zum Dashboard
 			</Link>
 		</div>
 	);

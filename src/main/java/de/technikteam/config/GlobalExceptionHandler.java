@@ -21,14 +21,14 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiResponse> handleValidationExceptions(MethodArgumentNotValidException ex) {
 		String errors = ex.getBindingResult().getFieldErrors().stream()
 				.map(error -> error.getField() + ": " + error.getDefaultMessage()).collect(Collectors.joining(", "));
-		ApiResponse apiResponse = new ApiResponse(false, "Validation failed: " + errors, null);
+		ApiResponse apiResponse = new ApiResponse(false, "Validierung fehlgeschlagen: " + errors, null);
 		return new ResponseEntity<>(apiResponse, HttpStatus.BAD_REQUEST);
 	}
 
 	@ExceptionHandler(AccessDeniedException.class)
 	public ResponseEntity<ApiResponse> handleAccessDeniedException(AccessDeniedException ex) {
 		ApiResponse apiResponse = new ApiResponse(false,
-				"Access Denied: You do not have permission to perform this action.", null);
+				"Zugriff verweigert: Sie haben nicht die erforderlichen Berechtigungen für diese Aktion.", null);
 		return new ResponseEntity<>(apiResponse, HttpStatus.FORBIDDEN);
 	}
 
@@ -36,7 +36,7 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiResponse> handleAllExceptions(Exception ex) {
 		logger.error("An unexpected internal server error occurred", ex);
 		ApiResponse apiResponse = new ApiResponse(false,
-				"An unexpected internal server error occurred. Please contact support.", null);
+				"Ein unerwarteter interner Serverfehler ist aufgetreten. Bitte kontaktieren Sie den Support.", null);
 		return new ResponseEntity<>(apiResponse, HttpStatus.INTERNAL_SERVER_ERROR);
 	}
 }

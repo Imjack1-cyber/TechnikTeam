@@ -49,11 +49,11 @@ public class AdminFileResource {
 		try {
 			de.technikteam.model.File savedFile = fileService.storeFile(file, categoryId, requiredRole,
 					securityUser.getUser());
-			return new ResponseEntity<>(new ApiResponse(true, "File uploaded successfully.", savedFile),
+			return new ResponseEntity<>(new ApiResponse(true, "Datei erfolgreich hochgeladen.", savedFile),
 					HttpStatus.CREATED);
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Could not upload the file: " + e.getMessage(), null));
+					.body(new ApiResponse(false, "Datei konnte nicht hochgeladen werden: " + e.getMessage(), null));
 		}
 	}
 
@@ -64,14 +64,14 @@ public class AdminFileResource {
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
 			if (fileService.deleteFile(id, securityUser.getUser())) {
-				return ResponseEntity.ok(new ApiResponse(true, "File deleted successfully", Map.of("deletedId", id)));
+				return ResponseEntity.ok(new ApiResponse(true, "Datei erfolgreich gelöscht.", Map.of("deletedId", id)));
 			} else {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND)
-						.body(new ApiResponse(false, "File not found.", null));
+						.body(new ApiResponse(false, "Datei nicht gefunden.", null));
 			}
 		} catch (Exception e) {
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Could not delete file due to a server error.", null));
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+					new ApiResponse(false, "Datei konnte aufgrund eines Serverfehlers nicht gelöscht werden.", null));
 		}
 	}
 
@@ -82,10 +82,11 @@ public class AdminFileResource {
 		if (fileDAO.createCategory(request.name())) {
 			adminLogService.log(securityUser.getUser().getUsername(), "CREATE_FILE_CATEGORY_API",
 					"Category '" + request.name() + "' created.");
-			return new ResponseEntity<>(new ApiResponse(true, "Category created.", null), HttpStatus.CREATED);
+			return new ResponseEntity<>(new ApiResponse(true, "Kategorie erfolgreich erstellt.", null),
+					HttpStatus.CREATED);
 		}
-		return ResponseEntity.status(HttpStatus.CONFLICT)
-				.body(new ApiResponse(false, "Category could not be created. Name might already exist.", null));
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiResponse(false,
+				"Kategorie konnte nicht erstellt werden. Der Name existiert möglicherweise bereits.", null));
 	}
 
 	@DeleteMapping("/categories/{id}")
@@ -96,10 +97,10 @@ public class AdminFileResource {
 		if (categoryName != null && fileDAO.deleteCategory(id)) {
 			adminLogService.log(securityUser.getUser().getUsername(), "DELETE_FILE_CATEGORY_API",
 					"Category '" + categoryName + "' deleted.");
-			return ResponseEntity.ok(new ApiResponse(true, "Category deleted.", Map.of("deletedId", id)));
+			return ResponseEntity.ok(new ApiResponse(true, "Kategorie erfolgreich gelöscht.", Map.of("deletedId", id)));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ApiResponse(false, "Category not found or could not be deleted.", null));
+				.body(new ApiResponse(false, "Kategorie nicht gefunden oder konnte nicht gelöscht werden.", null));
 	}
 
 	@GetMapping
@@ -107,13 +108,13 @@ public class AdminFileResource {
 	public ResponseEntity<ApiResponse> getAllFiles(@AuthenticationPrincipal SecurityUser securityUser) {
 		Map<String, List<de.technikteam.model.File>> groupedFiles = fileDAO
 				.getAllFilesGroupedByCategory(securityUser.getUser());
-		return ResponseEntity.ok(new ApiResponse(true, "Files retrieved", groupedFiles));
+		return ResponseEntity.ok(new ApiResponse(true, "Dateien erfolgreich abgerufen.", groupedFiles));
 	}
 
 	@GetMapping("/categories")
 	@Operation(summary = "Get all file categories")
 	public ResponseEntity<ApiResponse> getAllCategories() {
 		List<FileCategory> categories = fileDAO.getAllCategories();
-		return ResponseEntity.ok(new ApiResponse(true, "Categories retrieved", categories));
+		return ResponseEntity.ok(new ApiResponse(true, "Kategorien erfolgreich abgerufen.", categories));
 	}
 }

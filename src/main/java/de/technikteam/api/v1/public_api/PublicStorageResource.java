@@ -47,7 +47,7 @@ public class PublicStorageResource {
 		responseData.put("storageData", storageData);
 		responseData.put("activeEvents", activeEvents);
 
-		return ResponseEntity.ok(new ApiResponse(true, "Storage data retrieved.", responseData));
+		return ResponseEntity.ok(new ApiResponse(true, "Lagerdaten erfolgreich abgerufen.", responseData));
 	}
 
 	@PostMapping("/transactions")

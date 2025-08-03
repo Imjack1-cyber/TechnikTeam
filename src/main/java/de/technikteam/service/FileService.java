@@ -35,10 +35,10 @@ public class FileService {
 
 		// Security Validations
 		if (multipartFile.getSize() > MAX_FILE_SIZE_BYTES) {
-			throw new IOException("File size exceeds the limit of 10MB.");
+			throw new IOException("Dateigröße überschreitet das Limit von 10MB.");
 		}
 		if (!FileSignatureValidator.isFileTypeAllowed(multipartFile)) {
-			throw new IOException("Invalid or spoofed file type detected.");
+			throw new IOException("Ungültiger oder gefälschter Dateityp erkannt.");
 		}
 
 		String originalFileName = FilenameUtils.getName(multipartFile.getOriginalFilename());
@@ -62,7 +62,7 @@ public class FileService {
 			return fileDAO.getFileById(newFileId);
 		} else {
 			Files.deleteIfExists(targetPath);
-			throw new RuntimeException("Failed to save file metadata to database.");
+			throw new RuntimeException("Fehler beim Speichern der Datei-Metadaten in der Datenbank.");
 		}
 	}
 

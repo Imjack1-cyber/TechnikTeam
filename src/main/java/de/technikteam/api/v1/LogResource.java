@@ -39,6 +39,6 @@ public class LogResource {
 		} else {
 			logs = logDAO.getAllLogs();
 		}
-		return ResponseEntity.ok(new ApiResponse(true, "Logs retrieved successfully", logs));
+		return ResponseEntity.ok(new ApiResponse(true, "Protokolle erfolgreich abgerufen.", logs));
 	}
 }

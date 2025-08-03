@@ -38,7 +38,7 @@ public class StorageResource {
 	@PreAuthorize("hasAuthority('STORAGE_READ')")
 	public ResponseEntity<ApiResponse> getAllItems() {
 		List<StorageItem> items = storageDAO.getAllItems();
-		return ResponseEntity.ok(new ApiResponse(true, "Items retrieved successfully", items));
+		return ResponseEntity.ok(new ApiResponse(true, "Artikel erfolgreich abgerufen.", items));
 	}
 
 	@PostMapping
@@ -49,9 +49,10 @@ public class StorageResource {
 		if (storageDAO.createItem(item)) {
 			adminLogService.log(adminUser.getUsername(), "CREATE_STORAGE_ITEM_API",
 					"Item '" + item.getName() + "' created.");
-			return new ResponseEntity<>(new ApiResponse(true, "Item created successfully", item), HttpStatus.CREATED);
+			return new ResponseEntity<>(new ApiResponse(true, "Artikel erfolgreich erstellt.", item),
+					HttpStatus.CREATED);
 		}
-		return ResponseEntity.badRequest().body(new ApiResponse(false, "Could not create item.", null));
+		return ResponseEntity.badRequest().body(new ApiResponse(false, "Artikel konnte nicht erstellt werden.", null));
 	}
 
 	@PutMapping("/{id}")
@@ -63,10 +64,10 @@ public class StorageResource {
 		if (storageDAO.updateItem(item)) {
 			adminLogService.log(adminUser.getUsername(), "UPDATE_STORAGE_ITEM_API",
 					"Item '" + item.getName() + "' updated.");
-			return ResponseEntity.ok(new ApiResponse(true, "Item updated successfully", item));
+			return ResponseEntity.ok(new ApiResponse(true, "Artikel erfolgreich aktualisiert.", item));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ApiResponse(false, "Item not found or update failed.", null));
+				.body(new ApiResponse(false, "Artikel nicht gefunden oder Aktualisierung fehlgeschlagen.", null));
 	}
 
 	@DeleteMapping("/{id}")
@@ -77,9 +78,9 @@ public class StorageResource {
 		if (item != null && storageDAO.deleteItem(id)) {
 			adminLogService.log(adminUser.getUsername(), "DELETE_STORAGE_ITEM_API",
 					"Item '" + item.getName() + "' deleted.");
-			return ResponseEntity.ok(new ApiResponse(true, "Item deleted successfully", Map.of("deletedId", id)));
+			return ResponseEntity.ok(new ApiResponse(true, "Artikel erfolgreich gelöscht.", Map.of("deletedId", id)));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ApiResponse(false, "Item not found or delete failed.", null));
+				.body(new ApiResponse(false, "Artikel nicht gefunden oder Löschung fehlgeschlagen.", null));
 	}
 }

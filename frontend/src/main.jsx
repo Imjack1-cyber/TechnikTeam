@@ -17,7 +17,7 @@ const initializeApp = async () => {
 		try {
 			await fetchUserSession();
 		} catch (error) {
-			console.log("No valid session found. User needs to log in.");
+			console.log("Keine gültige Sitzung gefunden. Benutzer muss sich anmelden.");
 		}
 	}
 };

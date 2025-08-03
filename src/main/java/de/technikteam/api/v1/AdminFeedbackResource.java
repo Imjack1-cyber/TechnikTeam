@@ -32,7 +32,7 @@ public class AdminFeedbackResource {
 	@Operation(summary = "Get all feedback submissions", description = "Retrieves all feedback submissions from all users, ordered by status.")
 	public ResponseEntity<ApiResponse> getAllSubmissions() {
 		List<FeedbackSubmission> submissions = submissionDAO.getAllSubmissions();
-		return ResponseEntity.ok(new ApiResponse(true, "All submissions retrieved.", submissions));
+		return ResponseEntity.ok(new ApiResponse(true, "Alle Einreichungen erfolgreich abgerufen.", submissions));
 	}
 
 	@PutMapping("/{id}/status")
@@ -44,8 +44,9 @@ public class AdminFeedbackResource {
 			return ResponseEntity.notFound().build();
 		}
 		if (submissionDAO.updateStatusAndTitle(id, newStatus, submission.getDisplayTitle())) {
-			return ResponseEntity.ok(new ApiResponse(true, "Status updated.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Status aktualisiert.", null));
 		}
-		return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to update status.", null));
+		return ResponseEntity.internalServerError()
+				.body(new ApiResponse(false, "Status konnte nicht aktualisiert werden.", null));
 	}
 }

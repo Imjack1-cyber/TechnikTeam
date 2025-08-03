@@ -38,7 +38,7 @@ public class KitResource {
 	@PreAuthorize("hasAuthority('KIT_READ')")
 	public ResponseEntity<ApiResponse> getAllKits() {
 		List<InventoryKit> kits = kitDAO.getAllKitsWithItems();
-		return ResponseEntity.ok(new ApiResponse(true, "Kits retrieved successfully", kits));
+		return ResponseEntity.ok(new ApiResponse(true, "Kits erfolgreich abgerufen.", kits));
 	}
 
 	@PostMapping
@@ -50,9 +50,9 @@ public class KitResource {
 		if (newId > 0) {
 			kit.setId(newId);
 			adminLogService.log(adminUser.getUsername(), "CREATE_KIT_API", "Kit '" + kit.getName() + "' created.");
-			return new ResponseEntity<>(new ApiResponse(true, "Kit created successfully", kit), HttpStatus.CREATED);
+			return new ResponseEntity<>(new ApiResponse(true, "Kit erfolgreich erstellt.", kit), HttpStatus.CREATED);
 		}
-		return ResponseEntity.badRequest().body(new ApiResponse(false, "Could not create kit.", null));
+		return ResponseEntity.badRequest().body(new ApiResponse(false, "Kit konnte nicht erstellt werden.", null));
 	}
 
 	@PutMapping("/{id}")
@@ -63,10 +63,10 @@ public class KitResource {
 		kit.setId(id);
 		if (kitDAO.updateKit(kit)) {
 			adminLogService.log(adminUser.getUsername(), "UPDATE_KIT_API", "Kit '" + kit.getName() + "' updated.");
-			return ResponseEntity.ok(new ApiResponse(true, "Kit updated successfully", kit));
+			return ResponseEntity.ok(new ApiResponse(true, "Kit erfolgreich aktualisiert.", kit));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ApiResponse(false, "Kit not found or update failed.", null));
+				.body(new ApiResponse(false, "Kit nicht gefunden oder Aktualisierung fehlgeschlagen.", null));
 	}
 
 	@DeleteMapping("/{id}")
@@ -76,9 +76,9 @@ public class KitResource {
 		InventoryKit kit = kitDAO.getKitById(id);
 		if (kit != null && kitDAO.deleteKit(id)) {
 			adminLogService.log(adminUser.getUsername(), "DELETE_KIT_API", "Kit '" + kit.getName() + "' deleted.");
-			return ResponseEntity.ok(new ApiResponse(true, "Kit deleted successfully", Map.of("deletedId", id)));
+			return ResponseEntity.ok(new ApiResponse(true, "Kit erfolgreich gelöscht.", Map.of("deletedId", id)));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ApiResponse(false, "Kit not found or delete failed.", null));
+				.body(new ApiResponse(false, "Kit nicht gefunden oder Löschung fehlgeschlagen.", null));
 	}
 }

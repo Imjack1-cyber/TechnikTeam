@@ -28,7 +28,7 @@ public class NotificationService {
 
 	public SseEmitter register(User user) {
 		if (user == null) {
-			logger.warn("Attempt to register for notifications from a non-authenticated session.");
+			logger.warn("Versuch, Benachrichtigungen für eine nicht authentifizierte Sitzung zu registrieren.");
 			return null;
 		}
 
@@ -38,28 +38,29 @@ public class NotificationService {
 		int userId = user.getId();
 
 		emitter.onCompletion(() -> {
-			logger.info("SSE Emitter completed for user {}", userId);
+			logger.info("SSE Emitter für Benutzer {} beendet.", userId);
 			removeEmitter(userId, emitter);
 		});
 		emitter.onTimeout(() -> {
-			logger.warn("SSE Emitter timed out for user {}", userId);
+			logger.warn("SSE Emitter für Benutzer {} hat Zeitüberschreitung.", userId);
 			emitter.complete();
 		});
 		emitter.onError(e -> {
-			logger.error("SSE Emitter error for user {}: {}", userId, e.getMessage());
+			logger.error("SSE Emitter Fehler für Benutzer {}: {}", userId, e.getMessage());
 			emitter.complete();
 		});
 
 		emittersByUser.computeIfAbsent(userId, k -> new CopyOnWriteArrayList<>()).add(emitter);
 
-		logger.info("New client registered for SSE notifications for user ID {}. Total clients for user: {}", userId,
-				emittersByUser.get(userId).size());
+		logger.info(
+				"Neuer Client für SSE-Benachrichtigungen für Benutzer-ID {} registriert. Gesamtzahl der Clients für Benutzer: {}",
+				userId, emittersByUser.get(userId).size());
 
 		// Send a confirmation event
 		try {
-			emitter.send(SseEmitter.event().name("connected").data("Connection established"));
+			emitter.send(SseEmitter.event().name("connected").data("Verbindung hergestellt"));
 		} catch (IOException e) {
-			logger.error("Error sending connection confirmation to user {}", userId, e);
+			logger.error("Fehler beim Senden der Verbindungsbestätigung an Benutzer {}", userId, e);
 			emitter.complete();
 		}
 
@@ -67,7 +68,7 @@ public class NotificationService {
 	}
 
 	public void broadcastUIUpdate(String type, Object payload) {
-		logger.info("Broadcasting UI update of type '{}' to all clients.", type);
+		logger.info("Sende UI-Update vom Typ '{}' an alle Clients.", type);
 		Map<String, Object> message = Map.of("updateType", type, "data", payload);
 		SseEmitter.SseEventBuilder event = SseEmitter.event().name("ui_update").data(message);
 
@@ -75,7 +76,7 @@ public class NotificationService {
 			try {
 				emitter.send(event);
 			} catch (IOException e) {
-				logger.warn("Failed to send broadcast to a client (likely disconnected), removing it. Error: {}",
+				logger.warn("Fehler beim Senden an einen Client (wahrscheinlich getrennt), wird entfernt. Fehler: {}",
 						e.getMessage());
 				emitter.complete();
 			}
@@ -86,20 +87,21 @@ public class NotificationService {
 		List<SseEmitter> userEmitters = emittersByUser.get(userId);
 		if (userEmitters != null && !userEmitters.isEmpty()) {
 			SseEmitter.SseEventBuilder event = SseEmitter.event().name("notification").data(payload);
-			logger.info("Sending targeted notification to user ID {}: {}", userId, payload);
+			logger.info("Sende gezielte Benachrichtigung an Benutzer-ID {}: {}", userId, payload);
 
 			userEmitters.forEach(emitter -> {
 				try {
 					emitter.send(event);
 				} catch (IOException e) {
 					logger.warn(
-							"Failed to send targeted notification to user {} (client likely disconnected), removing it. Error: {}",
+							"Fehler beim Senden der gezielten Benachrichtigung an Benutzer {} (Client wahrscheinlich getrennt), wird entfernt. Fehler: {}",
 							userId, e.getMessage());
 					emitter.complete();
 				}
 			});
 		} else {
-			logger.debug("No active SSE clients found for user ID {} to send notification.", userId);
+			logger.debug("Keine aktiven SSE-Clients für Benutzer-ID {} gefunden, um Benachrichtigung zu senden.",
+					userId);
 		}
 	}
 

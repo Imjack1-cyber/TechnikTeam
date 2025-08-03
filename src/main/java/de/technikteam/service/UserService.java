@@ -35,7 +35,7 @@ public class UserService {
 
 			return newUserId;
 		} else {
-			throw new RuntimeException("User creation returned an invalid ID.");
+			throw new RuntimeException("Benutzererstellung lieferte eine ungültige ID zurück.");
 		}
 	}
 

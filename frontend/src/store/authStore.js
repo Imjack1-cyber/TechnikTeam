@@ -29,7 +29,7 @@ export const useAuthStore = create(
 						await get().fetchUserSession(); // Fetch full session data to be sure
 						return true;
 					}
-					throw new Error(response.message || 'Login failed');
+					throw new Error(response.message || 'Anmeldung fehlgeschlagen');
 				} catch (error) {
 					console.error('Login failed:', error);
 					get().logout();
@@ -63,7 +63,7 @@ export const useAuthStore = create(
 						});
 						document.documentElement.setAttribute('data-theme', newTheme);
 					} else {
-						throw new Error(result.message || "Invalid session data from server.");
+						throw new Error(result.message || "Ungültige Sitzungsdaten vom Server.");
 					}
 
 				} catch (error) {
@@ -83,7 +83,7 @@ export const useAuthStore = create(
 						});
 						document.documentElement.setAttribute('data-theme', updatedUser.theme);
 					} else {
-						throw new Error(result.message || 'Server failed to save theme.');
+						throw new Error(result.message || 'Server konnte das Theme nicht speichern.');
 					}
 				} catch (error) {
 					console.error("Failed to save theme preference:", error);

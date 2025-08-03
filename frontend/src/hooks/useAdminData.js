@@ -84,13 +84,13 @@ const useAdminData = () => {
 						error: null,
 					});
 				} else {
-					throw new Error('Failed to fetch one or more admin data sources.');
+					throw new Error('Eine oder mehrere Admin-Datenquellen konnten nicht geladen werden.');
 				}
 			} catch (err) {
 				setData(prev => ({
 					...prev,
 					loading: false,
-					error: err.message || 'Failed to fetch admin form data.',
+					error: err.message || 'Fehler beim Laden der Admin-Formulardaten.',
 				}));
 			}
 		};

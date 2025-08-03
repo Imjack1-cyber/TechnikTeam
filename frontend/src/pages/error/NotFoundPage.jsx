@@ -8,11 +8,11 @@ const NotFoundPage = () => {
 
 	// useMemo ensures the 'lines' array is not re-created on every render
 	const lines = useMemo(() => [
-		{ text: `Executing command: find . -name "${path}"`, className: 'info', delayAfter: 800 },
-		{ text: `find: ‘${path}’: No such file or directory`, className: 'warn', delayAfter: 500 },
-		{ text: 'ERROR 404: Resource not found.', className: 'fail' },
-		{ text: 'Suggestion: The requested resource is unavailable. Try returning to the dashboard.', className: 'info' },
-		{ text: `Executing: cd /home`, className: 'info' },
+		{ text: `Führe Befehl aus: find . -name "${path}"`, className: 'info', delayAfter: 800 },
+		{ text: `find: '${path}': Datei oder Verzeichnis nicht gefunden`, className: 'warn', delayAfter: 500 },
+		{ text: 'FEHLER 404: Ressource nicht gefunden.', className: 'fail' },
+		{ text: 'Vorschlag: Die angeforderte Ressource ist nicht verfügbar. Versuchen Sie, zum Dashboard zurückzukehren.', className: 'info' },
+		{ text: `Führe aus: cd /home`, className: 'info' },
 	], [path]);
 
 	const { containerRef, renderedLines, isComplete } = useTypingAnimation(lines);
@@ -35,7 +35,7 @@ const NotFoundPage = () => {
 				))}
 			</div>
 			<Link to="/home" className={`btn ${isComplete ? 'visible' : ''}`}>
-				<i className="fas fa-home"></i> Go to Dashboard
+				<i className="fas fa-home"></i> Zum Dashboard
 			</Link>
 		</div>
 	);

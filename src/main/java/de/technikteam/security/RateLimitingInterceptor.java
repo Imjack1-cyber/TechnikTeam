@@ -37,7 +37,7 @@ public class RateLimitingInterceptor implements HandlerInterceptor {
 			long waitForRefill = TimeUnit.NANOSECONDS.toSeconds(probe.getNanosToWaitForRefill());
 			response.addHeader("X-Rate-Limit-Retry-After-Seconds", String.valueOf(waitForRefill));
 			response.sendError(HttpStatus.TOO_MANY_REQUESTS.value(),
-					"You have exhausted your API request quota. Please try again later.");
+					"Sie haben Ihr API-Anfragekontingent ausgeschöpft. Bitte versuchen Sie es später erneut.");
 			return false;
 		}
 	}

@@ -39,7 +39,7 @@ public class PublicEventResource {
 	public ResponseEntity<ApiResponse> getUpcomingEventsForUser(@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 		List<Event> events = eventDAO.getUpcomingEventsForUser(user);
-		return ResponseEntity.ok(new ApiResponse(true, "Events retrieved successfully.", events));
+		return ResponseEntity.ok(new ApiResponse(true, "Veranstaltungen erfolgreich abgerufen.", events));
 	}
 
 	@GetMapping("/{id}")
@@ -48,9 +48,9 @@ public class PublicEventResource {
 			@Parameter(description = "ID of the event") @PathVariable int id) {
 		Event event = eventDAO.getEventById(id);
 		if (event == null) {
-			return ResponseEntity.status(404).body(new ApiResponse(false, "Event not found", null));
+			return ResponseEntity.status(404).body(new ApiResponse(false, "Veranstaltung nicht gefunden.", null));
 		}
-		return ResponseEntity.ok(new ApiResponse(true, "Event details retrieved.", event));
+		return ResponseEntity.ok(new ApiResponse(true, "Veranstaltungsdetails erfolgreich abgerufen.", event));
 	}
 
 	@PostMapping("/{id}/signup")
@@ -71,7 +71,7 @@ public class PublicEventResource {
 				}
 			});
 		}
-		return ResponseEntity.ok(new ApiResponse(true, "Successfully signed up for the event.", null));
+		return ResponseEntity.ok(new ApiResponse(true, "Erfolgreich für die Veranstaltung angemeldet.", null));
 	}
 
 	@PostMapping("/{id}/signoff")
@@ -87,7 +87,7 @@ public class PublicEventResource {
 		} else {
 			eventDAO.signOffFromEvent(user.getId(), id);
 		}
-		return ResponseEntity.ok(new ApiResponse(true, "Successfully signed off from the event.", null));
+		return ResponseEntity.ok(new ApiResponse(true, "Erfolgreich von der Veranstaltung abgemeldet.", null));
 	}
 
 	@GetMapping("/{id}/custom-fields")
@@ -95,6 +95,6 @@ public class PublicEventResource {
 	public ResponseEntity<ApiResponse> getEventCustomFields(
 			@Parameter(description = "ID of the event") @PathVariable int id) {
 		List<EventCustomField> fields = customFieldDAO.getCustomFieldsForEvent(id);
-		return ResponseEntity.ok(new ApiResponse(true, "Custom fields retrieved.", fields));
+		return ResponseEntity.ok(new ApiResponse(true, "Zusatzfelder erfolgreich abgerufen.", fields));
 	}
 }

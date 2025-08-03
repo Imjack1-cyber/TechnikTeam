@@ -33,7 +33,7 @@ public class AdminDashboardResource {
 	public ResponseEntity<ApiResponse> getDashboardData(@AuthenticationPrincipal SecurityUser securityUser) {
 		// The service method doesn't require the user, but this demonstrates the
 		// pattern.
-		return ResponseEntity
-				.ok(new ApiResponse(true, "Dashboard data retrieved.", dashboardService.getDashboardData()));
+		return ResponseEntity.ok(
+				new ApiResponse(true, "Dashboard-Daten erfolgreich abgerufen.", dashboardService.getDashboardData()));
 	}
 }

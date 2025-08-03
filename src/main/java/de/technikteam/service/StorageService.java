@@ -31,18 +31,18 @@ public class StorageService {
 	public boolean processTransaction(int itemId, int quantity, String type, User user, Integer eventId, String notes) {
 		StorageItem item = storageDAO.getItemById(itemId);
 		if (item == null)
-			throw new IllegalArgumentException("Item with ID " + itemId + " not found.");
+			throw new IllegalArgumentException("Artikel mit ID " + itemId + " nicht gefunden.");
 
 		if ("checkout".equals(type)) {
 			if (item.getAvailableQuantity() < quantity)
-				throw new IllegalStateException("Not enough items available to check out.");
+				throw new IllegalStateException("Nicht genügend Artikel zum Entnehmen verfügbar.");
 			item.setQuantity(item.getQuantity() - quantity);
 			item.setStatus("CHECKED_OUT");
 			item.setCurrentHolderUserId(user.getId());
 			item.setAssignedEventId(eventId != null ? eventId : 0);
 		} else if ("checkin".equals(type)) {
 			if (item.getMaxQuantity() > 0 && (item.getQuantity() + quantity > item.getMaxQuantity())) {
-				throw new IllegalStateException("Not enough space to check in this many items.");
+				throw new IllegalStateException("Nicht genügend Platz, um diese Menge einzuräumen.");
 			}
 			item.setQuantity(item.getQuantity() + quantity);
 			if (item.getQuantity() >= item.getMaxQuantity()) {
@@ -51,7 +51,7 @@ public class StorageService {
 				item.setAssignedEventId(0);
 			}
 		} else {
-			throw new IllegalArgumentException("Invalid transaction type: " + type);
+			throw new IllegalArgumentException("Ungültiger Transaktionstyp: " + type);
 		}
 
 		storageDAO.updateItem(item);
@@ -79,14 +79,15 @@ public class StorageService {
 	public boolean updateDefectiveItemStatus(int itemId, String status, int quantity, String reason, User adminUser) {
 		StorageItem item = storageDAO.getItemById(itemId);
 		if (item == null) {
-			throw new IllegalArgumentException("Item with ID " + itemId + " not found.");
+			throw new IllegalArgumentException("Artikel mit ID " + itemId + " nicht gefunden.");
 		}
 
 		String logDetails;
 
 		if ("UNREPAIRABLE".equals(status)) {
 			if (item.getQuantity() < quantity || item.getDefectiveQuantity() < quantity) {
-				throw new IllegalStateException("Cannot mark more items as unrepairable than exist or are defective.");
+				throw new IllegalStateException(
+						"Es können nicht mehr Artikel als irreparabel markiert werden, als vorhanden oder defekt sind.");
 			}
 			item.setQuantity(item.getQuantity() - quantity);
 			item.setDefectiveQuantity(item.getDefectiveQuantity() - quantity);
@@ -97,7 +98,8 @@ public class StorageService {
 		} else {
 			int newDefectiveTotal = item.getDefectiveQuantity() + quantity;
 			if (item.getQuantity() < newDefectiveTotal) {
-				throw new IllegalStateException("Total defective quantity cannot exceed total quantity.");
+				throw new IllegalStateException(
+						"Die Gesamtzahl der defekten Artikel kann die Gesamtmenge nicht überschreiten.");
 			}
 			item.setDefectiveQuantity(newDefectiveTotal);
 			item.setDefectReason(reason);

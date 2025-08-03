@@ -49,7 +49,7 @@ public class AuthResource {
 
 		if (loginAttemptService.isLockedOut(username, ipAddress)) {
 			logger.warn("Blocked login attempt for locked-out user '{}' from IP {}", username, ipAddress);
-			return new ResponseEntity<>(new ApiResponse(false, "Account is temporarily locked.", null),
+			return new ResponseEntity<>(new ApiResponse(false, "Konto ist vorübergehend gesperrt.", null),
 					HttpStatus.FORBIDDEN);
 		}
 
@@ -59,7 +59,7 @@ public class AuthResource {
 			authService.addJwtCookie(user, response);
 			logger.info("JWT cookie set successfully for user '{}'", username);
 			// Return user data but not the token itself
-			return ResponseEntity.ok(new ApiResponse(true, "Login successful", user));
+			return ResponseEntity.ok(new ApiResponse(true, "Anmeldung erfolgreich", user));
 		} else {
 			loginAttemptService.recordFailedLogin(username, ipAddress);
 			logger.warn("Failed API login attempt for user '{}' from IP {}", username, ipAddress);
@@ -72,7 +72,7 @@ public class AuthResource {
 	@Operation(summary = "User Logout", description = "Logs out the user by clearing the JWT authentication cookie.")
 	public ResponseEntity<ApiResponse> logout(HttpServletResponse response) {
 		authService.clearJwtCookie(response);
-		return ResponseEntity.ok(new ApiResponse(true, "Logout successful", null));
+		return ResponseEntity.ok(new ApiResponse(true, "Abmeldung erfolgreich", null));
 	}
 
 	private String getClientIp(HttpServletRequest request) {

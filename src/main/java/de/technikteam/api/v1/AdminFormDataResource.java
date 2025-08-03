@@ -49,6 +49,6 @@ public class AdminFormDataResource {
 
 		Map<String, Object> formData = Map.of("roles", roles, "groupedPermissions", groupedPermissions);
 
-		return ResponseEntity.ok(new ApiResponse(true, "Form data retrieved.", formData));
+		return ResponseEntity.ok(new ApiResponse(true, "Formulardaten erfolgreich abgerufen.", formData));
 	}
 }

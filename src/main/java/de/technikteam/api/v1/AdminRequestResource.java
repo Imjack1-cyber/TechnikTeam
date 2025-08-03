@@ -39,7 +39,7 @@ public class AdminRequestResource {
 	@Operation(summary = "Get pending requests", description = "Retrieves a list of all profile change requests that are pending review.")
 	public ResponseEntity<ApiResponse> getPendingRequests() {
 		List<ProfileChangeRequest> requests = requestDAO.getPendingRequests();
-		return ResponseEntity.ok(new ApiResponse(true, "Pending requests retrieved.", requests));
+		return ResponseEntity.ok(new ApiResponse(true, "Ausstehende Anträge erfolgreich abgerufen.", requests));
 	}
 
 	@PostMapping("/{id}/approve")
@@ -49,15 +49,15 @@ public class AdminRequestResource {
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
 			if (requestService.approveRequest(id, securityUser.getUser())) {
-				return ResponseEntity.ok(new ApiResponse(true, "Request approved and user updated.", null));
+				return ResponseEntity.ok(new ApiResponse(true, "Antrag genehmigt und Benutzer aktualisiert.", null));
 			}
 			return ResponseEntity.internalServerError()
-					.body(new ApiResponse(false, "Failed to approve request.", null));
+					.body(new ApiResponse(false, "Antrag konnte nicht genehmigt werden.", null));
 		} catch (IllegalStateException e) {
 			return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
 		} catch (IOException e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "A file system error occurred: " + e.getMessage(), null));
+					.body(new ApiResponse(false, "Ein Dateisystemfehler ist aufgetreten: " + e.getMessage(), null));
 		}
 	}
 
@@ -68,14 +68,15 @@ public class AdminRequestResource {
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
 			if (requestService.denyRequest(id, securityUser.getUser())) {
-				return ResponseEntity.ok(new ApiResponse(true, "Request denied.", null));
+				return ResponseEntity.ok(new ApiResponse(true, "Antrag abgelehnt.", null));
 			}
-			return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to deny request.", null));
+			return ResponseEntity.internalServerError()
+					.body(new ApiResponse(false, "Antrag konnte nicht abgelehnt werden.", null));
 		} catch (IllegalStateException e) {
 			return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
 		} catch (IOException e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "A file system error occurred: " + e.getMessage(), null));
+					.body(new ApiResponse(false, "Ein Dateisystemfehler ist aufgetreten: " + e.getMessage(), null));
 		}
 	}
 }

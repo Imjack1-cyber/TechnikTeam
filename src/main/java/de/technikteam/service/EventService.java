@@ -126,7 +126,7 @@ public class EventService {
 					"Anhang '" + originalFileName + "' zu Event ID " + eventId + " hinzugefügt.");
 		} else {
 			Files.deleteIfExists(targetPath);
-			throw new RuntimeException("Failed to save attachment to database.");
+			throw new RuntimeException("Fehler beim Speichern des Anhangs in der Datenbank.");
 		}
 	}
 }

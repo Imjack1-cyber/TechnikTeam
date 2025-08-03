@@ -50,6 +50,7 @@ public class UserResource {
 
 	@GetMapping("/me")
 	@Operation(summary = "Get current user session", description = "Retrieves the user object and navigation items for the currently authenticated user.", security = @SecurityRequirement(name = "bearerAuth"))
+	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<ApiResponse> getCurrentUser(@AuthenticationPrincipal SecurityUser securityUser) {
 		User authenticatedUser = securityUser.getUser();
 		List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(authenticatedUser);

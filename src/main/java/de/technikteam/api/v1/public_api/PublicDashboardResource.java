@@ -50,6 +50,6 @@ public class PublicDashboardResource {
 		dashboardData.put("openTasks", openTasks);
 		dashboardData.put("upcomingEvents", upcomingEvents);
 
-		return ResponseEntity.ok(new ApiResponse(true, "Dashboard data retrieved.", dashboardData));
+		return ResponseEntity.ok(new ApiResponse(true, "Dashboard-Daten erfolgreich abgerufen.", dashboardData));
 	}
 }

@@ -31,7 +31,7 @@ public class AdminAchievementResource {
 	@PreAuthorize("hasAuthority('ACHIEVEMENT_VIEW')")
 	public ResponseEntity<ApiResponse> getAllAchievements() {
 		List<Achievement> achievements = achievementDAO.getAllAchievements();
-		return ResponseEntity.ok(new ApiResponse(true, "Achievements retrieved.", achievements));
+		return ResponseEntity.ok(new ApiResponse(true, "Abzeichen erfolgreich abgerufen.", achievements));
 	}
 
 	@PostMapping
@@ -39,9 +39,10 @@ public class AdminAchievementResource {
 	@PreAuthorize("hasAuthority('ACHIEVEMENT_CREATE')")
 	public ResponseEntity<ApiResponse> createAchievement(@RequestBody Achievement achievement) {
 		if (achievementDAO.createAchievement(achievement)) {
-			return ResponseEntity.ok(new ApiResponse(true, "Achievement created.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Abzeichen erstellt.", null));
 		}
-		return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to create achievement.", null));
+		return ResponseEntity.internalServerError()
+				.body(new ApiResponse(false, "Fehler beim Erstellen des Abzeichens.", null));
 	}
 
 	@PutMapping("/{id}")
@@ -50,9 +51,10 @@ public class AdminAchievementResource {
 	public ResponseEntity<ApiResponse> updateAchievement(@PathVariable int id, @RequestBody Achievement achievement) {
 		achievement.setId(id);
 		if (achievementDAO.updateAchievement(achievement)) {
-			return ResponseEntity.ok(new ApiResponse(true, "Achievement updated.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Abzeichen aktualisiert.", null));
 		}
-		return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to update achievement.", null));
+		return ResponseEntity.internalServerError()
+				.body(new ApiResponse(false, "Fehler beim Aktualisieren des Abzeichens.", null));
 	}
 
 	@DeleteMapping("/{id}")
@@ -60,8 +62,9 @@ public class AdminAchievementResource {
 	@PreAuthorize("hasAuthority('ACHIEVEMENT_DELETE')")
 	public ResponseEntity<ApiResponse> deleteAchievement(@PathVariable int id) {
 		if (achievementDAO.deleteAchievement(id)) {
-			return ResponseEntity.ok(new ApiResponse(true, "Achievement deleted.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Abzeichen gelöscht.", null));
 		}
-		return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to delete achievement.", null));
+		return ResponseEntity.internalServerError()
+				.body(new ApiResponse(false, "Fehler beim Löschen des Abzeichens.", null));
 	}
 }

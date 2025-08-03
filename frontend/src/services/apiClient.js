@@ -52,7 +52,7 @@ const apiClient = {
 
 			if (response.status === 401) {
 				onUnauthorizedCallback(); // Use the injected callback
-				throw new Error('Nicht authorisiert. Ihre Sitzung ist möglicherweise abgelaufen.');
+				throw new Error('Nicht autorisiert. Ihre Sitzung ist möglicherweise abgelaufen.');
 			}
 			if (response.status === 403) {
 				throw new Error('Zugriff verweigert. Sie haben nicht die erforderlichen Berechtigungen.');

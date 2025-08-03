@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record GeneralFeedbackRequest(
-		@NotBlank(message = "Subject cannot be blank") @Size(max = 255, message = "Subject cannot be longer than 255 characters") @Schema(description = "The subject line of the feedback.", required = true) String subject,
+		@NotBlank(message = "Betreff darf nicht leer sein") @Size(max = 255, message = "Betreff darf nicht länger als 255 Zeichen sein") @Schema(description = "The subject line of the feedback.", required = true) String subject,
 
-		@NotBlank(message = "Content cannot be blank") @Schema(description = "The detailed content of the feedback.", required = true) String content) {
+		@NotBlank(message = "Inhalt darf nicht leer sein") @Schema(description = "The detailed content of the feedback.", required = true) String content) {
 }

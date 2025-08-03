@@ -64,7 +64,7 @@ public class PublicProfileResource {
 		profileData.put("passkeys", Collections.emptyList()); // REMOVED passkeyDAO call, return empty list
 		profileData.put("hasPendingRequest", requestDAO.hasPendingRequest(user.getId()));
 
-		return ResponseEntity.ok(new ApiResponse(true, "Profile data retrieved.", profileData));
+		return ResponseEntity.ok(new ApiResponse(true, "Profildaten erfolgreich abgerufen.", profileData));
 	}
 
 	@PostMapping("/request-change")
@@ -75,10 +75,10 @@ public class PublicProfileResource {
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
 			profileRequestService.createChangeRequest(securityUser.getUser(), requestDTO, profilePicture);
-			return ResponseEntity.ok(new ApiResponse(true, "Change request submitted successfully.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Änderungsantrag erfolgreich eingereicht.", null));
 		} catch (Exception e) {
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Could not save your request: " + e.getMessage(), null));
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+					new ApiResponse(false, "Ihr Antrag konnte nicht gespeichert werden: " + e.getMessage(), null));
 		}
 	}
 
@@ -91,10 +91,10 @@ public class PublicProfileResource {
 		if (theme != null && (theme.equals("light") || theme.equals("dark"))) {
 			if (userDAO.updateUserTheme(user.getId(), theme)) {
 				User updatedUser = userDAO.getUserById(user.getId());
-				return ResponseEntity.ok(new ApiResponse(true, "Theme updated.", updatedUser));
+				return ResponseEntity.ok(new ApiResponse(true, "Theme aktualisiert.", updatedUser));
 			}
 		}
-		return ResponseEntity.badRequest().body(new ApiResponse(false, "Invalid theme specified.", null));
+		return ResponseEntity.badRequest().body(new ApiResponse(false, "Ungültiges Theme angegeben.", null));
 	}
 
 	@PutMapping("/chat-color")
@@ -104,10 +104,10 @@ public class PublicProfileResource {
 		User user = securityUser.getUser();
 		String chatColor = payload.get("chatColor");
 		if (userDAO.updateUserChatColor(user.getId(), chatColor)) {
-			return ResponseEntity.ok(new ApiResponse(true, "Chat color updated.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Chatfarbe aktualisiert.", null));
 		} else {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Could not save chat color.", null));
+					.body(new ApiResponse(false, "Chatfarbe konnte nicht gespeichert werden.", null));
 		}
 	}
 

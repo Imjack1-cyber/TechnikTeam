@@ -62,7 +62,7 @@ public class ProfileRequestService {
 
 		if (profilePicture != null && !profilePicture.isEmpty()) {
 			if (!FileSignatureValidator.isFileTypeAllowed(profilePicture)) {
-				throw new IOException("Invalid profile picture file type. Only JPG and PNG are allowed.");
+				throw new IOException("Ungültiger Dateityp für Profilbild. Nur JPG und PNG sind erlaubt.");
 			}
 			String tempPath = saveTemporaryProfilePicture(profilePicture);
 			changes.put("profilePicturePath", tempPath);
@@ -77,7 +77,7 @@ public class ProfileRequestService {
 		pcr.setRequestedChanges(gson.toJson(changes));
 
 		if (!requestDAO.createRequest(pcr)) {
-			throw new IOException("Could not save your request to the database.");
+			throw new IOException("Ihr Antrag konnte nicht in der Datenbank gespeichert werden.");
 		}
 	}
 
@@ -85,13 +85,14 @@ public class ProfileRequestService {
 	public boolean approveRequest(int requestId, User adminUser) throws IOException {
 		ProfileChangeRequest pcr = requestDAO.getRequestById(requestId);
 		if (pcr == null || !"PENDING".equals(pcr.getStatus())) {
-			throw new IllegalStateException("Request not found or has already been processed.");
+			throw new IllegalStateException("Antrag nicht gefunden oder bereits bearbeitet.");
 		}
 
 		User userToUpdate = userDAO.getUserById(pcr.getUserId());
 		if (userToUpdate == null) {
 			requestDAO.updateRequestStatus(requestId, "DENIED", adminUser.getId());
-			throw new IllegalStateException("The associated user no longer exists. Request has been denied.");
+			throw new IllegalStateException(
+					"Der zugehörige Benutzer existiert nicht mehr. Der Antrag wurde abgelehnt.");
 		}
 
 		Type type = new TypeToken<Map<String, String>>() {
@@ -136,7 +137,7 @@ public class ProfileRequestService {
 	public boolean denyRequest(int requestId, User adminUser) throws IOException {
 		ProfileChangeRequest pcr = requestDAO.getRequestById(requestId);
 		if (pcr == null || !"PENDING".equals(pcr.getStatus())) {
-			throw new IllegalStateException("Request not found or has already been processed.");
+			throw new IllegalStateException("Antrag nicht gefunden oder bereits bearbeitet.");
 		}
 
 		// If the request included a temporary file, delete it
@@ -186,7 +187,7 @@ public class ProfileRequestService {
 			}
 			return tempFilename;
 		}
-		throw new IOException("Temporary profile picture not found: " + tempFilename);
+		throw new IOException("Temporäres Profilbild nicht gefunden: " + tempFilename);
 	}
 
 	private void deleteTemporaryProfilePicture(String tempFilename) throws IOException {

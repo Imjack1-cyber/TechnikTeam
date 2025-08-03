@@ -1,5 +1,128 @@
 ﻿
 ========================================================================
+FILE: src\main\java\de\technikteam\dao\InventoryKitDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import de.technikteam.model.InventoryKit;
+import de.technikteam.model.InventoryKitItem;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.stereotype.Repository;
+
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.*;
+
+@Repository
+public class InventoryKitDAO {
+	private static final Logger logger = LogManager.getLogger(InventoryKitDAO.class);
+	private final JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	public InventoryKitDAO(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
+	}
+
+	private final RowMapper<InventoryKit> kitRowMapper = (rs, rowNum) -> {
+		InventoryKit kit = new InventoryKit();
+		kit.setId(rs.getInt("id"));
+		kit.setName(rs.getString("name"));
+		kit.setDescription(rs.getString("description"));
+		kit.setLocation(rs.getString("location"));
+		kit.setItems(new ArrayList<>());
+		return kit;
+	};
+
+	public int createKit(InventoryKit kit) {
+		String sql = "INSERT INTO inventory_kits (name, description, location) VALUES (?, ?, ?)";
+		try {
+			KeyHolder keyHolder = new GeneratedKeyHolder();
+			jdbcTemplate.update(connection -> {
+				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+				ps.setString(1, kit.getName());
+				ps.setString(2, kit.getDescription());
+				ps.setString(3, kit.getLocation());
+				return ps;
+			}, keyHolder);
+			return Objects.requireNonNull(keyHolder.getKey()).intValue();
+		} catch (Exception e) {
+			logger.error("Error creating inventory kit '{}'", kit.getName(), e);
+			return 0;
+		}
+	}
+
+	public boolean updateKit(InventoryKit kit) {
+		String sql = "UPDATE inventory_kits SET name = ?, description = ?, location = ? WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, kit.getName(), kit.getDescription(), kit.getLocation(), kit.getId()) > 0;
+		} catch (Exception e) {
+			logger.error("Error updating inventory kit ID {}", kit.getId(), e);
+			return false;
+		}
+	}
+
+	public InventoryKit getKitById(int kitId) {
+		String sql = "SELECT * FROM inventory_kits WHERE id = ?";
+		try {
+			return jdbcTemplate.queryForObject(sql, kitRowMapper, kitId);
+		} catch (EmptyResultDataAccessException e) {
+			return null; // Expected case when not found
+		} catch (Exception e) {
+			logger.error("Error fetching kit by ID {}", kitId, e);
+			return null;
+		}
+	}
+
+	public boolean deleteKit(int kitId) {
+		String sql = "DELETE FROM inventory_kits WHERE id = ?";
+		try {
+			// First, delete dependencies in the linking table
+			jdbcTemplate.update("DELETE FROM inventory_kit_items WHERE kit_id = ?", kitId);
+			// Then, delete the kit itself
+			return jdbcTemplate.update(sql, kitId) > 0;
+		} catch (Exception e) {
+			logger.error("Error deleting inventory kit ID {}", kitId, e);
+			return false;
+		}
+	}
+
+	public List<InventoryKit> getAllKitsWithItems() {
+		Map<Integer, InventoryKit> kitMap = new LinkedHashMap<>();
+		String sql = "SELECT k.id, k.name, k.description, k.location, ki.item_id, ki.quantity, si.name as item_name FROM inventory_kits k LEFT JOIN inventory_kit_items ki ON k.id = ki.kit_id LEFT JOIN storage_items si ON ki.item_id = si.id ORDER BY k.name, si.name";
+
+		jdbcTemplate.query(sql, (ResultSet rs) -> {
+			int kitId = rs.getInt("id");
+			InventoryKit kit = kitMap.computeIfAbsent(kitId, id -> {
+				try {
+					return kitRowMapper.mapRow(rs, 0);
+				} catch (SQLException e) {
+					// This is a safe way to handle checked exceptions within a lambda
+					throw new RuntimeException("Failed to map ResultSet to InventoryKit", e);
+				}
+			});
+			if (rs.getInt("item_id") > 0) {
+				InventoryKitItem item = new InventoryKitItem();
+				item.setKitId(kitId);
+				item.setItemId(rs.getInt("item_id"));
+				item.setQuantity(rs.getInt("quantity"));
+				item.setItemName(rs.getString("item_name"));
+				kit.getItems().add(item);
+			}
+		});
+		return new ArrayList<>(kitMap.values());
+	}
+}
+========================================================================
 FILE: src\main\java\de\technikteam\dao\MaintenanceLogDAO.java
 ========================================================================
 
@@ -965,6 +1088,7 @@ FILE: src\main\java\de\technikteam\dao\UserDAO.java
 
 package de.technikteam.dao;
 
+import de.technikteam.config.Permissions;
 import de.technikteam.model.User;
 import de.technikteam.util.DaoUtils;
 import org.apache.logging.log4j.LogManager;
@@ -1059,9 +1183,12 @@ public class UserDAO {
 	}
 
 	public Set<String> getPermissionsForUser(int userId) {
-		String sql = "SELECT p.permission_key FROM permissions p JOIN user_permissions up ON p.id = up.permission_id WHERE up.user_id = ?";
+		String sql = "SELECT p.permission_key FROM permissions p JOIN user_permissions up ON p.id = up.permission_id WHERE up.user_id = ? "
+				+ "UNION " + "SELECT ? FROM users WHERE id = ? AND role_id = 1"; // 1 = ADMIN role ID
 		try {
-			return new HashSet<>(jdbcTemplate.queryForList(sql, String.class, userId));
+			List<String> permissionsList = jdbcTemplate.queryForList(sql, String.class, userId,
+					Permissions.ACCESS_ADMIN_PANEL, userId);
+			return new HashSet<>(permissionsList);
 		} catch (Exception e) {
 			logger.error("Could not fetch permissions for user ID: {}", userId, e);
 			return new HashSet<>();
@@ -4178,7 +4305,7 @@ public class RateLimitingInterceptor implements HandlerInterceptor {
 			long waitForRefill = TimeUnit.NANOSECONDS.toSeconds(probe.getNanosToWaitForRefill());
 			response.addHeader("X-Rate-Limit-Retry-After-Seconds", String.valueOf(waitForRefill));
 			response.sendError(HttpStatus.TOO_MANY_REQUESTS.value(),
-					"You have exhausted your API request quota. Please try again later.");
+					"Sie haben Ihr API-Anfragekontingent ausgeschöpft. Bitte versuchen Sie es später erneut.");
 			return false;
 		}
 	}
@@ -4488,7 +4615,8 @@ public class AdminLogService {
 					saneDetails);
 			logDAO.createLog(log);
 		} catch (Exception e) {
-			logger.error("CRITICAL: Failed to write to admin audit log! Data: [User: {}, Action: {}, Details: {}]",
+			logger.error(
+					"KRITISCH: Fehler beim Schreiben in das Admin-Audit-Log! Daten: [Benutzer: {}, Aktion: {}, Details: {}]",
 					sanitize(adminUsername), sanitize(actionType), sanitize(details), e);
 		}
 	}
@@ -4533,11 +4661,17 @@ public class AuthService {
 	@Autowired
 	public AuthService(UserDAO userDAO, ConfigurationService configService) {
 		this.userDAO = userDAO;
+		// TODO: SECURITY-AUDIT-FIX (CWE-547)
+		// Loading secrets from properties files committed to version control is
+		// insecure.
+		// REMEDIATION: Refactor to read the JWT secret from an environment variable
+		// (e.g., System.getenv("JWT_SECRET")) or a dedicated secrets management
+		// service.
 		String secret = configService.getProperty("jwt.secret");
 		if (secret == null || secret.isBlank() || secret.length() < 32) {
 			logger.fatal(
-					"JWT secret is not configured or is too short (must be at least 32 characters). Application cannot start securely.");
-			throw new RuntimeException("JWT secret is not configured or is insecure.");
+					"JWT-Secret ist nicht konfiguriert oder zu kurz (muss mindestens 32 Zeichen lang sein). Die Anwendung kann nicht sicher gestartet werden.");
+			throw new RuntimeException("JWT-Secret ist nicht konfiguriert oder unsicher.");
 		}
 		this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
 	}
@@ -4574,12 +4708,12 @@ public class AuthService {
 			User user = userDAO.getUserById(userId);
 
 			if (user == null) {
-				logger.warn("JWT validation successful, but user with ID {} no longer exists.", userId);
+				logger.warn("JWT-Validierung erfolgreich, aber Benutzer mit ID {} existiert nicht mehr.", userId);
 				return null;
 			}
 			return new SecurityUser(user);
 		} catch (Exception e) {
-			logger.warn("JWT verification failed: {}", e.getMessage());
+			logger.warn("JWT-Verifizierung fehlgeschlagen: {}", e.getMessage());
 			return null;
 		}
 	}
@@ -4769,7 +4903,7 @@ public class EventService {
 					"Anhang '" + originalFileName + "' zu Event ID " + eventId + " hinzugefügt.");
 		} else {
 			Files.deleteIfExists(targetPath);
-			throw new RuntimeException("Failed to save attachment to database.");
+			throw new RuntimeException("Fehler beim Speichern des Anhangs in der Datenbank.");
 		}
 	}
 }
@@ -4814,10 +4948,10 @@ public class FileService {
 
 		// Security Validations
 		if (multipartFile.getSize() > MAX_FILE_SIZE_BYTES) {
-			throw new IOException("File size exceeds the limit of 10MB.");
+			throw new IOException("Dateigröße überschreitet das Limit von 10MB.");
 		}
 		if (!FileSignatureValidator.isFileTypeAllowed(multipartFile)) {
-			throw new IOException("Invalid or spoofed file type detected.");
+			throw new IOException("Ungültiger oder gefälschter Dateityp erkannt.");
 		}
 
 		String originalFileName = FilenameUtils.getName(multipartFile.getOriginalFilename());
@@ -4841,7 +4975,7 @@ public class FileService {
 			return fileDAO.getFileById(newFileId);
 		} else {
 			Files.deleteIfExists(targetPath);
-			throw new RuntimeException("Failed to save file metadata to database.");
+			throw new RuntimeException("Fehler beim Speichern der Datei-Metadaten in der Datenbank.");
 		}
 	}
 
@@ -4866,6 +5000,14 @@ FILE: src\main\java\de\technikteam\service\LoginAttemptService.java
 ========================================================================
 
 package de.technikteam.service;
+
+// TODO: SECURITY-AUDIT-FIX (CWE-307)
+// The current lockout mechanism is based solely on username, which makes it vulnerable
+// to targeted Denial of Service attacks where an attacker can lock out any known user.
+// REMEDIATION: This service should be refactored to be primarily IP-based.
+// 1. A database migration is required to change the login_attempts table to track failures by IP address.
+// 2. The logic in isLockedOut() and recordFailedLogin() must be updated to use the client's IP address
+//    as the key for tracking and enforcing lockouts.
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -4909,16 +5051,20 @@ public class LoginAttemptService {
 	}
 
 	public void recordFailedLogin(String username, String ipAddress) {
-		String sql = "INSERT INTO login_attempts (username, ip_address, attempts, last_attempt) VALUES (?, ?, 1, ?) "
-				+ "ON DUPLICATE KEY UPDATE attempts = attempts + 1, last_attempt = ?, ip_address = ?";
+		String sql = "INSERT INTO login_attempts (username, attempts, last_attempt) VALUES (?, 1, ?) "
+				+ "ON DUPLICATE KEY UPDATE attempts = attempts + 1, last_attempt = ?";
 		Timestamp now = Timestamp.valueOf(LocalDateTime.now());
-		jdbcTemplate.update(sql, username, ipAddress, now, now, ipAddress);
+		jdbcTemplate.update(sql, username, now, now);
 
 		String checkSql = "SELECT attempts FROM login_attempts WHERE username = ?";
-		Integer currentAttempts = jdbcTemplate.queryForObject(checkSql, Integer.class, username);
-		if (currentAttempts != null && currentAttempts >= MAX_ATTEMPTS) {
-			logger.warn("Locking out user '{}' (from IP {}) due to {} failed login attempts.", username, ipAddress,
-					currentAttempts);
+		try {
+			Integer currentAttempts = jdbcTemplate.queryForObject(checkSql, Integer.class, username);
+			if (currentAttempts != null && currentAttempts >= MAX_ATTEMPTS) {
+				logger.warn("Locking out user '{}' (from IP {}) due to {} failed login attempts.", username, ipAddress,
+						currentAttempts);
+			}
+		} catch (Exception e) {
+			logger.error("Could not check login attempts for user '{}' after failed login.", username, e);
 		}
 	}
 
@@ -4961,7 +5107,7 @@ public class NotificationService {
 
 	public SseEmitter register(User user) {
 		if (user == null) {
-			logger.warn("Attempt to register for notifications from a non-authenticated session.");
+			logger.warn("Versuch, Benachrichtigungen für eine nicht authentifizierte Sitzung zu registrieren.");
 			return null;
 		}
 
@@ -4971,28 +5117,29 @@ public class NotificationService {
 		int userId = user.getId();
 
 		emitter.onCompletion(() -> {
-			logger.info("SSE Emitter completed for user {}", userId);
+			logger.info("SSE Emitter für Benutzer {} beendet.", userId);
 			removeEmitter(userId, emitter);
 		});
 		emitter.onTimeout(() -> {
-			logger.warn("SSE Emitter timed out for user {}", userId);
+			logger.warn("SSE Emitter für Benutzer {} hat Zeitüberschreitung.", userId);
 			emitter.complete();
 		});
 		emitter.onError(e -> {
-			logger.error("SSE Emitter error for user {}: {}", userId, e.getMessage());
+			logger.error("SSE Emitter Fehler für Benutzer {}: {}", userId, e.getMessage());
 			emitter.complete();
 		});
 
 		emittersByUser.computeIfAbsent(userId, k -> new CopyOnWriteArrayList<>()).add(emitter);
 
-		logger.info("New client registered for SSE notifications for user ID {}. Total clients for user: {}", userId,
-				emittersByUser.get(userId).size());
+		logger.info(
+				"Neuer Client für SSE-Benachrichtigungen für Benutzer-ID {} registriert. Gesamtzahl der Clients für Benutzer: {}",
+				userId, emittersByUser.get(userId).size());
 
 		// Send a confirmation event
 		try {
-			emitter.send(SseEmitter.event().name("connected").data("Connection established"));
+			emitter.send(SseEmitter.event().name("connected").data("Verbindung hergestellt"));
 		} catch (IOException e) {
-			logger.error("Error sending connection confirmation to user {}", userId, e);
+			logger.error("Fehler beim Senden der Verbindungsbestätigung an Benutzer {}", userId, e);
 			emitter.complete();
 		}
 
@@ -5000,7 +5147,7 @@ public class NotificationService {
 	}
 
 	public void broadcastUIUpdate(String type, Object payload) {
-		logger.info("Broadcasting UI update of type '{}' to all clients.", type);
+		logger.info("Sende UI-Update vom Typ '{}' an alle Clients.", type);
 		Map<String, Object> message = Map.of("updateType", type, "data", payload);
 		SseEmitter.SseEventBuilder event = SseEmitter.event().name("ui_update").data(message);
 
@@ -5008,7 +5155,7 @@ public class NotificationService {
 			try {
 				emitter.send(event);
 			} catch (IOException e) {
-				logger.warn("Failed to send broadcast to a client (likely disconnected), removing it. Error: {}",
+				logger.warn("Fehler beim Senden an einen Client (wahrscheinlich getrennt), wird entfernt. Fehler: {}",
 						e.getMessage());
 				emitter.complete();
 			}
@@ -5019,20 +5166,21 @@ public class NotificationService {
 		List<SseEmitter> userEmitters = emittersByUser.get(userId);
 		if (userEmitters != null && !userEmitters.isEmpty()) {
 			SseEmitter.SseEventBuilder event = SseEmitter.event().name("notification").data(payload);
-			logger.info("Sending targeted notification to user ID {}: {}", userId, payload);
+			logger.info("Sende gezielte Benachrichtigung an Benutzer-ID {}: {}", userId, payload);
 
 			userEmitters.forEach(emitter -> {
 				try {
 					emitter.send(event);
 				} catch (IOException e) {
 					logger.warn(
-							"Failed to send targeted notification to user {} (client likely disconnected), removing it. Error: {}",
+							"Fehler beim Senden der gezielten Benachrichtigung an Benutzer {} (Client wahrscheinlich getrennt), wird entfernt. Fehler: {}",
 							userId, e.getMessage());
 					emitter.complete();
 				}
 			});
 		} else {
-			logger.debug("No active SSE clients found for user ID {} to send notification.", userId);
+			logger.debug("Keine aktiven SSE-Clients für Benutzer-ID {} gefunden, um Benachrichtigung zu senden.",
+					userId);
 		}
 	}
 
@@ -5114,7 +5262,7 @@ public class ProfileRequestService {
 
 		if (profilePicture != null && !profilePicture.isEmpty()) {
 			if (!FileSignatureValidator.isFileTypeAllowed(profilePicture)) {
-				throw new IOException("Invalid profile picture file type. Only JPG and PNG are allowed.");
+				throw new IOException("Ungültiger Dateityp für Profilbild. Nur JPG und PNG sind erlaubt.");
 			}
 			String tempPath = saveTemporaryProfilePicture(profilePicture);
 			changes.put("profilePicturePath", tempPath);
@@ -5129,7 +5277,7 @@ public class ProfileRequestService {
 		pcr.setRequestedChanges(gson.toJson(changes));
 
 		if (!requestDAO.createRequest(pcr)) {
-			throw new IOException("Could not save your request to the database.");
+			throw new IOException("Ihr Antrag konnte nicht in der Datenbank gespeichert werden.");
 		}
 	}
 
@@ -5137,13 +5285,14 @@ public class ProfileRequestService {
 	public boolean approveRequest(int requestId, User adminUser) throws IOException {
 		ProfileChangeRequest pcr = requestDAO.getRequestById(requestId);
 		if (pcr == null || !"PENDING".equals(pcr.getStatus())) {
-			throw new IllegalStateException("Request not found or has already been processed.");
+			throw new IllegalStateException("Antrag nicht gefunden oder bereits bearbeitet.");
 		}
 
 		User userToUpdate = userDAO.getUserById(pcr.getUserId());
 		if (userToUpdate == null) {
 			requestDAO.updateRequestStatus(requestId, "DENIED", adminUser.getId());
-			throw new IllegalStateException("The associated user no longer exists. Request has been denied.");
+			throw new IllegalStateException(
+					"Der zugehörige Benutzer existiert nicht mehr. Der Antrag wurde abgelehnt.");
 		}
 
 		Type type = new TypeToken<Map<String, String>>() {
@@ -5188,7 +5337,7 @@ public class ProfileRequestService {
 	public boolean denyRequest(int requestId, User adminUser) throws IOException {
 		ProfileChangeRequest pcr = requestDAO.getRequestById(requestId);
 		if (pcr == null || !"PENDING".equals(pcr.getStatus())) {
-			throw new IllegalStateException("Request not found or has already been processed.");
+			throw new IllegalStateException("Antrag nicht gefunden oder bereits bearbeitet.");
 		}
 
 		// If the request included a temporary file, delete it
@@ -5238,7 +5387,7 @@ public class ProfileRequestService {
 			}
 			return tempFilename;
 		}
-		throw new IOException("Temporary profile picture not found: " + tempFilename);
+		throw new IOException("Temporäres Profilbild nicht gefunden: " + tempFilename);
 	}
 
 	private void deleteTemporaryProfilePicture(String tempFilename) throws IOException {
@@ -5313,18 +5462,18 @@ public class StorageService {
 	public boolean processTransaction(int itemId, int quantity, String type, User user, Integer eventId, String notes) {
 		StorageItem item = storageDAO.getItemById(itemId);
 		if (item == null)
-			throw new IllegalArgumentException("Item with ID " + itemId + " not found.");
+			throw new IllegalArgumentException("Artikel mit ID " + itemId + " nicht gefunden.");
 
 		if ("checkout".equals(type)) {
 			if (item.getAvailableQuantity() < quantity)
-				throw new IllegalStateException("Not enough items available to check out.");
+				throw new IllegalStateException("Nicht genügend Artikel zum Entnehmen verfügbar.");
 			item.setQuantity(item.getQuantity() - quantity);
 			item.setStatus("CHECKED_OUT");
 			item.setCurrentHolderUserId(user.getId());
 			item.setAssignedEventId(eventId != null ? eventId : 0);
 		} else if ("checkin".equals(type)) {
 			if (item.getMaxQuantity() > 0 && (item.getQuantity() + quantity > item.getMaxQuantity())) {
-				throw new IllegalStateException("Not enough space to check in this many items.");
+				throw new IllegalStateException("Nicht genügend Platz, um diese Menge einzuräumen.");
 			}
 			item.setQuantity(item.getQuantity() + quantity);
 			if (item.getQuantity() >= item.getMaxQuantity()) {
@@ -5333,7 +5482,7 @@ public class StorageService {
 				item.setAssignedEventId(0);
 			}
 		} else {
-			throw new IllegalArgumentException("Invalid transaction type: " + type);
+			throw new IllegalArgumentException("Ungültiger Transaktionstyp: " + type);
 		}
 
 		storageDAO.updateItem(item);
@@ -5361,14 +5510,15 @@ public class StorageService {
 	public boolean updateDefectiveItemStatus(int itemId, String status, int quantity, String reason, User adminUser) {
 		StorageItem item = storageDAO.getItemById(itemId);
 		if (item == null) {
-			throw new IllegalArgumentException("Item with ID " + itemId + " not found.");
+			throw new IllegalArgumentException("Artikel mit ID " + itemId + " nicht gefunden.");
 		}
 
 		String logDetails;
 
 		if ("UNREPAIRABLE".equals(status)) {
 			if (item.getQuantity() < quantity || item.getDefectiveQuantity() < quantity) {
-				throw new IllegalStateException("Cannot mark more items as unrepairable than exist or are defective.");
+				throw new IllegalStateException(
+						"Es können nicht mehr Artikel als irreparabel markiert werden, als vorhanden oder defekt sind.");
 			}
 			item.setQuantity(item.getQuantity() - quantity);
 			item.setDefectiveQuantity(item.getDefectiveQuantity() - quantity);
@@ -5379,7 +5529,8 @@ public class StorageService {
 		} else {
 			int newDefectiveTotal = item.getDefectiveQuantity() + quantity;
 			if (item.getQuantity() < newDefectiveTotal) {
-				throw new IllegalStateException("Total defective quantity cannot exceed total quantity.");
+				throw new IllegalStateException(
+						"Die Gesamtzahl der defekten Artikel kann die Gesamtmenge nicht überschreiten.");
 			}
 			item.setDefectiveQuantity(newDefectiveTotal);
 			item.setDefectReason(reason);
@@ -5631,7 +5782,7 @@ public class UserService {
 
 			return newUserId;
 		} else {
-			throw new RuntimeException("User creation returned an invalid ID.");
+			throw new RuntimeException("Benutzererstellung lieferte eine ungültige ID zurück.");
 		}
 	}
 
@@ -6205,12 +6356,12 @@ public class EventChatSocketHandler extends TextWebSocketHandler {
 		String eventId = getEventId(session);
 
 		if (user == null) {
-			session.close(CloseStatus.POLICY_VIOLATION.withReason("Authentication required."));
+			session.close(CloseStatus.POLICY_VIOLATION.withReason("Authentifizierung erforderlich."));
 			return;
 		}
 
 		if (eventId == null || !eventDAO.isUserAssociatedWithEvent(Integer.parseInt(eventId), user.getId())) {
-			session.close(CloseStatus.POLICY_VIOLATION.withReason("Permission denied for this event chat."));
+			session.close(CloseStatus.POLICY_VIOLATION.withReason("Keine Berechtigung für diesen Event-Chat."));
 			return;
 		}
 

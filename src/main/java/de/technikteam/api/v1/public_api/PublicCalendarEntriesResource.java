@@ -63,6 +63,6 @@ public class PublicCalendarEntriesResource {
 			entries.add(entry);
 		}
 
-		return ResponseEntity.ok(new ApiResponse(true, "Calendar entries retrieved.", entries));
+		return ResponseEntity.ok(new ApiResponse(true, "Kalendereinträge erfolgreich abgerufen.", entries));
 	}
 }

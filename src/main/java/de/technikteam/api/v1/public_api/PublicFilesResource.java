@@ -36,6 +36,6 @@ public class PublicFilesResource {
 	public ResponseEntity<ApiResponse> getFiles(@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 		Map<String, List<File>> files = fileDAO.getAllFilesGroupedByCategory(user);
-		return ResponseEntity.ok(new ApiResponse(true, "Files retrieved successfully.", files));
+		return ResponseEntity.ok(new ApiResponse(true, "Dateien erfolgreich abgerufen.", files));
 	}
 }

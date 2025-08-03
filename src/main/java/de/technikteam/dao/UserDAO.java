@@ -95,15 +95,36 @@ public class UserDAO {
 	}
 
 	public Set<String> getPermissionsForUser(int userId) {
-		String sql = "SELECT p.permission_key FROM permissions p JOIN user_permissions up ON p.id = up.permission_id WHERE up.user_id = ? "
-				+ "UNION " + "SELECT ? FROM users WHERE id = ? AND role_id = 1"; // 1 = ADMIN role ID
+		// Check if user is an admin (role_id = 1)
+		String checkAdminSql = "SELECT COUNT(*) FROM users WHERE id = ? AND role_id = 1";
+		Integer adminCount = 0;
 		try {
-			List<String> permissionsList = jdbcTemplate.queryForList(sql, String.class, userId,
-					Permissions.ACCESS_ADMIN_PANEL, userId);
-			return new HashSet<>(permissionsList);
+			adminCount = jdbcTemplate.queryForObject(checkAdminSql, Integer.class, userId);
 		} catch (Exception e) {
-			logger.error("Could not fetch permissions for user ID: {}", userId, e);
-			return new HashSet<>();
+			logger.error("Could not check admin status for user ID: {}", userId, e);
+			return new HashSet<>(); // Return empty set on error
+		}
+
+		if (adminCount != null && adminCount > 0) {
+			// User is an admin, grant all permissions
+			logger.debug("User ID {} is an admin. Granting all permissions.", userId);
+			String allPermissionsSql = "SELECT permission_key FROM permissions";
+			try {
+				return new HashSet<>(jdbcTemplate.queryForList(allPermissionsSql, String.class));
+			} catch (Exception e) {
+				logger.error("Could not fetch all permissions for admin user ID: {}", userId, e);
+				return new HashSet<>();
+			}
+		} else {
+			// User is not an admin, grant only their specific permissions
+			String userPermissionsSql = "SELECT p.permission_key FROM permissions p JOIN user_permissions up ON p.id = up.permission_id WHERE up.user_id = ?";
+			try {
+				List<String> permissionsList = jdbcTemplate.queryForList(userPermissionsSql, String.class, userId);
+				return new HashSet<>(permissionsList);
+			} catch (Exception e) {
+				logger.error("Could not fetch permissions for user ID: {}", userId, e);
+				return new HashSet<>();
+			}
 		}
 	}
 

@@ -36,6 +36,6 @@ public class ReportResource {
 		dashboardData.put("eventTrend", reportDAO.getEventCountByMonth(12));
 		dashboardData.put("userActivity", reportDAO.getUserParticipationStats(10));
 		dashboardData.put("totalInventoryValue", reportDAO.getTotalInventoryValue());
-		return ResponseEntity.ok(new ApiResponse(true, "Dashboard data retrieved", dashboardData));
+		return ResponseEntity.ok(new ApiResponse(true, "Dashboard-Daten erfolgreich abgerufen.", dashboardData));
 	}
 }

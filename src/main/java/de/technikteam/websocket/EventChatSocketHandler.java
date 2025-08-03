@@ -66,12 +66,12 @@ public class EventChatSocketHandler extends TextWebSocketHandler {
 		String eventId = getEventId(session);
 
 		if (user == null) {
-			session.close(CloseStatus.POLICY_VIOLATION.withReason("Authentication required."));
+			session.close(CloseStatus.POLICY_VIOLATION.withReason("Authentifizierung erforderlich."));
 			return;
 		}
 
 		if (eventId == null || !eventDAO.isUserAssociatedWithEvent(Integer.parseInt(eventId), user.getId())) {
-			session.close(CloseStatus.POLICY_VIOLATION.withReason("Permission denied for this event chat."));
+			session.close(CloseStatus.POLICY_VIOLATION.withReason("Keine Berechtigung für diesen Event-Chat."));
 			return;
 		}
 

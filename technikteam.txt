@@ -8,12 +8,19 @@ FILE: pom.xml
 <project xmlns="http://maven.apache.org/POM/4.0.0"
 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<!--
+  SECURITY-AUDIT RECOMMENDATION (CWE-1104):
+  Integrate an automated dependency vulnerability scanner to mitigate risks from
+  vulnerable and outdated components. It is recommended to add the OWASP
+  Dependency-Check Maven plugin to the <build><plugins> section and configure it
+  to run as part of the CI/CD pipeline.
+-->
 <modelVersion>4.0.0</modelVersion>
 <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
     <version>3.3.1</version>
-	<relativePath /> 
+		<relativePath /> 
 </parent>
 
 <groupId>de.technikteam</groupId>
@@ -268,7 +275,7 @@ Follow these steps to get a local instance of the application running for develo
 5.  Set the `upload.directory` to an absolute path on your local machine. This directory must exist and be writable by the application.
 6.  The application uses Flyway for database migrations. The necessary tables will be created automatically when the application starts for the first time.
 
-**First-time Setup Note:** The initial database migration will create a default `admin` user. For security, this user is created with a strong, random password that is printed to the console **only once** on the very first startup. Please copy this password immediately and store it securely.
+**First-time Setup Note:** The application includes a component (`InitialAdminCreator.java`) that checks if an 'admin' user exists on first startup. If not, it creates a default `admin` user with full permissions and a strong, random password. This password is printed to the console **only once** on the very first startup. Please copy this password immediately and store it securely. Note that a Flyway migration (`V22`) is included to remove any legacy, insecurely created admin users from previous development versions.
 
 ### 4. Backend Launch
 1.  From the project's root directory, run the Spring Boot application using Maven:
@@ -2218,7 +2225,7 @@ const initializeApp = async () => {
 		try {
 			await fetchUserSession();
 		} catch (error) {
-			console.log("No valid session found. User needs to log in.");
+			console.log("Keine gültige Sitzung gefunden. Benutzer muss sich anmelden.");
 		}
 	}
 };
@@ -3175,7 +3182,7 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
 						});
 					}
 				} catch (err) {
-					setError('Could not load user details.');
+					setError('Benutzerdetails konnten nicht geladen werden.');
 				}
 			} else {
 				setFormData({
@@ -3219,7 +3226,7 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
 		};
 
 		if (!isEditMode && (!payload.password || payload.password.length < 10)) {
-			setError('Password is required for a new user and must be at least 10 characters.');
+			setError('Für neue Benutzer ist ein Passwort erforderlich, das mindestens 10 Zeichen lang sein muss.');
 			setIsSubmitting(false);
 			return;
 		}
@@ -3230,13 +3237,13 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
 				: await apiClient.post('/users', payload);
 
 			if (result.success) {
-				addToast(`User ${isEditMode ? 'updated' : 'created'} successfully`, 'success');
+				addToast(`Benutzer erfolgreich ${isEditMode ? 'aktualisiert' : 'erstellt'}.`, 'success');
 				onSuccess();
 			} else {
 				throw new Error(result.message);
 			}
 		} catch (err) {
-			setError(err.message || 'An error occurred.');
+			setError(err.message || 'Ein Fehler ist aufgetreten.');
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -4105,7 +4112,7 @@ const ToastContext = createContext(null);
 export const useToast = () => {
 	const context = useContext(ToastContext);
 	if (!context) {
-		throw new Error('useToast must be used within a ToastProvider');
+		throw new Error('useToast muss innerhalb eines ToastProviders verwendet werden');
 	}
 	return context;
 };
@@ -4219,13 +4226,13 @@ const useAdminData = () => {
 						error: null,
 					});
 				} else {
-					throw new Error('Failed to fetch one or more admin data sources.');
+					throw new Error('Eine oder mehrere Admin-Datenquellen konnten nicht geladen werden.');
 				}
 			} catch (err) {
 				setData(prev => ({
 					...prev,
 					loading: false,
-					error: err.message || 'Failed to fetch admin form data.',
+					error: err.message || 'Fehler beim Laden der Admin-Formulardaten.',
 				}));
 			}
 		};
@@ -4265,7 +4272,7 @@ const useApi = (apiCall) => {
 				throw new Error(result.message);
 			}
 		} catch (err) {
-			setError(err.message || 'An unexpected error occurred.');
+			setError(err.message || 'Ein unerwarteter Fehler ist aufgetreten.');
 		} finally {
 			setLoading(false);
 		}
@@ -4373,7 +4380,7 @@ const useWebSocket = (url, onMessage) => {
 			socketRef.current = socket;
 
 			socket.onopen = () => {
-				console.log('WebSocket connection established.');
+				console.log('WebSocket-Verbindung hergestellt.');
 				setReadyState(WebSocket.OPEN);
 			};
 
@@ -4384,22 +4391,22 @@ const useWebSocket = (url, onMessage) => {
 						onMessage(data);
 					}
 				} catch (error) {
-					console.error('Error parsing WebSocket message:', error);
+					console.error('Fehler beim Parsen der WebSocket-Nachricht:', error);
 				}
 			};
 
 			socket.onclose = (event) => {
 				if (event.code === 4001 || event.code === 403) {
-					console.error('WebSocket connection closed due to authentication/authorization failure.');
+					console.error('WebSocket-Verbindung aufgrund von Authentifizierungs-/Autorisierungsfehler geschlossen.');
 				} else {
-					console.warn('WebSocket connection closed. Attempting to reconnect...');
+					console.warn('WebSocket-Verbindung geschlossen. Versuche erneute Verbindung...');
 					setTimeout(connect, 5000);
 				}
 				setReadyState(WebSocket.CLOSED);
 			};
 
 			socket.onerror = (error) => {
-				console.error('WebSocket error:', error);
+				console.error('WebSocket-Fehler:', error);
 				setReadyState(WebSocket.CLOSED);
 				socket.close();
 			};
@@ -4419,7 +4426,7 @@ const useWebSocket = (url, onMessage) => {
 		if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
 			socketRef.current.send(JSON.stringify(messageObject));
 		} else {
-			console.error('WebSocket is not open. Cannot send message.');
+			console.error('WebSocket ist nicht geöffnet. Nachricht kann nicht gesendet werden.');
 		}
 	};
 
@@ -4891,7 +4898,7 @@ const EventsPage = () => {
 				customFields: result.success ? result.data : [],
 			});
 		} catch (e) {
-			console.error("Could not load custom fields", e);
+			console.error("Benutzerdefinierte Felder konnten nicht geladen werden", e);
 			setModalState({ isOpen: true, type: 'signup', event, customFields: [] });
 		}
 	};
@@ -8037,20 +8044,20 @@ const ErrorPage = () => {
 		if (error instanceof Error) return error.message;
 		if (error?.statusText) return error.statusText;
 		if (error?.message) return error.message;
-		return "An unknown error occurred.";
+		return "Ein unbekannter Fehler ist aufgetreten.";
 	}, [error]);
 
 	// useMemo ensures the 'lines' array is not re-created on every render
 	const lines = useMemo(() => [
-		{ text: 'INITIATING SYSTEM DIAGNOSTIC...', className: 'info' },
-		{ text: 'Scanning memory modules...', className: 'info', delayAfter: 500 },
-		{ text: '[OK] Memory integrity check passed.', className: 'ok' },
-		{ text: 'Checking application state...', className: 'info', delayAfter: 500 },
-		{ text: `[FAIL] Unhandled exception detected: ${errorMessage}`, className: 'fail', delayAfter: 800 },
-		{ text: 'ERROR 500: Internal Server Error.', className: 'fail' },
-		{ text: 'A critical error occurred while processing the request.', className: 'info' },
-		{ text: 'The system administrator has been notified.', className: 'info' },
-		{ text: 'Preparing recovery options...', className: 'warn' },
+		{ text: 'SYSTEMDIAGNOSE WIRD GESTARTET...', className: 'info' },
+		{ text: 'Speichermodule werden gescannt...', className: 'info', delayAfter: 500 },
+		{ text: '[OK] Speicherintegritätsprüfung bestanden.', className: 'ok' },
+		{ text: 'Anwendungsstatus wird überprüft...', className: 'info', delayAfter: 500 },
+		{ text: `[FEHLER] Unbehandelte Ausnahme erkannt: ${errorMessage}`, className: 'fail', delayAfter: 800 },
+		{ text: 'FEHLER 500: Interner Serverfehler.', className: 'fail' },
+		{ text: 'Ein kritischer Fehler ist bei der Verarbeitung der Anfrage aufgetreten.', className: 'info' },
+		{ text: 'Der Systemadministrator wurde benachrichtigt.', className: 'info' },
+		{ text: 'Wiederherstellungsoptionen werden vorbereitet...', className: 'warn' },
 	], [errorMessage]);
 
 	const { containerRef, renderedLines, isComplete } = useTypingAnimation(lines);
@@ -8073,7 +8080,7 @@ const ErrorPage = () => {
 				))}
 			</div>
 			<Link to="/home" className={`btn ${isComplete ? 'visible' : ''}`}>
-				<i className="fas fa-home"></i> Go to Dashboard
+				<i className="fas fa-home"></i> Zum Dashboard
 			</Link>
 		</div>
 	);
@@ -8089,7 +8096,7 @@ import { useEffect } from 'react';
 const ErrorTrigger = () => {
 	useEffect(() => {
 		// This will cause a rendering error that the boundary will catch.
-		throw new Error("This is a simulated rendering error for testing the 500 page.");
+		throw new Error("Dies ist ein simulierter Rendering-Fehler zum Testen der 500-Seite.");
 	}, []);
 
 	return <div>You should not see this.</div>;
@@ -8109,13 +8116,13 @@ const ForbiddenPage = () => {
 	const user = useAuthStore(state => state.user);
 
 	const lines = useMemo(() => [
-		{ text: 'Attempting to access restricted area...', className: 'info' },
-		{ text: `Authenticating user: ${user?.username || 'GUEST'}`, className: 'info', delayAfter: 500 },
-		{ text: 'Checking clearance level...', className: 'info', delayAfter: 800 },
-		{ text: '[ACCESS DENIED]', className: 'fail', speed: 80 },
-		{ text: 'ERROR 403: Insufficient permissions.', className: 'fail' },
-		{ text: 'Your current role does not grant access to this resource.', className: 'warn' },
-		{ text: 'This attempt has been logged.', className: 'info' },
+		{ text: 'Zugriffsversuch auf geschützten Bereich...', className: 'info' },
+		{ text: `Benutzer wird authentifiziert: ${user?.username || 'GAST'}`, className: 'info', delayAfter: 500 },
+		{ text: 'Berechtigungsstufe wird geprüft...', className: 'info', delayAfter: 800 },
+		{ text: '[ZUGRIFF VERWEIGERT]', className: 'fail', speed: 80 },
+		{ text: 'FEHLER 403: Unzureichende Berechtigungen.', className: 'fail' },
+		{ text: 'Ihre aktuelle Rolle gewährt keinen Zugriff auf diese Ressource.', className: 'warn' },
+		{ text: 'Dieser Versuch wurde protokolliert.', className: 'info' },
 	], [user]);
 
 	const { containerRef, renderedLines, isComplete } = useTypingAnimation(lines);
@@ -8139,7 +8146,7 @@ const ForbiddenPage = () => {
 			</div>
 			<div className="terminal-footer">
 				<Link to="/home" className={`btn ${isComplete ? 'visible' : ''}`}>
-					<i className="fas fa-arrow-left"></i> Return to Safety
+					<i className="fas fa-arrow-left"></i> Zurück zum sicheren Bereich
 				</Link>
 			</div>
 		</div>
@@ -8161,11 +8168,11 @@ const NotFoundPage = () => {
 
 	// useMemo ensures the 'lines' array is not re-created on every render
 	const lines = useMemo(() => [
-		{ text: `Executing command: find . -name "${path}"`, className: 'info', delayAfter: 800 },
-		{ text: `find: ‘${path}’: No such file or directory`, className: 'warn', delayAfter: 500 },
-		{ text: 'ERROR 404: Resource not found.', className: 'fail' },
-		{ text: 'Suggestion: The requested resource is unavailable. Try returning to the dashboard.', className: 'info' },
-		{ text: `Executing: cd /home`, className: 'info' },
+		{ text: `Führe Befehl aus: find . -name "${path}"`, className: 'info', delayAfter: 800 },
+		{ text: `find: '${path}': Datei oder Verzeichnis nicht gefunden`, className: 'warn', delayAfter: 500 },
+		{ text: 'FEHLER 404: Ressource nicht gefunden.', className: 'fail' },
+		{ text: 'Vorschlag: Die angeforderte Ressource ist nicht verfügbar. Versuchen Sie, zum Dashboard zurückzukehren.', className: 'info' },
+		{ text: `Führe aus: cd /home`, className: 'info' },
 	], [path]);
 
 	const { containerRef, renderedLines, isComplete } = useTypingAnimation(lines);
@@ -8188,7 +8195,7 @@ const NotFoundPage = () => {
 				))}
 			</div>
 			<Link to="/home" className={`btn ${isComplete ? 'visible' : ''}`}>
-				<i className="fas fa-home"></i> Go to Dashboard
+				<i className="fas fa-home"></i> Zum Dashboard
 			</Link>
 		</div>
 	);
@@ -8433,7 +8440,7 @@ const apiClient = {
 
 			if (response.status === 401) {
 				onUnauthorizedCallback(); // Use the injected callback
-				throw new Error('Nicht authorisiert. Ihre Sitzung ist möglicherweise abgelaufen.');
+				throw new Error('Nicht autorisiert. Ihre Sitzung ist möglicherweise abgelaufen.');
 			}
 			if (response.status === 403) {
 				throw new Error('Zugriff verweigert. Sie haben nicht die erforderlichen Berechtigungen.');
@@ -8528,7 +8535,7 @@ export const useAuthStore = create(
 						await get().fetchUserSession(); // Fetch full session data to be sure
 						return true;
 					}
-					throw new Error(response.message || 'Login failed');
+					throw new Error(response.message || 'Anmeldung fehlgeschlagen');
 				} catch (error) {
 					console.error('Login failed:', error);
 					get().logout();
@@ -8542,7 +8549,7 @@ export const useAuthStore = create(
 					console.error("Logout API call failed, clearing state anyway.", error);
 				} finally {
 					set({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, theme: 'light' });
-					localStorage.removeItem('theme');
+					localStorage.removeItem('auth-storage');
 					document.documentElement.setAttribute('data-theme', 'light');
 				}
 			},
@@ -8561,9 +8568,8 @@ export const useAuthStore = create(
 							theme: newTheme,
 						});
 						document.documentElement.setAttribute('data-theme', newTheme);
-						localStorage.setItem('theme', newTheme);
 					} else {
-						throw new Error(result.message || "Invalid session data from server.");
+						throw new Error(result.message || "Ungültige Sitzungsdaten vom Server.");
 					}
 
 				} catch (error) {
@@ -8573,24 +8579,20 @@ export const useAuthStore = create(
 				}
 			},
 			setTheme: async (newTheme) => {
-				const oldTheme = get().theme;
-				set(state => ({
-					theme: newTheme,
-					user: state.user ? { ...state.user, theme: newTheme } : null
-				}));
-				document.documentElement.setAttribute('data-theme', newTheme);
-				localStorage.setItem('theme', newTheme);
-
 				try {
-					await apiClient.put('/public/profile/theme', { theme: newTheme });
+					const result = await apiClient.put('/public/profile/theme', { theme: newTheme });
+					if (result.success && result.data) {
+						const updatedUser = result.data;
+						set({
+							user: updatedUser,
+							theme: updatedUser.theme,
+						});
+						document.documentElement.setAttribute('data-theme', updatedUser.theme);
+					} else {
+						throw new Error(result.message || 'Server konnte das Theme nicht speichern.');
+					}
 				} catch (error) {
 					console.error("Failed to save theme preference:", error);
-					set(state => ({
-						theme: oldTheme,
-						user: state.user ? { ...state.user, theme: oldTheme } : null
-					}));
-					document.documentElement.setAttribute('data-theme', oldTheme);
-					localStorage.setItem('theme', oldTheme);
 				}
 			},
 		}),
@@ -8658,7 +8660,7 @@ public class AdminAchievementResource {
 	@PreAuthorize("hasAuthority('ACHIEVEMENT_VIEW')")
 	public ResponseEntity<ApiResponse> getAllAchievements() {
 		List<Achievement> achievements = achievementDAO.getAllAchievements();
-		return ResponseEntity.ok(new ApiResponse(true, "Achievements retrieved.", achievements));
+		return ResponseEntity.ok(new ApiResponse(true, "Abzeichen erfolgreich abgerufen.", achievements));
 	}
 
 	@PostMapping
@@ -8666,9 +8668,10 @@ public class AdminAchievementResource {
 	@PreAuthorize("hasAuthority('ACHIEVEMENT_CREATE')")
 	public ResponseEntity<ApiResponse> createAchievement(@RequestBody Achievement achievement) {
 		if (achievementDAO.createAchievement(achievement)) {
-			return ResponseEntity.ok(new ApiResponse(true, "Achievement created.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Abzeichen erstellt.", null));
 		}
-		return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to create achievement.", null));
+		return ResponseEntity.internalServerError()
+				.body(new ApiResponse(false, "Fehler beim Erstellen des Abzeichens.", null));
 	}
 
 	@PutMapping("/{id}")
@@ -8677,9 +8680,10 @@ public class AdminAchievementResource {
 	public ResponseEntity<ApiResponse> updateAchievement(@PathVariable int id, @RequestBody Achievement achievement) {
 		achievement.setId(id);
 		if (achievementDAO.updateAchievement(achievement)) {
-			return ResponseEntity.ok(new ApiResponse(true, "Achievement updated.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Abzeichen aktualisiert.", null));
 		}
-		return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to update achievement.", null));
+		return ResponseEntity.internalServerError()
+				.body(new ApiResponse(false, "Fehler beim Aktualisieren des Abzeichens.", null));
 	}
 
 	@DeleteMapping("/{id}")
@@ -8687,9 +8691,10 @@ public class AdminAchievementResource {
 	@PreAuthorize("hasAuthority('ACHIEVEMENT_DELETE')")
 	public ResponseEntity<ApiResponse> deleteAchievement(@PathVariable int id) {
 		if (achievementDAO.deleteAchievement(id)) {
-			return ResponseEntity.ok(new ApiResponse(true, "Achievement deleted.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Abzeichen gelöscht.", null));
 		}
-		return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to delete achievement.", null));
+		return ResponseEntity.internalServerError()
+				.body(new ApiResponse(false, "Fehler beim Löschen des Abzeichens.", null));
 	}
 }
 ========================================================================
@@ -8731,8 +8736,8 @@ public class AdminDashboardResource {
 	public ResponseEntity<ApiResponse> getDashboardData(@AuthenticationPrincipal SecurityUser securityUser) {
 		// The service method doesn't require the user, but this demonstrates the
 		// pattern.
-		return ResponseEntity
-				.ok(new ApiResponse(true, "Dashboard data retrieved.", dashboardService.getDashboardData()));
+		return ResponseEntity.ok(
+				new ApiResponse(true, "Dashboard-Daten erfolgreich abgerufen.", dashboardService.getDashboardData()));
 	}
 }
 ========================================================================
@@ -8782,7 +8787,7 @@ public class AdminEventResource {
 	@PreAuthorize("hasAuthority('EVENT_READ')")
 	public ResponseEntity<ApiResponse> getAllEvents() {
 		List<Event> events = eventDAO.getAllEvents();
-		return ResponseEntity.ok(new ApiResponse(true, "Events retrieved.", events));
+		return ResponseEntity.ok(new ApiResponse(true, "Veranstaltungen erfolgreich abgerufen.", events));
 	}
 
 	@PostMapping
@@ -8801,11 +8806,12 @@ public class AdminEventResource {
 					eventData.requiredPersons().toArray(new String[0]), eventData.itemIds().toArray(new String[0]),
 					eventData.quantities().toArray(new String[0]), null, file, eventData.requiredRole());
 
-			return new ResponseEntity<>(new ApiResponse(true, "Event created successfully", Map.of("id", newEventId)),
+			return new ResponseEntity<>(
+					new ApiResponse(true, "Veranstaltung erfolgreich erstellt.", Map.of("id", newEventId)),
 					HttpStatus.CREATED);
 		} catch (Exception e) {
 			return ResponseEntity.internalServerError()
-					.body(new ApiResponse(false, "Failed to create event: " + e.getMessage(), null));
+					.body(new ApiResponse(false, "Fehler beim Erstellen der Veranstaltung: " + e.getMessage(), null));
 		}
 	}
 
@@ -8821,7 +8827,7 @@ public class AdminEventResource {
 			Event event = eventDAO.getEventById(id);
 			if (event == null) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND)
-						.body(new ApiResponse(false, "Event not found", null));
+						.body(new ApiResponse(false, "Veranstaltung nicht gefunden.", null));
 			}
 			mapDtoToEvent(eventData, event);
 			event.setId(id); // Ensure ID is set for update
@@ -8831,10 +8837,10 @@ public class AdminEventResource {
 					eventData.requiredPersons().toArray(new String[0]), eventData.itemIds().toArray(new String[0]),
 					eventData.quantities().toArray(new String[0]), null, file, eventData.requiredRole());
 
-			return ResponseEntity.ok(new ApiResponse(true, "Event updated successfully", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Veranstaltung erfolgreich aktualisiert.", null));
 		} catch (Exception e) {
-			return ResponseEntity.internalServerError()
-					.body(new ApiResponse(false, "Failed to update event: " + e.getMessage(), null));
+			return ResponseEntity.internalServerError().body(
+					new ApiResponse(false, "Fehler beim Aktualisieren der Veranstaltung: " + e.getMessage(), null));
 		}
 	}
 
@@ -8843,9 +8849,10 @@ public class AdminEventResource {
 	@PreAuthorize("hasAuthority('EVENT_DELETE')")
 	public ResponseEntity<ApiResponse> deleteEvent(@PathVariable int id) {
 		if (eventDAO.deleteEvent(id)) {
-			return ResponseEntity.ok(new ApiResponse(true, "Event deleted successfully.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Veranstaltung erfolgreich gelöscht.", null));
 		} else {
-			return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to delete event.", null));
+			return ResponseEntity.internalServerError()
+					.body(new ApiResponse(false, "Fehler beim Löschen der Veranstaltung.", null));
 		}
 	}
 
@@ -8897,7 +8904,7 @@ public class AdminFeedbackResource {
 	@Operation(summary = "Get all feedback submissions", description = "Retrieves all feedback submissions from all users, ordered by status.")
 	public ResponseEntity<ApiResponse> getAllSubmissions() {
 		List<FeedbackSubmission> submissions = submissionDAO.getAllSubmissions();
-		return ResponseEntity.ok(new ApiResponse(true, "All submissions retrieved.", submissions));
+		return ResponseEntity.ok(new ApiResponse(true, "Alle Einreichungen erfolgreich abgerufen.", submissions));
 	}
 
 	@PutMapping("/{id}/status")
@@ -8909,9 +8916,10 @@ public class AdminFeedbackResource {
 			return ResponseEntity.notFound().build();
 		}
 		if (submissionDAO.updateStatusAndTitle(id, newStatus, submission.getDisplayTitle())) {
-			return ResponseEntity.ok(new ApiResponse(true, "Status updated.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Status aktualisiert.", null));
 		}
-		return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to update status.", null));
+		return ResponseEntity.internalServerError()
+				.body(new ApiResponse(false, "Status konnte nicht aktualisiert werden.", null));
 	}
 }
 ========================================================================
@@ -8969,11 +8977,11 @@ public class AdminFileResource {
 		try {
 			de.technikteam.model.File savedFile = fileService.storeFile(file, categoryId, requiredRole,
 					securityUser.getUser());
-			return new ResponseEntity<>(new ApiResponse(true, "File uploaded successfully.", savedFile),
+			return new ResponseEntity<>(new ApiResponse(true, "Datei erfolgreich hochgeladen.", savedFile),
 					HttpStatus.CREATED);
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Could not upload the file: " + e.getMessage(), null));
+					.body(new ApiResponse(false, "Datei konnte nicht hochgeladen werden: " + e.getMessage(), null));
 		}
 	}
 
@@ -8984,14 +8992,14 @@ public class AdminFileResource {
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
 			if (fileService.deleteFile(id, securityUser.getUser())) {
-				return ResponseEntity.ok(new ApiResponse(true, "File deleted successfully", Map.of("deletedId", id)));
+				return ResponseEntity.ok(new ApiResponse(true, "Datei erfolgreich gelöscht.", Map.of("deletedId", id)));
 			} else {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND)
-						.body(new ApiResponse(false, "File not found.", null));
+						.body(new ApiResponse(false, "Datei nicht gefunden.", null));
 			}
 		} catch (Exception e) {
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Could not delete file due to a server error.", null));
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+					new ApiResponse(false, "Datei konnte aufgrund eines Serverfehlers nicht gelöscht werden.", null));
 		}
 	}
 
@@ -9002,10 +9010,11 @@ public class AdminFileResource {
 		if (fileDAO.createCategory(request.name())) {
 			adminLogService.log(securityUser.getUser().getUsername(), "CREATE_FILE_CATEGORY_API",
 					"Category '" + request.name() + "' created.");
-			return new ResponseEntity<>(new ApiResponse(true, "Category created.", null), HttpStatus.CREATED);
+			return new ResponseEntity<>(new ApiResponse(true, "Kategorie erfolgreich erstellt.", null),
+					HttpStatus.CREATED);
 		}
-		return ResponseEntity.status(HttpStatus.CONFLICT)
-				.body(new ApiResponse(false, "Category could not be created. Name might already exist.", null));
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiResponse(false,
+				"Kategorie konnte nicht erstellt werden. Der Name existiert möglicherweise bereits.", null));
 	}
 
 	@DeleteMapping("/categories/{id}")
@@ -9016,10 +9025,10 @@ public class AdminFileResource {
 		if (categoryName != null && fileDAO.deleteCategory(id)) {
 			adminLogService.log(securityUser.getUser().getUsername(), "DELETE_FILE_CATEGORY_API",
 					"Category '" + categoryName + "' deleted.");
-			return ResponseEntity.ok(new ApiResponse(true, "Category deleted.", Map.of("deletedId", id)));
+			return ResponseEntity.ok(new ApiResponse(true, "Kategorie erfolgreich gelöscht.", Map.of("deletedId", id)));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ApiResponse(false, "Category not found or could not be deleted.", null));
+				.body(new ApiResponse(false, "Kategorie nicht gefunden oder konnte nicht gelöscht werden.", null));
 	}
 
 	@GetMapping
@@ -9027,14 +9036,14 @@ public class AdminFileResource {
 	public ResponseEntity<ApiResponse> getAllFiles(@AuthenticationPrincipal SecurityUser securityUser) {
 		Map<String, List<de.technikteam.model.File>> groupedFiles = fileDAO
 				.getAllFilesGroupedByCategory(securityUser.getUser());
-		return ResponseEntity.ok(new ApiResponse(true, "Files retrieved", groupedFiles));
+		return ResponseEntity.ok(new ApiResponse(true, "Dateien erfolgreich abgerufen.", groupedFiles));
 	}
 
 	@GetMapping("/categories")
 	@Operation(summary = "Get all file categories")
 	public ResponseEntity<ApiResponse> getAllCategories() {
 		List<FileCategory> categories = fileDAO.getAllCategories();
-		return ResponseEntity.ok(new ApiResponse(true, "Categories retrieved", categories));
+		return ResponseEntity.ok(new ApiResponse(true, "Kategorien erfolgreich abgerufen.", categories));
 	}
 }
 ========================================================================
@@ -9092,7 +9101,7 @@ public class AdminFormDataResource {
 
 		Map<String, Object> formData = Map.of("roles", roles, "groupedPermissions", groupedPermissions);
 
-		return ResponseEntity.ok(new ApiResponse(true, "Form data retrieved.", formData));
+		return ResponseEntity.ok(new ApiResponse(true, "Formulardaten erfolgreich abgerufen.", formData));
 	}
 }
 ========================================================================
@@ -9140,7 +9149,7 @@ public class AdminRequestResource {
 	@Operation(summary = "Get pending requests", description = "Retrieves a list of all profile change requests that are pending review.")
 	public ResponseEntity<ApiResponse> getPendingRequests() {
 		List<ProfileChangeRequest> requests = requestDAO.getPendingRequests();
-		return ResponseEntity.ok(new ApiResponse(true, "Pending requests retrieved.", requests));
+		return ResponseEntity.ok(new ApiResponse(true, "Ausstehende Anträge erfolgreich abgerufen.", requests));
 	}
 
 	@PostMapping("/{id}/approve")
@@ -9150,15 +9159,15 @@ public class AdminRequestResource {
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
 			if (requestService.approveRequest(id, securityUser.getUser())) {
-				return ResponseEntity.ok(new ApiResponse(true, "Request approved and user updated.", null));
+				return ResponseEntity.ok(new ApiResponse(true, "Antrag genehmigt und Benutzer aktualisiert.", null));
 			}
 			return ResponseEntity.internalServerError()
-					.body(new ApiResponse(false, "Failed to approve request.", null));
+					.body(new ApiResponse(false, "Antrag konnte nicht genehmigt werden.", null));
 		} catch (IllegalStateException e) {
 			return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
 		} catch (IOException e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "A file system error occurred: " + e.getMessage(), null));
+					.body(new ApiResponse(false, "Ein Dateisystemfehler ist aufgetreten: " + e.getMessage(), null));
 		}
 	}
 
@@ -9169,14 +9178,15 @@ public class AdminRequestResource {
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
 			if (requestService.denyRequest(id, securityUser.getUser())) {
-				return ResponseEntity.ok(new ApiResponse(true, "Request denied.", null));
+				return ResponseEntity.ok(new ApiResponse(true, "Antrag abgelehnt.", null));
 			}
-			return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to deny request.", null));
+			return ResponseEntity.internalServerError()
+					.body(new ApiResponse(false, "Antrag konnte nicht abgelehnt werden.", null));
 		} catch (IllegalStateException e) {
 			return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
 		} catch (IOException e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "A file system error occurred: " + e.getMessage(), null));
+					.body(new ApiResponse(false, "Ein Dateisystemfehler ist aufgetreten: " + e.getMessage(), null));
 		}
 	}
 }
@@ -9224,7 +9234,7 @@ public class CourseResource {
 	@PreAuthorize("hasAuthority('COURSE_READ')")
 	public ResponseEntity<ApiResponse> getAllCourses() {
 		List<Course> courses = courseDAO.getAllCourses();
-		return ResponseEntity.ok(new ApiResponse(true, "Courses retrieved successfully", courses));
+		return ResponseEntity.ok(new ApiResponse(true, "Lehrgänge erfolgreich abgerufen.", courses));
 	}
 
 	@PostMapping
@@ -9235,10 +9245,10 @@ public class CourseResource {
 		if (courseDAO.createCourse(course)) {
 			adminLogService.log(adminUser.getUsername(), "CREATE_COURSE_API",
 					"Course '" + course.getName() + "' created.");
-			return new ResponseEntity<>(new ApiResponse(true, "Course created successfully", course),
+			return new ResponseEntity<>(new ApiResponse(true, "Lehrgang erfolgreich erstellt.", course),
 					HttpStatus.CREATED);
 		}
-		return ResponseEntity.badRequest().body(new ApiResponse(false, "Could not create course.", null));
+		return ResponseEntity.badRequest().body(new ApiResponse(false, "Lehrgang konnte nicht erstellt werden.", null));
 	}
 
 	@PutMapping("/{id}")
@@ -9250,10 +9260,10 @@ public class CourseResource {
 		if (courseDAO.updateCourse(course)) {
 			adminLogService.log(adminUser.getUsername(), "UPDATE_COURSE_API",
 					"Course '" + course.getName() + "' updated.");
-			return ResponseEntity.ok(new ApiResponse(true, "Course updated successfully", course));
+			return ResponseEntity.ok(new ApiResponse(true, "Lehrgang erfolgreich aktualisiert.", course));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ApiResponse(false, "Course not found or update failed.", null));
+				.body(new ApiResponse(false, "Lehrgang nicht gefunden oder Aktualisierung fehlgeschlagen.", null));
 	}
 
 	@DeleteMapping("/{id}")
@@ -9264,10 +9274,10 @@ public class CourseResource {
 		if (course != null && courseDAO.deleteCourse(id)) {
 			adminLogService.log(adminUser.getUsername(), "DELETE_COURSE_API",
 					"Course '" + course.getName() + "' deleted.");
-			return ResponseEntity.ok(new ApiResponse(true, "Course deleted successfully", Map.of("deletedId", id)));
+			return ResponseEntity.ok(new ApiResponse(true, "Lehrgang erfolgreich gelöscht.", Map.of("deletedId", id)));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ApiResponse(false, "Course not found or delete failed.", null));
+				.body(new ApiResponse(false, "Lehrgang nicht gefunden oder Löschung fehlgeschlagen.", null));
 	}
 }
 ========================================================================
@@ -9314,7 +9324,7 @@ public class KitResource {
 	@PreAuthorize("hasAuthority('KIT_READ')")
 	public ResponseEntity<ApiResponse> getAllKits() {
 		List<InventoryKit> kits = kitDAO.getAllKitsWithItems();
-		return ResponseEntity.ok(new ApiResponse(true, "Kits retrieved successfully", kits));
+		return ResponseEntity.ok(new ApiResponse(true, "Kits erfolgreich abgerufen.", kits));
 	}
 
 	@PostMapping
@@ -9326,9 +9336,9 @@ public class KitResource {
 		if (newId > 0) {
 			kit.setId(newId);
 			adminLogService.log(adminUser.getUsername(), "CREATE_KIT_API", "Kit '" + kit.getName() + "' created.");
-			return new ResponseEntity<>(new ApiResponse(true, "Kit created successfully", kit), HttpStatus.CREATED);
+			return new ResponseEntity<>(new ApiResponse(true, "Kit erfolgreich erstellt.", kit), HttpStatus.CREATED);
 		}
-		return ResponseEntity.badRequest().body(new ApiResponse(false, "Could not create kit.", null));
+		return ResponseEntity.badRequest().body(new ApiResponse(false, "Kit konnte nicht erstellt werden.", null));
 	}
 
 	@PutMapping("/{id}")
@@ -9339,10 +9349,10 @@ public class KitResource {
 		kit.setId(id);
 		if (kitDAO.updateKit(kit)) {
 			adminLogService.log(adminUser.getUsername(), "UPDATE_KIT_API", "Kit '" + kit.getName() + "' updated.");
-			return ResponseEntity.ok(new ApiResponse(true, "Kit updated successfully", kit));
+			return ResponseEntity.ok(new ApiResponse(true, "Kit erfolgreich aktualisiert.", kit));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ApiResponse(false, "Kit not found or update failed.", null));
+				.body(new ApiResponse(false, "Kit nicht gefunden oder Aktualisierung fehlgeschlagen.", null));
 	}
 
 	@DeleteMapping("/{id}")
@@ -9352,10 +9362,10 @@ public class KitResource {
 		InventoryKit kit = kitDAO.getKitById(id);
 		if (kit != null && kitDAO.deleteKit(id)) {
 			adminLogService.log(adminUser.getUsername(), "DELETE_KIT_API", "Kit '" + kit.getName() + "' deleted.");
-			return ResponseEntity.ok(new ApiResponse(true, "Kit deleted successfully", Map.of("deletedId", id)));
+			return ResponseEntity.ok(new ApiResponse(true, "Kit erfolgreich gelöscht.", Map.of("deletedId", id)));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ApiResponse(false, "Kit not found or delete failed.", null));
+				.body(new ApiResponse(false, "Kit nicht gefunden oder Löschung fehlgeschlagen.", null));
 	}
 }
 ========================================================================
@@ -9403,7 +9413,7 @@ public class LogResource {
 		} else {
 			logs = logDAO.getAllLogs();
 		}
-		return ResponseEntity.ok(new ApiResponse(true, "Logs retrieved successfully", logs));
+		return ResponseEntity.ok(new ApiResponse(true, "Protokolle erfolgreich abgerufen.", logs));
 	}
 }
 ========================================================================
@@ -9472,7 +9482,7 @@ public class MatrixResource {
 		responseData.put("meetingsByCourse", meetingsByCourse);
 		responseData.put("attendanceMap", attendanceMap);
 
-		return ResponseEntity.ok(new ApiResponse(true, "Matrix data retrieved", responseData));
+		return ResponseEntity.ok(new ApiResponse(true, "Matrixdaten erfolgreich abgerufen.", responseData));
 	}
 
 	@PutMapping("/attendance")
@@ -9482,9 +9492,10 @@ public class MatrixResource {
 		boolean success = meetingAttendanceDAO.setAttendance(attendance.getUserId(), attendance.getMeetingId(),
 				attendance.getAttended(), attendance.getRemarks());
 		if (success) {
-			return ResponseEntity.ok(new ApiResponse(true, "Attendance updated.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Teilnahme aktualisiert.", null));
 		}
-		return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to update attendance.", null));
+		return ResponseEntity.internalServerError()
+				.body(new ApiResponse(false, "Fehler beim Aktualisieren der Teilnahme.", null));
 	}
 }
 ========================================================================
@@ -9538,7 +9549,7 @@ public class MeetingResource {
 	@Operation(summary = "Get all meetings for a course")
 	public ResponseEntity<ApiResponse> getMeetingsForCourse(@RequestParam int courseId) {
 		List<Meeting> meetings = meetingDAO.getMeetingsForCourse(courseId);
-		return ResponseEntity.ok(new ApiResponse(true, "Meetings retrieved successfully", meetings));
+		return ResponseEntity.ok(new ApiResponse(true, "Termine erfolgreich abgerufen.", meetings));
 	}
 
 	@GetMapping("/{id}")
@@ -9546,9 +9557,9 @@ public class MeetingResource {
 	public ResponseEntity<ApiResponse> getMeetingById(@PathVariable int id) {
 		Meeting meeting = meetingDAO.getMeetingById(id);
 		if (meeting != null) {
-			return ResponseEntity.ok(new ApiResponse(true, "Meeting retrieved successfully", meeting));
+			return ResponseEntity.ok(new ApiResponse(true, "Termin erfolgreich abgerufen.", meeting));
 		}
-		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, "Meeting not found", null));
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, "Termin nicht gefunden.", null));
 	}
 
 	@PostMapping
@@ -9570,10 +9581,10 @@ public class MeetingResource {
 			meeting.setId(newId);
 			adminLogService.log(adminUser.getUsername(), "CREATE_MEETING_API",
 					"Meeting '" + meeting.getName() + "' created.");
-			return new ResponseEntity<>(new ApiResponse(true, "Meeting created successfully", meeting),
+			return new ResponseEntity<>(new ApiResponse(true, "Termin erfolgreich erstellt.", meeting),
 					HttpStatus.CREATED);
 		}
-		return ResponseEntity.badRequest().body(new ApiResponse(false, "Could not create meeting.", null));
+		return ResponseEntity.badRequest().body(new ApiResponse(false, "Termin konnte nicht erstellt werden.", null));
 	}
 
 	@PutMapping("/{id}")
@@ -9594,10 +9605,10 @@ public class MeetingResource {
 		if (meetingDAO.updateMeeting(meeting)) {
 			adminLogService.log(adminUser.getUsername(), "UPDATE_MEETING_API",
 					"Meeting '" + meeting.getName() + "' updated.");
-			return ResponseEntity.ok(new ApiResponse(true, "Meeting updated successfully", meeting));
+			return ResponseEntity.ok(new ApiResponse(true, "Termin erfolgreich aktualisiert.", meeting));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ApiResponse(false, "Meeting not found or update failed.", null));
+				.body(new ApiResponse(false, "Termin nicht gefunden oder Aktualisierung fehlgeschlagen.", null));
 	}
 
 	@DeleteMapping("/{id}")
@@ -9608,10 +9619,10 @@ public class MeetingResource {
 		if (meeting != null && meetingDAO.deleteMeeting(id)) {
 			adminLogService.log(adminUser.getUsername(), "DELETE_MEETING_API",
 					"Meeting '" + meeting.getName() + "' deleted.");
-			return ResponseEntity.ok(new ApiResponse(true, "Meeting deleted successfully", Map.of("deletedId", id)));
+			return ResponseEntity.ok(new ApiResponse(true, "Termin erfolgreich gelöscht.", Map.of("deletedId", id)));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ApiResponse(false, "Meeting not found or delete failed.", null));
+				.body(new ApiResponse(false, "Termin nicht gefunden oder Löschung fehlgeschlagen.", null));
 	}
 }
 ========================================================================
@@ -9656,7 +9667,7 @@ public class ReportResource {
 		dashboardData.put("eventTrend", reportDAO.getEventCountByMonth(12));
 		dashboardData.put("userActivity", reportDAO.getUserParticipationStats(10));
 		dashboardData.put("totalInventoryValue", reportDAO.getTotalInventoryValue());
-		return ResponseEntity.ok(new ApiResponse(true, "Dashboard data retrieved", dashboardData));
+		return ResponseEntity.ok(new ApiResponse(true, "Dashboard-Daten erfolgreich abgerufen.", dashboardData));
 	}
 }
 ========================================================================
@@ -9703,7 +9714,7 @@ public class StorageResource {
 	@PreAuthorize("hasAuthority('STORAGE_READ')")
 	public ResponseEntity<ApiResponse> getAllItems() {
 		List<StorageItem> items = storageDAO.getAllItems();
-		return ResponseEntity.ok(new ApiResponse(true, "Items retrieved successfully", items));
+		return ResponseEntity.ok(new ApiResponse(true, "Artikel erfolgreich abgerufen.", items));
 	}
 
 	@PostMapping
@@ -9714,9 +9725,10 @@ public class StorageResource {
 		if (storageDAO.createItem(item)) {
 			adminLogService.log(adminUser.getUsername(), "CREATE_STORAGE_ITEM_API",
 					"Item '" + item.getName() + "' created.");
-			return new ResponseEntity<>(new ApiResponse(true, "Item created successfully", item), HttpStatus.CREATED);
+			return new ResponseEntity<>(new ApiResponse(true, "Artikel erfolgreich erstellt.", item),
+					HttpStatus.CREATED);
 		}
-		return ResponseEntity.badRequest().body(new ApiResponse(false, "Could not create item.", null));
+		return ResponseEntity.badRequest().body(new ApiResponse(false, "Artikel konnte nicht erstellt werden.", null));
 	}
 
 	@PutMapping("/{id}")
@@ -9728,10 +9740,10 @@ public class StorageResource {
 		if (storageDAO.updateItem(item)) {
 			adminLogService.log(adminUser.getUsername(), "UPDATE_STORAGE_ITEM_API",
 					"Item '" + item.getName() + "' updated.");
-			return ResponseEntity.ok(new ApiResponse(true, "Item updated successfully", item));
+			return ResponseEntity.ok(new ApiResponse(true, "Artikel erfolgreich aktualisiert.", item));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ApiResponse(false, "Item not found or update failed.", null));
+				.body(new ApiResponse(false, "Artikel nicht gefunden oder Aktualisierung fehlgeschlagen.", null));
 	}
 
 	@DeleteMapping("/{id}")
@@ -9742,10 +9754,10 @@ public class StorageResource {
 		if (item != null && storageDAO.deleteItem(id)) {
 			adminLogService.log(adminUser.getUsername(), "DELETE_STORAGE_ITEM_API",
 					"Item '" + item.getName() + "' deleted.");
-			return ResponseEntity.ok(new ApiResponse(true, "Item deleted successfully", Map.of("deletedId", id)));
+			return ResponseEntity.ok(new ApiResponse(true, "Artikel erfolgreich gelöscht.", Map.of("deletedId", id)));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ApiResponse(false, "Item not found or delete failed.", null));
+				.body(new ApiResponse(false, "Artikel nicht gefunden oder Löschung fehlgeschlagen.", null));
 	}
 }
 ========================================================================
@@ -9785,7 +9797,7 @@ public class SystemResource {
 	@Operation(summary = "Get system statistics", description = "Retrieves current system statistics like CPU load, memory usage, and disk space.")
 	public ResponseEntity<ApiResponse> getSystemStats() {
 		SystemStatsDTO stats = systemInfoService.getSystemStats();
-		return ResponseEntity.ok(new ApiResponse(true, "System stats retrieved", stats));
+		return ResponseEntity.ok(new ApiResponse(true, "Systemstatistiken erfolgreich abgerufen.", stats));
 	}
 }
 ========================================================================
@@ -9796,6 +9808,7 @@ package de.technikteam.api.v1;
 
 import de.technikteam.api.v1.dto.UserCreateRequest;
 import de.technikteam.api.v1.dto.UserUpdateRequest;
+import de.technikteam.config.Permissions;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.NavigationItem;
@@ -9942,7 +9955,9 @@ public class UserResource {
 			@Parameter(description = "ID of the user to delete") @PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 
-		if (securityUser.getUser().getId() == id) {
+		User adminUser = securityUser.getUser(); // The admin performing the action
+
+		if (adminUser.getId() == id) {
 			return ResponseEntity.badRequest()
 					.body(new ApiResponse(false, "You cannot delete your own account.", null));
 		}
@@ -9953,8 +9968,21 @@ public class UserResource {
 					.body(new ApiResponse(false, "User to delete not found.", null));
 		}
 
+		// --- REMEDIATION START ---
+		// Check for privilege escalation attempt
+		boolean targetIsSuperAdmin = userToDelete.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL);
+		boolean requesterIsSuperAdmin = adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL);
+
+		if (targetIsSuperAdmin && !requesterIsSuperAdmin) {
+			adminLogService.log(adminUser.getUsername(), "DELETE_USER_DENIED_API",
+					"Denied attempt to delete super-admin '" + userToDelete.getUsername() + "'.");
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false,
+					"You do not have sufficient privileges to delete a super-administrator.", null));
+		}
+		// --- REMEDIATION END ---
+
 		if (userDAO.deleteUser(id)) {
-			adminLogService.log(securityUser.getUsername(), "DELETE_USER_API",
+			adminLogService.log(adminUser.getUsername(), "DELETE_USER_API",
 					"User '" + userToDelete.getUsername() + "' (ID: " + id + ") deleted via API.");
 			return ResponseEntity.ok(new ApiResponse(true, "User deleted successfully", Map.of("deletedUserId", id)));
 		} else {
@@ -10071,7 +10099,7 @@ public class WikiResource {
 	@Operation(summary = "Get wiki navigation tree", description = "Retrieves the entire wiki page structure as a hierarchical tree.")
 	public ResponseEntity<ApiResponse> getWikiTree() {
 		Map<String, Object> treeData = wikiService.getWikiTreeAsData();
-		return ResponseEntity.ok(new ApiResponse(true, "Wiki tree retrieved successfully", treeData));
+		return ResponseEntity.ok(new ApiResponse(true, "Wiki-Struktur erfolgreich abgerufen.", treeData));
 	}
 
 	@GetMapping("/{id}")
@@ -10079,9 +10107,9 @@ public class WikiResource {
 	public ResponseEntity<ApiResponse> getWikiEntryById(
 			@Parameter(description = "ID of the wiki page to retrieve") @PathVariable int id) {
 		Optional<WikiEntry> entryOptional = wikiDAO.getWikiEntryById(id);
-		return entryOptional.map(entry -> ResponseEntity.ok(new ApiResponse(true, "Content loaded", entry)))
+		return entryOptional.map(entry -> ResponseEntity.ok(new ApiResponse(true, "Inhalt geladen.", entry)))
 				.orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
-						.body(new ApiResponse(false, "Wiki entry not found", null)));
+						.body(new ApiResponse(false, "Wiki-Eintrag nicht gefunden.", null)));
 	}
 
 	@PostMapping
@@ -10089,11 +10117,11 @@ public class WikiResource {
 	public ResponseEntity<ApiResponse> createWikiEntry(@Valid @RequestBody WikiEntry newEntry,
 			@AuthenticationPrincipal User adminUser) {
 		if (newEntry.getFilePath() == null || newEntry.getFilePath().isBlank()) {
-			return ResponseEntity.badRequest().body(new ApiResponse(false, "File path cannot be empty.", null));
+			return ResponseEntity.badRequest().body(new ApiResponse(false, "Dateipfad darf nicht leer sein.", null));
 		}
 		if (wikiDAO.findByFilePath(newEntry.getFilePath()).isPresent()) {
 			return ResponseEntity.status(HttpStatus.CONFLICT)
-					.body(new ApiResponse(false, "An entry with this file path already exists.", null));
+					.body(new ApiResponse(false, "Ein Eintrag mit diesem Dateipfad existiert bereits.", null));
 		}
 
 		newEntry.setContent(richTextPolicy.sanitize(newEntry.getContent()));
@@ -10101,11 +10129,12 @@ public class WikiResource {
 		if (createdEntryOptional.isPresent()) {
 			adminLogService.log(adminUser.getUsername(), "CREATE_WIKI_PAGE",
 					"Created wiki page: " + createdEntryOptional.get().getFilePath());
-			return new ResponseEntity<>(new ApiResponse(true, "Page created successfully", createdEntryOptional.get()),
+			return new ResponseEntity<>(
+					new ApiResponse(true, "Seite erfolgreich erstellt.", createdEntryOptional.get()),
 					HttpStatus.CREATED);
 		} else {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Failed to create page in database.", null));
+					.body(new ApiResponse(false, "Seite konnte nicht in der Datenbank erstellt werden.", null));
 		}
 	}
 
@@ -10118,10 +10147,10 @@ public class WikiResource {
 		String sanitizedContent = richTextPolicy.sanitize(updateRequest.content());
 		if (wikiDAO.updateWikiContent(id, sanitizedContent)) {
 			adminLogService.log(adminUser.getUsername(), "UPDATE_WIKI_PAGE", "Updated wiki page ID: " + id);
-			return ResponseEntity.ok(new ApiResponse(true, "Page updated successfully", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Seite erfolgreich aktualisiert.", null));
 		} else {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND)
-					.body(new ApiResponse(false, "Failed to update page. It may not exist.", null));
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false,
+					"Seite konnte nicht aktualisiert werden. Sie existiert möglicherweise nicht.", null));
 		}
 	}
 
@@ -10134,16 +10163,16 @@ public class WikiResource {
 		Optional<WikiEntry> entryToDelete = wikiDAO.getWikiEntryById(id);
 		if (entryToDelete.isEmpty()) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)
-					.body(new ApiResponse(false, "Wiki entry not found.", null));
+					.body(new ApiResponse(false, "Wiki-Eintrag nicht gefunden.", null));
 		}
 
 		if (wikiDAO.deleteWikiEntry(id)) {
 			adminLogService.log(adminUser.getUsername(), "DELETE_WIKI_PAGE",
 					"Deleted wiki page: " + entryToDelete.get().getFilePath());
-			return ResponseEntity.ok(new ApiResponse(true, "Page deleted successfully", Map.of("deletedId", id)));
+			return ResponseEntity.ok(new ApiResponse(true, "Seite erfolgreich gelöscht.", Map.of("deletedId", id)));
 		} else {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Failed to delete page.", null));
+					.body(new ApiResponse(false, "Fehler beim Löschen der Seite.", null));
 		}
 	}
 }
@@ -10202,21 +10231,22 @@ public class AuthResource {
 
 		if (loginAttemptService.isLockedOut(username, ipAddress)) {
 			logger.warn("Blocked login attempt for locked-out user '{}' from IP {}", username, ipAddress);
-			return new ResponseEntity<>(new ApiResponse(false, "Account is temporarily locked.", null),
+			return new ResponseEntity<>(new ApiResponse(false, "Konto ist vorübergehend gesperrt.", null),
 					HttpStatus.FORBIDDEN);
 		}
 
 		User user = userDAO.validateUser(username, password);
 		if (user != null) {
-			loginAttemptService.clearLoginAttempts(ipAddress);
+			loginAttemptService.clearLoginAttempts(username);
 			authService.addJwtCookie(user, response);
 			logger.info("JWT cookie set successfully for user '{}'", username);
 			// Return user data but not the token itself
-			return ResponseEntity.ok(new ApiResponse(true, "Login successful", user));
+			return ResponseEntity.ok(new ApiResponse(true, "Anmeldung erfolgreich", user));
 		} else {
 			loginAttemptService.recordFailedLogin(username, ipAddress);
 			logger.warn("Failed API login attempt for user '{}' from IP {}", username, ipAddress);
-			return new ResponseEntity<>(new ApiResponse(false, "Invalid credentials.", null), HttpStatus.UNAUTHORIZED);
+			return new ResponseEntity<>(new ApiResponse(false, "Falscher Benutzername oder Passwort.", null),
+					HttpStatus.UNAUTHORIZED);
 		}
 	}
 
@@ -10224,7 +10254,7 @@ public class AuthResource {
 	@Operation(summary = "User Logout", description = "Logs out the user by clearing the JWT authentication cookie.")
 	public ResponseEntity<ApiResponse> logout(HttpServletResponse response) {
 		authService.clearJwtCookie(response);
-		return ResponseEntity.ok(new ApiResponse(true, "Logout successful", null));
+		return ResponseEntity.ok(new ApiResponse(true, "Abmeldung erfolgreich", null));
 	}
 
 	private String getClientIp(HttpServletRequest request) {
@@ -10265,11 +10295,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record CategoryRequest(
-    @NotBlank(message = "Category name cannot be blank")
-    @Size(min = 2, max = 100, message = "Category name must be between 2 and 100 characters")
-    @Schema(description = "The name for the new file category.", required = true)
-    String name
-) {}
+		@NotBlank(message = "Kategoriename darf nicht leer sein") @Size(min = 2, max = 100, message = "Kategoriename muss zwischen 2 und 100 Zeichen lang sein") @Schema(description = "The name for the new file category.", required = true) String name) {
+}
 ========================================================================
 FILE: src\main\java\de\technikteam\api\v1\dto\EventUpdateRequest.java
 ========================================================================
@@ -10306,9 +10333,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record GeneralFeedbackRequest(
-		@NotBlank(message = "Subject cannot be blank") @Size(max = 255, message = "Subject cannot be longer than 255 characters") @Schema(description = "The subject line of the feedback.", required = true) String subject,
+		@NotBlank(message = "Betreff darf nicht leer sein") @Size(max = 255, message = "Betreff darf nicht länger als 255 Zeichen sein") @Schema(description = "The subject line of the feedback.", required = true) String subject,
 
-		@NotBlank(message = "Content cannot be blank") @Schema(description = "The detailed content of the feedback.", required = true) String content) {
+		@NotBlank(message = "Inhalt darf nicht leer sein") @Schema(description = "The detailed content of the feedback.", required = true) String content) {
 }
 ========================================================================
 FILE: src\main\java\de\technikteam\api\v1\dto\MeetingRequest.java
@@ -10323,11 +10350,11 @@ import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
 public record MeetingRequest(
-		@NotNull(message = "Course ID cannot be null") @Schema(description = "The ID of the parent course for this meeting.", required = true) Integer courseId,
+		@NotNull(message = "Kurs-ID darf nicht null sein") @Schema(description = "The ID of the parent course for this meeting.", required = true) Integer courseId,
 
-		@NotBlank(message = "Meeting name cannot be blank") @Schema(description = "The name of the meeting.", required = true, example = "Teil 1: Grundlagen") String name,
+		@NotBlank(message = "Meeting-Name darf nicht leer sein") @Schema(description = "The name of the meeting.", required = true, example = "Teil 1: Grundlagen") String name,
 
-		@NotNull(message = "Meeting date and time cannot be null") @FutureOrPresent(message = "Meeting date must be in the present or future") @Schema(description = "The start date and time of the meeting.", required = true) LocalDateTime meetingDateTime,
+		@NotNull(message = "Datum und Uhrzeit des Meetings dürfen nicht null sein") @FutureOrPresent(message = "Das Datum des Meetings muss in der Gegenwart oder Zukunft liegen") @Schema(description = "The start date and time of the meeting.", required = true) LocalDateTime meetingDateTime,
 
 		@Schema(description = "The optional end date and time of the meeting.") LocalDateTime endDateTime,
 
@@ -10347,11 +10374,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 
 public record PasswordChangeRequest(
-		@NotBlank(message = "Current password cannot be blank") @Schema(description = "The user's current password.", required = true) String currentPassword,
+		@NotBlank(message = "Aktuelles Passwort darf nicht leer sein") @Schema(description = "The user's current password.", required = true) String currentPassword,
 
-		@NotBlank(message = "New password cannot be blank") @Schema(description = "The desired new password. Must meet the password policy.", required = true) String newPassword,
+		@NotBlank(message = "Neues Passwort darf nicht leer sein") @Schema(description = "The desired new password. Must meet the password policy.", required = true) String newPassword,
 
-		@NotBlank(message = "Confirmation password cannot be blank") @Schema(description = "Confirmation of the new password.", required = true) String confirmPassword) {
+		@NotBlank(message = "Bestätigungspasswort darf nicht leer sein") @Schema(description = "Confirmation of the new password.", required = true) String confirmPassword) {
 }
 ========================================================================
 FILE: src\main\java\de\technikteam\api\v1\dto\ProfileChangeRequestDTO.java
@@ -10363,7 +10390,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 
 public record ProfileChangeRequestDTO(
-		@Email(message = "Must be a valid email format") @Schema(description = "The user's new email address.") String email,
+		@Email(message = "Muss ein gültiges E-Mail-Format sein") @Schema(description = "The user's new email address.") String email,
 
 		@Schema(description = "The user's new class year.") Integer classYear,
 
@@ -10384,19 +10411,19 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 public record UserCreateRequest(
-		@NotBlank(message = "Username cannot be blank") @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters") @Schema(description = "The user's unique username.", required = true) String username,
+		@NotBlank(message = "Benutzername darf nicht leer sein") @Size(min = 3, max = 50, message = "Benutzername muss zwischen 3 und 50 Zeichen lang sein") @Schema(description = "The user's unique username.", required = true) String username,
 
-		@NotBlank(message = "Password cannot be blank") @Schema(description = "The user's initial password. Must meet the password policy.", required = true) String password,
+		@NotBlank(message = "Passwort darf nicht leer sein") @Schema(description = "The user's initial password. Must meet the password policy.", required = true) String password,
 
-		@NotNull(message = "Role ID cannot be null") @Schema(description = "The ID of the user's role.", required = true) Integer roleId,
+		@NotNull(message = "Rollen-ID darf nicht null sein") @Schema(description = "The ID of the user's role.", required = true) Integer roleId,
 
-		@Email(message = "Must be a valid email format") @Schema(description = "The user's email address.") String email,
+		@Email(message = "Muss ein gültiges E-Mail-Format sein") @Schema(description = "The user's email address.") String email,
 
 		@Schema(description = "The user's class year.") Integer classYear,
 
 		@Schema(description = "The user's class name.") String className,
 
-		@NotNull(message = "Permission list cannot be null") @Schema(description = "A list of IDs for the user's individual permissions.") List<Integer> permissionIds) {
+		@NotNull(message = "Berechtigungsliste darf nicht null sein") @Schema(description = "A list of IDs for the user's individual permissions.") List<Integer> permissionIds) {
 }
 ========================================================================
 FILE: src\main\java\de\technikteam\api\v1\dto\UserUpdateRequest.java
@@ -10413,17 +10440,17 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 public record UserUpdateRequest(
-		@NotBlank(message = "Username cannot be blank") @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters") @Schema(description = "The user's unique username.", required = true) String username,
+		@NotBlank(message = "Benutzername darf nicht leer sein") @Size(min = 3, max = 50, message = "Benutzername muss zwischen 3 und 50 Zeichen lang sein") @Schema(description = "The user's unique username.", required = true) String username,
 
-		@NotNull(message = "Role ID cannot be null") @Schema(description = "The ID of the user's role.", required = true) Integer roleId,
+		@NotNull(message = "Rollen-ID darf nicht null sein") @Schema(description = "The ID of the user's role.", required = true) Integer roleId,
 
-		@Email(message = "Must be a valid email format") @Schema(description = "The user's email address.") String email,
+		@Email(message = "Muss ein gültiges E-Mail-Format sein") @Schema(description = "The user's email address.") String email,
 
 		@Schema(description = "The user's class year.") Integer classYear,
 
 		@Schema(description = "The user's class name.") String className,
 
-		@NotNull(message = "Permission list cannot be null") @Schema(description = "A list of IDs for the user's individual permissions.") List<Integer> permissionIds) {
+		@NotNull(message = "Berechtigungsliste darf nicht null sein") @Schema(description = "A list of IDs for the user's individual permissions.") List<Integer> permissionIds) {
 }
 ========================================================================
 FILE: src\main\java\de\technikteam\api\v1\dto\WikiUpdateRequest.java
@@ -10435,7 +10462,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 
 public record WikiUpdateRequest(
-		@NotNull(message = "Content cannot be null") @Schema(description = "The full Markdown content of the wiki page.", required = true) String content) {
+		@NotNull(message = "Inhalt darf nicht null sein") @Schema(description = "The full Markdown content of the wiki page.", required = true) String content) {
 }
 ========================================================================
 FILE: src\main\java\de\technikteam\api\v1\public_api\PublicCalendarEntriesResource.java
@@ -10506,7 +10533,7 @@ public class PublicCalendarEntriesResource {
 			entries.add(entry);
 		}
 
-		return ResponseEntity.ok(new ApiResponse(true, "Calendar entries retrieved.", entries));
+		return ResponseEntity.ok(new ApiResponse(true, "Kalendereinträge erfolgreich abgerufen.", entries));
 	}
 }
 ========================================================================
@@ -10690,7 +10717,7 @@ public class PublicDashboardResource {
 		dashboardData.put("openTasks", openTasks);
 		dashboardData.put("upcomingEvents", upcomingEvents);
 
-		return ResponseEntity.ok(new ApiResponse(true, "Dashboard data retrieved.", dashboardData));
+		return ResponseEntity.ok(new ApiResponse(true, "Dashboard-Daten erfolgreich abgerufen.", dashboardData));
 	}
 }
 ========================================================================
@@ -10738,7 +10765,7 @@ public class PublicEventResource {
 	public ResponseEntity<ApiResponse> getUpcomingEventsForUser(@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 		List<Event> events = eventDAO.getUpcomingEventsForUser(user);
-		return ResponseEntity.ok(new ApiResponse(true, "Events retrieved successfully.", events));
+		return ResponseEntity.ok(new ApiResponse(true, "Veranstaltungen erfolgreich abgerufen.", events));
 	}
 
 	@GetMapping("/{id}")
@@ -10747,9 +10774,9 @@ public class PublicEventResource {
 			@Parameter(description = "ID of the event") @PathVariable int id) {
 		Event event = eventDAO.getEventById(id);
 		if (event == null) {
-			return ResponseEntity.status(404).body(new ApiResponse(false, "Event not found", null));
+			return ResponseEntity.status(404).body(new ApiResponse(false, "Veranstaltung nicht gefunden.", null));
 		}
-		return ResponseEntity.ok(new ApiResponse(true, "Event details retrieved.", event));
+		return ResponseEntity.ok(new ApiResponse(true, "Veranstaltungsdetails erfolgreich abgerufen.", event));
 	}
 
 	@PostMapping("/{id}/signup")
@@ -10770,7 +10797,7 @@ public class PublicEventResource {
 				}
 			});
 		}
-		return ResponseEntity.ok(new ApiResponse(true, "Successfully signed up for the event.", null));
+		return ResponseEntity.ok(new ApiResponse(true, "Erfolgreich für die Veranstaltung angemeldet.", null));
 	}
 
 	@PostMapping("/{id}/signoff")
@@ -10786,7 +10813,7 @@ public class PublicEventResource {
 		} else {
 			eventDAO.signOffFromEvent(user.getId(), id);
 		}
-		return ResponseEntity.ok(new ApiResponse(true, "Successfully signed off from the event.", null));
+		return ResponseEntity.ok(new ApiResponse(true, "Erfolgreich von der Veranstaltung abgemeldet.", null));
 	}
 
 	@GetMapping("/{id}/custom-fields")
@@ -10794,7 +10821,7 @@ public class PublicEventResource {
 	public ResponseEntity<ApiResponse> getEventCustomFields(
 			@Parameter(description = "ID of the event") @PathVariable int id) {
 		List<EventCustomField> fields = customFieldDAO.getCustomFieldsForEvent(id);
-		return ResponseEntity.ok(new ApiResponse(true, "Custom fields retrieved.", fields));
+		return ResponseEntity.ok(new ApiResponse(true, "Zusatzfelder erfolgreich abgerufen.", fields));
 	}
 }
 ========================================================================
@@ -10846,7 +10873,7 @@ public class PublicFeedbackResource {
 	public ResponseEntity<ApiResponse> getMyFeedbackSubmissions(@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 		List<FeedbackSubmission> submissions = submissionDAO.getSubmissionsByUserId(user.getId());
-		return ResponseEntity.ok(new ApiResponse(true, "Submissions retrieved.", submissions));
+		return ResponseEntity.ok(new ApiResponse(true, "Einreichungen erfolgreich abgerufen.", submissions));
 	}
 
 	@PostMapping("/general")
@@ -10860,10 +10887,11 @@ public class PublicFeedbackResource {
 		submission.setContent(request.content());
 
 		if (submissionDAO.createSubmission(submission)) {
-			return new ResponseEntity<>(new ApiResponse(true, "Feedback submitted successfully.", submission),
+			return new ResponseEntity<>(new ApiResponse(true, "Feedback erfolgreich übermittelt.", submission),
 					HttpStatus.CREATED);
 		} else {
-			return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to save feedback.", null));
+			return ResponseEntity.internalServerError()
+					.body(new ApiResponse(false, "Feedback konnte nicht gespeichert werden.", null));
 		}
 	}
 
@@ -10875,17 +10903,18 @@ public class PublicFeedbackResource {
 		User user = securityUser.getUser();
 		Event event = eventDAO.getEventById(eventId);
 		if (event == null) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, "Event not found.", null));
+			return ResponseEntity.status(HttpStatus.NOT_FOUND)
+					.body(new ApiResponse(false, "Veranstaltung nicht gefunden.", null));
 		}
 		FeedbackForm form = eventFeedbackDAO.getFeedbackFormForEvent(eventId);
 		if (form == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)
-					.body(new ApiResponse(false, "No feedback form for this event.", null));
+					.body(new ApiResponse(false, "Kein Feedback-Formular für diese Veranstaltung.", null));
 		}
 		boolean alreadySubmitted = eventFeedbackDAO.hasUserSubmittedFeedback(form.getId(), user.getId());
 
 		Map<String, Object> responseData = Map.of("event", event, "form", form, "alreadySubmitted", alreadySubmitted);
-		return ResponseEntity.ok(new ApiResponse(true, "Form data retrieved.", responseData));
+		return ResponseEntity.ok(new ApiResponse(true, "Formulardaten erfolgreich abgerufen.", responseData));
 	}
 
 	@PostMapping("/event")
@@ -10894,11 +10923,26 @@ public class PublicFeedbackResource {
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 		response.setUserId(user.getId());
+
+		// --- REMEDIATION START ---
+		FeedbackForm form = eventFeedbackDAO.getFormById(response.getFormId());
+		if (form == null) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND)
+					.body(new ApiResponse(false, "Feedback-Formular nicht gefunden.", null));
+		}
+		// Check if user was actually assigned to the event for which they are giving
+		// feedback
+		if (!eventDAO.isUserAssociatedWithEvent(form.getEventId(), user.getId())) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false,
+					"Sie können nur Feedback für Veranstaltungen abgeben, an denen Sie teilgenommen haben.", null));
+		}
+		// --- REMEDIATION END ---
+
 		if (eventFeedbackDAO.saveFeedbackResponse(response)) {
-			return ResponseEntity.ok(new ApiResponse(true, "Event feedback submitted.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Event-Feedback erfolgreich übermittelt.", null));
 		}
 		return ResponseEntity.internalServerError()
-				.body(new ApiResponse(false, "Failed to save event feedback.", null));
+				.body(new ApiResponse(false, "Event-Feedback konnte nicht gespeichert werden.", null));
 	}
 }
 ========================================================================
@@ -10943,7 +10987,7 @@ public class PublicFilesResource {
 	public ResponseEntity<ApiResponse> getFiles(@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 		Map<String, List<File>> files = fileDAO.getAllFilesGroupedByCategory(user);
-		return ResponseEntity.ok(new ApiResponse(true, "Files retrieved successfully.", files));
+		return ResponseEntity.ok(new ApiResponse(true, "Dateien erfolgreich abgerufen.", files));
 	}
 }
 ========================================================================
@@ -11158,7 +11202,7 @@ public class PublicMeetingResource {
 	public ResponseEntity<ApiResponse> getUpcomingMeetings(@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 		List<Meeting> meetings = meetingDAO.getUpcomingMeetingsForUser(user);
-		return ResponseEntity.ok(new ApiResponse(true, "Meetings retrieved.", meetings));
+		return ResponseEntity.ok(new ApiResponse(true, "Termine erfolgreich abgerufen.", meetings));
 	}
 
 	@PostMapping("/{id}/{action}")
@@ -11175,13 +11219,14 @@ public class PublicMeetingResource {
 		} else if ("signoff".equalsIgnoreCase(action)) {
 			success = attendanceDAO.setAttendance(user.getId(), id, false, "");
 		} else {
-			return ResponseEntity.badRequest().body(new ApiResponse(false, "Unknown action.", null));
+			return ResponseEntity.badRequest().body(new ApiResponse(false, "Unbekannte Aktion.", null));
 		}
 
 		if (success) {
-			return ResponseEntity.ok(new ApiResponse(true, "Action completed successfully.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Aktion erfolgreich ausgeführt.", null));
 		} else {
-			return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to process action.", null));
+			return ResponseEntity.internalServerError()
+					.body(new ApiResponse(false, "Aktion konnte nicht verarbeitet werden.", null));
 		}
 	}
 }
@@ -11255,7 +11300,7 @@ public class PublicProfileResource {
 		profileData.put("passkeys", Collections.emptyList()); // REMOVED passkeyDAO call, return empty list
 		profileData.put("hasPendingRequest", requestDAO.hasPendingRequest(user.getId()));
 
-		return ResponseEntity.ok(new ApiResponse(true, "Profile data retrieved.", profileData));
+		return ResponseEntity.ok(new ApiResponse(true, "Profildaten erfolgreich abgerufen.", profileData));
 	}
 
 	@PostMapping("/request-change")
@@ -11266,10 +11311,10 @@ public class PublicProfileResource {
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
 			profileRequestService.createChangeRequest(securityUser.getUser(), requestDTO, profilePicture);
-			return ResponseEntity.ok(new ApiResponse(true, "Change request submitted successfully.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Änderungsantrag erfolgreich eingereicht.", null));
 		} catch (Exception e) {
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Could not save your request: " + e.getMessage(), null));
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+					new ApiResponse(false, "Ihr Antrag konnte nicht gespeichert werden: " + e.getMessage(), null));
 		}
 	}
 
@@ -11281,10 +11326,11 @@ public class PublicProfileResource {
 		String theme = payload.get("theme");
 		if (theme != null && (theme.equals("light") || theme.equals("dark"))) {
 			if (userDAO.updateUserTheme(user.getId(), theme)) {
-				return ResponseEntity.ok(new ApiResponse(true, "Theme updated.", null));
+				User updatedUser = userDAO.getUserById(user.getId());
+				return ResponseEntity.ok(new ApiResponse(true, "Theme aktualisiert.", updatedUser));
 			}
 		}
-		return ResponseEntity.badRequest().body(new ApiResponse(false, "Invalid theme specified.", null));
+		return ResponseEntity.badRequest().body(new ApiResponse(false, "Ungültiges Theme angegeben.", null));
 	}
 
 	@PutMapping("/chat-color")
@@ -11294,10 +11340,10 @@ public class PublicProfileResource {
 		User user = securityUser.getUser();
 		String chatColor = payload.get("chatColor");
 		if (userDAO.updateUserChatColor(user.getId(), chatColor)) {
-			return ResponseEntity.ok(new ApiResponse(true, "Chat color updated.", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Chatfarbe aktualisiert.", null));
 		} else {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Could not save chat color.", null));
+					.body(new ApiResponse(false, "Chatfarbe konnte nicht gespeichert werden.", null));
 		}
 	}
 
@@ -11326,8 +11372,6 @@ public class PublicProfileResource {
 					.body(new ApiResponse(false, "Passwort konnte nicht geändert werden.", null));
 		}
 	}
-
-	// REMOVED deletePasskey endpoint
 }
 ========================================================================
 FILE: src\main\java\de\technikteam\api\v1\public_api\PublicStorageResource.java
@@ -11382,7 +11426,7 @@ public class PublicStorageResource {
 		responseData.put("storageData", storageData);
 		responseData.put("activeEvents", activeEvents);
 
-		return ResponseEntity.ok(new ApiResponse(true, "Storage data retrieved.", responseData));
+		return ResponseEntity.ok(new ApiResponse(true, "Lagerdaten erfolgreich abgerufen.", responseData));
 	}
 
 	@PostMapping("/transactions")
@@ -11522,14 +11566,14 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiResponse> handleValidationExceptions(MethodArgumentNotValidException ex) {
 		String errors = ex.getBindingResult().getFieldErrors().stream()
 				.map(error -> error.getField() + ": " + error.getDefaultMessage()).collect(Collectors.joining(", "));
-		ApiResponse apiResponse = new ApiResponse(false, "Validation failed: " + errors, null);
+		ApiResponse apiResponse = new ApiResponse(false, "Validierung fehlgeschlagen: " + errors, null);
 		return new ResponseEntity<>(apiResponse, HttpStatus.BAD_REQUEST);
 	}
 
 	@ExceptionHandler(AccessDeniedException.class)
 	public ResponseEntity<ApiResponse> handleAccessDeniedException(AccessDeniedException ex) {
 		ApiResponse apiResponse = new ApiResponse(false,
-				"Access Denied: You do not have permission to perform this action.", null);
+				"Zugriff verweigert: Sie haben nicht die erforderlichen Berechtigungen für diese Aktion.", null);
 		return new ResponseEntity<>(apiResponse, HttpStatus.FORBIDDEN);
 	}
 
@@ -11537,7 +11581,7 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiResponse> handleAllExceptions(Exception ex) {
 		logger.error("An unexpected internal server error occurred", ex);
 		ApiResponse apiResponse = new ApiResponse(false,
-				"An unexpected internal server error occurred. Please contact support.", null);
+				"Ein unerwarteter interner Serverfehler ist aufgetreten. Bitte kontaktieren Sie den Support.", null);
 		return new ResponseEntity<>(apiResponse, HttpStatus.INTERNAL_SERVER_ERROR);
 	}
 }
@@ -11837,8 +11881,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
 	@Override
 	public void addInterceptors(InterceptorRegistry registry) {
 		// Apply rate limiting to sensitive state-changing endpoints
-		registry.addInterceptor(rateLimitingInterceptor).addPathPatterns("/api/v1/users/*/reset-password")
-				.addPathPatterns("/api/v1/public/profile/request-change").addPathPatterns("/api/v1/auth/login");
+		registry.addInterceptor(rateLimitingInterceptor).addPathPatterns("/api/v1/auth/login")
+				.addPathPatterns("/api/v1/users/**").addPathPatterns("/api/v1/events/**")
+				.addPathPatterns("/api/v1/storage/**").addPathPatterns("/api/v1/kits/**")
+				.addPathPatterns("/api/v1/courses/**").addPathPatterns("/api/v1/meetings/**")
+				.addPathPatterns("/api/v1/feedback/**").addPathPatterns("/api/v1/public/feedback/**")
+				.addPathPatterns("/api/v1/public/profile/**");
 	}
 }
 ========================================================================
@@ -12848,6 +12896,25 @@ public class EventFeedbackDAO {
 		}
 	}
 
+	public FeedbackForm getFormById(int formId) {
+		String sql = "SELECT * FROM feedback_forms WHERE id = ?";
+		try {
+			return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
+				FeedbackForm form = new FeedbackForm();
+				form.setId(rs.getInt("id"));
+				form.setEventId(rs.getInt("event_id"));
+				form.setTitle(rs.getString("title"));
+				form.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+				return form;
+			}, formId);
+		} catch (EmptyResultDataAccessException e) {
+			return null;
+		} catch (Exception e) {
+			logger.error("Error fetching feedback form for form ID {}", formId, e);
+			return null;
+		}
+	}
+
 	public List<FeedbackResponse> getResponsesForForm(int formId) {
 		String sql = "SELECT fr.*, u.username FROM feedback_responses fr JOIN users u ON fr.user_id = u.id WHERE fr.form_id = ?";
 		try {
@@ -13377,128 +13444,5 @@ public class FileDAO {
 			logger.error("Error fetching category name for ID: {}", categoryId, e);
 			return null;
 		}
-	}
-}
-========================================================================
-FILE: src\main\java\de\technikteam\dao\InventoryKitDAO.java
-========================================================================
-
-package de.technikteam.dao;
-
-import de.technikteam.model.InventoryKit;
-import de.technikteam.model.InventoryKitItem;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
-import org.springframework.stereotype.Repository;
-
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.*;
-
-@Repository
-public class InventoryKitDAO {
-	private static final Logger logger = LogManager.getLogger(InventoryKitDAO.class);
-	private final JdbcTemplate jdbcTemplate;
-
-	@Autowired
-	public InventoryKitDAO(JdbcTemplate jdbcTemplate) {
-		this.jdbcTemplate = jdbcTemplate;
-	}
-
-	private final RowMapper<InventoryKit> kitRowMapper = (rs, rowNum) -> {
-		InventoryKit kit = new InventoryKit();
-		kit.setId(rs.getInt("id"));
-		kit.setName(rs.getString("name"));
-		kit.setDescription(rs.getString("description"));
-		kit.setLocation(rs.getString("location"));
-		kit.setItems(new ArrayList<>());
-		return kit;
-	};
-
-	public int createKit(InventoryKit kit) {
-		String sql = "INSERT INTO inventory_kits (name, description, location) VALUES (?, ?, ?)";
-		try {
-			KeyHolder keyHolder = new GeneratedKeyHolder();
-			jdbcTemplate.update(connection -> {
-				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-				ps.setString(1, kit.getName());
-				ps.setString(2, kit.getDescription());
-				ps.setString(3, kit.getLocation());
-				return ps;
-			}, keyHolder);
-			return Objects.requireNonNull(keyHolder.getKey()).intValue();
-		} catch (Exception e) {
-			logger.error("Error creating inventory kit '{}'", kit.getName(), e);
-			return 0;
-		}
-	}
-
-	public boolean updateKit(InventoryKit kit) {
-		String sql = "UPDATE inventory_kits SET name = ?, description = ?, location = ? WHERE id = ?";
-		try {
-			return jdbcTemplate.update(sql, kit.getName(), kit.getDescription(), kit.getLocation(), kit.getId()) > 0;
-		} catch (Exception e) {
-			logger.error("Error updating inventory kit ID {}", kit.getId(), e);
-			return false;
-		}
-	}
-
-	public InventoryKit getKitById(int kitId) {
-		String sql = "SELECT * FROM inventory_kits WHERE id = ?";
-		try {
-			return jdbcTemplate.queryForObject(sql, kitRowMapper, kitId);
-		} catch (EmptyResultDataAccessException e) {
-			return null; // Expected case when not found
-		} catch (Exception e) {
-			logger.error("Error fetching kit by ID {}", kitId, e);
-			return null;
-		}
-	}
-
-	public boolean deleteKit(int kitId) {
-		String sql = "DELETE FROM inventory_kits WHERE id = ?";
-		try {
-			// First, delete dependencies in the linking table
-			jdbcTemplate.update("DELETE FROM inventory_kit_items WHERE kit_id = ?", kitId);
-			// Then, delete the kit itself
-			return jdbcTemplate.update(sql, kitId) > 0;
-		} catch (Exception e) {
-			logger.error("Error deleting inventory kit ID {}", kitId, e);
-			return false;
-		}
-	}
-
-	public List<InventoryKit> getAllKitsWithItems() {
-		Map<Integer, InventoryKit> kitMap = new LinkedHashMap<>();
-		String sql = "SELECT k.id, k.name, k.description, k.location, ki.item_id, ki.quantity, si.name as item_name FROM inventory_kits k LEFT JOIN inventory_kit_items ki ON k.id = ki.kit_id LEFT JOIN storage_items si ON ki.item_id = si.id ORDER BY k.name, si.name";
-
-		jdbcTemplate.query(sql, (ResultSet rs) -> {
-			int kitId = rs.getInt("id");
-			InventoryKit kit = kitMap.computeIfAbsent(kitId, id -> {
-				try {
-					return kitRowMapper.mapRow(rs, 0);
-				} catch (SQLException e) {
-					// This is a safe way to handle checked exceptions within a lambda
-					throw new RuntimeException("Failed to map ResultSet to InventoryKit", e);
-				}
-			});
-			if (rs.getInt("item_id") > 0) {
-				InventoryKitItem item = new InventoryKitItem();
-				item.setKitId(kitId);
-				item.setItemId(rs.getInt("item_id"));
-				item.setQuantity(rs.getInt("quantity"));
-				item.setItemName(rs.getString("item_name"));
-				kit.getItems().add(item);
-			}
-		});
-		return new ArrayList<>(kitMap.values());
 	}
 }

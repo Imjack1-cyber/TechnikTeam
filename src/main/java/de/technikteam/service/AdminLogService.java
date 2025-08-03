@@ -38,7 +38,8 @@ public class AdminLogService {
 					saneDetails);
 			logDAO.createLog(log);
 		} catch (Exception e) {
-			logger.error("CRITICAL: Failed to write to admin audit log! Data: [User: {}, Action: {}, Details: {}]",
+			logger.error(
+					"KRITISCH: Fehler beim Schreiben in das Admin-Audit-Log! Daten: [Benutzer: {}, Aktion: {}, Details: {}]",
 					sanitize(adminUsername), sanitize(actionType), sanitize(details), e);
 		}
 	}

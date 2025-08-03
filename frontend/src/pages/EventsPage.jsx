@@ -30,7 +30,7 @@ const EventsPage = () => {
 				customFields: result.success ? result.data : [],
 			});
 		} catch (e) {
-			console.error("Could not load custom fields", e);
+			console.error("Benutzerdefinierte Felder konnten nicht geladen werden", e);
 			setModalState({ isOpen: true, type: 'signup', event, customFields: [] });
 		}
 	};

@@ -87,7 +87,15 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 
 	return (
 		<div className="card" id="profile-details-container">
-			<h2 className="card-title">Stammdaten</h2>
+			<div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+				{user.profilePicturePath ? (
+					<img src={`/api/v1/public/files/avatars/user/${user.id}`} alt="Profilbild" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' }} />
+				) : (
+					<i className="fas fa-user-circle" style={{ fontSize: '80px', color: 'var(--text-muted-color)' }}></i>
+				)}
+				<h2 className="card-title" style={{ border: 'none', padding: 0, margin: 0 }}>Stammdaten</h2>
+			</div>
+
 			{hasPendingRequest && (
 				<div className="info-message"><i className="fas fa-info-circle"></i> Sie haben eine ausstehende Profiländerung.</div>
 			)}
@@ -100,7 +108,7 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 					<li><strong>E-Mail:</strong> <input type="email" name="email" value={formData.email} onChange={handleChange} readOnly={!isEditing} style={{ border: isEditing ? '' : 'none', background: isEditing ? '' : 'transparent' }} /></li>
 					{isEditing && (
 						<li>
-							<strong>Profilbild:</strong>
+							<strong>Profilbild ändern:</strong>
 							<input type="file" name="profilePicture" onChange={handleFileChange} accept="image/jpeg, image/png" />
 						</li>
 					)}

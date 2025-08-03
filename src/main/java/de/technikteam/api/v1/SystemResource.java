@@ -31,6 +31,6 @@ public class SystemResource {
 	@Operation(summary = "Get system statistics", description = "Retrieves current system statistics like CPU load, memory usage, and disk space.")
 	public ResponseEntity<ApiResponse> getSystemStats() {
 		SystemStatsDTO stats = systemInfoService.getSystemStats();
-		return ResponseEntity.ok(new ApiResponse(true, "System stats retrieved", stats));
+		return ResponseEntity.ok(new ApiResponse(true, "Systemstatistiken erfolgreich abgerufen.", stats));
 	}
 }

@@ -45,7 +45,7 @@ public class MeetingResource {
 	@Operation(summary = "Get all meetings for a course")
 	public ResponseEntity<ApiResponse> getMeetingsForCourse(@RequestParam int courseId) {
 		List<Meeting> meetings = meetingDAO.getMeetingsForCourse(courseId);
-		return ResponseEntity.ok(new ApiResponse(true, "Meetings retrieved successfully", meetings));
+		return ResponseEntity.ok(new ApiResponse(true, "Termine erfolgreich abgerufen.", meetings));
 	}
 
 	@GetMapping("/{id}")
@@ -53,9 +53,9 @@ public class MeetingResource {
 	public ResponseEntity<ApiResponse> getMeetingById(@PathVariable int id) {
 		Meeting meeting = meetingDAO.getMeetingById(id);
 		if (meeting != null) {
-			return ResponseEntity.ok(new ApiResponse(true, "Meeting retrieved successfully", meeting));
+			return ResponseEntity.ok(new ApiResponse(true, "Termin erfolgreich abgerufen.", meeting));
 		}
-		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, "Meeting not found", null));
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, "Termin nicht gefunden.", null));
 	}
 
 	@PostMapping
@@ -77,10 +77,10 @@ public class MeetingResource {
 			meeting.setId(newId);
 			adminLogService.log(adminUser.getUsername(), "CREATE_MEETING_API",
 					"Meeting '" + meeting.getName() + "' created.");
-			return new ResponseEntity<>(new ApiResponse(true, "Meeting created successfully", meeting),
+			return new ResponseEntity<>(new ApiResponse(true, "Termin erfolgreich erstellt.", meeting),
 					HttpStatus.CREATED);
 		}
-		return ResponseEntity.badRequest().body(new ApiResponse(false, "Could not create meeting.", null));
+		return ResponseEntity.badRequest().body(new ApiResponse(false, "Termin konnte nicht erstellt werden.", null));
 	}
 
 	@PutMapping("/{id}")
@@ -101,10 +101,10 @@ public class MeetingResource {
 		if (meetingDAO.updateMeeting(meeting)) {
 			adminLogService.log(adminUser.getUsername(), "UPDATE_MEETING_API",
 					"Meeting '" + meeting.getName() + "' updated.");
-			return ResponseEntity.ok(new ApiResponse(true, "Meeting updated successfully", meeting));
+			return ResponseEntity.ok(new ApiResponse(true, "Termin erfolgreich aktualisiert.", meeting));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ApiResponse(false, "Meeting not found or update failed.", null));
+				.body(new ApiResponse(false, "Termin nicht gefunden oder Aktualisierung fehlgeschlagen.", null));
 	}
 
 	@DeleteMapping("/{id}")
@@ -115,9 +115,9 @@ public class MeetingResource {
 		if (meeting != null && meetingDAO.deleteMeeting(id)) {
 			adminLogService.log(adminUser.getUsername(), "DELETE_MEETING_API",
 					"Meeting '" + meeting.getName() + "' deleted.");
-			return ResponseEntity.ok(new ApiResponse(true, "Meeting deleted successfully", Map.of("deletedId", id)));
+			return ResponseEntity.ok(new ApiResponse(true, "Termin erfolgreich gelöscht.", Map.of("deletedId", id)));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ApiResponse(false, "Meeting not found or delete failed.", null));
+				.body(new ApiResponse(false, "Termin nicht gefunden oder Löschung fehlgeschlagen.", null));
 	}
 }

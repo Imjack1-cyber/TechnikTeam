@@ -49,7 +49,7 @@ public class WikiResource {
 	@Operation(summary = "Get wiki navigation tree", description = "Retrieves the entire wiki page structure as a hierarchical tree.")
 	public ResponseEntity<ApiResponse> getWikiTree() {
 		Map<String, Object> treeData = wikiService.getWikiTreeAsData();
-		return ResponseEntity.ok(new ApiResponse(true, "Wiki tree retrieved successfully", treeData));
+		return ResponseEntity.ok(new ApiResponse(true, "Wiki-Struktur erfolgreich abgerufen.", treeData));
 	}
 
 	@GetMapping("/{id}")
@@ -57,9 +57,9 @@ public class WikiResource {
 	public ResponseEntity<ApiResponse> getWikiEntryById(
 			@Parameter(description = "ID of the wiki page to retrieve") @PathVariable int id) {
 		Optional<WikiEntry> entryOptional = wikiDAO.getWikiEntryById(id);
-		return entryOptional.map(entry -> ResponseEntity.ok(new ApiResponse(true, "Content loaded", entry)))
+		return entryOptional.map(entry -> ResponseEntity.ok(new ApiResponse(true, "Inhalt geladen.", entry)))
 				.orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
-						.body(new ApiResponse(false, "Wiki entry not found", null)));
+						.body(new ApiResponse(false, "Wiki-Eintrag nicht gefunden.", null)));
 	}
 
 	@PostMapping
@@ -67,11 +67,11 @@ public class WikiResource {
 	public ResponseEntity<ApiResponse> createWikiEntry(@Valid @RequestBody WikiEntry newEntry,
 			@AuthenticationPrincipal User adminUser) {
 		if (newEntry.getFilePath() == null || newEntry.getFilePath().isBlank()) {
-			return ResponseEntity.badRequest().body(new ApiResponse(false, "File path cannot be empty.", null));
+			return ResponseEntity.badRequest().body(new ApiResponse(false, "Dateipfad darf nicht leer sein.", null));
 		}
 		if (wikiDAO.findByFilePath(newEntry.getFilePath()).isPresent()) {
 			return ResponseEntity.status(HttpStatus.CONFLICT)
-					.body(new ApiResponse(false, "An entry with this file path already exists.", null));
+					.body(new ApiResponse(false, "Ein Eintrag mit diesem Dateipfad existiert bereits.", null));
 		}
 
 		newEntry.setContent(richTextPolicy.sanitize(newEntry.getContent()));
@@ -79,11 +79,12 @@ public class WikiResource {
 		if (createdEntryOptional.isPresent()) {
 			adminLogService.log(adminUser.getUsername(), "CREATE_WIKI_PAGE",
 					"Created wiki page: " + createdEntryOptional.get().getFilePath());
-			return new ResponseEntity<>(new ApiResponse(true, "Page created successfully", createdEntryOptional.get()),
+			return new ResponseEntity<>(
+					new ApiResponse(true, "Seite erfolgreich erstellt.", createdEntryOptional.get()),
 					HttpStatus.CREATED);
 		} else {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Failed to create page in database.", null));
+					.body(new ApiResponse(false, "Seite konnte nicht in der Datenbank erstellt werden.", null));
 		}
 	}
 
@@ -96,10 +97,10 @@ public class WikiResource {
 		String sanitizedContent = richTextPolicy.sanitize(updateRequest.content());
 		if (wikiDAO.updateWikiContent(id, sanitizedContent)) {
 			adminLogService.log(adminUser.getUsername(), "UPDATE_WIKI_PAGE", "Updated wiki page ID: " + id);
-			return ResponseEntity.ok(new ApiResponse(true, "Page updated successfully", null));
+			return ResponseEntity.ok(new ApiResponse(true, "Seite erfolgreich aktualisiert.", null));
 		} else {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND)
-					.body(new ApiResponse(false, "Failed to update page. It may not exist.", null));
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false,
+					"Seite konnte nicht aktualisiert werden. Sie existiert möglicherweise nicht.", null));
 		}
 	}
 
@@ -112,16 +113,16 @@ public class WikiResource {
 		Optional<WikiEntry> entryToDelete = wikiDAO.getWikiEntryById(id);
 		if (entryToDelete.isEmpty()) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)
-					.body(new ApiResponse(false, "Wiki entry not found.", null));
+					.body(new ApiResponse(false, "Wiki-Eintrag nicht gefunden.", null));
 		}
 
 		if (wikiDAO.deleteWikiEntry(id)) {
 			adminLogService.log(adminUser.getUsername(), "DELETE_WIKI_PAGE",
 					"Deleted wiki page: " + entryToDelete.get().getFilePath());
-			return ResponseEntity.ok(new ApiResponse(true, "Page deleted successfully", Map.of("deletedId", id)));
+			return ResponseEntity.ok(new ApiResponse(true, "Seite erfolgreich gelöscht.", Map.of("deletedId", id)));
 		} else {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, "Failed to delete page.", null));
+					.body(new ApiResponse(false, "Fehler beim Löschen der Seite.", null));
 		}
 	}
 }

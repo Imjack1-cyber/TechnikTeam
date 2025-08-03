@@ -7,13 +7,13 @@ const ForbiddenPage = () => {
 	const user = useAuthStore(state => state.user);
 
 	const lines = useMemo(() => [
-		{ text: 'Attempting to access restricted area...', className: 'info' },
-		{ text: `Authenticating user: ${user?.username || 'GUEST'}`, className: 'info', delayAfter: 500 },
-		{ text: 'Checking clearance level...', className: 'info', delayAfter: 800 },
-		{ text: '[ACCESS DENIED]', className: 'fail', speed: 80 },
-		{ text: 'ERROR 403: Insufficient permissions.', className: 'fail' },
-		{ text: 'Your current role does not grant access to this resource.', className: 'warn' },
-		{ text: 'This attempt has been logged.', className: 'info' },
+		{ text: 'Zugriffsversuch auf geschützten Bereich...', className: 'info' },
+		{ text: `Benutzer wird authentifiziert: ${user?.username || 'GAST'}`, className: 'info', delayAfter: 500 },
+		{ text: 'Berechtigungsstufe wird geprüft...', className: 'info', delayAfter: 800 },
+		{ text: '[ZUGRIFF VERWEIGERT]', className: 'fail', speed: 80 },
+		{ text: 'FEHLER 403: Unzureichende Berechtigungen.', className: 'fail' },
+		{ text: 'Ihre aktuelle Rolle gewährt keinen Zugriff auf diese Ressource.', className: 'warn' },
+		{ text: 'Dieser Versuch wurde protokolliert.', className: 'info' },
 	], [user]);
 
 	const { containerRef, renderedLines, isComplete } = useTypingAnimation(lines);
@@ -37,7 +37,7 @@ const ForbiddenPage = () => {
 			</div>
 			<div className="terminal-footer">
 				<Link to="/home" className={`btn ${isComplete ? 'visible' : ''}`}>
-					<i className="fas fa-arrow-left"></i> Return to Safety
+					<i className="fas fa-arrow-left"></i> Zurück zum sicheren Bereich
 				</Link>
 			</div>
 		</div>

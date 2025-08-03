@@ -22,7 +22,7 @@ const useApi = (apiCall) => {
 				throw new Error(result.message);
 			}
 		} catch (err) {
-			setError(err.message || 'An unexpected error occurred.');
+			setError(err.message || 'Ein unerwarteter Fehler ist aufgetreten.');
 		} finally {
 			setLoading(false);
 		}

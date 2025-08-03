@@ -38,7 +38,7 @@ public class CourseResource {
 	@PreAuthorize("hasAuthority('COURSE_READ')")
 	public ResponseEntity<ApiResponse> getAllCourses() {
 		List<Course> courses = courseDAO.getAllCourses();
-		return ResponseEntity.ok(new ApiResponse(true, "Courses retrieved successfully", courses));
+		return ResponseEntity.ok(new ApiResponse(true, "Lehrgänge erfolgreich abgerufen.", courses));
 	}
 
 	@PostMapping
@@ -49,10 +49,10 @@ public class CourseResource {
 		if (courseDAO.createCourse(course)) {
 			adminLogService.log(adminUser.getUsername(), "CREATE_COURSE_API",
 					"Course '" + course.getName() + "' created.");
-			return new ResponseEntity<>(new ApiResponse(true, "Course created successfully", course),
+			return new ResponseEntity<>(new ApiResponse(true, "Lehrgang erfolgreich erstellt.", course),
 					HttpStatus.CREATED);
 		}
-		return ResponseEntity.badRequest().body(new ApiResponse(false, "Could not create course.", null));
+		return ResponseEntity.badRequest().body(new ApiResponse(false, "Lehrgang konnte nicht erstellt werden.", null));
 	}
 
 	@PutMapping("/{id}")
@@ -64,10 +64,10 @@ public class CourseResource {
 		if (courseDAO.updateCourse(course)) {
 			adminLogService.log(adminUser.getUsername(), "UPDATE_COURSE_API",
 					"Course '" + course.getName() + "' updated.");
-			return ResponseEntity.ok(new ApiResponse(true, "Course updated successfully", course));
+			return ResponseEntity.ok(new ApiResponse(true, "Lehrgang erfolgreich aktualisiert.", course));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ApiResponse(false, "Course not found or update failed.", null));
+				.body(new ApiResponse(false, "Lehrgang nicht gefunden oder Aktualisierung fehlgeschlagen.", null));
 	}
 
 	@DeleteMapping("/{id}")
@@ -78,9 +78,9 @@ public class CourseResource {
 		if (course != null && courseDAO.deleteCourse(id)) {
 			adminLogService.log(adminUser.getUsername(), "DELETE_COURSE_API",
 					"Course '" + course.getName() + "' deleted.");
-			return ResponseEntity.ok(new ApiResponse(true, "Course deleted successfully", Map.of("deletedId", id)));
+			return ResponseEntity.ok(new ApiResponse(true, "Lehrgang erfolgreich gelöscht.", Map.of("deletedId", id)));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ApiResponse(false, "Course not found or delete failed.", null));
+				.body(new ApiResponse(false, "Lehrgang nicht gefunden oder Löschung fehlgeschlagen.", null));
 	}
 }
