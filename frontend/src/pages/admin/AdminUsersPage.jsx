@@ -77,25 +77,6 @@ const AdminUsersPage = () => {
 		addToast('Passwort in die Zwischenablage kopiert.', 'info');
 	};
 
-	const renderTable = () => {
-		if (loading) return <tr><td colSpan="4">Lade Benutzer...</td></tr>;
-		if (error) return <tr><td colSpan="4" className="error-message">{error}</td></tr>;
-		if (!users || users.length === 0) return <tr><td colSpan="4">Keine Benutzer gefunden.</td></tr>;
-
-		return users.map(user => (
-			<tr key={user.id}>
-				<td>{user.id}</td>
-				<td>{user.username}</td>
-				<td>{user.roleName}</td>
-				<td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-					<button onClick={() => handleOpenEditModal(user)} className="btn btn-small">Bearbeiten</button>
-					<button onClick={() => handleResetPassword(user)} className="btn btn-small btn-warning">Passwort Reset</button>
-					<button onClick={() => handleDelete(user)} className="btn btn-small btn-danger">Löschen</button>
-				</td>
-			</tr>
-		));
-	};
-
 	return (
 		<div>
 			<h1><i className="fas fa-users-cog"></i> Benutzerverwaltung</h1>
@@ -118,9 +99,39 @@ const AdminUsersPage = () => {
 						</tr>
 					</thead>
 					<tbody>
-						{renderTable()}
+						{loading && <tr><td colSpan="4">Lade Benutzer...</td></tr>}
+						{error && <tr><td colSpan="4" className="error-message">{error}</td></tr>}
+						{users?.map(user => (
+							<tr key={user.id}>
+								<td>{user.id}</td>
+								<td>{user.username}</td>
+								<td>{user.roleName}</td>
+								<td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+									<button onClick={() => handleOpenEditModal(user)} className="btn btn-small">Bearbeiten</button>
+									<button onClick={() => handleResetPassword(user)} className="btn btn-small btn-warning">Passwort Reset</button>
+									<button onClick={() => handleDelete(user)} className="btn btn-small btn-danger">Löschen</button>
+								</td>
+							</tr>
+						))}
 					</tbody>
 				</table>
+			</div>
+
+			<div className="mobile-card-list">
+				{loading && <p>Lade Benutzer...</p>}
+				{error && <p className="error-message">{error}</p>}
+				{users?.map(user => (
+					<div key={user.id} className="list-item-card">
+						<h3 className="card-title">{user.username}</h3>
+						<div className="card-row"><strong>ID:</strong> <span>{user.id}</span></div>
+						<div className="card-row"><strong>Rolle:</strong> <span>{user.roleName}</span></div>
+						<div className="card-actions">
+							<button onClick={() => handleOpenEditModal(user)} className="btn btn-small">Bearbeiten</button>
+							<button onClick={() => handleResetPassword(user)} className="btn btn-small btn-warning">Passwort Reset</button>
+							<button onClick={() => handleDelete(user)} className="btn btn-small btn-danger">Löschen</button>
+						</div>
+					</div>
+				))}
 			</div>
 
 			{isModalOpen && (

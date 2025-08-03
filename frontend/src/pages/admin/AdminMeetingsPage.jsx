@@ -121,6 +121,22 @@ const AdminMeetingsPage = () => {
 				</table>
 			</div>
 
+			<div className="mobile-card-list">
+				{loading && <p>Lade Meetings...</p>}
+				{error && <p className="error-message">{error}</p>}
+				{meetingsData?.map(meeting => (
+					<div className="list-item-card" key={meeting.id}>
+						<h3 className="card-title">{meeting.name}</h3>
+						<div className="card-row"><strong>Datum:</strong> <span>{new Date(meeting.meetingDateTime).toLocaleString('de-DE')}</span></div>
+						<div className="card-row"><strong>Leitung:</strong> <span>{meeting.leaderUsername || 'N/A'}</span></div>
+						<div className="card-actions">
+							<button onClick={() => handleOpenEditModal(meeting)} className="btn btn-small">Bearbeiten</button>
+							<button onClick={() => handleDelete(meeting)} className="btn btn-small btn-danger">Löschen</button>
+						</div>
+					</div>
+				))}
+			</div>
+
 			{isModalOpen && (
 				<Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingMeeting ? "Meeting bearbeiten" : "Neues Meeting planen"}>
 					<form onSubmit={handleSubmit}>

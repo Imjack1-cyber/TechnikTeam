@@ -84,6 +84,23 @@ const AdminEventsPage = () => {
 					</tbody>
 				</table>
 			</div>
+
+			<div className="mobile-card-list">
+				{loading && <p>Lade Events...</p>}
+				{error && <p className="error-message">{error}</p>}
+				{events?.map(event => (
+					<div className="list-item-card" key={event.id}>
+						<h3 className="card-title"><Link to={`/veranstaltungen/details/${event.id}`}>{event.name}</Link></h3>
+						<div className="card-row"><strong>Datum:</strong> <span>{new Date(event.eventDateTime).toLocaleString('de-DE')}</span></div>
+						<div className="card-row"><strong>Status:</strong> <StatusBadge status={event.status} /></div>
+						<div className="card-actions">
+							<button onClick={() => openModal(event)} className="btn btn-small">Bearbeiten</button>
+							<button onClick={() => handleDelete(event)} className="btn btn-small btn-danger">Löschen</button>
+						</div>
+					</div>
+				))}
+			</div>
+
 			{/* Prevent modal from rendering before its required data is available */}
 			{isModalOpen && !adminFormData.loading && (
 				<EventModal

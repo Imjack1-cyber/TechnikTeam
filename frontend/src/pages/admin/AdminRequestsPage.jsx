@@ -35,7 +35,7 @@ const AdminRequestsPage = () => {
 		try {
 			const changes = JSON.parse(changesJson);
 			return (
-				<ul style={{ paddingLeft: '1.5rem', margin: 0 }}>
+				<ul style={{ paddingLeft: '1.5rem', margin: 0, listStyle: 'none' }}>
 					{Object.entries(changes).map(([key, value]) => (
 						<li key={key}><strong>{key}:</strong> {value}</li>
 					))}
@@ -44,24 +44,6 @@ const AdminRequestsPage = () => {
 		} catch (e) {
 			return <span className="text-danger">Fehler beim Parsen der Änderungen.</span>;
 		}
-	};
-
-	const renderTable = () => {
-		if (loading) return <tr><td colSpan="4">Lade Anträge...</td></tr>;
-		if (error) return <tr><td colSpan="4" className="error-message">{error}</td></tr>;
-		if (!requests || requests.length === 0) return <tr><td colSpan="4" style={{ textAlign: 'center' }}>Keine offenen Anträge vorhanden.</td></tr>;
-
-		return requests.map(req => (
-			<tr key={req.id}>
-				<td>{req.username}</td>
-				<td>{new Date(req.requestedAt).toLocaleString('de-DE')}</td>
-				<td>{renderChanges(req.requestedChanges)}</td>
-				<td style={{ display: 'flex', gap: '0.5rem' }}>
-					<button onClick={() => handleAction(req.id, 'approve')} className="btn btn-small btn-success">Genehmigen</button>
-					<button onClick={() => handleAction(req.id, 'deny')} className="btn btn-small btn-danger">Ablehnen</button>
-				</td>
-			</tr>
-		));
 	};
 
 	return (
@@ -80,9 +62,42 @@ const AdminRequestsPage = () => {
 						</tr>
 					</thead>
 					<tbody>
-						{renderTable()}
+						{loading && <tr><td colSpan="4">Lade Anträge...</td></tr>}
+						{error && <tr><td colSpan="4" className="error-message">{error}</td></tr>}
+						{requests?.length === 0 && <tr><td colSpan="4" style={{ textAlign: 'center' }}>Keine offenen Anträge vorhanden.</td></tr>}
+						{requests?.map(req => (
+							<tr key={req.id}>
+								<td>{req.username}</td>
+								<td>{new Date(req.requestedAt).toLocaleString('de-DE')}</td>
+								<td>{renderChanges(req.requestedChanges)}</td>
+								<td style={{ display: 'flex', gap: '0.5rem' }}>
+									<button onClick={() => handleAction(req.id, 'approve')} className="btn btn-small btn-success">Genehmigen</button>
+									<button onClick={() => handleAction(req.id, 'deny')} className="btn btn-small btn-danger">Ablehnen</button>
+								</td>
+							</tr>
+						))}
 					</tbody>
 				</table>
+			</div>
+
+			<div className="mobile-card-list">
+				{loading && <p>Lade Anträge...</p>}
+				{error && <p className="error-message">{error}</p>}
+				{requests?.length === 0 && <div className="card"><p>Keine offenen Anträge vorhanden.</p></div>}
+				{requests?.map(req => (
+					<div className="list-item-card" key={req.id}>
+						<h3 className="card-title">Antrag von {req.username}</h3>
+						<div className="card-row"><strong>Beantragt am:</strong> <span>{new Date(req.requestedAt).toLocaleString('de-DE')}</span></div>
+						<div style={{ marginTop: '0.5rem' }}>
+							<strong>Änderungen:</strong>
+							{renderChanges(req.requestedChanges)}
+						</div>
+						<div className="card-actions">
+							<button onClick={() => handleAction(req.id, 'approve')} className="btn btn-small btn-success">Genehmigen</button>
+							<button onClick={() => handleAction(req.id, 'deny')} className="btn btn-small btn-danger">Ablehnen</button>
+						</div>
+					</div>
+				))}
 			</div>
 		</div>
 	);

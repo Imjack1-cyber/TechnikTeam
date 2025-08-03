@@ -111,6 +111,28 @@ const AdminCoursesPage = () => {
 				</table>
 			</div>
 
+			<div className="mobile-card-list">
+				{loading && <p>Lade Vorlagen...</p>}
+				{error && <p className="error-message">{error}</p>}
+				{courses?.map(course => (
+					<div className="list-item-card" key={course.id}>
+						<h3 className="card-title">{course.name}</h3>
+						<div className="card-row"><strong>Abkürzung:</strong> <span>{course.abbreviation}</span></div>
+						<div className="card-actions">
+							<Link to={`/admin/lehrgaenge/${course.id}/meetings`} className="btn btn-small">
+								<i className="fas fa-calendar-day"></i> Meetings
+							</Link>
+							<button onClick={() => handleOpenEditModal(course)} className="btn btn-small btn-secondary">
+								<i className="fas fa-edit"></i> Bearbeiten
+							</button>
+							<button onClick={() => handleDelete(course)} className="btn btn-small btn-danger">
+								<i className="fas fa-trash"></i> Löschen
+							</button>
+						</div>
+					</div>
+				))}
+			</div>
+
 			{isModalOpen && (
 				<Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingCourse ? "Lehrgangs-Vorlage bearbeiten" : "Neue Lehrgangs-Vorlage anlegen"}>
 					<form onSubmit={handleSubmit}>

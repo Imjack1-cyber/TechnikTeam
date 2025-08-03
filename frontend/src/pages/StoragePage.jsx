@@ -65,6 +65,74 @@ const StoragePage = () => {
 
 	const { storageData, activeEvents } = data;
 
+	const renderItemsForLocation = (items) => (
+		<>
+			<div className="desktop-table-wrapper">
+				<table className="data-table">
+					<thead>
+						<tr>
+							<th>Gerät</th>
+							<th>Schrank</th>
+							<th>Fach</th>
+							<th>Status</th>
+							<th>Bestand</th>
+							<th>Aktion</th>
+						</tr>
+					</thead>
+					<tbody>
+						{items.map(item => (
+							<tr key={item.id}>
+								<td className="item-name-cell">
+									<Link to={`/lager/details/${item.id}`}>{item.name}</Link>
+									{item.imagePath && (
+										<button className="btn btn-small btn-secondary" style={{ marginLeft: '0.5rem', padding: '0.2rem 0.5rem' }} title="Bild anzeigen" onClick={() => handleImageClick(item.imagePath)}>
+											<i className="fas fa-camera"></i>
+										</button>
+									)}
+								</td>
+								<td>{item.cabinet || '-'}</td>
+								<td>{item.compartment || '-'}</td>
+								<td>
+									<span className={`status-badge ${item.availabilityStatusCssClass}`}>
+										{item.availabilityStatus}
+									</span>
+								</td>
+								<td>
+									<span>{item.availableQuantity} / {item.maxQuantity}</span>
+									{item.defectiveQuantity > 0 && <span className="text-danger"> ({item.defectiveQuantity} defekt)</span>}
+								</td>
+								<td>
+									<button className="btn btn-small" onClick={() => handleActionClick(item)}>Aktion</button>
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+			<div className="mobile-card-list">
+				{items.map(item => (
+					<div className="list-item-card" key={item.id}>
+						<h3 className="card-title">
+							<Link to={`/lager/details/${item.id}`}>{item.name}</Link>
+							{item.imagePath && (
+								<button className="btn btn-small btn-secondary" style={{ marginLeft: '0.5rem', padding: '0.2rem 0.5rem' }} title="Bild anzeigen" onClick={() => handleImageClick(item.imagePath)}>
+									<i className="fas fa-camera"></i>
+								</button>
+							)}
+						</h3>
+						<div className="card-row"><strong>Status:</strong> <span className={`status-badge ${item.availabilityStatusCssClass}`}>{item.availabilityStatus}</span></div>
+						<div className="card-row"><strong>Bestand:</strong> <span>{item.availableQuantity} / {item.maxQuantity}{item.defectiveQuantity > 0 && <span className="text-danger"> ({item.defectiveQuantity} def.)</span>}</span></div>
+						<div className="card-row"><strong>Schrank:</strong> <span>{item.cabinet || '-'}</span></div>
+						<div className="card-row"><strong>Fach:</strong> <span>{item.compartment || '-'}</span></div>
+						<div className="card-actions">
+							<button className="btn btn-small" onClick={() => handleActionClick(item)}>Aktion</button>
+						</div>
+					</div>
+				))}
+			</div>
+		</>
+	);
+
 	return (
 		<>
 			<h1><i className="fas fa-boxes"></i> Lagerübersicht</h1>
@@ -73,48 +141,7 @@ const StoragePage = () => {
 			{Object.entries(storageData).map(([location, items]) => (
 				<div className="card" key={location}>
 					<h2><i className="fas fa-map-marker-alt"></i> {location}</h2>
-					<div className="desktop-table-wrapper">
-						<table className="data-table">
-							<thead>
-								<tr>
-									<th>Gerät</th>
-									<th>Schrank</th>
-									<th>Fach</th>
-									<th>Status</th>
-									<th>Bestand</th>
-									<th>Aktion</th>
-								</tr>
-							</thead>
-							<tbody>
-								{items.map(item => (
-									<tr key={item.id}>
-										<td className="item-name-cell">
-											<Link to={`/lager/details/${item.id}`}>{item.name}</Link>
-											{item.imagePath && (
-												<button className="btn btn-small btn-secondary" style={{ marginLeft: '0.5rem', padding: '0.2rem 0.5rem' }} title="Bild anzeigen" onClick={() => handleImageClick(item.imagePath)}>
-													<i className="fas fa-camera"></i>
-												</button>
-											)}
-										</td>
-										<td>{item.cabinet || '-'}</td>
-										<td>{item.compartment || '-'}</td>
-										<td>
-											<span className={`status-badge ${item.availabilityStatusCssClass}`}>
-												{item.availabilityStatus}
-											</span>
-										</td>
-										<td>
-											<span>{item.availableQuantity} / {item.maxQuantity}</span>
-											{item.defectiveQuantity > 0 && <span className="text-danger"> ({item.defectiveQuantity} defekt)</span>}
-										</td>
-										<td>
-											<button className="btn btn-small" onClick={() => handleActionClick(item)}>Aktion</button>
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
+					{renderItemsForLocation(items)}
 				</div>
 			))}
 

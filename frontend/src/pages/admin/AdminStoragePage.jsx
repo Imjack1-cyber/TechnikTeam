@@ -96,6 +96,34 @@ const AdminStoragePage = () => {
 				</table>
 			</div>
 
+			<div className="mobile-card-list">
+				{loading && <p>Lade Artikel...</p>}
+				{error && <p className="error-message">{error}</p>}
+				{items?.map(item => (
+					<div className="list-item-card" key={item.id}>
+						<h3 className="card-title">
+							<Link to={`/lager/details/${item.id}`}>{item.name}</Link>
+							{item.imagePath && (
+								<button className="camera-btn" onClick={() => setLightboxSrc(`/api/v1/public/files/images/${item.imagePath}`)}>
+									<i className="fas fa-camera"></i>
+								</button>
+							)}
+						</h3>
+						<div className="card-row"><strong>Status:</strong> <StatusBadge status={item.status} /></div>
+						<div className="card-row"><strong>Verfügbar:</strong> <span>{item.availableQuantity}/{item.maxQuantity}{item.defectiveQuantity > 0 && <span className="text-danger"> ({item.defectiveQuantity} def.)</span>}</span></div>
+						<div className="card-row"><strong>Ort:</strong> <span>{item.location}</span></div>
+						<div className="card-actions">
+							<button onClick={() => openModal('edit', item)} className="btn btn-small">Bearbeiten</button>
+							<button onClick={() => openModal('defect', item)} className="btn btn-small btn-warning">Defekt</button>
+							{item.defectiveQuantity > 0 && (
+								<button onClick={() => openModal('repair', item)} className="btn btn-small btn-success">Repariert</button>
+							)}
+							<button onClick={() => handleDelete(item)} className="btn btn-small btn-danger">Löschen</button>
+						</div>
+					</div>
+				))}
+			</div>
+
 			{modalState.isOpen && (
 				<StorageItemModal
 					isOpen={modalState.isOpen}

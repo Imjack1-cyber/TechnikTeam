@@ -42,6 +42,23 @@ const AdminDefectivePage = () => {
 		));
 	};
 
+	const renderMobileList = () => {
+		if (loading) return <p>Lade defekte Artikel...</p>;
+		if (error) return <p className="error-message">{error}</p>;
+		if (!items || items.length === 0) return <div className="card"><p>Aktuell sind keine Artikel als defekt gemeldet.</p></div>;
+
+		return items.map(item => (
+			<div className="list-item-card" key={item.id}>
+				<h3 className="card-title"><Link to={`/lager/details/${item.id}`}>{item.name}</Link></h3>
+				<div className="card-row"><strong>Defekt / Gesamt:</strong> <span>{item.defectiveQuantity} / {item.quantity}</span></div>
+				<div className="card-row"><strong>Grund:</strong> <span>{item.defectReason || '-'}</span></div>
+				<div className="card-actions">
+					<button onClick={() => openModal('defect', item)} className="btn btn-small btn-warning">Status bearbeiten</button>
+				</div>
+			</div>
+		));
+	};
+
 	return (
 		<div>
 			<h1><i className="fas fa-wrench"></i> Defekte Artikel verwalten</h1>
@@ -61,6 +78,10 @@ const AdminDefectivePage = () => {
 						{renderTable()}
 					</tbody>
 				</table>
+			</div>
+
+			<div className="mobile-card-list">
+				{renderMobileList()}
 			</div>
 
 			{modalState.isOpen && (

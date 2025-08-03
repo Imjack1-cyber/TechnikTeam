@@ -14,8 +14,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 
 @Configuration
 @EnableWebSecurity
@@ -32,11 +30,7 @@ public class SecurityConfig {
 
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-		CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
-		requestHandler.setCsrfRequestAttributeName(null);
-
-		http.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-				.csrfTokenRequestHandler(requestHandler).ignoringRequestMatchers("/api/v1/auth/**"))
+		http.csrf(AbstractHttpConfigurer::disable) // Disable CSRF protection
 				.authorizeHttpRequests(auth -> auth.requestMatchers("/api/v1/auth/login", "/api/v1/public/calendar.ics",
 						"/api/v1/public/files/avatars/**", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
 						.permitAll().anyRequest().authenticated())
