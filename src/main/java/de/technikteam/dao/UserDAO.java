@@ -1,6 +1,5 @@
 package de.technikteam.dao;
 
-import de.technikteam.config.Permissions;
 import de.technikteam.model.User;
 import de.technikteam.util.DaoUtils;
 import org.apache.logging.log4j.LogManager;
@@ -95,19 +94,21 @@ public class UserDAO {
 	}
 
 	public Set<String> getPermissionsForUser(int userId) {
-		// This query handles both admins and regular users correctly.
-		// 1. It gets all individually assigned permissions for the user.
-		// 2. It UNIONs this with ALL permissions from the permissions table, but ONLY
-		// IF the user has role_id = 1 (admin).
-		// For non-admins, the second part of the UNION is empty. For admins, it grants
-		// all possible permissions.
-		String sql = "SELECT p.permission_key " + "FROM permissions p "
-				+ "JOIN user_permissions up ON p.id = up.permission_id " + "WHERE up.user_id = ? " + "UNION "
-				+ "SELECT p.permission_key " + "FROM permissions p "
-				+ "WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND u.role_id = 1)";
+		String checkAdminSql = "SELECT role_id FROM users WHERE id = ?";
 		try {
-			List<String> permissionsList = jdbcTemplate.queryForList(sql, String.class, userId, userId);
-			return new HashSet<>(permissionsList);
+			Integer roleId = jdbcTemplate.queryForObject(checkAdminSql, Integer.class, userId);
+
+			if (roleId != null && roleId == 1) {
+				// User is an admin, grant all permissions
+				logger.debug("User ID {} has ADMIN role. Granting all permissions.", userId);
+				String allPermissionsSql = "SELECT permission_key FROM permissions";
+				return new HashSet<>(jdbcTemplate.queryForList(allPermissionsSql, String.class));
+			} else {
+				// User is not an admin, grant only their specific permissions
+				logger.debug("User ID {} is a standard user. Granting specific permissions.", userId);
+				String userPermissionsSql = "SELECT p.permission_key FROM permissions p JOIN user_permissions up ON p.id = up.permission_id WHERE up.user_id = ?";
+				return new HashSet<>(jdbcTemplate.queryForList(userPermissionsSql, String.class, userId));
+			}
 		} catch (Exception e) {
 			logger.error("Could not fetch permissions for user ID: {}", userId, e);
 			return new HashSet<>();

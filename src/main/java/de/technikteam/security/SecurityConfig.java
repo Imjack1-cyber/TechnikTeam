@@ -36,11 +36,10 @@ public class SecurityConfig {
 		requestHandler.setCsrfRequestAttributeName(null);
 
 		http.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-				.csrfTokenRequestHandler(requestHandler).ignoringRequestMatchers("/api/v1/auth/login") // ADD THIS LINE
-		).authorizeHttpRequests(auth -> auth
-				.requestMatchers("/api/v1/auth/login", "/api/v1/public/calendar.ics", "/api/v1/public/files/avatars/**",
-						"/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
-				.permitAll().anyRequest().authenticated())
+				.csrfTokenRequestHandler(requestHandler).ignoringRequestMatchers("/api/v1/auth/login"))
+				.authorizeHttpRequests(auth -> auth.requestMatchers("/api/v1/auth/login", "/api/v1/public/calendar.ics",
+						"/api/v1/public/files/avatars/**", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
+						.permitAll().anyRequest().authenticated())
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
 				.headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin())
