@@ -95,36 +95,22 @@ public class UserDAO {
 	}
 
 	public Set<String> getPermissionsForUser(int userId) {
-		// Check if user is an admin (role_id = 1)
-		String checkAdminSql = "SELECT COUNT(*) FROM users WHERE id = ? AND role_id = 1";
-		Integer adminCount = 0;
+		// This query handles both admins and regular users correctly.
+		// 1. It gets all individually assigned permissions for the user.
+		// 2. It UNIONs this with ALL permissions from the permissions table, but ONLY
+		// IF the user has role_id = 1 (admin).
+		// For non-admins, the second part of the UNION is empty. For admins, it grants
+		// all possible permissions.
+		String sql = "SELECT p.permission_key " + "FROM permissions p "
+				+ "JOIN user_permissions up ON p.id = up.permission_id " + "WHERE up.user_id = ? " + "UNION "
+				+ "SELECT p.permission_key " + "FROM permissions p "
+				+ "WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND u.role_id = 1)";
 		try {
-			adminCount = jdbcTemplate.queryForObject(checkAdminSql, Integer.class, userId);
+			List<String> permissionsList = jdbcTemplate.queryForList(sql, String.class, userId, userId);
+			return new HashSet<>(permissionsList);
 		} catch (Exception e) {
-			logger.error("Could not check admin status for user ID: {}", userId, e);
-			return new HashSet<>(); // Return empty set on error
-		}
-
-		if (adminCount != null && adminCount > 0) {
-			// User is an admin, grant all permissions
-			logger.debug("User ID {} is an admin. Granting all permissions.", userId);
-			String allPermissionsSql = "SELECT permission_key FROM permissions";
-			try {
-				return new HashSet<>(jdbcTemplate.queryForList(allPermissionsSql, String.class));
-			} catch (Exception e) {
-				logger.error("Could not fetch all permissions for admin user ID: {}", userId, e);
-				return new HashSet<>();
-			}
-		} else {
-			// User is not an admin, grant only their specific permissions
-			String userPermissionsSql = "SELECT p.permission_key FROM permissions p JOIN user_permissions up ON p.id = up.permission_id WHERE up.user_id = ?";
-			try {
-				List<String> permissionsList = jdbcTemplate.queryForList(userPermissionsSql, String.class, userId);
-				return new HashSet<>(permissionsList);
-			} catch (Exception e) {
-				logger.error("Could not fetch permissions for user ID: {}", userId, e);
-				return new HashSet<>();
-			}
+			logger.error("Could not fetch permissions for user ID: {}", userId, e);
+			return new HashSet<>();
 		}
 	}
 

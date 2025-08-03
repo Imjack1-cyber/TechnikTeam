@@ -1,14 +1,18 @@
 package de.technikteam.api.v1.auth;
 
 import de.technikteam.model.ApiResponse;
+import de.technikteam.model.NavigationItem;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AuthService;
 import de.technikteam.service.LoginAttemptService;
 import de.technikteam.dao.UserDAO;
+import de.technikteam.util.NavigationRegistry;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -17,9 +21,15 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -66,6 +76,16 @@ public class AuthResource {
 			return new ResponseEntity<>(new ApiResponse(false, "Falscher Benutzername oder Passwort.", null),
 					HttpStatus.UNAUTHORIZED);
 		}
+	}
+
+	@GetMapping("/me")
+	@Operation(summary = "Get current user session", description = "Retrieves the user object and navigation items for the currently authenticated user.", security = @SecurityRequirement(name = "bearerAuth"))
+	@PreAuthorize("isAuthenticated()")
+	public ResponseEntity<ApiResponse> getCurrentUser(@AuthenticationPrincipal SecurityUser securityUser) {
+		User authenticatedUser = securityUser.getUser();
+		List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(authenticatedUser);
+		Map<String, Object> responseData = Map.of("user", authenticatedUser, "navigation", navigationItems);
+		return ResponseEntity.ok(new ApiResponse(true, "Current user session retrieved.", responseData));
 	}
 
 	@PostMapping("/logout")

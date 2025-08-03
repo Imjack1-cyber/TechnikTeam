@@ -13,7 +13,7 @@ const apiClient = {
 
 	async fetchCsrfToken() {
 		try {
-			await this.get('/users/me');
+			await this.get('/auth/me');
 		} catch (error) {
 			console.warn("Could not pre-fetch CSRF token. It will be fetched on the first state-changing request.", error);
 		}

@@ -49,7 +49,7 @@ export const useAuthStore = create(
 			},
 			fetchUserSession: async () => {
 				try {
-					const result = await apiClient.get('/users/me');
+					const result = await apiClient.get('/auth/me');
 
 					if (result.success && result.data.user && result.data.navigation) {
 						const user = result.data.user;

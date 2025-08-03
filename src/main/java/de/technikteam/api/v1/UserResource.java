@@ -5,13 +5,11 @@ import de.technikteam.api.v1.dto.UserUpdateRequest;
 import de.technikteam.config.Permissions;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
-import de.technikteam.model.NavigationItem;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.LoginAttemptService;
 import de.technikteam.service.UserService;
-import de.technikteam.util.NavigationRegistry;
 import de.technikteam.util.PasswordPolicyValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -46,16 +44,6 @@ public class UserResource {
 		this.userDAO = userDAO;
 		this.adminLogService = adminLogService;
 		this.loginAttemptService = loginAttemptService;
-	}
-
-	@GetMapping("/me")
-	@Operation(summary = "Get current user session", description = "Retrieves the user object and navigation items for the currently authenticated user.", security = @SecurityRequirement(name = "bearerAuth"))
-	@PreAuthorize("isAuthenticated()")
-	public ResponseEntity<ApiResponse> getCurrentUser(@AuthenticationPrincipal SecurityUser securityUser) {
-		User authenticatedUser = securityUser.getUser();
-		List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(authenticatedUser);
-		Map<String, Object> responseData = Map.of("user", authenticatedUser, "navigation", navigationItems);
-		return ResponseEntity.ok(new ApiResponse(true, "Current user session retrieved.", responseData));
 	}
 
 	@GetMapping
