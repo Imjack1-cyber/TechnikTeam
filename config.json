@@ -30,7 +30,8 @@
                                 ".txt",
                                 ".html",
                                 ".md",
-                                ".xml"
+                                ".xml",
+                                ".sql"
                             ],
     "ExtensionFilterMode":  "include"
 }

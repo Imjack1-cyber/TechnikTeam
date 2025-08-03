@@ -65,12 +65,11 @@ public class AuthService {
 	}
 
 	public void clearJwtCookie(HttpServletResponse response) {
-		Cookie cookie = new Cookie(AUTH_COOKIE_NAME, null);
-		cookie.setHttpOnly(true);
-		cookie.setSecure(true);
-		cookie.setPath("/");
-		cookie.setMaxAge(0); // Expire immediately
-		response.addCookie(cookie);
+		// Construct a Set-Cookie header that expires the cookie immediately.
+		// It's crucial to include the same attributes (Path, Secure, SameSite) as the
+		// original cookie to ensure the browser overwrites it correctly.
+		String header = String.format("%s=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict", AUTH_COOKIE_NAME);
+		response.addHeader(HttpHeaders.SET_COOKIE, header);
 	}
 
 	public UserDetails validateTokenAndGetUser(String token) {

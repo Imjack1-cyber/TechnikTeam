@@ -30,9 +30,11 @@ public class SecurityConfig {
 
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-		http.csrf(AbstractHttpConfigurer::disable) // Disable CSRF protection
-				.authorizeHttpRequests(auth -> auth.requestMatchers("/api/v1/auth/login", "/api/v1/public/calendar.ics",
-						"/api/v1/public/files/avatars/**", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
+		http.csrf(AbstractHttpConfigurer::disable) // Disable CSRF protection entirely for a stateless API
+				.authorizeHttpRequests(auth -> auth
+						.requestMatchers("/api/v1/auth/login", "/api/v1/public/calendar.ics",
+								"/api/v1/public/files/avatars/**", "/swagger-ui.html", "/swagger-ui/**",
+								"/v3/api-docs/**")
 						.permitAll().anyRequest().authenticated())
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

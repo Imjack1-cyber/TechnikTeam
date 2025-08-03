@@ -2,7 +2,6 @@
 
 const BASE_URL = '/api/v1';
 
-let csrfToken = '';
 let onUnauthorizedCallback = () => { }; // Placeholder for the logout function
 
 const apiClient = {
@@ -11,16 +10,10 @@ const apiClient = {
 		onUnauthorizedCallback = callbacks.onUnauthorized;
 	},
 
-	async fetchCsrfToken() {
-		try {
-			await this.get('/auth/me');
-		} catch (error) {
-			console.warn("Could not pre-fetch CSRF token. It will be fetched on the first state-changing request.", error);
-		}
-	},
+	// CSRF token fetching is no longer needed as CSRF is disabled on the backend.
+	// async fetchCsrfToken() { ... }
 
 	request: async function(endpoint, options = {}) {
-		// REMOVED: const { logout } = useAuthStore.getState();
 		const headers = {
 			'Content-Type': 'application/json',
 			...options.headers,
@@ -30,18 +23,7 @@ const apiClient = {
 			delete headers['Content-Type'];
 		}
 
-		const method = options.method || 'GET';
-		if (['POST', 'PUT', 'DELETE'].includes(method.toUpperCase())) {
-			const match = document.cookie.match(new RegExp('(^| )' + 'XSRF-TOKEN' + '=([^;]+)'));
-			if (match) {
-				csrfToken = match[2];
-			}
-			if (csrfToken) {
-				headers['X-XSRF-TOKEN'] = csrfToken;
-			} else {
-				console.warn('CSRF token not found. State-changing requests may fail.');
-			}
-		}
+		// The logic for adding the X-XSRF-TOKEN header is no longer necessary.
 
 		try {
 			const response = await fetch(`${BASE_URL}${endpoint}`, {
