@@ -15,15 +15,7 @@ const Header = ({ onNavToggle }) => {
 			<Link to="/home" className="mobile-logo">TechnikTeam</Link>
 			<div className="mobile-header-right">
 				<Link to="/profil">
-					{user?.profilePicturePath ? (
-						<img
-							src={`/api/v1/public/files/avatars/user/${user.id}`}
-							alt="Avatar"
-							style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }}
-						/>
-					) : (
-						<i className="fas fa-user-circle" style={{ fontSize: '1.5rem', color: 'var(--text-color)' }}></i>
-					)}
+					<i className={`fas ${user?.profileIconClass || 'fa-user-circle'}`} style={{ fontSize: '1.5rem', color: 'var(--text-color)' }}></i>
 				</Link>
 			</div>
 		</header>

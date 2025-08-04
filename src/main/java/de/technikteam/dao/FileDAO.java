@@ -59,7 +59,10 @@ public class FileDAO {
 	public List<File> getAllFiles(User user) {
 		StringBuilder sql = new StringBuilder(
 				"SELECT f.*, fc.name as category_name FROM files f LEFT JOIN file_categories fc ON f.category_id = fc.id ");
-		if (!user.hasAdminAccess()) {
+		// If user is null or not admin, only show public files.
+		// In the "no verification" model, user will be null for admin endpoints.
+		// We assume an admin context and show all files.
+		if (user != null && !user.hasAdminAccess()) {
 			sql.append("WHERE f.required_role = 'NUTZER' ");
 		}
 		sql.append("ORDER BY fc.name, f.filename");

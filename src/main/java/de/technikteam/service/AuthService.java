@@ -6,7 +6,6 @@ import de.technikteam.security.SecurityUser;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -66,8 +65,9 @@ public class AuthService {
 
 	public void clearJwtCookie(HttpServletResponse response) {
 		// Construct a Set-Cookie header that expires the cookie immediately.
-		// It's crucial to include the same attributes (Path, Secure, SameSite) as the
-		// original cookie to ensure the browser overwrites it correctly.
+		// It's crucial to include the same attributes (Path, HttpOnly, Secure,
+		// SameSite) as
+		// the original cookie to ensure the browser overwrites it correctly.
 		String header = String.format("%s=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict", AUTH_COOKIE_NAME);
 		response.addHeader(HttpHeaders.SET_COOKIE, header);
 	}

@@ -9,7 +9,8 @@ const initializeApp = async () => {
 	// Inject the logout function into the apiClient
 	apiClient.setup({ onUnauthorized: useAuthStore.getState().logout });
 
-	// Pre-fetching CSRF token is no longer necessary.
+	// Pre-fetching CSRF token is no longer necessary as CSRF is disabled.
+	// await apiClient.fetchCsrfToken();
 
 	const { user, fetchUserSession } = useAuthStore.getState();
 	if (!user) {

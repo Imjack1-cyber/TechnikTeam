@@ -8,5 +8,7 @@ public record ProfileChangeRequestDTO(
 
 		@Schema(description = "The user's new class year.") Integer classYear,
 
-		@Schema(description = "The user's new class name.") String className) {
+		@Schema(description = "The user's new class name.") String className,
+
+		@Schema(description = "The user's new profile icon class (e.g., 'fa-user-ninja').") String profileIconClass) {
 }

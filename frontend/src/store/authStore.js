@@ -2,6 +2,17 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import apiClient from '../services/apiClient';
 
+const hasAdminAccess = (permissions) => {
+	if (!permissions || permissions.length === 0) {
+		return false;
+	}
+	if (permissions.includes('ACCESS_ADMIN_PANEL')) {
+		return true;
+	}
+	const adminPermissions = ['_CREATE', '_UPDATE', '_DELETE', '_MANAGE', 'LOG_READ', 'REPORT_READ', 'SYSTEM_READ', 'QUALIFICATION_UPDATE'];
+	return permissions.some(p => adminPermissions.some(ap => p.includes(ap)));
+};
+
 export const useAuthStore = create(
 	persist(
 		(set, get) => ({
@@ -47,7 +58,7 @@ export const useAuthStore = create(
 							user: user,
 							navigationItems: result.data.navigation,
 							isAuthenticated: true,
-							isAdmin: user.roleName === 'ADMIN',
+							isAdmin: hasAdminAccess(user.permissions || []),
 							theme: newTheme,
 						});
 						document.documentElement.setAttribute('data-theme', newTheme);

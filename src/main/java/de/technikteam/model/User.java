@@ -16,7 +16,7 @@ public class User {
 	private String email;
 	private String chatColor;
 	private String theme;
-	private String profilePicturePath;
+	private String profileIconClass;
 
 	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String passwordHash;
@@ -123,12 +123,12 @@ public class User {
 		this.theme = theme;
 	}
 
-	public String getProfilePicturePath() {
-		return profilePicturePath;
+	public String getProfileIconClass() {
+		return profileIconClass;
 	}
 
-	public void setProfilePicturePath(String profilePicturePath) {
-		this.profilePicturePath = profilePicturePath;
+	public void setProfileIconClass(String profileIconClass) {
+		this.profileIconClass = profileIconClass;
 	}
 
 	public String getPasswordHash() {

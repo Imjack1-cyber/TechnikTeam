@@ -6,12 +6,10 @@ import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,7 +18,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/storage")
 @Tag(name = "Admin Storage", description = "Endpoints for managing inventory items.")
-@SecurityRequirement(name = "bearerAuth")
 public class StorageResource {
 
 	private final StorageDAO storageDAO;
@@ -32,6 +29,13 @@ public class StorageResource {
 		this.adminLogService = adminLogService;
 	}
 
+	private User getSystemUser() {
+		User user = new User();
+		user.setId(0);
+		user.setUsername("SYSTEM");
+		return user;
+	}
+
 	@GetMapping
 	@Operation(summary = "Get all storage items")
 	public ResponseEntity<ApiResponse> getAllItems() {
@@ -41,10 +45,9 @@ public class StorageResource {
 
 	@PostMapping
 	@Operation(summary = "Create a new storage item")
-	public ResponseEntity<ApiResponse> createItem(@RequestBody StorageItem item,
-			@AuthenticationPrincipal User adminUser) {
+	public ResponseEntity<ApiResponse> createItem(@RequestBody StorageItem item) {
 		if (storageDAO.createItem(item)) {
-			adminLogService.log(adminUser.getUsername(), "CREATE_STORAGE_ITEM_API",
+			adminLogService.log(getSystemUser().getUsername(), "CREATE_STORAGE_ITEM_API",
 					"Item '" + item.getName() + "' created.");
 			return new ResponseEntity<>(new ApiResponse(true, "Artikel erfolgreich erstellt.", item),
 					HttpStatus.CREATED);
@@ -54,11 +57,10 @@ public class StorageResource {
 
 	@PutMapping("/{id}")
 	@Operation(summary = "Update a storage item")
-	public ResponseEntity<ApiResponse> updateItem(@PathVariable int id, @RequestBody StorageItem item,
-			@AuthenticationPrincipal User adminUser) {
+	public ResponseEntity<ApiResponse> updateItem(@PathVariable int id, @RequestBody StorageItem item) {
 		item.setId(id);
 		if (storageDAO.updateItem(item)) {
-			adminLogService.log(adminUser.getUsername(), "UPDATE_STORAGE_ITEM_API",
+			adminLogService.log(getSystemUser().getUsername(), "UPDATE_STORAGE_ITEM_API",
 					"Item '" + item.getName() + "' updated.");
 			return ResponseEntity.ok(new ApiResponse(true, "Artikel erfolgreich aktualisiert.", item));
 		}
@@ -68,10 +70,10 @@ public class StorageResource {
 
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete a storage item")
-	public ResponseEntity<ApiResponse> deleteItem(@PathVariable int id, @AuthenticationPrincipal User adminUser) {
+	public ResponseEntity<ApiResponse> deleteItem(@PathVariable int id) {
 		StorageItem item = storageDAO.getItemById(id);
 		if (item != null && storageDAO.deleteItem(id)) {
-			adminLogService.log(adminUser.getUsername(), "DELETE_STORAGE_ITEM_API",
+			adminLogService.log(getSystemUser().getUsername(), "DELETE_STORAGE_ITEM_API",
 					"Item '" + item.getName() + "' deleted.");
 			return ResponseEntity.ok(new ApiResponse(true, "Artikel erfolgreich gelöscht.", Map.of("deletedId", id)));
 		}

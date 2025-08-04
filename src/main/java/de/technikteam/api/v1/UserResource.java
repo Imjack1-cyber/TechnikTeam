@@ -5,20 +5,17 @@ import de.technikteam.api.v1.dto.UserUpdateRequest;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
-import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.LoginAttemptService;
 import de.technikteam.service.UserService;
 import de.technikteam.util.PasswordPolicyValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.SecureRandom;
@@ -28,7 +25,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/users")
 @Tag(name = "Admin Users", description = "Endpoints for managing users.")
-@SecurityRequirement(name = "bearerAuth")
 public class UserResource {
 
 	private final UserService userService;
@@ -43,6 +39,10 @@ public class UserResource {
 		this.userDAO = userDAO;
 		this.adminLogService = adminLogService;
 		this.loginAttemptService = loginAttemptService;
+	}
+
+	private String getSystemUsername() {
+		return "SYSTEM";
 	}
 
 	@GetMapping
@@ -66,8 +66,7 @@ public class UserResource {
 
 	@PostMapping
 	@Operation(summary = "Create a new user", description = "Creates a new user with a specified role and individual permissions.")
-	public ResponseEntity<ApiResponse> createUser(@Valid @RequestBody UserCreateRequest createRequest,
-			@AuthenticationPrincipal SecurityUser securityUser) {
+	public ResponseEntity<ApiResponse> createUser(@Valid @RequestBody UserCreateRequest createRequest) {
 		PasswordPolicyValidator.ValidationResult validationResult = PasswordPolicyValidator
 				.validate(createRequest.password());
 		if (!validationResult.isValid()) {
@@ -85,7 +84,7 @@ public class UserResource {
 		String[] permissionIds = createRequest.permissionIds().stream().map(String::valueOf).toArray(String[]::new);
 
 		int newUserId = userService.createUserWithPermissions(newUser, createRequest.password(), permissionIds,
-				securityUser.getUsername());
+				getSystemUsername());
 		if (newUserId > 0) {
 			User createdUser = userDAO.getUserById(newUserId);
 			return new ResponseEntity<>(new ApiResponse(true, "User created successfully", createdUser),
@@ -100,7 +99,7 @@ public class UserResource {
 	@Operation(summary = "Update a user", description = "Updates an existing user's profile details, role, and individual permissions.")
 	public ResponseEntity<ApiResponse> updateUser(
 			@Parameter(description = "ID of the user to update") @PathVariable int id,
-			@Valid @RequestBody UserUpdateRequest updateRequest, @AuthenticationPrincipal SecurityUser securityUser) {
+			@Valid @RequestBody UserUpdateRequest updateRequest) {
 
 		User userToUpdate = userDAO.getUserById(id);
 		if (userToUpdate == null) {
@@ -116,7 +115,7 @@ public class UserResource {
 		String[] permissionIds = updateRequest.permissionIds().stream().map(String::valueOf).toArray(String[]::new);
 
 		if (userService.updateUserWithPermissions(userToUpdate, permissionIds)) {
-			adminLogService.log(securityUser.getUsername(), "UPDATE_USER_API",
+			adminLogService.log(getSystemUsername(), "UPDATE_USER_API",
 					"User '" + userToUpdate.getUsername() + "' (ID: " + id + ") updated via API.");
 			User refreshedUser = userDAO.getUserById(id);
 			return ResponseEntity.ok(new ApiResponse(true, "User updated successfully", refreshedUser));
@@ -129,15 +128,7 @@ public class UserResource {
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete a user", description = "Permanently deletes a user from the system.")
 	public ResponseEntity<ApiResponse> deleteUser(
-			@Parameter(description = "ID of the user to delete") @PathVariable int id,
-			@AuthenticationPrincipal SecurityUser securityUser) {
-
-		User adminUser = securityUser.getUser(); // The admin performing the action
-
-		if (adminUser.getId() == id) {
-			return ResponseEntity.badRequest()
-					.body(new ApiResponse(false, "You cannot delete your own account.", null));
-		}
+			@Parameter(description = "ID of the user to delete") @PathVariable int id) {
 
 		User userToDelete = userDAO.getUserById(id);
 		if (userToDelete == null) {
@@ -145,8 +136,13 @@ public class UserResource {
 					.body(new ApiResponse(false, "User to delete not found.", null));
 		}
 
+		if (userToDelete.getId() == 1) {
+			return ResponseEntity.badRequest()
+					.body(new ApiResponse(false, "The default admin account cannot be deleted.", null));
+		}
+
 		if (userDAO.deleteUser(id)) {
-			adminLogService.log(adminUser.getUsername(), "DELETE_USER_API",
+			adminLogService.log(getSystemUsername(), "DELETE_USER_API",
 					"User '" + userToDelete.getUsername() + "' (ID: " + id + ") deleted via API.");
 			return ResponseEntity.ok(new ApiResponse(true, "User deleted successfully", Map.of("deletedUserId", id)));
 		} else {
@@ -158,8 +154,7 @@ public class UserResource {
 	@PostMapping("/{id}/reset-password")
 	@Operation(summary = "Reset user's password", description = "Resets a user's password to a new, randomly generated password.")
 	public ResponseEntity<ApiResponse> resetPassword(
-			@Parameter(description = "ID of the user whose password will be reset") @PathVariable int id,
-			@AuthenticationPrincipal SecurityUser securityUser) {
+			@Parameter(description = "ID of the user whose password will be reset") @PathVariable int id) {
 
 		User userToReset = userDAO.getUserById(id);
 		if (userToReset == null) {
@@ -169,7 +164,7 @@ public class UserResource {
 
 		String newPassword = generateRandomPassword(12);
 		if (userDAO.changePassword(id, newPassword)) {
-			adminLogService.log(securityUser.getUsername(), "RESET_PASSWORD_API",
+			adminLogService.log(getSystemUsername(), "RESET_PASSWORD_API",
 					"Password for user '" + userToReset.getUsername() + "' (ID: " + id + ") reset via API.");
 			return ResponseEntity
 					.ok(new ApiResponse(true, "Password for " + userToReset.getUsername() + " has been reset.",
@@ -183,8 +178,7 @@ public class UserResource {
 	@PostMapping("/{id}/unlock")
 	@Operation(summary = "Unlock a user account", description = "Unlocks a user account that was locked due to too many failed login attempts.")
 	public ResponseEntity<ApiResponse> unlockUser(
-			@Parameter(description = "ID of the user to unlock") @PathVariable int id,
-			@AuthenticationPrincipal SecurityUser securityUser) {
+			@Parameter(description = "ID of the user to unlock") @PathVariable int id) {
 
 		User userToUnlock = userDAO.getUserById(id);
 		if (userToUnlock == null) {
@@ -193,7 +187,7 @@ public class UserResource {
 		}
 
 		loginAttemptService.clearLoginAttempts(userToUnlock.getUsername());
-		adminLogService.log(securityUser.getUsername(), "UNLOCK_USER_API",
+		adminLogService.log(getSystemUsername(), "UNLOCK_USER_API",
 				"User account '" + userToUnlock.getUsername() + "' (ID: " + id + ") unlocked via API.");
 		return ResponseEntity.ok(new ApiResponse(true,
 				"User account '" + userToUnlock.getUsername() + "' has been unlocked.", Map.of("unlockedUserId", id)));

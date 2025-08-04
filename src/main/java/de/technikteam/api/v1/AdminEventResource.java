@@ -5,7 +5,6 @@ import de.technikteam.dao.EventDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Event;
 import de.technikteam.model.User;
-import de.technikteam.security.SecurityUser;
 import de.technikteam.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -13,7 +12,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -35,6 +33,13 @@ public class AdminEventResource {
 		this.eventService = eventService;
 	}
 
+	private User getSystemUser() {
+		User user = new User();
+		user.setId(1); // Default system user ID
+		user.setUsername("SYSTEM");
+		return user;
+	}
+
 	@GetMapping
 	@Operation(summary = "Get all events", description = "Retrieves a list of all events in the system, sorted by date.")
 	public ResponseEntity<ApiResponse> getAllEvents() {
@@ -45,10 +50,9 @@ public class AdminEventResource {
 	@PostMapping
 	@Operation(summary = "Create a new event", description = "Creates a new event with attachments, skill requirements, and item reservations.")
 	public ResponseEntity<ApiResponse> createEvent(@RequestPart("eventData") EventUpdateRequest eventData,
-			@RequestPart(value = "file", required = false) MultipartFile file,
-			@AuthenticationPrincipal SecurityUser securityUser) {
+			@RequestPart(value = "file", required = false) MultipartFile file) {
 		try {
-			User adminUser = securityUser.getUser();
+			User adminUser = getSystemUser();
 			Event event = new Event();
 			mapDtoToEvent(eventData, event);
 
@@ -70,10 +74,9 @@ public class AdminEventResource {
 	@Operation(summary = "Update an event", description = "Updates an existing event with attachments, skill requirements, and item reservations.")
 	public ResponseEntity<ApiResponse> updateEvent(@PathVariable int id,
 			@RequestPart("eventData") EventUpdateRequest eventData,
-			@RequestPart(value = "file", required = false) MultipartFile file,
-			@AuthenticationPrincipal SecurityUser securityUser) {
+			@RequestPart(value = "file", required = false) MultipartFile file) {
 		try {
-			User adminUser = securityUser.getUser();
+			User adminUser = getSystemUser();
 			Event event = eventDAO.getEventById(id);
 			if (event == null) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND)

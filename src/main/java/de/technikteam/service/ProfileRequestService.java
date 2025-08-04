@@ -9,7 +9,10 @@ import de.technikteam.model.ProfileChangeRequest;
 import de.technikteam.model.User;
 import de.technikteam.util.FileSignatureValidator;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,6 +30,7 @@ import java.util.UUID;
 
 @Service
 public class ProfileRequestService {
+	private static final Logger logger = LogManager.getLogger(ProfileRequestService.class);
 
 	private final ProfileChangeRequestDAO requestDAO;
 	private final UserDAO userDAO;
@@ -104,7 +108,8 @@ public class ProfileRequestService {
 			String value = entry.getValue();
 			switch (field) {
 			case "email":
-				userToUpdate.setEmail(value);
+				// Prevent unique constraint violation for empty strings
+				userToUpdate.setEmail("".equals(value) ? null : value);
 				break;
 			case "classYear":
 				userToUpdate.setClassYear(Integer.parseInt(value));
@@ -113,22 +118,35 @@ public class ProfileRequestService {
 				userToUpdate.setClassName(value);
 				break;
 			case "profilePicturePath":
-				String permanentPath = makeProfilePicturePermanent(value, userToUpdate.getProfilePicturePath());
-				userToUpdate.setProfilePicturePath(permanentPath);
+				try {
+					String permanentPath = makeProfilePicturePermanent(value, userToUpdate.getProfilePicturePath());
+					userToUpdate.setProfilePicturePath(permanentPath);
+				} catch (IOException e) {
+					logger.error(
+							"Could not move temporary profile picture '{}'. Skipping file update but applying other changes.",
+							value, e);
+					// Do not re-throw; allow other changes to be saved.
+				}
 				break;
 			}
 		}
+		try {
+			if (userDAO.updateUser(userToUpdate)
+					&& requestDAO.updateRequestStatus(requestId, "APPROVED", adminUser.getId())) {
+				adminLogService.log(adminUser.getUsername(), "PROFILE_CHANGE_APPROVED_API", "Profile change for '"
+						+ userToUpdate.getUsername() + "' (Request ID: " + requestId + ") approved via API.");
 
-		if (userDAO.updateUser(userToUpdate)
-				&& requestDAO.updateRequestStatus(requestId, "APPROVED", adminUser.getId())) {
-			adminLogService.log(adminUser.getUsername(), "PROFILE_CHANGE_APPROVED_API", "Profile change for '"
-					+ userToUpdate.getUsername() + "' (Request ID: " + requestId + ") approved via API.");
+				String notificationMessage = "Your profile change has been approved.";
+				Map<String, Object> payload = Map.of("type", "alert", "payload",
+						Map.of("message", notificationMessage));
+				notificationService.sendNotificationToUser(userToUpdate.getId(), payload);
 
-			String notificationMessage = "Your profile change has been approved.";
-			Map<String, Object> payload = Map.of("type", "alert", "payload", Map.of("message", notificationMessage));
-			notificationService.sendNotificationToUser(userToUpdate.getId(), payload);
-
-			return true;
+				return true;
+			}
+		} catch (DuplicateKeyException e) {
+			logger.warn("Failed to approve request {}: {}", requestId, e.getMessage());
+			throw new IllegalStateException(
+					"Die Genehmigung ist fehlgeschlagen, da die angeforderte E-Mail-Adresse bereits von einem anderen Konto verwendet wird.");
 		}
 		return false;
 	}

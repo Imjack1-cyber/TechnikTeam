@@ -1,19 +1,13 @@
 package de.technikteam.api.v1.public_api;
 
-import de.technikteam.dao.AttachmentDAO;
-import de.technikteam.dao.EventDAO;
-import de.technikteam.dao.FileDAO;
-import de.technikteam.dao.MeetingDAO;
-import de.technikteam.dao.UserDAO;
+import de.technikteam.dao.*;
 import de.technikteam.model.Attachment;
 import de.technikteam.model.User;
-import de.technikteam.security.SecurityUser;
 import de.technikteam.service.ConfigurationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -23,7 +17,6 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -44,17 +37,15 @@ public class PublicFileStreamResource {
 	private static final Logger logger = LogManager.getLogger(PublicFileStreamResource.class);
 
 	private final FileDAO fileDAO;
-	private final UserDAO userDAO;
 	private final AttachmentDAO attachmentDAO;
 	private final EventDAO eventDAO;
 	private final MeetingDAO meetingDAO;
 	private final Path fileStorageLocation;
 
 	@Autowired
-	public PublicFileStreamResource(FileDAO fileDAO, UserDAO userDAO, AttachmentDAO attachmentDAO, EventDAO eventDAO,
+	public PublicFileStreamResource(FileDAO fileDAO, AttachmentDAO attachmentDAO, EventDAO eventDAO,
 			MeetingDAO meetingDAO, ConfigurationService configService) {
 		this.fileDAO = fileDAO;
-		this.userDAO = userDAO;
 		this.attachmentDAO = attachmentDAO;
 		this.eventDAO = eventDAO;
 		this.meetingDAO = meetingDAO;
@@ -63,70 +54,37 @@ public class PublicFileStreamResource {
 	}
 
 	@GetMapping("/download/{id}")
-	@Operation(summary = "Download a file", description = "Downloads a file (general or attachment) by its database ID after checking permissions.", security = @SecurityRequirement(name = "bearerAuth"))
+	@Operation(summary = "Download a file", description = "Downloads a file (general or attachment) by its database ID after checking permissions.")
 	@ApiResponse(responseCode = "200", description = "File content", content = @Content(mediaType = "application/octet-stream"))
 	public ResponseEntity<Resource> downloadFile(
-			@Parameter(description = "ID of the file or attachment record") @PathVariable int id,
-			@AuthenticationPrincipal SecurityUser securityUser) {
-		User user = securityUser.getUser();
+			@Parameter(description = "ID of the file or attachment record") @PathVariable int id) {
 		String filePathFromDb = null;
 		String filenameForDownload = null;
-		boolean isAuthorized = false;
 
 		Attachment attachment = attachmentDAO.getAttachmentById(id);
 		if (attachment != null) {
 			filePathFromDb = attachment.getFilepath();
 			filenameForDownload = attachment.getFilename();
-			isAuthorized = isUserAuthorizedForAttachment(user, attachment);
 		} else {
 			de.technikteam.model.File dbFile = fileDAO.getFileById(id);
 			if (dbFile != null) {
 				filePathFromDb = dbFile.getFilepath();
 				filenameForDownload = dbFile.getFilename();
-				isAuthorized = "NUTZER".equalsIgnoreCase(dbFile.getRequiredRole()) || user.hasAdminAccess();
 			}
 		}
 
 		if (filePathFromDb == null)
 			return ResponseEntity.notFound().build();
-		if (!isAuthorized)
-			return ResponseEntity.status(403).build();
 
 		return serveFile(filePathFromDb, filenameForDownload, false);
 	}
 
 	@GetMapping("/images/{filename:.+}")
-	@Operation(summary = "Get an inventory image", description = "Retrieves an inventory image for display. The filename usually corresponds to a storage item's image path.", security = @SecurityRequirement(name = "bearerAuth"))
+	@Operation(summary = "Get an inventory image", description = "Retrieves an inventory image for display. The filename usually corresponds to a storage item's image path.")
 	@ApiResponse(responseCode = "200", description = "Image content", content = @Content(mediaType = "image/*"))
 	public ResponseEntity<Resource> getImage(
 			@Parameter(description = "The filename of the image") @PathVariable String filename) {
 		return serveFile("images/" + filename, filename, true);
-	}
-
-	@GetMapping("/avatars/user/{userId}")
-	@Operation(summary = "Get a user avatar", description = "Retrieves a user's profile picture for display. This endpoint is secured and requires authentication.")
-	@ApiResponse(responseCode = "200", description = "Image content", content = @Content(mediaType = "image/*"))
-	@SecurityRequirement(name = "bearerAuth")
-	public ResponseEntity<Resource> getAvatar(
-			@Parameter(description = "The ID of the user whose avatar is requested") @PathVariable int userId) {
-		User user = userDAO.getUserById(userId);
-		if (user == null || user.getProfilePicturePath() == null || user.getProfilePicturePath().isBlank()) {
-			return ResponseEntity.notFound().build();
-		}
-		return serveFile("avatars/" + user.getProfilePicturePath(), user.getProfilePicturePath(), true);
-	}
-
-	private boolean isUserAuthorizedForAttachment(User user, Attachment attachment) {
-		if (user.hasAdminAccess())
-			return true;
-		if ("NUTZER".equalsIgnoreCase(attachment.getRequiredRole())) {
-			if ("EVENT".equals(attachment.getParentType())) {
-				return eventDAO.isUserAssociatedWithEvent(attachment.getParentId(), user.getId());
-			} else if ("MEETING".equals(attachment.getParentType())) {
-				return meetingDAO.isUserAssociatedWithMeeting(attachment.getParentId(), user.getId());
-			}
-		}
-		return false;
 	}
 
 	private ResponseEntity<Resource> serveFile(String relativePath, String originalFilename, boolean inline) {
