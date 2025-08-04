@@ -1,16 +1,13 @@
-// REMOVED: import { useAuthStore } from '../store/authStore';
-
 const BASE_URL = '/api/v1';
 
 let onUnauthorizedCallback = () => { }; // Placeholder for the logout function
 
 const apiClient = {
-	// New function to inject the logout handler from the auth store
 	setup: function(callbacks) {
 		onUnauthorizedCallback = callbacks.onUnauthorized;
 	},
 
-	// CSRF token fetching is no longer needed as CSRF is disabled on the backend.
+	// This function is no longer needed for pre-fetching but the logic within request is still valid.
 	// async fetchCsrfToken() { ... }
 
 	request: async function(endpoint, options = {}) {
@@ -23,7 +20,16 @@ const apiClient = {
 			delete headers['Content-Type'];
 		}
 
-		// The logic for adding the X-XSRF-TOKEN header is no longer necessary.
+		const method = options.method || 'GET';
+		if (['POST', 'PUT', 'DELETE'].includes(method.toUpperCase())) {
+			// Restore CSRF token handling
+			const match = document.cookie.match(new RegExp('(^| )' + 'XSRF-TOKEN' + '=([^;]+)'));
+			if (match) {
+				headers['X-XSRF-TOKEN'] = match[2];
+			} else {
+				console.warn('CSRF token not found. State-changing requests may fail.');
+			}
+		}
 
 		try {
 			const response = await fetch(`${BASE_URL}${endpoint}`, {
@@ -33,7 +39,7 @@ const apiClient = {
 			});
 
 			if (response.status === 401) {
-				onUnauthorizedCallback(); // Use the injected callback
+				onUnauthorizedCallback();
 				throw new Error('Nicht autorisiert. Ihre Sitzung ist möglicherweise abgelaufen.');
 			}
 			if (response.status === 403) {

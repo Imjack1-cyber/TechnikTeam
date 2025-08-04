@@ -103,6 +103,7 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 		setError('');
 
 		try {
+			// No longer sending form data, just the JSON payload
 			const result = await apiClient.post('/public/profile/request-change', formData);
 			if (result.success) {
 				addToast('Änderungsantrag erfolgreich eingereicht.', 'success');

@@ -7,26 +7,18 @@ import de.technikteam.dao.ProfileChangeRequestDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ProfileChangeRequest;
 import de.technikteam.model.User;
-import de.technikteam.util.FileSignatureValidator;
-import org.apache.commons.io.FilenameUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 
 @Service
 public class ProfileRequestService {
@@ -36,23 +28,18 @@ public class ProfileRequestService {
 	private final UserDAO userDAO;
 	private final AdminLogService adminLogService;
 	private final NotificationService notificationService;
-	private final ConfigurationService configService;
-	private final Gson gson;
 
 	@Autowired
 	public ProfileRequestService(ProfileChangeRequestDAO requestDAO, UserDAO userDAO, AdminLogService adminLogService,
-			NotificationService notificationService, ConfigurationService configService, Gson gson) {
+			NotificationService notificationService) {
 		this.requestDAO = requestDAO;
 		this.userDAO = userDAO;
 		this.adminLogService = adminLogService;
 		this.notificationService = notificationService;
-		this.configService = configService;
-		this.gson = gson;
 	}
 
 	@Transactional
-	public void createChangeRequest(User currentUser, ProfileChangeRequestDTO requestDTO, MultipartFile profilePicture)
-			throws IOException {
+	public void createChangeRequest(User currentUser, ProfileChangeRequestDTO requestDTO) throws IOException {
 		Map<String, String> changes = new HashMap<>();
 		if (requestDTO.email() != null && !Objects.equals(currentUser.getEmail(), requestDTO.email())) {
 			changes.put("email", requestDTO.email());
@@ -63,13 +50,9 @@ public class ProfileRequestService {
 		if (requestDTO.className() != null && !Objects.equals(currentUser.getClassName(), requestDTO.className())) {
 			changes.put("className", requestDTO.className());
 		}
-
-		if (profilePicture != null && !profilePicture.isEmpty()) {
-			if (!FileSignatureValidator.isFileTypeAllowed(profilePicture)) {
-				throw new IOException("Ungültiger Dateityp für Profilbild. Nur JPG und PNG sind erlaubt.");
-			}
-			String tempPath = saveTemporaryProfilePicture(profilePicture);
-			changes.put("profilePicturePath", tempPath);
+		if (requestDTO.profileIconClass() != null
+				&& !Objects.equals(currentUser.getProfileIconClass(), requestDTO.profileIconClass())) {
+			changes.put("profileIconClass", requestDTO.profileIconClass());
 		}
 
 		if (changes.isEmpty()) {
@@ -78,7 +61,7 @@ public class ProfileRequestService {
 
 		ProfileChangeRequest pcr = new ProfileChangeRequest();
 		pcr.setUserId(currentUser.getId());
-		pcr.setRequestedChanges(gson.toJson(changes));
+		pcr.setRequestedChanges(new Gson().toJson(changes));
 
 		if (!requestDAO.createRequest(pcr)) {
 			throw new IOException("Ihr Antrag konnte nicht in der Datenbank gespeichert werden.");
@@ -101,7 +84,7 @@ public class ProfileRequestService {
 
 		Type type = new TypeToken<Map<String, String>>() {
 		}.getType();
-		Map<String, String> changes = gson.fromJson(pcr.getRequestedChanges(), type);
+		Map<String, String> changes = new Gson().fromJson(pcr.getRequestedChanges(), type);
 
 		for (Map.Entry<String, String> entry : changes.entrySet()) {
 			String field = entry.getKey();
@@ -117,16 +100,8 @@ public class ProfileRequestService {
 			case "className":
 				userToUpdate.setClassName(value);
 				break;
-			case "profilePicturePath":
-				try {
-					String permanentPath = makeProfilePicturePermanent(value, userToUpdate.getProfilePicturePath());
-					userToUpdate.setProfilePicturePath(permanentPath);
-				} catch (IOException e) {
-					logger.error(
-							"Could not move temporary profile picture '{}'. Skipping file update but applying other changes.",
-							value, e);
-					// Do not re-throw; allow other changes to be saved.
-				}
+			case "profileIconClass":
+				userToUpdate.setProfileIconClass(value);
 				break;
 			}
 		}
@@ -158,59 +133,11 @@ public class ProfileRequestService {
 			throw new IllegalStateException("Antrag nicht gefunden oder bereits bearbeitet.");
 		}
 
-		// If the request included a temporary file, delete it
-		Type type = new TypeToken<Map<String, String>>() {
-		}.getType();
-		Map<String, String> changes = gson.fromJson(pcr.getRequestedChanges(), type);
-		if (changes.containsKey("profilePicturePath")) {
-			deleteTemporaryProfilePicture(changes.get("profilePicturePath"));
-		}
-
 		if (requestDAO.updateRequestStatus(requestId, "DENIED", adminUser.getId())) {
 			adminLogService.log(adminUser.getUsername(), "PROFILE_CHANGE_DENIED_API", "Profile change for user ID "
 					+ pcr.getUserId() + " (Request ID: " + requestId + ") denied via API.");
 			return true;
 		}
 		return false;
-	}
-
-	private String saveTemporaryProfilePicture(MultipartFile file) throws IOException {
-		Path uploadDir = Paths.get(configService.getProperty("upload.directory"));
-		Path tempDir = uploadDir.resolve("temp_avatars");
-		Files.createDirectories(tempDir);
-
-		String extension = FilenameUtils.getExtension(file.getOriginalFilename());
-		String newFilename = UUID.randomUUID().toString() + "." + extension;
-		Path targetPath = tempDir.resolve(newFilename);
-		Files.copy(file.getInputStream(), targetPath);
-		return newFilename;
-	}
-
-	private String makeProfilePicturePermanent(String tempFilename, String oldPermanentFilename) throws IOException {
-		Path uploadDir = Paths.get(configService.getProperty("upload.directory"));
-		Path tempDir = uploadDir.resolve("temp_avatars");
-		Path finalDir = uploadDir.resolve("avatars");
-		Files.createDirectories(finalDir);
-
-		Path sourcePath = tempDir.resolve(tempFilename);
-		Path destinationPath = finalDir.resolve(tempFilename);
-
-		if (Files.exists(sourcePath)) {
-			Files.move(sourcePath, destinationPath, StandardCopyOption.REPLACE_EXISTING);
-
-			// Delete the old profile picture if it exists
-			if (oldPermanentFilename != null && !oldPermanentFilename.isBlank()) {
-				Path oldPath = finalDir.resolve(oldPermanentFilename);
-				Files.deleteIfExists(oldPath);
-			}
-			return tempFilename;
-		}
-		throw new IOException("Temporäres Profilbild nicht gefunden: " + tempFilename);
-	}
-
-	private void deleteTemporaryProfilePicture(String tempFilename) throws IOException {
-		Path uploadDir = Paths.get(configService.getProperty("upload.directory"));
-		Path tempFile = uploadDir.resolve("temp_avatars").resolve(tempFilename);
-		Files.deleteIfExists(tempFile);
 	}
 }
