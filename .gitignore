@@ -1,22 +1,11 @@
-# IDE files
-.idea/
-.vscode/
-*.iml
-*.iws
-*.ipr
-nbproject/
-build/
-.settings/
-.classpath
+# IDE-specific files
 .project
-target/
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.versionsBackup
-pom.xml.next
-release.properties
-dependency-reduced-pom.xml
-buildNumber.properties
+.classpath
+.settings/
+.idea/
+*.iws
+*.iml
+*.ipr
 
 # Maven
 target/
@@ -27,43 +16,39 @@ pom.xml.next
 release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
+.mvn/
 
 # Node / Frontend
 node_modules/
 dist/
-.vite/
+.npm/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 .pnp/
 .pnp.js
 
-# Operating System files
-.DS_Store
-Thumbs.db
-ehthumbs.db
+# Local environment files
+.env
+.env.local
+.env.*.local
+flyway.conf
 
 # Log files
 *.log
 logs/
 
-# Local configuration
-.env
-.env.local
-.env.*.local
-
-# Compiled files
-*.class
-*.jar
-*.war
-*.ear
-
-# Package files
-*.zip
-*.tar.gz
-*.rar
-flyway.conf
+# Temporary and script files from the root directory
+combine_code_gui.ps1
+run_combine_code_gui.txt
+ProjectTree.ps1
+dependency-tree.txt
 config.json
+technikteam.txt
 technikteam-1.txt
 technikteam-2.txt
-technikteam.txt
+
+# Operating System files
+.DS_Store
+Thumbs.db

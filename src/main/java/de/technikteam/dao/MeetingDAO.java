@@ -154,4 +154,15 @@ public class MeetingDAO {
 			return false;
 		}
 	}
+
+	public List<Meeting> search(String query) {
+		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id WHERE m.name LIKE ? OR m.description LIKE ? OR c.name LIKE ? ORDER BY m.meeting_datetime DESC LIMIT 20";
+		String searchTerm = "%" + query + "%";
+		try {
+			return jdbcTemplate.query(sql, meetingRowMapper, searchTerm, searchTerm, searchTerm);
+		} catch (Exception e) {
+			logger.error("Error searching meetings for query '{}'", query, e);
+			return List.of();
+		}
+	}
 }

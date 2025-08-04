@@ -28,6 +28,7 @@ const FeedbackPage = lazy(() => import('../pages/FeedbackPage'));
 const EventFeedbackPage = lazy(() => import('../pages/EventFeedbackPage'));
 const CalendarPage = lazy(() => import('../pages/CalendarPage'));
 const PackKitPage = lazy(() => import('../pages/PackKitPage'));
+const SearchResultsPage = lazy(() => import('../pages/SearchResultsPage'));
 
 // Admin Pages
 const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage'));
@@ -75,6 +76,7 @@ const router = createBrowserRouter([
 			{ path: 'feedback', element: <FeedbackPage /> },
 			{ path: 'feedback/event/:eventId', element: <EventFeedbackPage /> },
 			{ path: 'kalender', element: <CalendarPage /> },
+			{ path: 'suche', element: <SearchResultsPage /> },
 			{ path: 'test-500', element: <ErrorTrigger /> },
 
 			{

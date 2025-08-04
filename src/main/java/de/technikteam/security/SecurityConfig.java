@@ -14,6 +14,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 
@@ -35,12 +36,23 @@ public class SecurityConfig {
 		CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
 		requestHandler.setCsrfRequestAttributeName(null);
 
-		http.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-				.csrfTokenRequestHandler(requestHandler).ignoringRequestMatchers("/api/v1/auth/login"))
-				.authorizeHttpRequests(auth -> auth.requestMatchers("/api/v1/auth/login", "/api/v1/public/calendar.ics",
-						"/api/v1/public/files/avatars/**", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
-						.permitAll().anyRequest().authenticated())
-				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+		http.csrf(
+				csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+						.csrfTokenRequestHandler(requestHandler)
+						// Add ALL auth/passkey POST endpoints to the ignore list for CSRF
+						.ignoringRequestMatchers("/api/v1/auth/login", "/api/v1/auth/logout",
+								"/api/v1/passkey/login/start", "/api/v1/passkey/login/finish",
+								"/api/v1/passkey/register/start", "/api/v1/passkey/register/finish"))
+				.authorizeHttpRequests(auth -> auth.requestMatchers(
+						// Public Authentication endpoints
+						"/api/v1/auth/**", "/api/v1/passkey/**",
+						// Publicly accessible assets and docs
+						"/api/v1/public/calendar.ics", "/api/v1/public/files/avatars/**", "/swagger-ui.html",
+						"/swagger-ui/**", "/v3/api-docs/**").permitAll().anyRequest().authenticated())
+				// Use IF_REQUIRED to support the stateful WebAuthn ceremony
+				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+				.securityContext(
+						context -> context.securityContextRepository(new HttpSessionSecurityContextRepository()))
 				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
 				.headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin())
 						.httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000))

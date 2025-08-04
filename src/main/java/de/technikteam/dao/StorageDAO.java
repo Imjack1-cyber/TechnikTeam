@@ -133,4 +133,15 @@ public class StorageDAO {
 			return List.of();
 		}
 	}
+
+	public List<StorageItem> search(String query) {
+		String sql = "SELECT * FROM storage_items WHERE name LIKE ? OR location LIKE ? OR cabinet LIKE ? OR compartment LIKE ? ORDER BY name ASC LIMIT 20";
+		String searchTerm = "%" + query + "%";
+		try {
+			return jdbcTemplate.query(sql, storageItemRowMapper, searchTerm, searchTerm, searchTerm, searchTerm);
+		} catch (Exception e) {
+			logger.error("Error searching storage items for query '{}'", query, e);
+			return List.of();
+		}
+	}
 }

@@ -1,5 +1,6 @@
 package de.technikteam.config;
 
+import de.technikteam.dao.PermissionDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.User;
 import de.technikteam.service.UserService;
@@ -18,11 +19,13 @@ public class InitialAdminCreator implements CommandLineRunner {
 
 	private final UserDAO userDAO;
 	private final UserService userService;
+	private final PermissionDAO permissionDAO;
 
 	@Autowired
-	public InitialAdminCreator(UserDAO userDAO, UserService userService) {
+	public InitialAdminCreator(UserDAO userDAO, UserService userService, PermissionDAO permissionDAO) {
 		this.userDAO = userDAO;
 		this.userService = userService;
+		this.permissionDAO = permissionDAO;
 	}
 
 	@Override
@@ -39,10 +42,16 @@ public class InitialAdminCreator implements CommandLineRunner {
 
 			String randomPassword = generateRandomPassword(16);
 
-			// Give admin all permissions by default
-			String[] allPermissionIds = {}; // Let service handle default permissions for ADMIN role
+			// Fetch the ID for the master admin permission
+			Integer adminPermissionId = permissionDAO.getPermissionIdByKey(Permissions.ACCESS_ADMIN_PANEL);
+			if (adminPermissionId == null) {
+				logger.error(
+						"FATAL: Could not find the essential ACCESS_ADMIN_PANEL permission in the database. Admin user cannot be created with full rights.");
+				throw new RuntimeException("ACCESS_ADMIN_PANEL permission not found.");
+			}
+			String[] adminPermissionIds = { String.valueOf(adminPermissionId) };
 
-			userService.createUserWithPermissions(adminUser, randomPassword, allPermissionIds, "SYSTEM");
+			userService.createUserWithPermissions(adminUser, randomPassword, adminPermissionIds, "SYSTEM");
 
 			logger.warn("############################################################");
 			logger.warn("##                ADMIN USER CREATED                      ##");

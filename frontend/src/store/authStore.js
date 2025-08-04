@@ -2,15 +2,9 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import apiClient from '../services/apiClient';
 
-const hasAdminAccess = (permissions) => {
-	if (!permissions || permissions.length === 0) {
-		return false;
-	}
-	if (permissions.includes('ACCESS_ADMIN_PANEL')) {
-		return true;
-	}
-	const adminPermissions = ['_CREATE', '_UPDATE', '_DELETE', '_MANAGE', 'LOG_READ', 'REPORT_READ', 'SYSTEM_READ', 'QUALIFICATION_UPDATE'];
-	return permissions.some(p => adminPermissions.some(ap => p.includes(ap)));
+const hasAdminAccess = (roleName) => {
+	// Frontend authorization check based on role.
+	return roleName === 'ADMIN';
 };
 
 export const useAuthStore = create(
@@ -32,6 +26,17 @@ export const useAuthStore = create(
 					throw new Error(response.message || 'Anmeldung fehlgeschlagen');
 				} catch (error) {
 					console.error('Login failed:', error);
+					get().logout();
+					throw error;
+				}
+			},
+			loginWithPasskey: async (user) => {
+				// After a successful passkey login, the cookie is already set by the backend.
+				// We just need to fetch the session data to update the frontend state.
+				try {
+					await get().fetchUserSession();
+				} catch (error) {
+					console.error("Passkey login succeeded, but session fetch failed.", error);
 					get().logout();
 					throw error;
 				}
@@ -58,7 +63,7 @@ export const useAuthStore = create(
 							user: user,
 							navigationItems: result.data.navigation,
 							isAuthenticated: true,
-							isAdmin: hasAdminAccess(user.permissions || []),
+							isAdmin: hasAdminAccess(user.roleName),
 							theme: newTheme,
 						});
 						document.documentElement.setAttribute('data-theme', newTheme);

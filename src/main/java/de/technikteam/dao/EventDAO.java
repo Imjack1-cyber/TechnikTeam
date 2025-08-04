@@ -345,4 +345,15 @@ public class EventDAO {
 			return List.of();
 		}
 	}
+
+	public List<Event> search(String query) {
+		String sql = "SELECT * FROM events WHERE name LIKE ? OR description LIKE ? OR location LIKE ? ORDER BY event_datetime DESC LIMIT 20";
+		String searchTerm = "%" + query + "%";
+		try {
+			return jdbcTemplate.query(sql, eventRowMapper, searchTerm, searchTerm, searchTerm);
+		} catch (Exception e) {
+			logger.error("Error searching events for query '{}'", query, e);
+			return List.of();
+		}
+	}
 }

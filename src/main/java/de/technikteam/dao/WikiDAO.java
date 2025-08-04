@@ -106,4 +106,15 @@ public class WikiDAO {
 			return false;
 		}
 	}
+
+	public List<WikiEntry> search(String query) {
+		String sql = "SELECT * FROM wiki_documentation WHERE file_path LIKE ? OR content LIKE ? ORDER BY file_path ASC LIMIT 20";
+		String searchTerm = "%" + query + "%";
+		try {
+			return jdbcTemplate.query(sql, wikiEntryRowMapper, searchTerm, searchTerm);
+		} catch (Exception e) {
+			logger.error("Error searching wiki entries for query '{}'", query, e);
+			return List.of();
+		}
+	}
 }

@@ -4,6 +4,7 @@ import de.technikteam.model.Permission;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -45,6 +46,19 @@ public class PermissionDAO {
 		} catch (Exception e) {
 			logger.error("Error fetching permission IDs for user {}", userId, e);
 			return Set.of();
+		}
+	}
+
+	public Integer getPermissionIdByKey(String key) {
+		String sql = "SELECT id FROM permissions WHERE permission_key = ?";
+		try {
+			return jdbcTemplate.queryForObject(sql, Integer.class, key);
+		} catch (EmptyResultDataAccessException e) {
+			logger.warn("Could not find permission with key: {}", key);
+			return null;
+		} catch (Exception e) {
+			logger.error("Error fetching permission ID for key {}", key, e);
+			return null;
 		}
 	}
 }

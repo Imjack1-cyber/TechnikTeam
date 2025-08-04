@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-// import { passkeyService } from '../../services/passkeyService'; // REMOVED
+import { passkeyService } from '../services/passkeyService';
 
 const LoginPage = () => {
 	const [username, setUsername] = useState('');
@@ -13,6 +13,7 @@ const LoginPage = () => {
 	const location = useLocation();
 
 	const login = useAuthStore((state) => state.login);
+	const loginWithPasskey = useAuthStore((state) => state.loginWithPasskey);
 	const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
 	useEffect(() => {
@@ -36,7 +37,27 @@ const LoginPage = () => {
 		}
 	};
 
-	// REMOVED handlePasskeyLogin function
+	const handlePasskeyLogin = async () => {
+		if (!username) {
+			setError('Bitte geben Sie zuerst Ihren Benutzernamen ein, um den Passkey-Login zu starten.');
+			return;
+		}
+		setIsLoading(true);
+		setError('');
+		try {
+			const user = await passkeyService.login(username);
+			if (user) {
+				await loginWithPasskey(user);
+			} else {
+				throw new Error("Passkey-Authentifizierung fehlgeschlagen.");
+			}
+		} catch (err) {
+			console.error(err);
+			setError(err.message || "Passkey-Login fehlgeschlagen.");
+		} finally {
+			setIsLoading(false);
+		}
+	};
 
 	const togglePasswordVisibility = () => {
 		setIsPasswordVisible(!isPasswordVisible);
@@ -59,7 +80,7 @@ const LoginPage = () => {
 							value={username}
 							onChange={(e) => setUsername(e.target.value)}
 							required
-							autoComplete="username" // REMOVED webauthn
+							autoComplete="username webauthn"
 							autoFocus
 							disabled={isLoading}
 						/>
@@ -96,15 +117,14 @@ const LoginPage = () => {
 							'Anmelden'
 						)}
 					</button>
-					{/* MODIFIED Passkey Button */}
 					<button
 						type="button"
 						className="btn btn-secondary"
 						style={{ width: '100%' }}
-						disabled={true}
-						title="Dieses Feature ist in Kürze verfügbar."
+						disabled={isLoading}
+						onClick={handlePasskeyLogin}
 					>
-						<i className="fas fa-fingerprint"></i> Mit Passkey anmelden (in Kürze)
+						<i className="fas fa-fingerprint"></i> Mit Passkey anmelden
 					</button>
 				</form>
 			</div>

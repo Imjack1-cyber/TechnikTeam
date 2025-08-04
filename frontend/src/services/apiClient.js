@@ -7,9 +7,6 @@ const apiClient = {
 		onUnauthorizedCallback = callbacks.onUnauthorized;
 	},
 
-	// This function is no longer needed for pre-fetching but the logic within request is still valid.
-	// async fetchCsrfToken() { ... }
-
 	request: async function(endpoint, options = {}) {
 		const headers = {
 			'Content-Type': 'application/json',
@@ -22,12 +19,15 @@ const apiClient = {
 
 		const method = options.method || 'GET';
 		if (['POST', 'PUT', 'DELETE'].includes(method.toUpperCase())) {
-			// Restore CSRF token handling
 			const match = document.cookie.match(new RegExp('(^| )' + 'XSRF-TOKEN' + '=([^;]+)'));
 			if (match) {
 				headers['X-XSRF-TOKEN'] = match[2];
 			} else {
-				console.warn('CSRF token not found. State-changing requests may fail.');
+				// Don't warn for public endpoints that don't need CSRF
+				const publicPostEndpoints = ['/auth/login', '/auth/logout', '/passkey/login/start', '/passkey/login/finish'];
+				if (!publicPostEndpoints.includes(endpoint)) {
+					console.warn('CSRF token not found. State-changing requests may fail.');
+				}
 			}
 		}
 
