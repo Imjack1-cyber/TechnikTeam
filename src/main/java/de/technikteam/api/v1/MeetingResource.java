@@ -15,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,7 +25,6 @@ import java.util.Map;
 @RequestMapping("/api/v1/meetings")
 @Tag(name = "Admin Meetings", description = "Endpoints for managing specific training meetings.")
 @SecurityRequirement(name = "bearerAuth")
-@PreAuthorize("hasAuthority('COURSE_READ')")
 public class MeetingResource {
 
 	private final MeetingDAO meetingDAO;
@@ -60,7 +58,6 @@ public class MeetingResource {
 
 	@PostMapping
 	@Operation(summary = "Create a new meeting")
-	@PreAuthorize("hasAuthority('COURSE_CREATE')")
 	public ResponseEntity<ApiResponse> createMeeting(@Valid @RequestBody MeetingRequest request,
 			@AuthenticationPrincipal User adminUser) {
 		Meeting meeting = new Meeting();
@@ -85,7 +82,6 @@ public class MeetingResource {
 
 	@PutMapping("/{id}")
 	@Operation(summary = "Update a meeting")
-	@PreAuthorize("hasAuthority('COURSE_UPDATE')")
 	public ResponseEntity<ApiResponse> updateMeeting(@PathVariable int id, @Valid @RequestBody MeetingRequest request,
 			@AuthenticationPrincipal User adminUser) {
 		Meeting meeting = new Meeting();
@@ -109,7 +105,6 @@ public class MeetingResource {
 
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete a meeting")
-	@PreAuthorize("hasAuthority('COURSE_DELETE')")
 	public ResponseEntity<ApiResponse> deleteMeeting(@PathVariable int id, @AuthenticationPrincipal User adminUser) {
 		Meeting meeting = meetingDAO.getMeetingById(id);
 		if (meeting != null && meetingDAO.deleteMeeting(id)) {

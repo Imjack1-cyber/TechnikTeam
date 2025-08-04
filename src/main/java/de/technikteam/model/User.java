@@ -1,8 +1,6 @@
 package de.technikteam.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import de.technikteam.config.Permissions;
-
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -33,12 +31,8 @@ public class User {
 	}
 
 	public boolean hasAdminAccess() {
-		if (permissions == null) {
-			return false;
-		}
-		return permissions.contains(Permissions.ACCESS_ADMIN_PANEL) || permissions.stream().anyMatch(
-				p -> !p.equals(Permissions.FILE_READ) && !p.equals(Permissions.FILE_UPDATE) && (p.contains("_READ")
-						|| p.contains("_MANAGE") || p.contains("_CREATE") || p.contains("_DELETE")));
+		// With granular permissions removed, admin access is determined solely by role.
+		return "ADMIN".equals(this.roleName);
 	}
 
 	public int getId() {

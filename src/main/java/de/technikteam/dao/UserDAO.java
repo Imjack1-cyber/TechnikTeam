@@ -94,42 +94,16 @@ public class UserDAO {
 	}
 
 	public Set<String> getPermissionsForUser(int userId) {
-		String checkAdminSql = "SELECT role_id FROM users WHERE id = ?";
-		try {
-			Integer roleId = jdbcTemplate.queryForObject(checkAdminSql, Integer.class, userId);
-
-			if (roleId != null && roleId == 1) {
-				// User is an admin, grant all permissions
-				logger.debug("User ID {} has ADMIN role. Granting all permissions.", userId);
-				String allPermissionsSql = "SELECT permission_key FROM permissions";
-				return new HashSet<>(jdbcTemplate.queryForList(allPermissionsSql, String.class));
-			} else {
-				// User is not an admin, grant only their specific permissions
-				logger.debug("User ID {} is a standard user. Granting specific permissions.", userId);
-				String userPermissionsSql = "SELECT p.permission_key FROM permissions p JOIN user_permissions up ON p.id = up.permission_id WHERE up.user_id = ?";
-				return new HashSet<>(jdbcTemplate.queryForList(userPermissionsSql, String.class, userId));
-			}
-		} catch (Exception e) {
-			logger.error("Could not fetch permissions for user ID: {}", userId, e);
-			return new HashSet<>();
-		}
+		// Granular permissions are disabled. Return an empty set.
+		// Authorization is now handled solely by authentication status.
+		return Collections.emptySet();
 	}
 
 	public boolean updateUserPermissions(int userId, String[] permissionIds) {
-		try {
-			jdbcTemplate.update("DELETE FROM user_permissions WHERE user_id = ?", userId);
-			if (permissionIds != null && permissionIds.length > 0) {
-				String insertSql = "INSERT INTO user_permissions (user_id, permission_id) VALUES (?, ?)";
-				jdbcTemplate.batchUpdate(insertSql, List.of(permissionIds), 100, (ps, permId) -> {
-					ps.setInt(1, userId);
-					ps.setInt(2, Integer.parseInt(permId));
-				});
-			}
-			return true;
-		} catch (Exception e) {
-			logger.error("Error updating user permissions for user {}", userId, e);
-			return false;
-		}
+		// This method is now a no-op as granular permissions are disabled,
+		// but we keep it to avoid breaking references in the UserService.
+		// It can be fully removed in a future refactor.
+		return true;
 	}
 
 	public int createUser(User user, String password) {

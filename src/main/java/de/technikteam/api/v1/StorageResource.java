@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,7 +34,6 @@ public class StorageResource {
 
 	@GetMapping
 	@Operation(summary = "Get all storage items")
-	@PreAuthorize("hasAuthority('STORAGE_READ')")
 	public ResponseEntity<ApiResponse> getAllItems() {
 		List<StorageItem> items = storageDAO.getAllItems();
 		return ResponseEntity.ok(new ApiResponse(true, "Artikel erfolgreich abgerufen.", items));
@@ -43,7 +41,6 @@ public class StorageResource {
 
 	@PostMapping
 	@Operation(summary = "Create a new storage item")
-	@PreAuthorize("hasAuthority('STORAGE_CREATE')")
 	public ResponseEntity<ApiResponse> createItem(@RequestBody StorageItem item,
 			@AuthenticationPrincipal User adminUser) {
 		if (storageDAO.createItem(item)) {
@@ -57,7 +54,6 @@ public class StorageResource {
 
 	@PutMapping("/{id}")
 	@Operation(summary = "Update a storage item")
-	@PreAuthorize("hasAuthority('STORAGE_UPDATE')")
 	public ResponseEntity<ApiResponse> updateItem(@PathVariable int id, @RequestBody StorageItem item,
 			@AuthenticationPrincipal User adminUser) {
 		item.setId(id);
@@ -72,7 +68,6 @@ public class StorageResource {
 
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete a storage item")
-	@PreAuthorize("hasAuthority('STORAGE_DELETE')")
 	public ResponseEntity<ApiResponse> deleteItem(@PathVariable int id, @AuthenticationPrincipal User adminUser) {
 		StorageItem item = storageDAO.getItemById(id);
 		if (item != null && storageDAO.deleteItem(id)) {

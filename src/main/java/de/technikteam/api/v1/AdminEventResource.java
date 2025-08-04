@@ -13,7 +13,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,7 +37,6 @@ public class AdminEventResource {
 
 	@GetMapping
 	@Operation(summary = "Get all events", description = "Retrieves a list of all events in the system, sorted by date.")
-	@PreAuthorize("hasAuthority('EVENT_READ')")
 	public ResponseEntity<ApiResponse> getAllEvents() {
 		List<Event> events = eventDAO.getAllEvents();
 		return ResponseEntity.ok(new ApiResponse(true, "Veranstaltungen erfolgreich abgerufen.", events));
@@ -46,7 +44,6 @@ public class AdminEventResource {
 
 	@PostMapping
 	@Operation(summary = "Create a new event", description = "Creates a new event with attachments, skill requirements, and item reservations.")
-	@PreAuthorize("hasAuthority('EVENT_CREATE')")
 	public ResponseEntity<ApiResponse> createEvent(@RequestPart("eventData") EventUpdateRequest eventData,
 			@RequestPart(value = "file", required = false) MultipartFile file,
 			@AuthenticationPrincipal SecurityUser securityUser) {
@@ -71,7 +68,6 @@ public class AdminEventResource {
 
 	@PostMapping("/{id}")
 	@Operation(summary = "Update an event", description = "Updates an existing event with attachments, skill requirements, and item reservations.")
-	@PreAuthorize("hasAuthority('EVENT_UPDATE')")
 	public ResponseEntity<ApiResponse> updateEvent(@PathVariable int id,
 			@RequestPart("eventData") EventUpdateRequest eventData,
 			@RequestPart(value = "file", required = false) MultipartFile file,
@@ -100,7 +96,6 @@ public class AdminEventResource {
 
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete an event", description = "Permanently deletes an event and all associated data.")
-	@PreAuthorize("hasAuthority('EVENT_DELETE')")
 	public ResponseEntity<ApiResponse> deleteEvent(@PathVariable int id) {
 		if (eventDAO.deleteEvent(id)) {
 			return ResponseEntity.ok(new ApiResponse(true, "Veranstaltung erfolgreich gelöscht.", null));

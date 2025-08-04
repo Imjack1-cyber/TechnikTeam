@@ -14,7 +14,6 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,7 +25,6 @@ import java.util.Map;
 @RequestMapping("/api/v1/admin/files")
 @Tag(name = "Admin Files", description = "Endpoints for managing files and categories.")
 @SecurityRequirement(name = "bearerAuth")
-@PreAuthorize("hasAuthority('FILE_MANAGE')")
 public class AdminFileResource {
 
 	private final FileDAO fileDAO;
@@ -42,7 +40,6 @@ public class AdminFileResource {
 
 	@PostMapping
 	@Operation(summary = "Upload a new file")
-	@PreAuthorize("hasAuthority('FILE_CREATE')")
 	public ResponseEntity<ApiResponse> uploadFile(@RequestParam("file") MultipartFile file,
 			@RequestParam(required = false) Integer categoryId, @RequestParam String requiredRole,
 			@AuthenticationPrincipal SecurityUser securityUser) {
@@ -59,7 +56,6 @@ public class AdminFileResource {
 
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete a file")
-	@PreAuthorize("hasAuthority('FILE_DELETE')")
 	public ResponseEntity<ApiResponse> deleteFile(@PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {

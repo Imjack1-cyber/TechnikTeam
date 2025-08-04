@@ -5,10 +5,9 @@ import { useAuthStore } from '../store/authStore';
 const AdminRoute = () => {
 	const isAdmin = useAuthStore((state) => state.isAdmin);
 
-	// Check for authentication is handled by ProtectedRoute, this just checks for admin role.
+	// In the simplified model, the UI should still be protected for admins.
+	// This check prevents non-admin users from even seeing the admin pages.
 	if (!isAdmin) {
-		// Instead of rendering a component directly, we navigate to a dedicated route for 403.
-		// This keeps the URL consistent with the error being shown.
 		return <Navigate to="/forbidden" replace />;
 	}
 

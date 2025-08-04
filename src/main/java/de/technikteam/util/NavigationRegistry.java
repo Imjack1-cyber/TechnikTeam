@@ -62,41 +62,24 @@ public final class NavigationRegistry {
 	 * @return A list of NavigationItem objects the user is allowed to see.
 	 */
 	public static List<NavigationItem> getNavigationItemsForUser(User user) {
-		if (user == null || user.getPermissions() == null) {
+		if (user == null) {
 			return new ArrayList<>();
 		}
 
-		final Set<String> userPermissions = user.getPermissions();
+		final boolean isAdmin = user.hasAdminAccess();
 
 		return ALL_ITEMS.stream().filter(item -> {
 			final String requiredPerm = item.getRequiredPermission();
 
-			// Public items are always visible
+			// Public items (no permission required) are always visible to any authenticated
+			// user.
 			if (requiredPerm == null) {
 				return true;
 			}
 
-			// Super-admins see all admin items
-			if (userPermissions.contains(Permissions.ACCESS_ADMIN_PANEL)) {
-				return true;
-			}
-
-			// Special case: The "Admin Dashboard" link is visible if the user has *any*
-			// admin-level access.
-			if (Permissions.ADMIN_DASHBOARD_ACCESS.equals(requiredPerm)) {
-				return user.hasAdminAccess();
-			}
-
-			// Special case: The "Abzeichen" link is visible if user can perform any
-			// achievement action.
-			if (Permissions.ACHIEVEMENT_VIEW.equals(requiredPerm)) {
-				return userPermissions.contains(Permissions.ACHIEVEMENT_CREATE)
-						|| userPermissions.contains(Permissions.ACHIEVEMENT_UPDATE)
-						|| userPermissions.contains(Permissions.ACHIEVEMENT_DELETE);
-			}
-
-			// Standard permission check for all other items
-			return userPermissions.contains(requiredPerm);
+			// If an item requires any permission, it is considered an admin item.
+			// It is only visible if the user has admin access.
+			return isAdmin;
 		}).collect(Collectors.toList());
 	}
 }

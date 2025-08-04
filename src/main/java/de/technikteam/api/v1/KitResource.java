@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,7 +34,6 @@ public class KitResource {
 
 	@GetMapping
 	@Operation(summary = "Get all kits with their items")
-	@PreAuthorize("hasAuthority('KIT_READ')")
 	public ResponseEntity<ApiResponse> getAllKits() {
 		List<InventoryKit> kits = kitDAO.getAllKitsWithItems();
 		return ResponseEntity.ok(new ApiResponse(true, "Kits erfolgreich abgerufen.", kits));
@@ -43,7 +41,6 @@ public class KitResource {
 
 	@PostMapping
 	@Operation(summary = "Create a new kit")
-	@PreAuthorize("hasAuthority('KIT_CREATE')")
 	public ResponseEntity<ApiResponse> createKit(@RequestBody InventoryKit kit,
 			@AuthenticationPrincipal User adminUser) {
 		int newId = kitDAO.createKit(kit);
@@ -57,7 +54,6 @@ public class KitResource {
 
 	@PutMapping("/{id}")
 	@Operation(summary = "Update a kit's metadata")
-	@PreAuthorize("hasAuthority('KIT_UPDATE')")
 	public ResponseEntity<ApiResponse> updateKit(@PathVariable int id, @RequestBody InventoryKit kit,
 			@AuthenticationPrincipal User adminUser) {
 		kit.setId(id);
@@ -71,7 +67,6 @@ public class KitResource {
 
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete a kit")
-	@PreAuthorize("hasAuthority('KIT_DELETE')")
 	public ResponseEntity<ApiResponse> deleteKit(@PathVariable int id, @AuthenticationPrincipal User adminUser) {
 		InventoryKit kit = kitDAO.getKitById(id);
 		if (kit != null && kitDAO.deleteKit(id)) {

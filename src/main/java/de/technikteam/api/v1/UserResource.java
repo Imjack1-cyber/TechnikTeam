@@ -2,7 +2,6 @@ package de.technikteam.api.v1;
 
 import de.technikteam.api.v1.dto.UserCreateRequest;
 import de.technikteam.api.v1.dto.UserUpdateRequest;
-import de.technikteam.config.Permissions;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
@@ -19,7 +18,6 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,6 +28,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/users")
 @Tag(name = "Admin Users", description = "Endpoints for managing users.")
+@SecurityRequirement(name = "bearerAuth")
 public class UserResource {
 
 	private final UserService userService;
@@ -47,16 +46,14 @@ public class UserResource {
 	}
 
 	@GetMapping
-	@Operation(summary = "Get all users", description = "Retrieves a list of all users in the system.", security = @SecurityRequirement(name = "bearerAuth"))
-	@PreAuthorize("hasAuthority('USER_READ')")
+	@Operation(summary = "Get all users", description = "Retrieves a list of all users in the system.")
 	public ResponseEntity<ApiResponse> getAllUsers() {
 		List<User> users = userDAO.getAllUsers();
 		return ResponseEntity.ok(new ApiResponse(true, "Users retrieved successfully", users));
 	}
 
 	@GetMapping("/{id}")
-	@Operation(summary = "Get user by ID", description = "Retrieves a single user by their ID, including their permissions.", security = @SecurityRequirement(name = "bearerAuth"))
-	@PreAuthorize("hasAuthority('USER_READ')")
+	@Operation(summary = "Get user by ID", description = "Retrieves a single user by their ID, including their permissions.")
 	public ResponseEntity<ApiResponse> getUserById(
 			@Parameter(description = "ID of the user to retrieve") @PathVariable int id) {
 		User user = userDAO.getUserById(id);
@@ -68,8 +65,7 @@ public class UserResource {
 	}
 
 	@PostMapping
-	@Operation(summary = "Create a new user", description = "Creates a new user with a specified role and individual permissions.", security = @SecurityRequirement(name = "bearerAuth"))
-	@PreAuthorize("hasAuthority('USER_CREATE')")
+	@Operation(summary = "Create a new user", description = "Creates a new user with a specified role and individual permissions.")
 	public ResponseEntity<ApiResponse> createUser(@Valid @RequestBody UserCreateRequest createRequest,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		PasswordPolicyValidator.ValidationResult validationResult = PasswordPolicyValidator
@@ -101,8 +97,7 @@ public class UserResource {
 	}
 
 	@PutMapping("/{id}")
-	@Operation(summary = "Update a user", description = "Updates an existing user's profile details, role, and individual permissions.", security = @SecurityRequirement(name = "bearerAuth"))
-	@PreAuthorize("hasAuthority('USER_UPDATE')")
+	@Operation(summary = "Update a user", description = "Updates an existing user's profile details, role, and individual permissions.")
 	public ResponseEntity<ApiResponse> updateUser(
 			@Parameter(description = "ID of the user to update") @PathVariable int id,
 			@Valid @RequestBody UserUpdateRequest updateRequest, @AuthenticationPrincipal SecurityUser securityUser) {
@@ -132,8 +127,7 @@ public class UserResource {
 	}
 
 	@DeleteMapping("/{id}")
-	@Operation(summary = "Delete a user", description = "Permanently deletes a user from the system.", security = @SecurityRequirement(name = "bearerAuth"))
-	@PreAuthorize("hasAuthority('USER_DELETE')")
+	@Operation(summary = "Delete a user", description = "Permanently deletes a user from the system.")
 	public ResponseEntity<ApiResponse> deleteUser(
 			@Parameter(description = "ID of the user to delete") @PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
@@ -151,19 +145,6 @@ public class UserResource {
 					.body(new ApiResponse(false, "User to delete not found.", null));
 		}
 
-		// --- REMEDIATION START ---
-		// Check for privilege escalation attempt
-		boolean targetIsSuperAdmin = userToDelete.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL);
-		boolean requesterIsSuperAdmin = adminUser.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL);
-
-		if (targetIsSuperAdmin && !requesterIsSuperAdmin) {
-			adminLogService.log(adminUser.getUsername(), "DELETE_USER_DENIED_API",
-					"Denied attempt to delete super-admin '" + userToDelete.getUsername() + "'.");
-			return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false,
-					"You do not have sufficient privileges to delete a super-administrator.", null));
-		}
-		// --- REMEDIATION END ---
-
 		if (userDAO.deleteUser(id)) {
 			adminLogService.log(adminUser.getUsername(), "DELETE_USER_API",
 					"User '" + userToDelete.getUsername() + "' (ID: " + id + ") deleted via API.");
@@ -175,8 +156,7 @@ public class UserResource {
 	}
 
 	@PostMapping("/{id}/reset-password")
-	@Operation(summary = "Reset user's password", description = "Resets a user's password to a new, randomly generated password.", security = @SecurityRequirement(name = "bearerAuth"))
-	@PreAuthorize("hasAuthority('USER_PASSWORD_RESET')")
+	@Operation(summary = "Reset user's password", description = "Resets a user's password to a new, randomly generated password.")
 	public ResponseEntity<ApiResponse> resetPassword(
 			@Parameter(description = "ID of the user whose password will be reset") @PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
@@ -201,8 +181,7 @@ public class UserResource {
 	}
 
 	@PostMapping("/{id}/unlock")
-	@Operation(summary = "Unlock a user account", description = "Unlocks a user account that was locked due to too many failed login attempts.", security = @SecurityRequirement(name = "bearerAuth"))
-	@PreAuthorize("hasAuthority('USER_UPDATE')")
+	@Operation(summary = "Unlock a user account", description = "Unlocks a user account that was locked due to too many failed login attempts.")
 	public ResponseEntity<ApiResponse> unlockUser(
 			@Parameter(description = "ID of the user to unlock") @PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {

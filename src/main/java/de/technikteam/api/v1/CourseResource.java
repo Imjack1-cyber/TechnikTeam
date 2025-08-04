@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,7 +34,6 @@ public class CourseResource {
 
 	@GetMapping
 	@Operation(summary = "Get all course templates")
-	@PreAuthorize("hasAuthority('COURSE_READ')")
 	public ResponseEntity<ApiResponse> getAllCourses() {
 		List<Course> courses = courseDAO.getAllCourses();
 		return ResponseEntity.ok(new ApiResponse(true, "Lehrgänge erfolgreich abgerufen.", courses));
@@ -43,7 +41,6 @@ public class CourseResource {
 
 	@PostMapping
 	@Operation(summary = "Create a new course template")
-	@PreAuthorize("hasAuthority('COURSE_CREATE')")
 	public ResponseEntity<ApiResponse> createCourse(@RequestBody Course course,
 			@AuthenticationPrincipal User adminUser) {
 		if (courseDAO.createCourse(course)) {
@@ -57,7 +54,6 @@ public class CourseResource {
 
 	@PutMapping("/{id}")
 	@Operation(summary = "Update a course template")
-	@PreAuthorize("hasAuthority('COURSE_UPDATE')")
 	public ResponseEntity<ApiResponse> updateCourse(@PathVariable int id, @RequestBody Course course,
 			@AuthenticationPrincipal User adminUser) {
 		course.setId(id);
@@ -72,7 +68,6 @@ public class CourseResource {
 
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete a course template")
-	@PreAuthorize("hasAuthority('COURSE_DELETE')")
 	public ResponseEntity<ApiResponse> deleteCourse(@PathVariable int id, @AuthenticationPrincipal User adminUser) {
 		Course course = courseDAO.getCourseById(id);
 		if (course != null && courseDAO.deleteCourse(id)) {

@@ -10,7 +10,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -41,7 +40,6 @@ public class MatrixResource {
 
 	@GetMapping
 	@Operation(summary = "Get qualification matrix data")
-	@PreAuthorize("hasAuthority('QUALIFICATION_READ')")
 	public ResponseEntity<ApiResponse> getMatrixData() {
 		List<User> allUsers = userDAO.getAllUsers();
 		List<Course> allCourses = courseDAO.getAllCourses();
@@ -65,7 +63,6 @@ public class MatrixResource {
 
 	@PutMapping("/attendance")
 	@Operation(summary = "Update meeting attendance")
-	@PreAuthorize("hasAuthority('QUALIFICATION_UPDATE')")
 	public ResponseEntity<ApiResponse> updateAttendance(@RequestBody MeetingAttendance attendance) {
 		boolean success = meetingAttendanceDAO.setAttendance(attendance.getUserId(), attendance.getMeetingId(),
 				attendance.getAttended(), attendance.getRemarks());
