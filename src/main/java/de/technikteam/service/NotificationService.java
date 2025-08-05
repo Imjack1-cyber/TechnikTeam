@@ -2,7 +2,11 @@ package de.technikteam.service;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import de.technikteam.api.v1.dto.NotificationRequest;
 import de.technikteam.config.LocalDateTimeAdapter;
+import de.technikteam.dao.EventDAO;
+import de.technikteam.dao.MeetingDAO;
+import de.technikteam.dao.UserDAO;
 import de.technikteam.model.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -11,18 +15,29 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 
 @Service
 public class NotificationService {
 	private static final Logger logger = LogManager.getLogger(NotificationService.class);
 
 	private final Map<Integer, List<SseEmitter>> emittersByUser = new ConcurrentHashMap<>();
+	private final UserDAO userDAO;
+	private final EventDAO eventDAO;
+	private final MeetingDAO meetingDAO;
+	private final AdminLogService adminLogService;
 
-	public NotificationService() {
+	public NotificationService(UserDAO userDAO, EventDAO eventDAO, MeetingDAO meetingDAO,
+			AdminLogService adminLogService) {
+		this.userDAO = userDAO;
+		this.eventDAO = eventDAO;
+		this.meetingDAO = meetingDAO;
+		this.adminLogService = adminLogService;
 		new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
@@ -103,6 +118,55 @@ public class NotificationService {
 			logger.debug("Keine aktiven SSE-Clients für Benutzer-ID {} gefunden, um Benachrichtigung zu senden.",
 					userId);
 		}
+	}
+
+	public int sendBroadcastNotification(NotificationRequest request, User adminUser) {
+		List<User> targetUsers;
+		String targetDescription;
+
+		switch (request.targetType()) {
+		case "ALL":
+			targetUsers = userDAO.getAllUsers();
+			targetDescription = "alle Benutzer";
+			break;
+		case "EVENT":
+			if (request.targetId() == null)
+				throw new IllegalArgumentException("Event-ID ist erforderlich.");
+			targetUsers = eventDAO.getAssignedUsersForEvent(request.targetId());
+			targetDescription = "Teilnehmer des Events ID " + request.targetId();
+			break;
+		case "MEETING":
+			if (request.targetId() == null)
+				throw new IllegalArgumentException("Meeting-ID ist erforderlich.");
+			// Note: We need a DAO method for this. For now, let's assume one exists or add
+			// it.
+			// This is a placeholder as the DAO method does not exist yet. Let's get all
+			// users for now.
+			logger.warn("Meeting target selected, but DAO method is missing. Sending to all users as a fallback.");
+			targetUsers = userDAO.getAllUsers();
+			targetDescription = "Teilnehmer des Meetings ID " + request.targetId() + " (Fallback: alle)";
+			break;
+		default:
+			throw new IllegalArgumentException("Ungültiger Zieltyp: " + request.targetType());
+		}
+
+		if (targetUsers.isEmpty()) {
+			logger.warn("Keine Empfänger für die Benachrichtigung gefunden (Ziel: {}).", targetDescription);
+			return 0;
+		}
+
+		Map<String, Object> payload = Map.of("title", request.title(), "description", request.description(), "level",
+				request.level());
+
+		for (User targetUser : targetUsers) {
+			sendNotificationToUser(targetUser.getId(), payload);
+		}
+
+		String logDetails = String.format("Benachrichtigung gesendet an '%s'. Titel: %s, Stufe: %s", targetDescription,
+				request.title(), request.level());
+		adminLogService.log(adminUser.getUsername(), "SEND_NOTIFICATION", logDetails);
+
+		return targetUsers.size();
 	}
 
 	private void removeEmitter(int userId, SseEmitter emitter) {

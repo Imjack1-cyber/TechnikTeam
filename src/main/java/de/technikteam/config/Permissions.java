@@ -68,6 +68,9 @@ public final class Permissions {
 	public static final String ACHIEVEMENT_DELETE = "ACHIEVEMENT_DELETE";
 	public static final String ACHIEVEMENT_VIEW = "ACHIEVEMENT_VIEW";
 
+	// --- NOTIFICATIONS ---
+	public static final String NOTIFICATION_SEND = "NOTIFICATION_SEND";
+
 	// --- NAVIGATION-SPECIFIC ---
 	public static final String ADMIN_DASHBOARD_ACCESS = "ADMIN_DASHBOARD_ACCESS";
 }

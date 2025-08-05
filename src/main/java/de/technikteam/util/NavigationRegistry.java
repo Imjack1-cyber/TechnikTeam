@@ -41,6 +41,8 @@ public final class NavigationRegistry {
 		ALL_ITEMS.add(new NavigationItem("Kit-Verwaltung", "/admin/kits", "fa-box-open", Permissions.KIT_READ));
 		ALL_ITEMS
 				.add(new NavigationItem("Feedback", "/admin/feedback", "fa-inbox", Permissions.ADMIN_DASHBOARD_ACCESS));
+		ALL_ITEMS.add(new NavigationItem("Benachrichtigungen", "/admin/benachrichtigungen", "fa-bullhorn",
+				Permissions.NOTIFICATION_SEND));
 		ALL_ITEMS.add(new NavigationItem("Abzeichen", "/admin/achievements", "fa-award", Permissions.ACHIEVEMENT_VIEW));
 		ALL_ITEMS.add(new NavigationItem("Defekte Artikel", "/admin/defekte", "fa-wrench", Permissions.STORAGE_READ));
 		ALL_ITEMS
@@ -67,6 +69,7 @@ public final class NavigationRegistry {
 		}
 
 		final boolean isAdmin = user.hasAdminAccess();
+		final Set<String> userPermissions = user.getPermissions() != null ? user.getPermissions() : Set.of();
 
 		return ALL_ITEMS.stream().filter(item -> {
 			final String requiredPerm = item.getRequiredPermission();
@@ -77,9 +80,12 @@ public final class NavigationRegistry {
 				return true;
 			}
 
-			// If an item requires any permission, it is considered an admin item.
-			// It is only visible if the user has admin access.
-			return isAdmin;
+			// For admin links, check if the user is an admin or has the specific permission
+			if (isAdmin) {
+				return true;
+			}
+
+			return userPermissions.contains(requiredPerm);
 		}).collect(Collectors.toList());
 	}
 }

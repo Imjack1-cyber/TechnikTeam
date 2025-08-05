@@ -11,6 +11,8 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class InitialAdminCreator implements CommandLineRunner {
@@ -42,16 +44,26 @@ public class InitialAdminCreator implements CommandLineRunner {
 
 			String randomPassword = generateRandomPassword(16);
 
-			// Fetch the ID for the master admin permission
+			// Grant both master admin and notification permissions by default
+			List<String> permissionIds = new ArrayList<>();
 			Integer adminPermissionId = permissionDAO.getPermissionIdByKey(Permissions.ACCESS_ADMIN_PANEL);
-			if (adminPermissionId == null) {
+			if (adminPermissionId != null) {
+				permissionIds.add(String.valueOf(adminPermissionId));
+			} else {
 				logger.error(
-						"FATAL: Could not find the essential ACCESS_ADMIN_PANEL permission in the database. Admin user cannot be created with full rights.");
-				throw new RuntimeException("ACCESS_ADMIN_PANEL permission not found.");
+						"FATAL: Could not find the essential ACCESS_ADMIN_PANEL permission. Admin user will lack full rights.");
 			}
-			String[] adminPermissionIds = { String.valueOf(adminPermissionId) };
 
-			userService.createUserWithPermissions(adminUser, randomPassword, adminPermissionIds, "SYSTEM");
+			Integer notificationPermissionId = permissionDAO.getPermissionIdByKey(Permissions.NOTIFICATION_SEND);
+			if (notificationPermissionId != null) {
+				permissionIds.add(String.valueOf(notificationPermissionId));
+			} else {
+				logger.error(
+						"FATAL: Could not find the NOTIFICATION_SEND permission. Admin user will not be able to send notifications.");
+			}
+
+			userService.createUserWithPermissions(adminUser, randomPassword, permissionIds.toArray(new String[0]),
+					"SYSTEM");
 
 			logger.warn("############################################################");
 			logger.warn("##                ADMIN USER CREATED                      ##");

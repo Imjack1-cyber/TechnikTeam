@@ -30,17 +30,6 @@ export const useAuthStore = create(
 					throw error;
 				}
 			},
-			loginWithPasskey: async (user) => {
-				// After a successful passkey login, the cookie is already set by the backend.
-				// We just need to fetch the session data to update the frontend state.
-				try {
-					await get().fetchUserSession();
-				} catch (error) {
-					console.error("Passkey login succeeded, but session fetch failed.", error);
-					get().logout();
-					throw error;
-				}
-			},
 			logout: async () => {
 				try {
 					await apiClient.post('/auth/logout');

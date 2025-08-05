@@ -349,6 +349,19 @@
 .terminal-line.warn { color: var(--warning-color); }
 .terminal-line.fail { color: var(--danger-color); }
 
+/* --- 9. WARNING NOTIFICATION --- */
+body.warning-flash {
+    animation: flash 1.5s ease-out;
+}
+
+@keyframes flash {
+    0% { background-color: var(--bg-color); }
+    15% { background-color: var(--danger-color); }
+    30% { background-color: var(--bg-color); }
+    45% { background-color: var(--danger-color); }
+    60% { background-color: var(--bg-color); }
+    100% { background-color: var(--bg-color); }
+}
 
 /* --- 10. CHAT INTERFACE --- */
 .chat-message-container {

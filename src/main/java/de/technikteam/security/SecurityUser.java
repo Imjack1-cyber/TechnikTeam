@@ -2,11 +2,12 @@ package de.technikteam.security;
 
 import de.technikteam.model.User;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.io.Serializable;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.stream.Collectors;
 
 public class SecurityUser implements UserDetails, Serializable {
 
@@ -23,9 +24,9 @@ public class SecurityUser implements UserDetails, Serializable {
 
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
-		// Granular permissions are disabled, so we return an empty list.
-		// Authorization is now handled by the global authenticated() rule.
-		return Collections.emptyList();
+		// Convert the user's permission strings into Spring Security GrantedAuthority
+		// objects.
+		return user.getPermissions().stream().map(SimpleGrantedAuthority::new).collect(Collectors.toSet());
 	}
 
 	@Override

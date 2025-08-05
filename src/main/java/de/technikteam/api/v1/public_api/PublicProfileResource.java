@@ -15,9 +15,11 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -33,23 +35,22 @@ public class PublicProfileResource {
 	private final AchievementDAO achievementDAO;
 	private final ProfileChangeRequestDAO requestDAO;
 	private final ProfileRequestService profileRequestService;
-	private final PasskeyDAO passkeyDAO;
 
 	@Autowired
 	public PublicProfileResource(UserDAO userDAO, EventDAO eventDAO, UserQualificationsDAO qualificationsDAO,
 			AchievementDAO achievementDAO, ProfileChangeRequestDAO requestDAO,
-			ProfileRequestService profileRequestService, PasskeyDAO passkeyDAO) {
+			ProfileRequestService profileRequestService) {
 		this.userDAO = userDAO;
 		this.eventDAO = eventDAO;
 		this.qualificationsDAO = qualificationsDAO;
 		this.achievementDAO = achievementDAO;
 		this.requestDAO = requestDAO;
 		this.profileRequestService = profileRequestService;
-		this.passkeyDAO = passkeyDAO;
 	}
 
 	@GetMapping
 	@Operation(summary = "Get current user's profile data", description = "Retrieves a comprehensive set of data for the authenticated user's profile page.")
+	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<ApiResponse> getMyProfile(@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 		Map<String, Object> profileData = new HashMap<>();
@@ -57,7 +58,7 @@ public class PublicProfileResource {
 		profileData.put("eventHistory", eventDAO.getEventHistoryForUser(user.getId()));
 		profileData.put("qualifications", qualificationsDAO.getQualificationsForUser(user.getId()));
 		profileData.put("achievements", achievementDAO.getAchievementsForUser(user.getId()));
-		profileData.put("passkeys", passkeyDAO.getCredentialsByUserId(user.getId()));
+		profileData.put("passkeys", Collections.emptyList()); // Passkeys removed
 		profileData.put("hasPendingRequest", requestDAO.hasPendingRequest(user.getId()));
 
 		return ResponseEntity.ok(new ApiResponse(true, "Profildaten erfolgreich abgerufen.", profileData));
@@ -65,6 +66,7 @@ public class PublicProfileResource {
 
 	@PostMapping("/request-change")
 	@Operation(summary = "Request a profile data change", description = "Submits a request for an administrator to approve changes to the user's profile data.")
+	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<ApiResponse> requestProfileChange(@Valid @RequestBody ProfileChangeRequestDTO requestDTO,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
@@ -78,6 +80,7 @@ public class PublicProfileResource {
 
 	@PutMapping("/theme")
 	@Operation(summary = "Update user theme", description = "Updates the user's preferred theme (light/dark).")
+	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<ApiResponse> updateUserTheme(@RequestBody Map<String, String> payload,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
@@ -93,6 +96,7 @@ public class PublicProfileResource {
 
 	@PutMapping("/chat-color")
 	@Operation(summary = "Update chat color", description = "Updates the user's preferred color for chat messages.")
+	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<ApiResponse> updateChatColor(@RequestBody Map<String, String> payload,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
@@ -107,6 +111,7 @@ public class PublicProfileResource {
 
 	@PutMapping("/password")
 	@Operation(summary = "Change password", description = "Allows the authenticated user to change their own password after verifying their current one.")
+	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<ApiResponse> updatePassword(@Valid @RequestBody PasswordChangeRequest request,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();

@@ -48,6 +48,8 @@ const AdminFilesPage = lazy(() => import('../pages/admin/AdminFilesPage'));
 const AdminFeedbackPage = lazy(() => import('../pages/admin/AdminFeedbackPage'));
 const AdminAchievementsPage = lazy(() => import('../pages/admin/AdminAchievementsPage'));
 const AdminWikiPage = lazy(() => import('../pages/admin/AdminWikiPage'));
+const AdminNotificationsPage = lazy(() => import('../pages/admin/AdminNotificationsPage'));
+
 
 import ErrorTrigger from '../pages/error/ErrorTrigger';
 import ForbiddenPage from '../pages/error/ForbiddenPage';
@@ -94,6 +96,7 @@ const router = createBrowserRouter([
 					{ path: 'dateien', element: <AdminFilesPage /> },
 					{ path: 'kits', element: <AdminKitsPage /> },
 					{ path: 'feedback', element: <AdminFeedbackPage /> },
+					{ path: 'benachrichtigungen', element: <AdminNotificationsPage /> },
 					{ path: 'achievements', element: <AdminAchievementsPage /> },
 					{ path: 'defekte', element: <AdminDefectivePage /> },
 					{ path: 'matrix', element: <AdminMatrixPage /> },

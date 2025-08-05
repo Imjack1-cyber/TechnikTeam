@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Repository
 public class UserDAO {
@@ -95,15 +96,25 @@ public class UserDAO {
 	}
 
 	public Set<String> getPermissionsForUser(int userId) {
-		// Granular permissions are disabled. Return an empty set.
-		// Authorization is now handled solely by authentication status.
-		return Collections.emptySet();
+		String sql = "SELECT p.permission_key FROM permissions p "
+				+ "JOIN user_permissions up ON p.id = up.permission_id " + "WHERE up.user_id = ?";
+		try {
+			List<String> permissionKeys = jdbcTemplate.queryForList(sql, String.class, userId);
+			return new HashSet<>(permissionKeys);
+		} catch (Exception e) {
+			logger.error("Error fetching permissions for user {}", userId, e);
+			return Set.of();
+		}
 	}
 
+	@Transactional
 	public boolean updateUserPermissions(int userId, String[] permissionIds) {
-		// This method is now a no-op as granular permissions are disabled,
-		// but we keep it to avoid breaking references in the UserService.
-		// It can be fully removed in a future refactor.
+		jdbcTemplate.update("DELETE FROM user_permissions WHERE user_id = ?", userId);
+		if (permissionIds != null && permissionIds.length > 0) {
+			List<Object[]> batchArgs = Arrays.stream(permissionIds)
+					.map(idStr -> new Object[] { userId, Integer.parseInt(idStr) }).collect(Collectors.toList());
+			jdbcTemplate.batchUpdate("INSERT INTO user_permissions (user_id, permission_id) VALUES (?, ?)", batchArgs);
+		}
 		return true;
 	}
 
