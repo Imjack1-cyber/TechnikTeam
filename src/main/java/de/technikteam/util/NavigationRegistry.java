@@ -35,6 +35,8 @@ public final class NavigationRegistry {
 		ALL_ITEMS.add(new NavigationItem("Anträge", "/admin/requests", "fa-inbox", Permissions.USER_UPDATE));
 		ALL_ITEMS.add(
 				new NavigationItem("Events", "/admin/veranstaltungen", "fa-calendar-plus", Permissions.EVENT_READ));
+		ALL_ITEMS.add(new NavigationItem("Debriefings", "/admin/debriefings", "fa-clipboard-check",
+				Permissions.EVENT_DEBRIEFING_VIEW));
 		ALL_ITEMS.add(new NavigationItem("Lager", "/admin/lager", "fa-warehouse", Permissions.STORAGE_READ));
 		ALL_ITEMS.add(new NavigationItem("Dateien", "/admin/dateien", "fa-file-upload", Permissions.FILE_MANAGE));
 		ALL_ITEMS
@@ -46,6 +48,8 @@ public final class NavigationRegistry {
 				Permissions.NOTIFICATION_SEND));
 		ALL_ITEMS.add(new NavigationItem("Abzeichen", "/admin/achievements", "fa-award", Permissions.ACHIEVEMENT_VIEW));
 		ALL_ITEMS.add(new NavigationItem("Defekte Artikel", "/admin/defekte", "fa-wrench", Permissions.STORAGE_READ));
+		ALL_ITEMS.add(new NavigationItem("Schadensmeldungen", "/admin/damage-reports", "fa-tools",
+				Permissions.DAMAGE_REPORT_MANAGE));
 		ALL_ITEMS
 				.add(new NavigationItem("Quali-Matrix", "/admin/matrix", "fa-th-list", Permissions.QUALIFICATION_READ));
 		ALL_ITEMS.add(new NavigationItem("Berichte", "/admin/berichte", "fa-chart-pie", Permissions.REPORT_READ));

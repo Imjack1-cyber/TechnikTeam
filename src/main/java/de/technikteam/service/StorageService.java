@@ -1,8 +1,8 @@
 package de.technikteam.service;
 
-import de.technikteam.dao.EventDAO;
-import de.technikteam.dao.StorageDAO;
-import de.technikteam.dao.StorageLogDAO;
+import de.technikteam.config.Permissions;
+import de.technikteam.dao.*;
+import de.technikteam.model.DamageReport;
 import de.technikteam.model.Event;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
@@ -10,21 +10,31 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Map;
+
 @Service
 public class StorageService {
 
 	private final StorageDAO storageDAO;
 	private final StorageLogDAO storageLogDAO;
+	private final DamageReportDAO damageReportDAO;
+	private final UserDAO userDAO;
 	private final EventDAO eventDAO;
 	private final AdminLogService adminLogService;
+	private final NotificationService notificationService;
 
 	@Autowired
-	public StorageService(StorageDAO storageDAO, StorageLogDAO storageLogDAO, EventDAO eventDAO,
-			AdminLogService adminLogService) {
+	public StorageService(StorageDAO storageDAO, StorageLogDAO storageLogDAO, DamageReportDAO damageReportDAO,
+			UserDAO userDAO, EventDAO eventDAO, AdminLogService adminLogService,
+			NotificationService notificationService) {
 		this.storageDAO = storageDAO;
 		this.storageLogDAO = storageLogDAO;
+		this.damageReportDAO = damageReportDAO;
+		this.userDAO = userDAO;
 		this.eventDAO = eventDAO;
 		this.adminLogService = adminLogService;
+		this.notificationService = notificationService;
 	}
 
 	@Transactional
@@ -110,5 +120,76 @@ public class StorageService {
 
 		storageDAO.updateItem(item);
 		return true;
+	}
+
+	@Transactional
+	public DamageReport createDamageReport(int itemId, int reporterId, String description) {
+		StorageItem item = storageDAO.getItemById(itemId);
+		if (item == null) {
+			throw new IllegalArgumentException("Der zu meldende Artikel existiert nicht.");
+		}
+		DamageReport report = damageReportDAO.createReport(itemId, reporterId, description);
+
+		// Notify admins
+		List<Integer> adminIds = userDAO.findUserIdsByPermission(Permissions.DAMAGE_REPORT_MANAGE);
+		User reporter = userDAO.getUserById(reporterId);
+		String title = "Neue Schadensmeldung";
+		String notificationDescription = String.format("%s hat einen Schaden für '%s' gemeldet.",
+				reporter.getUsername(), item.getName());
+
+		for (Integer adminId : adminIds) {
+			Map<String, Object> payload = Map.of("title", title, "description", notificationDescription, "level",
+					"Important", "url", "/admin/damage-reports");
+			notificationService.sendNotificationToUser(adminId, payload);
+		}
+
+		return report;
+	}
+
+	@Transactional
+	public void confirmDamageReport(int reportId, int quantity, User adminUser) {
+		DamageReport report = damageReportDAO.getReportById(reportId)
+				.orElseThrow(() -> new IllegalArgumentException("Bericht nicht gefunden."));
+
+		if (!"PENDING".equals(report.getStatus())) {
+			throw new IllegalStateException("Dieser Bericht wurde bereits bearbeitet.");
+		}
+
+		// Update the storage item
+		StorageItem item = storageDAO.getItemById(report.getItemId());
+		int newDefectiveTotal = item.getDefectiveQuantity() + quantity;
+		if (item.getQuantity() < newDefectiveTotal) {
+			throw new IllegalStateException(
+					"Die Gesamtzahl der defekten Artikel kann die Gesamtmenge nicht überschreiten.");
+		}
+		item.setDefectiveQuantity(newDefectiveTotal);
+		if (item.getDefectReason() == null || item.getDefectReason().isBlank()) {
+			item.setDefectReason(report.getReportDescription());
+		} else {
+			item.setDefectReason(item.getDefectReason() + " | Gemeldet: " + report.getReportDescription());
+		}
+		storageDAO.updateItem(item);
+
+		// Update the report status
+		damageReportDAO.updateStatus(reportId, "CONFIRMED", adminUser.getId(), "Bestätigt und als defekt verbucht.");
+
+		// Log the admin action
+		adminLogService.log(adminUser.getUsername(), "DAMAGE_REPORT_CONFIRMED",
+				String.format("Schadensmeldung #%d für '%s' bestätigt.", reportId, item.getName()));
+	}
+
+	@Transactional
+	public void rejectDamageReport(int reportId, String adminNotes, User adminUser) {
+		DamageReport report = damageReportDAO.getReportById(reportId)
+				.orElseThrow(() -> new IllegalArgumentException("Bericht nicht gefunden."));
+
+		if (!"PENDING".equals(report.getStatus())) {
+			throw new IllegalStateException("Dieser Bericht wurde bereits bearbeitet.");
+		}
+
+		damageReportDAO.updateStatus(reportId, "REJECTED", adminUser.getId(), adminNotes);
+
+		adminLogService.log(adminUser.getUsername(), "DAMAGE_REPORT_REJECTED", String.format(
+				"Schadensmeldung #%d für '%s' abgelehnt. Grund: %s", reportId, report.getItemName(), adminNotes));
 	}
 }

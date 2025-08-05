@@ -31,7 +31,8 @@ public class EventTaskDAO {
 	}
 
 	@Transactional
-	public int saveTask(EventTask task, int[] userIds, String[] itemIds, String[] itemQuantities, String[] kitIds) {
+	public int saveTask(EventTask task, int[] userIds, String[] itemIds, String[] itemQuantities, String[] kitIds,
+			int[] dependencyIds) {
 		boolean isUpdate = task.getId() > 0;
 		if (isUpdate) {
 			updateTask(task);
@@ -48,6 +49,7 @@ public class EventTaskDAO {
 		saveUserAssignments(task.getId(), userIds);
 		saveItemRequirements(task.getId(), itemIds, itemQuantities);
 		saveKitRequirements(task.getId(), kitIds);
+		saveDependencies(task.getId(), dependencyIds);
 
 		logger.info("Successfully saved task ID {}", task.getId());
 		return task.getId();
@@ -78,6 +80,7 @@ public class EventTaskDAO {
 		jdbcTemplate.update("DELETE FROM event_task_assignments WHERE task_id = ?", taskId);
 		jdbcTemplate.update("DELETE FROM event_task_storage_items WHERE task_id = ?", taskId);
 		jdbcTemplate.update("DELETE FROM event_task_kits WHERE task_id = ?", taskId);
+		jdbcTemplate.update("DELETE FROM event_task_dependencies WHERE task_id = ?", taskId);
 	}
 
 	private void saveUserAssignments(int taskId, int[] userIds) {
@@ -119,6 +122,17 @@ public class EventTaskDAO {
 		});
 	}
 
+	private void saveDependencies(int taskId, int[] dependencyIds) {
+		if (dependencyIds == null || dependencyIds.length == 0)
+			return;
+		String sql = "INSERT INTO event_task_dependencies (task_id, depends_on_task_id) VALUES (?, ?)";
+		List<Integer> dependencyIdList = Arrays.stream(dependencyIds).boxed().collect(Collectors.toList());
+		jdbcTemplate.batchUpdate(sql, dependencyIdList, 100, (ps, dependencyId) -> {
+			ps.setInt(1, taskId);
+			ps.setInt(2, dependencyId);
+		});
+	}
+
 	public List<EventTask> getTasksForEvent(int eventId) {
 		Map<Integer, EventTask> tasksById = new LinkedHashMap<>();
 		String sql = "SELECT t.*, u.id as user_id, u.username, si.id as item_id, si.name as item_name, tsi.quantity as item_quantity, ik.id as kit_id, ik.name as kit_name FROM event_tasks t LEFT JOIN event_task_assignments ta ON t.id = ta.task_id LEFT JOIN users u ON ta.user_id = u.id LEFT JOIN event_task_storage_items tsi ON t.id = tsi.task_id LEFT JOIN storage_items si ON tsi.item_id = si.id LEFT JOIN event_task_kits tk ON t.id = tk.task_id LEFT JOIN inventory_kits ik ON tk.kit_id = ik.id WHERE t.event_id = ? ORDER BY t.display_order ASC, t.id ASC, u.username, si.name, ik.name";
@@ -151,6 +165,22 @@ public class EventTaskDAO {
 			}
 		}, eventId);
 
+		// Now fetch and assemble dependencies
+		if (!tasksById.isEmpty()) {
+			String depSql = "SELECT * FROM event_task_dependencies WHERE task_id IN ("
+					+ tasksById.keySet().stream().map(String::valueOf).collect(Collectors.joining(",")) + ")";
+			jdbcTemplate.query(depSql, rs -> {
+				int taskId = rs.getInt("task_id");
+				int dependsOnId = rs.getInt("depends_on_task_id");
+				EventTask task = tasksById.get(taskId);
+				EventTask parentTask = tasksById.get(dependsOnId);
+				if (task != null && parentTask != null) {
+					task.getDependsOn().add(parentTask);
+					parentTask.getDependencyFor().add(task);
+				}
+			});
+		}
+
 		return new ArrayList<>(tasksById.values());
 	}
 
@@ -167,6 +197,8 @@ public class EventTaskDAO {
 			task.setAssignedUsers(new ArrayList<>());
 			task.setRequiredItems(new ArrayList<>());
 			task.setRequiredKits(new ArrayList<>());
+			task.setDependsOn(new ArrayList<>());
+			task.setDependencyFor(new ArrayList<>());
 			return task;
 		} catch (SQLException e) {
 			throw new RuntimeException("Failed to map ResultSet to EventTask", e);

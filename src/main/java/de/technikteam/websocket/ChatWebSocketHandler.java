@@ -3,11 +3,14 @@ package de.technikteam.websocket;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
+import com.google.gson.reflect.TypeToken;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.ChatDAO;
+import de.technikteam.model.ChatConversation;
 import de.technikteam.model.ChatMessage;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
+import de.technikteam.service.NotificationService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +22,9 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 public class ChatWebSocketHandler extends TextWebSocketHandler {
@@ -27,12 +32,15 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 	private static final Logger logger = LogManager.getLogger(ChatWebSocketHandler.class);
 	private final ChatDAO chatDAO;
 	private final ChatWebSocketSessionManager sessionManager;
+	private final NotificationService notificationService;
 	private final Gson gson;
 
 	@Autowired
-	public ChatWebSocketHandler(ChatDAO chatDAO, ChatWebSocketSessionManager sessionManager) {
+	public ChatWebSocketHandler(ChatDAO chatDAO, ChatWebSocketSessionManager sessionManager,
+			NotificationService notificationService) {
 		this.chatDAO = chatDAO;
 		this.sessionManager = sessionManager;
+		this.notificationService = notificationService;
 		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
@@ -59,29 +67,109 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 	@Override
 	protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
 		User user = (User) session.getAttributes().get("user");
-		String conversationId = (String) session.getAttributes().get("conversationId");
-		if (user == null || conversationId == null)
+		String conversationIdStr = (String) session.getAttributes().get("conversationId");
+		if (user == null || conversationIdStr == null)
 			return;
+		int conversationId = Integer.parseInt(conversationIdStr);
 
 		try {
-			Map<String, String> payload = gson.fromJson(message.getPayload(), Map.class);
-			String text = payload.get("messageText");
+			Map<String, Object> payload = gson.fromJson(message.getPayload(), new TypeToken<Map<String, Object>>() {
+			}.getType());
+			String type = (String) payload.get("type");
+			Map<String, Object> data = (Map<String, Object>) payload.get("payload");
 
-			if (text != null && !text.isBlank()) {
-				ChatMessage chatMessage = new ChatMessage();
-				chatMessage.setConversationId(Integer.parseInt(conversationId));
-				chatMessage.setSenderId(user.getId());
-				chatMessage.setMessageText(text); // Sanitization can be added here if needed
-
-				ChatMessage savedMessage = chatDAO.createMessage(chatMessage);
-				// Refetch full message to include username and timestamp
-				ChatMessage fullMessage = chatDAO.getMessagesForConversation(savedMessage.getConversationId(), 1, 0)
-						.get(0);
-
-				sessionManager.broadcast(conversationId, gson.toJson(fullMessage));
+			switch (type) {
+			case "new_message":
+				handleNewMessage(user, conversationId, (String) payload.get("messageText"));
+				break;
+			case "mark_as_read":
+				handleMarkAsRead(user, conversationId, (List<Double>) data.get("messageIds"));
+				break;
+			case "update_message":
+				handleUpdateMessage(user, conversationId, data);
+				break;
+			case "delete_message":
+				handleDeleteMessage(user, conversationId, data);
+				break;
 			}
 		} catch (JsonSyntaxException e) {
 			logger.error("Invalid JSON received from user {}: {}", user.getUsername(), message.getPayload());
+		}
+	}
+
+	private void handleNewMessage(User user, int conversationId, String text) {
+		if (text != null && !text.isBlank()) {
+			ChatMessage chatMessage = new ChatMessage();
+			chatMessage.setConversationId(conversationId);
+			chatMessage.setSenderId(user.getId());
+			chatMessage.setMessageText(text);
+
+			ChatMessage savedMessage = chatDAO.createMessage(chatMessage);
+			ChatMessage fullMessage = chatDAO.getMessagesForConversation(savedMessage.getConversationId(), 1, 0).get(0);
+
+			sessionManager.broadcast(String.valueOf(conversationId),
+					gson.toJson(Map.of("type", "new_message", "payload", fullMessage)));
+			notifyParticipants(fullMessage, user);
+		}
+	}
+
+	private void handleMarkAsRead(User user, int conversationId, List<Double> messageIdsDouble) {
+		if (messageIdsDouble == null || messageIdsDouble.isEmpty())
+			return;
+		List<Long> messageIds = messageIdsDouble.stream().map(Double::longValue).collect(Collectors.toList());
+
+		boolean updated = chatDAO.updateMessagesStatusToRead(messageIds, conversationId, user.getId());
+		if (updated) {
+			Map<String, Object> updatePayload = Map.of("type", "messages_status_updated", "payload",
+					Map.of("messageIds", messageIds, "newStatus", "READ"));
+			sessionManager.broadcast(String.valueOf(conversationId), gson.toJson(updatePayload));
+		}
+	}
+
+	private void handleUpdateMessage(User user, int conversationId, Map<String, Object> data) {
+		long messageId = ((Double) data.get("messageId")).longValue();
+		String newText = (String) data.get("newText");
+
+		if (chatDAO.updateMessage(messageId, user.getId(), newText)) {
+			Map<String, Object> broadcastPayload = Map.of("type", "message_updated", "payload",
+					Map.of("messageId", messageId, "newText", newText));
+			sessionManager.broadcast(String.valueOf(conversationId), gson.toJson(broadcastPayload));
+		}
+	}
+
+	private void handleDeleteMessage(User user, int conversationId, Map<String, Object> data) {
+		long messageId = ((Double) data.get("messageId")).longValue();
+		ChatConversation conversation = chatDAO.getConversationById(conversationId);
+		boolean isAdmin = conversation != null && conversation.isGroupChat() && conversation.getCreatorId() != null
+				&& conversation.getCreatorId() == user.getId();
+
+		if (chatDAO.deleteMessage(messageId, user.getId(), isAdmin)) {
+			Map<String, Object> broadcastPayload = Map.of("type", "message_deleted", "payload",
+					Map.of("messageId", messageId, "deletedByUsername", user.getUsername()));
+			sessionManager.broadcast(String.valueOf(conversationId), gson.toJson(broadcastPayload));
+		}
+	}
+
+	private void notifyParticipants(ChatMessage message, User sender) {
+		ChatConversation conversation = chatDAO.getConversationById(message.getConversationId());
+		if (conversation == null)
+			return;
+
+		List<User> participants = conversation.getParticipants();
+		for (User participant : participants) {
+			if (participant.getId() != sender.getId()) { // Don't notify the sender
+				String messageSnippet = message.getMessageText();
+				if (messageSnippet.length() > 50) {
+					messageSnippet = messageSnippet.substring(0, 47) + "...";
+				}
+
+				String title = conversation.isGroupChat() ? "Neue Nachricht in \"" + conversation.getName() + "\""
+						: "Neue Nachricht von " + sender.getUsername();
+
+				Map<String, Object> payload = Map.of("type", "new_message", "title", title, "description",
+						messageSnippet, "level", "Informational", "url", "/chat/" + message.getConversationId());
+				notificationService.sendNotificationToUser(participant.getId(), payload);
+			}
 		}
 	}
 

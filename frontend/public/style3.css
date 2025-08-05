@@ -111,6 +111,13 @@
 	transition: transform 0.4s ease-in-out, opacity 0.4s;
 	border-left: 5px solid var(--primary-color);
 	opacity: 0;
+	display: flex;
+	align-items: center;
+}
+
+.toast.clickable:hover {
+	box-shadow: var(--shadow-lg), 0 0 0 2px var(--primary-color);
+	cursor: pointer;
 }
 
 .toast.toast-success {

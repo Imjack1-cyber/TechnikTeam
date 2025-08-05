@@ -14,6 +14,7 @@ public record EventUpdateRequest(@NotBlank @Schema(description = "Name of the ev
 		@Schema(description = "Current status of the event (e.g., GEPLANT, LAUFEND)") String status,
 		@Schema(description = "ID of the user leading the event") Integer leaderUserId,
 		@Schema(description = "Required role for viewing attachments") String requiredRole,
+		@Schema(description = "Reminder time in minutes before the event starts") Integer reminderMinutes,
 		@Schema(description = "Array of course IDs for skill requirements") List<String> requiredCourseIds,
 		@Schema(description = "Array of required person counts for skills") List<String> requiredPersons,
 		@Schema(description = "Array of item IDs for reservations") List<String> itemIds,

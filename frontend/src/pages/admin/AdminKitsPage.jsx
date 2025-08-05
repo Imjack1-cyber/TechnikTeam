@@ -38,6 +38,7 @@ const KitAccordion = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems })
 				<div style={{ textAlign: 'center', padding: '1rem' }}>
 					<QRCode value={packKitUrl} size={256} />
 					<p style={{ marginTop: '1rem' }}>Scannen, um die Packliste zu öffnen.</p>
+					<a href={packKitUrl} target="_blank" rel="noopener noreferrer">{packKitUrl}</a>
 				</div>
 			</Modal>
 		</div>

@@ -78,4 +78,26 @@ public class PublicStorageResource {
 					.body(new ApiResponse(false, "Ein unerwarteter Fehler ist aufgetreten: " + e.getMessage(), null));
 		}
 	}
+
+	@PostMapping("/{itemId}/report-damage")
+	@Operation(summary = "Report damage for an item", description = "Allows a user to submit a damage report for a specific inventory item.")
+	public ResponseEntity<ApiResponse> reportDamage(@PathVariable int itemId, @RequestBody Map<String, String> payload,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		String description = payload.get("description");
+		if (description == null || description.isBlank()) {
+			return ResponseEntity.badRequest()
+					.body(new ApiResponse(false, "Eine Beschreibung ist erforderlich.", null));
+		}
+
+		try {
+			storageService.createDamageReport(itemId, securityUser.getUser().getId(), description);
+			return ResponseEntity.ok(
+					new ApiResponse(true, "Schadensmeldung erfolgreich übermittelt. Ein Admin wird sie prüfen.", null));
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
+		} catch (Exception e) {
+			return ResponseEntity.internalServerError()
+					.body(new ApiResponse(false, "Meldung konnte nicht gespeichert werden.", null));
+		}
+	}
 }

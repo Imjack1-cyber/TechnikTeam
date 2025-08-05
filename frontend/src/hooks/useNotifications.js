@@ -27,7 +27,11 @@ export const useNotifications = () => {
 			if (data.level === 'Warning') {
 				setWarningNotification(data);
 			} else {
-				addToast(`${data.title}: ${data.description}`, data.level === 'Important' ? 'error' : 'info');
+				addToast(
+					`${data.title}: ${data.description}`,
+					data.level === 'Important' ? 'error' : 'info',
+					data.url || null // Pass the URL to the toast
+				);
 			}
 		});
 

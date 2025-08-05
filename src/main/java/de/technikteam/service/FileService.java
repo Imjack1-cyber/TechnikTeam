@@ -32,6 +32,11 @@ public class FileService {
 
 	public de.technikteam.model.File storeFile(MultipartFile multipartFile, Integer categoryId, String requiredRole,
 			User adminUser) throws IOException {
+		return storeFile(multipartFile, categoryId, requiredRole, adminUser, "docs");
+	}
+
+	public de.technikteam.model.File storeFile(MultipartFile multipartFile, Integer categoryId, String requiredRole,
+			User adminUser, String subDirectory) throws IOException {
 
 		// Security Validations
 		if (multipartFile.getSize() > MAX_FILE_SIZE_BYTES) {
@@ -45,13 +50,14 @@ public class FileService {
 		String sanitizedFileName = originalFileName.replaceAll("[^a-zA-Z0-9.\\-_]", "_");
 		String uniqueFileName = UUID.randomUUID() + "-" + sanitizedFileName;
 
-		Path targetPath = this.fileStorageLocation.resolve(Paths.get("docs", uniqueFileName));
-		Files.createDirectories(targetPath.getParent());
+		Path targetDirectory = this.fileStorageLocation.resolve(subDirectory);
+		Path targetPath = targetDirectory.resolve(uniqueFileName);
+		Files.createDirectories(targetDirectory);
 		Files.copy(multipartFile.getInputStream(), targetPath);
 
 		de.technikteam.model.File file = new de.technikteam.model.File();
 		file.setFilename(originalFileName);
-		file.setFilepath("docs/" + uniqueFileName);
+		file.setFilepath(subDirectory + "/" + uniqueFileName);
 		file.setCategoryId(categoryId != null ? categoryId : 0);
 		file.setRequiredRole(requiredRole);
 

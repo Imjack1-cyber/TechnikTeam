@@ -59,7 +59,8 @@ public class AdminEventResource {
 			int newEventId = eventService.createOrUpdateEvent(event, false, adminUser,
 					eventData.requiredCourseIds().toArray(new String[0]),
 					eventData.requiredPersons().toArray(new String[0]), eventData.itemIds().toArray(new String[0]),
-					eventData.quantities().toArray(new String[0]), null, file, eventData.requiredRole());
+					eventData.quantities().toArray(new String[0]), null, file, eventData.requiredRole(),
+					eventData.reminderMinutes());
 
 			return new ResponseEntity<>(
 					new ApiResponse(true, "Veranstaltung erfolgreich erstellt.", Map.of("id", newEventId)),
@@ -88,7 +89,8 @@ public class AdminEventResource {
 			eventService.createOrUpdateEvent(event, true, adminUser,
 					eventData.requiredCourseIds().toArray(new String[0]),
 					eventData.requiredPersons().toArray(new String[0]), eventData.itemIds().toArray(new String[0]),
-					eventData.quantities().toArray(new String[0]), null, file, eventData.requiredRole());
+					eventData.quantities().toArray(new String[0]), null, file, eventData.requiredRole(),
+					eventData.reminderMinutes());
 
 			return ResponseEntity.ok(new ApiResponse(true, "Veranstaltung erfolgreich aktualisiert.", null));
 		} catch (Exception e) {

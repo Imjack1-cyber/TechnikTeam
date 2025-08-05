@@ -27,6 +27,8 @@ public final class Permissions {
 	public static final String EVENT_DELETE = "EVENT_DELETE";
 	public static final String EVENT_MANAGE_ASSIGNMENTS = "EVENT_MANAGE_ASSIGNMENTS";
 	public static final String EVENT_MANAGE_TASKS = "EVENT_MANAGE_TASKS";
+	public static final String EVENT_DEBRIEFING_VIEW = "EVENT_DEBRIEFING_VIEW";
+	public static final String EVENT_DEBRIEFING_MANAGE = "EVENT_DEBRIEFING_MANAGE";
 
 	// --- COURSE & MEETING MANAGEMENT ---
 	public static final String COURSE_CREATE = "COURSE_CREATE";
@@ -39,6 +41,7 @@ public final class Permissions {
 	public static final String STORAGE_READ = "STORAGE_READ";
 	public static final String STORAGE_UPDATE = "STORAGE_UPDATE";
 	public static final String STORAGE_DELETE = "STORAGE_DELETE";
+	public static final String DAMAGE_REPORT_MANAGE = "DAMAGE_REPORT_MANAGE";
 
 	// --- KIT MANAGEMENT ---
 	public static final String KIT_CREATE = "KIT_CREATE";

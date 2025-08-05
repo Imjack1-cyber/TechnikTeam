@@ -2,8 +2,10 @@ package de.technikteam.api.v1.public_api;
 
 import de.technikteam.dao.ChatDAO;
 import de.technikteam.model.ApiResponse;
+import de.technikteam.model.ChatConversation;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
+import de.technikteam.service.FileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -13,7 +15,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -23,10 +27,12 @@ import java.util.Map;
 public class PublicChatResource {
 
 	private final ChatDAO chatDAO;
+	private final FileService fileService;
 
 	@Autowired
-	public PublicChatResource(ChatDAO chatDAO) {
+	public PublicChatResource(ChatDAO chatDAO, FileService fileService) {
 		this.chatDAO = chatDAO;
+		this.fileService = fileService;
 	}
 
 	@GetMapping("/conversations")
@@ -35,6 +41,18 @@ public class PublicChatResource {
 	public ResponseEntity<ApiResponse> getConversations(@AuthenticationPrincipal SecurityUser securityUser) {
 		return ResponseEntity.ok(new ApiResponse(true, "Gespräche abgerufen.",
 				chatDAO.getConversationsForUser(securityUser.getUser().getId())));
+	}
+
+	@GetMapping("/conversations/{id}")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(summary = "Get a single conversation's details")
+	public ResponseEntity<ApiResponse> getConversationById(@PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		if (!chatDAO.isUserInConversation(id, securityUser.getUser().getId())) {
+			return new ResponseEntity<>(new ApiResponse(false, "Nicht autorisiert.", null), HttpStatus.FORBIDDEN);
+		}
+		ChatConversation conversation = chatDAO.getConversationById(id);
+		return ResponseEntity.ok(new ApiResponse(true, "Gespräch abgerufen.", conversation));
 	}
 
 	@GetMapping("/conversations/{id}/messages")
@@ -61,5 +79,62 @@ public class PublicChatResource {
 		int conversationId = chatDAO.findOrCreateConversation(securityUser.getUser().getId(), otherUserId);
 		return ResponseEntity.ok(
 				new ApiResponse(true, "Gespräch gefunden oder erstellt.", Map.of("conversationId", conversationId)));
+	}
+
+	@PostMapping("/conversations/group")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(summary = "Create a new group conversation")
+	public ResponseEntity<ApiResponse> createGroupConversation(@RequestBody Map<String, Object> payload,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		String name = (String) payload.get("name");
+		@SuppressWarnings("unchecked")
+		List<Integer> participantIds = (List<Integer>) payload.get("participantIds");
+
+		if (name == null || name.isBlank() || participantIds == null || participantIds.isEmpty()) {
+			return ResponseEntity.badRequest()
+					.body(new ApiResponse(false, "Gruppenname und Teilnehmer sind erforderlich.", null));
+		}
+
+		int conversationId = chatDAO.createGroupConversation(name, securityUser.getUser().getId(), participantIds);
+		return ResponseEntity.status(HttpStatus.CREATED)
+				.body(new ApiResponse(true, "Gruppe erfolgreich erstellt.", Map.of("conversationId", conversationId)));
+	}
+
+	@PostMapping("/conversations/{id}/participants")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(summary = "Add participants to a group")
+	public ResponseEntity<ApiResponse> addParticipants(@PathVariable int id,
+			@RequestBody Map<String, List<Integer>> payload, @AuthenticationPrincipal SecurityUser securityUser) {
+		ChatConversation conversation = chatDAO.getConversationById(id);
+		if (conversation == null) {
+			return new ResponseEntity<>(new ApiResponse(false, "Gespräch nicht gefunden.", null), HttpStatus.NOT_FOUND);
+		}
+		if (!conversation.isGroupChat() || conversation.getCreatorId() != securityUser.getUser().getId()) {
+			return new ResponseEntity<>(
+					new ApiResponse(false, "Nur der Ersteller der Gruppe kann Mitglieder hinzufügen.", null),
+					HttpStatus.FORBIDDEN);
+		}
+		List<Integer> userIds = payload.get("userIds");
+		if (userIds == null || userIds.isEmpty()) {
+			return ResponseEntity.badRequest().body(new ApiResponse(false, "Keine Benutzer-IDs angegeben.", null));
+		}
+
+		chatDAO.addParticipantsToGroup(id, userIds);
+		return ResponseEntity.ok(new ApiResponse(true, "Teilnehmer erfolgreich hinzugefügt.", null));
+	}
+
+	@PostMapping("/upload")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(summary = "Upload a file for chat")
+	public ResponseEntity<ApiResponse> uploadChatFile(@RequestParam("file") MultipartFile file,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		try {
+			de.technikteam.model.File savedFile = fileService.storeFile(file, null, "NUTZER", securityUser.getUser(),
+					"chat");
+			return ResponseEntity.ok(new ApiResponse(true, "Datei hochgeladen.", savedFile));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new ApiResponse(false, "Datei-Upload fehlgeschlagen: " + e.getMessage(), null));
+		}
 	}
 }

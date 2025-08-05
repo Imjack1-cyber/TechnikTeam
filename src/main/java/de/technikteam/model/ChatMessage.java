@@ -8,7 +8,14 @@ public class ChatMessage {
 	private int senderId;
 	private String senderUsername;
 	private String messageText;
+	private String status; // SENT, DELIVERED, READ
 	private LocalDateTime sentAt;
+	private String chatColor;
+	private boolean edited;
+	private boolean isDeleted;
+	private LocalDateTime deletedAt;
+	private Integer deletedByUserId;
+	private String deletedByUsername; // Transient
 
 	public long getId() {
 		return id;
@@ -50,11 +57,67 @@ public class ChatMessage {
 		this.messageText = messageText;
 	}
 
+	public String getStatus() {
+		return status;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
+	}
+
 	public LocalDateTime getSentAt() {
 		return sentAt;
 	}
 
 	public void setSentAt(LocalDateTime sentAt) {
 		this.sentAt = sentAt;
+	}
+
+	public String getChatColor() {
+		return chatColor;
+	}
+
+	public void setChatColor(String chatColor) {
+		this.chatColor = chatColor;
+	}
+
+	public boolean isEdited() {
+		return edited;
+	}
+
+	public void setEdited(boolean edited) {
+		this.edited = edited;
+	}
+
+	public boolean isDeleted() {
+		return isDeleted;
+	}
+
+	public void setDeleted(boolean deleted) {
+		isDeleted = deleted;
+	}
+
+	public LocalDateTime getDeletedAt() {
+		return deletedAt;
+	}
+
+	public void setDeletedAt(LocalDateTime deletedAt) {
+		this.deletedAt = deletedAt;
+	}
+
+	public Integer getDeletedByUserId() {
+		return deletedByUserId;
+	}
+
+	public void setDeletedByUserId(Integer deletedByUserId) {
+		this.deletedByUserId = deletedByUserId;
+	}
+
+	public String getDeletedByUsername() {
+		return deletedByUsername;
+	}
+
+	public void setDeletedByUsername(String deletedByUsername) {
+		this.deletedByUsername = deletedByUsername;
 	}
 }

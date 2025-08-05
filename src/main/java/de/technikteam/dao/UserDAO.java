@@ -218,4 +218,14 @@ public class UserDAO {
 			return null;
 		}
 	}
+
+	public List<Integer> findUserIdsByPermission(String permissionKey) {
+		String sql = "SELECT up.user_id FROM user_permissions up JOIN permissions p ON up.permission_id = p.id WHERE p.permission_key = ?";
+		try {
+			return jdbcTemplate.queryForList(sql, Integer.class, permissionKey);
+		} catch (Exception e) {
+			logger.error("Error fetching user IDs by permission key '{}'", permissionKey, e);
+			return List.of();
+		}
+	}
 }

@@ -5,14 +5,17 @@ import de.technikteam.dao.EventDAO;
 import de.technikteam.model.*;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.EventService;
+import de.technikteam.service.FileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -26,12 +29,15 @@ public class PublicEventResource {
 	private final EventDAO eventDAO;
 	private final EventService eventService;
 	private final EventCustomFieldDAO customFieldDAO;
+	private final FileService fileService;
 
 	@Autowired
-	public PublicEventResource(EventDAO eventDAO, EventService eventService, EventCustomFieldDAO customFieldDAO) {
+	public PublicEventResource(EventDAO eventDAO, EventService eventService, EventCustomFieldDAO customFieldDAO,
+			FileService fileService) {
 		this.eventDAO = eventDAO;
 		this.eventService = eventService;
 		this.customFieldDAO = customFieldDAO;
+		this.fileService = fileService;
 	}
 
 	@GetMapping
@@ -96,5 +102,23 @@ public class PublicEventResource {
 			@Parameter(description = "ID of the event") @PathVariable int id) {
 		List<EventCustomField> fields = customFieldDAO.getCustomFieldsForEvent(id);
 		return ResponseEntity.ok(new ApiResponse(true, "Zusatzfelder erfolgreich abgerufen.", fields));
+	}
+
+	@PostMapping("/{eventId}/chat/upload")
+	@Operation(summary = "Upload a file to an event chat")
+	public ResponseEntity<ApiResponse> uploadEventChatFile(@PathVariable int eventId,
+			@RequestParam("file") MultipartFile file, @AuthenticationPrincipal SecurityUser securityUser) {
+		if (!eventDAO.isUserAssociatedWithEvent(eventId, securityUser.getUser().getId())) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN)
+					.body(new ApiResponse(false, "Nicht berechtigt, Dateien in diesem Chat hochzuladen.", null));
+		}
+		try {
+			de.technikteam.model.File savedFile = fileService.storeFile(file, null, "NUTZER", securityUser.getUser(),
+					"eventchat/" + eventId);
+			return ResponseEntity.ok(new ApiResponse(true, "Datei hochgeladen.", savedFile));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new ApiResponse(false, "Datei-Upload fehlgeschlagen: " + e.getMessage(), null));
+		}
 	}
 }

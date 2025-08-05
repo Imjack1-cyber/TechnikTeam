@@ -7,8 +7,11 @@ import './ChatPage.css';
 const ChatPage = () => {
 	const { conversationId } = useParams();
 
+	// On mobile, the presence of a conversationId dictates which pane is visible.
+	const containerClass = `chat-page-container ${conversationId ? 'message-view-visible' : 'conversation-list-visible'}`;
+
 	return (
-		<div className="chat-page-container">
+		<div className={containerClass}>
 			<aside className="chat-sidebar">
 				<ConversationList selectedConversationId={conversationId} />
 			</aside>

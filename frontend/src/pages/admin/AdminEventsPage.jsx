@@ -77,6 +77,11 @@ const AdminEventsPage = () => {
 								<td><StatusBadge status={event.status} /></td>
 								<td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
 									<button onClick={() => openModal(event)} className="btn btn-small">Bearbeiten</button>
+									{event.status === 'ABGESCHLOSSEN' && (
+										<Link to={`/admin/veranstaltungen/${event.id}/debriefing`} className="btn btn-small btn-info">
+											Debriefing
+										</Link>
+									)}
 									<button onClick={() => handleDelete(event)} className="btn btn-small btn-danger">Löschen</button>
 								</td>
 							</tr>
@@ -95,6 +100,11 @@ const AdminEventsPage = () => {
 						<div className="card-row"><strong>Status:</strong> <StatusBadge status={event.status} /></div>
 						<div className="card-actions">
 							<button onClick={() => openModal(event)} className="btn btn-small">Bearbeiten</button>
+							{event.status === 'ABGESCHLOSSEN' && (
+								<Link to={`/admin/veranstaltungen/${event.id}/debriefing`} className="btn btn-small btn-info">
+									Debriefing
+								</Link>
+							)}
 							<button onClick={() => handleDelete(event)} className="btn btn-small btn-danger">Löschen</button>
 						</div>
 					</div>

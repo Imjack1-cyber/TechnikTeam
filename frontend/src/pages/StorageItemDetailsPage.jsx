@@ -3,17 +3,28 @@ import { useParams, Link } from 'react-router-dom';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import Lightbox from '../components/ui/Lightbox';
+import DamageReportModal from '../../components/storage/DamageReportModal';
+import { useToast } from '../../context/ToastContext';
 
 const StorageItemDetailsPage = () => {
 	const { itemId } = useParams();
 	const [activeTab, setActiveTab] = useState('history');
 	const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+	const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+	const { addToast } = useToast();
 
 	const fetchItemCall = useCallback(() => apiClient.get(`/public/storage/${itemId}`), [itemId]);
 	const fetchHistoryCall = useCallback(() => apiClient.get(`/public/storage/${itemId}/history`), [itemId]);
 
-	const { data: itemData, loading: itemLoading, error: itemError } = useApi(fetchItemCall);
+	const { data: itemData, loading: itemLoading, error: itemError, reload: reloadItem } = useApi(fetchItemCall);
 	const { data: historyData, loading: historyLoading, error: historyError } = useApi(fetchHistoryCall);
+
+
+	const handleReportSuccess = () => {
+		setIsReportModalOpen(false);
+		addToast('Schadensmeldung erfolgreich übermittelt.', 'success');
+		// No need to reload data, as the report is handled by admins
+	};
 
 	if (itemLoading || historyLoading) return <div>Lade Artikeldetails...</div>;
 	if (itemError) return <div className="error-message">{itemError}</div>;
@@ -46,6 +57,9 @@ const StorageItemDetailsPage = () => {
 						<li><strong>Schrank:</strong> <span>{item.cabinet || 'N/A'}</span></li>
 						<li><strong>Fach:</strong> <span>{item.compartment || 'N/A'}</span></li>
 					</ul>
+					<button className="btn btn-warning" style={{ marginTop: '1.5rem' }} onClick={() => setIsReportModalOpen(true)}>
+						<i className="fas fa-tools"></i> Schaden melden
+					</button>
 				</div>
 
 				<div className="card">
@@ -108,6 +122,13 @@ const StorageItemDetailsPage = () => {
 			</div>
 
 			{isLightboxOpen && <Lightbox src={`/api/v1/public/files/images/${item.imagePath}`} onClose={() => setIsLightboxOpen(false)} />}
+
+			<DamageReportModal
+				isOpen={isReportModalOpen}
+				onClose={() => setIsReportModalOpen(false)}
+				onSuccess={handleReportSuccess}
+				item={item}
+			/>
 		</>
 	);
 };

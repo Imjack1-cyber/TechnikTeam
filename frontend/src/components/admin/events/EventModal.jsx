@@ -4,6 +4,7 @@ import apiClient from '../../../services/apiClient';
 import { useToast } from '../../../context/ToastContext';
 import DynamicSkillRows from './DynamicSkillRows';
 import DynamicItemRows from './DynamicItemRows';
+import TaskDependenciesForm from './TaskDependenciesForm';
 
 const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData }) => {
 	const isEditMode = !!event;
@@ -22,6 +23,7 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData }) => {
 		status: 'GEPLANT',
 		leaderUserId: '',
 		requiredRole: 'NUTZER',
+		reminderMinutes: '0',
 	});
 	const [skillRows, setSkillRows] = useState([{ requiredCourseId: '', requiredPersons: 1 }]);
 	const [itemRows, setItemRows] = useState([{ itemId: '', quantity: 1 }]);
@@ -38,6 +40,7 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData }) => {
 				status: event.status || 'GEPLANT',
 				leaderUserId: event.leaderUserId || '',
 				requiredRole: 'NUTZER',
+				reminderMinutes: event.reminderMinutes || '0',
 			});
 			setSkillRows(event.skillRequirements?.length > 0 ? event.skillRequirements : []);
 			setItemRows(event.reservedItems?.length > 0 ? event.reservedItems : []);
@@ -56,6 +59,7 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData }) => {
 		const data = new FormData();
 		const eventData = {
 			...formData,
+			reminderMinutes: parseInt(formData.reminderMinutes, 10),
 			requiredCourseIds: skillRows.map(r => r.requiredCourseId).filter(Boolean),
 			requiredPersons: skillRows.map(r => r.requiredPersons).filter(Boolean),
 			itemIds: itemRows.map(r => r.itemId).filter(Boolean),
@@ -103,8 +107,20 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData }) => {
 				</div>
 
 				<div className={`modal-tab-content ${activeTab === 'details' ? 'active' : ''}`}>
-					<div className="form-group"><label>Status</label><select name="status" value={formData.status} onChange={handleChange}><option value="GEPLANT">Geplant</option><option value="LAUFEND">Laufend</option><option value="ABGESCHLOSSEN">Abgeschlossen</option><option value="ABGESAGT">Abgesagt</option></select></div>
-					<div className="form-group"><label>Leitung</label><select name="leaderUserId" value={formData.leaderUserId} onChange={handleChange}><option value="">(Keine)</option>{users?.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}</select></div>
+					<div className="responsive-dashboard-grid">
+						<div className="form-group"><label>Status</label><select name="status" value={formData.status} onChange={handleChange}><option value="GEPLANT">Geplant</option><option value="LAUFEND">Laufend</option><option value="ABGESCHLOSSEN">Abgeschlossen</option><option value="ABGESAGT">Abgesagt</option></select></div>
+						<div className="form-group"><label>Leitung</label><select name="leaderUserId" value={formData.leaderUserId} onChange={handleChange}><option value="">(Keine)</option>{users?.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}</select></div>
+					</div>
+					<div className="form-group">
+						<label>Erinnerung senden</label>
+						<select name="reminderMinutes" value={formData.reminderMinutes} onChange={handleChange}>
+							<option value="0">Keine Erinnerung</option>
+							<option value="60">1 Stunde vorher</option>
+							<option value="120">2 Stunden vorher</option>
+							<option value="1440">1 Tag vorher</option>
+							<option value="2880">2 Tage vorher</option>
+						</select>
+					</div>
 					<div className="form-group"><label>Anhang (optional)</label><input type="file" name="file" onChange={(e) => setFile(e.target.files[0])} /></div>
 					<h4>Personalbedarf</h4>
 					<DynamicSkillRows rows={skillRows} setRows={setSkillRows} courses={courses} />

@@ -1,7 +1,8 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
 
-const Toast = ({ message, type, onHide }) => {
+const Toast = ({ message, type, url, onHide }) => {
 	const [visible, setVisible] = React.useState(false);
 
 	React.useEffect(() => {
@@ -26,16 +27,23 @@ const Toast = ({ message, type, onHide }) => {
 		}
 	};
 
-	return (
-		<div className={`toast ${visible ? 'show' : ''} ${getTypeClass()}`}>
+	const toastContent = (
+		<div className={`toast ${visible ? 'show' : ''} ${getTypeClass()} ${url ? 'clickable' : ''}`}>
 			{message}
+			{url && <i className="fas fa-arrow-right" style={{ marginLeft: 'auto', paddingLeft: '1rem' }}></i>}
 		</div>
 	);
+
+	if (url) {
+		return <Link to={url} style={{ textDecoration: 'none' }}>{toastContent}</Link>
+	}
+
+	return toastContent;
 };
 
 
 const ToastContainer = () => {
-	const { toasts, addToast } = useToast(); // addToast isn't used here, but context provides it
+	const { toasts } = useToast();
 
 	const handleHide = (id) => {
 		// The timeout in ToastProvider already handles removal.
@@ -45,7 +53,7 @@ const ToastContainer = () => {
 	return (
 		<div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
 			{toasts.map(toast => (
-				<Toast key={toast.id} message={toast.message} type={toast.type} onHide={() => handleHide(toast.id)} />
+				<Toast key={toast.id} message={toast.message} type={toast.type} url={toast.url} onHide={() => handleHide(toast.id)} />
 			))}
 		</div>
 	);

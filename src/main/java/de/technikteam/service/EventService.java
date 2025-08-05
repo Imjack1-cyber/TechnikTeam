@@ -3,6 +3,7 @@ package de.technikteam.service;
 import de.technikteam.dao.AttachmentDAO;
 import de.technikteam.dao.EventCustomFieldDAO;
 import de.technikteam.dao.EventDAO;
+import de.technikteam.dao.ScheduledNotificationDAO;
 import de.technikteam.model.Attachment;
 import de.technikteam.model.Event;
 import de.technikteam.model.EventCustomField;
@@ -21,9 +22,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class EventService {
@@ -35,25 +39,28 @@ public class EventService {
 	private final ConfigurationService configService;
 	private final AdminLogService adminLogService;
 	private final NotificationService notificationService;
+	private final ScheduledNotificationDAO scheduledNotificationDAO;
 	private final PolicyFactory richTextPolicy;
 
 	@Autowired
 	public EventService(EventDAO eventDAO, AttachmentDAO attachmentDAO, EventCustomFieldDAO customFieldDAO,
 			ConfigurationService configService, AdminLogService adminLogService,
-			NotificationService notificationService, @Qualifier("richTextPolicy") PolicyFactory richTextPolicy) {
+			NotificationService notificationService, ScheduledNotificationDAO scheduledNotificationDAO,
+			@Qualifier("richTextPolicy") PolicyFactory richTextPolicy) {
 		this.eventDAO = eventDAO;
 		this.attachmentDAO = attachmentDAO;
 		this.customFieldDAO = customFieldDAO;
 		this.configService = configService;
 		this.adminLogService = adminLogService;
 		this.notificationService = notificationService;
+		this.scheduledNotificationDAO = scheduledNotificationDAO;
 		this.richTextPolicy = richTextPolicy;
 	}
 
 	@Transactional
 	public int createOrUpdateEvent(Event event, boolean isUpdate, User adminUser, String[] requiredCourseIds,
 			String[] requiredPersons, String[] itemIds, String[] quantities, List<EventCustomField> customFields,
-			MultipartFile file, String requiredRole) throws SQLException, IOException {
+			MultipartFile file, String requiredRole, int reminderMinutes) throws SQLException, IOException {
 
 		// Sanitize HTML content before saving
 		if (event.getDescription() != null) {
@@ -84,8 +91,37 @@ public class EventService {
 			handleAttachmentUpload(file, eventId, requiredRole, adminUser);
 		}
 
+		// Handle scheduled reminder
+		List<Integer> participantIds = eventDAO.getAssignedUsersForEvent(eventId).stream().map(User::getId)
+				.collect(Collectors.toList());
+		LocalDateTime sendAt = reminderMinutes > 0 ? event.getEventDateTime().minusMinutes(reminderMinutes) : null;
+		if (sendAt != null && sendAt.isAfter(LocalDateTime.now())) {
+			scheduledNotificationDAO.createOrUpdateReminder("EVENT_REMINDER", eventId, participantIds, sendAt,
+					"Erinnerung: " + event.getName(), "Diese Veranstaltung beginnt bald.",
+					"/veranstaltungen/details/" + eventId);
+		} else {
+			// Delete existing reminder if it's no longer needed
+			scheduledNotificationDAO.deleteReminders("EVENT_REMINDER", eventId);
+		}
+
 		logger.info("Transaction for event ID {} committed successfully.", eventId);
 		return eventId;
+	}
+
+	public void assignUsersToEventAndNotify(int eventId, String[] userIds, User adminUser) {
+		eventDAO.assignUsersToEvent(eventId, userIds);
+		Event event = eventDAO.getEventById(eventId);
+		String logDetails = String.format("Benutzer %s zu Event '%s' zugewiesen.", Arrays.toString(userIds),
+				event.getName());
+		adminLogService.log(adminUser.getUsername(), "ASSIGN_USERS_EVENT", logDetails);
+
+		for (String userIdStr : userIds) {
+			int userId = Integer.parseInt(userIdStr);
+			String notificationMessage = String.format("Du wurdest zum Event '%s' zugewiesen.", event.getName());
+			Map<String, Object> payload = Map.of("type", "assignment", "title", "Neue Zuweisung", "description",
+					notificationMessage, "level", "Important", "url", "/veranstaltungen/details/" + eventId);
+			notificationService.sendNotificationToUser(userId, payload);
+		}
 	}
 
 	public void signOffUserFromRunningEvent(int userId, String username, int eventId, String reason) {

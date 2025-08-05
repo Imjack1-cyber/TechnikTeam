@@ -18,6 +18,7 @@ import ChatPage from '../pages/ChatPage'; // Eagerly load ChatPage
 const DashboardPage = lazy(() => import('../pages/DashboardPage'));
 const StoragePage = lazy(() => import('../pages/StoragePage'));
 const StorageItemDetailsPage = lazy(() => import('../pages/StorageItemDetailsPage'));
+const QrActionPage = lazy(() => import('../pages/QrActionPage'));
 const EventsPage = lazy(() => import('../pages/EventsPage'));
 const EventDetailsPage = lazy(() => import('../pages/EventDetailsPage'));
 const LehrgaengePage = lazy(() => import('../pages/LehrgaengePage'));
@@ -36,10 +37,13 @@ const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage'
 const AdminUsersPage = lazy(() => import('../pages/admin/AdminUsersPage'));
 const AdminRequestsPage = lazy(() => import('../pages/admin/AdminRequestsPage'));
 const AdminEventsPage = lazy(() => import('../pages/admin/AdminEventsPage'));
+const AdminEventDebriefingPage = lazy(() => import('../pages/admin/AdminEventDebriefingPage'));
+const AdminDebriefingsListPage = lazy(() => import('../pages/admin/AdminDebriefingsListPage'));
 const AdminCoursesPage = lazy(() => import('../pages/admin/AdminCoursesPage'));
 const AdminMeetingsPage = lazy(() => import('../pages/admin/AdminMeetingsPage'));
 const AdminStoragePage = lazy(() => import('../pages/admin/AdminStoragePage'));
 const AdminDefectivePage = lazy(() => import('../pages/admin/AdminDefectivePage'));
+const AdminDamageReportsPage = lazy(() => import('../pages/admin/AdminDamageReportsPage'));
 const AdminLogPage = lazy(() => import('../pages/admin/AdminLogPage'));
 const AdminKitsPage = lazy(() => import('../pages/admin/AdminKitsPage'));
 const AdminMatrixPage = lazy(() => import('../pages/admin/AdminMatrixPage'));
@@ -93,6 +97,8 @@ const router = createBrowserRouter([
 					{ path: 'mitglieder', element: <AdminUsersPage /> },
 					{ path: 'requests', element: <AdminRequestsPage /> },
 					{ path: 'veranstaltungen', element: <AdminEventsPage /> },
+					{ path: 'veranstaltungen/:eventId/debriefing', element: <AdminEventDebriefingPage /> },
+					{ path: 'debriefings', element: <AdminDebriefingsListPage /> },
 					{ path: 'lehrgaenge', element: <AdminCoursesPage /> },
 					{ path: 'lehrgaenge/:courseId/meetings', element: <AdminMeetingsPage /> },
 					{ path: 'lager', element: <AdminStoragePage /> },
@@ -102,6 +108,7 @@ const router = createBrowserRouter([
 					{ path: 'benachrichtigungen', element: <AdminNotificationsPage /> },
 					{ path: 'achievements', element: <AdminAchievementsPage /> },
 					{ path: 'defekte', element: <AdminDefectivePage /> },
+					{ path: 'damage-reports', element: <AdminDamageReportsPage /> },
 					{ path: 'matrix', element: <AdminMatrixPage /> },
 					{ path: 'berichte', element: <AdminReportsPage /> },
 					{ path: 'log', element: <AdminLogPage /> },
@@ -122,6 +129,20 @@ const router = createBrowserRouter([
 			{
 				index: true,
 				element: <PackKitPage />
+			}
+		]
+	},
+	{
+		path: '/lager/qr-aktion/:itemId',
+		element: (
+			<ProtectedRoute>
+				<MinimalLayout />
+			</ProtectedRoute>
+		),
+		children: [
+			{
+				index: true,
+				element: <QrActionPage />
 			}
 		]
 	},

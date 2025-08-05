@@ -6,12 +6,15 @@ import StorageItemModal from '../../components/admin/storage/StorageItemModal';
 import Lightbox from '../../components/ui/Lightbox';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { useToast } from '../../context/ToastContext';
+import Modal from '../../components/ui/Modal';
+import QRCode from 'qrcode.react';
 
 const AdminStoragePage = () => {
 	const apiCall = useCallback(() => apiClient.get('/storage'), []);
 	const { data: items, loading, error, reload } = useApi(apiCall);
 	const [modalState, setModalState] = useState({ isOpen: false, item: null, mode: 'edit' });
 	const [lightboxSrc, setLightboxSrc] = useState('');
+	const [qrCodeItem, setQrCodeItem] = useState(null);
 	const { addToast } = useToast();
 
 	const openModal = (mode, item = null) => {
@@ -88,6 +91,7 @@ const AdminStoragePage = () => {
 									{item.defectiveQuantity > 0 && (
 										<button onClick={() => openModal('repair', item)} className="btn btn-small btn-success">Repariert</button>
 									)}
+									<button onClick={() => setQrCodeItem(item)} className="btn btn-small btn-info">QR</button>
 									<button onClick={() => handleDelete(item)} className="btn btn-small btn-danger">Löschen</button>
 								</td>
 							</tr>
@@ -100,7 +104,7 @@ const AdminStoragePage = () => {
 				{loading && <p>Lade Artikel...</p>}
 				{error && <p className="error-message">{error}</p>}
 				{items?.map(item => (
-					<div className="list-item-card" key={item.id}>
+					<div key={item.id} className="list-item-card">
 						<h3 className="card-title">
 							<Link to={`/lager/details/${item.id}`}>{item.name}</Link>
 							{item.imagePath && (
@@ -118,6 +122,7 @@ const AdminStoragePage = () => {
 							{item.defectiveQuantity > 0 && (
 								<button onClick={() => openModal('repair', item)} className="btn btn-small btn-success">Repariert</button>
 							)}
+							<button onClick={() => setQrCodeItem(item)} className="btn btn-small btn-info">QR</button>
 							<button onClick={() => handleDelete(item)} className="btn btn-small btn-danger">Löschen</button>
 						</div>
 					</div>
@@ -132,6 +137,15 @@ const AdminStoragePage = () => {
 					item={modalState.item}
 					initialMode={modalState.mode}
 				/>
+			)}
+
+			{qrCodeItem && (
+				<Modal isOpen={!!qrCodeItem} onClose={() => setQrCodeItem(null)} title={`QR-Code für: ${qrCodeItem.name}`}>
+					<div style={{ textAlign: 'center', padding: '1rem' }}>
+						<QRCode value={`${window.location.origin}/lager/qr-aktion/${qrCodeItem.id}`} size={256} />
+						<p style={{ marginTop: '1rem' }}>Scannen für schnelle Aktionen.</p>
+					</div>
+				</Modal>
 			)}
 
 			{lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc('')} />}

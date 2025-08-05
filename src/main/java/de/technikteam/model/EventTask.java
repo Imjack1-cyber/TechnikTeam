@@ -22,6 +22,8 @@ public class EventTask {
 	private List<User> assignedUsers;
 	private List<StorageItem> requiredItems;
 	private List<InventoryKit> requiredKits;
+	private List<EventTask> dependsOn; // Tasks that must be completed before this one
+	private List<EventTask> dependencyFor; // Tasks that depend on this one
 
 	public String getAssignedUsernames() {
 		if (assignedUsers != null && !assignedUsers.isEmpty()) {
@@ -116,5 +118,21 @@ public class EventTask {
 
 	public void setRequiredKits(List<InventoryKit> requiredKits) {
 		this.requiredKits = requiredKits;
+	}
+
+	public List<EventTask> getDependsOn() {
+		return dependsOn;
+	}
+
+	public void setDependsOn(List<EventTask> dependsOn) {
+		this.dependsOn = dependsOn;
+	}
+
+	public List<EventTask> getDependencyFor() {
+		return dependencyFor;
+	}
+
+	public void setDependencyFor(List<EventTask> dependencyFor) {
+		this.dependencyFor = dependencyFor;
 	}
 }
