@@ -42,6 +42,13 @@ public class MeetingDAO {
 		return meeting;
 	};
 
+	private final RowMapper<User> userRowMapper = (rs, rowNum) -> {
+		User user = new User();
+		user.setId(rs.getInt("id"));
+		user.setUsername(rs.getString("username"));
+		return user;
+	};
+
 	public int createMeeting(Meeting meeting) {
 		String sql = "INSERT INTO meetings (course_id, name, meeting_datetime, end_datetime, leader_user_id, description, location) VALUES (?, ?, ?, ?, ?, ?, ?)";
 		KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -162,6 +169,16 @@ public class MeetingDAO {
 			return jdbcTemplate.query(sql, meetingRowMapper, searchTerm, searchTerm, searchTerm);
 		} catch (Exception e) {
 			logger.error("Error searching meetings for query '{}'", query, e);
+			return List.of();
+		}
+	}
+
+	public List<User> getParticipantUsersForMeeting(int meetingId) {
+		String sql = "SELECT u.id, u.username FROM users u JOIN meeting_attendance ma ON u.id = ma.user_id WHERE ma.meeting_id = ? AND ma.attended = 1";
+		try {
+			return jdbcTemplate.query(sql, userRowMapper, meetingId);
+		} catch (Exception e) {
+			logger.error("Error fetching participant users for meeting {}", meetingId, e);
 			return List.of();
 		}
 	}

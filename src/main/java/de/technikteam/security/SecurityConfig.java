@@ -37,11 +37,13 @@ public class SecurityConfig {
 
 		http.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
 				.csrfTokenRequestHandler(requestHandler)
-				// Add the new admin notifications endpoint to the ignore list
+				// Add the new admin notifications and chat endpoints to the ignore list
 				.ignoringRequestMatchers("/api/v1/auth/login", "/api/v1/auth/logout", "/api/v1/passkey/login/start",
 						"/api/v1/passkey/login/finish", "/api/v1/passkey/register/start",
-						"/api/v1/passkey/register/finish", "/api/v1/admin/notifications"))
-				.authorizeHttpRequests(auth -> auth.requestMatchers(
+						"/api/v1/passkey/register/finish", "/api/v1/admin/notifications",
+						"/api/v1/public/chat/conversations", "/api/v1/public/profile/chat-color" // Add chat color
+																									// endpoint
+				)).authorizeHttpRequests(auth -> auth.requestMatchers(
 						// Public Authentication endpoints
 						"/api/v1/auth/**", "/api/v1/passkey/**", "/api/v1/admin/notifications/sse", // Explicitly permit
 																									// SSE endpoint

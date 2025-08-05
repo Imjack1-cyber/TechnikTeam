@@ -8,10 +8,11 @@ import ErrorLayout from '../components/layout/ErrorLayout';
 import ProtectedRoute from './ProtectedRoute';
 import AdminRoute from './AdminRoute';
 
-// Eagerly load the LoginPage and Error Pages
+// Eagerly load the LoginPage, Error Pages, and the new ChatPage
 import LoginPage from '../pages/LoginPage';
 import ErrorPage from '../pages/error/ErrorPage';
 import NotFoundPage from '../pages/error/NotFoundPage';
+import ChatPage from '../pages/ChatPage'; // Eagerly load ChatPage
 
 // Lazy load all other pages
 const DashboardPage = lazy(() => import('../pages/DashboardPage'));
@@ -79,6 +80,8 @@ const router = createBrowserRouter([
 			{ path: 'feedback/event/:eventId', element: <EventFeedbackPage /> },
 			{ path: 'kalender', element: <CalendarPage /> },
 			{ path: 'suche', element: <SearchResultsPage /> },
+			{ path: 'chat', element: <ChatPage /> },
+			{ path: 'chat/:conversationId', element: <ChatPage /> },
 			{ path: 'test-500', element: <ErrorTrigger /> },
 
 			{

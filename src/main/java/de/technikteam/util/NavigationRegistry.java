@@ -20,6 +20,7 @@ public final class NavigationRegistry {
 	static {
 		// User Section
 		ALL_ITEMS.add(new NavigationItem("Dashboard", "/home", "fa-home", null));
+		ALL_ITEMS.add(new NavigationItem("Chat", "/chat", "fa-comments", null));
 		ALL_ITEMS.add(new NavigationItem("Lehrgänge", "/lehrgaenge", "fa-graduation-cap", null));
 		ALL_ITEMS.add(new NavigationItem("Veranstaltungen", "/veranstaltungen", "fa-calendar-check", null));
 		ALL_ITEMS.add(new NavigationItem("Lager", "/lager", "fa-boxes", null));

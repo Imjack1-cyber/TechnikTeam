@@ -138,13 +138,8 @@ public class NotificationService {
 		case "MEETING":
 			if (request.targetId() == null)
 				throw new IllegalArgumentException("Meeting-ID ist erforderlich.");
-			// Note: We need a DAO method for this. For now, let's assume one exists or add
-			// it.
-			// This is a placeholder as the DAO method does not exist yet. Let's get all
-			// users for now.
-			logger.warn("Meeting target selected, but DAO method is missing. Sending to all users as a fallback.");
-			targetUsers = userDAO.getAllUsers();
-			targetDescription = "Teilnehmer des Meetings ID " + request.targetId() + " (Fallback: alle)";
+			targetUsers = meetingDAO.getParticipantUsersForMeeting(request.targetId());
+			targetDescription = "Teilnehmer des Meetings ID " + request.targetId();
 			break;
 		default:
 			throw new IllegalArgumentException("Ungültiger Zieltyp: " + request.targetType());
