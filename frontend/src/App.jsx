@@ -16,7 +16,12 @@ const AppLayout = () => {
 	const { warningNotification, dismissWarning } = useNotifications();
 	const [changelog, setChangelog] = useState(null);
 	const [isChangelogVisible, setIsChangelogVisible] = useState(false);
-	const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+	const { isAuthenticated, layout } = useAuthStore(state => ({
+		isAuthenticated: state.isAuthenticated,
+		layout: state.layout,
+	}));
+	const sidebarPosition = layout.sidebarPosition || 'left';
+
 
 	const fetchChangelog = useCallback(async () => {
 		if (isAuthenticated) {
@@ -62,6 +67,14 @@ const AppLayout = () => {
 			document.body.classList.remove('nav-open');
 		}
 	}, [isNavOpen]);
+
+	useEffect(() => {
+		// Apply layout classes to the body
+		document.body.classList.add(`layout-sidebar-${sidebarPosition}`);
+		return () => {
+			document.body.classList.remove(`layout-sidebar-${sidebarPosition}`);
+		};
+	}, [sidebarPosition]);
 
 	return (
 		<>

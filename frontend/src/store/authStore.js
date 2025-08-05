@@ -7,6 +7,12 @@ const hasAdminAccess = (roleName) => {
 	return roleName === 'ADMIN';
 };
 
+const defaultLayout = {
+	sidebarPosition: 'left',
+	navOrder: [], // Empty array means default order
+};
+
+
 export const useAuthStore = create(
 	persist(
 		(set, get) => ({
@@ -15,6 +21,7 @@ export const useAuthStore = create(
 			isAuthenticated: false,
 			isAdmin: false,
 			theme: 'light',
+			layout: defaultLayout,
 			login: async (username, password) => {
 				try {
 					// The login endpoint now returns the user object on success and sets the cookie
@@ -36,7 +43,7 @@ export const useAuthStore = create(
 				} catch (error) {
 					console.error("Logout API call failed, clearing state anyway.", error);
 				} finally {
-					set({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, theme: 'light' });
+					set({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, theme: 'light', layout: defaultLayout });
 					localStorage.removeItem('auth-storage');
 					document.documentElement.setAttribute('data-theme', 'light');
 				}
@@ -48,12 +55,22 @@ export const useAuthStore = create(
 					if (result.success && result.data.user && result.data.navigation) {
 						const user = result.data.user;
 						const newTheme = user.theme || 'light';
+						let userLayout = defaultLayout;
+						if (user.dashboardLayout) {
+							try {
+								userLayout = { ...defaultLayout, ...JSON.parse(user.dashboardLayout) };
+							} catch (e) {
+								console.error("Failed to parse user layout JSON", e);
+							}
+						}
+
 						set({
 							user: user,
 							navigationItems: result.data.navigation,
 							isAuthenticated: true,
 							isAdmin: hasAdminAccess(user.roleName),
 							theme: newTheme,
+							layout: userLayout,
 						});
 						document.documentElement.setAttribute('data-theme', newTheme);
 					} else {
@@ -81,6 +98,28 @@ export const useAuthStore = create(
 					}
 				} catch (error) {
 					console.error("Failed to save theme preference:", error);
+				}
+			},
+			setLayout: async (newLayout) => {
+				try {
+					const result = await apiClient.put('/public/profile/layout', newLayout);
+					if (result.success && result.data) {
+						const updatedUser = result.data;
+						let userLayout = defaultLayout;
+						if (updatedUser.dashboardLayout) {
+							try {
+								userLayout = { ...defaultLayout, ...JSON.parse(updatedUser.dashboardLayout) };
+							} catch (e) { console.error("Failed to parse updated layout", e); }
+						}
+						set({
+							user: updatedUser,
+							layout: userLayout,
+						});
+					} else {
+						throw new Error(result.message || 'Server konnte das Layout nicht speichern.');
+					}
+				} catch (error) {
+					console.error("Failed to save layout preferences:", error);
 				}
 			},
 		}),

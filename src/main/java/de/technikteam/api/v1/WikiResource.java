@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -52,6 +53,13 @@ public class WikiResource {
 	public ResponseEntity<ApiResponse> getWikiTree() {
 		Map<String, Object> treeData = wikiService.getWikiTreeAsData();
 		return ResponseEntity.ok(new ApiResponse(true, "Wiki-Struktur erfolgreich abgerufen.", treeData));
+	}
+
+	@GetMapping("/list")
+	@Operation(summary = "Get a flat list of all wiki pages", description = "Retrieves a simple list of all wiki pages with their ID and path, suitable for populating dropdowns.")
+	public ResponseEntity<ApiResponse> getWikiList() {
+		List<WikiEntry> entries = wikiDAO.getAllWikiEntries();
+		return ResponseEntity.ok(new ApiResponse(true, "Wiki-Liste erfolgreich abgerufen.", entries));
 	}
 
 	@GetMapping("/{id}")

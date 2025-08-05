@@ -34,6 +34,9 @@ const SearchResultsPage = lazy(() => import('../pages/SearchResultsPage'));
 const ChangelogPage = lazy(() => import('../pages/ChangelogPage'));
 const TeamDirectoryPage = lazy(() => import('../pages/TeamDirectoryPage'));
 const AnnouncementsPage = lazy(() => import('../pages/AnnouncementsPage'));
+const HelpListPage = lazy(() => import('../pages/HelpListPage'));
+const HelpDetailsPage = lazy(() => import('../pages/HelpDetailsPage'));
+const SettingsPage = lazy(() => import('../pages/SettingsPage'));
 
 // Admin Pages
 const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage'));
@@ -63,6 +66,7 @@ const AdminChecklistTemplatesPage = lazy(() => import('../pages/admin/AdminCheck
 const AdminChangelogPage = lazy(() => import('../pages/admin/AdminChangelogPage'));
 const AdminAnnouncementsPage = lazy(() => import('../pages/admin/AdminAnnouncementsPage'));
 const AdminTrainingRequestsPage = lazy(() => import('../pages/admin/AdminTrainingRequestsPage'));
+const AdminDocumentationPage = lazy(() => import('../pages/admin/AdminDocumentationPage'));
 
 
 import ErrorTrigger from '../pages/error/ErrorTrigger';
@@ -87,6 +91,7 @@ const router = createBrowserRouter([
 			{ path: 'lehrgaenge', element: <LehrgaengePage /> },
 			{ path: 'lehrgaenge/details/:meetingId', element: <MeetingDetailsPage /> },
 			{ path: 'profil', element: <ProfilePage /> },
+			{ path: 'profil/einstellungen', element: <SettingsPage /> },
 			{ path: 'passwort', element: <PasswordPage /> },
 			{ path: 'dateien', element: <FilesPage /> },
 			{ path: 'feedback', element: <FeedbackPage /> },
@@ -96,6 +101,8 @@ const router = createBrowserRouter([
 			{ path: 'changelogs', element: <ChangelogPage /> },
 			{ path: 'team', element: <TeamDirectoryPage /> },
 			{ path: 'bulletin-board', element: <AnnouncementsPage /> },
+			{ path: 'help', element: <HelpListPage /> },
+			{ path: 'help/:pageKey', element: <HelpDetailsPage /> },
 			{ path: 'chat', element: <ChatPage /> },
 			{ path: 'chat/:conversationId', element: <ChatPage /> },
 			{ path: 'test-500', element: <ErrorTrigger /> },
@@ -132,6 +139,7 @@ const router = createBrowserRouter([
 					{ path: 'log', element: <AdminLogPage /> },
 					{ path: 'system', element: <AdminSystemPage /> },
 					{ path: 'wiki', element: <AdminWikiPage /> },
+					{ path: 'documentation', element: <AdminDocumentationPage /> },
 				],
 			},
 		],

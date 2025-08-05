@@ -1,12 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import ThemeSwitcher from '../ui/ThemeSwitcher';
 
 const Sidebar = () => {
-	const { user, navigationItems, logout } = useAuthStore();
+	const { user, navigationItems, logout, layout } = useAuthStore();
 	const [searchTerm, setSearchTerm] = useState('');
 	const navigate = useNavigate();
+
+	const orderedNavItems = useMemo(() => {
+		if (!navigationItems) return [];
+		const userOrder = layout.navOrder || [];
+
+		const itemMap = new Map(navigationItems.map(item => [item.label, item]));
+
+		const ordered = userOrder
+			.map(label => itemMap.get(label))
+			.filter(Boolean); // Filter out any items that might no longer exist
+
+		const remaining = navigationItems.filter(item => !userOrder.includes(item.label));
+
+		return [...ordered, ...remaining];
+
+	}, [navigationItems, layout.navOrder]);
+
 
 	if (!user || !navigationItems) {
 		return null;
@@ -20,8 +37,8 @@ const Sidebar = () => {
 		}
 	};
 
-	const userNavItems = navigationItems.filter(item => item.requiredPermission === null);
-	const adminNavItems = navigationItems.filter(item => item.requiredPermission !== null);
+	const userNavItems = orderedNavItems.filter(item => item.requiredPermission === null);
+	const adminNavItems = orderedNavItems.filter(item => item.requiredPermission !== null);
 
 	const handleLogout = () => {
 		logout();

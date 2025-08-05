@@ -7,6 +7,7 @@ import ProfileQualifications from '../components/profile/ProfileQualifications';
 import ProfileAchievements from '../components/profile/ProfileAchievements';
 import ProfileEventHistory from '../components/profile/ProfileEventHistory';
 import { useToast } from '../context/ToastContext';
+import { Link } from 'react-router-dom';
 
 const ProfilePage = () => {
 	const { addToast } = useToast();
@@ -39,7 +40,12 @@ const ProfilePage = () => {
 
 	return (
 		<div>
-			<h1><i className="fas fa-user-circle"></i> Mein Profil</h1>
+			<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+				<h1><i className="fas fa-user-circle"></i> Mein Profil</h1>
+				<Link to="/profil/einstellungen" className="btn btn-secondary">
+					<i className="fas fa-cog"></i> Layout-Einstellungen
+				</Link>
+			</div>
 			<p>Hier finden Sie eine Übersicht Ihrer Daten, Qualifikationen und Aktivitäten.</p>
 			<div className="responsive-dashboard-grid" id="profile-container">
 				<ProfileDetails user={user} hasPendingRequest={hasPendingRequest} onUpdate={handleUpdate} />

@@ -41,9 +41,9 @@ public class SecurityConfig {
 						"/api/v1/auth/login", "/api/v1/auth/logout",
 
 						// --- Public Actions ---
-						"/api/v1/public/profile/**", "/api/v1/public/storage/**", "/api/v1/public/events/**",
-						"/api/v1/public/meetings/**", "/api/v1/public/feedback/**", "/api/v1/public/chat/**",
-						"/api/v1/public/changelog/**",
+						"/api/v1/public/announcements/**", "/api/v1/public/changelog/**", "/api/v1/public/chat/**",
+						"/api/v1/public/events/**", "/api/v1/public/feedback/**", "/api/v1/public/meetings/**",
+						"/api/v1/public/profile/**", "/api/v1/public/storage/**", "/api/v1/public/training-requests/**",
 
 						// --- Admin Actions ---
 						"/api/v1/users/**", "/api/v1/requests/**", "/api/v1/events/**", "/api/v1/meetings/**",

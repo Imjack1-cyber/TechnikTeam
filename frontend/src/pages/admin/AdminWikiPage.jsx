@@ -64,6 +64,7 @@ const AdminWikiPage = () => {
 	const [editContent, setEditContent] = useState('');
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [modalParentPath, setModalParentPath] = useState('');
+	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 	const { addToast } = useToast();
 
 	const handleSelectEntry = async (entry) => {
@@ -73,6 +74,7 @@ const AdminWikiPage = () => {
 				setSelectedEntry(result.data);
 				setEditContent(result.data.content);
 				setIsEditing(false);
+				setIsSidebarOpen(false); // Close sidebar on mobile after selection
 			}
 		} catch (err) {
 			addToast(`Fehler beim Laden der Seite: ${err.message}`, 'error');
@@ -135,7 +137,7 @@ const AdminWikiPage = () => {
 	if (error) return <div className="error-message">{error}</div>;
 
 	return (
-		<div className="wiki-page-wrapper">
+		<div className={`wiki-page-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
 			<aside className="wiki-sidebar">
 				<div className="wiki-sidebar-header">
 					<h3>Wiki-Verzeichnis</h3>
@@ -149,6 +151,9 @@ const AdminWikiPage = () => {
 				{selectedEntry ? (
 					<>
 						<div className="wiki-content-header">
+							<button className="mobile-only btn btn-small" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+								<i className="fas fa-bars"></i> Verzeichnis
+							</button>
 							<h2>{selectedEntry.filePath}</h2>
 							<div className="wiki-editor-controls">
 								{isEditing ? (
@@ -185,6 +190,9 @@ const AdminWikiPage = () => {
 						<i className="fas fa-book-reader" style={{ fontSize: '4rem' }}></i>
 						<h1>Wiki</h1>
 						<p>Wählen Sie eine Seite aus der Navigation aus, um sie anzuzeigen oder zu bearbeiten.</p>
+						<button className="mobile-only btn" onClick={() => setIsSidebarOpen(true)}>
+							<i className="fas fa-bars"></i> Verzeichnis öffnen
+						</button>
 					</div>
 				)}
 			</main>

@@ -34,8 +34,8 @@ public final class NavigationRegistry {
 		// Admin Section
 		ALL_ITEMS.add(new NavigationItem("Admin Dashboard", "/admin/dashboard", "fa-tachometer-alt",
 				Permissions.ADMIN_DASHBOARD_ACCESS));
-		ALL_ITEMS.add(
-				new NavigationItem("Anschlagbrett", "/admin/announcements", "fa-thumbtack", Permissions.USER_UPDATE));
+		ALL_ITEMS.add(new NavigationItem("Anschlagbrett Verwalten", "/admin/announcements", "fa-thumbtack",
+				Permissions.USER_UPDATE));
 		ALL_ITEMS.add(new NavigationItem("Benutzer", "/admin/mitglieder", "fa-users-cog", Permissions.USER_READ));
 		ALL_ITEMS.add(new NavigationItem("Anträge", "/admin/requests", "fa-inbox", Permissions.USER_UPDATE));
 		ALL_ITEMS.add(new NavigationItem("Lehrgangsanfragen", "/admin/training-requests", "fa-question-circle",

@@ -148,15 +148,15 @@ public class PublicProfileResource {
 		}
 	}
 
-	@PutMapping("/dashboard-layout")
-	@Operation(summary = "Update dashboard layout", description = "Saves the user's custom dashboard widget layout.")
+	@PutMapping("/layout")
+	@Operation(summary = "Update layout preferences", description = "Saves the user's custom layout and navigation preferences.")
 	public ResponseEntity<ApiResponse> updateDashboardLayout(@RequestBody Object layout,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 		String layoutJson = new Gson().toJson(layout);
 		if (userDAO.updateDashboardLayout(user.getId(), layoutJson)) {
 			User updatedUser = userDAO.getUserById(user.getId());
-			return ResponseEntity.ok(new ApiResponse(true, "Dashboard-Layout gespeichert.", updatedUser));
+			return ResponseEntity.ok(new ApiResponse(true, "Layout-Einstellungen gespeichert.", updatedUser));
 		}
 		return ResponseEntity.internalServerError()
 				.body(new ApiResponse(false, "Layout konnte nicht gespeichert werden.", null));
