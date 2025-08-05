@@ -99,6 +99,21 @@ public class AdminEventResource {
 		}
 	}
 
+	@PostMapping("/{id}/clone")
+	@Operation(summary = "Clone an event", description = "Creates a deep copy of an existing event, including its details, requirements, and tasks.")
+	public ResponseEntity<ApiResponse> cloneEvent(@PathVariable int id) {
+		try {
+			Event clonedEvent = eventService.cloneEvent(id, getSystemUser());
+			return new ResponseEntity<>(new ApiResponse(true, "Event erfolgreich geklont.", clonedEvent),
+					HttpStatus.CREATED);
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, e.getMessage(), null));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new ApiResponse(false, "Klonen des Events fehlgeschlagen: " + e.getMessage(), null));
+		}
+	}
+
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete an event", description = "Permanently deletes an event and all associated data.")
 	public ResponseEntity<ApiResponse> deleteEvent(@PathVariable int id) {

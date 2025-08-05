@@ -33,6 +33,9 @@ public class EventChatDAO {
 		message.setUsername(rs.getString("username"));
 		message.setMessageText(rs.getString("message_text"));
 		message.setEdited(rs.getBoolean("edited"));
+		if (rs.getTimestamp("edited_at") != null) {
+			message.setEditedAt(rs.getTimestamp("edited_at").toLocalDateTime());
+		}
 		message.setDeleted(rs.getBoolean("is_deleted"));
 		message.setDeletedByUserId(rs.getInt("deleted_by_user_id"));
 		message.setDeletedByUsername(rs.getString("deleted_by_username"));
@@ -86,7 +89,7 @@ public class EventChatDAO {
 	}
 
 	public boolean updateMessage(int messageId, int userId, String newText) {
-		String sql = "UPDATE event_chat_messages SET message_text = ?, edited = TRUE WHERE id = ? AND user_id = ? AND is_deleted = FALSE";
+		String sql = "UPDATE event_chat_messages SET message_text = ?, edited = TRUE, edited_at = NOW() WHERE id = ? AND user_id = ? AND is_deleted = FALSE AND sent_at >= NOW() - INTERVAL 24 HOUR";
 		try {
 			return jdbcTemplate.update(sql, newText, messageId, userId) > 0;
 		} catch (Exception e) {
@@ -97,8 +100,8 @@ public class EventChatDAO {
 
 	public boolean deleteMessage(int messageId, int deletersUserId, boolean isAdmin) {
 		String sql = isAdmin
-				? "UPDATE event_chat_messages SET is_deleted = TRUE, deleted_by_user_id = ?, deleted_at = NOW() WHERE id = ?"
-				: "UPDATE event_chat_messages SET is_deleted = TRUE, deleted_by_user_id = ?, deleted_at = NOW() WHERE id = ? AND user_id = ?";
+				? "UPDATE event_chat_messages SET is_deleted = TRUE, message_text = '', deleted_by_user_id = ?, deleted_at = NOW() WHERE id = ?"
+				: "UPDATE event_chat_messages SET is_deleted = TRUE, message_text = '', deleted_by_user_id = ?, deleted_at = NOW() WHERE id = ? AND user_id = ?";
 		try {
 			if (isAdmin) {
 				return jdbcTemplate.update(sql, deletersUserId, messageId) > 0;

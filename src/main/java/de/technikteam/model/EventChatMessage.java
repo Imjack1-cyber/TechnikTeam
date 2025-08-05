@@ -9,13 +9,15 @@ public class EventChatMessage {
 	private int userId;
 	private String username;
 	private String messageText;
+	private boolean isAnnouncement;
 	private boolean edited;
+	private LocalDateTime editedAt;
 	private boolean isDeleted;
 	private int deletedByUserId;
 	private String deletedByUsername;
 	private LocalDateTime deletedAt;
 	private LocalDateTime sentAt;
-	private String chatColor; 
+	private String chatColor;
 
 	private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yy, HH:mm");
@@ -68,12 +70,28 @@ public class EventChatMessage {
 		this.messageText = messageText;
 	}
 
+	public boolean isAnnouncement() {
+		return isAnnouncement;
+	}
+
+	public void setAnnouncement(boolean announcement) {
+		isAnnouncement = announcement;
+	}
+
 	public boolean isEdited() {
 		return edited;
 	}
 
 	public void setEdited(boolean edited) {
 		this.edited = edited;
+	}
+
+	public LocalDateTime getEditedAt() {
+		return editedAt;
+	}
+
+	public void setEditedAt(LocalDateTime editedAt) {
+		this.editedAt = editedAt;
 	}
 
 	public boolean isDeleted() {

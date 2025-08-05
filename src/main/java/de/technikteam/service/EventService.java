@@ -1,13 +1,8 @@
 package de.technikteam.service;
 
-import de.technikteam.dao.AttachmentDAO;
-import de.technikteam.dao.EventCustomFieldDAO;
-import de.technikteam.dao.EventDAO;
-import de.technikteam.dao.ScheduledNotificationDAO;
-import de.technikteam.model.Attachment;
-import de.technikteam.model.Event;
-import de.technikteam.model.EventCustomField;
-import de.technikteam.model.User;
+import com.google.gson.Gson;
+import de.technikteam.dao.*;
+import de.technikteam.model.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.html.PolicyFactory;
@@ -23,6 +18,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -34,8 +30,11 @@ public class EventService {
 	private static final Logger logger = LogManager.getLogger(EventService.class);
 
 	private final EventDAO eventDAO;
+	private final EventTaskDAO taskDAO;
+	private final MeetingDAO meetingDAO;
 	private final AttachmentDAO attachmentDAO;
 	private final EventCustomFieldDAO customFieldDAO;
+	private final ChecklistDAO checklistDAO;
 	private final ConfigurationService configService;
 	private final AdminLogService adminLogService;
 	private final NotificationService notificationService;
@@ -43,13 +42,17 @@ public class EventService {
 	private final PolicyFactory richTextPolicy;
 
 	@Autowired
-	public EventService(EventDAO eventDAO, AttachmentDAO attachmentDAO, EventCustomFieldDAO customFieldDAO,
-			ConfigurationService configService, AdminLogService adminLogService,
-			NotificationService notificationService, ScheduledNotificationDAO scheduledNotificationDAO,
+	public EventService(EventDAO eventDAO, EventTaskDAO taskDAO, MeetingDAO meetingDAO, AttachmentDAO attachmentDAO,
+			EventCustomFieldDAO customFieldDAO, ChecklistDAO checklistDAO, ConfigurationService configService,
+			AdminLogService adminLogService, NotificationService notificationService,
+			ScheduledNotificationDAO scheduledNotificationDAO,
 			@Qualifier("richTextPolicy") PolicyFactory richTextPolicy) {
 		this.eventDAO = eventDAO;
+		this.taskDAO = taskDAO;
+		this.meetingDAO = meetingDAO;
 		this.attachmentDAO = attachmentDAO;
 		this.customFieldDAO = customFieldDAO;
+		this.checklistDAO = checklistDAO;
 		this.configService = configService;
 		this.adminLogService = adminLogService;
 		this.notificationService = notificationService;
@@ -83,6 +86,7 @@ public class EventService {
 
 		eventDAO.saveSkillRequirements(eventId, requiredCourseIds, requiredPersons);
 		eventDAO.saveReservations(eventId, itemIds, quantities);
+		checklistDAO.generateChecklistFromReservations(eventId); // Generate/update checklist
 		if (customFields != null) {
 			customFieldDAO.saveCustomFieldsForEvent(eventId, customFields);
 		}
@@ -138,6 +142,76 @@ public class EventService {
 			logger.info("Sent sign-off notification to event leader (ID: {}) for event '{}'", event.getLeaderUserId(),
 					event.getName());
 		}
+	}
+
+	@Transactional
+	public Event cloneEvent(int originalEventId, User adminUser) {
+		Event originalEvent = eventDAO.getEventById(originalEventId);
+		if (originalEvent == null) {
+			throw new IllegalArgumentException("Original event not found.");
+		}
+
+		// Create a copy with a new name and future date
+		Event clonedEvent = new Event();
+		clonedEvent.setName(originalEvent.getName() + " (Kopie)");
+		clonedEvent.setDescription(originalEvent.getDescription());
+		clonedEvent.setLocation(originalEvent.getLocation());
+		clonedEvent.setLeaderUserId(originalEvent.getLeaderUserId());
+		clonedEvent.setEventDateTime(LocalDateTime.now().plus(7, ChronoUnit.DAYS).withHour(18).withMinute(0));
+
+		int newEventId = eventDAO.createEvent(clonedEvent);
+		clonedEvent.setId(newEventId);
+
+		// Copy skill requirements
+		List<SkillRequirement> skills = eventDAO.getSkillRequirementsForEvent(originalEventId);
+		String[] courseIds = skills.stream().map(s -> String.valueOf(s.getRequiredCourseId())).toArray(String[]::new);
+		String[] persons = skills.stream().map(s -> String.valueOf(s.getRequiredPersons())).toArray(String[]::new);
+		eventDAO.saveSkillRequirements(newEventId, courseIds, persons);
+
+		// Copy item reservations
+		List<StorageItem> items = eventDAO.getReservedItemsForEvent(originalEventId);
+		String[] itemIds = items.stream().map(i -> String.valueOf(i.getId())).toArray(String[]::new);
+		String[] quantities = items.stream().map(i -> String.valueOf(i.getQuantity())).toArray(String[]::new);
+		eventDAO.saveReservations(newEventId, itemIds, quantities);
+		checklistDAO.generateChecklistFromReservations(newEventId);
+
+		// Copy tasks (without assignments)
+		List<EventTask> tasks = taskDAO.getTasksForEvent(originalEventId);
+		for (EventTask task : tasks) {
+			task.setEventId(newEventId);
+			task.setStatus("OFFEN");
+			taskDAO.saveTask(task, new int[0], new String[0], new String[0], new String[0], new int[0]);
+		}
+
+		adminLogService.log(adminUser.getUsername(), "CLONE_EVENT", "Event '" + originalEvent.getName() + "' (ID: "
+				+ originalEventId + ") zu '" + clonedEvent.getName() + "' (ID: " + newEventId + ") geklont.");
+
+		return clonedEvent;
+	}
+
+	@Transactional
+	public Meeting cloneMeeting(int originalMeetingId, User adminUser) {
+		Meeting originalMeeting = meetingDAO.getMeetingById(originalMeetingId);
+		if (originalMeeting == null) {
+			throw new IllegalArgumentException("Original meeting not found.");
+		}
+
+		Meeting clonedMeeting = new Meeting();
+		clonedMeeting.setCourseId(originalMeeting.getCourseId());
+		clonedMeeting.setName(originalMeeting.getName() + " (Kopie)");
+		clonedMeeting.setDescription(originalMeeting.getDescription());
+		clonedMeeting.setLocation(originalMeeting.getLocation());
+		clonedMeeting.setLeaderUserId(originalMeeting.getLeaderUserId());
+		clonedMeeting.setMeetingDateTime(LocalDateTime.now().plus(7, ChronoUnit.DAYS).withHour(19).withMinute(0));
+
+		int newMeetingId = meetingDAO.createMeeting(clonedMeeting);
+		clonedMeeting.setId(newMeetingId);
+
+		adminLogService.log(adminUser.getUsername(), "CLONE_MEETING",
+				"Meeting '" + originalMeeting.getName() + "' (ID: " + originalMeetingId + ") zu '"
+						+ clonedMeeting.getName() + "' (ID: " + newMeetingId + ") geklont.");
+
+		return clonedMeeting;
 	}
 
 	private void handleAttachmentUpload(MultipartFile file, int eventId, String requiredRole, User adminUser)

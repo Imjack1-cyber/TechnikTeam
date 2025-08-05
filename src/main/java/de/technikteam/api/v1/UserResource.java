@@ -111,6 +111,7 @@ public class UserResource {
 		userToUpdate.setEmail(updateRequest.email());
 		userToUpdate.setClassYear(updateRequest.classYear() != null ? updateRequest.classYear() : 0);
 		userToUpdate.setClassName(updateRequest.className());
+		userToUpdate.setAdminNotes(updateRequest.adminNotes());
 
 		String[] permissionIds = updateRequest.permissionIds().stream().map(String::valueOf).toArray(String[]::new);
 

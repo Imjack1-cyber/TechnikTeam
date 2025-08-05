@@ -46,10 +46,6 @@ public class AdminNotificationResource {
 			@AuthenticationPrincipal SecurityUser securityUser) {
 
 		User adminUser = securityUser.getUser();
-		// Manual authorization check instead of @PreAuthorize
-		if (adminUser.getPermissions() == null || !adminUser.getPermissions().contains(Permissions.NOTIFICATION_SEND)) {
-			return new ResponseEntity<>(new ApiResponse(false, "Zugriff verweigert.", null), HttpStatus.FORBIDDEN);
-		}
 
 		try {
 			int recipients = notificationService.sendBroadcastNotification(request, adminUser);

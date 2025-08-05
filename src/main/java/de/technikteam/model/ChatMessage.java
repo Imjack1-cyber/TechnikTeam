@@ -12,6 +12,7 @@ public class ChatMessage {
 	private LocalDateTime sentAt;
 	private String chatColor;
 	private boolean edited;
+	private LocalDateTime editedAt;
 	private boolean isDeleted;
 	private LocalDateTime deletedAt;
 	private Integer deletedByUserId;
@@ -87,6 +88,14 @@ public class ChatMessage {
 
 	public void setEdited(boolean edited) {
 		this.edited = edited;
+	}
+
+	public LocalDateTime getEditedAt() {
+		return editedAt;
+	}
+
+	public void setEditedAt(LocalDateTime editedAt) {
+		this.editedAt = editedAt;
 	}
 
 	public boolean isDeleted() {

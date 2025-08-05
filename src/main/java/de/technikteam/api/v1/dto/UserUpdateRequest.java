@@ -19,5 +19,7 @@ public record UserUpdateRequest(
 
 		@Schema(description = "The user's class name.") String className,
 
+		@Schema(description = "Admin-only notes about the user.") String adminNotes,
+
 		@NotNull(message = "Berechtigungsliste darf nicht null sein") @Schema(description = "A list of IDs for the user's individual permissions.") List<Integer> permissionIds) {
 }

@@ -76,14 +76,22 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 			Map<String, Object> payload = gson.fromJson(message.getPayload(), new TypeToken<Map<String, Object>>() {
 			}.getType());
 			String type = (String) payload.get("type");
+			// The actual data might be nested inside a 'payload' object or be at the top
+			// level
 			Map<String, Object> data = (Map<String, Object>) payload.get("payload");
+			if (data == null) {
+				data = payload; // Fallback for messages like `new_message` which might not have a nested
+								// payload
+			}
 
 			switch (type) {
 			case "new_message":
-				handleNewMessage(user, conversationId, (String) payload.get("messageText"));
+				handleNewMessage(user, conversationId, (String) data.get("messageText"));
 				break;
 			case "mark_as_read":
-				handleMarkAsRead(user, conversationId, (List<Double>) data.get("messageIds"));
+				if (data.get("messageIds") instanceof List) {
+					handleMarkAsRead(user, conversationId, (List<Double>) data.get("messageIds"));
+				}
 				break;
 			case "update_message":
 				handleUpdateMessage(user, conversationId, data);
@@ -92,8 +100,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 				handleDeleteMessage(user, conversationId, data);
 				break;
 			}
-		} catch (JsonSyntaxException e) {
-			logger.error("Invalid JSON received from user {}: {}", user.getUsername(), message.getPayload());
+		} catch (JsonSyntaxException | ClassCastException | NullPointerException e) {
+			logger.warn("Bad payload from {}: {}", user.getUsername(), e.getMessage());
 		}
 	}
 
@@ -105,7 +113,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 			chatMessage.setMessageText(text);
 
 			ChatMessage savedMessage = chatDAO.createMessage(chatMessage);
-			ChatMessage fullMessage = chatDAO.getMessagesForConversation(savedMessage.getConversationId(), 1, 0).get(0);
+			ChatMessage fullMessage = chatDAO.getMessageById(savedMessage.getId());
 
 			sessionManager.broadcast(String.valueOf(conversationId),
 					gson.toJson(Map.of("type", "new_message", "payload", fullMessage)));
@@ -127,25 +135,35 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 	}
 
 	private void handleUpdateMessage(User user, int conversationId, Map<String, Object> data) {
-		long messageId = ((Double) data.get("messageId")).longValue();
+		if (data == null || !(data.get("messageId") instanceof Number))
+			return;
+		long messageId = ((Number) data.get("messageId")).longValue();
 		String newText = (String) data.get("newText");
 
 		if (chatDAO.updateMessage(messageId, user.getId(), newText)) {
-			Map<String, Object> broadcastPayload = Map.of("type", "message_updated", "payload",
-					Map.of("messageId", messageId, "newText", newText));
+			ChatMessage updatedMessage = chatDAO.getMessageById(messageId);
+			if (updatedMessage == null)
+				return;
+
+			Map<String, Object> broadcastPayload = Map.of("type", "message_updated", "payload", updatedMessage);
 			sessionManager.broadcast(String.valueOf(conversationId), gson.toJson(broadcastPayload));
 		}
 	}
 
 	private void handleDeleteMessage(User user, int conversationId, Map<String, Object> data) {
-		long messageId = ((Double) data.get("messageId")).longValue();
+		if (data == null || !(data.get("messageId") instanceof Number))
+			return;
+		long messageId = ((Number) data.get("messageId")).longValue();
 		ChatConversation conversation = chatDAO.getConversationById(conversationId);
 		boolean isAdmin = conversation != null && conversation.isGroupChat() && conversation.getCreatorId() != null
 				&& conversation.getCreatorId() == user.getId();
 
 		if (chatDAO.deleteMessage(messageId, user.getId(), isAdmin)) {
-			Map<String, Object> broadcastPayload = Map.of("type", "message_deleted", "payload",
-					Map.of("messageId", messageId, "deletedByUsername", user.getUsername()));
+			ChatMessage deletedMessage = chatDAO.getMessageById(messageId);
+			if (deletedMessage == null)
+				return;
+
+			Map<String, Object> broadcastPayload = Map.of("type", "message_deleted", "payload", deletedMessage);
 			sessionManager.broadcast(String.valueOf(conversationId), gson.toJson(broadcastPayload));
 		}
 	}

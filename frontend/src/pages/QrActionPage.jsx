@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import useApi from '../../hooks/useApi';
-import apiClient from '../../services/apiClient';
-import { useToast } from '../../context/ToastContext';
+import useApi from '../hooks/useApi';
+import apiClient from '../services/apiClient';
+import { useToast } from '../context/ToastContext';
 
 const QrActionPage = () => {
 	const { itemId } = useParams();

@@ -18,7 +18,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -45,7 +44,6 @@ public class AdminEventDebriefingResource {
 	}
 
 	@GetMapping("/debriefings")
-	@PreAuthorize("hasAuthority('EVENT_DEBRIEFING_VIEW')")
 	@Operation(summary = "Get all debriefing reports")
 	public ResponseEntity<ApiResponse> getAllDebriefings() {
 		List<EventDebriefing> debriefings = debriefingDAO.findAll().stream().map(debriefingService::enrichDebriefing)
@@ -54,7 +52,6 @@ public class AdminEventDebriefingResource {
 	}
 
 	@GetMapping("/{eventId}/debriefing")
-	@PreAuthorize("hasAuthority('EVENT_DEBRIEFING_VIEW')")
 	@Operation(summary = "Get a debriefing for a specific event")
 	public ResponseEntity<ApiResponse> getDebriefingForEvent(@PathVariable int eventId) {
 		Optional<EventDebriefing> debriefingOpt = debriefingDAO.findByEventId(eventId);
@@ -75,13 +72,6 @@ public class AdminEventDebriefingResource {
 		if (event == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)
 					.body(new ApiResponse(false, "Event nicht gefunden.", null));
-		}
-
-		boolean canManage = user.getPermissions().contains(Permissions.EVENT_DEBRIEFING_MANAGE)
-				|| user.getId() == event.getLeaderUserId();
-		if (!canManage) {
-			throw new AccessDeniedException(
-					"Sie müssen der Event-Leiter sein oder die entsprechende Berechtigung haben, um ein Debriefing einzureichen.");
 		}
 
 		try {

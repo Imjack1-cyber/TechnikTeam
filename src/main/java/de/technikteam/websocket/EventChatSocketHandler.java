@@ -131,8 +131,10 @@ public class EventChatSocketHandler extends TextWebSocketHandler {
 		String newText = (String) payload.get("newText");
 		String sanitizedText = inlineFormattingPolicy.sanitize(newText);
 		if (chatDAO.updateMessage(messageId, user.getId(), sanitizedText)) {
-			Map<String, Object> broadcastPayload = Map.of("type", "message_updated", "payload",
-					Map.of("messageId", messageId, "newText", sanitizedText));
+			EventChatMessage updatedMessage = chatDAO.getMessageById(messageId);
+			if (updatedMessage == null)
+				return;
+			Map<String, Object> broadcastPayload = Map.of("type", "message_updated", "payload", updatedMessage);
 			sessionManager.broadcast(eventId, gson.toJson(broadcastPayload));
 		}
 	}
@@ -150,9 +152,10 @@ public class EventChatSocketHandler extends TextWebSocketHandler {
 						user.getUsername(), messageId, event.getName(), eventId);
 				adminLogService.log(user.getUsername(), "DELETE_CHAT_MESSAGE", logDetails);
 			}
-			Map<String, Object> broadcastPayload = Map.of("type", "message_soft_deleted", "payload",
-					Map.of("messageId", messageId, "originalUsername", payload.get("originalUsername"),
-							"deletedByUsername", user.getUsername()));
+			EventChatMessage deletedMessage = chatDAO.getMessageById(messageId);
+			if (deletedMessage == null)
+				return;
+			Map<String, Object> broadcastPayload = Map.of("type", "message_soft_deleted", "payload", deletedMessage);
 			sessionManager.broadcast(eventId, gson.toJson(broadcastPayload));
 		}
 	}

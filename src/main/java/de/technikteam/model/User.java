@@ -17,6 +17,9 @@ public class User {
 	private String chatColor;
 	private String theme;
 	private String profileIconClass;
+	private String adminNotes;
+	private String dashboardLayout; // JSON string
+	private String assignedEventRole; // Transient field for event details
 
 	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String passwordHash;
@@ -129,6 +132,30 @@ public class User {
 
 	public void setProfileIconClass(String profileIconClass) {
 		this.profileIconClass = profileIconClass;
+	}
+
+	public String getAdminNotes() {
+		return adminNotes;
+	}
+
+	public void setAdminNotes(String adminNotes) {
+		this.adminNotes = adminNotes;
+	}
+
+	public String getDashboardLayout() {
+		return dashboardLayout;
+	}
+
+	public void setDashboardLayout(String dashboardLayout) {
+		this.dashboardLayout = dashboardLayout;
+	}
+
+	public String getAssignedEventRole() {
+		return assignedEventRole;
+	}
+
+	public void setAssignedEventRole(String assignedEventRole) {
+		this.assignedEventRole = assignedEventRole;
 	}
 
 	public String getPasswordHash() {

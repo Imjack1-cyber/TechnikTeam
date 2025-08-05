@@ -41,8 +41,8 @@
 .message-bubble-container {
 	display: flex;
 	max-width: 70%;
-	align-items: center; /* Vertically align items */
-    gap: 0.5rem;
+	position: relative;
+    align-items: center;
 }
 
 .message-bubble-container.sent {
@@ -110,12 +110,19 @@
 
 .chat-options {
     display: flex;
-    gap: 0.25rem;
+    opacity: 0; /* Hidden by default */
+    transition: opacity 0.2s;
     background-color: var(--surface-color);
     padding: 0.25rem;
     border-radius: 20px;
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--border-color);
+    margin: 0 0.5rem;
+}
+
+.message-bubble-container:hover .chat-options,
+.message-bubble-container.options-visible .chat-options {
+    opacity: 1; /* Show on hover or if active */
 }
 
 .chat-option-btn {

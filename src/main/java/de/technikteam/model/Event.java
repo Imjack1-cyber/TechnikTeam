@@ -29,6 +29,7 @@ public class Event {
 	private List<StorageItem> reservedItems;
 	private String leaderUsername;
 	private List<EventCustomField> customFields;
+	private List<ChecklistItem> checklistItems;
 
 	private boolean isUserQualified;
 
@@ -169,6 +170,14 @@ public class Event {
 
 	public void setCustomFields(List<EventCustomField> customFields) {
 		this.customFields = customFields;
+	}
+
+	public List<ChecklistItem> getChecklistItems() {
+		return checklistItems;
+	}
+
+	public void setChecklistItems(List<ChecklistItem> checklistItems) {
+		this.checklistItems = checklistItems;
 	}
 
 	public boolean isUserQualified() {

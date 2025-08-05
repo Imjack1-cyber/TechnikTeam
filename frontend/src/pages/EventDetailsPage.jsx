@@ -3,11 +3,12 @@ import { useParams, Link } from 'react-router-dom';
 import apiClient from '../services/apiClient';
 import useApi from '../hooks/useApi';
 import useWebSocket from '../hooks/useWebSocket';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore } from '../../store/authStore';
 import StatusBadge from '../components/ui/StatusBadge';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import { useToast } from '../../context/ToastContext';
+import ChecklistTab from '../components/events/ChecklistTab';
 
 const EventDetailsPage = () => {
 	const { eventId } = useParams();
@@ -22,6 +23,9 @@ const EventDetailsPage = () => {
 	const [isUploading, setIsUploading] = useState(false);
 	const [editingMessageId, setEditingMessageId] = useState(null);
 	const [editingText, setEditingText] = useState('');
+	const longPressTimer = useRef();
+	const [activeOptionsMessageId, setActiveOptionsMessageId] = useState(null);
+	const [activeTab, setActiveTab] = useState('tasks');
 
 
 	const websocketProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -32,17 +36,9 @@ const EventDetailsPage = () => {
 	const handleChatMessage = (message) => {
 		if (message.type === 'new_message') {
 			setChatMessages(prevMessages => [...prevMessages, message.payload]);
-		} else if (message.type === 'message_soft_deleted') {
+		} else if (message.type === 'message_soft_deleted' || message.type === 'message_updated') {
 			setChatMessages(prev => prev.map(msg =>
-				msg.id === message.payload.messageId
-					? { ...msg, isDeleted: true, deletedByUsername: message.payload.deletedByUsername }
-					: msg
-			));
-		} else if (message.type === 'message_updated') {
-			setChatMessages(prev => prev.map(msg =>
-				msg.id === message.payload.messageId
-					? { ...msg, messageText: message.payload.newText, edited: true }
-					: msg
+				msg.id === message.payload.id ? message.payload : msg
 			));
 		}
 	};
@@ -72,7 +68,6 @@ const EventDetailsPage = () => {
 		formData.append('file', file);
 
 		try {
-			// This needs a dedicated endpoint as event chat files might have different context/permissions
 			const result = await apiClient.post(`/public/events/${eventId}/chat/upload`, formData);
 			if (result.success) {
 				const fileUrl = `/api/v1/public/files/download/${result.data.id}`;
@@ -85,7 +80,6 @@ const EventDetailsPage = () => {
 			addToast(err.message || 'Datei-Upload fehlgeschlagen.', 'error');
 		} finally {
 			setIsUploading(false);
-			// Reset file input to allow uploading the same file again
 			if (fileInputRef.current) fileInputRef.current.value = "";
 		}
 	};
@@ -95,14 +89,18 @@ const EventDetailsPage = () => {
 		setEditingText(msg.messageText);
 	};
 
+	const handleCancelEdit = () => {
+		setEditingMessageId(null);
+		setEditingText('');
+	};
+
 	const handleEditSubmit = () => {
 		if (editingText.trim()) {
 			sendMessage({
 				type: 'update_message',
 				payload: { messageId: editingMessageId, newText: editingText }
 			});
-			setEditingMessageId(null);
-			setEditingText('');
+			handleCancelEdit();
 		}
 	};
 
@@ -113,6 +111,20 @@ const EventDetailsPage = () => {
 				payload: { messageId: msg.id, originalUserId: msg.userId, originalUsername: msg.username }
 			});
 		}
+	};
+
+	const handleTouchStart = (messageId) => {
+		longPressTimer.current = setTimeout(() => {
+			setActiveOptionsMessageId(messageId);
+		}, 500);
+	};
+
+	const handleTouchEnd = () => {
+		clearTimeout(longPressTimer.current);
+	};
+
+	const handleTouchMove = () => {
+		clearTimeout(longPressTimer.current);
 	};
 
 	const renderMessageText = (msg) => {
@@ -145,8 +157,17 @@ const EventDetailsPage = () => {
 		return task.dependsOn.some(parent => parent.status !== 'ERLEDIGT');
 	};
 
+	const groupedAttendees = event.assignedAttendees?.reduce((acc, member) => {
+		const role = member.assignedEventRole || 'Unzugewiesen';
+		if (!acc[role]) {
+			acc[role] = [];
+		}
+		acc[role].push(member);
+		return acc;
+	}, {});
+
 	return (
-		<div>
+		<div onClick={() => setActiveOptionsMessageId(null)}>
 			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
 				<div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
 					<h1>{event.name}</h1>
@@ -194,102 +215,143 @@ const EventDetailsPage = () => {
 
 				<div className="card">
 					<h2 className="card-title">Zugewiesenes Team</h2>
-					<ul className="details-list">
-						{event.assignedAttendees?.length > 0 ? (
-							event.assignedAttendees.map(attendee => <li key={attendee.id}>{attendee.username}</li>)
-						) : (
-							<li>Noch kein Team zugewiesen.</li>
-						)}
-					</ul>
-				</div>
-
-				<div className="card" style={{ gridColumn: '1 / -1' }}>
-					<h2 className="card-title">Aufgaben</h2>
-					{event.eventTasks?.length > 0 ? (
-						event.eventTasks.map(task => {
-							const blocked = isTaskBlocked(task);
-							return (
-								<div key={task.id} className="card" style={{ marginBottom: '1rem', opacity: blocked ? 0.6 : 1, pointerEvents: blocked ? 'none' : 'auto' }}>
-									<div style={{ display: 'flex', justifyContent: 'space-between' }}>
-										<h4 style={{ margin: 0 }}>{task.description}</h4>
-										<StatusBadge status={task.status} />
-									</div>
-									{blocked && (
-										<small className="text-danger" style={{ display: 'block', fontWeight: 'bold' }}>
-											Blockiert durch: {task.dependsOn.map(t => t.description).join(', ')}
-										</small>
-									)}
-									<div className="markdown-content">
-										<ReactMarkdown rehypePlugins={[rehypeSanitize]}>
-											{task.details || ''}
-										</ReactMarkdown>
-									</div>
-									<p><strong>Zugewiesen an:</strong> {task.assignedUsers.map(u => u.username).join(', ') || 'Niemand'}</p>
-								</div>
-							);
-						})
+					{groupedAttendees && Object.keys(groupedAttendees).length > 0 ? (
+						Object.entries(groupedAttendees).map(([role, members]) => (
+							<div key={role} style={{ marginBottom: '1rem' }}>
+								<h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>{role}</h4>
+								<ul className="details-list">
+									{members.map(member => <li key={member.id} style={{ border: 'none', padding: '0.25rem 0' }}>{member.username}</li>)}
+								</ul>
+							</div>
+						))
 					) : (
-						<p>Für dieses Event wurden noch keine Aufgaben erstellt.</p>
+						<p>Noch kein Team zugewiesen.</p>
 					)}
 				</div>
 
-				{(event.status === 'LAUFEND' || event.status === 'GEPLANT') && (
-					<div className="card" style={{ gridColumn: '1 / -1' }}>
-						<h2 className="card-title">Event-Chat</h2>
-						<div id="chat-box" style={{ height: '300px', overflowY: 'auto', border: '1px solid var(--border-color)', padding: '0.5rem', marginBottom: '1rem', background: 'var(--bg-color)', display: 'flex', flexDirection: 'column' }}>
-							{chatMessages.map(msg => {
-								const canEdit = !msg.isDeleted && msg.userId === user.id;
-								const canDelete = !msg.isDeleted && (msg.userId === user.id || isAdmin || user.id === event.leaderUserId);
-								const isEditing = editingMessageId === msg.id;
+				<div className="card" style={{ gridColumn: '1 / -1' }}>
+					<div className="modal-tabs">
+						<button className={`modal-tab-button ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>Aufgaben</button>
+						<button className={`modal-tab-button ${activeTab === 'checklist' ? 'active' : ''}`} onClick={() => setActiveTab('checklist')}>Inventar-Checkliste</button>
+						<button className={`modal-tab-button ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>Event-Chat</button>
+					</div>
+
+					<div className={`modal-tab-content ${activeTab === 'tasks' ? 'active' : ''}`}>
+						{event.eventTasks?.length > 0 ? (
+							event.eventTasks.map(task => {
+								const blocked = isTaskBlocked(task);
 								return (
-									<div key={msg.id} className={`chat-message-container ${msg.userId === user.id ? 'current-user' : ''}`}>
-										<div className="chat-bubble" style={{ backgroundColor: msg.userId === user.id ? 'var(--primary-color)' : msg.chatColor || '#e9ecef', color: msg.userId === user.id ? '#fff' : 'var(--text-color)' }}>
-											{!msg.isDeleted ? (
-												<>
-													{msg.userId !== user.id && <strong className="chat-username">{msg.username}</strong>}
-													{isEditing ? (
-														<div>
-															<textarea value={editingText} onChange={(e) => setEditingText(e.target.value)} className="chat-edit-input" />
-															<button onClick={handleEditSubmit} className="btn btn-small btn-success">Speichern</button>
-															<button onClick={() => setEditingMessageId(null)} className="btn btn-small btn-secondary">Abbrechen</button>
-														</div>
-													) : (
-														<span className="chat-text">{renderMessageText(msg)}</span>
-													)}
-													<span className="chat-timestamp">{new Date(msg.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} {msg.edited && <em className="chat-edited-marker">(bearbeitet)</em>}</span>
-												</>
-											) : (
-												<span className="chat-deleted-info">Nachricht von {msg.deletedByUsername} gelöscht</span>
-											)}
+									<div key={task.id} className="card" style={{ marginBottom: '1rem', opacity: blocked ? 0.6 : 1, pointerEvents: blocked ? 'none' : 'auto' }}>
+										<div style={{ display: 'flex', justifyContent: 'space-between' }}>
+											<h4 style={{ margin: 0 }}>{task.description}</h4>
+											<StatusBadge status={task.status} />
 										</div>
-										<div className="chat-options">
-											{canEdit && <button className="chat-option-btn" title="Bearbeiten" onClick={() => handleEditClick(msg)}><i className="fas fa-pencil-alt"></i></button>}
-											{canDelete && <button className="chat-option-btn" title="Löschen" onClick={() => handleDeleteClick(msg)}><i className="fas fa-trash"></i></button>}
+										{blocked && (
+											<small className="text-danger" style={{ display: 'block', fontWeight: 'bold' }}>
+												Blockiert durch: {task.dependsOn.map(t => t.description).join(', ')}
+											</small>
+										)}
+										<div className="markdown-content">
+											<ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+												{task.details || ''}
+											</ReactMarkdown>
 										</div>
+										<p><strong>Zugewiesen an:</strong> {task.assignedUsers.map(u => u.username).join(', ') || 'Niemand'}</p>
 									</div>
 								);
-							})}
-						</div>
-						<form id="chat-form" onSubmit={handleChatSubmit} style={{ display: 'flex', gap: '0.5rem' }}>
-							<input type="file" ref={fileInputRef} onChange={handleFileUpload} style={{ display: 'none' }} accept="image/*,application/pdf" />
-							<button type="button" className="btn" onClick={() => fileInputRef.current.click()} disabled={isUploading || readyState !== WebSocket.OPEN} title="Datei anhängen">
-								{isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-paperclip"></i>}
-							</button>
-							<input
-								type="text"
-								id="chat-message-input"
-								className="form-group"
-								style={{ flexGrow: 1, margin: 0 }}
-								placeholder="Nachricht eingeben..."
-								value={chatInput}
-								onChange={(e) => setChatInput(e.target.value)}
-								autoComplete="off"
-								disabled={readyState !== WebSocket.OPEN}
-							/>
-							<button type="submit" className="btn" disabled={readyState !== WebSocket.OPEN}>Senden</button>
-						</form>
+							})
+						) : (
+							<p>Für dieses Event wurden noch keine Aufgaben erstellt.</p>
+						)}
 					</div>
-				)}
+
+					<div className={`modal-tab-content ${activeTab === 'checklist' ? 'active' : ''}`}>
+						<ChecklistTab event={event} user={user} />
+					</div>
+
+					<div className={`modal-tab-content ${activeTab === 'chat' ? 'active' : ''}`}>
+						{(event.status === 'LAUFEND' || event.status === 'GEPLANT') ? (
+							<>
+								<div id="chat-box" style={{ height: '300px', overflowY: 'auto', border: '1px solid var(--border-color)', padding: '0.5rem', marginBottom: '1rem', background: 'var(--bg-color)', display: 'flex', flexDirection: 'column' }}>
+									{chatMessages.map(msg => {
+										const isSentByMe = msg.userId === user.id;
+										const isMessageEditable = () => {
+											if (!msg.sentAt) return false;
+											const sentAt = new Date(msg.sentAt);
+											const now = new Date();
+											return (now - sentAt) < 24 * 60 * 60 * 1000;
+										};
+										const canEdit = !msg.isDeleted && isSentByMe && isMessageEditable();
+										const canDelete = !msg.isDeleted && (isSentByMe || isAdmin || user.id === event.leaderUserId);
+										const isEditing = editingMessageId === msg.id;
+										return (
+											<div
+												key={msg.id}
+												className={`chat-message-container ${isSentByMe ? 'current-user' : ''} ${activeOptionsMessageId === msg.id ? 'options-visible' : ''}`}
+												onTouchStart={() => handleTouchStart(msg.id)}
+												onTouchEnd={handleTouchEnd}
+												onTouchMove={handleTouchMove}
+												onClick={(e) => { if (activeOptionsMessageId) e.stopPropagation() }}
+											>
+												<div className="chat-bubble" style={{ backgroundColor: isSentByMe ? 'var(--primary-color)' : msg.chatColor || '#e9ecef', color: isSentByMe ? '#fff' : 'var(--text-color)' }}>
+													{!msg.isDeleted ? (
+														<>
+															{!isSentByMe && <strong className="chat-username">{msg.username}</strong>}
+															{isEditing ? (
+																<div>
+																	<textarea value={editingText} onChange={(e) => setEditingText(e.target.value)} className="chat-edit-input" />
+																	<div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+																		<button onClick={handleEditSubmit} className="btn btn-small btn-success">Speichern</button>
+																		<button onClick={handleCancelEdit} className="btn btn-small btn-secondary">Abbrechen</button>
+																	</div>
+																</div>
+															) : (
+																<span className="chat-text">{renderMessageText(msg)}</span>
+															)}
+															<span className="chat-timestamp">{new Date(msg.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} {msg.edited && <em style={{ opacity: 0.8 }} title={`Bearbeitet am ${new Date(msg.editedAt).toLocaleString('de-DE')}`}>(bearbeitet)</em>}</span>
+														</>
+													) : (
+														<span className="chat-deleted-info" style={{ opacity: 0.7 }}>
+															Diese Nachricht wurde von {msg.deletedByUsername} gelöscht.<br />
+															<small>{new Date(msg.deletedAt).toLocaleString('de-DE')}</small>
+														</span>
+													)}
+												</div>
+												{!msg.isDeleted && !isEditing && (canEdit || canDelete) && (
+													<div className="chat-options">
+														{canEdit && <button className="chat-option-btn" title="Bearbeiten" onClick={() => handleEditClick(msg)}><i className="fas fa-pencil-alt"></i></button>}
+														{canDelete && <button className="chat-option-btn" title="Löschen" onClick={() => handleDeleteClick(msg)}><i className="fas fa-trash"></i></button>}
+													</div>
+												)}
+											</div>
+										);
+									})}
+								</div>
+								<form id="chat-form" onSubmit={handleChatSubmit} style={{ display: 'flex', gap: '0.5rem' }}>
+									<input type="file" ref={fileInputRef} onChange={handleFileUpload} style={{ display: 'none' }} accept="image/*,application/pdf" />
+									<button type="button" className="btn" onClick={() => fileInputRef.current.click()} disabled={isUploading || readyState !== WebSocket.OPEN} title="Datei anhängen">
+										{isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-paperclip"></i>}
+									</button>
+									<input
+										type="text"
+										id="chat-message-input"
+										className="form-group"
+										style={{ flexGrow: 1, margin: 0 }}
+										placeholder="Nachricht eingeben..."
+										value={chatInput}
+										onChange={(e) => setChatInput(e.target.value)}
+										autoComplete="off"
+										disabled={readyState !== WebSocket.OPEN}
+									/>
+									<button type="submit" className="btn" disabled={readyState !== WebSocket.OPEN}>Senden</button>
+								</form>
+							</>
+						) : (
+							<p>Der Chat ist nur für geplante oder laufende Events verfügbar.</p>
+						)}
+					</div>
+
+				</div>
 			</div>
 		</div>
 	);

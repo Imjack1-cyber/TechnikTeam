@@ -80,6 +80,22 @@ const AdminMeetingsPage = () => {
 		}
 	};
 
+	const handleClone = async (meeting) => {
+		if (window.confirm(`Meeting '${meeting.name}' klonen?`)) {
+			try {
+				const result = await apiClient.post(`/meetings/${meeting.id}/clone`);
+				if (result.success) {
+					addToast('Meeting erfolgreich geklont.', 'success');
+					reload();
+				} else {
+					throw new Error(result.message);
+				}
+			} catch (err) {
+				addToast(`Klonen fehlgeschlagen: ${err.message}`, 'error');
+			}
+		}
+	};
+
 	return (
 		<div>
 			<h1>Meetings für "{courseName}"</h1>
@@ -113,6 +129,7 @@ const AdminMeetingsPage = () => {
 								<td>{meeting.leaderUsername || 'N/A'}</td>
 								<td style={{ display: 'flex', gap: '0.5rem' }}>
 									<button onClick={() => handleOpenEditModal(meeting)} className="btn btn-small">Bearbeiten</button>
+									<button onClick={() => handleClone(meeting)} className="btn btn-small btn-secondary">Klonen</button>
 									<button onClick={() => handleDelete(meeting)} className="btn btn-small btn-danger">Löschen</button>
 								</td>
 							</tr>
@@ -131,6 +148,7 @@ const AdminMeetingsPage = () => {
 						<div className="card-row"><strong>Leitung:</strong> <span>{meeting.leaderUsername || 'N/A'}</span></div>
 						<div className="card-actions">
 							<button onClick={() => handleOpenEditModal(meeting)} className="btn btn-small">Bearbeiten</button>
+							<button onClick={() => handleClone(meeting)} className="btn btn-small btn-secondary">Klonen</button>
 							<button onClick={() => handleDelete(meeting)} className="btn btn-small btn-danger">Löschen</button>
 						</div>
 					</div>

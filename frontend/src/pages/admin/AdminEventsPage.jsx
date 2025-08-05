@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import useAdminData from '../../hooks/useAdminData';
@@ -15,6 +15,7 @@ const AdminEventsPage = () => {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingEvent, setEditingEvent] = useState(null);
 	const { addToast } = useToast();
+	const navigate = useNavigate();
 
 	const openModal = (event = null) => {
 		setEditingEvent(event);
@@ -43,6 +44,25 @@ const AdminEventsPage = () => {
 				}
 			} catch (err) {
 				addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error');
+			}
+		}
+	};
+
+	const handleClone = async (event) => {
+		if (window.confirm(`Event '${event.name}' klonen? Ein neues Event wird erstellt und Sie werden zur Bearbeitungsseite weitergeleitet.`)) {
+			try {
+				const result = await apiClient.post(`/events/${event.id}/clone`);
+				if (result.success) {
+					addToast('Event erfolgreich geklont.', 'success');
+					// Redirect to the edit page of the new event
+					// This requires the backend to return the new event object
+					// For now, just reload the list. A redirect would be better.
+					reload();
+				} else {
+					throw new Error(result.message);
+				}
+			} catch (err) {
+				addToast(`Klonen fehlgeschlagen: ${err.message}`, 'error');
 			}
 		}
 	};
@@ -77,6 +97,7 @@ const AdminEventsPage = () => {
 								<td><StatusBadge status={event.status} /></td>
 								<td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
 									<button onClick={() => openModal(event)} className="btn btn-small">Bearbeiten</button>
+									<button onClick={() => handleClone(event)} className="btn btn-small btn-secondary">Klonen</button>
 									{event.status === 'ABGESCHLOSSEN' && (
 										<Link to={`/admin/veranstaltungen/${event.id}/debriefing`} className="btn btn-small btn-info">
 											Debriefing
@@ -100,6 +121,7 @@ const AdminEventsPage = () => {
 						<div className="card-row"><strong>Status:</strong> <StatusBadge status={event.status} /></div>
 						<div className="card-actions">
 							<button onClick={() => openModal(event)} className="btn btn-small">Bearbeiten</button>
+							<button onClick={() => handleClone(event)} className="btn btn-small btn-secondary">Klonen</button>
 							{event.status === 'ABGESCHLOSSEN' && (
 								<Link to={`/admin/veranstaltungen/${event.id}/debriefing`} className="btn btn-small btn-info">
 									Debriefing

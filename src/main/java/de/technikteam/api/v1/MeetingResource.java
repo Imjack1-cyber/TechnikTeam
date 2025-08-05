@@ -6,6 +6,7 @@ import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Meeting;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
+import de.technikteam.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -26,13 +27,15 @@ public class MeetingResource {
 
 	private final MeetingDAO meetingDAO;
 	private final AdminLogService adminLogService;
+	private final EventService eventService;
 	private final PolicyFactory richTextPolicy;
 
 	@Autowired
-	public MeetingResource(MeetingDAO meetingDAO, AdminLogService adminLogService,
+	public MeetingResource(MeetingDAO meetingDAO, AdminLogService adminLogService, EventService eventService,
 			@Qualifier("richTextPolicy") PolicyFactory richTextPolicy) {
 		this.meetingDAO = meetingDAO;
 		this.adminLogService = adminLogService;
+		this.eventService = eventService;
 		this.richTextPolicy = richTextPolicy;
 	}
 
@@ -103,6 +106,21 @@ public class MeetingResource {
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
 				.body(new ApiResponse(false, "Termin nicht gefunden oder Aktualisierung fehlgeschlagen.", null));
+	}
+
+	@PostMapping("/{id}/clone")
+	@Operation(summary = "Clone a meeting")
+	public ResponseEntity<ApiResponse> cloneMeeting(@PathVariable int id) {
+		try {
+			Meeting clonedMeeting = eventService.cloneMeeting(id, getSystemUser());
+			return new ResponseEntity<>(new ApiResponse(true, "Meeting erfolgreich geklont.", clonedMeeting),
+					HttpStatus.CREATED);
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, e.getMessage(), null));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new ApiResponse(false, "Klonen des Meetings fehlgeschlagen: " + e.getMessage(), null));
+		}
 	}
 
 	@DeleteMapping("/{id}")

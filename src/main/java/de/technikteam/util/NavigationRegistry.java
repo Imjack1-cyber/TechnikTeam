@@ -27,6 +27,7 @@ public final class NavigationRegistry {
 		ALL_ITEMS.add(new NavigationItem("Dateien", "/dateien", "fa-folder-open", null));
 		ALL_ITEMS.add(new NavigationItem("Kalender", "/kalender", "fa-calendar-alt", null));
 		ALL_ITEMS.add(new NavigationItem("Feedback", "/feedback", "fa-lightbulb", null));
+		ALL_ITEMS.add(new NavigationItem("Changelogs", "/changelogs", "fa-history", null));
 
 		// Admin Section
 		ALL_ITEMS.add(new NavigationItem("Admin Dashboard", "/admin/dashboard", "fa-tachometer-alt",
@@ -38,6 +39,8 @@ public final class NavigationRegistry {
 		ALL_ITEMS.add(new NavigationItem("Debriefings", "/admin/debriefings", "fa-clipboard-check",
 				Permissions.EVENT_DEBRIEFING_VIEW));
 		ALL_ITEMS.add(new NavigationItem("Lager", "/admin/lager", "fa-warehouse", Permissions.STORAGE_READ));
+		ALL_ITEMS.add(new NavigationItem("Veranstaltungsorte", "/admin/venues", "fa-map-marked-alt",
+				Permissions.EVENT_CREATE));
 		ALL_ITEMS.add(new NavigationItem("Dateien", "/admin/dateien", "fa-file-upload", Permissions.FILE_MANAGE));
 		ALL_ITEMS
 				.add(new NavigationItem("Lehrgangs-Vorlagen", "/admin/lehrgaenge", "fa-book", Permissions.COURSE_READ));
@@ -50,9 +53,13 @@ public final class NavigationRegistry {
 		ALL_ITEMS.add(new NavigationItem("Defekte Artikel", "/admin/defekte", "fa-wrench", Permissions.STORAGE_READ));
 		ALL_ITEMS.add(new NavigationItem("Schadensmeldungen", "/admin/damage-reports", "fa-tools",
 				Permissions.DAMAGE_REPORT_MANAGE));
+		ALL_ITEMS.add(new NavigationItem("Checklist-Vorlagen", "/admin/checklist-templates", "fa-tasks",
+				Permissions.EVENT_MANAGE_TASKS));
 		ALL_ITEMS
 				.add(new NavigationItem("Quali-Matrix", "/admin/matrix", "fa-th-list", Permissions.QUALIFICATION_READ));
 		ALL_ITEMS.add(new NavigationItem("Berichte", "/admin/berichte", "fa-chart-pie", Permissions.REPORT_READ));
+		ALL_ITEMS.add(
+				new NavigationItem("Changelogs", "/admin/changelogs", "fa-history", Permissions.ACCESS_ADMIN_PANEL));
 		ALL_ITEMS.add(new NavigationItem("Aktions-Log", "/admin/log", "fa-clipboard-list", Permissions.LOG_READ));
 		ALL_ITEMS.add(new NavigationItem("System", "/admin/system", "fa-server", Permissions.SYSTEM_READ));
 		ALL_ITEMS.add(new NavigationItem("Wiki", "/admin/wiki", "fa-book-reader", Permissions.ACCESS_ADMIN_PANEL));

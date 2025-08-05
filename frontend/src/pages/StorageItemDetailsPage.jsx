@@ -3,8 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import Lightbox from '../components/ui/Lightbox';
-import DamageReportModal from '../../components/storage/DamageReportModal';
-import { useToast } from '../../context/ToastContext';
+import DamageReportModal from '../components/storage/DamageReportModal';
+import { useToast } from '../context/ToastContext';
 
 const StorageItemDetailsPage = () => {
 	const { itemId } = useParams();

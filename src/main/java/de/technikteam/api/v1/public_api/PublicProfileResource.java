@@ -1,5 +1,6 @@
 package de.technikteam.api.v1.public_api;
 
+import com.google.gson.Gson;
 import de.technikteam.api.v1.dto.PasswordChangeRequest;
 import de.technikteam.api.v1.dto.ProfileChangeRequestDTO;
 import de.technikteam.dao.*;
@@ -15,7 +16,6 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -50,7 +50,6 @@ public class PublicProfileResource {
 
 	@GetMapping
 	@Operation(summary = "Get current user's profile data", description = "Retrieves a comprehensive set of data for the authenticated user's profile page.")
-	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<ApiResponse> getMyProfile(@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 		Map<String, Object> profileData = new HashMap<>();
@@ -66,7 +65,6 @@ public class PublicProfileResource {
 
 	@PostMapping("/request-change")
 	@Operation(summary = "Request a profile data change", description = "Submits a request for an administrator to approve changes to the user's profile data.")
-	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<ApiResponse> requestProfileChange(@Valid @RequestBody ProfileChangeRequestDTO requestDTO,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
@@ -80,7 +78,6 @@ public class PublicProfileResource {
 
 	@PutMapping("/theme")
 	@Operation(summary = "Update user theme", description = "Updates the user's preferred theme (light/dark).")
-	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<ApiResponse> updateUserTheme(@RequestBody Map<String, String> payload,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
@@ -96,7 +93,6 @@ public class PublicProfileResource {
 
 	@PutMapping("/chat-color")
 	@Operation(summary = "Update chat color", description = "Updates the user's preferred color for chat messages.")
-	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<ApiResponse> updateChatColor(@RequestBody Map<String, String> payload,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
@@ -111,7 +107,6 @@ public class PublicProfileResource {
 
 	@PutMapping("/password")
 	@Operation(summary = "Change password", description = "Allows the authenticated user to change their own password after verifying their current one.")
-	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<ApiResponse> updatePassword(@Valid @RequestBody PasswordChangeRequest request,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
@@ -134,5 +129,19 @@ public class PublicProfileResource {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body(new ApiResponse(false, "Passwort konnte nicht geändert werden.", null));
 		}
+	}
+
+	@PutMapping("/dashboard-layout")
+	@Operation(summary = "Update dashboard layout", description = "Saves the user's custom dashboard widget layout.")
+	public ResponseEntity<ApiResponse> updateDashboardLayout(@RequestBody Object layout,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
+		String layoutJson = new Gson().toJson(layout);
+		if (userDAO.updateDashboardLayout(user.getId(), layoutJson)) {
+			User updatedUser = userDAO.getUserById(user.getId());
+			return ResponseEntity.ok(new ApiResponse(true, "Dashboard-Layout gespeichert.", updatedUser));
+		}
+		return ResponseEntity.internalServerError()
+				.body(new ApiResponse(false, "Layout konnte nicht gespeichert werden.", null));
 	}
 }

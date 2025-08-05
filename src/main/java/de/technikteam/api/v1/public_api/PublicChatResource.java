@@ -12,7 +12,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,7 +35,6 @@ public class PublicChatResource {
 	}
 
 	@GetMapping("/conversations")
-	@PreAuthorize("isAuthenticated()")
 	@Operation(summary = "Get user's conversations")
 	public ResponseEntity<ApiResponse> getConversations(@AuthenticationPrincipal SecurityUser securityUser) {
 		return ResponseEntity.ok(new ApiResponse(true, "Gespräche abgerufen.",
@@ -44,7 +42,6 @@ public class PublicChatResource {
 	}
 
 	@GetMapping("/conversations/{id}")
-	@PreAuthorize("isAuthenticated()")
 	@Operation(summary = "Get a single conversation's details")
 	public ResponseEntity<ApiResponse> getConversationById(@PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
@@ -56,7 +53,6 @@ public class PublicChatResource {
 	}
 
 	@GetMapping("/conversations/{id}/messages")
-	@PreAuthorize("isAuthenticated()")
 	@Operation(summary = "Get messages for a conversation")
 	public ResponseEntity<ApiResponse> getMessages(@PathVariable int id, @RequestParam(defaultValue = "50") int limit,
 			@RequestParam(defaultValue = "0") int offset, @AuthenticationPrincipal SecurityUser securityUser) {
@@ -68,7 +64,6 @@ public class PublicChatResource {
 	}
 
 	@PostMapping("/conversations")
-	@PreAuthorize("isAuthenticated()")
 	@Operation(summary = "Find or create a conversation with a user")
 	public ResponseEntity<ApiResponse> findOrCreateConversation(@RequestBody Map<String, Integer> payload,
 			@AuthenticationPrincipal SecurityUser securityUser) {
@@ -82,7 +77,6 @@ public class PublicChatResource {
 	}
 
 	@PostMapping("/conversations/group")
-	@PreAuthorize("isAuthenticated()")
 	@Operation(summary = "Create a new group conversation")
 	public ResponseEntity<ApiResponse> createGroupConversation(@RequestBody Map<String, Object> payload,
 			@AuthenticationPrincipal SecurityUser securityUser) {
@@ -101,7 +95,6 @@ public class PublicChatResource {
 	}
 
 	@PostMapping("/conversations/{id}/participants")
-	@PreAuthorize("isAuthenticated()")
 	@Operation(summary = "Add participants to a group")
 	public ResponseEntity<ApiResponse> addParticipants(@PathVariable int id,
 			@RequestBody Map<String, List<Integer>> payload, @AuthenticationPrincipal SecurityUser securityUser) {
@@ -124,7 +117,6 @@ public class PublicChatResource {
 	}
 
 	@PostMapping("/upload")
-	@PreAuthorize("isAuthenticated()")
 	@Operation(summary = "Upload a file for chat")
 	public ResponseEntity<ApiResponse> uploadChatFile(@RequestParam("file") MultipartFile file,
 			@AuthenticationPrincipal SecurityUser securityUser) {

@@ -13,6 +13,7 @@ const MessageView = ({ conversationId }) => {
 	const user = useAuthStore(state => state.user);
 	const messagesEndRef = useRef(null);
 	const fileInputRef = useRef(null);
+	const longPressTimer = useRef();
 	const [newMessage, setNewMessage] = useState('');
 	const [messages, setMessages] = useState([]);
 	const [conversation, setConversation] = useState(null);
@@ -20,6 +21,7 @@ const MessageView = ({ conversationId }) => {
 	const [isUploading, setIsUploading] = useState(false);
 	const [editingMessageId, setEditingMessageId] = useState(null);
 	const [editingText, setEditingText] = useState('');
+	const [activeOptionsMessageId, setActiveOptionsMessageId] = useState(null);
 	const { addToast } = useToast();
 
 
@@ -43,17 +45,9 @@ const MessageView = ({ conversationId }) => {
 			setMessages(prev => prev.map(msg =>
 				messageIds.includes(msg.id) ? { ...msg, status: newStatus } : msg
 			));
-		} else if (message.type === 'message_updated') {
+		} else if (message.type === 'message_updated' || message.type === 'message_deleted') {
 			setMessages(prev => prev.map(msg =>
-				msg.id === message.payload.messageId
-					? { ...msg, messageText: message.payload.newText, edited: true }
-					: msg
-			));
-		} else if (message.type === 'message_deleted') {
-			setMessages(prev => prev.map(msg =>
-				msg.id === message.payload.messageId
-					? { ...msg, isDeleted: true, deletedByUsername: message.payload.deletedByUsername }
-					: msg
+				msg.id === message.payload.id ? message.payload : msg
 			));
 		}
 	}, []);
@@ -167,6 +161,20 @@ const MessageView = ({ conversationId }) => {
 		}
 	};
 
+	const handleTouchStart = (messageId) => {
+		longPressTimer.current = setTimeout(() => {
+			setActiveOptionsMessageId(messageId);
+		}, 500); // 500ms for a long press
+	};
+
+	const handleTouchEnd = () => {
+		clearTimeout(longPressTimer.current);
+	};
+
+	const handleTouchMove = () => {
+		clearTimeout(longPressTimer.current);
+	};
+
 
 	const handleAddUsers = async (userIds) => {
 		setIsManageModalOpen(false);
@@ -193,7 +201,7 @@ const MessageView = ({ conversationId }) => {
 	};
 
 	return (
-		<div className="message-view-container">
+		<div className="message-view-container" onClick={() => setActiveOptionsMessageId(null)}>
 			<div className="message-view-header">
 				<Link to="/chat" className="back-button">
 					<i className="fas fa-arrow-left"></i>
@@ -210,37 +218,53 @@ const MessageView = ({ conversationId }) => {
 				{messagesError && <p className="error-message">{messagesError}</p>}
 				{[...messages].reverse().map(msg => {
 					const isSentByMe = msg.senderId === user.id;
-					const canEdit = !msg.isDeleted && isSentByMe;
+					const isMessageEditable = () => {
+						if (!msg.sentAt) return false;
+						const sentAt = new Date(msg.sentAt);
+						const now = new Date();
+						return (now - sentAt) < 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+					};
+					const canEdit = !msg.isDeleted && isSentByMe && isMessageEditable();
 					const canDelete = !msg.isDeleted && (isSentByMe || (conversation?.groupChat && conversation.creatorId === user.id));
 					const isEditing = editingMessageId === msg.id;
 					return (
-						<div key={msg.id} className={`message-bubble-container ${isSentByMe ? 'sent' : 'received'}`}>
+						<div
+							key={msg.id}
+							className={`message-bubble-container ${isSentByMe ? 'sent' : 'received'} ${activeOptionsMessageId === msg.id ? 'options-visible' : ''}`}
+							onTouchStart={() => handleTouchStart(msg.id)}
+							onTouchEnd={handleTouchEnd}
+							onTouchMove={handleTouchMove}
+							onClick={(e) => { if (activeOptionsMessageId) e.stopPropagation() }}
+						>
 							<div
 								className="message-bubble"
 								style={!isSentByMe ? { backgroundColor: msg.chatColor } : {}}
 							>
-								{!isSentByMe && <div className="message-sender">{msg.senderUsername}</div>}
-								{!msg.isDeleted ? (
-									isEditing ? (
-										<div>
-											<textarea value={editingText} onChange={(e) => setEditingText(e.target.value)} className="chat-edit-input" autoFocus />
-											<div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
-												<button onClick={handleEditSubmit} className="btn btn-small btn-success">Speichern</button>
-												<button onClick={handleCancelEdit} className="btn btn-small btn-secondary">Abbrechen</button>
-											</div>
+								{!isSentByMe && !msg.isDeleted && <div className="message-sender">{msg.senderUsername}</div>}
+								{msg.isDeleted ? (
+									<em style={{ opacity: 0.7 }}>
+										Diese Nachricht wurde von {msg.deletedByUsername || "einem Nutzer"} gelöscht.
+										<div className="message-meta" style={{ justifyContent: 'flex-end', width: '100%' }}>
+											{new Date(msg.deletedAt).toLocaleString('de-DE')}
 										</div>
-									) : (
-										<>
-											{renderMessageContent(msg)}
-											<div className="message-meta">
-												<span>{new Date(msg.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</span>
-												{msg.edited && <em style={{ opacity: 0.8 }}>(bearbeitet)</em>}
-												<MessageStatus status={msg.status} isSentByMe={isSentByMe} />
-											</div>
-										</>
-									)
+									</em>
+								) : isEditing ? (
+									<div>
+										<textarea value={editingText} onChange={(e) => setEditingText(e.target.value)} className="chat-edit-input" autoFocus />
+										<div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+											<button onClick={handleEditSubmit} className="btn btn-small btn-success">Speichern</button>
+											<button onClick={handleCancelEdit} className="btn btn-small btn-secondary">Abbrechen</button>
+										</div>
+									</div>
 								) : (
-									<em style={{ opacity: 0.7 }}>Nachricht von {msg.deletedByUsername} gelöscht.</em>
+									<>
+										{renderMessageContent(msg)}
+										<div className="message-meta">
+											<span>{new Date(msg.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</span>
+											{msg.edited && <em style={{ opacity: 0.8 }} title={`Bearbeitet am ${new Date(msg.editedAt).toLocaleString('de-DE')}`}>(bearbeitet)</em>}
+											<MessageStatus status={msg.status} isSentByMe={isSentByMe} />
+										</div>
+									</>
 								)}
 							</div>
 							{!msg.isDeleted && !isEditing && (canEdit || canDelete) && (

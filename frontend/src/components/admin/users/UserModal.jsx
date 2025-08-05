@@ -25,6 +25,7 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
 							classYear: result.data.classYear || '',
 							className: result.data.className || '',
 							email: result.data.email || '',
+							adminNotes: result.data.adminNotes || '',
 							permissionIds: new Set(result.data.permissions.map(p => p.id))
 						});
 					}
@@ -39,6 +40,7 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
 					classYear: '',
 					className: '',
 					email: '',
+					adminNotes: '',
 					permissionIds: new Set()
 				});
 			}
@@ -101,6 +103,7 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
 			<div className="modal-tabs">
 				<button className={`modal-tab-button ${activeTab === 'general' ? 'active' : ''}`} onClick={() => setActiveTab('general')}>Allgemein</button>
 				<button className={`modal-tab-button ${activeTab === 'permissions' ? 'active' : ''}`} onClick={() => setActiveTab('permissions')}>Berechtigungen</button>
+				{isEditMode && <button className={`modal-tab-button ${activeTab === 'notes' ? 'active' : ''}`} onClick={() => setActiveTab('notes')}>Admin-Notizen</button>}
 			</div>
 			<form onSubmit={handleSubmit}>
 				{error && <p className="error-message">{error}</p>}
@@ -136,6 +139,20 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
 						isLoading={isLoadingData}
 					/>
 				</div>
+
+				{isEditMode && (
+					<div className={`modal-tab-content ${activeTab === 'notes' ? 'active' : ''}`}>
+						<h4>Interne Notizen</h4>
+						<p>Diese Notizen sind nur für Administratoren sichtbar.</p>
+						<textarea
+							name="adminNotes"
+							rows="8"
+							value={formData.adminNotes || ''}
+							onChange={handleChange}
+							className="form-group"
+						></textarea>
+					</div>
+				)}
 
 				<button type="submit" className="btn" style={{ marginTop: '1.5rem' }} disabled={isSubmitting}>
 					{isSubmitting ? 'Wird gespeichert...' : 'Benutzer speichern'}

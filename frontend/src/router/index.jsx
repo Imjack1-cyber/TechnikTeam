@@ -31,6 +31,7 @@ const EventFeedbackPage = lazy(() => import('../pages/EventFeedbackPage'));
 const CalendarPage = lazy(() => import('../pages/CalendarPage'));
 const PackKitPage = lazy(() => import('../pages/PackKitPage'));
 const SearchResultsPage = lazy(() => import('../pages/SearchResultsPage'));
+const ChangelogPage = lazy(() => import('../pages/ChangelogPage'));
 
 // Admin Pages
 const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage'));
@@ -39,6 +40,7 @@ const AdminRequestsPage = lazy(() => import('../pages/admin/AdminRequestsPage'))
 const AdminEventsPage = lazy(() => import('../pages/admin/AdminEventsPage'));
 const AdminEventDebriefingPage = lazy(() => import('../pages/admin/AdminEventDebriefingPage'));
 const AdminDebriefingsListPage = lazy(() => import('../pages/admin/AdminDebriefingsListPage'));
+const AdminEventRolesPage = lazy(() => import('../pages/admin/AdminEventRolesPage'));
 const AdminCoursesPage = lazy(() => import('../pages/admin/AdminCoursesPage'));
 const AdminMeetingsPage = lazy(() => import('../pages/admin/AdminMeetingsPage'));
 const AdminStoragePage = lazy(() => import('../pages/admin/AdminStoragePage'));
@@ -54,6 +56,9 @@ const AdminFeedbackPage = lazy(() => import('../pages/admin/AdminFeedbackPage'))
 const AdminAchievementsPage = lazy(() => import('../pages/admin/AdminAchievementsPage'));
 const AdminWikiPage = lazy(() => import('../pages/admin/AdminWikiPage'));
 const AdminNotificationsPage = lazy(() => import('../pages/admin/AdminNotificationsPage'));
+const AdminVenuesPage = lazy(() => import('../pages/admin/AdminVenuesPage'));
+const AdminChecklistTemplatesPage = lazy(() => import('../pages/admin/AdminChecklistTemplatesPage'));
+const AdminChangelogPage = lazy(() => import('../pages/admin/AdminChangelogPage'));
 
 
 import ErrorTrigger from '../pages/error/ErrorTrigger';
@@ -84,6 +89,7 @@ const router = createBrowserRouter([
 			{ path: 'feedback/event/:eventId', element: <EventFeedbackPage /> },
 			{ path: 'kalender', element: <CalendarPage /> },
 			{ path: 'suche', element: <SearchResultsPage /> },
+			{ path: 'changelogs', element: <ChangelogPage /> },
 			{ path: 'chat', element: <ChatPage /> },
 			{ path: 'chat/:conversationId', element: <ChatPage /> },
 			{ path: 'test-500', element: <ErrorTrigger /> },
@@ -99,6 +105,8 @@ const router = createBrowserRouter([
 					{ path: 'veranstaltungen', element: <AdminEventsPage /> },
 					{ path: 'veranstaltungen/:eventId/debriefing', element: <AdminEventDebriefingPage /> },
 					{ path: 'debriefings', element: <AdminDebriefingsListPage /> },
+					{ path: 'event-roles', element: <AdminEventRolesPage /> },
+					{ path: 'venues', element: <AdminVenuesPage /> },
 					{ path: 'lehrgaenge', element: <AdminCoursesPage /> },
 					{ path: 'lehrgaenge/:courseId/meetings', element: <AdminMeetingsPage /> },
 					{ path: 'lager', element: <AdminStoragePage /> },
@@ -109,8 +117,10 @@ const router = createBrowserRouter([
 					{ path: 'achievements', element: <AdminAchievementsPage /> },
 					{ path: 'defekte', element: <AdminDefectivePage /> },
 					{ path: 'damage-reports', element: <AdminDamageReportsPage /> },
+					{ path: 'checklist-templates', element: <AdminChecklistTemplatesPage /> },
 					{ path: 'matrix', element: <AdminMatrixPage /> },
 					{ path: 'berichte', element: <AdminReportsPage /> },
+					{ path: 'changelogs', element: <AdminChangelogPage /> },
 					{ path: 'log', element: <AdminLogPage /> },
 					{ path: 'system', element: <AdminSystemPage /> },
 					{ path: 'wiki', element: <AdminWikiPage /> },

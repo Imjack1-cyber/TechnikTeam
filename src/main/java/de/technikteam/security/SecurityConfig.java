@@ -37,16 +37,20 @@ public class SecurityConfig {
 
 		http.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
 				.csrfTokenRequestHandler(requestHandler).ignoringRequestMatchers(
-						// Auth and notifications
-						"/api/v1/auth/login", "/api/v1/auth/logout", "/api/v1/admin/notifications",
-						// Chat endpoints
-						"/api/v1/public/chat/conversations", "/api/v1/public/chat/conversations/group",
-						"/api/v1/public/chat/upload", "/api/v1/public/events/*/chat/upload",
-						// Profile and storage actions
-						"/api/v1/public/profile/chat-color", "/api/v1/public/storage/*/report-damage",
-						// Admin actions
-						"/api/v1/admin/damage-reports/**", "/api/v1/admin/events/*/debriefing"))
-				.authorizeHttpRequests(auth -> auth.requestMatchers(
+						// --- Authentication ---
+						"/api/v1/auth/login", "/api/v1/auth/logout",
+
+						// --- Public Actions ---
+						"/api/v1/public/profile/**", "/api/v1/public/storage/**", "/api/v1/public/events/**",
+						"/api/v1/public/meetings/**", "/api/v1/public/feedback/**", "/api/v1/public/chat/**",
+						"/api/v1/public/changelog/**",
+
+						// --- Admin Actions ---
+						"/api/v1/users/**", "/api/v1/requests/**", "/api/v1/events/**", "/api/v1/meetings/**",
+						"/api/v1/courses/**", "/api/v1/storage/**", "/api/v1/kits/**", "/api/v1/matrix/**",
+						"/api/v1/achievements/**", "/api/v1/feedback/**", "/api/v1/admin/**" // Broad rule for all other
+																								// admin endpoints
+				)).authorizeHttpRequests(auth -> auth.requestMatchers(
 						// Public Authentication endpoints
 						"/api/v1/auth/**", "/api/v1/admin/notifications/sse", // Explicitly permit
 																				// SSE endpoint

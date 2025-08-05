@@ -43,6 +43,12 @@ public class UserDAO {
 		if (DaoUtils.hasColumn(resultSet, "profile_icon_class")) {
 			user.setProfileIconClass(resultSet.getString("profile_icon_class"));
 		}
+		if (DaoUtils.hasColumn(resultSet, "admin_notes")) {
+			user.setAdminNotes(resultSet.getString("admin_notes"));
+		}
+		if (DaoUtils.hasColumn(resultSet, "dashboard_layout")) {
+			user.setDashboardLayout(resultSet.getString("dashboard_layout"));
+		}
 		if (DaoUtils.hasColumn(resultSet, "role_name")) {
 			user.setRoleName(resultSet.getString("role_name"));
 		}
@@ -142,10 +148,11 @@ public class UserDAO {
 	}
 
 	public boolean updateUser(User user) {
-		String sql = "UPDATE users SET username = ?, role_id = ?, class_year = ?, class_name = ?, email = ?, profile_icon_class = ? WHERE id = ?";
+		String sql = "UPDATE users SET username = ?, role_id = ?, class_year = ?, class_name = ?, email = ?, profile_icon_class = ?, admin_notes = ? WHERE id = ?";
 		try {
 			return jdbcTemplate.update(sql, user.getUsername(), user.getRoleId(), user.getClassYear(),
-					user.getClassName(), user.getEmail(), user.getProfileIconClass(), user.getId()) > 0;
+					user.getClassName(), user.getEmail(), user.getProfileIconClass(), user.getAdminNotes(),
+					user.getId()) > 0;
 		} catch (Exception e) {
 			logger.error("SQL error updating user with ID: {}", user.getId(), e);
 			return false;
@@ -168,6 +175,16 @@ public class UserDAO {
 			return jdbcTemplate.update(sql, chatColor, userId) > 0;
 		} catch (Exception e) {
 			logger.error("Error updating chat color for user ID {}", userId, e);
+			return false;
+		}
+	}
+
+	public boolean updateDashboardLayout(int userId, String layoutJson) {
+		String sql = "UPDATE users SET dashboard_layout = ? WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, layoutJson, userId) > 0;
+		} catch (Exception e) {
+			logger.error("Error updating dashboard layout for user ID {}", userId, e);
 			return false;
 		}
 	}
