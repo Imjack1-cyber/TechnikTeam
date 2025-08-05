@@ -20,6 +20,8 @@ public final class NavigationRegistry {
 	static {
 		// User Section
 		ALL_ITEMS.add(new NavigationItem("Dashboard", "/home", "fa-home", null));
+		ALL_ITEMS.add(new NavigationItem("Anschlagbrett", "/bulletin-board", "fa-thumbtack", null));
+		ALL_ITEMS.add(new NavigationItem("Team", "/team", "fa-users", null));
 		ALL_ITEMS.add(new NavigationItem("Chat", "/chat", "fa-comments", null));
 		ALL_ITEMS.add(new NavigationItem("Lehrgänge", "/lehrgaenge", "fa-graduation-cap", null));
 		ALL_ITEMS.add(new NavigationItem("Veranstaltungen", "/veranstaltungen", "fa-calendar-check", null));
@@ -32,8 +34,12 @@ public final class NavigationRegistry {
 		// Admin Section
 		ALL_ITEMS.add(new NavigationItem("Admin Dashboard", "/admin/dashboard", "fa-tachometer-alt",
 				Permissions.ADMIN_DASHBOARD_ACCESS));
+		ALL_ITEMS.add(
+				new NavigationItem("Anschlagbrett", "/admin/announcements", "fa-thumbtack", Permissions.USER_UPDATE));
 		ALL_ITEMS.add(new NavigationItem("Benutzer", "/admin/mitglieder", "fa-users-cog", Permissions.USER_READ));
 		ALL_ITEMS.add(new NavigationItem("Anträge", "/admin/requests", "fa-inbox", Permissions.USER_UPDATE));
+		ALL_ITEMS.add(new NavigationItem("Lehrgangsanfragen", "/admin/training-requests", "fa-question-circle",
+				Permissions.COURSE_CREATE));
 		ALL_ITEMS.add(
 				new NavigationItem("Events", "/admin/veranstaltungen", "fa-calendar-plus", Permissions.EVENT_READ));
 		ALL_ITEMS.add(new NavigationItem("Debriefings", "/admin/debriefings", "fa-clipboard-check",

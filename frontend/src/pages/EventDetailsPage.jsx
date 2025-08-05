@@ -9,6 +9,7 @@ import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import { useToast } from '../../context/ToastContext';
 import ChecklistTab from '../components/events/ChecklistTab';
+import EventGalleryTab from '../components/events/EventGalleryTab';
 
 const EventDetailsPage = () => {
 	const { eventId } = useParams();
@@ -234,6 +235,7 @@ const EventDetailsPage = () => {
 						<button className={`modal-tab-button ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>Aufgaben</button>
 						<button className={`modal-tab-button ${activeTab === 'checklist' ? 'active' : ''}`} onClick={() => setActiveTab('checklist')}>Inventar-Checkliste</button>
 						<button className={`modal-tab-button ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>Event-Chat</button>
+						{event.status === 'ABGESCHLOSSEN' && <button className={`modal-tab-button ${activeTab === 'gallery' ? 'active' : ''}`} onClick={() => setActiveTab('gallery')}>Galerie</button>}
 					</div>
 
 					<div className={`modal-tab-content ${activeTab === 'tasks' ? 'active' : ''}`}>
@@ -267,6 +269,10 @@ const EventDetailsPage = () => {
 
 					<div className={`modal-tab-content ${activeTab === 'checklist' ? 'active' : ''}`}>
 						<ChecklistTab event={event} user={user} />
+					</div>
+
+					<div className={`modal-tab-content ${activeTab === 'gallery' ? 'active' : ''}`}>
+						<EventGalleryTab event={event} user={user} />
 					</div>
 
 					<div className={`modal-tab-content ${activeTab === 'chat' ? 'active' : ''}`}>

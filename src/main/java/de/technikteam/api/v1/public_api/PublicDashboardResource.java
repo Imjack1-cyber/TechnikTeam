@@ -44,11 +44,13 @@ public class PublicDashboardResource {
 		List<Event> assignedEvents = eventDAO.getAssignedEventsForUser(user.getId(), 5);
 		List<EventTask> openTasks = eventTaskDAO.getOpenTasksForUser(user.getId());
 		List<Event> upcomingEvents = eventDAO.getAllActiveAndUpcomingEvents(); // Simplified for now
+		List<Event> recommendedEvents = eventDAO.getPersonalizedEventFeed(user.getId(), 3);
 
 		Map<String, Object> dashboardData = new HashMap<>();
 		dashboardData.put("assignedEvents", assignedEvents);
 		dashboardData.put("openTasks", openTasks);
 		dashboardData.put("upcomingEvents", upcomingEvents);
+		dashboardData.put("recommendedEvents", recommendedEvents);
 
 		return ResponseEntity.ok(new ApiResponse(true, "Dashboard-Daten erfolgreich abgerufen.", dashboardData));
 	}

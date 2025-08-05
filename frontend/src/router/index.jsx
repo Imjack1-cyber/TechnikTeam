@@ -32,6 +32,8 @@ const CalendarPage = lazy(() => import('../pages/CalendarPage'));
 const PackKitPage = lazy(() => import('../pages/PackKitPage'));
 const SearchResultsPage = lazy(() => import('../pages/SearchResultsPage'));
 const ChangelogPage = lazy(() => import('../pages/ChangelogPage'));
+const TeamDirectoryPage = lazy(() => import('../pages/TeamDirectoryPage'));
+const AnnouncementsPage = lazy(() => import('../pages/AnnouncementsPage'));
 
 // Admin Pages
 const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage'));
@@ -59,6 +61,8 @@ const AdminNotificationsPage = lazy(() => import('../pages/admin/AdminNotificati
 const AdminVenuesPage = lazy(() => import('../pages/admin/AdminVenuesPage'));
 const AdminChecklistTemplatesPage = lazy(() => import('../pages/admin/AdminChecklistTemplatesPage'));
 const AdminChangelogPage = lazy(() => import('../pages/admin/AdminChangelogPage'));
+const AdminAnnouncementsPage = lazy(() => import('../pages/admin/AdminAnnouncementsPage'));
+const AdminTrainingRequestsPage = lazy(() => import('../pages/admin/AdminTrainingRequestsPage'));
 
 
 import ErrorTrigger from '../pages/error/ErrorTrigger';
@@ -90,6 +94,8 @@ const router = createBrowserRouter([
 			{ path: 'kalender', element: <CalendarPage /> },
 			{ path: 'suche', element: <SearchResultsPage /> },
 			{ path: 'changelogs', element: <ChangelogPage /> },
+			{ path: 'team', element: <TeamDirectoryPage /> },
+			{ path: 'bulletin-board', element: <AnnouncementsPage /> },
 			{ path: 'chat', element: <ChatPage /> },
 			{ path: 'chat/:conversationId', element: <ChatPage /> },
 			{ path: 'test-500', element: <ErrorTrigger /> },
@@ -100,8 +106,10 @@ const router = createBrowserRouter([
 				children: [
 					{ index: true, element: <Navigate to="/admin/dashboard" replace /> },
 					{ path: 'dashboard', element: <AdminDashboardPage /> },
+					{ path: 'announcements', element: <AdminAnnouncementsPage /> },
 					{ path: 'mitglieder', element: <AdminUsersPage /> },
 					{ path: 'requests', element: <AdminRequestsPage /> },
+					{ path: 'training-requests', element: <AdminTrainingRequestsPage /> },
 					{ path: 'veranstaltungen', element: <AdminEventsPage /> },
 					{ path: 'veranstaltungen/:eventId/debriefing', element: <AdminEventDebriefingPage /> },
 					{ path: 'debriefings', element: <AdminDebriefingsListPage /> },

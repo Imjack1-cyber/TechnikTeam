@@ -16,6 +16,7 @@ public class StorageItem {
 	private double weightKg;
 	private double priceEur;
 	private String imagePath;
+	private String category;
 
 	private String status;
 	private int currentHolderUserId;
@@ -35,7 +36,7 @@ public class StorageItem {
 			return "Vergriffen";
 		}
 		if (maxQuantity == 0) {
-			return "Auf Lager"; 
+			return "Auf Lager";
 		}
 		if (available >= maxQuantity) {
 			return "Vollständig";
@@ -151,6 +152,14 @@ public class StorageItem {
 
 	public void setImagePath(String imagePath) {
 		this.imagePath = imagePath;
+	}
+
+	public String getCategory() {
+		return category;
+	}
+
+	public void setCategory(String category) {
+		this.category = category;
 	}
 
 	public String getStatus() {

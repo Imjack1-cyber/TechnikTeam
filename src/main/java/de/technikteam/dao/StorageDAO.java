@@ -39,6 +39,7 @@ public class StorageDAO {
 		item.setWeightKg(rs.getDouble("weight_kg"));
 		item.setPriceEur(rs.getDouble("price_eur"));
 		item.setImagePath(rs.getString("image_path"));
+		item.setCategory(rs.getString("category"));
 		item.setStatus(rs.getString("status"));
 		item.setCurrentHolderUserId(rs.getInt("current_holder_user_id"));
 		item.setAssignedEventId(rs.getInt("assigned_event_id"));
@@ -130,6 +131,19 @@ public class StorageDAO {
 			return jdbcTemplate.query(sql, storageItemRowMapper, limit);
 		} catch (Exception e) {
 			logger.error("Error while fetching low stock items.", e);
+			return List.of();
+		}
+	}
+
+	public List<Map<String, Object>> getFutureReservationsForItem(int itemId) {
+		String sql = "SELECT e.name as event_name, e.event_datetime, e.end_datetime "
+				+ "FROM event_storage_reservations esr " + "JOIN events e ON esr.event_id = e.id "
+				+ "WHERE esr.item_id = ? AND e.status IN ('GEPLANT', 'LAUFEND') AND e.event_datetime >= NOW() "
+				+ "ORDER BY e.event_datetime ASC";
+		try {
+			return jdbcTemplate.queryForList(sql, itemId);
+		} catch (Exception e) {
+			logger.error("Error fetching future reservations for item {}", itemId, e);
 			return List.of();
 		}
 	}

@@ -1,9 +1,72 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Modal from '../../ui/Modal';
 import apiClient from '../../../services/apiClient';
 import { useToast } from '../../../context/ToastContext';
+import useApi from '../../../hooks/useApi';
+
+const RelatedItemsManager = ({ item, allItems, onSave, onCancel }) => {
+	const relationsApiCall = useCallback(() => apiClient.get(`/admin/storage/${item.id}/relations`), [item.id]);
+	const { data: relatedItems, loading, error, reload } = useApi(relationsApiCall);
+	const [selectedIds, setSelectedIds] = useState(new Set());
+	const [isSubmitting, setIsSubmitting] = useState(false);
+
+	useEffect(() => {
+		if (relatedItems) {
+			setSelectedIds(new Set(relatedItems.map(i => i.id)));
+		}
+	}, [relatedItems]);
+
+	const handleToggle = (itemId) => {
+		setSelectedIds(prev => {
+			const newSet = new Set(prev);
+			if (newSet.has(itemId)) {
+				newSet.delete(itemId);
+			} else {
+				newSet.add(itemId);
+			}
+			return newSet;
+		});
+	};
+
+	const handleSave = async () => {
+		setIsSubmitting(true);
+		try {
+			await apiClient.put(`/admin/storage/${item.id}/relations`, { relatedItemIds: Array.from(selectedIds) });
+			onSave();
+		} catch (err) {
+			console.error("Failed to save related items", err);
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
+	const availableItems = allItems.filter(i => i.id !== item.id);
+
+	return (
+		<div>
+			{loading && <p>Lade Beziehungen...</p>}
+			{error && <p className="error-message">{error}</p>}
+			<div className="form-group" style={{ maxHeight: '40vh', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius)', padding: '0.5rem' }}>
+				{availableItems.map(i => (
+					<label key={i.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+						<input type="checkbox" checked={selectedIds.has(i.id)} onChange={() => handleToggle(i.id)} />
+						{i.name}
+					</label>
+				))}
+			</div>
+			<div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
+				<button type="button" className="btn btn-secondary" onClick={onCancel}>Abbrechen</button>
+				<button type="button" className="btn btn-success" onClick={handleSave} disabled={isSubmitting}>
+					{isSubmitting ? 'Speichern...' : 'Beziehungen speichern'}
+				</button>
+			</div>
+		</div>
+	);
+};
+
 
 const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edit' }) => {
+	const { data: allItems } = useApi(useCallback(() => apiClient.get('/storage'), []));
 	const [mode, setMode] = useState(initialMode);
 	const [formData, setFormData] = useState({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -13,9 +76,9 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 	useEffect(() => {
 		setMode(initialMode);
 		if (initialMode === 'create') {
-			setFormData({ name: '', location: '', quantity: 1, maxQuantity: 1 });
+			setFormData({ name: '', location: '', quantity: 1, maxQuantity: 1, category: '' });
 		} else if (item) {
-			setFormData({ ...item });
+			setFormData({ ...item, category: item.category || '' });
 		}
 	}, [item, initialMode, isOpen]);
 
@@ -145,6 +208,15 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 						<button type="submit" className="btn btn-success" disabled={isSubmitting}>Als repariert buchen</button>
 					</form>
 				);
+			case 'relations':
+				return (
+					<RelatedItemsManager
+						item={item}
+						allItems={allItems || []}
+						onSave={onSuccess}
+						onCancel={onClose}
+					/>
+				);
 			case 'create':
 			case 'edit':
 			default:
@@ -153,6 +225,10 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 						<div className="form-group">
 							<label>Name</label>
 							<input type="text" name="name" value={formData.name || ''} onChange={handleChange} required />
+						</div>
+						<div className="form-group">
+							<label>Kategorie (z.B. Audio, Licht, Kabel)</label>
+							<input type="text" name="category" value={formData.category || ''} onChange={handleChange} />
 						</div>
 						<div className="form-group">
 							<label>Ort</label>
@@ -172,7 +248,14 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 							<label>Bild (optional)</label>
 							<input type="file" name="imageFile" onChange={handleFileChange} accept="image/*" />
 						</div>
-						<button type="submit" className="btn" disabled={isSubmitting}>Speichern</button>
+						<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+							<button type="submit" className="btn" disabled={isSubmitting}>Speichern</button>
+							{mode === 'edit' && (
+								<button type="button" className="btn btn-secondary" onClick={() => setMode('relations')}>
+									Zugehörige Artikel
+								</button>
+							)}
+						</div>
 					</form>
 				);
 		}
@@ -184,6 +267,7 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 			case 'edit': return `Artikel bearbeiten: ${item?.name}`;
 			case 'defect': return `Defekt-Status für "${item?.name}"`;
 			case 'repair': return `Artikel "${item?.name}" repariert`;
+			case 'relations': return `Zugehörige Artikel für "${item?.name}"`;
 			default: return 'Lagerartikel';
 		}
 	};

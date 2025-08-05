@@ -30,6 +30,23 @@ const DashboardPage = () => {
 		<div>
 			<h1>Willkommen zurück, {user?.username}!</h1>
 			<div className="dashboard-grid">
+
+				{dashboardData?.recommendedEvents?.length > 0 && (
+					<div className="card" id="recommended-events-widget" style={{ gridColumn: '1 / -1', background: 'var(--primary-color-light)' }}>
+						<h2 className="card-title"><i className="fas fa-star" style={{ color: 'var(--warning-color)' }}></i> Für Dich empfohlen</h2>
+						<p>Hier sind einige anstehende Veranstaltungen, für die du qualifiziert bist und bei denen noch Unterstützung gebraucht wird:</p>
+						<ul className="details-list">
+							{dashboardData.recommendedEvents.map(event => (
+								<li key={event.id}>
+									<Link to={`/veranstaltungen/details/${event.id}`}>{event.name}</Link>
+									<small>{new Date(event.eventDateTime).toLocaleString('de-DE')}</small>
+								</li>
+							))}
+						</ul>
+						<Link to="/veranstaltungen" className="btn btn-small" style={{ marginTop: '1rem' }}>Alle Veranstaltungen anzeigen</Link>
+					</div>
+				)}
+
 				<div className="card" id="assigned-events-widget">
 					<h2 className="card-title">Meine nächsten Einsätze</h2>
 					<div id="assigned-events-content">

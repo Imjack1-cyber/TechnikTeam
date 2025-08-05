@@ -1,13 +1,66 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import { useToast } from '../context/ToastContext';
+import Modal from '../components/ui/Modal';
+
+const RequestTrainingModal = ({ isOpen, onClose, onSuccess }) => {
+	const [topic, setTopic] = useState('');
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [error, setError] = useState('');
+	const { addToast } = useToast();
+
+	const handleSubmit = async (e) => {
+		e.preventDefault();
+		setIsSubmitting(true);
+		setError('');
+		try {
+			const result = await apiClient.post('/public/training-requests', { topic });
+			if (result.success) {
+				addToast('Lehrgangswunsch erfolgreich eingereicht!', 'success');
+				onSuccess();
+			} else {
+				throw new Error(result.message);
+			}
+		} catch (err) {
+			setError(err.message || 'Einreichen fehlgeschlagen.');
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
+	return (
+		<Modal isOpen={isOpen} onClose={onClose} title="Neuen Lehrgang anfragen">
+			<form onSubmit={handleSubmit}>
+				{error && <p className="error-message">{error}</p>}
+				<p>Welches Thema oder welche Fähigkeit würdest du gerne lernen?</p>
+				<div className="form-group">
+					<label htmlFor="topic">Thema des Lehrgangs</label>
+					<input
+						type="text"
+						id="topic"
+						value={topic}
+						onChange={(e) => setTopic(e.target.value)}
+						placeholder="z.B. Fortgeschrittene Videomischung"
+						required
+					/>
+				</div>
+				<button type="submit" className="btn" disabled={isSubmitting}>
+					{isSubmitting ? 'Wird eingereicht...' : 'Wunsch einreichen'}
+				</button>
+			</form>
+		</Modal>
+	);
+};
+
 
 const LehrgaengePage = () => {
 	const apiCall = useCallback(() => apiClient.get('/public/meetings'), []);
 	const { data: meetings, loading, error, reload } = useApi(apiCall);
 	const { addToast } = useToast();
+	const [isModalOpen, setIsModalOpen] = useState(false);
+
 
 	const handleAction = async (meetingId, action) => {
 		const endpoint = `/public/meetings/${meetingId}/${action}`;
@@ -64,6 +117,12 @@ const LehrgaengePage = () => {
 	return (
 		<div>
 			<h1><i className="fas fa-graduation-cap"></i> Anstehende Lehrgänge & Meetings</h1>
+			<div className="table-controls">
+				<button onClick={() => setIsModalOpen(true)} className="btn btn-secondary">
+					<i className="fas fa-question-circle"></i> Neuen Lehrgang anfragen
+				</button>
+			</div>
+
 
 			<div className="desktop-table-wrapper">
 				<table className="data-table">
@@ -109,6 +168,9 @@ const LehrgaengePage = () => {
 					))
 				)}
 			</div>
+			{isModalOpen && (
+				<RequestTrainingModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => setIsModalOpen(false)} />
+			)}
 		</div>
 	);
 };

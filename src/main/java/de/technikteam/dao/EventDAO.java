@@ -77,6 +77,35 @@ public class EventDAO {
 		}
 	}
 
+	public List<Event> getPersonalizedEventFeed(int userId, int limit) {
+		String sql = "SELECT e.*, u_leader.username AS leader_username " + "FROM events e "
+				+ "LEFT JOIN users u_leader ON e.leader_user_id = u_leader.id "
+				+ "WHERE e.status = 'GEPLANT' AND e.event_datetime >= NOW() "
+				// User is qualified for ALL requirements
+				+ "AND NOT EXISTS ( " + "    SELECT 1 FROM event_skill_requirements esr "
+				+ "    WHERE esr.event_id = e.id AND NOT EXISTS ( " + "        SELECT 1 FROM user_qualifications uq "
+				+ "        WHERE uq.user_id = ? AND uq.course_id = esr.required_course_id AND uq.status = 'BESTANDEN' "
+				+ "    ) " + ") "
+				// User is NOT already attending
+				+ "AND NOT EXISTS ( " + "    SELECT 1 FROM event_attendance ea "
+				+ "    WHERE ea.event_id = e.id AND ea.user_id = ? AND ea.signup_status = 'ANGEMELDET' " + ") "
+				+ "AND NOT EXISTS ( " + "    SELECT 1 FROM event_assignments eas "
+				+ "    WHERE eas.event_id = e.id AND eas.user_id = ? " + ") " + "ORDER BY e.event_datetime ASC ";
+		if (limit > 0) {
+			sql += "LIMIT ?";
+		}
+		try {
+			if (limit > 0) {
+				return jdbcTemplate.query(sql, eventRowMapper, userId, userId, userId, limit);
+			} else {
+				return jdbcTemplate.query(sql, eventRowMapper, userId, userId, userId);
+			}
+		} catch (Exception e) {
+			logger.error("Error fetching personalized event feed for user {}: {}", userId, e.getMessage());
+			return List.of();
+		}
+	}
+
 	public List<Event> getEventHistoryForUser(int userId) {
 		String sql = "SELECT e.*, COALESCE( (SELECT 'ZUGEWIESEN' FROM event_assignments WHERE event_id = e.id AND user_id = ?), (SELECT signup_status FROM event_attendance WHERE event_id = e.id AND user_id = ?), 'OFFEN' ) AS user_status FROM events e WHERE EXISTS ( SELECT 1 FROM event_attendance WHERE event_id = e.id AND user_id = ? UNION SELECT 1 FROM event_assignments WHERE event_id = e.id AND user_id = ? ) ORDER BY e.event_datetime DESC";
 		try {

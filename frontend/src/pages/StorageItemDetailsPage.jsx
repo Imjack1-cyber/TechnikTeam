@@ -4,7 +4,34 @@ import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import Lightbox from '../components/ui/Lightbox';
 import DamageReportModal from '../components/storage/DamageReportModal';
+import ReservationCalendar from '../components/storage/ReservationCalendar';
 import { useToast } from '../context/ToastContext';
+
+const RelatedItemsTab = ({ itemId }) => {
+	const apiCall = useCallback(() => apiClient.get(`/public/storage/${itemId}/relations`), [itemId]);
+	const { data: relatedItems, loading, error } = useApi(apiCall);
+
+	if (loading) return <p>Lade zugehörige Artikel...</p>;
+	if (error) return <p className="error-message">{error}</p>;
+
+	return (
+		<div>
+			<h4>Wird oft zusammen verwendet:</h4>
+			{relatedItems && relatedItems.length > 0 ? (
+				<ul className="details-list">
+					{relatedItems.map(item => (
+						<li key={item.id}>
+							<Link to={`/lager/details/${item.id}`}>{item.name}</Link>
+							<span>{item.availableQuantity} / {item.maxQuantity} verfügbar</span>
+						</li>
+					))}
+				</ul>
+			) : (
+				<p>Für diesen Artikel sind keine zugehörigen Artikel definiert.</p>
+			)}
+		</div>
+	);
+};
 
 const StorageItemDetailsPage = () => {
 	const { itemId } = useParams();
@@ -15,9 +42,16 @@ const StorageItemDetailsPage = () => {
 
 	const fetchItemCall = useCallback(() => apiClient.get(`/public/storage/${itemId}`), [itemId]);
 	const fetchHistoryCall = useCallback(() => apiClient.get(`/public/storage/${itemId}/history`), [itemId]);
+	const fetchReservationsCall = useCallback(() => {
+		// Only fetch if the calendar tab is active
+		if (activeTab !== 'calendar') return null;
+		return apiClient.get(`/public/storage/${itemId}/reservations`);
+	}, [itemId, activeTab]);
+
 
 	const { data: itemData, loading: itemLoading, error: itemError, reload: reloadItem } = useApi(fetchItemCall);
 	const { data: historyData, loading: historyLoading, error: historyError } = useApi(fetchHistoryCall);
+	const { data: reservations, loading: reservationsLoading, error: reservationsError } = useApi(fetchReservationsCall);
 
 
 	const handleReportSuccess = () => {
@@ -66,6 +100,8 @@ const StorageItemDetailsPage = () => {
 					<div className="modal-tabs">
 						<button className={`modal-tab-button ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>Verlauf</button>
 						<button className={`modal-tab-button ${activeTab === 'maintenance' ? 'active' : ''}`} onClick={() => setActiveTab('maintenance')}>Wartungshistorie</button>
+						<button className={`modal-tab-button ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => setActiveTab('calendar')}>Verfügbarkeit</button>
+						<button className={`modal-tab-button ${activeTab === 'related' ? 'active' : ''}`} onClick={() => setActiveTab('related')}>Zubehör</button>
 					</div>
 
 					{activeTab === 'history' && (
@@ -113,6 +149,18 @@ const StorageItemDetailsPage = () => {
 									</table>
 								</div>
 							)}
+						</div>
+					)}
+					{activeTab === 'calendar' && (
+						<div className="modal-tab-content active">
+							{reservationsLoading && <p>Lade Reservierungskalender...</p>}
+							{reservationsError && <p className="error-message">{reservationsError}</p>}
+							{reservations && <ReservationCalendar reservations={reservations} />}
+						</div>
+					)}
+					{activeTab === 'related' && (
+						<div className="modal-tab-content active">
+							<RelatedItemsTab itemId={itemId} />
 						</div>
 					)}
 				</div>

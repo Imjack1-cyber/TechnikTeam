@@ -7,6 +7,7 @@ import de.technikteam.model.ApiResponse;
 import de.technikteam.model.MaintenanceLogEntry;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.StorageLogEntry;
+import de.technikteam.service.StorageItemRelationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -32,13 +33,15 @@ public class PublicStorageDetailsResource {
 	private final StorageDAO storageDAO;
 	private final StorageLogDAO storageLogDAO;
 	private final MaintenanceLogDAO maintenanceLogDAO;
+	private final StorageItemRelationService relationService;
 
 	@Autowired
 	public PublicStorageDetailsResource(StorageDAO storageDAO, StorageLogDAO storageLogDAO,
-			MaintenanceLogDAO maintenanceLogDAO) {
+			MaintenanceLogDAO maintenanceLogDAO, StorageItemRelationService relationService) {
 		this.storageDAO = storageDAO;
 		this.storageLogDAO = storageLogDAO;
 		this.maintenanceLogDAO = maintenanceLogDAO;
+		this.relationService = relationService;
 	}
 
 	@GetMapping("/{itemId}")
@@ -64,5 +67,19 @@ public class PublicStorageDetailsResource {
 		historyData.put("maintenance", maintenance);
 
 		return ResponseEntity.ok(new ApiResponse(true, "Verlauf erfolgreich abgerufen.", historyData));
+	}
+
+	@GetMapping("/{itemId}/reservations")
+	@Operation(summary = "Get future reservations for a storage item", description = "Retrieves a list of events for which the item is reserved in the future.")
+	public ResponseEntity<ApiResponse> getStorageItemReservations(@PathVariable int itemId) {
+		List<Map<String, Object>> reservations = storageDAO.getFutureReservationsForItem(itemId);
+		return ResponseEntity.ok(new ApiResponse(true, "Reservierungen erfolgreich abgerufen.", reservations));
+	}
+
+	@GetMapping("/{itemId}/relations")
+	@Operation(summary = "Get related items for a storage item")
+	public ResponseEntity<ApiResponse> getRelatedItems(@PathVariable int itemId) {
+		return ResponseEntity
+				.ok(new ApiResponse(true, "Related items retrieved.", relationService.findRelatedItems(itemId)));
 	}
 }

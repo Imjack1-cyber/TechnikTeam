@@ -63,6 +63,23 @@ public class PublicProfileResource {
 		return ResponseEntity.ok(new ApiResponse(true, "Profildaten erfolgreich abgerufen.", profileData));
 	}
 
+	@GetMapping("/{userId}")
+	@Operation(summary = "Get another user's public profile data", description = "Retrieves a public-safe subset of another user's profile data.")
+	public ResponseEntity<ApiResponse> getUserProfile(@PathVariable int userId) {
+		User user = userDAO.getUserById(userId);
+		if (user == null) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND)
+					.body(new ApiResponse(false, "Benutzer nicht gefunden.", null));
+		}
+
+		Map<String, Object> profileData = new HashMap<>();
+		profileData.put("user", user); // The DTO is already safe, no password hash
+		profileData.put("qualifications", qualificationsDAO.getQualificationsForUser(userId));
+		profileData.put("achievements", achievementDAO.getAchievementsForUser(userId));
+
+		return ResponseEntity.ok(new ApiResponse(true, "Profildaten erfolgreich abgerufen.", profileData));
+	}
+
 	@PostMapping("/request-change")
 	@Operation(summary = "Request a profile data change", description = "Submits a request for an administrator to approve changes to the user's profile data.")
 	public ResponseEntity<ApiResponse> requestProfileChange(@Valid @RequestBody ProfileChangeRequestDTO requestDTO,
