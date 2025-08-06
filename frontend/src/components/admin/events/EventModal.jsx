@@ -42,10 +42,27 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData }) => {
 				requiredRole: 'NUTZER',
 				reminderMinutes: event.reminderMinutes || '0',
 			});
-			setSkillRows(event.skillRequirements?.length > 0 ? event.skillRequirements : []);
-			setItemRows(event.reservedItems?.length > 0 ? event.reservedItems : []);
+			setSkillRows(event.skillRequirements?.length > 0 ? event.skillRequirements.map(s => ({ requiredCourseId: s.requiredCourseId, requiredPersons: s.requiredPersons })) : [{ requiredCourseId: '', requiredPersons: 1 }]);
+			setItemRows(event.reservedItems?.length > 0 ? event.reservedItems.map(i => ({ itemId: i.id, quantity: i.quantity })) : [{ itemId: '', quantity: 1 }]);
+
+		} else {
+			// Reset form for "Create New" mode
+			setFormData({
+				name: '',
+				eventDateTime: '',
+				endDateTime: '',
+				location: '',
+				description: '',
+				status: 'GEPLANT',
+				leaderUserId: '',
+				requiredRole: 'NUTZER',
+				reminderMinutes: '0',
+			});
+			setSkillRows([{ requiredCourseId: '', requiredPersons: 1 }]);
+			setItemRows([{ itemId: '', quantity: 1 }]);
+			setFile(null);
 		}
-	}, [event, isEditMode]);
+	}, [event, isEditMode, isOpen]); // Rerun when isOpen changes to reset the form
 
 	const handleChange = (e) => {
 		setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -59,6 +76,7 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData }) => {
 		const data = new FormData();
 		const eventData = {
 			...formData,
+			leaderUserId: formData.leaderUserId ? parseInt(formData.leaderUserId, 10) : 0,
 			reminderMinutes: parseInt(formData.reminderMinutes, 10),
 			requiredCourseIds: skillRows.map(r => r.requiredCourseId).filter(Boolean),
 			requiredPersons: skillRows.map(r => r.requiredPersons).filter(Boolean),

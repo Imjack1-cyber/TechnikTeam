@@ -3,11 +3,11 @@ import { useParams, Link } from 'react-router-dom';
 import apiClient from '../services/apiClient';
 import useApi from '../hooks/useApi';
 import useWebSocket from '../hooks/useWebSocket';
-import { useAuthStore } from '../../store/authStore';
+import { useAuthStore } from '../store/authStore';
 import StatusBadge from '../components/ui/StatusBadge';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../context/ToastContext';
 import ChecklistTab from '../components/events/ChecklistTab';
 import EventGalleryTab from '../components/events/EventGalleryTab';
 

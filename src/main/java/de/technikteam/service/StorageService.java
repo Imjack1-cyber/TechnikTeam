@@ -23,11 +23,12 @@ public class StorageService {
 	private final EventDAO eventDAO;
 	private final AdminLogService adminLogService;
 	private final NotificationService notificationService;
+	private final MaintenanceLogDAO maintenanceLogDAO;
 
 	@Autowired
 	public StorageService(StorageDAO storageDAO, StorageLogDAO storageLogDAO, DamageReportDAO damageReportDAO,
 			UserDAO userDAO, EventDAO eventDAO, AdminLogService adminLogService,
-			NotificationService notificationService) {
+			NotificationService notificationService, MaintenanceLogDAO maintenanceLogDAO) {
 		this.storageDAO = storageDAO;
 		this.storageLogDAO = storageLogDAO;
 		this.damageReportDAO = damageReportDAO;
@@ -35,6 +36,7 @@ public class StorageService {
 		this.eventDAO = eventDAO;
 		this.adminLogService = adminLogService;
 		this.notificationService = notificationService;
+		this.maintenanceLogDAO = maintenanceLogDAO;
 	}
 
 	@Transactional
@@ -86,6 +88,31 @@ public class StorageService {
 	}
 
 	@Transactional
+	public void handleItemStatusUpdate(int itemId, Map<String, Object> payload, User adminUser) {
+		String action = (String) payload.get("action");
+		if (action == null) {
+			throw new IllegalArgumentException("Action is required.");
+		}
+
+		switch (action) {
+		case "report_defect":
+		case "report_unrepairable":
+			int defectiveQuantity = ((Number) payload.get("quantity")).intValue();
+			String reason = (String) payload.get("reason");
+			String status = "report_unrepairable".equals(action) ? "UNREPAIRABLE" : "DEFECT";
+			updateDefectiveItemStatus(itemId, status, defectiveQuantity, reason, adminUser);
+			break;
+		case "repair":
+			int repairedQuantity = ((Number) payload.get("quantity")).intValue();
+			String notes = (String) payload.get("notes");
+			repairItems(itemId, repairedQuantity, notes, adminUser);
+			break;
+		default:
+			throw new IllegalArgumentException("Unknown action: " + action);
+		}
+	}
+
+	@Transactional
 	public boolean updateDefectiveItemStatus(int itemId, String status, int quantity, String reason, User adminUser) {
 		StorageItem item = storageDAO.getItemById(itemId);
 		if (item == null) {
@@ -120,6 +147,22 @@ public class StorageService {
 
 		storageDAO.updateItem(item);
 		return true;
+	}
+
+	@Transactional
+	public void repairItems(int itemId, int quantity, String notes, User adminUser) {
+		StorageItem item = storageDAO.getItemById(itemId);
+		if (item == null) {
+			throw new IllegalArgumentException("Item not found.");
+		}
+		if (quantity > item.getDefectiveQuantity()) {
+			throw new IllegalStateException("Cannot repair more items than are marked as defective.");
+		}
+		item.setDefectiveQuantity(item.getDefectiveQuantity() - quantity);
+		storageDAO.updateItem(item);
+		// Log maintenance action
+		adminLogService.log(adminUser.getUsername(), "ITEM_REPAIRED",
+				String.format("Repaired %d x '%s' (ID: %d). Notes: %s", quantity, item.getName(), itemId, notes));
 	}
 
 	@Transactional

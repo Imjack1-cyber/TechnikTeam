@@ -1,6 +1,7 @@
 package de.technikteam.security;
 
 import de.technikteam.dao.UserDAO;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -33,38 +34,28 @@ public class SecurityConfig {
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
+		// SPA-friendly: don't expose the token in the request attribute, frontend reads
+		// cookie instead
 		requestHandler.setCsrfRequestAttributeName(null);
 
-		http.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-				.csrfTokenRequestHandler(requestHandler).ignoringRequestMatchers(
-						// --- Authentication ---
-						"/api/v1/auth/login", "/api/v1/auth/logout",
+		CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+		csrfTokenRepository.setCookiePath("/"); // Important: set path to root so cookie is sent on all API requests
 
-						// --- Public Actions ---
-						"/api/v1/public/announcements/**", "/api/v1/public/changelog/**", "/api/v1/public/chat/**",
-						"/api/v1/public/events/**", "/api/v1/public/feedback/**", "/api/v1/public/meetings/**",
-						"/api/v1/public/profile/**", "/api/v1/public/storage/**", "/api/v1/public/training-requests/**",
-
-						// --- Admin Actions ---
-						"/api/v1/users/**", "/api/v1/requests/**", "/api/v1/events/**", "/api/v1/meetings/**",
-						"/api/v1/courses/**", "/api/v1/storage/**", "/api/v1/kits/**", "/api/v1/matrix/**",
-						"/api/v1/achievements/**", "/api/v1/feedback/**", "/api/v1/admin/**" // Broad rule for all other
-																								// admin endpoints
-				)).authorizeHttpRequests(auth -> auth.requestMatchers(
-						// Public Authentication endpoints
-						"/api/v1/auth/**", "/api/v1/admin/notifications/sse", // Explicitly permit
-																				// SSE endpoint
-						// Publicly accessible assets and docs
-						"/api/v1/public/calendar.ics", "/api/v1/public/files/avatars/**", "/swagger-ui.html",
-						"/swagger-ui/**", "/v3/api-docs/**").permitAll().requestMatchers("/api/v1/admin/**")
-						.authenticated() // Secure all admin endpoints
-						.anyRequest().authenticated())
+		http.csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository).csrfTokenRequestHandler(requestHandler))
+				.authorizeHttpRequests(
+						auth -> auth
+								.requestMatchers("/api/v1/auth/**", "/api/v1/admin/notifications/sse",
+										"/api/v1/public/calendar.ics", "/api/v1/public/files/images/**",
+										"/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
+								.permitAll().anyRequest().authenticated())
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
 				.headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin())
 						.httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000))
-						.contentSecurityPolicy(csp -> csp.policyDirectives(
-								"default-src 'self'; script-src 'self'; style-src 'self' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self';")))
+						.contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; "
+								+ "script-src 'self'; " + "style-src 'self' https://cdnjs.cloudflare.com; "
+								+ "font-src 'self' https://cdnjs.cloudflare.com; " + "object-src 'none'; "
+								+ "base-uri 'self';")))
 				.httpBasic(AbstractHttpConfigurer::disable).formLogin(AbstractHttpConfigurer::disable);
 
 		return http.build();

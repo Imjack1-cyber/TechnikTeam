@@ -15,6 +15,7 @@ public class File {
 	private String categoryName;
 	private LocalDateTime uploadedAt;
 	private String requiredRole;
+	private boolean needsWarning;
 	private String content;
 
 	public String getFormattedUploadedAt() {
@@ -75,6 +76,14 @@ public class File {
 
 	public void setRequiredRole(String requiredRole) {
 		this.requiredRole = requiredRole;
+	}
+
+	public boolean isNeedsWarning() {
+		return needsWarning;
+	}
+
+	public void setNeedsWarning(boolean needsWarning) {
+		this.needsWarning = needsWarning;
 	}
 
 	public String getContent() {

@@ -39,6 +39,9 @@ public class FileDAO {
 		file.setFilepath(rs.getString("filepath"));
 		file.setUploadedAt(rs.getTimestamp("uploaded_at").toLocalDateTime());
 		file.setCategoryId(rs.getInt("category_id"));
+		if (DaoUtils.hasColumn(rs, "needs_warning")) {
+			file.setNeedsWarning(rs.getBoolean("needs_warning"));
+		}
 		if (DaoUtils.hasColumn(rs, "required_role")) {
 			file.setRequiredRole(rs.getString("required_role"));
 		}
@@ -76,7 +79,7 @@ public class FileDAO {
 	}
 
 	public int createFile(File file) {
-		String sql = "INSERT INTO files (filename, filepath, category_id, required_role) VALUES (?, ?, ?, ?)";
+		String sql = "INSERT INTO files (filename, filepath, category_id, required_role, needs_warning) VALUES (?, ?, ?, ?, ?)";
 		KeyHolder keyHolder = new GeneratedKeyHolder();
 		try {
 			jdbcTemplate.update(connection -> {
@@ -89,6 +92,7 @@ public class FileDAO {
 					ps.setNull(3, Types.INTEGER);
 				}
 				ps.setString(4, file.getRequiredRole());
+				ps.setBoolean(5, file.isNeedsWarning());
 				return ps;
 			}, keyHolder);
 			return Objects.requireNonNull(keyHolder.getKey()).intValue();

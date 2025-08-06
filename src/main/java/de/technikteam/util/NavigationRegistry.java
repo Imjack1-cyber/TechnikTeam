@@ -30,6 +30,7 @@ public final class NavigationRegistry {
 		ALL_ITEMS.add(new NavigationItem("Kalender", "/kalender", "fa-calendar-alt", null));
 		ALL_ITEMS.add(new NavigationItem("Feedback", "/feedback", "fa-lightbulb", null));
 		ALL_ITEMS.add(new NavigationItem("Changelogs", "/changelogs", "fa-history", null));
+		ALL_ITEMS.add(new NavigationItem("Hilfe", "/help", "fa-question-circle", null));
 
 		// Admin Section
 		ALL_ITEMS.add(new NavigationItem("Admin Dashboard", "/admin/dashboard", "fa-tachometer-alt",
@@ -40,19 +41,20 @@ public final class NavigationRegistry {
 		ALL_ITEMS.add(new NavigationItem("Anträge", "/admin/requests", "fa-inbox", Permissions.USER_UPDATE));
 		ALL_ITEMS.add(new NavigationItem("Lehrgangsanfragen", "/admin/training-requests", "fa-question-circle",
 				Permissions.COURSE_CREATE));
-		ALL_ITEMS.add(
-				new NavigationItem("Events", "/admin/veranstaltungen", "fa-calendar-plus", Permissions.EVENT_READ));
+		ALL_ITEMS.add(new NavigationItem("Events Verwalten", "/admin/veranstaltungen", "fa-calendar-plus",
+				Permissions.EVENT_READ));
 		ALL_ITEMS.add(new NavigationItem("Debriefings", "/admin/debriefings", "fa-clipboard-check",
 				Permissions.EVENT_DEBRIEFING_VIEW));
-		ALL_ITEMS.add(new NavigationItem("Lager", "/admin/lager", "fa-warehouse", Permissions.STORAGE_READ));
+		ALL_ITEMS.add(new NavigationItem("Lager Verwalten", "/admin/lager", "fa-warehouse", Permissions.STORAGE_READ));
 		ALL_ITEMS.add(new NavigationItem("Veranstaltungsorte", "/admin/venues", "fa-map-marked-alt",
 				Permissions.EVENT_CREATE));
-		ALL_ITEMS.add(new NavigationItem("Dateien", "/admin/dateien", "fa-file-upload", Permissions.FILE_MANAGE));
+		ALL_ITEMS.add(
+				new NavigationItem("Dateien Verwalten", "/admin/dateien", "fa-file-upload", Permissions.FILE_MANAGE));
 		ALL_ITEMS
 				.add(new NavigationItem("Lehrgangs-Vorlagen", "/admin/lehrgaenge", "fa-book", Permissions.COURSE_READ));
 		ALL_ITEMS.add(new NavigationItem("Kit-Verwaltung", "/admin/kits", "fa-box-open", Permissions.KIT_READ));
-		ALL_ITEMS
-				.add(new NavigationItem("Feedback", "/admin/feedback", "fa-inbox", Permissions.ADMIN_DASHBOARD_ACCESS));
+		ALL_ITEMS.add(new NavigationItem("Feedback Verwalten", "/admin/feedback", "fa-inbox",
+				Permissions.ADMIN_DASHBOARD_ACCESS));
 		ALL_ITEMS.add(new NavigationItem("Benachrichtigungen", "/admin/benachrichtigungen", "fa-bullhorn",
 				Permissions.NOTIFICATION_SEND));
 		ALL_ITEMS.add(new NavigationItem("Abzeichen", "/admin/achievements", "fa-award", Permissions.ACHIEVEMENT_VIEW));
@@ -64,8 +66,10 @@ public final class NavigationRegistry {
 		ALL_ITEMS
 				.add(new NavigationItem("Quali-Matrix", "/admin/matrix", "fa-th-list", Permissions.QUALIFICATION_READ));
 		ALL_ITEMS.add(new NavigationItem("Berichte", "/admin/berichte", "fa-chart-pie", Permissions.REPORT_READ));
-		ALL_ITEMS.add(
-				new NavigationItem("Changelogs", "/admin/changelogs", "fa-history", Permissions.ACCESS_ADMIN_PANEL));
+		ALL_ITEMS.add(new NavigationItem("Changelogs Verwalten", "/admin/changelogs", "fa-history",
+				Permissions.ACCESS_ADMIN_PANEL));
+		ALL_ITEMS.add(new NavigationItem("Seiten-Doku", "/admin/documentation", "fa-book-open",
+				Permissions.DOCUMENTATION_MANAGE));
 		ALL_ITEMS.add(new NavigationItem("Aktions-Log", "/admin/log", "fa-clipboard-list", Permissions.LOG_READ));
 		ALL_ITEMS.add(new NavigationItem("System", "/admin/system", "fa-server", Permissions.SYSTEM_READ));
 		ALL_ITEMS.add(new NavigationItem("Wiki", "/admin/wiki", "fa-book-reader", Permissions.ACCESS_ADMIN_PANEL));

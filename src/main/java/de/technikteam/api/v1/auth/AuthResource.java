@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -77,9 +78,27 @@ public class AuthResource {
 		}
 	}
 
+	@GetMapping("/csrf-token")
+	@Operation(summary = "Get CSRF Token", description = "An endpoint that does nothing but allows the client to make a GET request to receive the initial XSRF-TOKEN cookie from the server.")
+	public ResponseEntity<ApiResponse> getCsrfToken(HttpServletRequest request) {
+		// By accessing the token, we ensure it's generated and added to the response.
+		CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+		if (csrfToken != null) {
+			logger.info("CSRF token explicitly requested and provided.");
+		}
+		return ResponseEntity.ok(new ApiResponse(true, "CSRF token provided in cookie.", null));
+	}
+
 	@GetMapping("/me")
 	@Operation(summary = "Get current user session", description = "Retrieves the user object and navigation items for the currently authenticated user.", security = @SecurityRequirement(name = "bearerAuth"))
-	public ResponseEntity<ApiResponse> getCurrentUser(@AuthenticationPrincipal SecurityUser securityUser) {
+	public ResponseEntity<ApiResponse> getCurrentUser(@AuthenticationPrincipal SecurityUser securityUser,
+			HttpServletRequest request) {
+		// Explicitly load the CSRF token to ensure the XSRF-TOKEN cookie is set on the
+		// response
+		// for the very first authenticated GET request the client makes.
+		CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+		logger.info("CSRF token loaded during /me request: {}", csrfToken != null ? "OK" : "NULL");
+
 		User authenticatedUser = securityUser.getUser();
 		List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(authenticatedUser);
 		Map<String, Object> responseData = Map.of("user", authenticatedUser, "navigation", navigationItems);

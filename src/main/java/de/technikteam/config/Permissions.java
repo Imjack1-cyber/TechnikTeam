@@ -74,6 +74,9 @@ public final class Permissions {
 	// --- NOTIFICATIONS ---
 	public static final String NOTIFICATION_SEND = "NOTIFICATION_SEND";
 
+	// --- DOCUMENTATION ---
+	public static final String DOCUMENTATION_MANAGE = "DOCUMENTATION_MANAGE";
+
 	// --- NAVIGATION-SPECIFIC ---
 	public static final String ADMIN_DASHBOARD_ACCESS = "ADMIN_DASHBOARD_ACCESS";
 }

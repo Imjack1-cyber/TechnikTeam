@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -136,7 +137,12 @@ public class UserDAO {
 				ps.setInt(3, user.getRoleId());
 				ps.setInt(4, user.getClassYear());
 				ps.setString(5, user.getClassName());
-				ps.setString(6, user.getEmail());
+				// Treat empty string as NULL to avoid unique constraint violation
+				if (user.getEmail() != null && !user.getEmail().isEmpty()) {
+					ps.setString(6, user.getEmail());
+				} else {
+					ps.setNull(6, Types.VARCHAR);
+				}
 				ps.setString(7, "light");
 				return ps;
 			}, keyHolder);

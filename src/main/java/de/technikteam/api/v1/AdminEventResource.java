@@ -132,6 +132,6 @@ public class AdminEventResource {
 		event.setDescription(dto.description());
 		event.setLocation(dto.location());
 		event.setStatus(dto.status());
-		event.setLeaderUserId(dto.leaderUserId() != null ? dto.leaderUserId() : 0);
+		event.setLeaderUserId(dto.leaderUserId() != null && dto.leaderUserId() != 0 ? dto.leaderUserId() : 0);
 	}
 }

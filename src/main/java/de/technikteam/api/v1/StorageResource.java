@@ -5,12 +5,14 @@ import de.technikteam.model.ApiResponse;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
+import de.technikteam.service.StorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -21,11 +23,13 @@ import java.util.Map;
 public class StorageResource {
 
 	private final StorageDAO storageDAO;
+	private final StorageService storageService;
 	private final AdminLogService adminLogService;
 
 	@Autowired
-	public StorageResource(StorageDAO storageDAO, AdminLogService adminLogService) {
+	public StorageResource(StorageDAO storageDAO, StorageService storageService, AdminLogService adminLogService) {
 		this.storageDAO = storageDAO;
+		this.storageService = storageService;
 		this.adminLogService = adminLogService;
 	}
 
@@ -56,8 +60,21 @@ public class StorageResource {
 	}
 
 	@PutMapping("/{id}")
-	@Operation(summary = "Update a storage item")
-	public ResponseEntity<ApiResponse> updateItem(@PathVariable int id, @RequestBody StorageItem item) {
+	@Operation(summary = "Update a storage item's defect/repair status")
+	public ResponseEntity<ApiResponse> updateItemStatus(@PathVariable int id,
+			@RequestBody Map<String, Object> payload) {
+		try {
+			// This endpoint is now specifically for defect/repair actions
+			storageService.handleItemStatusUpdate(id, payload, getSystemUser());
+			return ResponseEntity.ok(new ApiResponse(true, "Artikelstatus erfolgreich aktualisiert.", null));
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
+		}
+	}
+
+	@PostMapping("/{id}")
+	@Operation(summary = "Update a storage item's core details")
+	public ResponseEntity<ApiResponse> updateItemDetails(@PathVariable int id, @ModelAttribute StorageItem item) {
 		item.setId(id);
 		if (storageDAO.updateItem(item)) {
 			adminLogService.log(getSystemUser().getUsername(), "UPDATE_STORAGE_ITEM_API",

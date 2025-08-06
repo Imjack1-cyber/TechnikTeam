@@ -9,23 +9,23 @@ const apiClient = {
 
 	request: async function(endpoint, options = {}) {
 		const headers = {
-			'Content-Type': 'application/json',
 			...options.headers,
 		};
 
-		if (options.body instanceof FormData) {
-			delete headers['Content-Type'];
+		const method = options.method || 'GET';
+
+		// Set Content-Type for JSON, but not for FormData, which needs the browser to set it.
+		if (!(options.body instanceof FormData)) {
+			headers['Content-Type'] = 'application/json';
 		}
 
-		const method = options.method || 'GET';
+		// For any state-changing request, add the CSRF token header if it exists.
 		if (['POST', 'PUT', 'DELETE'].includes(method.toUpperCase())) {
 			const match = document.cookie.match(new RegExp('(^| )' + 'XSRF-TOKEN' + '=([^;]+)'));
 			if (match) {
 				headers['X-XSRF-TOKEN'] = match[2];
 			} else {
-				// Don't warn for public endpoints that don't need CSRF
-				const publicPostEndpoints = ['/auth/login', '/auth/logout', '/passkey/login/start', '/passkey/login/finish'];
-				if (!publicPostEndpoints.includes(endpoint)) {
+				if (endpoint !== '/auth/login') {
 					console.warn('CSRF token not found. State-changing requests may fail.');
 				}
 			}
@@ -43,7 +43,8 @@ const apiClient = {
 				throw new Error('Nicht autorisiert. Ihre Sitzung ist möglicherweise abgelaufen.');
 			}
 			if (response.status === 403) {
-				throw new Error('Zugriff verweigert. Sie haben nicht die erforderlichen Berechtigungen.');
+				// This should now only happen for CSRF errors.
+				throw new Error('Zugriff verweigert. Möglicherweise ist ein CSRF-Token-Problem aufgetreten.');
 			}
 
 			if (response.status === 204) {

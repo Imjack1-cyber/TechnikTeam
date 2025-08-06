@@ -42,9 +42,13 @@ public class FileService {
 		if (multipartFile.getSize() > MAX_FILE_SIZE_BYTES) {
 			throw new IOException("Dateigröße überschreitet das Limit von 10MB.");
 		}
-		if (!FileSignatureValidator.isFileTypeAllowed(multipartFile)) {
-			throw new IOException("Ungültiger oder gefälschter Dateityp erkannt.");
+
+		FileSignatureValidator.FileTypeValidationResult validationResult = FileSignatureValidator
+				.validateFileType(multipartFile);
+		if (validationResult == FileSignatureValidator.FileTypeValidationResult.DISALLOWED) {
+			throw new IOException("Ungültiger oder nicht erlaubter Dateityp erkannt.");
 		}
+		boolean needsWarning = validationResult == FileSignatureValidator.FileTypeValidationResult.ALLOWED_WITH_WARNING;
 
 		String originalFileName = FilenameUtils.getName(multipartFile.getOriginalFilename());
 		String sanitizedFileName = originalFileName.replaceAll("[^a-zA-Z0-9.\\-_]", "_");
@@ -60,6 +64,7 @@ public class FileService {
 		file.setFilepath(subDirectory + "/" + uniqueFileName);
 		file.setCategoryId(categoryId != null ? categoryId : 0);
 		file.setRequiredRole(requiredRole);
+		file.setNeedsWarning(needsWarning);
 
 		int newFileId = fileDAO.createFile(file);
 		if (newFileId > 0) {

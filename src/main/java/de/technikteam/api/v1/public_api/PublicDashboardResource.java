@@ -2,9 +2,15 @@ package de.technikteam.api.v1.public_api;
 
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.EventTaskDAO;
+import de.technikteam.dao.ChatDAO;
+import de.technikteam.dao.MeetingDAO;
+import de.technikteam.dao.StorageDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Event;
 import de.technikteam.model.EventTask;
+import de.technikteam.model.ChatConversation;
+import de.technikteam.model.Meeting;
+import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,11 +35,18 @@ public class PublicDashboardResource {
 
 	private final EventDAO eventDAO;
 	private final EventTaskDAO eventTaskDAO;
+	private final ChatDAO chatDAO;
+	private final MeetingDAO meetingDAO;
+	private final StorageDAO storageDAO;
 
 	@Autowired
-	public PublicDashboardResource(EventDAO eventDAO, EventTaskDAO eventTaskDAO) {
+	public PublicDashboardResource(EventDAO eventDAO, EventTaskDAO eventTaskDAO, ChatDAO chatDAO, MeetingDAO meetingDAO,
+			StorageDAO storageDAO) {
 		this.eventDAO = eventDAO;
 		this.eventTaskDAO = eventTaskDAO;
+		this.chatDAO = chatDAO;
+		this.meetingDAO = meetingDAO;
+		this.storageDAO = storageDAO;
 	}
 
 	@GetMapping
@@ -45,12 +58,19 @@ public class PublicDashboardResource {
 		List<EventTask> openTasks = eventTaskDAO.getOpenTasksForUser(user.getId());
 		List<Event> upcomingEvents = eventDAO.getAllActiveAndUpcomingEvents(); // Simplified for now
 		List<Event> recommendedEvents = eventDAO.getPersonalizedEventFeed(user.getId(), 3);
+		List<ChatConversation> recentConversations = chatDAO.getConversationsForUser(user.getId());
+		List<Meeting> signedUpMeetings = meetingDAO.getUpcomingMeetingsForUser(user);
+		List<StorageItem> lowStockItems = storageDAO.getLowStockItems(5);
 
 		Map<String, Object> dashboardData = new HashMap<>();
 		dashboardData.put("assignedEvents", assignedEvents);
 		dashboardData.put("openTasks", openTasks);
 		dashboardData.put("upcomingEvents", upcomingEvents);
 		dashboardData.put("recommendedEvents", recommendedEvents);
+		dashboardData.put("recentConversations", recentConversations.stream().limit(5).toList());
+		dashboardData.put("upcomingMeetings", signedUpMeetings.stream()
+				.filter(m -> "ANGEMELDET".equals(m.getUserAttendanceStatus())).limit(5).toList());
+		dashboardData.put("lowStockItems", lowStockItems);
 
 		return ResponseEntity.ok(new ApiResponse(true, "Dashboard-Daten erfolgreich abgerufen.", dashboardData));
 	}

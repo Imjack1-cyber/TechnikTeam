@@ -1,6 +1,43 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
+import DownloadWarningModal from '../components/ui/DownloadWarningModal';
+
+const FileLink = ({ file }) => {
+	const [isModalOpen, setIsModalOpen] = useState(false);
+
+	const handleDownloadClick = (e) => {
+		if (file.needsWarning) {
+			e.preventDefault();
+			setIsModalOpen(true);
+		}
+	};
+
+	const handleConfirmDownload = () => {
+		setIsModalOpen(false);
+		// Programmatically trigger the download by creating a temporary link
+		const link = document.createElement('a');
+		link.href = `/api/v1/public/files/download/${file.id}`;
+		link.setAttribute('download', file.filename);
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+	};
+
+	return (
+		<>
+			<a href={`/api/v1/public/files/download/${file.id}`} target="_blank" rel="noopener noreferrer" onClick={handleDownloadClick}>
+				<i className="fas fa-download"></i> {file.filename}
+			</a>
+			<DownloadWarningModal
+				isOpen={isModalOpen}
+				onClose={() => setIsModalOpen(false)}
+				onConfirm={handleConfirmDownload}
+				file={file}
+			/>
+		</>
+	);
+};
 
 const FilesPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/public/files'), []);
@@ -22,9 +59,7 @@ const FilesPage = () => {
 					{files.map(file => (
 						<li key={file.id} style={{ padding: '0.75rem 0' }}>
 							<div>
-								<a href={`/api/v1/public/files/download/${file.id}`} target="_blank" rel="noopener noreferrer">
-									<i className="fas fa-download"></i> {file.filename}
-								</a>
+								<FileLink file={file} />
 							</div>
 						</li>
 					))}
