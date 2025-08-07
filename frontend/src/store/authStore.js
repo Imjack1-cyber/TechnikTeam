@@ -10,6 +10,7 @@ const hasAdminAccess = (roleName) => {
 const defaultLayout = {
 	sidebarPosition: 'left',
 	navOrder: [], // Empty array means default order
+	showHelpButton: true,
 	dashboardWidgets: {
 		recommendedEvents: true,
 		assignedEvents: true,

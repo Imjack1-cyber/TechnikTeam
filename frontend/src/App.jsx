@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import { Outlet, useLocation, Link, useRevalidator } from 'react-router-dom';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import ToastContainer from './components/ui/ToastContainer';
@@ -14,8 +14,16 @@ import pageRoutes from './router/pageRoutes';
 const AppLayout = () => {
 	const [isNavOpen, setIsNavOpen] = useState(false);
 	const location = useLocation();
+	const revalidator = useRevalidator();
 
-	const { warningNotification, dismissWarning } = useNotifications();
+	const handleEventUpdate = useCallback((updatedEventId) => {
+		const match = location.pathname.match(/\/veranstaltungen\/details\/(\d+)/);
+		if (match && match[1] === String(updatedEventId)) {
+			revalidator.revalidate();
+		}
+	}, [location.pathname, revalidator]);
+
+	const { warningNotification, dismissWarning } = useNotifications(handleEventUpdate);
 	const [changelog, setChangelog] = useState(null);
 	const [isChangelogVisible, setIsChangelogVisible] = useState(false);
 	const { isAuthenticated, layout } = useAuthStore(state => ({
@@ -26,6 +34,7 @@ const AppLayout = () => {
 	const isVerticalLayout = sidebarPosition === 'left' || sidebarPosition === 'right';
 
 	const currentPageHelpKey = pageRoutes[location.pathname];
+	const showHelpButton = layout.showHelpButton !== false;
 
 
 	const fetchChangelog = useCallback(async () => {
@@ -84,7 +93,6 @@ const AppLayout = () => {
 	return (
 		<>
 			<Sidebar />
-			{/* The mobile header is only needed for vertical layouts that toggle an off-canvas sidebar */}
 			{isVerticalLayout && <Header onNavToggle={() => setIsNavOpen(!isNavOpen)} />}
 			{isNavOpen && isVerticalLayout && <div className="page-overlay" onClick={() => setIsNavOpen(false)}></div>}
 			<div className="main-content-wrapper">
@@ -93,7 +101,7 @@ const AppLayout = () => {
 				</main>
 			</div>
 			<ToastContainer />
-			{currentPageHelpKey && (
+			{showHelpButton && currentPageHelpKey && (
 				<Link to={`/help/${currentPageHelpKey}`} className="help-fab" title="Hilfe für diese Seite">
 					<i className="fas fa-question"></i>
 				</Link>

@@ -22,6 +22,7 @@ const SettingsPage = () => {
 
 	const [sidebarPosition, setSidebarPosition] = useState(layout.sidebarPosition);
 	const [navOrder, setNavOrder] = useState([]); // Will store URLs
+	const [showHelpButton, setShowHelpButton] = useState(layout.showHelpButton !== false);
 	const [dashboardWidgets, setDashboardWidgets] = useState({ ...defaultWidgets, ...layout.dashboardWidgets });
 	const [selectedItemUrl, setSelectedItemUrl] = useState(null); // Changed from selectedItemLabel
 	const { addToast } = useToast();
@@ -37,6 +38,7 @@ const SettingsPage = () => {
 
 		setNavOrder(combinedOrder);
 		setSidebarPosition(layout.sidebarPosition || 'left');
+		setShowHelpButton(layout.showHelpButton !== false);
 		setDashboardWidgets({ ...defaultWidgets, ...layout.dashboardWidgets });
 	}, [layout, navigationItems]);
 
@@ -68,6 +70,7 @@ const SettingsPage = () => {
 		const newLayout = {
 			sidebarPosition,
 			navOrder: finalNavOrder,
+			showHelpButton,
 			dashboardWidgets
 		};
 		setLayout(newLayout);
@@ -80,10 +83,12 @@ const SettingsPage = () => {
 			const defaultNavOrderUrls = navigationItems.map(item => item.url);
 			setSidebarPosition('left');
 			setNavOrder(defaultNavOrderUrls);
+			setShowHelpButton(true);
 			setDashboardWidgets(defaultWidgets);
 			setLayout({
 				sidebarPosition: 'left',
 				navOrder: [],
+				showHelpButton: true,
 				dashboardWidgets: defaultWidgets,
 			});
 			addToast('Einstellungen wurden auf den Standard zurückgesetzt.', 'success');
@@ -184,6 +189,16 @@ const SettingsPage = () => {
 		<div>
 			<h1><i className="fas fa-cog"></i> Layout-Einstellungen</h1>
 			<p>Passe das Erscheinungsbild der Benutzeroberfläche an deine Vorlieben an.</p>
+
+			<div className="card">
+				<h2 className="card-title">Allgemeine UI-Optionen</h2>
+				<div className="form-group">
+					<label>
+						<input type="checkbox" checked={showHelpButton} onChange={e => setShowHelpButton(e.target.checked)} />
+						Kontextbezogenen Hilfe-Button anzeigen
+					</label>
+				</div>
+			</div>
 
 			<div className="card">
 				<h2 className="card-title">Dashboard Widgets</h2>
