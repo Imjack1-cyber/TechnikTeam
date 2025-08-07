@@ -1,27 +1,27 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
-import AdminUsersPage from './AdminUsersPage';
 
 const AdminUsersIndex = () => {
 	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
 	const location = useLocation();
 
-	// Check if we are exactly on the index path
-	const isIndexPage = location.pathname === '/admin/mitglieder' || location.pathname === '/admin/mitglieder/';
-
-	const navLinks = [
-		// We use '/admin/mitglieder' as the link to the main user management table, which is the index route.
+	const baseLinks = [
 		{ to: '/admin/mitglieder', label: 'Benutzer Verwalten', icon: 'fa-users-cog', perm: 'USER_READ' },
 		{ to: '/admin/mitglieder/requests', label: 'Profilanträge', icon: 'fa-inbox', perm: 'USER_UPDATE' },
 		{ to: '/admin/mitglieder/training-requests', label: 'Lehrgangsanfragen', icon: 'fa-question-circle', perm: 'COURSE_CREATE' },
 	];
 
 	const can = (permission) => {
-		// Log for debugging: confirm user permissions
-		// console.log(`[AdminUsersIndex] User is admin: ${isAdmin}, checking permission ${permission}: ${user?.permissions.includes(permission)}`);
 		return isAdmin || user?.permissions.includes(permission);
 	};
+
+	const navLinks = baseLinks.map(link => {
+		if (location.pathname === link.to) {
+			return { to: '/admin/mitglieder', label: 'Zur Benutzer-Übersicht', icon: 'fa-arrow-left', perm: link.perm };
+		}
+		return link;
+	});
 
 	return (
 		<div>

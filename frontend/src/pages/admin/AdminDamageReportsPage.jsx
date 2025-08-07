@@ -32,6 +32,10 @@ const AdminDamageReportsPage = () => {
 			<h1><i className="fas fa-tools"></i> Offene Schadensmeldungen</h1>
 			<p>Hier sehen Sie alle von Benutzern gemeldeten Schäden, die noch nicht von einem Admin bestätigt wurden.</p>
 
+			{loading && <p>Lade Meldungen...</p>}
+			{error && <p className="error-message">{error}</p>}
+			{!loading && !error && reports?.length === 0 && <div className="card"><p>Keine offenen Meldungen vorhanden.</p></div>}
+
 			<div className="desktop-table-wrapper">
 				<table className="data-table">
 					<thead>
@@ -44,9 +48,6 @@ const AdminDamageReportsPage = () => {
 						</tr>
 					</thead>
 					<tbody>
-						{loading && <tr><td colSpan="5">Lade Meldungen...</td></tr>}
-						{error && <tr><td colSpan="5" className="error-message">{error}</td></tr>}
-						{reports?.length === 0 && <tr><td colSpan="5" style={{ textAlign: 'center' }}>Keine offenen Meldungen vorhanden.</td></tr>}
 						{reports?.map(report => (
 							<tr key={report.id}>
 								<td>{new Date(report.reportedAt).toLocaleString('de-DE')}</td>
@@ -62,7 +63,21 @@ const AdminDamageReportsPage = () => {
 					</tbody>
 				</table>
 			</div>
-			{/* Mobile view could be added here if necessary */}
+
+			<div className="mobile-card-list">
+				{reports?.map(report => (
+					<div className="list-item-card" key={report.id}>
+						<h3 className="card-title"><Link to={`/lager/details/${report.itemId}`}>{report.itemName}</Link></h3>
+						<div className="card-row"><strong>Von:</strong> <span>{report.reporterUsername}</span></div>
+						<div className="card-row"><strong>Am:</strong> <span>{new Date(report.reportedAt).toLocaleString('de-DE')}</span></div>
+						<p style={{ marginTop: '0.5rem' }}><strong>Beschreibung:</strong> {report.reportDescription}</p>
+						<div className="card-actions">
+							<button onClick={() => openModal(report, 'confirm')} className="btn btn-small btn-success">Bestätigen</button>
+							<button onClick={() => openModal(report, 'reject')} className="btn btn-small btn-danger">Ablehnen</button>
+						</div>
+					</div>
+				))}
+			</div>
 
 			{selectedReport && (
 				<ActionModal

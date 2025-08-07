@@ -64,7 +64,6 @@ const AdminWikiPage = () => {
 	const [editContent, setEditContent] = useState('');
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [modalParentPath, setModalParentPath] = useState('');
-	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 	const { addToast } = useToast();
 
 	const handleSelectEntry = async (entry) => {
@@ -74,7 +73,6 @@ const AdminWikiPage = () => {
 				setSelectedEntry(result.data);
 				setEditContent(result.data.content);
 				setIsEditing(false);
-				setIsSidebarOpen(false); // Close sidebar on mobile after selection
 			}
 		} catch (err) {
 			addToast(`Fehler beim Laden der Seite: ${err.message}`, 'error');
@@ -137,7 +135,7 @@ const AdminWikiPage = () => {
 	if (error) return <div className="error-message">{error}</div>;
 
 	return (
-		<div className={`wiki-page-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+		<div className={`wiki-page-wrapper ${selectedEntry ? 'content-visible' : 'tree-visible'}`}>
 			<aside className="wiki-sidebar">
 				<div className="wiki-sidebar-header">
 					<h3>Wiki-Verzeichnis</h3>
@@ -151,8 +149,8 @@ const AdminWikiPage = () => {
 				{selectedEntry ? (
 					<>
 						<div className="wiki-content-header">
-							<button className="mobile-only btn btn-small" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-								<i className="fas fa-bars"></i> Verzeichnis
+							<button className="mobile-only btn btn-small" onClick={() => setSelectedEntry(null)}>
+								<i className="fas fa-arrow-left"></i> Verzeichnis
 							</button>
 							<h2>{selectedEntry.filePath}</h2>
 							<div className="wiki-editor-controls">
@@ -186,13 +184,10 @@ const AdminWikiPage = () => {
 						)}
 					</>
 				) : (
-					<div className="wiki-welcome-pane">
+					<div className="wiki-welcome-pane desktop-only">
 						<i className="fas fa-book-reader" style={{ fontSize: '4rem' }}></i>
 						<h1>Wiki</h1>
 						<p>Wählen Sie eine Seite aus der Navigation aus, um sie anzuzeigen oder zu bearbeiten.</p>
-						<button className="mobile-only btn" onClick={() => setIsSidebarOpen(true)}>
-							<i className="fas fa-bars"></i> Verzeichnis öffnen
-						</button>
 					</div>
 				)}
 			</main>

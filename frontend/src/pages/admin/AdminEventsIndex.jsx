@@ -1,22 +1,29 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
-import AdminEventsPage from './AdminEventsPage';
 
 const AdminEventsIndex = () => {
-	const { user } = useAuthStore();
+	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
 	const location = useLocation();
-	const can = (permission) => user?.permissions.includes(permission) || user?.isAdmin;
 
-	const navLinks = [
-		{ to: '/admin/veranstaltungen/main', label: 'Events Verwalten', icon: 'fa-calendar-plus', perm: 'EVENT_READ' },
+	const baseLinks = [
+		{ to: '/admin/veranstaltungen', label: 'Events Verwalten', icon: 'fa-calendar-plus', perm: 'EVENT_READ' },
 		{ to: '/admin/veranstaltungen/debriefings', label: 'Debriefing-Übersicht', icon: 'fa-clipboard-check', perm: 'EVENT_DEBRIEFING_VIEW' },
 		{ to: '/admin/veranstaltungen/roles', label: 'Event-Rollen', icon: 'fa-user-tag', perm: 'EVENT_CREATE' },
 		{ to: '/admin/veranstaltungen/venues', label: 'Veranstaltungsorte', icon: 'fa-map-marked-alt', perm: 'EVENT_CREATE' },
 		{ to: '/admin/veranstaltungen/checklist-templates', label: 'Checklist-Vorlagen', icon: 'fa-tasks', perm: 'EVENT_MANAGE_TASKS' },
 	];
 
-	const isIndexPage = location.pathname === '/admin/veranstaltungen';
+	const can = (permission) => {
+		return isAdmin || user?.permissions.includes(permission);
+	};
+
+	const navLinks = baseLinks.map(link => {
+		if (location.pathname === link.to) {
+			return { to: '/admin/veranstaltungen', label: 'Zur Event-Übersicht', icon: 'fa-arrow-left', perm: link.perm };
+		}
+		return link;
+	});
 
 	return (
 		<div>
@@ -32,7 +39,7 @@ const AdminEventsIndex = () => {
 					</Link>
 				))}
 			</div>
-			{!isIndexPage && <hr style={{ margin: '2rem 0' }} />}
+			<hr style={{ margin: '2rem 0' }} />
 			<Outlet />
 		</div>
 	);

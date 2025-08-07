@@ -1,25 +1,32 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
-import AdminStoragePage from './AdminStoragePage';
 
 const AdminStorageIndex = () => {
-	const { user } = useAuthStore();
+	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
 	const location = useLocation();
-	const can = (permission) => user?.permissions.includes(permission) || user?.isAdmin;
 
-	const navLinks = [
-		{ to: '/admin/lager/main', label: 'Lager Verwalten', icon: 'fa-warehouse', perm: 'STORAGE_READ' },
+	const baseLinks = [
+		{ to: '/admin/lager', label: 'Lager Verwalten', icon: 'fa-warehouse', perm: 'STORAGE_READ' },
 		{ to: '/admin/lager/kits', label: 'Kit-Verwaltung', icon: 'fa-box-open', perm: 'KIT_READ' },
 		{ to: '/admin/lager/defekte', label: 'Defekte Artikel', icon: 'fa-wrench', perm: 'STORAGE_READ' },
 		{ to: '/admin/lager/damage-reports', label: 'Schadensmeldungen', icon: 'fa-tools', perm: 'DAMAGE_REPORT_MANAGE' },
 	];
 
-	const isIndexPage = location.pathname === '/admin/lager';
+	const can = (permission) => {
+		return isAdmin || user?.permissions.includes(permission);
+	};
+
+	const navLinks = baseLinks.map(link => {
+		if (location.pathname === link.to) {
+			return { to: '/admin/lager', label: 'Zur Lager-Übersicht', icon: 'fa-arrow-left', perm: link.perm };
+		}
+		return link;
+	});
 
 	return (
 		<div>
-			<h1><i className="fas fa-boxes"></i> Lager & Material</h1>
+			<h1><i className="fas fa-boxes"></i> Lager &amp; Material</h1>
 			<p>Verwalten Sie hier das Inventar, Material-Sets und gemeldete Schäden.</p>
 			<div className="dashboard-grid">
 				{navLinks.filter(link => can(link.perm)).map(link => (
@@ -31,7 +38,7 @@ const AdminStorageIndex = () => {
 					</Link>
 				))}
 			</div>
-			{!isIndexPage && <hr style={{ margin: '2rem 0' }} />}
+			<hr style={{ margin: '2rem 0' }} />
 			<Outlet />
 		</div>
 	);

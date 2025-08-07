@@ -50,6 +50,10 @@ const AdminAchievementsPage = () => {
 					<i className="fas fa-plus"></i> Neues Abzeichen
 				</button>
 			</div>
+
+			{loading && <p>Lade Abzeichen...</p>}
+			{error && <p className="error-message">{error}</p>}
+
 			<div className="desktop-table-wrapper">
 				<table className="data-table">
 					<thead>
@@ -62,8 +66,6 @@ const AdminAchievementsPage = () => {
 						</tr>
 					</thead>
 					<tbody>
-						{loading && <tr><td colSpan="5">Lade Abzeichen...</td></tr>}
-						{error && <tr><td colSpan="5" className="error-message">{error}</td></tr>}
 						{achievements?.map(ach => (
 							<tr key={ach.id}>
 								<td><i className={`fas ${ach.iconClass}`} style={{ fontSize: '1.5rem' }}></i></td>
@@ -78,6 +80,19 @@ const AdminAchievementsPage = () => {
 						))}
 					</tbody>
 				</table>
+			</div>
+			<div className="mobile-card-list">
+				{achievements?.map(ach => (
+					<div className="list-item-card" key={ach.id}>
+						<h3 className="card-title"><i className={`fas ${ach.iconClass}`}></i> {ach.name}</h3>
+						<div className="card-row"><strong>Schlüssel:</strong> <code>{ach.achievementKey}</code></div>
+						<p style={{ marginTop: '0.5rem' }}>{ach.description}</p>
+						<div className="card-actions">
+							<button onClick={() => openModal(ach)} className="btn btn-small">Bearbeiten</button>
+							<button onClick={() => handleDelete(ach)} className="btn btn-small btn-danger">Löschen</button>
+						</div>
+					</div>
+				))}
 			</div>
 			{isModalOpen && (
 				<AchievementModal

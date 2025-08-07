@@ -1,13 +1,12 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
-import AdminCoursesPage from './AdminCoursesPage';
 
 const AdminCoursesIndex = () => {
 	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
 	const location = useLocation();
 
-	const navLinks = [
+	const baseLinks = [
 		{ to: '/admin/lehrgaenge', label: 'Lehrgangs-Vorlagen', icon: 'fa-book', perm: 'COURSE_READ' },
 		{ to: '/admin/lehrgaenge/matrix', label: 'Qualifikations-Matrix', icon: 'fa-th-list', perm: 'QUALIFICATION_READ' },
 	];
@@ -15,6 +14,13 @@ const AdminCoursesIndex = () => {
 	const can = (permission) => {
 		return isAdmin || user?.permissions.includes(permission);
 	};
+
+	const navLinks = baseLinks.map(link => {
+		if (location.pathname === link.to) {
+			return { to: '/admin/lehrgaenge', label: 'Zur Lehrgangs-Übersicht', icon: 'fa-arrow-left', perm: link.perm };
+		}
+		return link;
+	});
 
 	return (
 		<div>

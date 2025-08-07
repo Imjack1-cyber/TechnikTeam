@@ -151,6 +151,20 @@ const EventsPage = () => {
 				</table>
 			</div>
 
+			<div className="mobile-card-list">
+				{events.map(event => (
+					<div className="list-item-card" key={event.id}>
+						<h3 className="card-title"><Link to={`/veranstaltungen/details/${event.id}`}>{event.name}</Link></h3>
+						<div className="card-row"><strong>Wann:</strong> <span>{new Date(event.eventDateTime).toLocaleString('de-DE')}</span></div>
+						<div className="card-row"><strong>Event-Status:</strong> <StatusBadge status={event.status} /></div>
+						<div className="card-row"><strong>Dein Status:</strong> <span>{getUserStatusText(event.userAttendanceStatus)}</span></div>
+						<div className="card-actions">
+							{getAction(event)}
+						</div>
+					</div>
+				))}
+			</div>
+
 			<Modal
 				isOpen={modalState.isOpen}
 				onClose={closeModal}

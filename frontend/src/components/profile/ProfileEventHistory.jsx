@@ -44,6 +44,24 @@ const ProfileEventHistory = ({ eventHistory }) => {
 					</table>
 				</div>
 			</div>
+			<div className="mobile-card-list">
+				{eventHistory.length === 0 ? (
+					<p>Keine Event-Historie vorhanden.</p>
+				) : (
+					eventHistory.map(event => (
+						<div className="list-item-card" key={event.id}>
+							<h3 className="card-title"><Link to={`/veranstaltungen/details/${event.id}`}>{event.name}</Link></h3>
+							<div className="card-row"><strong>Datum:</strong> <span>{formatDate(event.eventDateTime)} Uhr</span></div>
+							<div className="card-row"><strong>Dein Status:</strong> <span>{event.userAttendanceStatus}</span></div>
+							{event.status === 'ABGESCHLOSSEN' && event.userAttendanceStatus === 'ZUGEWIESEN' && (
+								<div className="card-actions">
+									<Link to={`/feedback/event/${event.id}`} className="btn btn-small">Feedback geben</Link>
+								</div>
+							)}
+						</div>
+					))
+				)}
+			</div>
 		</div>
 	);
 };

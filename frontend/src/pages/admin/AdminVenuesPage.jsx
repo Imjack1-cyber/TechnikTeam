@@ -51,6 +51,10 @@ const AdminVenuesPage = () => {
 					<i className="fas fa-plus"></i> Neuer Ort
 				</button>
 			</div>
+
+			{loading && <p>Lade Orte...</p>}
+			{error && <p className="error-message">{error}</p>}
+
 			<div className="desktop-table-wrapper">
 				<table className="data-table">
 					<thead>
@@ -62,8 +66,6 @@ const AdminVenuesPage = () => {
 						</tr>
 					</thead>
 					<tbody>
-						{loading && <tr><td colSpan="4">Lade Orte...</td></tr>}
-						{error && <tr><td colSpan="4" className="error-message">{error}</td></tr>}
 						{venues?.map(venue => (
 							<tr key={venue.id}>
 								<td>{venue.name}</td>
@@ -77,6 +79,19 @@ const AdminVenuesPage = () => {
 						))}
 					</tbody>
 				</table>
+			</div>
+			<div className="mobile-card-list">
+				{venues?.map(venue => (
+					<div className="list-item-card" key={venue.id}>
+						<h3 className="card-title">{venue.name}</h3>
+						<div className="card-row"><strong>Adresse:</strong> <span>{venue.address || '-'}</span></div>
+						<div className="card-row"><strong>Karte:</strong> <span>{venue.mapImagePath ? 'Ja' : 'Nein'}</span></div>
+						<div className="card-actions">
+							<button onClick={() => openModal(venue)} className="btn btn-small">Bearbeiten</button>
+							<button onClick={() => handleDelete(venue)} className="btn btn-small btn-danger">Löschen</button>
+						</div>
+					</div>
+				))}
 			</div>
 			{isModalOpen && (
 				<VenueModal

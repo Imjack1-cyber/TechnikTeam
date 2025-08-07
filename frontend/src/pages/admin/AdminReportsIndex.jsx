@@ -6,7 +6,7 @@ const AdminReportsIndex = () => {
 	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
 	const location = useLocation();
 
-	const navLinks = [
+	const baseLinks = [
 		{ to: '/admin/reports', label: 'Berichte & Analysen', icon: 'fa-chart-pie', perm: 'REPORT_READ' },
 		{ to: '/admin/reports/log', label: 'Aktions-Log', icon: 'fa-clipboard-list', perm: 'LOG_READ' },
 		{ to: '/admin/reports/system', label: 'System-Status', icon: 'fa-server', perm: 'SYSTEM_READ' },
@@ -15,6 +15,13 @@ const AdminReportsIndex = () => {
 	const can = (permission) => {
 		return isAdmin || user?.permissions.includes(permission);
 	};
+
+	const navLinks = baseLinks.map(link => {
+		if (location.pathname === link.to) {
+			return { to: '/admin/reports', label: 'Zur Berichts-Übersicht', icon: 'fa-arrow-left', perm: link.perm };
+		}
+		return link;
+	});
 
 	return (
 		<div>

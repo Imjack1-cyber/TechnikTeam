@@ -51,6 +51,10 @@ const AdminChecklistTemplatesPage = () => {
 					<i className="fas fa-plus"></i> Neue Vorlage erstellen
 				</button>
 			</div>
+
+			{loading && <p>Lade Vorlagen...</p>}
+			{error && <p className="error-message">{error}</p>}
+
 			<div className="desktop-table-wrapper">
 				<table className="data-table">
 					<thead>
@@ -62,8 +66,6 @@ const AdminChecklistTemplatesPage = () => {
 						</tr>
 					</thead>
 					<tbody>
-						{loading && <tr><td colSpan="4">Lade Vorlagen...</td></tr>}
-						{error && <tr><td colSpan="4" className="error-message">{error}</td></tr>}
 						{templates?.map(template => (
 							<tr key={template.id}>
 								<td>{template.name}</td>
@@ -77,6 +79,19 @@ const AdminChecklistTemplatesPage = () => {
 						))}
 					</tbody>
 				</table>
+			</div>
+			<div className="mobile-card-list">
+				{templates?.map(template => (
+					<div className="list-item-card" key={template.id}>
+						<h3 className="card-title">{template.name}</h3>
+						<div className="card-row"><strong>Items:</strong> <span>{template.items?.length || 0}</span></div>
+						<p style={{ marginTop: '0.5rem' }}>{template.description}</p>
+						<div className="card-actions">
+							<button onClick={() => openModal(template)} className="btn btn-small">Bearbeiten</button>
+							<button onClick={() => handleDelete(template)} className="btn btn-small btn-danger">Löschen</button>
+						</div>
+					</div>
+				))}
 			</div>
 			{isModalOpen && (
 				<TemplateModal

@@ -159,6 +159,7 @@ const router = createBrowserRouter([
 							{ path: 'feedback', element: <AdminFeedbackPage /> },
 							{ path: 'changelogs', element: <AdminChangelogPage /> },
 							{ path: 'documentation', element: <AdminDocumentationPage /> },
+							{ path: 'benachrichtigungen', element: <AdminNotificationsPage /> },
 						]
 					},
 					{
@@ -168,6 +169,7 @@ const router = createBrowserRouter([
 							{ path: 'system', element: <AdminSystemPage /> },
 						]
 					},
+					// This route was incorrectly placed inside 'content'. Moved to be a direct child of 'admin'.
 					{ path: 'benachrichtigungen', element: <AdminNotificationsPage /> },
 					{ path: 'achievements', element: <AdminAchievementsPage /> },
 					{ path: 'wiki', element: <AdminWikiPage /> },

@@ -142,14 +142,15 @@ const AdminDocumentationPage = () => {
 				<button className="btn btn-success" onClick={() => openModal()}><i className="fas fa-plus"></i> Neue Seite anlegen</button>
 			</div>
 
+			{loading && <p>Lade Dokumentation...</p>}
+			{error && <p className="error-message">{error}</p>}
+
 			<div className="desktop-table-wrapper">
 				<table className="data-table">
 					<thead>
 						<tr><th>Titel</th><th>Kategorie</th><th>Key</th><th>Pfad</th><th>Sichtbarkeit</th><th>Aktionen</th></tr>
 					</thead>
 					<tbody>
-						{loading && <tr><td colSpan="6">Lade...</td></tr>}
-						{error && <tr><td colSpan="6" className="error-message">{error}</td></tr>}
 						{docs?.map(doc => (
 							<tr key={doc.id}>
 								<td>{doc.title}</td>
@@ -165,6 +166,22 @@ const AdminDocumentationPage = () => {
 						))}
 					</tbody>
 				</table>
+			</div>
+
+			<div className="mobile-card-list">
+				{docs?.map(doc => (
+					<div className="list-item-card" key={doc.id}>
+						<h3 className="card-title">{doc.title}</h3>
+						<div className="card-row"><strong>Kategorie:</strong> <span>{doc.category}</span></div>
+						<div className="card-row"><strong>Key:</strong> <code>{doc.pageKey}</code></div>
+						<div className="card-row"><strong>Pfad:</strong> <Link to={doc.pagePath}>{doc.pagePath}</Link></div>
+						<div className="card-row"><strong>Sichtbarkeit:</strong> <span>{doc.adminOnly ? 'Admin' : 'Alle'}</span></div>
+						<div className="card-actions">
+							<button onClick={() => openModal(doc)} className="btn btn-small">Bearbeiten</button>
+							<button onClick={() => handleDelete(doc)} className="btn btn-small btn-danger">Löschen</button>
+						</div>
+					</div>
+				))}
 			</div>
 
 			{isModalOpen && !wikiLoading && <DocumentationModal isOpen={isModalOpen} onClose={closeModal} onSuccess={() => { closeModal(); reload(); }} doc={editingDoc} allDocs={docs || []} wikiList={wikiList || []} />}
