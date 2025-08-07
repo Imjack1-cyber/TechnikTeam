@@ -23,6 +23,7 @@ const AppLayout = () => {
 		layout: state.layout,
 	}));
 	const sidebarPosition = layout.sidebarPosition || 'left';
+	const isVerticalLayout = sidebarPosition === 'left' || sidebarPosition === 'right';
 
 	const currentPageHelpKey = pageRoutes[location.pathname];
 
@@ -65,12 +66,12 @@ const AppLayout = () => {
 
 	useEffect(() => {
 		// Add/remove class from body for overlay effect
-		if (isNavOpen) {
+		if (isNavOpen && isVerticalLayout) {
 			document.body.classList.add('nav-open');
 		} else {
 			document.body.classList.remove('nav-open');
 		}
-	}, [isNavOpen]);
+	}, [isNavOpen, isVerticalLayout]);
 
 	useEffect(() => {
 		// Apply layout classes to the body
@@ -83,8 +84,9 @@ const AppLayout = () => {
 	return (
 		<>
 			<Sidebar />
-			<Header onNavToggle={() => setIsNavOpen(!isNavOpen)} />
-			{isNavOpen && <div className="page-overlay" onClick={() => setIsNavOpen(false)}></div>}
+			{/* The mobile header is only needed for vertical layouts that toggle an off-canvas sidebar */}
+			{isVerticalLayout && <Header onNavToggle={() => setIsNavOpen(!isNavOpen)} />}
+			{isNavOpen && isVerticalLayout && <div className="page-overlay" onClick={() => setIsNavOpen(false)}></div>}
 			<div className="main-content-wrapper">
 				<main className="main-content">
 					<Outlet />
