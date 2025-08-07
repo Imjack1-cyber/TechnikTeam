@@ -52,7 +52,7 @@ const MessageView = ({ conversationId }) => {
 		}
 	}, []);
 
-	const websocketUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/dm/${conversationId}`;
+	const websocketUrl = `/ws/dm/${conversationId}`;
 	const { sendMessage } = useWebSocket(websocketUrl, handleWebSocketMessage);
 
 	useEffect(() => {

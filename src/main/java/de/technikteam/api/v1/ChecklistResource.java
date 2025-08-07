@@ -1,10 +1,14 @@
 package de.technikteam.api.v1;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.ChecklistDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.ChecklistItem;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
+import de.technikteam.websocket.ChatSessionManager;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -21,10 +26,14 @@ import java.util.Map;
 public class ChecklistResource {
 
 	private final ChecklistDAO checklistDAO;
+	private final ChatSessionManager sessionManager;
+	private final Gson gson;
 
 	@Autowired
-	public ChecklistResource(ChecklistDAO checklistDAO) {
+	public ChecklistResource(ChecklistDAO checklistDAO, ChatSessionManager sessionManager) {
 		this.checklistDAO = checklistDAO;
+		this.sessionManager = sessionManager;
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
 	@GetMapping
@@ -53,6 +62,10 @@ public class ChecklistResource {
 
 		if (checklistDAO.updateChecklistItemStatus(checklistItemId, status, securityUser.getUser().getId())) {
 			ChecklistItem updatedItem = checklistDAO.getChecklistItemById(checklistItemId);
+
+			Map<String, Object> broadcastPayload = Map.of("type", "checklist_update", "payload", updatedItem);
+			sessionManager.broadcast(String.valueOf(eventId), gson.toJson(broadcastPayload));
+
 			return ResponseEntity.ok(new ApiResponse(true, "Status erfolgreich aktualisiert.", updatedItem));
 		} else {
 			return ResponseEntity.internalServerError()

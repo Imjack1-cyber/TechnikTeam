@@ -1,21 +1,38 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 /**
  * A custom hook to manage a WebSocket connection.
  * @param {string} url - The WebSocket URL to connect to.
  * @param {Function} onMessage - Callback function to handle incoming messages.
+ * @param {Array} dependencies - An array of dependencies that, when changed, will trigger a reconnect.
  * @returns {object} An object containing the WebSocket ready state and a sendMessage function.
  */
-const useWebSocket = (url, onMessage) => {
+const useWebSocket = (url, onMessage, dependencies = []) => {
 	const [readyState, setReadyState] = useState(WebSocket.CONNECTING);
 	const socketRef = useRef(null);
 
+	// Memoize onMessage to prevent re-renders from creating new function identities
+	const onMessageCallback = useCallback(onMessage, []);
+
 	useEffect(() => {
-		if (!url) return;
+		if (!url) {
+			if (socketRef.current) {
+				socketRef.current.close(1000, "URL changed to null");
+				socketRef.current = null;
+			}
+			setReadyState(WebSocket.CLOSED);
+			return;
+		};
 
 		const connect = () => {
-			// Authentication is now handled by the HttpOnly cookie, so no token is needed in the URL.
-			const socket = new WebSocket(url);
+			// Construct the final URL, ensuring it works with the Vite proxy
+			const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+			const host = window.location.host; // e.g., localhost:3000
+			const finalUrl = `${protocol}//${host}${url}`;
+
+			console.log(`Attempting to connect to WebSocket at: ${finalUrl}`);
+
+			const socket = new WebSocket(finalUrl);
 			socketRef.current = socket;
 
 			socket.onopen = () => {
@@ -26,8 +43,8 @@ const useWebSocket = (url, onMessage) => {
 			socket.onmessage = (event) => {
 				try {
 					const data = JSON.parse(event.data);
-					if (onMessage) {
-						onMessage(data);
+					if (onMessageCallback) {
+						onMessageCallback(data);
 					}
 				} catch (error) {
 					console.error('Fehler beim Parsen der WebSocket-Nachricht:', error);
@@ -35,7 +52,9 @@ const useWebSocket = (url, onMessage) => {
 			};
 
 			socket.onclose = (event) => {
-				if (event.code === 4001 || event.code === 403) {
+				if (event.code === 1000 && event.reason === "URL changed to null") {
+					console.log("WebSocket connection intentionally closed.");
+				} else if (event.code === 4001 || event.code === 403) {
 					console.error('WebSocket-Verbindung aufgrund von Authentifizierungs-/Autorisierungsfehler geschlossen.');
 				} else {
 					console.warn('WebSocket-Verbindung geschlossen. Versuche erneute Verbindung...');
@@ -59,7 +78,8 @@ const useWebSocket = (url, onMessage) => {
 				socketRef.current.close();
 			}
 		};
-	}, [url, onMessage]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [url, onMessageCallback, ...dependencies]);
 
 	const sendMessage = (messageObject) => {
 		if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {

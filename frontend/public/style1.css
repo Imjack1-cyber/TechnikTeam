@@ -152,6 +152,16 @@ a:hover {
 	color: var(--danger-color) !important;
 }
 
+.loading-fullscreen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-size: 1.5rem;
+    color: var(--text-muted-color);
+    background-color: var(--bg-color);
+}
+
 /* --- 3. LAYOUT & CONTAINERS --- */
 .main-content-wrapper {
 	transition: margin-left 0.3s ease-in-out;

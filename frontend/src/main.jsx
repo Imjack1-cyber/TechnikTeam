@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import router from './router';
@@ -23,7 +23,9 @@ const initializeApp = async () => {
 initializeApp().then(() => {
 	ReactDOM.createRoot(document.getElementById('root')).render(
 		<React.StrictMode>
-			<RouterProvider router={router} />
+			<Suspense fallback={<div className="loading-fullscreen">Lade Anwendung...</div>}>
+				<RouterProvider router={router} />
+			</Suspense>
 		</React.StrictMode>
 	);
 });

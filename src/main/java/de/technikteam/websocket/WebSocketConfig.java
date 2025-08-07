@@ -12,16 +12,20 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
 	private final EventChatSocketHandler eventChatSocketHandler;
 	private final ChatWebSocketHandler chatWebSocketHandler;
+	private final ChecklistWebSocketHandler checklistWebSocketHandler;
 
 	@Autowired
-	public WebSocketConfig(EventChatSocketHandler eventChatSocketHandler, ChatWebSocketHandler chatWebSocketHandler) {
+	public WebSocketConfig(EventChatSocketHandler eventChatSocketHandler, ChatWebSocketHandler chatWebSocketHandler,
+			ChecklistWebSocketHandler checklistWebSocketHandler) {
 		this.eventChatSocketHandler = eventChatSocketHandler;
 		this.chatWebSocketHandler = chatWebSocketHandler;
+		this.checklistWebSocketHandler = checklistWebSocketHandler;
 	}
 
 	@Override
 	public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
 		registry.addHandler(eventChatSocketHandler, "/ws/chat/{eventId}").setAllowedOrigins("*");
 		registry.addHandler(chatWebSocketHandler, "/ws/dm/{conversationId}").setAllowedOrigins("*");
+		registry.addHandler(checklistWebSocketHandler, "/ws/checklist/{eventId}").setAllowedOrigins("*");
 	}
 }

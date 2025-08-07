@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 
 // Layouts and Core Components
 import App from '../App';
@@ -40,14 +40,18 @@ const SettingsPage = lazy(() => import('../pages/SettingsPage'));
 
 // Admin Pages
 const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage'));
+const AdminUsersIndex = lazy(() => import('../pages/admin/AdminUsersIndex'));
 const AdminUsersPage = lazy(() => import('../pages/admin/AdminUsersPage'));
 const AdminRequestsPage = lazy(() => import('../pages/admin/AdminRequestsPage'));
+const AdminEventsIndex = lazy(() => import('../pages/admin/AdminEventsIndex'));
 const AdminEventsPage = lazy(() => import('../pages/admin/AdminEventsPage'));
 const AdminEventDebriefingPage = lazy(() => import('../pages/admin/AdminEventDebriefingPage'));
 const AdminDebriefingsListPage = lazy(() => import('../pages/admin/AdminDebriefingsListPage'));
 const AdminEventRolesPage = lazy(() => import('../pages/admin/AdminEventRolesPage'));
+const AdminCoursesIndex = lazy(() => import('../pages/admin/AdminCoursesIndex'));
 const AdminCoursesPage = lazy(() => import('../pages/admin/AdminCoursesPage'));
 const AdminMeetingsPage = lazy(() => import('../pages/admin/AdminMeetingsPage'));
+const AdminStorageIndex = lazy(() => import('../pages/admin/AdminStorageIndex'));
 const AdminStoragePage = lazy(() => import('../pages/admin/AdminStoragePage'));
 const AdminDefectivePage = lazy(() => import('../pages/admin/AdminDefectivePage'));
 const AdminDamageReportsPage = lazy(() => import('../pages/admin/AdminDamageReportsPage'));
@@ -56,6 +60,7 @@ const AdminKitsPage = lazy(() => import('../pages/admin/AdminKitsPage'));
 const AdminMatrixPage = lazy(() => import('../pages/admin/AdminMatrixPage'));
 const AdminReportsPage = lazy(() => import('../pages/admin/AdminReportsPage'));
 const AdminSystemPage = lazy(() => import('../pages/admin/AdminSystemPage'));
+const AdminContentIndex = lazy(() => import('../pages/admin/AdminContentIndex'));
 const AdminFilesPage = lazy(() => import('../pages/admin/AdminFilesPage'));
 const AdminFeedbackPage = lazy(() => import('../pages/admin/AdminFeedbackPage'));
 const AdminAchievementsPage = lazy(() => import('../pages/admin/AdminAchievementsPage'));
@@ -67,6 +72,7 @@ const AdminChangelogPage = lazy(() => import('../pages/admin/AdminChangelogPage'
 const AdminAnnouncementsPage = lazy(() => import('../pages/admin/AdminAnnouncementsPage'));
 const AdminTrainingRequestsPage = lazy(() => import('../pages/admin/AdminTrainingRequestsPage'));
 const AdminDocumentationPage = lazy(() => import('../pages/admin/AdminDocumentationPage'));
+const AdminReportsIndex = lazy(() => import('../pages/admin/AdminReportsIndex'));
 
 
 import ErrorTrigger from '../pages/error/ErrorTrigger';
@@ -113,33 +119,58 @@ const router = createBrowserRouter([
 				children: [
 					{ index: true, element: <Navigate to="/admin/dashboard" replace /> },
 					{ path: 'dashboard', element: <AdminDashboardPage /> },
-					{ path: 'announcements', element: <AdminAnnouncementsPage /> },
-					{ path: 'mitglieder', element: <AdminUsersPage /> },
-					{ path: 'requests', element: <AdminRequestsPage /> },
-					{ path: 'training-requests', element: <AdminTrainingRequestsPage /> },
-					{ path: 'veranstaltungen', element: <AdminEventsPage /> },
+					{
+						path: 'mitglieder', element: <AdminUsersIndex />, children: [
+							{ index: true, element: <AdminUsersPage /> },
+							{ path: 'requests', element: <AdminRequestsPage /> },
+							{ path: 'training-requests', element: <AdminTrainingRequestsPage /> },
+						]
+					},
+					{
+						path: 'veranstaltungen', element: <AdminEventsIndex />, children: [
+							{ index: true, element: <AdminEventsPage /> },
+							{ path: 'debriefings', element: <AdminDebriefingsListPage /> },
+							{ path: 'roles', element: <AdminEventRolesPage /> },
+							{ path: 'venues', element: <AdminVenuesPage /> },
+							{ path: 'checklist-templates', element: <AdminChecklistTemplatesPage /> },
+						]
+					},
 					{ path: 'veranstaltungen/:eventId/debriefing', element: <AdminEventDebriefingPage /> },
-					{ path: 'debriefings', element: <AdminDebriefingsListPage /> },
-					{ path: 'event-roles', element: <AdminEventRolesPage /> },
-					{ path: 'venues', element: <AdminVenuesPage /> },
-					{ path: 'lehrgaenge', element: <AdminCoursesPage /> },
+					{
+						path: 'lehrgaenge', element: <AdminCoursesIndex />, children: [
+							{ index: true, element: <AdminCoursesPage /> },
+							{ path: 'matrix', element: <AdminMatrixPage /> },
+						]
+					},
 					{ path: 'lehrgaenge/:courseId/meetings', element: <AdminMeetingsPage /> },
-					{ path: 'lager', element: <AdminStoragePage /> },
-					{ path: 'dateien', element: <AdminFilesPage /> },
-					{ path: 'kits', element: <AdminKitsPage /> },
-					{ path: 'feedback', element: <AdminFeedbackPage /> },
+					{
+						path: 'lager', element: <AdminStorageIndex />, children: [
+							{ index: true, element: <AdminStoragePage /> },
+							{ path: 'kits', element: <AdminKitsPage /> },
+							{ path: 'defekte', element: <AdminDefectivePage /> },
+							{ path: 'damage-reports', element: <AdminDamageReportsPage /> },
+						]
+					},
+					{
+						path: 'content', element: <AdminContentIndex />, children: [
+							{ index: true, element: <AdminAnnouncementsPage /> },
+							{ path: 'announcements', element: <AdminAnnouncementsPage /> },
+							{ path: 'dateien', element: <AdminFilesPage /> },
+							{ path: 'feedback', element: <AdminFeedbackPage /> },
+							{ path: 'changelogs', element: <AdminChangelogPage /> },
+							{ path: 'documentation', element: <AdminDocumentationPage /> },
+						]
+					},
+					{
+						path: 'reports', element: <AdminReportsIndex />, children: [
+							{ index: true, element: <AdminReportsPage /> },
+							{ path: 'log', element: <AdminLogPage /> },
+							{ path: 'system', element: <AdminSystemPage /> },
+						]
+					},
 					{ path: 'benachrichtigungen', element: <AdminNotificationsPage /> },
 					{ path: 'achievements', element: <AdminAchievementsPage /> },
-					{ path: 'defekte', element: <AdminDefectivePage /> },
-					{ path: 'damage-reports', element: <AdminDamageReportsPage /> },
-					{ path: 'checklist-templates', element: <AdminChecklistTemplatesPage /> },
-					{ path: 'matrix', element: <AdminMatrixPage /> },
-					{ path: 'berichte', element: <AdminReportsPage /> },
-					{ path: 'changelogs', element: <AdminChangelogPage /> },
-					{ path: 'log', element: <AdminLogPage /> },
-					{ path: 'system', element: <AdminSystemPage /> },
 					{ path: 'wiki', element: <AdminWikiPage /> },
-					{ path: 'documentation', element: <AdminDocumentationPage /> },
 				],
 			},
 		],

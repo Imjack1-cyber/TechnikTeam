@@ -99,6 +99,11 @@ public class AuthResource {
 		CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
 		logger.info("CSRF token loaded during /me request: {}", csrfToken != null ? "OK" : "NULL");
 
+		if (securityUser == null) {
+			return new ResponseEntity<>(new ApiResponse(false, "Keine aktive Sitzung gefunden.", null),
+					HttpStatus.UNAUTHORIZED);
+		}
+
 		User authenticatedUser = securityUser.getUser();
 		List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(authenticatedUser);
 		Map<String, Object> responseData = Map.of("user", authenticatedUser, "navigation", navigationItems);

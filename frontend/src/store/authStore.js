@@ -10,6 +10,15 @@ const hasAdminAccess = (roleName) => {
 const defaultLayout = {
 	sidebarPosition: 'left',
 	navOrder: [], // Empty array means default order
+	dashboardWidgets: {
+		recommendedEvents: true,
+		assignedEvents: true,
+		openTasks: true,
+		upcomingEvents: true,
+		recentConversations: true,
+		upcomingMeetings: true,
+		lowStockItems: false,
+	},
 };
 
 
@@ -22,6 +31,7 @@ export const useAuthStore = create(
 			isAdmin: false,
 			theme: 'light',
 			layout: defaultLayout,
+			lastUpdatedEvent: null, // { id: eventId, nonce: Math.random() }
 			login: async (username, password) => {
 				try {
 					// The login endpoint now returns the user object on success and sets the cookie
@@ -43,7 +53,7 @@ export const useAuthStore = create(
 				} catch (error) {
 					console.error("Logout API call failed, clearing state anyway.", error);
 				} finally {
-					set({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, theme: 'light', layout: defaultLayout });
+					set({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, theme: 'light', layout: defaultLayout, lastUpdatedEvent: null });
 					localStorage.removeItem('auth-storage');
 					document.documentElement.setAttribute('data-theme', 'light');
 				}
@@ -58,7 +68,16 @@ export const useAuthStore = create(
 						let userLayout = defaultLayout;
 						if (user.dashboardLayout) {
 							try {
-								userLayout = { ...defaultLayout, ...JSON.parse(user.dashboardLayout) };
+								// Deep merge the saved layout with defaults to handle new widgets
+								const savedLayout = JSON.parse(user.dashboardLayout);
+								userLayout = {
+									...defaultLayout,
+									...savedLayout,
+									dashboardWidgets: {
+										...defaultLayout.dashboardWidgets,
+										...(savedLayout.dashboardWidgets || {})
+									}
+								};
 							} catch (e) {
 								console.error("Failed to parse user layout JSON", e);
 							}
@@ -108,7 +127,15 @@ export const useAuthStore = create(
 						let userLayout = defaultLayout;
 						if (updatedUser.dashboardLayout) {
 							try {
-								userLayout = { ...defaultLayout, ...JSON.parse(updatedUser.dashboardLayout) };
+								const savedLayout = JSON.parse(updatedUser.dashboardLayout);
+								userLayout = {
+									...defaultLayout,
+									...savedLayout,
+									dashboardWidgets: {
+										...defaultLayout.dashboardWidgets,
+										...(savedLayout.dashboardWidgets || {})
+									}
+								};
 							} catch (e) { console.error("Failed to parse updated layout", e); }
 						}
 						set({
@@ -121,6 +148,9 @@ export const useAuthStore = create(
 				} catch (error) {
 					console.error("Failed to save layout preferences:", error);
 				}
+			},
+			triggerEventUpdate: (eventId) => {
+				set({ lastUpdatedEvent: { id: eventId, nonce: Math.random() } });
 			},
 		}),
 		{

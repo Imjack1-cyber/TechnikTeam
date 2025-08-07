@@ -16,17 +16,22 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Repository
 public class EventDAO {
 	private static final Logger logger = LogManager.getLogger(EventDAO.class);
 	private final JdbcTemplate jdbcTemplate;
+	private final EventTaskDAO eventTaskDAO;
 
 	@Autowired
-	public EventDAO(JdbcTemplate jdbcTemplate) {
+	public EventDAO(JdbcTemplate jdbcTemplate, EventTaskDAO eventTaskDAO) {
 		this.jdbcTemplate = jdbcTemplate;
+		this.eventTaskDAO = eventTaskDAO;
 	}
 
 	private final RowMapper<Event> eventRowMapper = (rs, rowNum) -> {
@@ -123,7 +128,12 @@ public class EventDAO {
 	public Event getEventById(int eventId) {
 		String sql = "SELECT e.*, u.username as leader_username FROM events e LEFT JOIN users u ON e.leader_user_id = u.id WHERE e.id = ?";
 		try {
-			return jdbcTemplate.queryForObject(sql, eventRowMapper, eventId);
+			Event event = jdbcTemplate.queryForObject(sql, eventRowMapper, eventId);
+			if (event != null) {
+				event.setEventTasks(eventTaskDAO.getTasksForEvent(eventId));
+				event.setAssignedAttendees(getAssignedUsersForEvent(eventId));
+			}
+			return event;
 		} catch (EmptyResultDataAccessException e) {
 			return null;
 		} catch (Exception e) {
@@ -277,11 +287,11 @@ public class EventDAO {
 			jdbcTemplate.update("DELETE FROM event_storage_reservations WHERE event_id = ?", eventId);
 			if (itemIds != null && quantities != null && itemIds.length == quantities.length) {
 				String sql = "INSERT INTO event_storage_reservations (event_id, item_id, reserved_quantity) VALUES (?, ?, ?)";
-				jdbcTemplate.batchUpdate(sql, List.of(itemIds), 100, (ps, itemId) -> {
-					int index = List.of(itemIds).indexOf(itemId);
-					if (!itemId.isEmpty()) {
+				jdbcTemplate.batchUpdate(sql, List.of(itemIds), 100, (ps, itemIdStr) -> {
+					int index = List.of(itemIds).indexOf(itemIdStr);
+					if (!itemIdStr.isEmpty()) {
 						ps.setInt(1, eventId);
-						ps.setInt(2, Integer.parseInt(itemId));
+						ps.setInt(2, Integer.parseInt(itemIdStr));
 						ps.setInt(3, Integer.parseInt(quantities[index]));
 					}
 				});
@@ -325,6 +335,19 @@ public class EventDAO {
 		} catch (Exception e) {
 			logger.error("Error checking user association for event {} and user {}", eventId, userId, e);
 			return false;
+		}
+	}
+
+	public String getUserAttendanceStatus(int eventId, int userId) {
+		String sql = "SELECT COALESCE("
+				+ "    (SELECT 'ZUGEWIESEN' FROM event_assignments WHERE event_id = ? AND user_id = ?), "
+				+ "    (SELECT signup_status FROM event_attendance WHERE event_id = ? AND user_id = ?), "
+				+ "    'OFFEN'" + ") AS user_status";
+		try {
+			return jdbcTemplate.queryForObject(sql, String.class, eventId, userId, eventId, userId);
+		} catch (Exception e) {
+			logger.error("Error fetching user attendance status for event {} user {}", eventId, userId, e);
+			return "OFFEN";
 		}
 	}
 

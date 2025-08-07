@@ -6,41 +6,40 @@ import Modal from '../components/ui/Modal';
 import Lightbox from '../components/ui/Lightbox';
 import { useToast } from '../context/ToastContext';
 
-const CartModal = ({ isOpen, onClose, cart, onUpdateQuantity, onRemove, onSubmit, activeEvents, transactionError, isSubmitting }) => {
-	const checkouts = cart.filter(item => item.type === 'checkout');
-	const checkins = cart.filter(item => item.type === 'checkin');
+const CartModal = ({ isOpen, onClose, cart, onUpdateQuantity, onRemove, onSwitchType, onSubmit, activeEvents, transactionError, isSubmitting }) => {
+
+	const renderCartSection = (title, items, type) => {
+		if (items.length === 0) return null;
+		return (
+			<div style={{ marginBottom: '1.5rem' }}>
+				<h4>{title}</h4>
+				{items.map(item => (
+					<div className="dynamic-row" key={`${item.id}-${type}`}>
+						<button
+							type="button"
+							onClick={() => onSwitchType(item.id, type)}
+							className={`btn btn-small ${type === 'checkout' ? 'btn-danger-outline' : 'btn-success'}`}
+							title={`Zu '${type === 'checkout' ? 'Einräumen' : 'Entnehmen'}' wechseln`}
+							style={{ minWidth: '40px' }}
+						>
+							<i className={`fas ${type === 'checkout' ? 'fa-arrow-down' : 'fa-arrow-up'}`}></i>
+						</button>
+						<span style={{ flexGrow: 1 }}>{item.name}</span>
+						<input type="number" value={item.quantity} onChange={e => onUpdateQuantity(item.id, type, parseInt(e.target.value, 10))} min="1" max={type === 'checkout' ? item.availableQuantity : undefined} className="form-group" style={{ maxWidth: '80px' }} />
+						<button type="button" className="btn btn-small btn-danger" onClick={() => onRemove(item.id, type)}>×</button>
+					</div>
+				))}
+			</div>
+		);
+	};
 
 	return (
 		<Modal isOpen={isOpen} onClose={onClose} title={`Warenkorb (${cart.length} Artikel)`}>
 			<form onSubmit={onSubmit}>
 				{transactionError && <p className="error-message">{transactionError}</p>}
 
-				{checkouts.length > 0 && (
-					<div style={{ marginBottom: '1.5rem' }}>
-						<h4>Zu Entnehmen</h4>
-						{checkouts.map(item => (
-							<div className="dynamic-row" key={`${item.id}-checkout`}>
-								<span style={{ flexGrow: 1 }}>{item.name}</span>
-								<input type="number" value={item.quantity} onChange={e => onUpdateQuantity(item.id, 'checkout', parseInt(e.target.value, 10))} min="1" max={item.availableQuantity} className="form-group" style={{ maxWidth: '80px' }} />
-								<button type="button" className="btn btn-small btn-danger" onClick={() => onRemove(item.id, 'checkout')}>×</button>
-							</div>
-						))}
-					</div>
-				)}
-
-				{checkins.length > 0 && (
-					<div>
-						<h4>Einzuräumen</h4>
-						{checkins.map(item => (
-							<div className="dynamic-row" key={`${item.id}-checkin`}>
-								<span style={{ flexGrow: 1 }}>{item.name}</span>
-								<input type="number" value={item.quantity} onChange={e => onUpdateQuantity(item.id, 'checkin', parseInt(e.target.value, 10))} min="1" className="form-group" style={{ maxWidth: '80px' }} />
-								<button type="button" className="btn btn-small btn-danger" onClick={() => onRemove(item.id, 'checkin')}>×</button>
-							</div>
-						))}
-					</div>
-				)}
-
+				{renderCartSection('Zu Entnehmen', cart.filter(i => i.type === 'checkout'), 'checkout')}
+				{renderCartSection('Einzuräumen', cart.filter(i => i.type === 'checkin'), 'checkin')}
 
 				<div className="form-group" style={{ marginTop: '1.5rem' }}>
 					<label htmlFor="transaction-notes">Notiz (optional, gilt für alle Artikel)</label>
@@ -92,16 +91,36 @@ const StoragePage = () => {
 	};
 
 	const handleUpdateCartItemQuantity = (itemId, type, newQuantity) => {
-		const numQuantity = Math.max(1, newQuantity || 1);
-		setCart(prevCart => prevCart.map(item =>
-			item.id === itemId && item.type === type ? { ...item, quantity: numQuantity } : item
-		));
+		setCart(prevCart => prevCart.map(cartItem => {
+			if (cartItem.id === itemId && cartItem.type === type) {
+				let validatedQuantity = Math.max(1, newQuantity || 1);
+				if (type === 'checkout') {
+					validatedQuantity = Math.min(validatedQuantity, cartItem.availableQuantity);
+				}
+				return { ...cartItem, quantity: validatedQuantity };
+			}
+			return cartItem;
+		}));
 	};
 
 	const handleRemoveFromCart = (itemId, type) => {
 		setCart(prevCart => prevCart.filter(item => !(item.id === itemId && item.type === type)));
 	};
 
+	const handleSwitchCartItemType = (itemId, currentType) => {
+		setCart(prevCart => prevCart.map(item => {
+			if (item.id === itemId && item.type === currentType) {
+				// Check if the item already exists in the other category
+				const existsInOtherCategory = prevCart.some(i => i.id === itemId && i.type !== currentType);
+				if (existsInOtherCategory) {
+					addToast(`${item.name} ist bereits in der anderen Kategorie im Warenkorb.`, 'info');
+					return item; // Return unchanged
+				}
+				return { ...item, type: currentType === 'checkout' ? 'checkin' : 'checkout' };
+			}
+			return item;
+		}));
+	};
 
 	const handleImageClick = (imagePath) => {
 		setLightboxSrc(`/api/v1/public/files/images/${imagePath}`);
@@ -304,6 +323,7 @@ const StoragePage = () => {
 				cart={cart}
 				onUpdateQuantity={handleUpdateCartItemQuantity}
 				onRemove={handleRemoveFromCart}
+				onSwitchType={handleSwitchCartItemType}
 				onSubmit={handleBulkTransactionSubmit}
 				activeEvents={activeEvents}
 				transactionError={transactionError}

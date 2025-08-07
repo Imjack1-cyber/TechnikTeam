@@ -61,8 +61,10 @@ public class NotificationService {
 			emitter.complete();
 		});
 		emitter.onError(e -> {
-			logger.error("SSE Emitter Fehler für Benutzer {}: {}", userId, e.getMessage());
-			emitter.complete();
+			// This often logs benign client-side disconnects, so we log at debug level.
+			logger.debug("SSE Emitter Fehler für Benutzer {}: {}", userId, e.getMessage());
+			// The emitter is completed by the container/Spring, no need to call complete()
+			// here.
 		});
 
 		emittersByUser.computeIfAbsent(userId, k -> new CopyOnWriteArrayList<>()).add(emitter);
@@ -90,10 +92,10 @@ public class NotificationService {
 		emittersByUser.values().forEach(emitterList -> emitterList.forEach(emitter -> {
 			try {
 				emitter.send(event);
-			} catch (IOException e) {
+			} catch (Exception e) {
 				logger.warn("Fehler beim Senden an einen Client (wahrscheinlich getrennt), wird entfernt. Fehler: {}",
 						e.getMessage());
-				emitter.complete();
+				// Do not complete the emitter here, let its own lifecycle handlers manage it.
 			}
 		}));
 	}
@@ -107,11 +109,11 @@ public class NotificationService {
 			userEmitters.forEach(emitter -> {
 				try {
 					emitter.send(event);
-				} catch (IOException e) {
+				} catch (Exception e) {
 					logger.warn(
 							"Fehler beim Senden der gezielten Benachrichtigung an Benutzer {} (Client wahrscheinlich getrennt), wird entfernt. Fehler: {}",
 							userId, e.getMessage());
-					emitter.complete();
+					// Do not complete the emitter here, let its own lifecycle handlers manage it.
 				}
 			});
 		} else {

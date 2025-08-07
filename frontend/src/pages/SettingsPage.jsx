@@ -21,18 +21,18 @@ const SettingsPage = () => {
 	};
 
 	const [sidebarPosition, setSidebarPosition] = useState(layout.sidebarPosition);
-	const [navOrder, setNavOrder] = useState([]);
+	const [navOrder, setNavOrder] = useState([]); // Will store URLs
 	const [dashboardWidgets, setDashboardWidgets] = useState({ ...defaultWidgets, ...layout.dashboardWidgets });
-	const [selectedItemLabel, setSelectedItemLabel] = useState(null);
+	const [selectedItemUrl, setSelectedItemUrl] = useState(null); // Changed from selectedItemLabel
 	const { addToast } = useToast();
 
 	useEffect(() => {
-		const userNavOrder = layout.navOrder || [];
-		const defaultOrder = navigationItems.map(item => item.label);
+		const userNavOrder = layout.navOrder || []; // This is now an array of URLs
+		const defaultOrder = navigationItems.map(item => item.url);
 
 		const combinedOrder = [
 			...userNavOrder,
-			...defaultOrder.filter(item => !userNavOrder.includes(item))
+			...defaultOrder.filter(url => !userNavOrder.includes(url))
 		];
 
 		setNavOrder(combinedOrder);
@@ -41,49 +41,49 @@ const SettingsPage = () => {
 	}, [layout, navigationItems]);
 
 	const { userItems, adminItems, isUserBlockFirst } = useMemo(() => {
-		const itemMap = new Map(navigationItems.map(item => [item.label, item]));
-		const allLabelsInOrder = navOrder.map(label => itemMap.get(label)).filter(Boolean).map(item => item.label);
+		const itemMap = new Map(navigationItems.map(item => [item.url, item]));
+		const orderedItems = navOrder.map(url => itemMap.get(url)).filter(Boolean);
 
-		const defaultUserLabels = navigationItems.filter(i => i.requiredPermission === null).map(i => i.label);
-		const defaultAdminLabels = isAdmin ? navigationItems.filter(i => i.requiredPermission !== null).map(i => i.label) : [];
+		const userItems = orderedItems.filter(item => item.requiredPermission === null);
+		const adminItems = isAdmin ? orderedItems.filter(item => item.requiredPermission !== null) : [];
 
-		const userLabels = allLabelsInOrder.filter(label => defaultUserLabels.includes(label));
-		const adminLabels = allLabelsInOrder.filter(label => defaultAdminLabels.includes(label));
+		const firstUserUrl = userItems.length > 0 ? userItems[0].url : null;
+		const firstAdminUrl = adminItems.length > 0 ? adminItems[0].url : null;
 
-		const isUserFirst = (layout.navOrder && layout.navOrder.length > 0)
-			? defaultUserLabels.includes(layout.navOrder[0])
-			: true;
+		let isUserFirst = true;
+		if (firstUserUrl && firstAdminUrl) {
+			isUserFirst = navOrder.indexOf(firstUserUrl) < navOrder.indexOf(firstAdminUrl);
+		} else if (!firstUserUrl && firstAdminUrl) {
+			isUserFirst = false;
+		}
 
-		const sortedUserItems = userLabels.map(label => itemMap.get(label));
-		const sortedAdminItems = adminLabels.map(label => itemMap.get(label));
-
-		return {
-			userItems: sortedUserItems,
-			adminItems: sortedAdminItems,
-			isUserBlockFirst: isUserFirst,
-		};
-	}, [navOrder, navigationItems, isAdmin, layout.navOrder]);
+		return { userItems, adminItems, isUserBlockFirst: isUserFirst };
+	}, [navOrder, navigationItems, isAdmin]);
 
 	const handleSave = () => {
+		const finalNavOrder = isUserBlockFirst
+			? [...userItems.map(i => i.url), ...adminItems.map(i => i.url)]
+			: [...adminItems.map(i => i.url), ...userItems.map(i => i.url)];
+
 		const newLayout = {
 			sidebarPosition,
-			navOrder: isUserBlockFirst ? [...userItems.map(i => i.label), ...adminItems.map(i => i.label)] : [...adminItems.map(i => i.label), ...userItems.map(i => i.label)],
+			navOrder: finalNavOrder,
 			dashboardWidgets
 		};
 		setLayout(newLayout);
 		addToast('Layout-Einstellungen gespeichert!', 'success');
-		setSelectedItemLabel(null);
+		setSelectedItemUrl(null);
 	};
 
 	const handleReset = () => {
 		if (window.confirm('Möchten Sie alle Layout- und Navigationseinstellungen auf den Standard zurücksetzen?')) {
-			const defaultNavOrder = navigationItems.map(item => item.label);
+			const defaultNavOrderUrls = navigationItems.map(item => item.url);
 			setSidebarPosition('left');
-			setNavOrder(defaultNavOrder);
+			setNavOrder(defaultNavOrderUrls);
 			setDashboardWidgets(defaultWidgets);
 			setLayout({
 				sidebarPosition: 'left',
-				navOrder: [], // Empty array signifies default order
+				navOrder: [],
 				dashboardWidgets: defaultWidgets,
 			});
 			addToast('Einstellungen wurden auf den Standard zurückgesetzt.', 'success');
@@ -97,54 +97,54 @@ const SettingsPage = () => {
 		}));
 	};
 
-	const moveItem = (direction, itemLabel, isUserItem) => {
-		const list = isUserItem ? userItems.map(i => i.label) : adminItems.map(i => i.label);
-		const currentIndex = list.indexOf(itemLabel);
+	const moveItem = (direction, itemUrl) => {
+		if (!itemUrl) return;
+		const currentIndex = navOrder.indexOf(itemUrl);
+		if (currentIndex === -1) return;
 
 		const newIndex = currentIndex + direction;
-		if (newIndex < 0 || newIndex >= list.length) return;
+		if (newIndex < 0 || newIndex >= navOrder.length) return;
 
-		const newList = [...list];
-		const itemToMove = newList.splice(currentIndex, 1)[0];
-		newList.splice(newIndex, 0, itemToMove);
-
-		const userLabels = isUserItem ? newList : userItems.map(i => i.label);
-		const adminLabels = !isUserItem ? newList : adminItems.map(i => i.label);
-
-		setNavOrder(isUserBlockFirst ? [...userLabels, ...adminLabels] : [...adminLabels, ...userLabels]);
+		const newNavOrder = [...navOrder];
+		const itemToMove = newNavOrder.splice(currentIndex, 1)[0];
+		newNavOrder.splice(newIndex, 0, itemToMove);
+		setNavOrder(newNavOrder);
+		setSelectedItemUrl(itemUrl);
 	};
 
 	const moveBlock = (direction) => {
-		if ((isUserBlockFirst && direction === -1) || (!isUserBlockFirst && direction === 1)) {
-			return;
-		}
-		const userLabels = userItems.map(i => i.label);
-		const adminLabels = adminItems.map(i => i.label);
-		setNavOrder(isUserBlockFirst ? [...adminLabels, ...userLabels] : [...userLabels, ...adminLabels]);
+		if (userItems.length === 0 || adminItems.length === 0) return;
+		if ((isUserBlockFirst && direction === -1) || (!isUserBlockFirst && direction === 1)) return;
+
+		const userUrls = userItems.map(i => i.url);
+		const adminUrls = adminItems.map(i => i.url);
+		setNavOrder(isUserBlockFirst ? [...adminUrls, ...userUrls] : [...userUrls, ...adminUrls]);
 	};
 
 	useEffect(() => {
 		const handleKeyDown = (e) => {
-			if (!selectedItemLabel) return;
-			const isUserItem = userItems.some(i => i.label === selectedItemLabel);
+			if (!selectedItemUrl) return;
+			const isBlockSelection = selectedItemUrl === "Benutzerbereich" || selectedItemUrl === "Admin-Bereich";
 
 			if (e.key === 'ArrowUp') {
 				e.preventDefault();
-				moveItem(-1, selectedItemLabel, isUserItem);
+				if (isBlockSelection) moveBlock(-1);
+				else moveItem(-1, selectedItemUrl);
 			} else if (e.key === 'ArrowDown') {
 				e.preventDefault();
-				moveItem(1, selectedItemLabel, isUserItem);
+				if (isBlockSelection) moveBlock(1);
+				else moveItem(1, selectedItemUrl);
 			} else if (e.key === 'Escape') {
-				setSelectedItemLabel(null);
+				setSelectedItemUrl(null);
 			}
 		};
 		window.addEventListener('keydown', handleKeyDown);
 		return () => window.removeEventListener('keydown', handleKeyDown);
-	}, [selectedItemLabel, navOrder, userItems, adminItems, isUserBlockFirst]);
+	}, [selectedItemUrl, navOrder, userItems, adminItems, isUserBlockFirst]);
 
 	const renderNavBlock = (title, items, isBlockSelected, onBlockMove, type) => (
 		<div className={`nav-order-block ${isBlockSelected ? 'selected' : ''}`}>
-			<div className="nav-order-block-header" onClick={() => setSelectedItemLabel(title)}>
+			<div className="nav-order-block-header" onClick={() => setSelectedItemUrl(isBlockSelected ? null : title)}>
 				<h3 className="nav-section-title">{title}</h3>
 				<div className="nav-order-controls">
 					{isBlockSelected && (
@@ -159,15 +159,15 @@ const SettingsPage = () => {
 			</div>
 			<div className="nav-order-list">
 				{items.map(item => {
-					const isSelected = selectedItemLabel === item.label;
+					const isSelected = selectedItemUrl === item.url;
 					return (
-						<div key={item.label} className={`nav-order-item ${isSelected ? 'selected' : ''}`} onClick={() => setSelectedItemLabel(isSelected ? null : item.label)}>
+						<div key={item.url} className={`nav-order-item ${isSelected ? 'selected' : ''}`} onClick={() => setSelectedItemUrl(isSelected ? null : item.url)}>
 							<span>{item.label} <span className="text-muted">({type})</span></span>
 							{isSelected && (
 								<div className="nav-order-controls">
 									<span className="desktop-only-inline">Pfeiltasten zum Verschieben nutzen</span>
-									<button className="mobile-only btn btn-small" onClick={(e) => { e.stopPropagation(); moveItem(-1, item.label, type === 'Benutzer'); }}><i className="fas fa-arrow-up"></i></button>
-									<button className="mobile-only btn btn-small" onClick={(e) => { e.stopPropagation(); moveItem(1, item.label, type === 'Benutzer'); }}><i className="fas fa-arrow-down"></i></button>
+									<button className="mobile-only btn btn-small" onClick={(e) => { e.stopPropagation(); moveItem(-1, item.url); }}><i className="fas fa-arrow-up"></i></button>
+									<button className="mobile-only btn btn-small" onClick={(e) => { e.stopPropagation(); moveItem(1, item.url); }}><i className="fas fa-arrow-down"></i></button>
 								</div>
 							)}
 						</div>
@@ -177,8 +177,8 @@ const SettingsPage = () => {
 		</div>
 	);
 
-	const userBlock = renderNavBlock("Benutzerbereich", userItems, selectedItemLabel === "Benutzerbereich", moveBlock, "Benutzer");
-	const adminBlock = isAdmin && adminItems.length > 0 ? renderNavBlock("Admin-Bereich", adminItems, selectedItemLabel === "Admin-Bereich", moveBlock, "Admin") : null;
+	const userBlock = renderNavBlock("Benutzerbereich", userItems, selectedItemUrl === "Benutzerbereich", moveBlock, "Benutzer");
+	const adminBlock = isAdmin && adminItems.length > 0 ? renderNavBlock("Admin-Bereich", adminItems, selectedItemUrl === "Admin-Bereich", moveBlock, "Admin") : null;
 
 	return (
 		<div>

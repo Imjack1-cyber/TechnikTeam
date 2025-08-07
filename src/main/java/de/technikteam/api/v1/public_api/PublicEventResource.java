@@ -50,11 +50,16 @@ public class PublicEventResource {
 
 	@GetMapping("/{id}")
 	@Operation(summary = "Get event details", description = "Retrieves detailed information for a single event.")
-	public ResponseEntity<ApiResponse> getEventDetails(
-			@Parameter(description = "ID of the event") @PathVariable int id) {
+	public ResponseEntity<ApiResponse> getEventDetails(@Parameter(description = "ID of the event") @PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		Event event = eventDAO.getEventById(id);
 		if (event == null) {
 			return ResponseEntity.status(404).body(new ApiResponse(false, "Veranstaltung nicht gefunden.", null));
+		}
+		// Enrich with user-specific status
+		if (securityUser != null) {
+			String status = eventDAO.getUserAttendanceStatus(id, securityUser.getUser().getId());
+			event.setUserAttendanceStatus(status);
 		}
 		return ResponseEntity.ok(new ApiResponse(true, "Veranstaltungsdetails erfolgreich abgerufen.", event));
 	}

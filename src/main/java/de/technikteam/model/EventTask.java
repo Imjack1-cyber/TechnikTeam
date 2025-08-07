@@ -1,5 +1,7 @@
 package de.technikteam.model;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -15,15 +17,16 @@ public class EventTask {
 	private String details;
 	private String status;
 	private String eventName;
+	private LocalDateTime updatedAt;
 
 	private int displayOrder;
 	private int requiredPersons;
 
-	private List<User> assignedUsers;
-	private List<StorageItem> requiredItems;
-	private List<InventoryKit> requiredKits;
-	private List<EventTask> dependsOn; // Tasks that must be completed before this one
-	private List<EventTask> dependencyFor; // Tasks that depend on this one
+	private List<User> assignedUsers = new ArrayList<>();
+	private List<StorageItem> requiredItems = new ArrayList<>();
+	private List<InventoryKit> requiredKits = new ArrayList<>();
+	private List<EventTask> dependsOn = new ArrayList<>(); // Tasks that must be completed before this one
+	private List<EventTask> dependencyFor = new ArrayList<>(); // Tasks that depend on this one
 
 	public String getAssignedUsernames() {
 		if (assignedUsers != null && !assignedUsers.isEmpty()) {
@@ -78,6 +81,14 @@ public class EventTask {
 
 	public void setEventName(String eventName) {
 		this.eventName = eventName;
+	}
+
+	public LocalDateTime getUpdatedAt() {
+		return updatedAt;
+	}
+
+	public void setUpdatedAt(LocalDateTime updatedAt) {
+		this.updatedAt = updatedAt;
 	}
 
 	public int getDisplayOrder() {

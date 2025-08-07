@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, Link } from 'react-router-dom';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import ToastContainer from './components/ui/ToastContainer';
@@ -9,10 +9,12 @@ import WarningNotification from './components/ui/WarningNotification';
 import ChangelogModal from './components/ui/ChangelogModal';
 import apiClient from './services/apiClient';
 import { useAuthStore } from './store/authStore';
+import pageRoutes from './router/pageRoutes';
 
 const AppLayout = () => {
 	const [isNavOpen, setIsNavOpen] = useState(false);
 	const location = useLocation();
+
 	const { warningNotification, dismissWarning } = useNotifications();
 	const [changelog, setChangelog] = useState(null);
 	const [isChangelogVisible, setIsChangelogVisible] = useState(false);
@@ -21,6 +23,8 @@ const AppLayout = () => {
 		layout: state.layout,
 	}));
 	const sidebarPosition = layout.sidebarPosition || 'left';
+
+	const currentPageHelpKey = pageRoutes[location.pathname];
 
 
 	const fetchChangelog = useCallback(async () => {
@@ -87,6 +91,11 @@ const AppLayout = () => {
 				</main>
 			</div>
 			<ToastContainer />
+			{currentPageHelpKey && (
+				<Link to={`/help/${currentPageHelpKey}`} className="help-fab" title="Hilfe für diese Seite">
+					<i className="fas fa-question"></i>
+				</Link>
+			)}
 			{warningNotification && <WarningNotification notification={warningNotification} onDismiss={dismissWarning} />}
 			{isChangelogVisible && changelog && (
 				<ChangelogModal

@@ -34,6 +34,7 @@ public class EventTaskDAO {
 	public int saveTask(EventTask task, int[] userIds, String[] itemIds, String[] itemQuantities, String[] kitIds,
 			int[] dependencyIds) {
 		boolean isUpdate = task.getId() > 0;
+		logger.debug("DAO saveTask called for task '{}'. Is update: {}", task.getDescription(), isUpdate);
 		if (isUpdate) {
 			updateTask(task);
 		} else {
@@ -42,6 +43,7 @@ public class EventTaskDAO {
 		}
 
 		if (task.getId() == 0) {
+			logger.error("Failed to create or find task ID for task: {}", task.getDescription());
 			throw new RuntimeException("Failed to create or find task ID.");
 		}
 
@@ -56,6 +58,7 @@ public class EventTaskDAO {
 	}
 
 	private int createTask(EventTask task) {
+		logger.debug("DAO createTask: eventId={}, description='{}'", task.getEventId(), task.getDescription());
 		String taskSql = "INSERT INTO event_tasks (event_id, description, details, status, display_order, required_persons) VALUES (?, ?, ?, 'OFFEN', ?, ?)";
 		KeyHolder keyHolder = new GeneratedKeyHolder();
 		jdbcTemplate.update(connection -> {
@@ -67,10 +70,13 @@ public class EventTaskDAO {
 			ps.setInt(5, task.getRequiredPersons());
 			return ps;
 		}, keyHolder);
-		return Objects.requireNonNull(keyHolder.getKey()).intValue();
+		int newId = Objects.requireNonNull(keyHolder.getKey()).intValue();
+		logger.debug("DAO createTask successful. New task ID: {}", newId);
+		return newId;
 	}
 
 	private void updateTask(EventTask task) {
+		logger.debug("DAO updateTask for task ID: {}", task.getId());
 		String taskSql = "UPDATE event_tasks SET description = ?, details = ?, status = ?, display_order = ?, required_persons = ? WHERE id = ?";
 		jdbcTemplate.update(taskSql, task.getDescription(), task.getDetails(), task.getStatus(), task.getDisplayOrder(),
 				task.getRequiredPersons(), task.getId());
@@ -135,7 +141,7 @@ public class EventTaskDAO {
 
 	public List<EventTask> getTasksForEvent(int eventId) {
 		Map<Integer, EventTask> tasksById = new LinkedHashMap<>();
-		String sql = "SELECT t.*, u.id as user_id, u.username, si.id as item_id, si.name as item_name, tsi.quantity as item_quantity, ik.id as kit_id, ik.name as kit_name FROM event_tasks t LEFT JOIN event_task_assignments ta ON t.id = ta.task_id LEFT JOIN users u ON ta.user_id = u.id LEFT JOIN event_task_storage_items tsi ON t.id = tsi.task_id LEFT JOIN storage_items si ON tsi.item_id = si.id LEFT JOIN event_task_kits tk ON t.id = tk.task_id LEFT JOIN inventory_kits ik ON tk.kit_id = ik.id WHERE t.event_id = ? ORDER BY t.display_order ASC, t.id ASC, u.username, si.name, ik.name";
+		String sql = "SELECT t.*, u.id as user_id, u.username, si.id as item_id, si.name as item_name, tsi.quantity as item_quantity, ik.id as kit_id, ik.name as kit_name FROM event_tasks t LEFT JOIN event_task_assignments ta ON t.id = ta.task_id LEFT JOIN users u ON ta.user_id = u.id LEFT JOIN event_task_storage_items tsi ON t.id = tsi.task_id LEFT JOIN storage_items si ON tsi.item_id = si.id LEFT JOIN event_task_kits tk ON t.id = tk.task_id LEFT JOIN inventory_kits ik ON tk.kit_id = ik.id WHERE t.event_id = ? ORDER BY FIELD(t.status, 'OFFEN', 'IN_ARBEIT', 'ERLEDIGT'), CASE WHEN t.status = 'OFFEN' AND ta.user_id IS NULL THEN 0 ELSE 1 END, t.updated_at DESC";
 
 		jdbcTemplate.query(sql, (ResultSet rs) -> {
 			int currentTaskId = rs.getInt("id");
@@ -194,6 +200,7 @@ public class EventTaskDAO {
 			task.setStatus(rs.getString("status"));
 			task.setDisplayOrder(rs.getInt("display_order"));
 			task.setRequiredPersons(rs.getInt("required_persons"));
+			task.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
 			task.setAssignedUsers(new ArrayList<>());
 			task.setRequiredItems(new ArrayList<>());
 			task.setRequiredKits(new ArrayList<>());
@@ -213,6 +220,26 @@ public class EventTaskDAO {
 	public boolean updateTaskStatus(int taskId, String status) {
 		String sql = "UPDATE event_tasks SET status = ? WHERE id = ?";
 		return jdbcTemplate.update(sql, status, taskId) > 0;
+	}
+
+	public boolean assignUserToTask(int taskId, int userId) {
+		String sql = "INSERT INTO event_task_assignments (task_id, user_id) VALUES (?, ?)";
+		try {
+			return jdbcTemplate.update(sql, taskId, userId) > 0;
+		} catch (Exception e) {
+			logger.error("Error assigning user {} to task {}", userId, taskId, e);
+			return false;
+		}
+	}
+
+	public boolean unassignUserFromTask(int taskId, int userId) {
+		String sql = "DELETE FROM event_task_assignments WHERE task_id = ? AND user_id = ?";
+		try {
+			return jdbcTemplate.update(sql, taskId, userId) > 0;
+		} catch (Exception e) {
+			logger.error("Error un-assigning user {} from task {}", userId, taskId, e);
+			return false;
+		}
 	}
 
 	public List<EventTask> getOpenTasksForUser(int userId) {

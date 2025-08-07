@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useParams, Link, useRevalidator } from 'react-router-dom';
 import apiClient from '../services/apiClient';
 import useApi from '../hooks/useApi';
 import useWebSocket from '../hooks/useWebSocket';
@@ -10,14 +10,95 @@ import rehypeSanitize from 'rehype-sanitize';
 import { useToast } from '../context/ToastContext';
 import ChecklistTab from '../components/events/ChecklistTab';
 import EventGalleryTab from '../components/events/EventGalleryTab';
+import TaskModal from '../components/events/TaskModal';
+
+const TaskList = ({ title, tasks, isCollapsed, onToggle, event, user, canManageTasks, isParticipant, onOpenModal, onAction }) => {
+	if (tasks.length === 0) {
+		return null; // Don't render the section if there are no tasks
+	}
+
+	const isTaskBlocked = (task) => {
+		if (!task.dependsOn || task.dependsOn.length === 0) return false;
+		return task.dependsOn.some(parent => parent.status !== 'ERLEDIGT');
+	};
+
+	return (
+		<div style={{ marginBottom: '1rem' }}>
+			<h3 onClick={onToggle} style={{ cursor: 'pointer', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isCollapsed ? 0 : '1rem' }}>
+				<span>{title} ({tasks.length})</span>
+				<i className={`fas fa-chevron-down`} style={{ transition: 'transform 0.2s', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}></i>
+			</h3>
+			{!isCollapsed && tasks.map(task => {
+				const blocked = isTaskBlocked(task);
+				const isAssignedToCurrentUser = task.assignedUsers.some(u => u.id === user.id);
+				const canUpdateStatus = canManageTasks || isAssignedToCurrentUser;
+
+				return (
+					<div key={task.id} className="card" style={{ marginBottom: '1rem', opacity: blocked ? 0.6 : 1 }}>
+						<div style={{ display: 'flex', justifyContent: 'space-between' }}>
+							<h4 style={{ margin: 0 }}>{task.description}</h4>
+							<div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+								{canUpdateStatus ? (
+									<select
+										value={task.status}
+										onChange={(e) => onAction(task.id, 'updateStatus', { status: e.target.value })}
+										className="form-group"
+										style={{ marginBottom: 0, padding: '0.2rem' }}
+										disabled={blocked}
+									>
+										<option value="OFFEN">Offen</option>
+										<option value="IN_ARBEIT">In Arbeit</option>
+										<option value="ERLEDIGT">Erledigt</option>
+									</select>
+								) : (
+									<StatusBadge status={task.status} />
+								)}
+								{canManageTasks && <button className="btn btn-small btn-secondary" onClick={() => onOpenModal(task)}><i className="fas fa-edit"></i></button>}
+							</div>
+						</div>
+						{blocked && (
+							<small className="text-danger" style={{ display: 'block', fontWeight: 'bold' }}>
+								Blockiert durch: {task.dependsOn.map(t => t.description).join(', ')}
+							</small>
+						)}
+						<div className="markdown-content">
+							<ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+								{task.details || ''}
+							</ReactMarkdown>
+						</div>
+						<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+							<p><strong>Zugewiesen an:</strong> {task.assignedUsers.map(u => u.username).join(', ') || 'Niemand'}</p>
+							<div>
+								{task.assignedUsers.length === 0 && isParticipant && (
+									<button onClick={() => onAction(task.id, 'claim')} className="btn btn-small btn-success">Übernehmen</button>
+								)}
+								{isAssignedToCurrentUser && (
+									<button onClick={() => onAction(task.id, 'unclaim')} className="btn btn-small btn-danger-outline">Zurückgeben</button>
+								)}
+							</div>
+						</div>
+					</div>
+				);
+			})}
+		</div>
+	);
+};
+
 
 const EventDetailsPage = () => {
 	const { eventId } = useParams();
-	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
+	const { user, isAdmin, lastUpdatedEvent } = useAuthStore(state => ({
+		user: state.user,
+		isAdmin: state.isAdmin,
+		lastUpdatedEvent: state.lastUpdatedEvent
+	}));
 	const apiCall = useCallback(() => apiClient.get(`/public/events/${eventId}`), [eventId]);
-	const { data: event, loading, error } = useApi(apiCall);
+	const { data: event, loading, error, reload: reloadEventDetails } = useApi(apiCall);
+	const { data: allUsers } = useApi(useCallback(() => (isAdmin || user?.id === event?.leaderUserId) ? apiClient.get('/users') : null, [isAdmin, user, event]));
 	const { addToast } = useToast();
 
+	const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+	const [editingTask, setEditingTask] = useState(null);
 	const [chatMessages, setChatMessages] = useState([]);
 	const [chatInput, setChatInput] = useState('');
 	const fileInputRef = useRef(null);
@@ -27,14 +108,28 @@ const EventDetailsPage = () => {
 	const longPressTimer = useRef();
 	const [activeOptionsMessageId, setActiveOptionsMessageId] = useState(null);
 	const [activeTab, setActiveTab] = useState('tasks');
+	const [collapsedTasks, setCollapsedTasks] = useState({});
+
+	const toggleTaskCategory = (category) => {
+		setCollapsedTasks(prev => ({
+			...prev,
+			[category]: !prev[category]
+		}));
+	};
+
+	useEffect(() => {
+		if (lastUpdatedEvent && lastUpdatedEvent.id === parseInt(eventId, 10)) {
+			console.log(`Event ${eventId} updated via notification, reloading details...`);
+			reloadEventDetails();
+		}
+	}, [lastUpdatedEvent, eventId, reloadEventDetails]);
 
 
-	const websocketProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 	const websocketUrl = event && (event.status === 'LAUFEND' || event.status === 'GEPLANT')
-		? `${websocketProtocol}//${window.location.host}/ws/chat/${eventId}`
+		? `/ws/chat/${eventId}`
 		: null;
 
-	const handleChatMessage = (message) => {
+	const handleChatMessage = useCallback((message) => {
 		if (message.type === 'new_message') {
 			setChatMessages(prevMessages => [...prevMessages, message.payload]);
 		} else if (message.type === 'message_soft_deleted' || message.type === 'message_updated') {
@@ -42,9 +137,9 @@ const EventDetailsPage = () => {
 				msg.id === message.payload.id ? message.payload : msg
 			));
 		}
-	};
+	}, []);
 
-	const { readyState, sendMessage } = useWebSocket(websocketUrl, handleChatMessage);
+	const { readyState, sendMessage } = useWebSocket(websocketUrl, handleChatMessage, [event?.status]);
 
 	useEffect(() => {
 		if (event?.chatMessages) {
@@ -57,6 +152,26 @@ const EventDetailsPage = () => {
 		if (chatInput.trim()) {
 			sendMessage({ type: "new_message", payload: { messageText: chatInput } });
 			setChatInput('');
+		}
+	};
+
+	const openTaskModal = (task = null) => {
+		setEditingTask(task);
+		setIsTaskModalOpen(true);
+	};
+
+	const handleTaskAction = async (taskId, action, data = {}) => {
+		try {
+			const payload = { action, ...data };
+			const result = await apiClient.post(`/events/${eventId}/tasks/${taskId}/action`, payload);
+			if (result.success) {
+				addToast('Aktion erfolgreich!', 'success');
+				// The SSE notification will handle the reload via revalidator.
+			} else {
+				throw new Error(result.message);
+			}
+		} catch (err) {
+			addToast(err.message, 'error');
 		}
 	};
 
@@ -147,16 +262,25 @@ const EventDetailsPage = () => {
 		return <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{text}</ReactMarkdown>;
 	};
 
+	const groupedTasks = useMemo(() => {
+		if (!event?.eventTasks) {
+			return { open: [], inProgress: [], done: [] };
+		}
+		return event.eventTasks.reduce((acc, task) => {
+			if (task.status === 'IN_ARBEIT') acc.inProgress.push(task);
+			else if (task.status === 'ERLEDIGT') acc.done.push(task);
+			else acc.open.push(task);
+			return acc;
+		}, { open: [], inProgress: [], done: [] });
+	}, [event?.eventTasks]);
+
 	if (loading) return <div>Lade Event-Details...</div>;
 	if (error) return <div className="error-message">{error}</div>;
 	if (!event) return <div className="error-message">Event nicht gefunden.</div>;
 
-	const canManageDebriefing = isAdmin || user.id === event.leaderUserId;
-
-	const isTaskBlocked = (task) => {
-		if (!task.dependsOn || task.dependsOn.length === 0) return false;
-		return task.dependsOn.some(parent => parent.status !== 'ERLEDIGT');
-	};
+	const canManageTasks = (isAdmin || user.permissions.includes('EVENT_MANAGE_TASKS') || user.id === event.leaderUserId) && (event.status === 'GEPLANT' || event.status === 'LAUFEND');
+	const canManageDebriefing = (isAdmin || user.permissions.includes('EVENT_DEBRIEFING_MANAGE') || user.id === event.leaderUserId) && event.status === 'ABGESCHLOSSEN';
+	const isParticipant = event.userAttendanceStatus === 'ANGEMELDET' || event.userAttendanceStatus === 'ZUGEWIESEN';
 
 	const groupedAttendees = event.assignedAttendees?.reduce((acc, member) => {
 		const role = member.assignedEventRole || 'Unzugewiesen';
@@ -174,7 +298,7 @@ const EventDetailsPage = () => {
 					<h1>{event.name}</h1>
 					<StatusBadge status={event.status} />
 				</div>
-				{event.status === 'ABGESCHLOSSEN' && canManageDebriefing && (
+				{canManageDebriefing && (
 					<Link to={`/admin/veranstaltungen/${event.id}/debriefing`} className="btn btn-secondary">
 						<i className="fas fa-clipboard-check"></i> Debriefing ansehen/bearbeiten
 					</Link>
@@ -233,36 +357,28 @@ const EventDetailsPage = () => {
 				<div className="card" style={{ gridColumn: '1 / -1' }}>
 					<div className="modal-tabs">
 						<button className={`modal-tab-button ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>Aufgaben</button>
-						<button className={`modal-tab-button ${activeTab === 'checklist' ? 'active' : ''}`} onClick={() => setActiveTab('checklist')}>Inventar-Checkliste</button>
+						<button className={`modal-tab-button ${activeTab === 'checklist' ? 'active' : ''}`} onClick={() => setActiveTab('checklist')}>
+							Inventar-Checkliste
+							{canManageTasks && <Link to="/admin/veranstaltungen/checklist-templates" className="btn btn-small btn-secondary" style={{ marginLeft: '1rem' }} onClick={e => e.stopPropagation()} title="Vorlagen verwalten"><i className="fas fa-edit"></i></Link>}
+						</button>
 						<button className={`modal-tab-button ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>Event-Chat</button>
 						{event.status === 'ABGESCHLOSSEN' && <button className={`modal-tab-button ${activeTab === 'gallery' ? 'active' : ''}`} onClick={() => setActiveTab('gallery')}>Galerie</button>}
 					</div>
 
 					<div className={`modal-tab-content ${activeTab === 'tasks' ? 'active' : ''}`}>
-						{event.eventTasks?.length > 0 ? (
-							event.eventTasks.map(task => {
-								const blocked = isTaskBlocked(task);
-								return (
-									<div key={task.id} className="card" style={{ marginBottom: '1rem', opacity: blocked ? 0.6 : 1, pointerEvents: blocked ? 'none' : 'auto' }}>
-										<div style={{ display: 'flex', justifyContent: 'space-between' }}>
-											<h4 style={{ margin: 0 }}>{task.description}</h4>
-											<StatusBadge status={task.status} />
-										</div>
-										{blocked && (
-											<small className="text-danger" style={{ display: 'block', fontWeight: 'bold' }}>
-												Blockiert durch: {task.dependsOn.map(t => t.description).join(', ')}
-											</small>
-										)}
-										<div className="markdown-content">
-											<ReactMarkdown rehypePlugins={[rehypeSanitize]}>
-												{task.details || ''}
-											</ReactMarkdown>
-										</div>
-										<p><strong>Zugewiesen an:</strong> {task.assignedUsers.map(u => u.username).join(', ') || 'Niemand'}</p>
-									</div>
-								);
-							})
-						) : (
+						{canManageTasks && (
+							<div className="table-controls">
+								<button className="btn btn-success" onClick={() => openTaskModal()}>
+									<i className="fas fa-plus"></i> Neue Aufgabe
+								</button>
+							</div>
+						)}
+
+						<TaskList title="Offen" tasks={groupedTasks.open} isCollapsed={collapsedTasks.open} onToggle={() => toggleTaskCategory('open')} event={event} user={user} canManageTasks={canManageTasks} isParticipant={isParticipant} onOpenModal={openTaskModal} onAction={handleTaskAction} />
+						<TaskList title="In Arbeit" tasks={groupedTasks.inProgress} isCollapsed={collapsedTasks.inProgress} onToggle={() => toggleTaskCategory('inProgress')} event={event} user={user} canManageTasks={canManageTasks} isParticipant={isParticipant} onOpenModal={openTaskModal} onAction={handleTaskAction} />
+						<TaskList title="Erledigt" tasks={groupedTasks.done} isCollapsed={collapsedTasks.done} onToggle={() => toggleTaskCategory('done')} event={event} user={user} canManageTasks={canManageTasks} isParticipant={isParticipant} onOpenModal={openTaskModal} onAction={handleTaskAction} />
+
+						{event.eventTasks?.length === 0 && (
 							<p>Für dieses Event wurden noch keine Aufgaben erstellt.</p>
 						)}
 					</div>
@@ -359,6 +475,16 @@ const EventDetailsPage = () => {
 
 				</div>
 			</div>
+			{isTaskModalOpen && (
+				<TaskModal
+					isOpen={isTaskModalOpen}
+					onClose={() => setIsTaskModalOpen(false)}
+					onSuccess={() => { setIsTaskModalOpen(false); reloadEventDetails(); }}
+					event={event}
+					task={editingTask}
+					allUsers={allUsers}
+				/>
+			)}
 		</div>
 	);
 };

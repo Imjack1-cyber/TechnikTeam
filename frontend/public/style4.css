@@ -263,6 +263,37 @@
     border: 2px solid var(--surface-color);
 }
 
+.help-fab {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+	text-decoration: none;
+	/* If cart is also present, move help button over */
+    body:has(.cart-fab) & {
+        right: calc(2rem + 60px + 1rem);
+    }
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: var(--info-color);
+    color: #000;
+    border: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    z-index: 999;
+    transition: all 0.2s;
+}
+
+.help-fab:hover {
+    transform: scale(1.1);
+    box-shadow: var(--shadow-lg);
+}
+
+
 .nav-order-list {
     display: flex;
     flex-direction: column;

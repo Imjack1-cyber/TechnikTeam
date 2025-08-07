@@ -17,19 +17,17 @@ const ChecklistTab = ({ event, user }) => {
 		}
 	}, [initialItems]);
 
-	const handleStatusUpdate = (updatedItem) => {
-		setChecklistItems(currentItems =>
-			currentItems.map(item => item.id === updatedItem.id ? updatedItem : item)
-		);
-	};
+	const handleWebSocketMessage = useCallback((message) => {
+		if (message.type === 'checklist_update') {
+			setChecklistItems(currentItems =>
+				currentItems.map(item => item.id === message.payload.id ? message.payload : item)
+			);
+		}
+	}, []);
 
 	// Setup WebSocket for real-time updates
-	const websocketUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/checklist/${event.id}`;
-	useWebSocket(websocketUrl, (message) => {
-		if (message.type === 'checklist_update') {
-			handleStatusUpdate(message.payload);
-		}
-	});
+	const websocketUrl = `/ws/checklist/${event.id}`;
+	useWebSocket(websocketUrl, handleWebSocketMessage);
 
 
 	const handleStatusChange = async (itemId, newStatus) => {

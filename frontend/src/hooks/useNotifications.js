@@ -5,7 +5,10 @@ import { useAuthStore } from '../store/authStore';
 export const useNotifications = () => {
 	const { addToast } = useToast();
 	const [warningNotification, setWarningNotification] = useState(null);
-	const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+	const { isAuthenticated, triggerEventUpdate } = useAuthStore(state => ({
+		isAuthenticated: state.isAuthenticated,
+		triggerEventUpdate: state.triggerEventUpdate,
+	}));
 
 	const dismissWarning = useCallback(() => {
 		setWarningNotification(null);
@@ -35,6 +38,14 @@ export const useNotifications = () => {
 			}
 		});
 
+		events.addEventListener("ui_update", (event) => {
+			const data = JSON.parse(event.data);
+			console.log("Received UI update event:", data);
+			if (data.updateType === 'EVENT_UPDATED') {
+				triggerEventUpdate(data.data.eventId);
+			}
+		});
+
 		events.onerror = (err) => {
 			console.error("EventSource failed:", err);
 			events.close();
@@ -43,7 +54,7 @@ export const useNotifications = () => {
 		return () => {
 			events.close();
 		};
-	}, [isAuthenticated, addToast]);
+	}, [isAuthenticated, addToast, triggerEventUpdate]);
 
 	return { warningNotification, dismissWarning };
 };
