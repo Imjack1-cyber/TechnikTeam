@@ -3,7 +3,6 @@ package de.technikteam.dao;
 import de.technikteam.model.File;
 import de.technikteam.model.FileCategory;
 import de.technikteam.model.User;
-import de.technikteam.util.DaoUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,22 +38,14 @@ public class FileDAO {
 		file.setFilepath(rs.getString("filepath"));
 		file.setUploadedAt(rs.getTimestamp("uploaded_at").toLocalDateTime());
 		file.setCategoryId(rs.getObject("category_id", Integer.class));
-		if (DaoUtils.hasColumn(rs, "needs_warning")) {
-			file.setNeedsWarning(rs.getBoolean("needs_warning"));
-		}
-		if (DaoUtils.hasColumn(rs, "required_role")) {
-			file.setRequiredRole(rs.getString("required_role"));
-		}
-		if (DaoUtils.hasColumn(rs, "category_name")) {
-			file.setCategoryName(rs.getString("category_name"));
-		}
+		file.setNeedsWarning(rs.getBoolean("needs_warning"));
+		file.setRequiredRole(rs.getString("required_role"));
 
-		if (file.getCategoryName() == null) {
-			file.setCategoryName("Ohne Kategorie");
-		}
+		String categoryName = rs.getString("fc_category_name");
+		file.setCategoryName(categoryName != null ? categoryName : "Ohne Kategorie");
 
-		logger.trace("Mapped file from ResultSet: ID={}, Name={}, CategoryID={}, CategoryName={}", file.getId(),
-				file.getFilename(), file.getCategoryId(), file.getCategoryName());
+		logger.trace("Mapped file: ID={}, Name={}, CategoryID={}, CategoryName={}", file.getId(), file.getFilename(),
+				file.getCategoryId(), file.getCategoryName());
 		return file;
 	};
 
@@ -62,6 +53,7 @@ public class FileDAO {
 		logger.debug("Grouping all files by category for user: {}",
 				user != null ? user.getUsername() : "SYSTEM (Admin Context)");
 		List<File> files = (user != null && user.hasAdminAccess()) ? getAllFilesForAdmin() : getAllFiles(user);
+
 		Map<String, List<File>> groupedFiles = files.stream()
 				.filter(file -> file.getFilepath() == null
 						|| (!file.getFilepath().startsWith("chat/") && !file.getFilepath().startsWith("eventchat/")))
@@ -75,16 +67,16 @@ public class FileDAO {
 	}
 
 	public List<File> getAllFiles(User user) {
-		StringBuilder sql = new StringBuilder(
-				"SELECT f.*, fc.name as category_name FROM files f LEFT JOIN file_categories fc ON f.category_id = fc.id ");
+		StringBuilder sql = new StringBuilder("SELECT f.id, f.filename, f.filepath, f.uploaded_at, f.category_id, "
+				+ "f.needs_warning, f.required_role, " + "fc.name AS fc_category_name " + "FROM files f "
+				+ "LEFT JOIN file_categories fc ON f.category_id = fc.id ");
 
 		if (user != null && !user.hasAdminAccess()) {
 			sql.append("WHERE f.required_role = 'NUTZER' ");
 		}
 
 		sql.append("ORDER BY CASE WHEN fc.name IS NULL THEN 1 ELSE 0 END, fc.name, f.filename");
-		logger.debug("Executing getAllFiles SQL for user '{}': {}", user != null ? user.getUsername() : "SYSTEM",
-				sql.toString());
+		logger.debug("Executing getAllFiles SQL for user '{}': {}", user != null ? user.getUsername() : "SYSTEM", sql);
 
 		try {
 			List<File> files = jdbcTemplate.query(sql.toString(), fileRowMapper);
@@ -97,7 +89,10 @@ public class FileDAO {
 	}
 
 	public List<File> getAllFilesForAdmin() {
-		String sql = "SELECT f.*, fc.name as category_name FROM files f LEFT JOIN file_categories fc ON f.category_id = fc.id ORDER BY CASE WHEN fc.name IS NULL THEN 1 ELSE 0 END, fc.name, f.filename";
+		String sql = "SELECT f.id, f.filename, f.filepath, f.uploaded_at, f.category_id, "
+				+ "f.needs_warning, f.required_role, " + "fc.name AS fc_category_name " + "FROM files f "
+				+ "LEFT JOIN file_categories fc ON f.category_id = fc.id "
+				+ "ORDER BY CASE WHEN fc.name IS NULL THEN 1 ELSE 0 END, fc.name, f.filename";
 		logger.debug("Executing getAllFilesForAdmin SQL.");
 		try {
 			List<File> files = jdbcTemplate.query(sql, fileRowMapper);
@@ -170,7 +165,9 @@ public class FileDAO {
 	}
 
 	public File getFileById(int fileId) {
-		String sql = "SELECT f.*, fc.name as category_name FROM files f LEFT JOIN file_categories fc ON f.category_id = fc.id WHERE f.id = ?";
+		String sql = "SELECT f.id, f.filename, f.filepath, f.uploaded_at, f.category_id, "
+				+ "f.needs_warning, f.required_role, " + "fc.name AS fc_category_name " + "FROM files f "
+				+ "LEFT JOIN file_categories fc ON f.category_id = fc.id WHERE f.id = ?";
 		try {
 			return jdbcTemplate.queryForObject(sql, fileRowMapper, fileId);
 		} catch (EmptyResultDataAccessException e) {
@@ -204,7 +201,6 @@ public class FileDAO {
 	public boolean deleteCategory(int categoryId) {
 		String sql = "DELETE FROM file_categories WHERE id = ?";
 		try {
-			// First, un-assign files from this category
 			jdbcTemplate.update("UPDATE files SET category_id = NULL WHERE category_id = ?", categoryId);
 			return jdbcTemplate.update(sql, categoryId) > 0;
 		} catch (Exception e) {
