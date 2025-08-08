@@ -46,19 +46,22 @@ public class FileDAO {
 			file.setRequiredRole(rs.getString("required_role"));
 		}
 		if (DaoUtils.hasColumn(rs, "category_name")) {
-			file.setCategoryName(
-					rs.getString("category_name") == null ? "Ohne Kategorie" : rs.getString("category_name"));
-		} else {
+			file.setCategoryName(rs.getString("category_name"));
+		}
+
+		if (file.getCategoryName() == null) {
 			file.setCategoryName("Ohne Kategorie");
 		}
+
 		logger.trace("Mapped file from ResultSet: ID={}, Name={}, CategoryID={}, CategoryName={}", file.getId(),
 				file.getFilename(), file.getCategoryId(), file.getCategoryName());
 		return file;
 	};
 
 	public Map<String, List<File>> getAllFilesGroupedByCategory(User user) {
-		logger.debug("Grouping all files by category for user: {}", user != null ? user.getUsername() : "SYSTEM");
-		List<File> files = getAllFiles(user);
+		logger.debug("Grouping all files by category for user: {}",
+				user != null ? user.getUsername() : "SYSTEM (Admin Context)");
+		List<File> files = (user != null && user.hasAdminAccess()) ? getAllFilesForAdmin() : getAllFiles(user);
 		Map<String, List<File>> groupedFiles = files.stream()
 				.filter(file -> file.getFilepath() == null
 						|| (!file.getFilepath().startsWith("chat/") && !file.getFilepath().startsWith("eventchat/")))
@@ -89,6 +92,19 @@ public class FileDAO {
 			return files;
 		} catch (Exception e) {
 			logger.error("Error while fetching files.", e);
+			return List.of();
+		}
+	}
+
+	public List<File> getAllFilesForAdmin() {
+		String sql = "SELECT f.*, fc.name as category_name FROM files f LEFT JOIN file_categories fc ON f.category_id = fc.id ORDER BY CASE WHEN fc.name IS NULL THEN 1 ELSE 0 END, fc.name, f.filename";
+		logger.debug("Executing getAllFilesForAdmin SQL.");
+		try {
+			List<File> files = jdbcTemplate.query(sql, fileRowMapper);
+			logger.debug("Fetched {} total file records for admin view.", files.size());
+			return files;
+		} catch (Exception e) {
+			logger.error("Error while fetching all files for admin.", e);
 			return List.of();
 		}
 	}

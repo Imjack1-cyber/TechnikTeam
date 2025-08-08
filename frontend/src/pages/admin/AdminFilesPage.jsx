@@ -55,7 +55,6 @@ const FileUploadModal = ({ isOpen, onClose, onSuccess, categories }) => {
 				<div className="form-group">
 					<label htmlFor="categoryId-upload">Kategorie</label>
 					<select name="categoryId" id="categoryId-upload">
-						<option value="">(Ohne Kategorie)</option>
 						{categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
 					</select>
 				</div>
@@ -79,10 +78,13 @@ const AdminFilesPage = () => {
 	const filesApiCall = useCallback(() => apiClient.get('/admin/files'), []);
 	const categoriesApiCall = useCallback(() => apiClient.get('/admin/files/categories'), []);
 
-	const { data: filesGrouped, loading: filesLoading, error: filesError, reload: reloadFiles } = useApi(filesApiCall);
+	const { data: fileApiResponse, loading: filesLoading, error: filesError, reload: reloadFiles } = useApi(filesApiCall);
 	const { data: categories, loading: catsLoading, error: catsError, reload: reloadCats } = useApi(categoriesApiCall);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const { addToast } = useToast();
+
+	const filesGrouped = fileApiResponse?.grouped;
+	const rawFiles = fileApiResponse?.raw;
 
 	console.log("[AdminFilesPage] Render. Grouped data from API:", filesGrouped);
 
@@ -169,6 +171,14 @@ const AdminFilesPage = () => {
 					<i className="fas fa-folder-plus"></i> Neue Kategorie
 				</button>
 			</div>
+
+			<details style={{ marginBottom: '1rem' }}>
+				<summary>Rohdaten-Diagnose</summary>
+				<pre style={{ backgroundColor: 'var(--bg-color)', padding: '1rem', borderRadius: 'var(--border-radius)', maxHeight: '300px', overflowY: 'auto' }}>
+					{JSON.stringify(rawFiles, null, 2)}
+				</pre>
+			</details>
+
 			{catsError && <p className="error-message">{catsError}</p>}
 			{renderContent()}
 

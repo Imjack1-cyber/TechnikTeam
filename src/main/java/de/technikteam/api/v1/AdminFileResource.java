@@ -18,8 +18,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/admin/files")
@@ -103,7 +105,13 @@ public class AdminFileResource {
 	public ResponseEntity<ApiResponse> getAllFiles(@AuthenticationPrincipal SecurityUser securityUser) {
 		Map<String, List<de.technikteam.model.File>> groupedFiles = fileDAO
 				.getAllFilesGroupedByCategory(securityUser.getUser());
-		return ResponseEntity.ok(new ApiResponse(true, "Dateien erfolgreich abgerufen.", groupedFiles));
+		List<de.technikteam.model.File> rawFiles = fileDAO.getAllFilesForAdmin();
+
+		Map<String, Object> responseData = new HashMap<>();
+		responseData.put("grouped", groupedFiles);
+		responseData.put("raw", rawFiles);
+
+		return ResponseEntity.ok(new ApiResponse(true, "Dateien erfolgreich abgerufen.", responseData));
 	}
 
 	@GetMapping("/categories")
