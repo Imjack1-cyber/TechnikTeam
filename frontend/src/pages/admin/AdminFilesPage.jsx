@@ -172,13 +172,6 @@ const AdminFilesPage = () => {
 				</button>
 			</div>
 
-			<details style={{ marginBottom: '1rem' }}>
-				<summary>Rohdaten-Diagnose</summary>
-				<pre style={{ backgroundColor: 'var(--bg-color)', padding: '1rem', borderRadius: 'var(--border-radius)', maxHeight: '300px', overflowY: 'auto' }}>
-					{JSON.stringify(rawFiles, null, 2)}
-				</pre>
-			</details>
-
 			{catsError && <p className="error-message">{catsError}</p>}
 			{renderContent()}
 
