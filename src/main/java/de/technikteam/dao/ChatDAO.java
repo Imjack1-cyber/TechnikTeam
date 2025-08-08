@@ -289,4 +289,15 @@ public class ChatDAO {
 			ps.setInt(2, userId);
 		});
 	}
+
+	@Transactional
+	public boolean leaveGroup(int conversationId, int userId) {
+		return jdbcTemplate.update("DELETE FROM chat_participants WHERE conversation_id = ? AND user_id = ?",
+				conversationId, userId) > 0;
+	}
+
+	@Transactional
+	public boolean deleteGroup(int conversationId) {
+		return jdbcTemplate.update("DELETE FROM chat_conversations WHERE id = ?", conversationId) > 0;
+	}
 }

@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -91,6 +92,33 @@ public class InventoryKitDAO {
 		}
 	}
 
+	public InventoryKit getKitWithItemsById(int kitId) {
+		Map<Integer, InventoryKit> kitMap = new LinkedHashMap<>();
+		String sql = "SELECT k.id, k.name, k.description, k.location, ki.item_id, ki.quantity, si.name as item_name FROM inventory_kits k LEFT JOIN inventory_kit_items ki ON k.id = ki.kit_id LEFT JOIN storage_items si ON ki.item_id = si.id WHERE k.id = ? ORDER BY si.name";
+
+		jdbcTemplate.query(sql, (ResultSet rs) -> {
+			int currentKitId = rs.getInt("id");
+			InventoryKit kit = kitMap.computeIfAbsent(currentKitId, id -> {
+				try {
+					return kitRowMapper.mapRow(rs, 0);
+				} catch (SQLException e) {
+					// This is a safe way to handle checked exceptions within a lambda
+					throw new RuntimeException("Failed to map ResultSet to InventoryKit", e);
+				}
+			});
+			if (rs.getInt("item_id") > 0) {
+				InventoryKitItem item = new InventoryKitItem();
+				item.setKitId(currentKitId);
+				item.setItemId(rs.getInt("item_id"));
+				item.setQuantity(rs.getInt("quantity"));
+				item.setItemName(rs.getString("item_name"));
+				kit.getItems().add(item);
+			}
+		}, kitId);
+
+		return kitMap.get(kitId);
+	}
+
 	public List<InventoryKit> getAllKitsWithItems() {
 		Map<Integer, InventoryKit> kitMap = new LinkedHashMap<>();
 		String sql = "SELECT k.id, k.name, k.description, k.location, ki.item_id, ki.quantity, si.name as item_name FROM inventory_kits k LEFT JOIN inventory_kit_items ki ON k.id = ki.kit_id LEFT JOIN storage_items si ON ki.item_id = si.id ORDER BY k.name, si.name";
@@ -115,5 +143,21 @@ public class InventoryKitDAO {
 			}
 		});
 		return new ArrayList<>(kitMap.values());
+	}
+
+	@Transactional
+	public void updateKitItems(int kitId, List<InventoryKitItem> items) {
+		// First, delete all existing items for this kit
+		jdbcTemplate.update("DELETE FROM inventory_kit_items WHERE kit_id = ?", kitId);
+
+		// Then, insert the new items
+		if (items != null && !items.isEmpty()) {
+			String sql = "INSERT INTO inventory_kit_items (kit_id, item_id, quantity) VALUES (?, ?, ?)";
+			jdbcTemplate.batchUpdate(sql, items, 100, (ps, item) -> {
+				ps.setInt(1, kitId);
+				ps.setInt(2, item.getItemId());
+				ps.setInt(3, item.getQuantity());
+			});
+		}
 	}
 }

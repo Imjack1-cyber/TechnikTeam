@@ -46,10 +46,12 @@ export const useAdminCourses = () => {
 
 // Main hook remains for components that need everything
 const useAdminData = () => {
+	// NOTE: storageItems is initialized to `null` (not `[]`) so consumers can
+	// distinguish "not loaded yet" (null) from "loaded but empty" ([]).
 	const [data, setData] = useState({
 		roles: [],
 		groupedPermissions: {},
-		storageItems: [],
+		storageItems: null, // <-- null means "not loaded yet"
 		courses: [],
 		users: [],
 		loading: true,
@@ -77,7 +79,7 @@ const useAdminData = () => {
 					setData({
 						roles: usersFormData.data.roles,
 						groupedPermissions: usersFormData.data.groupedPermissions,
-						storageItems: storageItemsData.data,
+						storageItems: storageItemsData.data || [], // set to [] if API returned null/undefined
 						courses: coursesData.data,
 						users: usersData.data,
 						loading: false,
@@ -89,6 +91,8 @@ const useAdminData = () => {
 			} catch (err) {
 				setData(prev => ({
 					...prev,
+					// if storage failed, set it to [] so downstream components don't stay in null forever
+					storageItems: prev.storageItems === null ? [] : prev.storageItems,
 					loading: false,
 					error: err.message || 'Fehler beim Laden der Admin-Formulardaten.',
 				}));

@@ -8,7 +8,7 @@ import Modal from '../../components/ui/Modal';
 import QRCode from 'qrcode.react';
 import { useToast } from '../../context/ToastContext';
 
-const KitAccordion = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems }) => {
+const KitAccordion = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems, storageReady }) => {
 	const [isOpen, setIsOpen] = useState(false);
 	const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 	const packKitUrl = `${window.location.origin}/pack-kit/${kit.id}`;
@@ -29,11 +29,29 @@ const KitAccordion = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems })
 					<button onClick={() => onDelete(kit)} className="btn btn-small btn-danger">Löschen</button>
 				</div>
 			</div>
+
 			{isOpen && (
 				<div className="kit-content" style={{ paddingLeft: '2rem', marginTop: '1rem' }}>
-					<KitItemsForm kit={kit} allStorageItems={allStorageItems} onUpdateSuccess={onItemsUpdate} />
+					{/* Only mount KitItemsForm when we know the storage items have been loaded.
+					   storageReady === true means storageItems !== null and therefore either a real array
+					   (possibly empty) or we've explicitly set it after a failed fetch. */}
+					{!storageReady ? (
+						<p>Lade Artikel...</p>
+					) : (
+						<KitItemsForm
+							kit={kit}
+							/* pass the raw storageItems value (may be null while loading).
+							   Previously we passed `storageItems || []` which converted `null` => `[]`
+							   and caused the form to believe loading was finished with an empty list.
+							   KitItemsForm expects `null` to indicate "still loading" so we must pass
+							   the actual value here. */
+							allStorageItems={allStorageItems}
+							onUpdateSuccess={onItemsUpdate}
+						/>
+					)}
 				</div>
 			)}
+
 			<Modal isOpen={isQrModalOpen} onClose={() => setIsQrModalOpen(false)} title={`QR-Code für: ${kit.name}`}>
 				<div style={{ textAlign: 'center', padding: '1rem' }}>
 					<QRCode value={packKitUrl} size={256} />
@@ -47,8 +65,8 @@ const KitAccordion = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems })
 
 const AdminKitsPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/kits'), []);
-	const { data: kits, loading, error, reload } = useApi(apiCall);
-	const { storageItems } = useAdminData();
+	const { data: kits, loading: kitsLoading, error: kitsError, reload } = useApi(apiCall);
+	const { storageItems, loading: storageItemsLoading, error: storageItemsError } = useAdminData();
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingKit, setEditingKit] = useState(null);
 	const { addToast } = useToast();
@@ -68,6 +86,11 @@ const AdminKitsPage = () => {
 		reload();
 	};
 
+	const handleItemsUpdate = () => {
+		addToast('Kit-Inhalt erfolgreich gespeichert.', 'success');
+		reload();
+	};
+
 	const handleDelete = async (kit) => {
 		if (window.confirm(`Kit '${kit.name}' wirklich löschen?`)) {
 			try {
@@ -84,6 +107,13 @@ const AdminKitsPage = () => {
 		}
 	};
 
+	const loading = kitsLoading || storageItemsLoading;
+	const error = kitsError || storageItemsError;
+
+	// storageReady is true once storageItems is no longer `null` (meaning we finished the fetch,
+	// even if result is an empty array).
+	const storageReady = storageItems !== null;
+
 	return (
 		<div>
 			<h1><i className="fas fa-box-open"></i> Kit-Verwaltung</h1>
@@ -96,16 +126,20 @@ const AdminKitsPage = () => {
 			</div>
 
 			<div className="card">
-				{loading && <p>Lade Kits...</p>}
+				{loading && <p>Lade Kits und Artikel...</p>}
 				{error && <p className="error-message">{error}</p>}
-				{kits?.map(kit => (
+				{!loading && !error && kits?.map(kit => (
 					<KitAccordion
 						key={kit.id}
 						kit={kit}
 						onEdit={openModal}
 						onDelete={handleDelete}
-						onItemsUpdate={reload}
+						onItemsUpdate={handleItemsUpdate}
+						/* Pass the actual storageItems value (may be null while loading) so the child
+						   can distinguish loading vs loaded-empty. This prevents the select from being
+						   incorrectly disabled while storage is still loading. */
 						allStorageItems={storageItems}
+						storageReady={storageReady}
 					/>
 				))}
 			</div>

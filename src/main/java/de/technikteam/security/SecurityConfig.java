@@ -3,6 +3,9 @@ package de.technikteam.security;
 import de.technikteam.dao.UserDAO;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -16,6 +19,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @Configuration
 @EnableWebSecurity
@@ -31,37 +35,24 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-		CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
-		// Setting this to null is important for SPAs that read the token from the
-		// cookie
-		requestHandler.setCsrfRequestAttributeName(null);
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                    "/api/v1/auth/**",
+                    "/api/v1/public/**", // alle public-Endpoints
+                    "/api/v1/admin/notifications/sse", // SSE vorerst offen
+                    "/ws/**", // WS-Verbindungen offen
+                    "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**"
+                ).permitAll()
+                .anyRequest().authenticated()
+            )
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-		http.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-				.csrfTokenRequestHandler(requestHandler)
-				// Exempt login, WebSocket handshake, and file uploads/deletes from CSRF
-				.ignoringRequestMatchers("/api/v1/auth/login", "/ws/**", "/api/v1/public/chat/upload",
-						"/api/v1/admin/files", "/api/v1/admin/files/**"))
-				.authorizeHttpRequests(auth -> auth.requestMatchers(
-						// Public Authentication endpoints
-						"/api/v1/auth/login",
-						// Websocket handshake requests must be permitted here
-						"/ws/**",
-						// Publicly accessible assets and docs
-						"/api/v1/public/calendar.ics", "/api/v1/public/files/images/**", "/swagger-ui.html",
-						"/swagger-ui/**", "/v3/api-docs/**").permitAll()
-						// All other API requests require authentication
-						.anyRequest().authenticated())
-				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-				.headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin())
-						.httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000))
-						.contentSecurityPolicy(csp -> csp.policyDirectives(
-								"default-src 'self'; script-src 'self'; style-src 'self' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self';")))
-				.httpBasic(AbstractHttpConfigurer::disable).formLogin(AbstractHttpConfigurer::disable);
-
-		return http.build();
-	}
+        return http.build();
+    }
 
 	@Bean
 	public UserDetailsService userDetailsService() {
@@ -73,6 +64,11 @@ public class SecurityConfig {
 			return new SecurityUser(user);
 		};
 	}
+	
+	@Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
 
 	@Bean
 	public PasswordEncoder passwordEncoder() {

@@ -6,6 +6,7 @@ import './ConversationList.css';
 import Modal from '../ui/Modal';
 import GroupChatModal from './GroupChatModal';
 import { useToast } from '../../context/ToastContext';
+import { useAuthStore } from '../../store/authStore';
 
 const UserSearchModal = ({ isOpen, onClose, onSelectUser }) => {
 	const { data: users, loading } = useApi(useCallback(() => apiClient.get('/users'), []));
@@ -26,6 +27,7 @@ const UserSearchModal = ({ isOpen, onClose, onSelectUser }) => {
 
 
 const ConversationList = ({ selectedConversationId }) => {
+	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
 	const apiCall = useCallback(() => apiClient.get('/public/chat/conversations'), []);
 	const { data: conversations, loading, error, reload } = useApi(apiCall);
 	const [isUserSearchModalOpen, setIsUserSearchModalOpen] = useState(false);
@@ -63,6 +65,27 @@ const ConversationList = ({ selectedConversationId }) => {
 		}
 	};
 
+	const handleDeleteGroup = async (e, conv) => {
+		e.preventDefault();
+		e.stopPropagation();
+		if (window.confirm(`Möchten Sie die Gruppe "${conv.name}" wirklich löschen? Dies kann nicht rückgängig gemacht werden.`)) {
+			try {
+				const result = await apiClient.delete(`/public/chat/conversations/${conv.id}`);
+				if (result.success) {
+					addToast('Gruppe wurde gelöscht.', 'success');
+					if (selectedConversationId === conv.id.toString()) {
+						navigate('/chat');
+					}
+					reload();
+				} else {
+					throw new Error(result.message);
+				}
+			} catch (err) {
+				addToast(err.message, 'error');
+			}
+		}
+	};
+
 	return (
 		<div className="conversation-list-container">
 			<div className="conversation-list-header">
@@ -94,6 +117,11 @@ const ConversationList = ({ selectedConversationId }) => {
 							<span className="conversation-username">{conv.groupChat ? conv.name : conv.otherParticipantUsername}</span>
 							<span className="conversation-snippet">{conv.lastMessage}</span>
 						</div>
+						{conv.groupChat && (conv.creatorId === user.id || isAdmin) && (
+							<button onClick={(e) => handleDeleteGroup(e, conv)} className="btn btn-small btn-danger-outline" title="Gruppe löschen">
+								<i className="fas fa-trash"></i>
+							</button>
+						)}
 					</Link>
 				))}
 			</div>

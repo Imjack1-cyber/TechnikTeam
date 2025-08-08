@@ -12,6 +12,7 @@ import de.technikteam.model.User;
 import org.owasp.html.PolicyFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +49,12 @@ public class EventDebriefingService {
 		if (event == null) {
 			throw new IllegalArgumentException("Event not found.");
 		}
+
+		if (!author.hasAdminAccess() && author.getId() != event.getLeaderUserId()
+				&& !author.getPermissions().contains(Permissions.EVENT_DEBRIEFING_MANAGE)) {
+			throw new AccessDeniedException("Sie haben keine Berechtigung, dieses Debriefing zu bearbeiten.");
+		}
+
 		if (!"ABGESCHLOSSEN".equals(event.getStatus())) {
 			throw new IllegalStateException("Debriefings can only be submitted for completed events.");
 		}

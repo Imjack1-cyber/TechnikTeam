@@ -7,6 +7,7 @@ import MinimalLayout from '../components/layout/MinimalLayout';
 import ErrorLayout from '../components/layout/ErrorLayout';
 import ProtectedRoute from './ProtectedRoute';
 import AdminRoute from './AdminRoute';
+import { ToastProvider } from '../context/ToastContext';
 
 // Eagerly load the LoginPage, Error Pages, and the new ChatPage
 import LoginPage from '../pages/LoginPage';
@@ -181,7 +182,9 @@ const router = createBrowserRouter([
 		path: '/pack-kit/:kitId',
 		element: (
 			<ProtectedRoute>
-				<MinimalLayout />
+				<ToastProvider>
+					<MinimalLayout />
+				</ToastProvider>
 			</ProtectedRoute>
 		),
 		children: [
@@ -195,7 +198,9 @@ const router = createBrowserRouter([
 		path: '/lager/qr-aktion/:itemId',
 		element: (
 			<ProtectedRoute>
-				<MinimalLayout />
+				<ToastProvider>
+					<MinimalLayout />
+				</ToastProvider>
 			</ProtectedRoute>
 		),
 		children: [

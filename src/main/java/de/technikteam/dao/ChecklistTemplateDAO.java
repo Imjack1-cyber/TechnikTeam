@@ -12,6 +12,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.*;
 
 @Repository
@@ -36,11 +37,19 @@ public class ChecklistTemplateDAO {
 		// Sync items
 		jdbcTemplate.update("DELETE FROM preflight_checklist_items WHERE template_id = ?", template.getId());
 		if (template.getItems() != null && !template.getItems().isEmpty()) {
-			String itemSql = "INSERT INTO preflight_checklist_items (template_id, item_text, display_order) VALUES (?, ?, ?)";
+			String itemSql = "INSERT INTO preflight_checklist_items (template_id, item_text, storage_item_id, quantity, display_order) VALUES (?, ?, ?, ?, ?)";
 			jdbcTemplate.batchUpdate(itemSql, template.getItems(), 100, (ps, item) -> {
 				ps.setInt(1, template.getId());
-				ps.setString(2, item.getItemText());
-				ps.setInt(3, template.getItems().indexOf(item));
+				if (item.getStorageItemId() != null && item.getStorageItemId() > 0) {
+					ps.setNull(2, Types.VARCHAR);
+					ps.setInt(3, item.getStorageItemId());
+					ps.setObject(4, item.getQuantity(), Types.INTEGER);
+				} else {
+					ps.setString(2, item.getItemText());
+					ps.setNull(3, Types.INTEGER);
+					ps.setNull(4, Types.INTEGER);
+				}
+				ps.setInt(5, template.getItems().indexOf(item));
 			});
 		}
 		return template;
@@ -64,9 +73,10 @@ public class ChecklistTemplateDAO {
 	}
 
 	public List<ChecklistTemplate> findAll() {
-		String sql = "SELECT t.id as template_id, t.name, t.description, i.id as item_id, i.item_text, i.display_order "
+		String sql = "SELECT t.id as template_id, t.name, t.description, i.id as item_id, i.item_text, i.display_order, i.storage_item_id, i.quantity, si.name as storage_item_name "
 				+ "FROM preflight_checklist_templates t "
-				+ "LEFT JOIN preflight_checklist_items i ON t.id = i.template_id " + "ORDER BY t.name, i.display_order";
+				+ "LEFT JOIN preflight_checklist_items i ON t.id = i.template_id "
+				+ "LEFT JOIN storage_items si ON i.storage_item_id = si.id " + "ORDER BY t.name, i.display_order";
 
 		Map<Integer, ChecklistTemplate> templateMap = new LinkedHashMap<>();
 		jdbcTemplate.query(sql, (ResultSet rs) -> {
@@ -89,6 +99,9 @@ public class ChecklistTemplateDAO {
 				item.setId(rs.getInt("item_id"));
 				item.setTemplateId(templateId);
 				item.setItemText(rs.getString("item_text"));
+				item.setStorageItemId(rs.getObject("storage_item_id", Integer.class));
+				item.setQuantity(rs.getObject("quantity", Integer.class));
+				item.setStorageItemName(rs.getString("storage_item_name"));
 				item.setDisplayOrder(rs.getInt("display_order"));
 				template.getItems().add(item);
 			}

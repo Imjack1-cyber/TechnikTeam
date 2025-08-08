@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import useWebSocket from '../../hooks/useWebSocket';
 import apiClient from '../../services/apiClient';
@@ -14,6 +14,7 @@ const MessageView = ({ conversationId }) => {
 	const messagesEndRef = useRef(null);
 	const fileInputRef = useRef(null);
 	const longPressTimer = useRef();
+	const navigate = useNavigate();
 	const [newMessage, setNewMessage] = useState('');
 	const [messages, setMessages] = useState([]);
 	const [conversation, setConversation] = useState(null);
@@ -180,6 +181,21 @@ const MessageView = ({ conversationId }) => {
 		clearTimeout(longPressTimer.current);
 	};
 
+	const handleLeaveGroup = async () => {
+		if (window.confirm(`Möchten Sie die Gruppe "${conversation.name}" wirklich verlassen?`)) {
+			try {
+				const result = await apiClient.post(`/public/chat/conversations/${conversationId}/leave`);
+				if (result.success) {
+					addToast('Sie haben die Gruppe verlassen.', 'success');
+					navigate('/chat');
+				} else {
+					throw new Error(result.message);
+				}
+			} catch (err) {
+				addToast(err.message, 'error');
+			}
+		}
+	};
 
 	const handleAddUsers = async (userIds) => {
 		setIsManageModalOpen(false);
@@ -215,6 +231,11 @@ const MessageView = ({ conversationId }) => {
 				{conversation?.groupChat && conversation.creatorId === user.id && (
 					<button onClick={() => setIsManageModalOpen(true)} className="btn btn-small manage-members-btn" title="Mitglieder verwalten">
 						<i className="fas fa-user-plus"></i>
+					</button>
+				)}
+				{conversation?.groupChat && (
+					<button onClick={handleLeaveGroup} className="btn btn-small btn-danger-outline" title="Gruppe verlassen">
+						<i className="fas fa-sign-out-alt"></i>
 					</button>
 				)}
 			</div>
@@ -258,9 +279,9 @@ const MessageView = ({ conversationId }) => {
 									<>
 										{renderMessageContent(msg)}
 										<div className="message-meta">
-											{ !msg.isDeleted && <span>{new Date(msg.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</span>}
-											{ msg.edited && <em style={{ opacity: 0.8 }} title={`Bearbeitet am ${new Date(msg.editedAt).toLocaleString('de-DE')}`}>(bearbeitet)</em>}
-											{ !msg.isDeleted && <MessageStatus status={msg.status} isSentByMe={isSentByMe} />}
+											{!msg.isDeleted && <span>{new Date(msg.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</span>}
+											{msg.edited && <em style={{ opacity: 0.8 }} title={`Bearbeitet am ${new Date(msg.editedAt).toLocaleString('de-DE')}`}>(bearbeitet)</em>}
+											{!msg.isDeleted && <MessageStatus status={msg.status} isSentByMe={isSentByMe} />}
 										</div>
 									</>
 								)}

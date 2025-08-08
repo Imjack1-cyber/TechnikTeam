@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -46,7 +47,7 @@ public class PublicChatResource {
 	public ResponseEntity<ApiResponse> getConversationById(@PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		if (!chatDAO.isUserInConversation(id, securityUser.getUser().getId())) {
-			return new ResponseEntity<>(new ApiResponse(false, "Nicht autorisiert.", null), HttpStatus.FORBIDDEN);
+			throw new AccessDeniedException("Sie sind kein Mitglied dieses Gesprächs.");
 		}
 		ChatConversation conversation = chatDAO.getConversationById(id);
 		return ResponseEntity.ok(new ApiResponse(true, "Gespräch abgerufen.", conversation));
@@ -57,7 +58,7 @@ public class PublicChatResource {
 	public ResponseEntity<ApiResponse> getMessages(@PathVariable int id, @RequestParam(defaultValue = "50") int limit,
 			@RequestParam(defaultValue = "0") int offset, @AuthenticationPrincipal SecurityUser securityUser) {
 		if (!chatDAO.isUserInConversation(id, securityUser.getUser().getId())) {
-			return new ResponseEntity<>(new ApiResponse(false, "Nicht autorisiert.", null), HttpStatus.FORBIDDEN);
+			throw new AccessDeniedException("Sie sind kein Mitglied dieses Gesprächs.");
 		}
 		return ResponseEntity.ok(
 				new ApiResponse(true, "Nachrichten abgerufen.", chatDAO.getMessagesForConversation(id, limit, offset)));
@@ -103,9 +104,7 @@ public class PublicChatResource {
 			return new ResponseEntity<>(new ApiResponse(false, "Gespräch nicht gefunden.", null), HttpStatus.NOT_FOUND);
 		}
 		if (!conversation.isGroupChat() || conversation.getCreatorId() != securityUser.getUser().getId()) {
-			return new ResponseEntity<>(
-					new ApiResponse(false, "Nur der Ersteller der Gruppe kann Mitglieder hinzufügen.", null),
-					HttpStatus.FORBIDDEN);
+			throw new AccessDeniedException("Nur der Ersteller der Gruppe kann Mitglieder hinzufügen.");
 		}
 		List<Integer> userIds = payload.get("userIds");
 		if (userIds == null || userIds.isEmpty()) {
@@ -114,6 +113,36 @@ public class PublicChatResource {
 
 		chatDAO.addParticipantsToGroup(id, userIds);
 		return ResponseEntity.ok(new ApiResponse(true, "Teilnehmer erfolgreich hinzugefügt.", null));
+	}
+
+	@PostMapping("/conversations/{id}/leave")
+	@Operation(summary = "Leave a group conversation")
+	public ResponseEntity<ApiResponse> leaveGroup(@PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		if (chatDAO.leaveGroup(id, securityUser.getUser().getId())) {
+			return ResponseEntity.ok(new ApiResponse(true, "Gruppe erfolgreich verlassen.", null));
+		}
+		return ResponseEntity.badRequest().body(new ApiResponse(false, "Verlassen der Gruppe fehlgeschlagen.", null));
+	}
+
+	@DeleteMapping("/conversations/{id}")
+	@Operation(summary = "Delete a group conversation")
+	public ResponseEntity<ApiResponse> deleteGroup(@PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		ChatConversation conversation = chatDAO.getConversationById(id);
+		if (conversation == null) {
+			return new ResponseEntity<>(new ApiResponse(false, "Gespräch nicht gefunden.", null), HttpStatus.NOT_FOUND);
+		}
+		User currentUser = securityUser.getUser();
+		if (!conversation.isGroupChat()
+				|| (conversation.getCreatorId() != currentUser.getId() && !currentUser.hasAdminAccess())) {
+			throw new AccessDeniedException("Nur der Ersteller der Gruppe oder ein Admin kann diese löschen.");
+		}
+		if (chatDAO.deleteGroup(id)) {
+			return ResponseEntity.ok(new ApiResponse(true, "Gruppe erfolgreich gelöscht.", null));
+		}
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+				.body(new ApiResponse(false, "Löschen der Gruppe fehlgeschlagen.", null));
 	}
 
 	@PostMapping("/upload")

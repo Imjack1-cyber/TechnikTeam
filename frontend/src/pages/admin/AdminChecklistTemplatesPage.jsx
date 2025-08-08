@@ -1,12 +1,15 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 
 const AdminChecklistTemplatesPage = () => {
-	const apiCall = useCallback(() => apiClient.get('/admin/checklist-templates'), []);
-	const { data: templates, loading, error, reload } = useApi(apiCall);
+	const templatesApiCall = useCallback(() => apiClient.get('/admin/checklist-templates'), []);
+	const storageItemsApiCall = useCallback(() => apiClient.get('/storage'), []);
+
+	const { data: templates, loading, error, reload } = useApi(templatesApiCall);
+	const { data: allStorageItems, loading: itemsLoading } = useApi(storageItemsApiCall);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingTemplate, setEditingTemplate] = useState(null);
 	const { addToast } = useToast();
@@ -93,31 +96,57 @@ const AdminChecklistTemplatesPage = () => {
 					</div>
 				))}
 			</div>
-			{isModalOpen && (
+			{isModalOpen && !itemsLoading && (
 				<TemplateModal
 					isOpen={isModalOpen}
 					onClose={closeModal}
 					onSuccess={handleSuccess}
 					template={editingTemplate}
+					allStorageItems={allStorageItems || []}
 				/>
 			)}
 		</div>
 	);
 };
 
-const TemplateModal = ({ isOpen, onClose, onSuccess, template }) => {
+const TemplateModal = ({ isOpen, onClose, onSuccess, template, allStorageItems }) => {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
-	const [items, setItems] = useState(template?.items || [{ itemText: '' }]);
+	const [items, setItems] = useState([]);
 	const { addToast } = useToast();
 
-	const handleItemChange = (index, value) => {
+	useEffect(() => {
+		if (isOpen) {
+			const initialItems = template?.items?.map(i => ({
+				itemText: i.itemText,
+				storageItemId: i.storageItemId,
+				quantity: i.quantity || 1
+			})) || [{ itemText: '', storageItemId: null, quantity: 1 }];
+
+			if (initialItems.length === 0) {
+				setItems([{ itemText: '', storageItemId: null, quantity: 1 }]);
+			} else {
+				setItems(initialItems);
+			}
+		}
+	}, [isOpen, template]);
+
+	const handleItemChange = (index, field, value) => {
 		const newItems = [...items];
-		newItems[index].itemText = value;
+		const currentItem = { ...newItems[index], [field]: value };
+
+		if (field === 'storageItemId') {
+			const selectedStorageItem = allStorageItems.find(si => si.id === parseInt(value));
+			if (selectedStorageItem && currentItem.quantity > selectedStorageItem.availableQuantity) {
+				currentItem.quantity = selectedStorageItem.availableQuantity;
+			}
+		}
+		newItems[index] = currentItem;
 		setItems(newItems);
 	};
 
-	const handleAddItem = () => setItems([...items, { itemText: '' }]);
+	const handleAddTextItem = () => setItems([...items, { itemText: '', storageItemId: null, quantity: 1 }]);
+	const handleAddStorageItem = () => setItems([...items, { itemText: null, storageItemId: '', quantity: 1 }]);
 	const handleRemoveItem = (index) => setItems(items.filter((_, i) => i !== index));
 
 	const handleSubmit = async (e) => {
@@ -125,10 +154,19 @@ const TemplateModal = ({ isOpen, onClose, onSuccess, template }) => {
 		setIsSubmitting(true);
 		setError('');
 		const formData = new FormData(e.target);
+
+		const finalItems = items
+			.filter(item => (item.itemText && item.itemText.trim() !== '') || (item.storageItemId))
+			.map(item => ({
+				itemText: item.storageItemId ? null : item.itemText,
+				storageItemId: item.storageItemId ? parseInt(item.storageItemId, 10) : null,
+				quantity: item.storageItemId ? parseInt(item.quantity, 10) : null
+			}));
+
 		const data = {
 			name: formData.get('name'),
 			description: formData.get('description'),
-			items: items.filter(item => item.itemText.trim() !== '')
+			items: finalItems
 		};
 
 		try {
@@ -161,18 +199,49 @@ const TemplateModal = ({ isOpen, onClose, onSuccess, template }) => {
 				</div>
 				<div className="form-group">
 					<label>Checklisten-Punkte</label>
-					{items.map((item, index) => (
-						<div className="dynamic-row" key={index}>
-							<input
-								value={item.itemText}
-								onChange={e => handleItemChange(index, e.target.value)}
-								placeholder={`Punkt #${index + 1}`}
-								className="form-group"
-							/>
-							<button type="button" onClick={() => handleRemoveItem(index)} className="btn btn-small btn-danger">×</button>
-						</div>
-					))}
-					<button type="button" onClick={handleAddItem} className="btn btn-small btn-secondary" style={{ marginTop: '0.5rem' }}>Punkt hinzufügen</button>
+					{items.map((item, index) => {
+						const isStorageItem = item.storageItemId !== null;
+						const selectedStorageItem = isStorageItem ? allStorageItems.find(si => si.id === parseInt(item.storageItemId)) : null;
+
+						return (
+							<div className="dynamic-row" key={index}>
+								{isStorageItem ? (
+									<>
+										<select
+											value={item.storageItemId}
+											onChange={e => handleItemChange(index, 'storageItemId', e.target.value)}
+											className="form-group"
+										>
+											<option value="">-- Lagerartikel auswählen --</option>
+											{allStorageItems.map(si => <option key={si.id} value={si.id}>{si.name}</option>)}
+										</select>
+										<input
+											type="number"
+											value={item.quantity || 1}
+											onChange={e => handleItemChange(index, 'quantity', e.target.value)}
+											min="1"
+											max={selectedStorageItem?.availableQuantity}
+											title={`Verfügbar: ${selectedStorageItem?.availableQuantity || 'N/A'}`}
+											className="form-group"
+											style={{ maxWidth: '100px' }}
+										/>
+									</>
+								) : (
+									<input
+										value={item.itemText || ''}
+										onChange={e => handleItemChange(index, 'itemText', e.target.value)}
+										placeholder={`Text-Punkt #${index + 1}`}
+										className="form-group"
+									/>
+								)}
+								<button type="button" onClick={() => handleRemoveItem(index)} className="btn btn-small btn-danger">×</button>
+							</div>
+						);
+					})}
+					<div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+						<button type="button" onClick={handleAddTextItem} className="btn btn-small btn-secondary">Textpunkt hinzufügen</button>
+						<button type="button" onClick={handleAddStorageItem} className="btn btn-small btn-secondary">Lagerartikel hinzufügen</button>
+					</div>
 				</div>
 				<button type="submit" className="btn" disabled={isSubmitting}>
 					{isSubmitting ? 'Speichern...' : 'Speichern'}

@@ -1,10 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import apiClient from '../../../services/apiClient';
 
+/**
+ * KitItemsForm
+ *
+ * - Only disable selects while storage items are still loading (allStorageItems === null).
+ * - If storage finished loading but is empty ([]), the select stays enabled so the user can
+ *   open it and see the "Keine Artikel verfügbar" placeholder. This avoids the greyed-out control.
+ * - Keep local itemId state as string so it binds cleanly to <select>.
+ */
+
 const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
-	const [items, setItems] = useState(kit.items || []);
+	const [items, setItems] = useState([]);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
+
+	// Initialize items from kit.items whenever kit.items changes.
+	useEffect(() => {
+		const initialItems = (kit.items && kit.items.length > 0)
+			? kit.items.map(it => ({ itemId: String(it.itemId), quantity: it.quantity })) // string for select
+			: [{ itemId: '', quantity: 1 }];
+		setItems(initialItems);
+	}, [kit.items]);
 
 	const handleItemChange = (index, field, value) => {
 		const newItems = [...items];
@@ -13,12 +30,11 @@ const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
 	};
 
 	const handleAddItem = () => {
-		setItems([...items, { itemId: '', quantity: 1 }]);
+		setItems(prev => [...prev, { itemId: '', quantity: 1 }]);
 	};
 
 	const handleRemoveItem = (index) => {
-		const newItems = items.filter((_, i) => i !== index);
-		setItems(newItems);
+		setItems(prev => prev.filter((_, i) => i !== index));
 	};
 
 	const handleSubmit = async (e) => {
@@ -26,15 +42,17 @@ const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
 		setIsSubmitting(true);
 		setError('');
 
-		const validItems = items.filter(item => item.itemId && item.quantity > 0)
-			.map(item => ({ itemId: parseInt(item.itemId), quantity: parseInt(item.quantity) }));
+		// Validate and convert to numbers
+		const validItems = items
+			.filter(item => item.itemId && parseInt(item.quantity, 10) > 0)
+			.map(item => ({ itemId: parseInt(item.itemId, 10), quantity: parseInt(item.quantity, 10) }));
 
 		try {
 			const result = await apiClient.put(`/kits/${kit.id}/items`, validItems);
 			if (result.success) {
 				onUpdateSuccess();
 			} else {
-				throw new Error(result.message);
+				throw new Error(result.message || 'Unbekannter Fehler');
 			}
 		} catch (err) {
 			setError(err.message || 'Inhalt konnte nicht gespeichert werden.');
@@ -42,6 +60,10 @@ const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
 			setIsSubmitting(false);
 		}
 	};
+
+	// Determine select disabled state and placeholder text
+	const storageLoading = allStorageItems === null;
+	const hasOptions = Array.isArray(allStorageItems) && allStorageItems.length > 0;
 
 	return (
 		<form onSubmit={handleSubmit}>
@@ -57,9 +79,20 @@ const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
 							value={item.itemId}
 							onChange={(e) => handleItemChange(index, 'itemId', e.target.value)}
 							required
+							// ONLY disable while storage is still loading — allow interaction when loaded-empty
+							disabled={storageLoading}
 						>
-							<option value="">-- Artikel auswählen --</option>
-							{allStorageItems.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+							{storageLoading ? (
+								<option value="">...Lade Artikel</option>
+							) : (
+								<>
+									<option value="">-- Artikel auswählen --</option>
+									{!hasOptions && <option value="" disabled>(Keine Artikel verfügbar)</option>}
+									{(allStorageItems || []).map(i => (
+										<option key={i.id} value={i.id}>{i.name}</option>
+									))}
+								</>
+							)}
 						</select>
 						<input
 							type="number"
@@ -76,10 +109,11 @@ const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
 				))}
 			</div>
 			<div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-				<button type="button" className="btn btn-small" onClick={handleAddItem}>
+				{/* allow adding new empty rows while storage is loaded or loading; disable only while loading to avoid confusion */}
+				<button type="button" className="btn btn-small" onClick={handleAddItem} disabled={storageLoading}>
 					<i className="fas fa-plus"></i> Zeile hinzufügen
 				</button>
-				<button type="submit" className="btn btn-success" disabled={isSubmitting}>
+				<button type="submit" className="btn btn-success" disabled={isSubmitting || storageLoading}>
 					{isSubmitting ? 'Speichern...' : <><i className="fas fa-save"></i> Kit-Inhalt speichern</>}
 				</button>
 			</div>

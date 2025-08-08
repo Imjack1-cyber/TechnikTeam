@@ -4,6 +4,9 @@ public class ChecklistTemplateItem {
 	private int id;
 	private int templateId;
 	private String itemText;
+	private Integer storageItemId;
+	private Integer quantity;
+	private String storageItemName; // Transient
 	private int displayOrder;
 
 	// Getters and Setters
@@ -37,5 +40,29 @@ public class ChecklistTemplateItem {
 
 	public void setDisplayOrder(int displayOrder) {
 		this.displayOrder = displayOrder;
+	}
+
+	public Integer getStorageItemId() {
+		return storageItemId;
+	}
+
+	public void setStorageItemId(Integer storageItemId) {
+		this.storageItemId = storageItemId;
+	}
+
+	public String getStorageItemName() {
+		return storageItemName;
+	}
+
+	public void setStorageItemName(String storageItemName) {
+		this.storageItemName = storageItemName;
+	}
+
+	public Integer getQuantity() {
+		return quantity;
+	}
+
+	public void setQuantity(Integer quantity) {
+		this.quantity = quantity;
 	}
 }

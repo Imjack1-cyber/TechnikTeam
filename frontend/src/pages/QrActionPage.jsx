@@ -9,6 +9,8 @@ const QrActionPage = () => {
 	const { addToast } = useToast();
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState('');
+	const [quantity, setQuantity] = useState(1);
+	const [activeAction, setActiveAction] = useState(null); // 'checkout' or 'checkin'
 
 	const itemApiCall = useCallback(() => apiClient.get(`/public/storage/${itemId}`), [itemId]);
 	const eventsApiCall = useCallback(() => apiClient.get('/public/events'), []);
@@ -16,17 +18,23 @@ const QrActionPage = () => {
 	const { data: item, loading: itemLoading, error: itemError, reload: reloadItem } = useApi(itemApiCall);
 	const { data: activeEvents, loading: eventsLoading, error: eventsError } = useApi(eventsApiCall);
 
-	const handleTransaction = async (e) => {
+	const handleQuantityChange = (e) => {
+		let value = parseInt(e.target.value, 10) || 1;
+		setQuantity(value);
+	};
+
+	const handleSubmit = async (e) => {
 		e.preventDefault();
+		if (!activeAction) return;
+
 		setIsLoading(true);
 		setError('');
 
 		const formData = new FormData(e.target);
-		const type = e.nativeEvent.submitter.value;
 		const payload = {
 			itemId: parseInt(itemId, 10),
-			quantity: parseInt(formData.get('quantity'), 10),
-			type: type,
+			quantity: quantity,
+			type: activeAction,
 			eventId: formData.get('eventId') ? parseInt(formData.get('eventId'), 10) : null,
 			notes: formData.get('notes'),
 		};
@@ -35,21 +43,28 @@ const QrActionPage = () => {
 			const result = await apiClient.post('/public/storage/transactions', payload);
 			if (result.success) {
 				addToast(result.message, 'success');
+				setQuantity(1); // Reset quantity
+				setActiveAction(null);
 				reloadItem(); // Reload item data to show updated quantities
 			} else {
 				throw new Error(result.message);
 			}
 		} catch (err) {
-			setError(err.message || `Aktion '${type}' fehlgeschlagen.`);
+			setError(err.message || `Aktion '${activeAction}' fehlgeschlagen.`);
 		} finally {
 			setIsLoading(false);
 		}
 	};
 
+
 	if (itemLoading || eventsLoading) return <div>Lade...</div>;
 	if (itemError) return <div className="error-message">{itemError}</div>;
 	if (eventsError) return <div className="error-message">{eventsError}</div>;
 	if (!item) return <div className="error-message">Artikel nicht gefunden.</div>;
+
+	const maxCheckout = item.availableQuantity;
+	const maxCheckin = item.maxQuantity > 0 ? item.maxQuantity - item.quantity : Infinity;
+
 
 	return (
 		<div className="qr-action-body">
@@ -60,10 +75,21 @@ const QrActionPage = () => {
 
 				{error && <p className="error-message">{error}</p>}
 
-				<form onSubmit={handleTransaction}>
+				<form onSubmit={handleSubmit}>
 					<div className="form-group">
 						<label htmlFor="quantity">Anzahl</label>
-						<input type="number" id="quantity" name="quantity" defaultValue="1" min="1" max={item.availableQuantity} required />
+						<input
+							type="number"
+							id="quantity"
+							name="quantity"
+							value={quantity}
+							onChange={handleQuantityChange}
+							min="1"
+							max={activeAction === 'checkout' ? maxCheckout : (maxCheckin === Infinity ? undefined : maxCheckin)}
+							required
+						/>
+						{activeAction === 'checkout' && <small>Maximal {maxCheckout} entnehmbar.</small>}
+						{activeAction === 'checkin' && maxCheckin !== Infinity && <small>Maximal {maxCheckin} einräumbar.</small>}
 					</div>
 					<div className="form-group">
 						<label htmlFor="eventId">Event (optional)</label>
@@ -79,11 +105,25 @@ const QrActionPage = () => {
 						<input type="text" id="notes" name="notes" />
 					</div>
 					<div className="qr-action-buttons">
-						<button type="submit" name="type" value="checkout" className="btn qr-action-btn btn-danger" disabled={isLoading || item.availableQuantity <= 0}>
-							{isLoading ? '...' : 'Entnehmen'}
+						<button
+							type="submit"
+							name="type"
+							value="checkout"
+							className="btn qr-action-btn btn-danger"
+							disabled={isLoading || maxCheckout <= 0}
+							onClick={() => setActiveAction('checkout')}
+						>
+							{isLoading && activeAction === 'checkout' ? '...' : 'Entnehmen'}
 						</button>
-						<button type="submit" name="type" value="checkin" className="btn qr-action-btn btn-success" disabled={isLoading}>
-							{isLoading ? '...' : 'Einräumen'}
+						<button
+							type="submit"
+							name="type"
+							value="checkin"
+							className="btn qr-action-btn btn-success"
+							disabled={isLoading || maxCheckin <= 0}
+							onClick={() => setActiveAction('checkin')}
+						>
+							{isLoading && activeAction === 'checkin' ? '...' : 'Einräumen'}
 						</button>
 					</div>
 				</form>

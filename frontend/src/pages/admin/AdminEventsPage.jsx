@@ -9,8 +9,11 @@ import EventModal from '../../components/admin/events/EventModal';
 import { useToast } from '../../context/ToastContext';
 
 const AdminEventsPage = () => {
-	const apiCall = useCallback(() => apiClient.get('/events'), []);
-	const { data: events, loading, error, reload } = useApi(apiCall);
+	const eventsApiCall = useCallback(() => apiClient.get('/events'), []);
+	const templatesApiCall = useCallback(() => apiClient.get('/admin/checklist-templates'), []);
+
+	const { data: events, loading: eventsLoading, error: eventsError, reload } = useApi(eventsApiCall);
+	const { data: templates, loading: templatesLoading } = useApi(templatesApiCall);
 	const adminFormData = useAdminData();
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingEvent, setEditingEvent] = useState(null);
@@ -67,6 +70,8 @@ const AdminEventsPage = () => {
 		}
 	};
 
+	const loading = eventsLoading || adminFormData.loading || templatesLoading;
+
 	return (
 		<div>
 			<h1><i className="fas fa-calendar-plus"></i> Event-Verwaltung</h1>
@@ -89,7 +94,7 @@ const AdminEventsPage = () => {
 					</thead>
 					<tbody>
 						{loading && <tr><td colSpan="4">Lade Events...</td></tr>}
-						{error && <tr><td colSpan="4" className="error-message">{error}</td></tr>}
+						{eventsError && <tr><td colSpan="4" className="error-message">{eventsError}</td></tr>}
 						{events?.map(event => (
 							<tr key={event.id}>
 								<td><Link to={`/veranstaltungen/details/${event.id}`}>{event.name}</Link></td>
@@ -113,7 +118,7 @@ const AdminEventsPage = () => {
 
 			<div className="mobile-card-list">
 				{loading && <p>Lade Events...</p>}
-				{error && <p className="error-message">{error}</p>}
+				{eventsError && <p className="error-message">{eventsError}</p>}
 				{events?.map(event => (
 					<div className="list-item-card" key={event.id}>
 						<h3 className="card-title"><Link to={`/veranstaltungen/details/${event.id}`}>{event.name}</Link></h3>
@@ -134,13 +139,14 @@ const AdminEventsPage = () => {
 			</div>
 
 			{/* Prevent modal from rendering before its required data is available */}
-			{isModalOpen && !adminFormData.loading && (
+			{isModalOpen && !loading && (
 				<EventModal
 					isOpen={isModalOpen}
 					onClose={closeModal}
 					onSuccess={handleSuccess}
 					event={editingEvent}
 					adminFormData={adminFormData}
+					checklistTemplates={templates || []}
 				/>
 			)}
 		</div>

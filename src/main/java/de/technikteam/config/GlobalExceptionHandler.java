@@ -28,7 +28,7 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(AccessDeniedException.class)
 	public ResponseEntity<ApiResponse> handleAccessDeniedException(AccessDeniedException ex) {
 		ApiResponse apiResponse = new ApiResponse(false,
-				"Zugriff verweigert: Sie haben nicht die erforderlichen Berechtigungen für diese Aktion.", null);
+				ex.getMessage() != null ? ex.getMessage() : "Zugriff verweigert.", null);
 		return new ResponseEntity<>(apiResponse, HttpStatus.FORBIDDEN);
 	}
 

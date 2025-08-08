@@ -12,23 +12,9 @@ const apiClient = {
 			...options.headers,
 		};
 
-		const method = options.method || 'GET';
-
 		// Set Content-Type for JSON, but not for FormData, which needs the browser to set it.
 		if (!(options.body instanceof FormData)) {
 			headers['Content-Type'] = 'application/json';
-		}
-
-		// For any state-changing request, add the CSRF token header if it exists.
-		if (['POST', 'PUT', 'DELETE'].includes(method.toUpperCase())) {
-			const match = document.cookie.match(new RegExp('(^| )' + 'XSRF-TOKEN' + '=([^;]+)'));
-			if (match) {
-				headers['X-XSRF-TOKEN'] = match[2];
-			} else {
-				if (endpoint !== '/auth/login') {
-					console.warn('CSRF token not found. State-changing requests may fail.');
-				}
-			}
 		}
 
 		try {
@@ -43,8 +29,7 @@ const apiClient = {
 				throw new Error('Nicht autorisiert. Ihre Sitzung ist möglicherweise abgelaufen.');
 			}
 			if (response.status === 403) {
-				// This should now only happen for CSRF errors.
-				throw new Error('Zugriff verweigert. Möglicherweise ist ein CSRF-Token-Problem aufgetreten.');
+				throw new Error('Zugriff verweigert.');
 			}
 
 			if (response.status === 204) {

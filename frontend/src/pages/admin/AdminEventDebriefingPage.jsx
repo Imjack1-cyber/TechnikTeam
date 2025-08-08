@@ -9,7 +9,7 @@ import rehypeSanitize from 'rehype-sanitize';
 
 const AdminEventDebriefingPage = () => {
 	const { eventId } = useParams();
-	const { user } = useAuthStore();
+	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
 	const { addToast } = useToast();
 
 	// Fetch event details to get name and assigned crew
@@ -79,7 +79,7 @@ const AdminEventDebriefingPage = () => {
 	if (debriefingError) return <div className="error-message">{debriefingError}</div>;
 	if (!event) return <div className="error-message">Event nicht gefunden.</div>;
 
-	const canManage = user.isAdmin || user.id === event.leaderUserId;
+	const canManage = isAdmin || (user.permissions && user.permissions.includes('EVENT_DEBRIEFING_MANAGE')) || user.id === event.leaderUserId;
 
 	if (!isEditing && debriefing) {
 		return (

@@ -6,7 +6,7 @@ import DynamicSkillRows from './DynamicSkillRows';
 import DynamicItemRows from './DynamicItemRows';
 import TaskDependenciesForm from './TaskDependenciesForm';
 
-const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData }) => {
+const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklistTemplates }) => {
 	const isEditMode = !!event;
 	const { users, courses, storageItems } = adminFormData;
 	const [activeTab, setActiveTab] = useState('general');
@@ -66,6 +66,38 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData }) => {
 
 	const handleChange = (e) => {
 		setFormData({ ...formData, [e.target.name]: e.target.value });
+	};
+
+	const handleApplyTemplate = async (templateId) => {
+		if (!templateId) return;
+
+		try {
+			const result = await apiClient.get(`/admin/checklist-templates/${templateId}/apply-preview`);
+			if (!result.success) throw new Error(result.message);
+
+			const items = result.data;
+			const unavailableItems = items.filter(item => item.requestedQuantity > item.availableQuantity);
+
+			if (unavailableItems.length > 0) {
+				const warningMessage = "Warnung: Die folgenden Artikel sind nicht in der gewünschten Menge verfügbar:\n\n" +
+					unavailableItems.map(item => `${item.itemName}: Benötigt ${item.requestedQuantity}, Verfügbar ${item.availableQuantity}`).join("\n") +
+					"\n\nMöchten Sie die Reservierungen trotzdem mit den verfügbaren Mengen hinzufügen?";
+				if (!window.confirm(warningMessage)) {
+					return;
+				}
+			}
+
+			const newItems = items.map(item => ({
+				itemId: item.itemId,
+				quantity: Math.min(item.requestedQuantity, item.availableQuantity)
+			}));
+
+			setItemRows(newItems);
+			addToast('Material aus Vorlage übernommen.', 'success');
+
+		} catch (err) {
+			addToast(`Fehler beim Anwenden der Vorlage: ${err.message}`, 'error');
+		}
 	};
 
 	const handleSubmit = async (e) => {
@@ -143,6 +175,13 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData }) => {
 					<h4>Personalbedarf</h4>
 					<DynamicSkillRows rows={skillRows} setRows={setSkillRows} courses={courses} />
 					<h4 style={{ marginTop: '1.5rem' }}>Materialreservierung</h4>
+					<div className="form-group">
+						<label htmlFor="template-apply">Checklisten-Vorlage anwenden</label>
+						<select id="template-apply" onChange={(e) => handleApplyTemplate(e.target.value)}>
+							<option value="">-- Vorlage auswählen --</option>
+							{checklistTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+						</select>
+					</div>
 					<DynamicItemRows rows={itemRows} setRows={setItemRows} storageItems={storageItems} />
 				</div>
 
