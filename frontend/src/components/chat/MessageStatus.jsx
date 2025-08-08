@@ -16,7 +16,7 @@ const MessageStatus = ({ status, isSentByMe }) => {
 			case 'READ':
 				return <i className="fas fa-check-double" style={{ color: 'var(--info-color)' }} title="Gelesen"></i>;
 			default:
-				return <i className="fas fa-check" title="Gesendet"></i>;
+				return <i className="fas fa-clock" title="Senden..."></i>;
 		}
 	};
 

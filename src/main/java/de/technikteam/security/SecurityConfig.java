@@ -39,8 +39,9 @@ public class SecurityConfig {
 
 		http.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
 				.csrfTokenRequestHandler(requestHandler)
-				// Exempt login and WebSocket handshake from CSRF
-				.ignoringRequestMatchers("/api/v1/auth/login", "/ws/**"))
+				// Exempt login, WebSocket handshake, and file uploads/deletes from CSRF
+				.ignoringRequestMatchers("/api/v1/auth/login", "/ws/**", "/api/v1/public/chat/upload",
+						"/api/v1/admin/files", "/api/v1/admin/files/**"))
 				.authorizeHttpRequests(auth -> auth.requestMatchers(
 						// Public Authentication endpoints
 						"/api/v1/auth/login",

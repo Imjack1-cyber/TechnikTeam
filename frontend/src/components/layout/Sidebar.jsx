@@ -84,9 +84,12 @@ const Sidebar = () => {
 	};
 
 	const renderNavItem = (item) => {
-		if (item.url.startsWith('/swagger-ui.html')) {
+		// Use a simple startsWith check as the full path might vary
+		if (item.url.startsWith('/swagger-ui')) {
+			// Construct the correct absolute path including the backend's context path
+			const swaggerUrl = `/TechnikTeam/swagger-ui.html`;
 			return (
-				<a href={item.url} target="_blank" rel="noopener noreferrer">
+				<a href={swaggerUrl} target="_blank" rel="noopener noreferrer">
 					<i className={`fas ${item.icon} fa-fw`}></i> {item.label}
 				</a>
 			);

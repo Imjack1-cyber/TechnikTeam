@@ -38,7 +38,7 @@ public class FileDAO {
 		file.setFilename(rs.getString("filename"));
 		file.setFilepath(rs.getString("filepath"));
 		file.setUploadedAt(rs.getTimestamp("uploaded_at").toLocalDateTime());
-		file.setCategoryId(rs.getInt("category_id"));
+		file.setCategoryId(rs.getObject("category_id", Integer.class));
 		if (DaoUtils.hasColumn(rs, "needs_warning")) {
 			file.setNeedsWarning(rs.getBoolean("needs_warning"));
 		}
@@ -51,27 +51,42 @@ public class FileDAO {
 		} else {
 			file.setCategoryName("Ohne Kategorie");
 		}
+		logger.trace("Mapped file from ResultSet: ID={}, Name={}, CategoryID={}, CategoryName={}", file.getId(),
+				file.getFilename(), file.getCategoryId(), file.getCategoryName());
 		return file;
 	};
 
 	public Map<String, List<File>> getAllFilesGroupedByCategory(User user) {
+		logger.debug("Grouping all files by category for user: {}", user != null ? user.getUsername() : "SYSTEM");
 		List<File> files = getAllFiles(user);
-		return files.stream().collect(Collectors.groupingBy(File::getCategoryName));
+		Map<String, List<File>> groupedFiles = files.stream()
+				.filter(file -> file.getFilepath() == null
+						|| (!file.getFilepath().startsWith("chat/") && !file.getFilepath().startsWith("eventchat/")))
+				.collect(Collectors.groupingBy(File::getCategoryName));
+
+		if (logger.isTraceEnabled()) {
+			groupedFiles.forEach((category, fileList) -> logger.trace("Category '{}' contains {} files: {}", category,
+					fileList.size(), fileList.stream().map(File::getFilename).collect(Collectors.joining(", "))));
+		}
+		return groupedFiles;
 	}
 
 	public List<File> getAllFiles(User user) {
 		StringBuilder sql = new StringBuilder(
 				"SELECT f.*, fc.name as category_name FROM files f LEFT JOIN file_categories fc ON f.category_id = fc.id ");
-		// If user is null or not admin, only show public files.
-		// In the "no verification" model, user will be null for admin endpoints.
-		// We assume an admin context and show all files.
+
 		if (user != null && !user.hasAdminAccess()) {
 			sql.append("WHERE f.required_role = 'NUTZER' ");
 		}
-		sql.append("ORDER BY fc.name, f.filename");
+
+		sql.append("ORDER BY CASE WHEN fc.name IS NULL THEN 1 ELSE 0 END, fc.name, f.filename");
+		logger.debug("Executing getAllFiles SQL for user '{}': {}", user != null ? user.getUsername() : "SYSTEM",
+				sql.toString());
 
 		try {
-			return jdbcTemplate.query(sql.toString(), fileRowMapper);
+			List<File> files = jdbcTemplate.query(sql.toString(), fileRowMapper);
+			logger.debug("Fetched {} total file records from database.", files.size());
+			return files;
 		} catch (Exception e) {
 			logger.error("Error while fetching files.", e);
 			return List.of();
@@ -86,7 +101,7 @@ public class FileDAO {
 				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
 				ps.setString(1, file.getFilename());
 				ps.setString(2, file.getFilepath());
-				if (file.getCategoryId() > 0) {
+				if (file.getCategoryId() != null && file.getCategoryId() > 0) {
 					ps.setInt(3, file.getCategoryId());
 				} else {
 					ps.setNull(3, Types.INTEGER);

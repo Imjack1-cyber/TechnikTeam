@@ -5,6 +5,7 @@ import de.technikteam.dao.FileDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.FileCategory;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.FileService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +14,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -35,20 +37,14 @@ public class AdminFileResource {
 		this.adminLogService = adminLogService;
 	}
 
-	private User getSystemUser() {
-		User user = new User();
-		user.setId(0);
-		user.setUsername("SYSTEM");
-		return user;
-	}
-
 	@PostMapping
 	@Operation(summary = "Upload a new file")
 	public ResponseEntity<ApiResponse> uploadFile(@RequestParam("file") MultipartFile file,
-			@RequestParam(required = false) Integer categoryId, @RequestParam String requiredRole) {
+			@RequestParam(required = false) Integer categoryId, @RequestParam String requiredRole,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
 			de.technikteam.model.File savedFile = fileService.storeFile(file, categoryId, requiredRole,
-					getSystemUser());
+					securityUser.getUser());
 			return new ResponseEntity<>(new ApiResponse(true, "Datei erfolgreich hochgeladen.", savedFile),
 					HttpStatus.CREATED);
 		} catch (Exception e) {
@@ -59,9 +55,10 @@ public class AdminFileResource {
 
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete a file")
-	public ResponseEntity<ApiResponse> deleteFile(@PathVariable int id) {
+	public ResponseEntity<ApiResponse> deleteFile(@PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
-			if (fileService.deleteFile(id, getSystemUser())) {
+			if (fileService.deleteFile(id, securityUser.getUser())) {
 				return ResponseEntity.ok(new ApiResponse(true, "Datei erfolgreich gelöscht.", Map.of("deletedId", id)));
 			} else {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -75,9 +72,11 @@ public class AdminFileResource {
 
 	@PostMapping("/categories")
 	@Operation(summary = "Create a new file category")
-	public ResponseEntity<ApiResponse> createCategory(@Valid @RequestBody CategoryRequest request) {
+	public ResponseEntity<ApiResponse> createCategory(@Valid @RequestBody CategoryRequest request,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		if (fileDAO.createCategory(request.name())) {
-			adminLogService.log("SYSTEM", "CREATE_FILE_CATEGORY_API", "Category '" + request.name() + "' created.");
+			adminLogService.log(securityUser.getUser().getUsername(), "CREATE_FILE_CATEGORY_API",
+					"Category '" + request.name() + "' created.");
 			return new ResponseEntity<>(new ApiResponse(true, "Kategorie erfolgreich erstellt.", null),
 					HttpStatus.CREATED);
 		}
@@ -87,10 +86,12 @@ public class AdminFileResource {
 
 	@DeleteMapping("/categories/{id}")
 	@Operation(summary = "Delete a file category")
-	public ResponseEntity<ApiResponse> deleteCategory(@PathVariable int id) {
+	public ResponseEntity<ApiResponse> deleteCategory(@PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		String categoryName = fileDAO.getCategoryNameById(id);
 		if (categoryName != null && fileDAO.deleteCategory(id)) {
-			adminLogService.log("SYSTEM", "DELETE_FILE_CATEGORY_API", "Category '" + categoryName + "' deleted.");
+			adminLogService.log(securityUser.getUser().getUsername(), "DELETE_FILE_CATEGORY_API",
+					"Category '" + categoryName + "' deleted.");
 			return ResponseEntity.ok(new ApiResponse(true, "Kategorie erfolgreich gelöscht.", Map.of("deletedId", id)));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -99,14 +100,9 @@ public class AdminFileResource {
 
 	@GetMapping
 	@Operation(summary = "Get all files grouped by category (Admin View)")
-	public ResponseEntity<ApiResponse> getAllFiles() {
-		Map<String, List<de.technikteam.model.File>> groupedFiles = fileDAO.getAllFilesGroupedByCategory(null); // Pass
-																												// null
-																												// as
-																												// user
-																												// is
-																												// not
-																												// authenticated
+	public ResponseEntity<ApiResponse> getAllFiles(@AuthenticationPrincipal SecurityUser securityUser) {
+		Map<String, List<de.technikteam.model.File>> groupedFiles = fileDAO
+				.getAllFilesGroupedByCategory(securityUser.getUser());
 		return ResponseEntity.ok(new ApiResponse(true, "Dateien erfolgreich abgerufen.", groupedFiles));
 	}
 

@@ -73,22 +73,30 @@ public class ChatDAO {
 	 */
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public boolean deleteMessage(long messageId, int deletersUserId, boolean isAdmin) {
+		User deleter = jdbcTemplate.queryForObject("SELECT id, username FROM users WHERE id = ?", (rs, rowNum) -> {
+			User u = new User();
+			u.setId(rs.getInt("id"));
+			u.setUsername(rs.getString("username"));
+			return u;
+		}, deletersUserId);
+		if (deleter == null)
+			return false;
+
+		String condition = " WHERE id = ? AND is_deleted = FALSE";
 		if (!isAdmin) {
-			Integer senderId = null;
-			try {
-				senderId = jdbcTemplate.queryForObject("SELECT sender_id FROM chat_messages WHERE id = ?",
-						Integer.class, messageId);
-			} catch (Exception e) {
-				return false;
-			}
-			if (senderId == null || senderId != deletersUserId) {
-				return false;
-			}
+			condition += " AND sender_id = ?";
 		}
 
-		String sql = "UPDATE chat_messages SET is_deleted = TRUE, message_text = '', deleted_by_user_id = ?, deleted_at = NOW() WHERE id = ?";
+		String deletedMessageText = "Diese Nachricht wurde von " + deleter.getUsername() + " gelöscht!";
+		String sql = "UPDATE chat_messages SET is_deleted = TRUE, message_text = ?, deleted_by_user_id = ?, deleted_at = NOW()"
+				+ condition;
 
-		int updated = jdbcTemplate.update(sql, deletersUserId, messageId);
+		int updated;
+		if (isAdmin) {
+			updated = jdbcTemplate.update(sql, deletedMessageText, deletersUserId, messageId);
+		} else {
+			updated = jdbcTemplate.update(sql, deletedMessageText, deletersUserId, messageId, deletersUserId);
+		}
 		return updated > 0;
 	}
 

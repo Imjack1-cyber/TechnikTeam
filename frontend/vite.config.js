@@ -10,15 +10,23 @@ export default defineConfig({
 		proxy: {
 			// Proxy all API requests starting with /api to the Spring Boot backend
 			'/api': {
-				target: 'http://localhost:8080/TechnikTeam',
+				target: 'http://localhost:8081',
 				changeOrigin: true,
 				secure: false,
+				rewrite: (path) => path.replace(/^\/api/, '/TechnikTeam/api'),
 			},
 			// Proxy all WebSocket connections to the Spring Boot backend
 			'/ws': {
-				target: 'ws://localhost:8080/TechnikTeam',
-				ws: true, // Enable WebSocket proxying
+				target: 'ws://localhost:8081',
+				ws: true,
+				rewrite: (path) => path.replace(/^\/ws/, '/TechnikTeam/ws'),
 			},
+			// Proxy direct access to backend resources like Swagger UI
+			'/TechnikTeam': {
+				target: 'http://localhost:8081',
+				changeOrigin: true,
+				secure: false,
+			}
 		},
 	},
 	resolve: {

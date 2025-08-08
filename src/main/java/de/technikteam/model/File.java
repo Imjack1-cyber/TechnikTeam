@@ -11,7 +11,7 @@ public class File {
 	private int id;
 	private String filename;
 	private String filepath;
-	private int categoryId;
+	private Integer categoryId;
 	private String categoryName;
 	private LocalDateTime uploadedAt;
 	private String requiredRole;
@@ -46,11 +46,11 @@ public class File {
 		this.filepath = filepath;
 	}
 
-	public int getCategoryId() {
+	public Integer getCategoryId() {
 		return categoryId;
 	}
 
-	public void setCategoryId(int categoryId) {
+	public void setCategoryId(Integer categoryId) {
 		this.categoryId = categoryId;
 	}
 

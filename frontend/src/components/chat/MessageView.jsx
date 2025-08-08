@@ -111,6 +111,11 @@ const MessageView = ({ conversationId }) => {
 	const renderMessageContent = (msg) => {
 		const text = msg.messageText;
 		const isSentByMe = msg.senderId === user.id;
+
+		if (msg.isDeleted) {
+			return <em style={{ opacity: 0.7 }}>{text}</em>;
+		}
+
 		const imageRegex = /\[(.*?)\]\((.*?)\.(png|jpg|jpeg|gif)\)/i;
 		const match = text.match(imageRegex);
 
@@ -241,14 +246,7 @@ const MessageView = ({ conversationId }) => {
 								style={!isSentByMe ? { backgroundColor: msg.chatColor } : {}}
 							>
 								{!isSentByMe && !msg.isDeleted && <div className="message-sender">{msg.senderUsername}</div>}
-								{msg.isDeleted ? (
-									<em style={{ opacity: 0.7 }}>
-										Diese Nachricht wurde von {msg.deletedByUsername || "einem Nutzer"} gelöscht.
-										<div className="message-meta" style={{ justifyContent: 'flex-end', width: '100%' }}>
-											{new Date(msg.deletedAt).toLocaleString('de-DE')}
-										</div>
-									</em>
-								) : isEditing ? (
+								{isEditing ? (
 									<div>
 										<textarea value={editingText} onChange={(e) => setEditingText(e.target.value)} className="chat-edit-input" autoFocus />
 										<div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
@@ -260,9 +258,9 @@ const MessageView = ({ conversationId }) => {
 									<>
 										{renderMessageContent(msg)}
 										<div className="message-meta">
-											<span>{new Date(msg.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</span>
-											{msg.edited && <em style={{ opacity: 0.8 }} title={`Bearbeitet am ${new Date(msg.editedAt).toLocaleString('de-DE')}`}>(bearbeitet)</em>}
-											<MessageStatus status={msg.status} isSentByMe={isSentByMe} />
+											{ !msg.isDeleted && <span>{new Date(msg.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</span>}
+											{ msg.edited && <em style={{ opacity: 0.8 }} title={`Bearbeitet am ${new Date(msg.editedAt).toLocaleString('de-DE')}`}>(bearbeitet)</em>}
+											{ !msg.isDeleted && <MessageStatus status={msg.status} isSentByMe={isSentByMe} />}
 										</div>
 									</>
 								)}

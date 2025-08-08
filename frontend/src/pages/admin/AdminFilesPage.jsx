@@ -16,6 +16,11 @@ const FileUploadModal = ({ isOpen, onClose, onSuccess, categories }) => {
 		const formData = new FormData(e.target);
 		const file = formData.get('file');
 
+		console.log("[FileUploadModal] Submitting form data:");
+		for (let [key, value] of formData.entries()) {
+			console.log(`- ${key}:`, value instanceof File ? `${value.name} (${value.size} bytes)` : value);
+		}
+
 		if (file.size > 10 * 1024 * 1024) { // 10MB limit
 			setError('Datei ist zu groß. Maximal 10MB erlaubt.');
 			setIsSubmitting(false);
@@ -24,6 +29,7 @@ const FileUploadModal = ({ isOpen, onClose, onSuccess, categories }) => {
 
 		try {
 			const result = await apiClient.post('/admin/files', formData);
+			console.log("[FileUploadModal] API Response:", result);
 			if (result.success) {
 				addToast('Datei erfolgreich hochgeladen', 'success');
 				onSuccess();
@@ -31,6 +37,7 @@ const FileUploadModal = ({ isOpen, onClose, onSuccess, categories }) => {
 				throw new Error(result.message);
 			}
 		} catch (err) {
+			console.error("[FileUploadModal] Upload failed:", err);
 			setError(err.message || 'Upload fehlgeschlagen.');
 		} finally {
 			setIsSubmitting(false);
@@ -76,6 +83,8 @@ const AdminFilesPage = () => {
 	const { data: categories, loading: catsLoading, error: catsError, reload: reloadCats } = useApi(categoriesApiCall);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const { addToast } = useToast();
+
+	console.log("[AdminFilesPage] Render. Grouped data from API:", filesGrouped);
 
 	const handleSuccess = () => {
 		setIsModalOpen(false);
@@ -125,21 +134,24 @@ const AdminFilesPage = () => {
 			<div className="card" key={categoryName}>
 				<h2><i className="fas fa-folder"></i> {categoryName}</h2>
 				<ul className="details-list">
-					{files.map(file => (
-						<li key={file.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-							<div>
-								<a href={`/api/v1/public/files/download/${file.id}`} target="_blank" rel="noopener noreferrer">
-									<i className="fas fa-download"></i> {file.filename}
-								</a>
-								<small style={{ display: 'block', color: 'var(--text-muted-color)' }}>
-									Sichtbarkeit: {file.requiredRole}
-								</small>
-							</div>
-							<div>
-								<button onClick={() => handleDeleteFile(file)} className="btn btn-small btn-danger">Löschen</button>
-							</div>
-						</li>
-					))}
+					{files.map(file => {
+						console.log(`[AdminFilesPage] Rendering file: ${file.filename} in category: ${file.categoryName} (ID: ${file.categoryId})`);
+						return (
+							<li key={file.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+								<div>
+									<a href={`/api/v1/public/files/download/${file.id}`} target="_blank" rel="noopener noreferrer">
+										<i className="fas fa-download"></i> {file.filename}
+									</a>
+									<small style={{ display: 'block', color: 'var(--text-muted-color)' }}>
+										Sichtbarkeit: {file.requiredRole}
+									</small>
+								</div>
+								<div>
+									<button onClick={() => handleDeleteFile(file)} className="btn btn-small btn-danger">Löschen</button>
+								</div>
+							</li>
+						);
+					})}
 				</ul>
 			</div>
 		));
