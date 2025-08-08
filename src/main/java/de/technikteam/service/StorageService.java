@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class StorageService {
@@ -97,13 +98,18 @@ public class StorageService {
 		switch (action) {
 		case "report_defect":
 		case "report_unrepairable":
-			int defectiveQuantity = ((Number) payload.get("quantity")).intValue();
+			int defectiveQuantity = Optional.ofNullable((Number) payload.get("quantity"))
+					.orElseThrow(
+							() -> new IllegalArgumentException("Quantity is required for defect/unrepairable actions."))
+					.intValue();
 			String reason = (String) payload.get("reason");
 			String status = "report_unrepairable".equals(action) ? "UNREPAIRABLE" : "DEFECT";
 			updateDefectiveItemStatus(itemId, status, defectiveQuantity, reason, adminUser);
 			break;
 		case "repair":
-			int repairedQuantity = ((Number) payload.get("quantity")).intValue();
+			int repairedQuantity = Optional.ofNullable((Number) payload.get("quantity"))
+					.orElseThrow(() -> new IllegalArgumentException("Quantity is required for repair action."))
+					.intValue();
 			String notes = (String) payload.get("notes");
 			repairItems(itemId, repairedQuantity, notes, adminUser);
 			break;

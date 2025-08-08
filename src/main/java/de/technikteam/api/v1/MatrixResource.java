@@ -4,6 +4,7 @@ import de.technikteam.dao.CourseDAO;
 import de.technikteam.dao.MeetingAttendanceDAO;
 import de.technikteam.dao.MeetingDAO;
 import de.technikteam.dao.UserDAO;
+import de.technikteam.dao.UserQualificationsDAO;
 import de.technikteam.model.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -28,14 +29,16 @@ public class MatrixResource {
 	private final CourseDAO courseDAO;
 	private final MeetingDAO meetingDAO;
 	private final MeetingAttendanceDAO meetingAttendanceDAO;
+	private final UserQualificationsDAO qualificationsDAO;
 
 	@Autowired
 	public MatrixResource(UserDAO userDAO, CourseDAO courseDAO, MeetingDAO meetingDAO,
-			MeetingAttendanceDAO meetingAttendanceDAO) {
+			MeetingAttendanceDAO meetingAttendanceDAO, UserQualificationsDAO qualificationsDAO) {
 		this.userDAO = userDAO;
 		this.courseDAO = courseDAO;
 		this.meetingDAO = meetingDAO;
 		this.meetingAttendanceDAO = meetingAttendanceDAO;
+		this.qualificationsDAO = qualificationsDAO;
 	}
 
 	@GetMapping
@@ -52,11 +55,20 @@ public class MatrixResource {
 		Map<String, MeetingAttendance> attendanceMap = meetingAttendanceDAO.getAllAttendance().stream()
 				.collect(Collectors.toMap(a -> a.getUserId() + "-" + a.getMeetingId(), Function.identity()));
 
+		Map<String, Boolean> completionMap = new HashMap<>();
+		for (User user : allUsers) {
+			for (Course course : allCourses) {
+				boolean hasCompleted = qualificationsDAO.hasUserCompletedCourse(user.getId(), course.getId());
+				completionMap.put(user.getId() + "-" + course.getId(), hasCompleted);
+			}
+		}
+
 		Map<String, Object> responseData = new HashMap<>();
 		responseData.put("users", allUsers);
 		responseData.put("courses", allCourses);
 		responseData.put("meetingsByCourse", meetingsByCourse);
 		responseData.put("attendanceMap", attendanceMap);
+		responseData.put("completionMap", completionMap);
 
 		return ResponseEntity.ok(new ApiResponse(true, "Matrixdaten erfolgreich abgerufen.", responseData));
 	}

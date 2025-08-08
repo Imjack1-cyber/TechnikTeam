@@ -15,16 +15,43 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 
 	useEffect(() => {
 		setMode(initialMode);
+		if (!isOpen) return; // Prevent re-running on close
+
 		if (initialMode === 'create') {
 			setFormData({ name: '', location: '', quantity: 1, maxQuantity: 1, category: '' });
 		} else if (item) {
-			setFormData({ ...item, category: item.category || '' });
+			// Start with base item data
+			const baseData = { ...item, category: item.category || '' };
+
+			// Add mode-specific initial values
+			if (initialMode === 'defect') {
+				baseData.defective_quantity_change = 1;
+				baseData.defect_reason_change = '';
+				baseData.status = 'DEFECT'; // for the dropdown
+			} else if (initialMode === 'repair') {
+				baseData.repaired_quantity = 1;
+				baseData.repair_notes = '';
+			}
+			setFormData(baseData);
 		}
 	}, [item, initialMode, isOpen]);
 
+
 	const handleChange = (e) => {
-		setFormData({ ...formData, [e.target.name]: e.target.value });
+		const { name, value } = e.target;
+		const newFormData = { ...formData, [name]: value };
+
+		// Enforce that quantity cannot exceed maxQuantity
+		if (name === 'quantity' && newFormData.maxQuantity > 0 && parseInt(value) > newFormData.maxQuantity) {
+			newFormData.quantity = newFormData.maxQuantity;
+		}
+		if (name === 'maxQuantity' && newFormData.maxQuantity > 0 && parseInt(value) < newFormData.quantity) {
+			newFormData.quantity = value;
+		}
+
+		setFormData(newFormData);
 	};
+
 
 	const handleFileChange = (e) => {
 		setFormData({ ...formData, imageFile: e.target.files[0] });
@@ -36,9 +63,17 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 		setError('');
 
 		const data = new FormData();
+		// Ensure numeric values are sent correctly, even if empty
+		const numericFields = ['quantity', 'maxQuantity', 'defectiveQuantity', 'weightKg', 'priceEur', 'currentHolderUserId', 'assignedEventId'];
+
 		Object.keys(formData).forEach(key => {
 			if (key !== 'imageFile') {
-				data.append(key, formData[key] === null ? '' : formData[key]);
+				let value = formData[key];
+				// Handle potentially empty numeric fields by defaulting to 0
+				if (numericFields.includes(key) && (value === '' || value === null || value === undefined)) {
+					value = 0;
+				}
+				data.append(key, value);
 			}
 		});
 		if (formData.imageFile) {
@@ -118,18 +153,18 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 					<form onSubmit={handleDefectSubmit}>
 						<div className="form-group">
 							<label>Status</label>
-							<select name="status" onChange={handleChange} defaultValue="DEFECT" className="form-group">
+							<select name="status" value={formData.status || 'DEFECT'} onChange={handleChange} className="form-group">
 								<option value="DEFECT">Defekt melden</option>
 								<option value="UNREPAIRABLE">Nicht reparierbar (wird ausgebucht)</option>
 							</select>
 						</div>
 						<div className="form-group">
-							<label>Anzahl defekter Artikel</label>
-							<input type="number" name="defective_quantity_change" defaultValue="1" min="1" max={item.availableQuantity} onChange={handleChange} required />
+							<label>Anzahl zu meldender Artikel</label>
+							<input type="number" name="defective_quantity_change" value={formData.defective_quantity_change || ''} min="1" max={formData.status === 'UNREPAIRABLE' ? item.defectiveQuantity : item.availableQuantity} onChange={handleChange} required />
 						</div>
 						<div className="form-group">
 							<label>Grund</label>
-							<textarea name="defect_reason_change" rows="3" onChange={handleChange}></textarea>
+							<textarea name="defect_reason_change" value={formData.defect_reason_change || ''} rows="3" onChange={handleChange}></textarea>
 						</div>
 						<button type="submit" className="btn" disabled={isSubmitting}>Speichern</button>
 					</form>
@@ -139,11 +174,11 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 					<form onSubmit={handleRepairSubmit}>
 						<div className="form-group">
 							<label>Anzahl reparierter Artikel</label>
-							<input type="number" name="repaired_quantity" defaultValue="1" min="1" max={item.defectiveQuantity} onChange={handleChange} required />
+							<input type="number" name="repaired_quantity" value={formData.repaired_quantity || ''} min="1" max={item.defectiveQuantity} onChange={handleChange} required />
 						</div>
 						<div className="form-group">
 							<label>Notiz (z.B. was wurde gemacht?)</label>
-							<textarea name="repair_notes" rows="3" onChange={handleChange}></textarea>
+							<textarea name="repair_notes" value={formData.repair_notes || ''} rows="3" onChange={handleChange}></textarea>
 						</div>
 						<button type="submit" className="btn btn-success" disabled={isSubmitting}>Als repariert buchen</button>
 					</form>

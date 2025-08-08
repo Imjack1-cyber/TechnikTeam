@@ -19,6 +19,10 @@ public class MeetingAttendanceDAO {
 		this.jdbcTemplate = jdbcTemplate;
 	}
 
+	/**
+	 * Upsert attendance/enrollment record. attended == true means the user is
+	 * enrolled for the meeting.
+	 */
 	public boolean setAttendance(int userId, int meetingId, boolean attended, String remarks) {
 		String sql = "INSERT INTO meeting_attendance (user_id, meeting_id, attended, remarks) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE attended = VALUES(attended), remarks = VALUES(remarks)";
 		try {
@@ -26,6 +30,49 @@ public class MeetingAttendanceDAO {
 			return true;
 		} catch (Exception e) {
 			logger.error("SQL error setting attendance for user {} at meeting {}", userId, meetingId, e);
+			return false;
+		}
+	}
+
+	/**
+	 * Convenience: enroll user (attended = true)
+	 */
+	public boolean enrollUser(int userId, int meetingId) {
+		return setAttendance(userId, meetingId, true, "");
+	}
+
+	/**
+	 * Convenience: unenroll user (attended = false)
+	 */
+	public boolean unenrollUser(int userId, int meetingId) {
+		return setAttendance(userId, meetingId, false, "");
+	}
+
+	/**
+	 * Return true if a record exists for user+meeting (regardless of attended flag)
+	 */
+	public boolean existsForUserAndMeeting(int userId, int meetingId) {
+		String sql = "SELECT COUNT(*) FROM meeting_attendance WHERE user_id = ? AND meeting_id = ?";
+		try {
+			Integer count = jdbcTemplate.queryForObject(sql, Integer.class, userId, meetingId);
+			return count != null && count > 0;
+		} catch (Exception e) {
+			logger.error("SQL error checking existsForUserAndMeeting {},{}", userId, meetingId, e);
+			return false;
+		}
+	}
+
+	/**
+	 * Return true if the user has an attendance record with attended = 1 for a
+	 * specific meeting.
+	 */
+	public boolean hasAttendedMeeting(int userId, int meetingId) {
+		String sql = "SELECT COUNT(*) FROM meeting_attendance WHERE user_id = ? AND meeting_id = ? AND attended = 1";
+		try {
+			Integer count = jdbcTemplate.queryForObject(sql, Integer.class, userId, meetingId);
+			return count != null && count > 0;
+		} catch (Exception e) {
+			logger.error("SQL error checking hasAttendedMeeting {},{}", userId, meetingId, e);
 			return false;
 		}
 	}

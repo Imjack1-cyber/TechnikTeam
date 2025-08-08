@@ -32,19 +32,11 @@ const KitAccordion = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems, s
 
 			{isOpen && (
 				<div className="kit-content" style={{ paddingLeft: '2rem', marginTop: '1rem' }}>
-					{/* Only mount KitItemsForm when we know the storage items have been loaded.
-					   storageReady === true means storageItems !== null and therefore either a real array
-					   (possibly empty) or we've explicitly set it after a failed fetch. */}
 					{!storageReady ? (
 						<p>Lade Artikel...</p>
 					) : (
 						<KitItemsForm
 							kit={kit}
-							/* pass the raw storageItems value (may be null while loading).
-							   Previously we passed `storageItems || []` which converted `null` => `[]`
-							   and caused the form to believe loading was finished with an empty list.
-							   KitItemsForm expects `null` to indicate "still loading" so we must pass
-							   the actual value here. */
 							allStorageItems={allStorageItems}
 							onUpdateSuccess={onItemsUpdate}
 						/>
@@ -109,10 +101,8 @@ const AdminKitsPage = () => {
 
 	const loading = kitsLoading || storageItemsLoading;
 	const error = kitsError || storageItemsError;
+	const storageReady = !storageItemsLoading && storageItems !== null;
 
-	// storageReady is true once storageItems is no longer `null` (meaning we finished the fetch,
-	// even if result is an empty array).
-	const storageReady = storageItems !== null;
 
 	return (
 		<div>
@@ -135,10 +125,7 @@ const AdminKitsPage = () => {
 						onEdit={openModal}
 						onDelete={handleDelete}
 						onItemsUpdate={handleItemsUpdate}
-						/* Pass the actual storageItems value (may be null while loading) so the child
-						   can distinguish loading vs loaded-empty. This prevents the select from being
-						   incorrectly disabled while storage is still loading. */
-						allStorageItems={storageItems}
+						allStorageItems={storageItems || []}
 						storageReady={storageReady}
 					/>
 				))}

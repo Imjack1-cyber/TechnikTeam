@@ -126,44 +126,53 @@ const EventsPage = () => {
 	return (
 		<>
 			<h1><i className="fas fa-calendar-check"></i> Anstehende Veranstaltungen</h1>
-			<div className="desktop-table-wrapper">
-				<table className="data-table">
-					<thead>
-						<tr>
-							<th>Veranstaltung</th>
-							<th>Datum & Uhrzeit</th>
-							<th>Event-Status</th>
-							<th>Dein Status</th>
-							<th>Aktion</th>
-						</tr>
-					</thead>
-					<tbody>
-						{events.map(event => (
-							<tr key={event.id}>
-								<td><Link to={`/veranstaltungen/details/${event.id}`}>{event.name}</Link></td>
-								<td>{new Date(event.eventDateTime).toLocaleString('de-DE')}</td>
-								<td><StatusBadge status={event.status} /></td>
-								<td>{getUserStatusText(event.userAttendanceStatus)}</td>
-								<td>{getAction(event)}</td>
-							</tr>
-						))}
-					</tbody>
-				</table>
-			</div>
 
-			<div className="mobile-card-list">
-				{events.map(event => (
-					<div className="list-item-card" key={event.id}>
-						<h3 className="card-title"><Link to={`/veranstaltungen/details/${event.id}`}>{event.name}</Link></h3>
-						<div className="card-row"><strong>Wann:</strong> <span>{new Date(event.eventDateTime).toLocaleString('de-DE')}</span></div>
-						<div className="card-row"><strong>Event-Status:</strong> <StatusBadge status={event.status} /></div>
-						<div className="card-row"><strong>Dein Status:</strong> <span>{getUserStatusText(event.userAttendanceStatus)}</span></div>
-						<div className="card-actions">
-							{getAction(event)}
-						</div>
+			{(!events || events.length === 0) ? (
+				<div className="card">
+					<p>Derzeit sind keine anstehenden Veranstaltungen geplant.</p>
+				</div>
+			) : (
+				<>
+					<div className="desktop-table-wrapper">
+						<table className="data-table">
+							<thead>
+								<tr>
+									<th>Veranstaltung</th>
+									<th>Datum & Uhrzeit</th>
+									<th>Event-Status</th>
+									<th>Dein Status</th>
+									<th>Aktion</th>
+								</tr>
+							</thead>
+							<tbody>
+								{events.map(event => (
+									<tr key={event.id}>
+										<td><Link to={`/veranstaltungen/details/${event.id}`}>{event.name}</Link></td>
+										<td>{new Date(event.eventDateTime).toLocaleString('de-DE')}</td>
+										<td><StatusBadge status={event.status} /></td>
+										<td>{getUserStatusText(event.userAttendanceStatus)}</td>
+										<td>{getAction(event)}</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
 					</div>
-				))}
-			</div>
+
+					<div className="mobile-card-list">
+						{events.map(event => (
+							<div className="list-item-card" key={event.id}>
+								<h3 className="card-title"><Link to={`/veranstaltungen/details/${event.id}`}>{event.name}</Link></h3>
+								<div className="card-row"><strong>Wann:</strong> <span>{new Date(event.eventDateTime).toLocaleString('de-DE')}</span></div>
+								<div className="card-row"><strong>Event-Status:</strong> <StatusBadge status={event.status} /></div>
+								<div className="card-row"><strong>Dein Status:</strong> <span>{getUserStatusText(event.userAttendanceStatus)}</span></div>
+								<div className="card-actions">
+									{getAction(event)}
+								</div>
+							</div>
+						))}
+					</div>
+				</>
+			)}
 
 			<Modal
 				isOpen={modalState.isOpen}

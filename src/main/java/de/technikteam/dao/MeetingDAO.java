@@ -30,6 +30,7 @@ public class MeetingDAO {
 		Meeting meeting = new Meeting();
 		meeting.setId(rs.getInt("id"));
 		meeting.setCourseId(rs.getInt("course_id"));
+		meeting.setParentMeetingId(rs.getObject("parent_meeting_id") == null ? 0 : rs.getInt("parent_meeting_id"));
 		meeting.setName(rs.getString("name"));
 		meeting.setMeetingDateTime(rs.getTimestamp("meeting_datetime").toLocalDateTime());
 		if (rs.getTimestamp("end_datetime") != null)
@@ -50,24 +51,29 @@ public class MeetingDAO {
 	};
 
 	public int createMeeting(Meeting meeting) {
-		String sql = "INSERT INTO meetings (course_id, name, meeting_datetime, end_datetime, leader_user_id, description, location) VALUES (?, ?, ?, ?, ?, ?, ?)";
+		// include parent_meeting_id if present
+		String sql = "INSERT INTO meetings (course_id, parent_meeting_id, name, meeting_datetime, end_datetime, leader_user_id, description, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 		KeyHolder keyHolder = new GeneratedKeyHolder();
 		try {
 			jdbcTemplate.update(connection -> {
 				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
 				ps.setInt(1, meeting.getCourseId());
-				ps.setString(2, meeting.getName());
-				ps.setTimestamp(3, Timestamp.valueOf(meeting.getMeetingDateTime()));
+				if (meeting.getParentMeetingId() > 0)
+					ps.setInt(2, meeting.getParentMeetingId());
+				else
+					ps.setNull(2, Types.INTEGER);
+				ps.setString(3, meeting.getName());
+				ps.setTimestamp(4, Timestamp.valueOf(meeting.getMeetingDateTime()));
 				if (meeting.getEndDateTime() != null)
-					ps.setTimestamp(4, Timestamp.valueOf(meeting.getEndDateTime()));
+					ps.setTimestamp(5, Timestamp.valueOf(meeting.getEndDateTime()));
 				else
-					ps.setNull(4, Types.TIMESTAMP);
+					ps.setNull(5, Types.TIMESTAMP);
 				if (meeting.getLeaderUserId() > 0)
-					ps.setInt(5, meeting.getLeaderUserId());
+					ps.setInt(6, meeting.getLeaderUserId());
 				else
-					ps.setNull(5, Types.INTEGER);
-				ps.setString(6, meeting.getDescription());
-				ps.setString(7, meeting.getLocation());
+					ps.setNull(6, Types.INTEGER);
+				ps.setString(7, meeting.getDescription());
+				ps.setString(8, meeting.getLocation());
 				return ps;
 			}, keyHolder);
 			return Objects.requireNonNull(keyHolder.getKey()).intValue();
@@ -100,12 +106,13 @@ public class MeetingDAO {
 	}
 
 	public boolean updateMeeting(Meeting meeting) {
-		String sql = "UPDATE meetings SET name = ?, meeting_datetime = ?, end_datetime = ?, leader_user_id = ?, description = ?, location = ? WHERE id = ?";
+		String sql = "UPDATE meetings SET name = ?, meeting_datetime = ?, end_datetime = ?, leader_user_id = ?, description = ?, location = ?, parent_meeting_id = ? WHERE id = ?";
 		try {
 			return jdbcTemplate.update(sql, meeting.getName(), Timestamp.valueOf(meeting.getMeetingDateTime()),
 					meeting.getEndDateTime() != null ? Timestamp.valueOf(meeting.getEndDateTime()) : null,
 					meeting.getLeaderUserId() > 0 ? meeting.getLeaderUserId() : null, meeting.getDescription(),
-					meeting.getLocation(), meeting.getId()) > 0;
+					meeting.getLocation(), meeting.getParentMeetingId() > 0 ? meeting.getParentMeetingId() : null,
+					meeting.getId()) > 0;
 		} catch (Exception e) {
 			logger.error("Error updating meeting ID: {}", meeting.getId(), e);
 			return false;
@@ -116,6 +123,7 @@ public class MeetingDAO {
 		String sql = "DELETE FROM meetings WHERE id = ?";
 		try {
 			jdbcTemplate.update("DELETE FROM meeting_attendance WHERE meeting_id = ?", meetingId);
+			jdbcTemplate.update("DELETE FROM meeting_waitlist WHERE meeting_id = ?", meetingId);
 			return jdbcTemplate.update(sql, meetingId) > 0;
 		} catch (Exception e) {
 			logger.error("Error deleting meeting ID: {}", meetingId, e);

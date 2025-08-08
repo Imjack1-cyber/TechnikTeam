@@ -4,6 +4,7 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
+import RepeatMeetingModal from '../../components/admin/meetings/RepeatMeetingModal';
 
 const AdminMeetingsPage = () => {
 	const { courseId } = useParams();
@@ -17,6 +18,8 @@ const AdminMeetingsPage = () => {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingMeeting, setEditingMeeting] = useState(null);
 	const [formError, setFormError] = useState('');
+	const [isRepeatModalOpen, setIsRepeatModalOpen] = useState(false);
+	const [repeatingMeeting, setRepeatingMeeting] = useState(null);
 
 	const courseName = meetingsData?.[0]?.parentCourseName || 'Lehrgang';
 
@@ -35,6 +38,17 @@ const AdminMeetingsPage = () => {
 		setEditingMeeting(null);
 		setFormError('');
 	};
+
+	const handleOpenRepeatModal = (meeting) => {
+		setRepeatingMeeting(meeting);
+		setIsRepeatModalOpen(true);
+	};
+
+	const handleCloseRepeatModal = () => {
+		setIsRepeatModalOpen(false);
+		setRepeatingMeeting(null);
+	};
+
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
@@ -80,22 +94,6 @@ const AdminMeetingsPage = () => {
 		}
 	};
 
-	const handleClone = async (meeting) => {
-		if (window.confirm(`Meeting '${meeting.name}' klonen?`)) {
-			try {
-				const result = await apiClient.post(`/meetings/${meeting.id}/clone`);
-				if (result.success) {
-					addToast('Meeting erfolgreich geklont.', 'success');
-					reload();
-				} else {
-					throw new Error(result.message);
-				}
-			} catch (err) {
-				addToast(`Klonen fehlgeschlagen: ${err.message}`, 'error');
-			}
-		}
-	};
-
 	return (
 		<div>
 			<h1>Meetings für "{courseName}"</h1>
@@ -124,12 +122,12 @@ const AdminMeetingsPage = () => {
 						{error && <tr><td colSpan="4" className="error-message">{error}</td></tr>}
 						{meetingsData?.map(meeting => (
 							<tr key={meeting.id}>
-								<td>{meeting.name}</td>
+								<td><Link to={`/lehrgaenge/details/${meeting.id}`}>{meeting.name}</Link></td>
 								<td>{new Date(meeting.meetingDateTime).toLocaleString('de-DE')}</td>
 								<td>{meeting.leaderUsername || 'N/A'}</td>
 								<td style={{ display: 'flex', gap: '0.5rem' }}>
 									<button onClick={() => handleOpenEditModal(meeting)} className="btn btn-small">Bearbeiten</button>
-									<button onClick={() => handleClone(meeting)} className="btn btn-small btn-secondary">Klonen</button>
+									<button onClick={() => handleOpenRepeatModal(meeting)} className="btn btn-small btn-secondary">Wiederholen</button>
 									<button onClick={() => handleDelete(meeting)} className="btn btn-small btn-danger">Löschen</button>
 								</td>
 							</tr>
@@ -143,12 +141,12 @@ const AdminMeetingsPage = () => {
 				{error && <p className="error-message">{error}</p>}
 				{meetingsData?.map(meeting => (
 					<div className="list-item-card" key={meeting.id}>
-						<h3 className="card-title">{meeting.name}</h3>
+						<h3 className="card-title"><Link to={`/lehrgaenge/details/${meeting.id}`}>{meeting.name}</Link></h3>
 						<div className="card-row"><strong>Datum:</strong> <span>{new Date(meeting.meetingDateTime).toLocaleString('de-DE')}</span></div>
 						<div className="card-row"><strong>Leitung:</strong> <span>{meeting.leaderUsername || 'N/A'}</span></div>
 						<div className="card-actions">
 							<button onClick={() => handleOpenEditModal(meeting)} className="btn btn-small">Bearbeiten</button>
-							<button onClick={() => handleClone(meeting)} className="btn btn-small btn-secondary">Klonen</button>
+							<button onClick={() => handleOpenRepeatModal(meeting)} className="btn btn-small btn-secondary">Wiederholen</button>
 							<button onClick={() => handleDelete(meeting)} className="btn btn-small btn-danger">Löschen</button>
 						</div>
 					</div>
@@ -191,6 +189,14 @@ const AdminMeetingsPage = () => {
 						<button type="submit" className="btn"><i className="fas fa-save"></i> Speichern</button>
 					</form>
 				</Modal>
+			)}
+			{isRepeatModalOpen && (
+				<RepeatMeetingModal
+					isOpen={isRepeatModalOpen}
+					onClose={handleCloseRepeatModal}
+					onSuccess={() => { handleCloseRepeatModal(); reload(); }}
+					meeting={repeatingMeeting}
+				/>
 			)}
 		</div>
 	);

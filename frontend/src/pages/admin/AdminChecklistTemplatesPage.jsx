@@ -137,8 +137,8 @@ const TemplateModal = ({ isOpen, onClose, onSuccess, template, allStorageItems }
 
 		if (field === 'storageItemId') {
 			const selectedStorageItem = allStorageItems.find(si => si.id === parseInt(value));
-			if (selectedStorageItem && currentItem.quantity > selectedStorageItem.availableQuantity) {
-				currentItem.quantity = selectedStorageItem.availableQuantity;
+			if (selectedStorageItem && currentItem.quantity > selectedStorageItem.maxQuantity) {
+				currentItem.quantity = selectedStorageItem.maxQuantity;
 			}
 		}
 		newItems[index] = currentItem;
@@ -200,7 +200,7 @@ const TemplateModal = ({ isOpen, onClose, onSuccess, template, allStorageItems }
 				<div className="form-group">
 					<label>Checklisten-Punkte</label>
 					{items.map((item, index) => {
-						const isStorageItem = item.storageItemId !== null;
+						const isStorageItem = item.storageItemId !== null && item.storageItemId !== '';
 						const selectedStorageItem = isStorageItem ? allStorageItems.find(si => si.id === parseInt(item.storageItemId)) : null;
 
 						return (
@@ -220,8 +220,8 @@ const TemplateModal = ({ isOpen, onClose, onSuccess, template, allStorageItems }
 											value={item.quantity || 1}
 											onChange={e => handleItemChange(index, 'quantity', e.target.value)}
 											min="1"
-											max={selectedStorageItem?.availableQuantity}
-											title={`Verfügbar: ${selectedStorageItem?.availableQuantity || 'N/A'}`}
+											max={selectedStorageItem?.maxQuantity}
+											title={`Maximal im Bestand: ${selectedStorageItem?.maxQuantity || 'N/A'}`}
 											className="form-group"
 											style={{ maxWidth: '100px' }}
 										/>

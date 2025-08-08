@@ -177,7 +177,7 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklis
 					<h4 style={{ marginTop: '1.5rem' }}>Materialreservierung</h4>
 					<div className="form-group">
 						<label htmlFor="template-apply">Checklisten-Vorlage anwenden</label>
-						<select id="template-apply" onChange={(e) => handleApplyTemplate(e.target.value)}>
+						<select id="template-apply" onChange={(e) => handleApplyTemplate(e.target.value)} defaultValue="">
 							<option value="">-- Vorlage auswählen --</option>
 							{checklistTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
 						</select>

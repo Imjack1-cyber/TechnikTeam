@@ -1,59 +1,22 @@
 package de.technikteam.model;
 
-import de.technikteam.config.DateFormatter;
 import java.time.LocalDateTime;
 
-/**
- * Represents a single, schedulable meeting from the `meetings` table. Each
- * meeting is a specific instance of a parent `Course` and has its own date,
- * time, leader, and description. It also holds transient user-specific data for
- * the UI.
- */
 public class Meeting {
 	private int id;
 	private int courseId;
+	private int parentMeetingId; // 0 if none
 	private String name;
 	private LocalDateTime meetingDateTime;
 	private LocalDateTime endDateTime;
 	private int leaderUserId;
 	private String description;
 	private String location;
-
 	private String parentCourseName;
 	private String leaderUsername;
 	private String userAttendanceStatus;
 
-	public String getFormattedMeetingDateTime() {
-		return DateFormatter.formatDateTime(this.meetingDateTime);
-	}
-
-	public String getFormattedMeetingDateTimeRange() {
-		return DateFormatter.formatDateTimeRange(this.meetingDateTime, this.endDateTime);
-	}
-
-	public int getLeaderUserId() {
-		return leaderUserId;
-	}
-
-	public void setLeaderUserId(int leaderUserId) {
-		this.leaderUserId = leaderUserId;
-	}
-
-	public String getLeaderUsername() {
-		return leaderUsername;
-	}
-
-	public void setLeaderUsername(String leaderUsername) {
-		this.leaderUsername = leaderUsername;
-	}
-
-	public String getUserAttendanceStatus() {
-		return userAttendanceStatus;
-	}
-
-	public void setUserAttendanceStatus(String userAttendanceStatus) {
-		this.userAttendanceStatus = userAttendanceStatus;
-	}
+	// getters / setters
 
 	public int getId() {
 		return id;
@@ -69,6 +32,14 @@ public class Meeting {
 
 	public void setCourseId(int courseId) {
 		this.courseId = courseId;
+	}
+
+	public int getParentMeetingId() {
+		return parentMeetingId;
+	}
+
+	public void setParentMeetingId(int parentMeetingId) {
+		this.parentMeetingId = parentMeetingId;
 	}
 
 	public String getName() {
@@ -95,6 +66,14 @@ public class Meeting {
 		this.endDateTime = endDateTime;
 	}
 
+	public int getLeaderUserId() {
+		return leaderUserId;
+	}
+
+	public void setLeaderUserId(int leaderUserId) {
+		this.leaderUserId = leaderUserId;
+	}
+
 	public String getDescription() {
 		return description;
 	}
@@ -117,5 +96,21 @@ public class Meeting {
 
 	public void setParentCourseName(String parentCourseName) {
 		this.parentCourseName = parentCourseName;
+	}
+
+	public String getLeaderUsername() {
+		return leaderUsername;
+	}
+
+	public void setLeaderUsername(String leaderUsername) {
+		this.leaderUsername = leaderUsername;
+	}
+
+	public String getUserAttendanceStatus() {
+		return userAttendanceStatus;
+	}
+
+	public void setUserAttendanceStatus(String userAttendanceStatus) {
+		this.userAttendanceStatus = userAttendanceStatus;
 	}
 }

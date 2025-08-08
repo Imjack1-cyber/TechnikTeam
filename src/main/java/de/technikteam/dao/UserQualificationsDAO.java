@@ -50,6 +50,17 @@ public class UserQualificationsDAO {
 		}
 	}
 
+	public boolean hasUserCompletedCourse(int userId, int courseId) {
+		String sql = "SELECT COUNT(*) FROM user_qualifications WHERE user_id = ? AND course_id = ? AND status = 'BESTANDEN'";
+		try {
+			Integer count = jdbcTemplate.queryForObject(sql, Integer.class, userId, courseId);
+			return count != null && count > 0;
+		} catch (Exception e) {
+			logger.error("Error checking if user {} completed course {}", userId, courseId, e);
+			return false;
+		}
+	}
+
 	public boolean updateQualificationStatus(int userId, int courseId, String status, LocalDate completionDate,
 			String remarks) {
 		if ("NICHT BESUCHT".equals(status)) {
