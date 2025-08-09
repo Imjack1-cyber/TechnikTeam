@@ -6,37 +6,39 @@
 ![Java](https://img.shields.io/badge/Java-21+-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
 
-A comprehensive web application designed to manage a school's event technology crew ("Technik-Team"). The platform provides tools for event planning, user management, inventory tracking, and skill development, all within a granular, permission-based access control system. This version is a complete rewrite using a modern Spring Boot REST API and a React single-page application frontend.
+A comprehensive web application designed to manage a school's event technology crew ("Technik-Team"). The platform provides tools for event planning, user management, inventory tracking, and skill development. This version is a complete rewrite using a modern Spring Boot REST API and a React single-page application frontend, now with support for native mobile clients.
 
 ## Key Features
 
 ### 👑 Admin-Specific Features
 *   **Central Dashboard**: At-a-glance view of key metrics like upcoming events, low-stock items, and event trends.
-*   **User Management**: Full CRUD functionality for user accounts with a flexible permission-based system.
-*   **Event Management**: Create events with skill requirements, reserve inventory, upload files, and manage the event lifecycle.
-*   **Training & Qualification**: Define course templates, schedule meetings, and track user qualifications with an interactive matrix.
+*   **User Management**: Full CRUD functionality for user accounts, including temporary or permanent user suspension.
+*   **Event Management**: Create events with skill requirements, reserve inventory from pre-made checklist templates, upload files, and manage the event lifecycle.
+*   **Training & Qualification**: Define course templates, schedule meetings (including repeats with waitlists), and track user qualifications with an interactive matrix.
 *   **Inventory Management**: Full CRUD for all inventory items, including location details, quantity, images, and maintenance logs.
 *   **Kit Management**: Create reusable "kits" or "cases" of equipment with printable packing lists via QR codes.
-*   **File & Document Hub**: Manage file categories and upload documents with role-based access control.
+*   **Content Management**: Manage sitewide content like announcements, changelogs, and the help documentation system.
 *   **Feedback Kanban Board**: Manage user feedback and suggestions through a visual board.
 *   **Audit Trail**: A detailed log of all administrative actions for accountability.
 *   **System Monitoring**: View live server statistics, including CPU, memory, and disk usage.
 
 ### 👥 User-Facing Features
 *   **Personalized Homepage**: A dashboard showing upcoming events, assigned tasks, and training meetings.
-*   **Event System**: View and sign up for upcoming events, and access real-time tools like chat and task lists for "running" events.
-*   **Training Hub**: View and sign up for upcoming course meetings to gain new qualifications.
-*   **Inventory Browser**: Browse the entire equipment inventory and view item details.
-*   **Profile Management**: Update personal details, change passwords, and manage passwordless login with Passkeys/WebAuthn.
+*   **Notifications**: View a history of all received notifications, separated into seen and unseen categories.
+*   **Event System**: View and sign up for upcoming events, and access real-time tools like chat, checklists, and photo galleries for "running" events.
+*   **Training Hub**: View and sign up for upcoming course meetings. If a meeting is a repeat of one you've already completed, you'll be added to a waitlist.
+*   **Inventory Browser**: Browse the entire equipment inventory and view item details and availability.
+*   **Profile Management**: Update personal details and change passwords.
 *   **Calendar**: View all upcoming events and meetings in a list or calendar view, with an option to subscribe via an iCal feed.
 
 ## Technology Stack
 
 *   **Backend**: Spring Boot 3.3, Java 21
-    *   **Security**: Spring Security 6 with JWT Authentication via HttpOnly Cookies
+    *   **Security**: Spring Security 6 with JWT Authentication (supports both HttpOnly Cookies for web and Bearer Tokens for mobile clients).
     *   **Database**: Spring Data JDBC, MariaDB/MySQL
     *   **Migrations**: Flyway
-    *   **Real-time**: Spring WebSocket
+    *   **Real-time**: Spring WebSocket for chats, Server-Sent Events (SSE) for UI updates.
+    *   **Push Notifications**: Firebase Admin SDK (for future mobile integration).
 *   **Frontend**: React 18, Vite 5
     *   **Routing**: React Router
     *   **State Management**: Zustand
@@ -77,17 +79,17 @@ Follow these steps to get a local instance of the application running for develo
     ```shell
     mvn spring-boot:run
     ```
-2.  The backend server will start on the port defined in `application.properties` (default `8080`).
+2.  The backend server will start on the port defined in your `pom.xml`'s `spring-boot-maven-plugin` configuration (default `8080`). You can change this in the pom or override it in `application.properties`.
 
 ### 5. Frontend Setup & Launch
 1.  In a separate terminal, navigate to the `frontend` directory:
     ```shell
     cd frontend
     ```
-2.  **Environment Configuration:** Create a file named `.env.local` by copying `.env.local.example` (if it exists) or creating it from scratch. This file tells the Vite development server where your backend is running.
+2.  **Environment Configuration:** Create a file named `.env.local` by copying `frontend/.env.local.example`. This file tells the Vite development server where your backend is running.
     ```
     # frontend/.env.local
-    VITE_API_TARGET_URL=http://localhost:8080
+    VITE_API_TARGET_URL=http://localhost:8081
     ```
     Change the port if your backend runs on a different one.
 3.  Install the required Node.js dependencies:
@@ -99,6 +101,16 @@ Follow these steps to get a local instance of the application running for develo
     npm run dev
     ```
 5.  The frontend will be available at `http://localhost:3000`. The Vite server is configured to proxy all API (`/api`) and WebSocket (`/ws`) requests to the Spring Boot backend defined in your `.env.local` file.
+
+## Production Deployment
+
+After running `npm run build` in the `frontend` directory, a production-ready version of the site is available in `frontend/dist`. For deployment, it is recommended to use a reverse proxy like Nginx.
+
+1.  Serve the static files from `frontend/dist`.
+2.  Configure the reverse proxy to forward all requests starting with `/TechnikTeam/` to the running Spring Boot backend.
+3.  Ensure the `app.base-url` in `application.properties` is set to your final public domain.
+
+A detailed guide and example Nginx configuration can be found by asking the maintaining AI for instructions on setting up a reverse proxy.
 
 ## Usage
 
