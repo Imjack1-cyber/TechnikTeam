@@ -11,8 +11,6 @@ public class MeetingAttendance {
 	private boolean attended;
 	private String remarks;
 
-	// --- Getters and Setters ---
-
 	public int getUserId() {
 		return userId;
 	}

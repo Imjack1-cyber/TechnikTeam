@@ -1,133 +1,119 @@
-# TechnikTeam - School Event & Crew Management System
+# TechnikTeam - School Event & Crew Management System v2.0
 
-![Java](https://img.shields.io/badge/Java-17+-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
-![Maven](https://img.shields.io/badge/Maven-3.8+-C71A36?style=for-the-badge&logo=apache-maven&logoColor=white)
-![Tomcat](https://img.shields.io/badge/Tomcat-10+-F8DC75?style=for-the-badge&logo=apache-tomcat&logoColor=black)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.3+-6DB33F?style=for-the-badge&logo=spring&logoColor=white)
+![React](https://img.shields.io/badge/React-18+-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-5+-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![Java](https://img.shields.io/badge/Java-21+-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
-![JSP/Servlets](https://img.shields.io/badge/Jakarta_EE-Servlets_&_JSP-7A43B6?style=for-the-badge&logo=eclipse-jakarta-ee&logoColor=white)
 
-A comprehensive web application designed to manage a school's event technology crew ("Technik-Team"). The platform provides tools for event planning, user management, inventory tracking, and skill development, all within a role-based access control system.
+A comprehensive web application designed to manage a school's event technology crew ("Technik-Team"). The platform provides tools for event planning, user management, inventory tracking, and skill development. This version is a complete rewrite using a modern Spring Boot REST API and a React single-page application frontend, now with support for native mobile clients.
 
 ## Key Features
 
 ### 👑 Admin-Specific Features
-*   **Central Dashboard**: At-a-glance view of key statistics like total users and active events.
-*   **User Management**: Full CRUD (Create, Read, Update, Delete) functionality for user accounts, with support for `ADMIN` and `NUTZER` roles. Includes a secure password reset feature.
-*   **Event Management**:
-    *   Create and edit events with details like name, date, time, location, and description.
-    *   Define skill requirements for each event (e.g., "2 Tontechniker", "1 Lichttechniker").
-    *   Reserve specific items from the inventory for an event.
-    *   Upload event-specific files with role-based visibility.
-    *   Assign a final team from the list of users who signed up.
-    *   Control the event lifecycle (`GEPLANT` -> `LAUFEND` -> `ABGESCHLOSSEN`).
-*   **Training & Qualification**:
-    *   Create course templates (e.g., "Grundlehrgang Tontechnik").
-    *   Schedule individual meetings for each course, complete with location, leader, and file attachments.
-    *   **Interactive Qualification Matrix**: A powerful grid view to track and update which users have attended specific course meetings.
-*   **Inventory Management**: Full CRUD for all inventory items, including location details, quantity, and images.
-*   **File & Document Hub**:
-    *   Create and manage file categories.
-    *   Upload files to specific categories with role-based access (`ADMIN` or `NUTZER`).
+*   **Central Dashboard**: At-a-glance view of key metrics like upcoming events, low-stock items, and event trends.
+*   **User Management**: Full CRUD functionality for user accounts, including temporary or permanent user suspension.
+*   **Event Management**: Create events with skill requirements, reserve inventory from pre-made checklist templates, upload files, and manage the event lifecycle.
+*   **Training & Qualification**: Define course templates, schedule meetings (including repeats with waitlists), and track user qualifications with an interactive matrix.
+*   **Inventory Management**: Full CRUD for all inventory items, including location details, quantity, images, and maintenance logs.
+*   **Kit Management**: Create reusable "kits" or "cases" of equipment with printable packing lists via QR codes.
+*   **Content Management**: Manage sitewide content like announcements, changelogs, and the help documentation system.
+*   **Feedback Kanban Board**: Manage user feedback and suggestions through a visual board.
 *   **Audit Trail**: A detailed log of all administrative actions for accountability.
+*   **System Monitoring**: View live server statistics, including CPU, memory, and disk usage.
 
 ### 👥 User-Facing Features
-*   **Personalized Homepage**: A dashboard showing upcoming events and training meetings relevant to the user.
-*   **Event System**:
-    *   View a list of upcoming events for which the user is qualified.
-    *   Sign up for or sign off from events.
-    *   View detailed event pages with descriptions, requirements, and assigned team members.
-    *   **Live Event Tools**: For assigned members of a "running" event, access a real-time chat and a task list.
-*   **Training Hub**: View and sign up for upcoming course meetings to gain new qualifications.
-*   **Inventory Overview**: Browse the entire equipment inventory, grouped by location, and view item details.
-*   **Document Access**: View and download all files and documents they are authorized to see.
-*   **Collaborative Editor**: A shared, real-time notepad for quick collaboration.
+*   **Personalized Homepage**: A dashboard showing upcoming events, assigned tasks, and training meetings.
+*   **Notifications**: View a history of all received notifications, separated into seen and unseen categories.
+*   **Event System**: View and sign up for upcoming events, and access real-time tools like chat, checklists, and photo galleries for "running" events.
+*   **Training Hub**: View and sign up for upcoming course meetings. If a meeting is a repeat of one you've already completed, you'll be added to a waitlist.
+*   **Inventory Browser**: Browse the entire equipment inventory and view item details and availability.
+*   **Profile Management**: Update personal details and change passwords.
+*   **Calendar**: View all upcoming events and meetings in a list or calendar view, with an option to subscribe via an iCal feed.
 
 ## Technology Stack
 
-*   **Backend**: Java 17+, Jakarta Servlets, JSP
-*   **Database**: MySQL
-*   **Connection Pooling**: HikariCP
-*   **Logging**: Log4j2
-*   **JSON Processing**: Google Gson
-*   **Frontend**: HTML5, CSS3, Vanilla JavaScript (ES6+)
+*   **Backend**: Spring Boot 3.3, Java 21
+    *   **Security**: Spring Security 6 with JWT Authentication (supports both HttpOnly Cookies for web and Bearer Tokens for mobile clients).
+    *   **Database**: Spring Data JDBC, MariaDB/MySQL
+    *   **Migrations**: Flyway
+    *   **Real-time**: Spring WebSocket for chats, Server-Sent Events (SSE) for UI updates.
+    *   **Push Notifications**: Firebase Admin SDK (for future mobile integration).
+*   **Frontend**: React 18, Vite 5
+    *   **Routing**: React Router
+    *   **State Management**: Zustand
+    *   **Styling**: Plain CSS with custom properties for theming
+*   **API Documentation**: Springdoc OpenAPI (Swagger UI)
 *   **Build Tool**: Apache Maven
-*   **Web Server**: Apache Tomcat 10+
 
 ## Setup and Installation
 
-Follow these steps to get a local instance of the application running.
+Follow these steps to get a local instance of the application running for development.
 
 ### 1. Prerequisites
-*   Java Development Kit (JDK) 17 or higher
-*   Apache Maven
-*   Apache Tomcat 10 or higher
-*   MySQL Server
+*   Java Development Kit (JDK) 21 or higher
+*   Apache Maven 3.8+
+*   Node.js 20+ (with npm)
+*   MySQL Server 8.0+ or MariaDB 10.6+
 
 ### 2. Database Setup
-1.  Create a new database in MySQL:
+1.  Create a new database in your database server:
     ```sql
     CREATE DATABASE technik_team_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
     ```
-2.  Create a dedicated database user with privileges on this database:
-    ```sql
-    CREATE USER 'technik_user'@'localhost' IDENTIFIED BY 'ein_sicheres_passwort';
-    GRANT ALL PRIVILEGES ON technik_team_db.* TO 'technik_user'@'localhost';
-    FLUSH PRIVILEGES;
-    ```
-3.  Import the provided SQL dump file (`-- phpMyAdmin SQL Dump ...`) into the `technik_team_db` database to create the tables and seed initial data.
+2.  Create a dedicated database user with privileges on this database.
 
-### 3. Application Configuration
-1.  **Database Connection**: Open `src/main/java/de/technikteam/dao/DatabaseManager.java` and update the database credentials to match your setup:
-    ```java
-    // ...
-    config.setUsername("technik_user"); // <-- SET YOUR DB USERNAME
-    config.setPassword("ein_sicheres_passwort"); // <-- SET YOUR DB PASSWORD
-    // ...
-    ```
-2.  **File Upload Directory**: Open `src/main/java/de/technikteam/config/AppConfig.java` and change the `UPLOAD_DIRECTORY` constant to an absolute path on your local machine. **This directory must be created manually and be writable by the Tomcat server process.**
-    ```java
-    // ...
-    public static final String UPLOAD_DIRECTORY = "C:\\path\\to\\your\\uploads\\folder"; // Windows example
-    // public static final String UPLOAD_DIRECTORY = "/path/to/your/uploads/folder"; // Linux/macOS example
-    // ...
-    ```
+### 3. Backend Configuration & Setup
+1.  Navigate to the project's root directory.
+2.  Open `src/main/resources/application.properties`.
+3.  Update the `spring.datasource.*` properties to match your database connection details.
+4.  Set a strong, unique secret for `jwt.secret`. This is critical for security. It **must** be at least 32 characters long.
+5.  Set the `upload.directory` to an absolute path on your local machine. This directory must exist and be writable by the application.
+6.  Set the `app.base-url` to the full public URL where your application will be hosted (e.g., `http://localhost:8080/TechnikTeam` for local development).
+7.  The application uses Flyway for database migrations. The necessary tables will be created automatically when the application starts for the first time.
 
-### 4. Build and Deploy
-1.  Navigate to the project's root directory in your terminal.
-2.  Build the project using Maven to create a `.war` file:
+**First-time Setup Note:** The application includes a component (`InitialAdminCreator.java`) that checks if an 'admin' user exists on first startup. If not, it creates a default `admin` user with full permissions and a strong, random password. This password is printed to the console **only once** on the very first startup. Please copy this password immediately and store it securely.
+
+### 4. Backend Launch
+1.  From the project's root directory, run the Spring Boot application using Maven:
     ```shell
-    mvn clean install
+    mvn spring-boot:run
     ```
-3.  This will generate a `TechnikTeam.war` file in the `target/` directory.
-4.  Deploy this `TechnikTeam.war` file to your Apache Tomcat's `webapps` directory.
-5.  Start the Tomcat server. The application will be available at `http://localhost:8080/TechnikTeam`.
+2.  The backend server will start on the port defined in your `pom.xml`'s `spring-boot-maven-plugin` configuration (default `8080`). You can change this in the pom or override it in `application.properties`.
+
+### 5. Frontend Setup & Launch
+1.  In a separate terminal, navigate to the `frontend` directory:
+    ```shell
+    cd frontend
+    ```
+2.  **Environment Configuration:** Create a file named `.env.local` by copying `frontend/.env.local.example`. This file tells the Vite development server where your backend is running.
+    ```
+    # frontend/.env.local
+    VITE_API_TARGET_URL=http://localhost:8081
+    ```
+    Change the port if your backend runs on a different one.
+3.  Install the required Node.js dependencies:
+    ```shell
+    npm install
+    ```
+4.  Start the Vite development server:
+    ```shell
+    npm run dev
+    ```
+5.  The frontend will be available at `http://localhost:3000`. The Vite server is configured to proxy all API (`/api`) and WebSocket (`/ws`) requests to the Spring Boot backend defined in your `.env.local` file.
+
+## Production Deployment
+
+After running `npm run build` in the `frontend` directory, a production-ready version of the site is available in `frontend/dist`. For deployment, it is recommended to use a reverse proxy like Nginx.
+
+1.  Serve the static files from `frontend/dist`.
+2.  Configure the reverse proxy to forward all requests starting with `/TechnikTeam/` to the running Spring Boot backend.
+3.  Ensure the `app.base-url` in `application.properties` is set to your final public domain.
+
+A detailed guide and example Nginx configuration can be found by asking the maintaining AI for instructions on setting up a reverse proxy.
 
 ## Usage
 
-Once the application is running, you can log in with the default administrator credentials:
+Once both servers are running, open `http://localhost:3000` in your browser.
 
-*   **Username**: `admin`
-*   **Password**: `admin123`
-
-From there, you can create new users, manage events, and explore all the features.
-
-## Project Structure
-
-The project follows a standard Maven web application structure:
-
-*   `src/main/java/de/technikteam/`
-    *   `config/`: Configuration classes (database path, date formatters).
-    *   `dao/`: Data Access Objects for all database interactions.
-    *   `filter/`: Servlet filters for authentication, authorization, and encoding.
-    *   `listener/`: Application lifecycle listeners for startup and shutdown tasks.
-    *   `model/`: Plain Old Java Objects (POJOs) representing the application's data entities.
-    *   `service/`: Service layer classes for business logic (e.g., Notifications).
-    *   `servlet/`: All servlet controllers handling user requests.
-    *   `util/`: Utility classes.
-*   `src/main/webapp/`
-    *   `admin/`: JSP files exclusive to the admin panel.
-    *   `css/`: CSS stylesheets.
-    *   `js/`: JavaScript files.
-    *   `WEB-INF/`: Deployment descriptor (`web.xml`) and reusable JSP fragments (`.jspf`).
-    *   `*.jsp`: Public-facing JSP view files.
-*   `src/main/resources/`: Resource files like the `log4j2.xml` configuration.
+*   **API Documentation**: Full, interactive API documentation is available via Swagger UI at `http://localhost:8080/TechnikTeam/swagger-ui.html` once the backend is running.

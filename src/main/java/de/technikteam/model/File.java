@@ -11,12 +11,16 @@ public class File {
 	private int id;
 	private String filename;
 	private String filepath;
-	private int categoryId;
-	private String categoryName; // For display purposes, joined from file_categories
+	private Integer categoryId;
+	private String categoryName;
 	private LocalDateTime uploadedAt;
-	private String requiredRole; // "NUTZER" or "ADMIN"
+	private String requiredRole;
+	private boolean needsWarning;
+	private String content;
 
-	// --- Getters and Setters ---
+	public String getFormattedUploadedAt() {
+		return de.technikteam.config.DateFormatter.formatDateTime(this.uploadedAt);
+	}
 
 	public int getId() {
 		return id;
@@ -42,11 +46,11 @@ public class File {
 		this.filepath = filepath;
 	}
 
-	public int getCategoryId() {
+	public Integer getCategoryId() {
 		return categoryId;
 	}
 
-	public void setCategoryId(int categoryId) {
+	public void setCategoryId(Integer categoryId) {
 		this.categoryId = categoryId;
 	}
 
@@ -72,5 +76,21 @@ public class File {
 
 	public void setRequiredRole(String requiredRole) {
 		this.requiredRole = requiredRole;
+	}
+
+	public boolean isNeedsWarning() {
+		return needsWarning;
+	}
+
+	public void setNeedsWarning(boolean needsWarning) {
+		this.needsWarning = needsWarning;
+	}
+
+	public String getContent() {
+		return content;
+	}
+
+	public void setContent(String content) {
+		this.content = content;
 	}
 }

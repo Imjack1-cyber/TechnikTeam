@@ -17,8 +17,6 @@ public class ParticipationHistory {
 	public ParticipationHistory() {
 	}
 
-	// --- Getters and Setters ---
-
 	public String getUsername() {
 		return username;
 	}

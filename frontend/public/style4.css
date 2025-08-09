@@ -1,0 +1,1096 @@
+/* FILE: style4.css - Page-Specific, Utility, and Complex Component Styles */
+
+/* --- 7. UTILITY & PAGE-SPECIFIC --- */
+.login-page-container {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	min-height: 100vh;
+	padding: 1rem;
+	background: var(--bg-color);
+}
+
+.login-box {
+	width: 100%;
+	max-width: 400px;
+	padding: 2.5rem;
+	background-color: var(--surface-color);
+	border-radius: var(--border-radius);
+	box-shadow: var(--shadow-md);
+}
+
+.table-controls {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	align-items: center;
+	gap: 1rem;
+	margin-bottom: 1.5rem;
+}
+
+.status-badge {
+	padding: 0.25em 0.6em;
+	font-size: 0.8rem;
+	font-weight: 600;
+	border-radius: 20px;
+	text-transform: uppercase;
+}
+
+.status-ok {
+	background-color: var(--success-color);
+	color: #fff;
+}
+
+.status-warn {
+	background-color: var(--warning-color);
+	color: #000;
+}
+
+.status-danger {
+	background-color: var(--danger-color);
+	color: #fff;
+}
+
+.status-info {
+	background-color: var(--text-muted-color);
+	color: #fff;
+}
+
+.details-list {
+	list-style-type: none;
+	padding-left: 0;
+}
+
+.details-list li {
+	padding: 0.75rem 0;
+	border-bottom: 1px solid var(--border-color);
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+@media (max-width : 576px) {
+	.details-list li {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+}
+
+.details-list li:last-child {
+	border-bottom: none;
+}
+
+.details-subtitle {
+	font-size: 1.1rem;
+	color: var(--text-muted-color);
+	margin-bottom: 1.5rem;
+}
+
+.star-rating {
+	display: flex;
+	flex-direction: row-reverse;
+	justify-content: flex-end;
+	font-size: 2em;
+}
+
+.star-rating input {
+	display: none;
+}
+
+.star-rating label {
+	color: #ccc;
+	cursor: pointer;
+	transition: color 0.2s;
+}
+
+.star-rating label:before {
+	content: '★';
+}
+
+.star-rating input:checked~label,
+.star-rating:not(:checked)>label:hover,
+.star-rating:not(:checked)>label:hover~label {
+	color: #ffc107;
+}
+
+.qr-action-body {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 100vh;
+	background-color: var(--bg-color);
+}
+
+.qr-action-container {
+	text-align: center;
+	width: 90%;
+	max-width: 400px;
+}
+
+.qr-action-item-name {
+	font-size: 1.5rem;
+	font-weight: bold;
+	margin-bottom: 2rem;
+}
+
+.qr-action-buttons {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 1rem;
+}
+
+.qr-action-btn {
+	font-size: 1.2rem;
+	padding: 1.5rem;
+}
+
+.lightbox-overlay {
+	display: none;
+	position: fixed;
+	z-index: 3000;
+	padding: 1rem;
+	justify-content: center;
+	align-items: center;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	overflow: auto;
+	background-color: rgba(0, 0, 0, 0.8);
+}
+
+.lightbox-content {
+	margin: auto;
+	display: block;
+	width: auto;
+	height: auto;
+	max-width: 90vw;
+	max-height: 90vh;
+}
+
+.lightbox-close {
+	position: absolute;
+	top: 15px;
+	right: 35px;
+	color: #f1f1f1;
+	font-size: 40px;
+	font-weight: bold;
+	transition: 0.3s;
+}
+
+.lightbox-close:hover,
+.lightbox-close:focus {
+	color: #bbb;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.data-table .sticky-header {
+	position: sticky;
+	top: 0;
+	z-index: 10;
+}
+
+.data-table .sticky-col {
+	position: sticky;
+	left: 0;
+	background-color: var(--surface-color);
+	z-index: 5;
+}
+
+.data-table .qual-cell[data-attended="true"] {
+	color: var(--success-color);
+}
+
+.horizontal-scroll-hint {
+	display: none;
+	text-align: center;
+	padding: 0.5rem;
+	background-color: var(--warning-color);
+	color: #000;
+	font-weight: 500;
+	border-radius: var(--border-radius);
+	margin-bottom: 1rem;
+}
+
+@media (max-width : 768px) {
+	.horizontal-scroll-hint {
+		display: block;
+	}
+}
+
+.cart-fab {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: #fff;
+    border: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    box-shadow: var(--shadow-lg);
+    cursor: pointer;
+    z-index: 1000;
+    transition: transform 0.2s;
+}
+
+.cart-fab:hover {
+    transform: scale(1.1);
+}
+
+.cart-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background-color: var(--danger-color);
+    color: #fff;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+    border: 2px solid var(--surface-color);
+}
+
+.help-fab {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+	text-decoration: none;
+	/* If cart is also present, move help button over */
+    body:has(.cart-fab) & {
+        right: calc(2rem + 60px + 1rem);
+    }
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: var(--info-color);
+    color: #000;
+    border: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    z-index: 999;
+    transition: all 0.2s;
+}
+
+.help-fab:hover {
+    transform: scale(1.1);
+    box-shadow: var(--shadow-lg);
+}
+
+
+.nav-order-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.5rem;
+}
+
+.nav-order-block-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 6px;
+}
+
+.nav-order-block.selected .nav-order-block-header {
+    background-color: var(--primary-color-light);
+}
+
+.nav-order-block-header .nav-section-title {
+    margin: 0;
+    padding: 0;
+    border: none;
+}
+
+.nav-order-item {
+    background-color: var(--surface-color);
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.2s;
+}
+
+.nav-order-item.selected {
+    background-color: var(--primary-color-light);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px var(--primary-color-light);
+}
+
+.nav-order-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted-color);
+}
+.nav-order-controls .btn {
+    padding: 0.2rem 0.5rem;
+}
+.mobile-only {
+    display: none;
+}
+@media (max-width: 768px) {
+    .mobile-only {
+        display: inline-flex;
+    }
+    .desktop-only-inline {
+        display: none;
+    }
+}
+
+
+/* --- 8. CREATIVE ERROR PAGES --- */
+.error-page-wrapper {
+    display: flex;
+    /* Centering is now optional and handled by the element itself */
+    min-height: 100vh;
+    width: 100%;
+    padding: 0; /* Remove padding for full-screen pages */
+    font-family: 'Courier New', Courier, monospace;
+    background-color: var(--bg-color);
+}
+
+.error-page-wrapper.center {
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+}
+
+.terminal {
+    background-color: var(--terminal-bg);
+    border: 1px solid var(--terminal-border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 800px;
+    box-shadow: var(--shadow-lg);
+}
+
+.full-screen-terminal {
+    width: 100%;
+    height: 100vh;
+    background-color: var(--terminal-bg);
+    color: var(--terminal-text);
+    display: flex;
+    flex-direction: column;
+}
+
+.full-screen-terminal .terminal-header {
+    flex-shrink: 0;
+}
+.full-screen-terminal .terminal-body {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+.full-screen-terminal .terminal-footer {
+    flex-shrink: 0;
+    padding: 1.5rem;
+    border-top: 1px solid var(--terminal-border);
+}
+
+
+.terminal-header {
+    display: flex;
+    align-items: center;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--terminal-border);
+    margin-bottom: 1rem;
+    background-color: var(--terminal-header-bg);
+    margin: -1.5rem -1.5rem 1rem -1.5rem;
+    padding: 1rem 1.5rem;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.terminal-header span {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+.terminal-header .red { background-color: #ff5f56; }
+.terminal-header .yellow { background-color: #ffbd2e; }
+.terminal-header .green { background-color: #27c93f; }
+
+.terminal-header .title {
+    color: var(--terminal-text-muted);
+    margin: 0 auto;
+}
+
+.terminal-body {
+    min-height: 200px;
+    color: var(--terminal-text);
+}
+
+.terminal-line {
+    display: flex;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.terminal-prompt {
+    color: var(--terminal-prompt);
+    margin-right: 0.5rem;
+}
+
+.terminal-line .cursor {
+    display: inline-block;
+    width: 8px;
+    height: 1.2em;
+    background-color: var(--terminal-text);
+    animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+    from, to { background-color: transparent; }
+    50% { background-color: var(--terminal-text); }
+}
+
+.error-page-wrapper .btn {
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+    margin-top: 1.5rem;
+}
+.full-screen-terminal .btn {
+    margin-top: 0;
+}
+
+
+.error-page-wrapper .btn.visible {
+    opacity: 1;
+}
+
+.terminal-line.info { color: var(--text-muted-color); }
+.terminal-line.ok { color: var(--success-color); }
+.terminal-line.warn { color: var(--warning-color); }
+.terminal-line.fail { color: var(--danger-color); }
+
+/* --- 9. WARNING NOTIFICATION --- */
+body.warning-flash {
+    animation: flash 1s ease-out infinite;
+}
+
+@keyframes flash {
+    0%, 100% { background-color: var(--bg-color); }
+    50% { background-color: var(--danger-color); }
+}
+
+/* --- 10. CHAT INTERFACE --- */
+.chat-message-container {
+	display: flex;
+	align-items: center;
+	margin-bottom: 0.75rem;
+	position: relative;
+	max-width: 90%;
+	align-self: flex-start;
+}
+
+.chat-message-container.current-user {
+	align-self: flex-end;
+	flex-direction: row-reverse;
+}
+
+.chat-bubble {
+	padding: 0.6rem 0.9rem;
+	border-radius: 18px;
+	word-wrap: break-word;
+	border: 1px solid transparent;
+}
+
+.chat-bubble.current-user-bubble {
+	background-color: var(--primary-color) !important;
+	color: #fff !important;
+	border-color: var(--primary-color) !important;
+}
+
+.chat-username {
+	display: block;
+	font-size: 0.8rem;
+	font-weight: 700;
+	margin-bottom: 0.2rem;
+}
+
+.chat-text {
+	display: block;
+	font-size: 1rem;
+	line-height: 1.4;
+}
+
+.chat-timestamp {
+	display: block;
+	font-size: 0.75rem;
+	margin-top: 0.3rem;
+	text-align: right;
+}
+
+.chat-edited-marker {
+	font-size: 0.7em;
+	font-style: italic;
+	color: inherit;
+}
+
+.chat-options {
+	opacity: 0;
+	transition: opacity 0.2s;
+	display: flex;
+	gap: 0.25rem;
+	background-color: var(--surface-color);
+	padding: 0.25rem;
+	border-radius: 20px;
+	box-shadow: var(--shadow-md);
+	margin: 0 0.5rem;
+}
+
+.chat-message-container:hover .chat-options {
+	opacity: 1;
+}
+
+.chat-option-btn {
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: var(--text-muted-color);
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.chat-option-btn:hover {
+	background-color: var(--bg-color);
+	color: var(--text-color);
+}
+
+.chat-edit-input {
+	width: 100%;
+	padding: 0.2rem 0.4rem;
+	border: 1px solid var(--primary-color);
+	border-radius: 4px;
+	background: var(--surface-color);
+	color: var(--text-color);
+	font-family: inherit;
+	font-size: 1rem;
+}
+
+.chat-bubble.deleted {
+	font-style: italic;
+	opacity: 0.7;
+}
+
+.chat-deleted-info {
+	font-size: 0.9em;
+}
+
+#chat-box {
+	display: flex;
+	flex-direction: column;
+}
+
+/* --- 12. MARKDOWN STYLES --- */
+.markdown-content {
+	overflow-wrap: break-word;
+	word-wrap: break-word;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+	margin-top: 1.5rem;
+	margin-bottom: 1rem;
+	font-weight: 600;
+	border: none;
+	padding: 0;
+}
+
+.markdown-content p {
+	margin-bottom: 1rem;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+	padding-left: 2rem;
+	margin-bottom: 1rem;
+}
+
+.markdown-content blockquote {
+	padding: 0.5rem 1rem;
+	margin: 0 0 1rem;
+	font-size: 1rem;
+	border-left: 0.25rem solid var(--border-color);
+	background-color: var(--bg-color);
+	color: var(--text-muted-color);
+}
+
+.markdown-content code {
+	padding: .2em .4em;
+	margin: 0;
+	font-size: 85%;
+	background-color: var(--primary-color-light);
+	border-radius: 6px;
+	font-family: monospace;
+}
+
+.markdown-content pre {
+	padding: 1rem;
+	overflow: auto;
+	font-size: 85%;
+	line-height: 1.45;
+	background-color: var(--bg-color);
+	border-radius: 6px;
+	margin-bottom: 1rem;
+}
+
+.markdown-content table {
+	width: 100%;
+	margin-bottom: 1rem;
+	border-collapse: collapse;
+	display: block;
+	overflow-x: auto;
+}
+
+.markdown-content th,
+.markdown-content td {
+	padding: 0.75rem;
+	border: 1px solid var(--border-color);
+}
+
+.markdown-content thead {
+	background-color: var(--bg-color);
+}
+
+.markdown-content img {
+	max-width: 100%;
+	height: auto;
+}
+
+/* --- 14. CUSTOM CALENDAR STYLES --- */
+.termin-list {
+	list-style: none;
+	padding: 0;
+}
+
+.termin-item-link {
+	text-decoration: none;
+	color: inherit;
+	display: block;
+}
+
+.termin-item {
+	display: flex;
+	align-items: center;
+	padding: 1rem;
+	background-color: var(--surface-color);
+	border-bottom: 1px solid var(--border-color);
+	transition: background-color 0.2s;
+}
+
+.termin-item:hover {
+	background-color: var(--bg-color);
+}
+
+.termin-list li:first-child {
+	border-top: 1px solid var(--border-color);
+}
+
+.termin-date {
+	flex-shrink: 0;
+	text-align: center;
+	margin-right: 1.5rem;
+	width: 60px;
+}
+
+.termin-date-day {
+	font-size: 1.8rem;
+	font-weight: 600;
+	display: block;
+	line-height: 1;
+	color: var(--primary-color);
+}
+
+.termin-date-month {
+	font-size: 0.9rem;
+	text-transform: uppercase;
+	font-weight: 500;
+	display: block;
+	color: var(--text-muted-color);
+}
+
+.termin-details {
+	flex-grow: 1;
+}
+
+.termin-title {
+	font-weight: 600;
+	display: block;
+	margin-bottom: 0.25rem;
+}
+
+.termin-type-event {
+	background-color: var(--danger-color);
+	color: white;
+}
+
+.termin-type-lehrgang {
+	background-color: var(--primary-color);
+	color: white;
+}
+
+.termin-arrow {
+	color: var(--text-muted-color);
+	margin-left: 1rem;
+}
+
+.mobile-list-view {
+	display: block;
+}
+
+.desktop-calendar-view {
+	display: none;
+}
+
+@media (min-width : 992px) {
+	.mobile-list-view {
+		display: none;
+	}
+
+	.desktop-calendar-view {
+		display: block;
+	}
+}
+
+/* --- 14b. RESERVATION CALENDAR STYLES --- */
+.reservation-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    background-color: var(--border-color);
+    border: 1px solid var(--border-color);
+}
+
+.reservation-calendar-header {
+    text-align: center;
+    padding: 0.5rem 0;
+    background-color: var(--bg-color);
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.reservation-calendar-day {
+    background-color: var(--surface-color);
+    padding: 0.5rem;
+    text-align: center;
+    min-height: 50px;
+    transition: background-color 0.2s;
+}
+
+.reservation-calendar-day.other-month {
+    opacity: 0.4;
+}
+
+.reservation-calendar-day.today {
+    box-shadow: inset 0 0 0 2px var(--primary-color);
+    font-weight: bold;
+}
+
+.reservation-calendar-day.reserved {
+    background-color: var(--danger-color);
+    color: #fff;
+    cursor: help;
+}
+
+/* --- 15. WIKI PAGE STYLES --- */
+.main-content.wiki-page {
+	display: flex;
+	padding: 0;
+	overflow: hidden;
+	height: calc(100vh - (var(--header-height) + 3rem));
+}
+
+.wiki-page-wrapper {
+	display: flex;
+	flex-grow: 1;
+	min-height: 0;
+	min-width: 0;
+}
+
+.wiki-sidebar {
+	flex: 0 0 320px;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	background-color: var(--surface-color);
+	border-right: 1px solid var(--border-color);
+}
+
+.wiki-content-pane {
+	flex-grow: 1;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	padding: 1.5rem;
+	overflow-y: auto;
+}
+
+.wiki-sidebar-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 1rem;
+	flex-shrink: 0;
+	padding: 1rem 1.5rem 0 1.5rem;
+}
+
+.wiki-sidebar-header h3 {
+	margin: 0;
+	border: none;
+	padding: 0;
+}
+
+.wiki-tree-container {
+	flex-grow: 1;
+	overflow-y: auto;
+	min-height: 0;
+	padding: 1.5rem;
+}
+
+.wiki-welcome-pane.desktop-only {
+	text-align: center;
+	margin: auto;
+	color: var(--text-muted-color);
+}
+
+.wiki-welcome-pane.desktop-only h1 {
+	margin-top: 1rem;
+}
+
+.wiki-tree-container ul {
+	list-style-type: none;
+	padding-left: 1rem;
+}
+
+.wiki-tree-container summary {
+	cursor: pointer;
+	padding: 0.25rem 0;
+	list-style: none;
+}
+
+.wiki-tree-container summary::-webkit-details-marker {
+	display: none;
+}
+
+.wiki-tree-container summary:before {
+	content: '\f07b';
+	font-family: 'Font Awesome 5 Free';
+	font-weight: 900;
+	margin-right: 0.5rem;
+	color: var(--text-muted-color);
+	transition: transform 0.2s;
+}
+
+.wiki-tree-container details[open]>summary:before {
+	content: '\f07c';
+}
+
+.wiki-tree-container a {
+	display: block;
+	padding: 0.25rem 0.5rem;
+	border-radius: 4px;
+	text-decoration: none;
+}
+
+.wiki-tree-container a:hover {
+	background-color: var(--sidebar-hover-bg);
+}
+
+.wiki-tree-container a.active {
+	background-color: var(--primary-color-light);
+	font-weight: 600;
+	color: var(--primary-color);
+}
+
+.wiki-content-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	border-bottom: 1px solid var(--border-color);
+	margin-bottom: 1rem;
+	flex-wrap: wrap;
+	gap: 1rem;
+	flex-shrink: 0;
+}
+
+.wiki-content-header h2 {
+	margin: 0;
+	padding: 0;
+	border: none;
+	font-size: 1.2rem;
+	word-break: break-all;
+}
+
+@media (max-width : 991.98px) {
+	.wiki-page-wrapper .wiki-sidebar,
+	.wiki-page-wrapper .wiki-content-pane {
+		display: none; /* Hide both by default on mobile */
+	}
+
+	.wiki-page-wrapper.tree-visible .wiki-sidebar {
+		display: flex; /* Show tree view */
+		width: 100%;
+		border-right: none;
+	}
+
+	.wiki-page-wrapper.content-visible .wiki-content-pane {
+		display: flex; /* Show content view */
+		width: 100%;
+	}
+
+	.desktop-only {
+		display: none !important;
+	}
+}
+
+/* --- 16. UTILITY OVERFLOW STYLES --- */
+.data-table td,
+.data-table th,
+code,
+pre {
+	word-break: break-word;
+	white-space: normal;
+}
+
+pre,
+code {
+	white-space: pre-wrap;
+}
+
+/* --- 17. INLINE WIKI EDITOR STYLES --- */
+.wiki-editor-controls {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+}
+
+#wiki-content-pane .editor-container {
+	display: flex;
+	flex-direction: column;
+	flex-grow: 1;
+	min-height: 0;
+	border: none;
+	padding: 0;
+	box-shadow: none;
+	background: transparent;
+}
+
+#wiki-content-pane #editor {
+	flex-grow: 1;
+	min-height: 0;
+	height: auto;
+	overflow-y: auto;
+}
+
+#wiki-content-pane #markdown-preview {
+	flex-grow: 1;
+	overflow-y: auto;
+	min-height: 0;
+}
+
+/* --- 18. FEEDBACK BOARD (KANBAN) --- */
+.feedback-board {
+	display: flex;
+	gap: 1.5rem;
+	overflow-x: auto;
+	padding-bottom: 1rem;
+	min-height: 60vh;
+}
+
+.feedback-column {
+	flex: 1 0 300px;
+	min-width: 300px;
+	background-color: var(--bg-color);
+	border-radius: var(--border-radius);
+	padding: 1rem;
+}
+
+.feedback-column h2 {
+	font-size: 1.2rem;
+	border-bottom: 2px solid var(--border-color);
+	padding-bottom: 0.5rem;
+	margin-bottom: 1rem;
+}
+
+.feedback-list {
+	min-height: 100px;
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
+.feedback-card-item {
+	background-color: var(--surface-color);
+	border: 1px solid var(--border-color);
+	border-radius: 6px;
+	padding: 1rem;
+	box-shadow: var(--shadow-sm);
+	cursor: pointer;
+}
+
+.feedback-card-item:active {
+	cursor: grabbing;
+}
+
+.feedback-card-item .subject {
+	font-weight: 600;
+	margin-bottom: 0.5rem;
+	display: block;
+}
+
+.feedback-card-item .content-preview {
+	font-size: 0.9rem;
+	color: var(--text-muted-color);
+	margin-bottom: 0.75rem;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.feedback-card-item .meta {
+	font-size: 0.8rem;
+	color: var(--text-muted-color);
+}
+
+.sortable-ghost {
+	opacity: 0.4;
+	background: var(--primary-color-light);
+}

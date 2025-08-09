@@ -1,180 +1,257 @@
 package de.technikteam.dao;
 
 import de.technikteam.model.EventTask;
+import de.technikteam.model.InventoryKit;
+import de.technikteam.model.StorageItem;
+import de.technikteam.model.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.*;
+import java.util.stream.Collectors;
 
-/**
- * Data Access Object for managing event-specific tasks in the `event_tasks`
- * table. It handles creating, assigning, updating status, and deleting tasks
- * associated with a "running" event.
- */
+@Repository
 public class EventTaskDAO {
 	private static final Logger logger = LogManager.getLogger(EventTaskDAO.class);
+	private final JdbcTemplate jdbcTemplate;
 
-	/**
-	 * Creates a new task for an event.
-	 * 
-	 * @param task The EventTask object to create.
-	 * @return The ID of the newly created task, or 0 on failure.
-	 */
-	public int createTask(EventTask task) {
-		String sql = "INSERT INTO event_tasks (event_id, description, status) VALUES (?, ?, 'OFFEN')";
-		logger.debug("Creating new task '{}' for event ID {}", task.getDescription(), task.getEventId());
-		try (Connection conn = DatabaseManager.getConnection();
-				PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-			pstmt.setInt(1, task.getEventId());
-			pstmt.setString(2, task.getDescription());
-			if (pstmt.executeUpdate() > 0) {
-				try (ResultSet rs = pstmt.getGeneratedKeys()) {
-					if (rs.next()) {
-						int taskId = rs.getInt(1);
-						logger.info("Created task '{}' with ID {} for event {}", task.getDescription(), taskId,
-								task.getEventId());
-						return taskId;
-					}
-				}
-			}
-		} catch (SQLException e) {
-			logger.error("Error creating task for event {}", task.getEventId(), e);
-		}
-		return 0;
+	@Autowired
+	public EventTaskDAO(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
 	}
 
-	/**
-	 * Assigns a task to one or more users. This is a transactional operation that
-	 * first clears all existing assignments for the task and then adds the new
-	 * ones.
-	 * 
-	 * @param taskId  The ID of the task.
-	 * @param userIds The array of user IDs to assign to the task.
-	 */
-	public void assignTaskToUsers(int taskId, int[] userIds) {
-		String deleteSql = "DELETE FROM event_task_assignments WHERE task_id = ?";
-		String insertSql = "INSERT INTO event_task_assignments (task_id, user_id) VALUES (?, ?)";
-		logger.debug("Assigning task ID {} to {} users.", taskId, userIds != null ? userIds.length : 0);
-		Connection conn = null;
+	@Transactional
+	public int saveTask(EventTask task, int[] userIds, String[] itemIds, String[] itemQuantities, String[] kitIds,
+			int[] dependencyIds) {
+		boolean isUpdate = task.getId() > 0;
+		logger.debug("DAO saveTask called for task '{}'. Is update: {}", task.getDescription(), isUpdate);
+		if (isUpdate) {
+			updateTask(task);
+		} else {
+			int newId = createTask(task);
+			task.setId(newId);
+		}
+
+		if (task.getId() == 0) {
+			logger.error("Failed to create or find task ID for task: {}", task.getDescription());
+			throw new RuntimeException("Failed to create or find task ID.");
+		}
+
+		clearAssociations(task.getId());
+		saveUserAssignments(task.getId(), userIds);
+		saveItemRequirements(task.getId(), itemIds, itemQuantities);
+		saveKitRequirements(task.getId(), kitIds);
+		saveDependencies(task.getId(), dependencyIds);
+
+		logger.info("Successfully saved task ID {}", task.getId());
+		return task.getId();
+	}
+
+	private int createTask(EventTask task) {
+		logger.debug("DAO createTask: eventId={}, description='{}'", task.getEventId(), task.getDescription());
+		String taskSql = "INSERT INTO event_tasks (event_id, description, details, status, display_order, required_persons) VALUES (?, ?, ?, 'OFFEN', ?, ?)";
+		KeyHolder keyHolder = new GeneratedKeyHolder();
+		jdbcTemplate.update(connection -> {
+			PreparedStatement ps = connection.prepareStatement(taskSql, Statement.RETURN_GENERATED_KEYS);
+			ps.setInt(1, task.getEventId());
+			ps.setString(2, task.getDescription());
+			ps.setString(3, task.getDetails());
+			ps.setInt(4, task.getDisplayOrder());
+			ps.setInt(5, task.getRequiredPersons());
+			return ps;
+		}, keyHolder);
+		int newId = Objects.requireNonNull(keyHolder.getKey()).intValue();
+		logger.debug("DAO createTask successful. New task ID: {}", newId);
+		return newId;
+	}
+
+	private void updateTask(EventTask task) {
+		logger.debug("DAO updateTask for task ID: {}", task.getId());
+		String taskSql = "UPDATE event_tasks SET description = ?, details = ?, status = ?, display_order = ?, required_persons = ? WHERE id = ?";
+		jdbcTemplate.update(taskSql, task.getDescription(), task.getDetails(), task.getStatus(), task.getDisplayOrder(),
+				task.getRequiredPersons(), task.getId());
+	}
+
+	private void clearAssociations(int taskId) {
+		jdbcTemplate.update("DELETE FROM event_task_assignments WHERE task_id = ?", taskId);
+		jdbcTemplate.update("DELETE FROM event_task_storage_items WHERE task_id = ?", taskId);
+		jdbcTemplate.update("DELETE FROM event_task_kits WHERE task_id = ?", taskId);
+		jdbcTemplate.update("DELETE FROM event_task_dependencies WHERE task_id = ?", taskId);
+	}
+
+	private void saveUserAssignments(int taskId, int[] userIds) {
+		if (userIds == null || userIds.length == 0)
+			return;
+		String sql = "INSERT INTO event_task_assignments (task_id, user_id) VALUES (?, ?)";
+		List<Integer> userIdList = Arrays.stream(userIds).boxed().collect(Collectors.toList());
+		jdbcTemplate.batchUpdate(sql, userIdList, 100, (ps, userId) -> {
+			ps.setInt(1, taskId);
+			ps.setInt(2, userId);
+		});
+	}
+
+	private void saveItemRequirements(int taskId, String[] itemIds, String[] itemQuantities) {
+		if (itemIds == null || itemQuantities == null || itemIds.length != itemQuantities.length)
+			return;
+		String sql = "INSERT INTO event_task_storage_items (task_id, item_id, quantity) VALUES (?, ?, ?)";
+		List<String> itemIdList = List.of(itemIds);
+		jdbcTemplate.batchUpdate(sql, itemIdList, 100, (ps, itemIdStr) -> {
+			if (itemIdStr != null && !itemIdStr.isEmpty()) {
+				int index = itemIdList.indexOf(itemIdStr);
+				ps.setInt(1, taskId);
+				ps.setInt(2, Integer.parseInt(itemIdStr));
+				ps.setInt(3, Integer.parseInt(itemQuantities[index]));
+			}
+		});
+	}
+
+	private void saveKitRequirements(int taskId, String[] kitIds) {
+		if (kitIds == null || kitIds.length == 0)
+			return;
+		String sql = "INSERT INTO event_task_kits (task_id, kit_id) VALUES (?, ?)";
+		List<String> kitIdList = List.of(kitIds);
+		jdbcTemplate.batchUpdate(sql, kitIdList, 100, (ps, kitIdStr) -> {
+			if (kitIdStr != null && !kitIdStr.isEmpty()) {
+				ps.setInt(1, taskId);
+				ps.setInt(2, Integer.parseInt(kitIdStr));
+			}
+		});
+	}
+
+	private void saveDependencies(int taskId, int[] dependencyIds) {
+		if (dependencyIds == null || dependencyIds.length == 0)
+			return;
+		String sql = "INSERT INTO event_task_dependencies (task_id, depends_on_task_id) VALUES (?, ?)";
+		List<Integer> dependencyIdList = Arrays.stream(dependencyIds).boxed().collect(Collectors.toList());
+		jdbcTemplate.batchUpdate(sql, dependencyIdList, 100, (ps, dependencyId) -> {
+			ps.setInt(1, taskId);
+			ps.setInt(2, dependencyId);
+		});
+	}
+
+	public List<EventTask> getTasksForEvent(int eventId) {
+		Map<Integer, EventTask> tasksById = new LinkedHashMap<>();
+		String sql = "SELECT t.*, u.id as user_id, u.username, si.id as item_id, si.name as item_name, tsi.quantity as item_quantity, ik.id as kit_id, ik.name as kit_name FROM event_tasks t LEFT JOIN event_task_assignments ta ON t.id = ta.task_id LEFT JOIN users u ON ta.user_id = u.id LEFT JOIN event_task_storage_items tsi ON t.id = tsi.task_id LEFT JOIN storage_items si ON tsi.item_id = si.id LEFT JOIN event_task_kits tk ON t.id = tk.task_id LEFT JOIN inventory_kits ik ON tk.kit_id = ik.id WHERE t.event_id = ? ORDER BY FIELD(t.status, 'OFFEN', 'IN_ARBEIT', 'ERLEDIGT'), CASE WHEN t.status = 'OFFEN' AND ta.user_id IS NULL THEN 0 ELSE 1 END, t.updated_at DESC";
+
+		jdbcTemplate.query(sql, (ResultSet rs) -> {
+			int currentTaskId = rs.getInt("id");
+			EventTask task = tasksById.computeIfAbsent(currentTaskId, id -> mapResultSetToTask(rs));
+
+			int currentUserId = rs.getInt("user_id");
+			if (currentUserId > 0 && task.getAssignedUsers().stream().noneMatch(u -> u.getId() == currentUserId)) {
+				User user = new User();
+				user.setId(currentUserId);
+				user.setUsername(rs.getString("username"));
+				task.getAssignedUsers().add(user);
+			}
+			int currentItemId = rs.getInt("item_id");
+			if (currentItemId > 0 && task.getRequiredItems().stream().noneMatch(i -> i.getId() == currentItemId)) {
+				StorageItem item = new StorageItem();
+				item.setId(currentItemId);
+				item.setName(rs.getString("item_name"));
+				item.setQuantity(rs.getInt("item_quantity"));
+				task.getRequiredItems().add(item);
+			}
+			int currentKitId = rs.getInt("kit_id");
+			if (currentKitId > 0 && task.getRequiredKits().stream().noneMatch(k -> k.getId() == currentKitId)) {
+				InventoryKit kit = new InventoryKit();
+				kit.setId(currentKitId);
+				kit.setName(rs.getString("kit_name"));
+				task.getRequiredKits().add(kit);
+			}
+		}, eventId);
+
+		// Now fetch and assemble dependencies
+		if (!tasksById.isEmpty()) {
+			String depSql = "SELECT * FROM event_task_dependencies WHERE task_id IN ("
+					+ tasksById.keySet().stream().map(String::valueOf).collect(Collectors.joining(",")) + ")";
+			jdbcTemplate.query(depSql, rs -> {
+				int taskId = rs.getInt("task_id");
+				int dependsOnId = rs.getInt("depends_on_task_id");
+				EventTask task = tasksById.get(taskId);
+				EventTask parentTask = tasksById.get(dependsOnId);
+				if (task != null && parentTask != null) {
+					task.getDependsOn().add(parentTask);
+					parentTask.getDependencyFor().add(task);
+				}
+			});
+		}
+
+		return new ArrayList<>(tasksById.values());
+	}
+
+	private EventTask mapResultSetToTask(ResultSet rs) {
 		try {
-			conn = DatabaseManager.getConnection();
-			conn.setAutoCommit(false); // Start transaction
-
-			// 1. Delete old assignments
-			try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
-				deleteStmt.setInt(1, taskId);
-				deleteStmt.executeUpdate();
-			}
-
-			// 2. Insert new assignments
-			if (userIds != null && userIds.length > 0) {
-				try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
-					for (int userId : userIds) {
-						insertStmt.setInt(1, taskId);
-						insertStmt.setInt(2, userId);
-						insertStmt.addBatch();
-					}
-					insertStmt.executeBatch();
-				}
-			}
-
-			conn.commit(); // Commit transaction
-			logger.info("Successfully assigned task {} to {} users.", taskId, userIds != null ? userIds.length : 0);
+			EventTask task = new EventTask();
+			task.setId(rs.getInt("id"));
+			task.setEventId(rs.getInt("event_id"));
+			task.setDescription(rs.getString("description"));
+			task.setDetails(rs.getString("details"));
+			task.setStatus(rs.getString("status"));
+			task.setDisplayOrder(rs.getInt("display_order"));
+			task.setRequiredPersons(rs.getInt("required_persons"));
+			task.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
+			task.setAssignedUsers(new ArrayList<>());
+			task.setRequiredItems(new ArrayList<>());
+			task.setRequiredKits(new ArrayList<>());
+			task.setDependsOn(new ArrayList<>());
+			task.setDependencyFor(new ArrayList<>());
+			return task;
 		} catch (SQLException e) {
-			logger.error("Error during transaction for assigning task {}. Rolling back.", taskId, e);
-			if (conn != null) {
-				try {
-					conn.rollback();
-				} catch (SQLException ex) {
-					logger.error("Failed to rollback transaction for task assignment.", ex);
-				}
-			}
-		} finally {
-			if (conn != null) {
-				try {
-					conn.setAutoCommit(true);
-					conn.close();
-				} catch (SQLException ex) {
-					logger.error("Failed to close connection after task assignment transaction.", ex);
-				}
-			}
+			throw new RuntimeException("Failed to map ResultSet to EventTask", e);
 		}
 	}
 
-	/**
-	 * Updates the status of a task (e.g., from "OFFEN" to "ERLEDIGT").
-	 * 
-	 * @param taskId The ID of the task.
-	 * @param status The new status string.
-	 * @return true if the update was successful.
-	 */
-	public boolean updateTaskStatus(int taskId, String status) {
-		String sql = "UPDATE event_tasks SET status = ? WHERE id = ?";
-		logger.debug("Updating status for task ID {} to '{}'", taskId, status);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setString(1, status);
-			pstmt.setInt(2, taskId);
-			return pstmt.executeUpdate() > 0;
-		} catch (SQLException e) {
-			logger.error("Error updating status for task {}", taskId, e);
-			return false;
-		}
-	}
-
-	/**
-	 * Deletes a task and its assignments (due to database foreign key constraints).
-	 * 
-	 * @param taskId The ID of the task to delete.
-	 * @return true if successful.
-	 */
 	public boolean deleteTask(int taskId) {
 		String sql = "DELETE FROM event_tasks WHERE id = ?";
-		logger.warn("Attempting to delete task with ID: {}", taskId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, taskId);
-			return pstmt.executeUpdate() > 0;
-		} catch (SQLException e) {
-			logger.error("Error deleting task {}", taskId, e);
+		return jdbcTemplate.update(sql, taskId) > 0;
+	}
+
+	public boolean updateTaskStatus(int taskId, String status) {
+		String sql = "UPDATE event_tasks SET status = ? WHERE id = ?";
+		return jdbcTemplate.update(sql, status, taskId) > 0;
+	}
+
+	public boolean assignUserToTask(int taskId, int userId) {
+		String sql = "INSERT INTO event_task_assignments (task_id, user_id) VALUES (?, ?)";
+		try {
+			return jdbcTemplate.update(sql, taskId, userId) > 0;
+		} catch (Exception e) {
+			logger.error("Error assigning user {} to task {}", userId, taskId, e);
 			return false;
 		}
 	}
 
-	/**
-	 * Fetches all tasks for a given event, including a comma-separated list of
-	 * usernames of assigned users for easy display.
-	 * 
-	 * @param eventId The event's ID.
-	 * @return A list of EventTask objects.
-	 */
-	public List<EventTask> getTasksForEvent(int eventId) {
-		List<EventTask> tasks = new ArrayList<>();
-		// This query uses GROUP_CONCAT to aggregate assigned usernames into a single
-		// string
-		String sql = "SELECT t.id, t.event_id, t.description, t.status, "
-				+ "GROUP_CONCAT(u.username SEPARATOR ', ') as assigned_usernames " + "FROM event_tasks t "
-				+ "LEFT JOIN event_task_assignments ta ON t.id = ta.task_id "
-				+ "LEFT JOIN users u ON ta.user_id = u.id " + "WHERE t.event_id = ? "
-				+ "GROUP BY t.id, t.event_id, t.description, t.status " + "ORDER BY t.id";
-		logger.debug("Fetching all tasks for event ID: {}", eventId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, eventId);
-			try (ResultSet rs = pstmt.executeQuery()) {
-				while (rs.next()) {
-					EventTask task = new EventTask();
-					task.setId(rs.getInt("id"));
-					task.setEventId(rs.getInt("event_id"));
-					task.setDescription(rs.getString("description"));
-					task.setStatus(rs.getString("status"));
-					task.setAssignedUsernames(rs.getString("assigned_usernames"));
-					tasks.add(task);
-				}
-				logger.info("Found {} tasks for event ID: {}", tasks.size(), eventId);
-			}
-		} catch (SQLException e) {
-			logger.error("Error fetching tasks for event {}", eventId, e);
+	public boolean unassignUserFromTask(int taskId, int userId) {
+		String sql = "DELETE FROM event_task_assignments WHERE task_id = ? AND user_id = ?";
+		try {
+			return jdbcTemplate.update(sql, taskId, userId) > 0;
+		} catch (Exception e) {
+			logger.error("Error un-assigning user {} from task {}", userId, taskId, e);
+			return false;
 		}
-		return tasks;
+	}
+
+	public List<EventTask> getOpenTasksForUser(int userId) {
+		String sql = "SELECT t.*, e.name as event_name FROM event_tasks t JOIN event_task_assignments ta ON t.id = ta.task_id JOIN events e ON t.event_id = e.id WHERE ta.user_id = ? AND t.status = 'OFFEN' ORDER BY e.event_datetime ASC";
+		return jdbcTemplate.query(sql, (rs, rowNum) -> {
+			EventTask task = new EventTask();
+			task.setId(rs.getInt("id"));
+			task.setEventId(rs.getInt("event_id"));
+			task.setDescription(rs.getString("description"));
+			task.setStatus(rs.getString("status"));
+			task.setEventName(rs.getString("event_name"));
+			return task;
+		}, userId);
 	}
 }

@@ -18,8 +18,6 @@ public class AdminLog {
 	public AdminLog() {
 	}
 
-	// --- Getters and Setters ---
-
 	public int getId() {
 		return id;
 	}
@@ -59,8 +57,6 @@ public class AdminLog {
 	public void setActionTimestamp(LocalDateTime actionTimestamp) {
 		this.actionTimestamp = actionTimestamp;
 	}
-
-	// --- Formatted Helper ---
 
 	/**
 	 * A convenience method to get the action timestamp as a formatted string,

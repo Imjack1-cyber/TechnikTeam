@@ -1,0 +1,106 @@
+import React, { useCallback } from 'react';
+import useApi from '../../hooks/useApi';
+import apiClient from '../../services/apiClient';
+import { useToast } from '../../context/ToastContext';
+
+const AdminRequestsPage = () => {
+	// Corrected API endpoint
+	const apiCall = useCallback(() => apiClient.get('/requests/pending'), []);
+	const { data: requests, loading, error, reload } = useApi(apiCall);
+	const { addToast } = useToast();
+
+	const handleAction = async (requestId, action) => {
+		// Corrected API endpoint
+		const endpoint = `/requests/${requestId}/${action}`;
+		const confirmationText = action === 'approve'
+			? 'Änderungen wirklich übernehmen?'
+			: 'Antrag wirklich ablehnen?';
+
+		if (window.confirm(confirmationText)) {
+			try {
+				const result = await apiClient.post(endpoint);
+				if (result.success) {
+					addToast(`Antrag erfolgreich ${action === 'approve' ? 'genehmigt' : 'abgelehnt'}.`, 'success');
+					reload();
+				} else {
+					throw new Error(result.message);
+				}
+			} catch (err) {
+				addToast(`Fehler: ${err.message}`, 'error');
+			}
+		}
+	};
+
+	const renderChanges = (changesJson) => {
+		try {
+			const changes = JSON.parse(changesJson);
+			return (
+				<ul style={{ paddingLeft: '1.5rem', margin: 0, listStyle: 'none' }}>
+					{Object.entries(changes).map(([key, value]) => (
+						<li key={key}><strong>{key}:</strong> {value}</li>
+					))}
+				</ul>
+			);
+		} catch (e) {
+			return <span className="text-danger">Fehler beim Parsen der Änderungen.</span>;
+		}
+	};
+
+	return (
+		<div>
+			<h1><i className="fas fa-inbox"></i> Offene Anträge</h1>
+			<p>Hier sehen Sie alle von Benutzern beantragten Änderungen an Stammdaten. Genehmigte Änderungen werden sofort wirksam.</p>
+
+			<div className="desktop-table-wrapper">
+				<table className="data-table">
+					<thead>
+						<tr>
+							<th>Benutzer</th>
+							<th>Beantragt am</th>
+							<th>Gewünschte Änderungen</th>
+							<th>Aktion</th>
+						</tr>
+					</thead>
+					<tbody>
+						{loading && <tr><td colSpan="4">Lade Anträge...</td></tr>}
+						{error && <tr><td colSpan="4" className="error-message">{error}</td></tr>}
+						{requests?.length === 0 && <tr><td colSpan="4" style={{ textAlign: 'center' }}>Keine offenen Anträge vorhanden.</td></tr>}
+						{requests?.map(req => (
+							<tr key={req.id}>
+								<td>{req.username}</td>
+								<td>{new Date(req.requestedAt).toLocaleString('de-DE')}</td>
+								<td>{renderChanges(req.requestedChanges)}</td>
+								<td style={{ display: 'flex', gap: '0.5rem' }}>
+									<button onClick={() => handleAction(req.id, 'approve')} className="btn btn-small btn-success">Genehmigen</button>
+									<button onClick={() => handleAction(req.id, 'deny')} className="btn btn-small btn-danger">Ablehnen</button>
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+
+			<div className="mobile-card-list">
+				{loading && <p>Lade Anträge...</p>}
+				{error && <p className="error-message">{error}</p>}
+				{requests?.length === 0 && <div className="card"><p>Keine offenen Anträge vorhanden.</p></div>}
+				{requests?.map(req => (
+					<div className="list-item-card" key={req.id}>
+						<h3 className="card-title">Antrag von {req.username}</h3>
+						<div className="card-row"><strong>Beantragt am:</strong> <span>{new Date(req.requestedAt).toLocaleString('de-DE')}</span></div>
+						<div style={{ marginTop: '0.5rem' }}>
+							<strong>Änderungen:</strong>
+							{renderChanges(req.requestedChanges)}
+						</div>
+						<div className="card-actions">
+							<button onClick={() => handleAction(req.id, 'approve')} className="btn btn-small btn-success">Genehmigen</button>
+							<button onClick={() => handleAction(req.id, 'deny')} className="btn btn-small btn-danger">Ablehnen</button>
+						</div>
+					</div>
+				))}
+			</div>
+		</div>
+	);
+};
+
+export default AdminRequestsPage;

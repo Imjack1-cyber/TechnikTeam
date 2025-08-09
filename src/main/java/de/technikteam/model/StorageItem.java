@@ -8,7 +8,6 @@ public class StorageItem {
 	private String name;
 	private String location;
 	private String cabinet;
-	private String shelf;
 	private String compartment;
 	private int quantity;
 	private int maxQuantity;
@@ -17,6 +16,12 @@ public class StorageItem {
 	private double weightKg;
 	private double priceEur;
 	private String imagePath;
+	private String category;
+
+	private String status;
+	private int currentHolderUserId;
+	private int assignedEventId;
+	private String currentHolderUsername;
 
 	public StorageItem() {
 	}
@@ -26,29 +31,32 @@ public class StorageItem {
 	}
 
 	public String getAvailabilityStatus() {
-		if (this.getAvailableQuantity() <= 0) {
+		int available = getAvailableQuantity();
+		if (available <= 0 && maxQuantity > 0) {
 			return "Vergriffen";
 		}
-		if (this.maxQuantity > 0 && this.getAvailableQuantity() >= this.maxQuantity) {
+		if (maxQuantity == 0) {
+			return "Auf Lager";
+		}
+		if (available >= maxQuantity) {
 			return "Vollständig";
 		}
-		if (this.maxQuantity > 0 && (double) this.getAvailableQuantity() / this.maxQuantity <= 0.25) {
+		if ((double) available / maxQuantity <= 0.25) {
 			return "Niedriger Bestand";
 		}
 		return "Auf Lager";
 	}
 
 	public String getAvailabilityStatusCssClass() {
-		if (this.getAvailableQuantity() <= 0) {
+		int available = getAvailableQuantity();
+		if (available <= 0 && maxQuantity > 0) {
 			return "status-danger";
 		}
-		if (this.maxQuantity > 0 && (double) this.getAvailableQuantity() / this.maxQuantity <= 0.25) {
+		if (maxQuantity > 0 && (double) available / maxQuantity <= 0.25) {
 			return "status-warn";
 		}
 		return "status-ok";
 	}
-
-	// --- Getters and Setters ---
 
 	public int getId() {
 		return id;
@@ -80,14 +88,6 @@ public class StorageItem {
 
 	public void setCabinet(String cabinet) {
 		this.cabinet = cabinet;
-	}
-
-	public String getShelf() {
-		return shelf;
-	}
-
-	public void setShelf(String shelf) {
-		this.shelf = shelf;
 	}
 
 	public String getCompartment() {
@@ -152,5 +152,45 @@ public class StorageItem {
 
 	public void setImagePath(String imagePath) {
 		this.imagePath = imagePath;
+	}
+
+	public String getCategory() {
+		return category;
+	}
+
+	public void setCategory(String category) {
+		this.category = category;
+	}
+
+	public String getStatus() {
+		return status;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
+	}
+
+	public int getCurrentHolderUserId() {
+		return currentHolderUserId;
+	}
+
+	public void setCurrentHolderUserId(int currentHolderUserId) {
+		this.currentHolderUserId = currentHolderUserId;
+	}
+
+	public int getAssignedEventId() {
+		return assignedEventId;
+	}
+
+	public void setAssignedEventId(int assignedEventId) {
+		this.assignedEventId = assignedEventId;
+	}
+
+	public String getCurrentHolderUsername() {
+		return currentHolderUsername;
+	}
+
+	public void setCurrentHolderUsername(String currentHolderUsername) {
+		this.currentHolderUsername = currentHolderUsername;
 	}
 }

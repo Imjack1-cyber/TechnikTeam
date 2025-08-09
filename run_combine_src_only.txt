@@ -1,8 +1,0 @@
-1. Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-2. Press "A"
-3. .\combine_src_only.ps1
-
--------------------------------
-
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\combine_src_only.ps1

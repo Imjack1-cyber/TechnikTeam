@@ -1,219 +1,365 @@
 package de.technikteam.dao;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.List;
-
+import de.technikteam.model.User;
+import de.technikteam.security.UserSuspendedException;
+import de.technikteam.service.LoginAttemptService;
+import de.technikteam.util.DaoUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
-import de.technikteam.model.User;
-import de.technikteam.util.DaoUtils;
+import java.sql.PreparedStatement;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.sql.Types;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
 
-/**
- * A core DAO responsible for all user account management, interacting with the
- * `users` table. Its functions include validating user credentials for login,
- * fetching single or all user records, creating, updating, and deleting users,
- * and handling password changes.
- */
+@Repository
 public class UserDAO {
 	private static final Logger logger = LogManager.getLogger(UserDAO.class);
+	private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+	private final JdbcTemplate jdbcTemplate;
+	private final UserNotificationDAO userNotificationDAO;
+	private final LoginAttemptService loginAttemptService;
 
-	/**
-	 * Robustly maps a ResultSet row to a User object, checking for optional columns
-	 * before attempting to read them.
-	 * 
-	 * @param rs The ResultSet to map.
-	 * @return A populated User object.
-	 * @throws SQLException if a database error occurs.
-	 */
-	private User mapResultSetToUser(ResultSet rs) throws SQLException {
-		User user = new User(rs.getInt("id"), rs.getString("username"), rs.getString("role"));
-		if (DaoUtils.hasColumn(rs, "created_at") && rs.getTimestamp("created_at") != null) {
-			user.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
-		}
-		if (DaoUtils.hasColumn(rs, "class_year")) {
-			user.setClassYear(rs.getInt("class_year"));
-		}
-		if (DaoUtils.hasColumn(rs, "class_name")) {
-			user.setClassName(rs.getString("class_name"));
-		}
-		return user;
+	@Autowired
+	public UserDAO(JdbcTemplate jdbcTemplate, UserNotificationDAO userNotificationDAO,
+			LoginAttemptService loginAttemptService) {
+		this.jdbcTemplate = jdbcTemplate;
+		this.userNotificationDAO = userNotificationDAO;
+		this.loginAttemptService = loginAttemptService;
 	}
 
-	/**
-	 * Validates user credentials against the database. IMPORTANT: This
-	 * implementation uses plaintext passwords for validation, which is insecure and
-	 * should be replaced with a password hashing mechanism (e.g., BCrypt) in a
-	 * production environment.
-	 * 
-	 * @param username The user's username.
-	 * @param password The user's plaintext password.
-	 * @return A User object if validation is successful, null otherwise.
-	 */
+	private final RowMapper<User> userRowMapper = (resultSet, rowNum) -> {
+		User user = new User();
+		user.setId(resultSet.getInt("id"));
+		user.setUsername(resultSet.getString("username"));
+		user.setRoleId(resultSet.getInt("role_id"));
+		user.setChatColor(resultSet.getString("chat_color"));
+		user.setPasswordHash(resultSet.getString("password_hash"));
+		if (DaoUtils.hasColumn(resultSet, "theme")) {
+			user.setTheme(resultSet.getString("theme"));
+		}
+		if (DaoUtils.hasColumn(resultSet, "fcm_token")) {
+			user.setFcmToken(resultSet.getString("fcm_token"));
+		}
+		if (DaoUtils.hasColumn(resultSet, "profile_icon_class")) {
+			user.setProfileIconClass(resultSet.getString("profile_icon_class"));
+		}
+		if (DaoUtils.hasColumn(resultSet, "admin_notes")) {
+			user.setAdminNotes(resultSet.getString("admin_notes"));
+		}
+		if (DaoUtils.hasColumn(resultSet, "dashboard_layout")) {
+			user.setDashboardLayout(resultSet.getString("dashboard_layout"));
+		}
+		if (DaoUtils.hasColumn(resultSet, "role_name")) {
+			user.setRoleName(resultSet.getString("role_name"));
+		}
+		if (DaoUtils.hasColumn(resultSet, "created_at") && resultSet.getTimestamp("created_at") != null) {
+			user.setCreatedAt(resultSet.getTimestamp("created_at").toLocalDateTime());
+		}
+		if (DaoUtils.hasColumn(resultSet, "class_year")) {
+			user.setClassYear(resultSet.getInt("class_year"));
+		}
+		if (DaoUtils.hasColumn(resultSet, "class_name")) {
+			user.setClassName(resultSet.getString("class_name"));
+		}
+		if (DaoUtils.hasColumn(resultSet, "email")) {
+			user.setEmail(resultSet.getString("email"));
+		}
+		if (DaoUtils.hasColumn(resultSet, "status")) {
+			user.setStatus(resultSet.getString("status"));
+		}
+		if (DaoUtils.hasColumn(resultSet, "suspended_until") && resultSet.getTimestamp("suspended_until") != null) {
+			user.setSuspendedUntil(resultSet.getTimestamp("suspended_until").toLocalDateTime());
+		}
+		if (DaoUtils.hasColumn(resultSet, "suspended_reason")) {
+			user.setSuspendedReason(resultSet.getString("suspended_reason"));
+		}
+
+		return user;
+	};
+
 	public User validateUser(String username, String password) {
-		String sql = "SELECT * FROM users WHERE username = ? AND password_hash = ?";
-		logger.debug("Validating user credentials for username: {}", username);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setString(1, username);
-			pstmt.setString(2, password);
-			try (ResultSet rs = pstmt.executeQuery()) {
-				if (rs.next()) {
-					logger.info("User validation successful for username: {}", username);
-					return mapResultSetToUser(rs);
-				} else {
-					logger.warn("User validation failed for username: {}", username);
-				}
+		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ?";
+		try {
+			User user = jdbcTemplate.queryForObject(sql, this.userRowMapper, username);
+			if (user == null)
+				return null;
+
+			clearExpiredSuspensionIfNeeded(user);
+
+			if (isUserCurrentlySuspended(user)) {
+				logger.warn("Login attempt failed for suspended user: {}", username);
+				String reason = user.getSuspendedReason() != null && !user.getSuspendedReason().isBlank()
+						? user.getSuspendedReason()
+						: "Keine Angabe";
+				String until = user.getSuspendedUntil() != null
+						? user.getSuspendedUntil().format(DateTimeFormatter.ofPattern("dd.MM.yyyy 'um' HH:mm 'Uhr'"))
+						: "unbegrenzt";
+				throw new UserSuspendedException(
+						String.format("Dieses Konto ist gesperrt bis %s. Grund: %s", until, reason));
 			}
-		} catch (SQLException e) {
+
+			String storedHash = user.getPasswordHash();
+			if (storedHash != null && passwordEncoder.matches(password, storedHash)) {
+				user.setPermissions(getPermissionsForUser(user.getId()));
+				user.setUnseenNotificationsCount(userNotificationDAO.getUnseenCount(user.getId()));
+				return user;
+			}
+		} catch (EmptyResultDataAccessException e) {
+			return null;
+		} catch (UserSuspendedException e) {
+			throw e; // Propagate the specific exception
+		} catch (Exception e) {
 			logger.error("SQL error during user validation for username: {}", username, e);
 		}
 		return null;
 	}
 
-	/**
-	 * Fetches all users from the database, sorted by username.
-	 * 
-	 * @return A list of all User objects.
-	 */
-	public List<User> getAllUsers() {
-		List<User> users = new ArrayList<>();
-		String sql = "SELECT * FROM users ORDER BY username";
-		logger.debug("Fetching all users.");
-		try (Connection conn = DatabaseManager.getConnection();
-				PreparedStatement pstmt = conn.prepareStatement(sql);
-				ResultSet rs = pstmt.executeQuery()) {
-			while (rs.next()) {
-				users.add(mapResultSetToUser(rs));
+	public User getUserByUsername(String username) {
+		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ?";
+		try {
+			User user = jdbcTemplate.queryForObject(sql, userRowMapper, username);
+			if (user != null) {
+				clearExpiredSuspensionIfNeeded(user);
+				user.setPermissions(getPermissionsForUser(user.getId()));
+				user.setUnseenNotificationsCount(userNotificationDAO.getUnseenCount(user.getId()));
+				user.setLocked(loginAttemptService.isUserLocked(user.getUsername()));
 			}
-			logger.info("Fetched {} total users.", users.size());
-		} catch (SQLException e) {
-			logger.error("SQL error fetching all users", e);
+			return user;
+		} catch (EmptyResultDataAccessException e) {
+			return null;
+		} catch (Exception e) {
+			logger.error("SQL error fetching user by username: {}", username, e);
+			return null;
 		}
-		return users;
 	}
 
-	/**
-	 * Fetches a single user by their unique ID.
-	 * 
-	 * @param userId The ID of the user to fetch.
-	 * @return A User object, or null if not found.
-	 */
-	public User getUserById(int userId) {
-		String sql = "SELECT * FROM users WHERE id = ?";
-		logger.debug("Fetching user by ID: {}", userId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, userId);
-			try (ResultSet rs = pstmt.executeQuery()) {
-				if (rs.next()) {
-					logger.info("Found user '{}' with ID: {}", rs.getString("username"), userId);
-					return mapResultSetToUser(rs);
-				}
-			}
-		} catch (SQLException e) {
-			logger.error("SQL error fetching user by ID: {}", userId, e);
+	public Set<String> getPermissionsForUser(int userId) {
+		String sql = "SELECT p.permission_key FROM permissions p "
+				+ "JOIN user_permissions up ON p.id = up.permission_id " + "WHERE up.user_id = ?";
+		try {
+			List<String> permissionKeys = jdbcTemplate.queryForList(sql, String.class, userId);
+			return new HashSet<>(permissionKeys);
+		} catch (Exception e) {
+			logger.error("Error fetching permissions for user {}", userId, e);
+			return Set.of();
 		}
-		logger.warn("No user found with ID: {}", userId);
-		return null;
 	}
 
-	/**
-	 * Creates a new user in the database.
-	 * 
-	 * @param user     The User object containing the data to be inserted.
-	 * @param password The plain text password (should be hashed in production).
-	 * @return The ID of the newly created user, or 0 if creation failed.
-	 */
+	@Transactional
+	public boolean updateUserPermissions(int userId, String[] permissionIds) {
+		jdbcTemplate.update("DELETE FROM user_permissions WHERE user_id = ?", userId);
+		if (permissionIds != null && permissionIds.length > 0) {
+			List<Object[]> batchArgs = Arrays.stream(permissionIds)
+					.map(idStr -> new Object[] { userId, Integer.parseInt(idStr) }).collect(Collectors.toList());
+			jdbcTemplate.batchUpdate("INSERT INTO user_permissions (user_id, permission_id) VALUES (?, ?)", batchArgs);
+		}
+		return true;
+	}
+
 	public int createUser(User user, String password) {
-		String sql = "INSERT INTO users (username, password_hash, role, class_year, class_name) VALUES (?, ?, ?, ?, ?)";
-		logger.debug("Attempting to create user: {}", user.getUsername());
-		try (Connection conn = DatabaseManager.getConnection();
-				PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
-			pstmt.setString(1, user.getUsername());
-			pstmt.setString(2, password); // In a real app, this should be a hash.
-			pstmt.setString(3, user.getRole());
-			pstmt.setInt(4, user.getClassYear());
-			pstmt.setString(5, user.getClassName());
-
-			int affectedRows = pstmt.executeUpdate();
-
-			if (affectedRows > 0) {
-				try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
-					if (generatedKeys.next()) {
-						int newUserId = generatedKeys.getInt(1);
-						logger.info("Successfully created user '{}' with ID: {}", user.getUsername(), newUserId);
-						return newUserId;
-					}
+		String hashedPassword = passwordEncoder.encode(password);
+		String sql = "INSERT INTO users (username, password_hash, role_id, class_year, class_name, email, theme) VALUES (?, ?, ?, ?, ?, ?, ?)";
+		KeyHolder keyHolder = new GeneratedKeyHolder();
+		try {
+			jdbcTemplate.update(connection -> {
+				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+				ps.setString(1, user.getUsername());
+				ps.setString(2, hashedPassword);
+				ps.setInt(3, user.getRoleId());
+				ps.setInt(4, user.getClassYear());
+				ps.setString(5, user.getClassName());
+				// Treat empty string as NULL to avoid unique constraint violation
+				if (user.getEmail() != null && !user.getEmail().isEmpty()) {
+					ps.setString(6, user.getEmail());
+				} else {
+					ps.setNull(6, Types.VARCHAR);
 				}
-			}
-		} catch (SQLException e) {
-			logger.error("SQL error creating user '{}'. Username might already exist.", user.getUsername(), e);
+				ps.setString(7, "light");
+				return ps;
+			}, keyHolder);
+			return Objects.requireNonNull(keyHolder.getKey()).intValue();
+		} catch (Exception e) {
+			logger.error("Error creating user {}", user.getUsername(), e);
+			return 0;
 		}
-		return 0;
 	}
 
-	/**
-	 * Updates an existing user's profile information in the database.
-	 * 
-	 * @param user The User object containing the updated data.
-	 * @return true if the update was successful.
-	 */
 	public boolean updateUser(User user) {
-		logger.debug("Updating user with ID: {}", user.getId());
-		String sql = "UPDATE users SET username = ?, role = ?, class_year = ?, class_name = ? WHERE id = ?";
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setString(1, user.getUsername());
-			pstmt.setString(2, user.getRole());
-			pstmt.setInt(3, user.getClassYear());
-			pstmt.setString(4, user.getClassName());
-			pstmt.setInt(5, user.getId());
-			return pstmt.executeUpdate() > 0;
-		} catch (SQLException e) {
+		String sql = "UPDATE users SET username = ?, role_id = ?, class_year = ?, class_name = ?, email = ?, profile_icon_class = ?, admin_notes = ? WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, user.getUsername(), user.getRoleId(), user.getClassYear(),
+					user.getClassName(), user.getEmail(), user.getProfileIconClass(), user.getAdminNotes(),
+					user.getId()) > 0;
+		} catch (Exception e) {
 			logger.error("SQL error updating user with ID: {}", user.getId(), e);
 			return false;
 		}
 	}
 
-	/**
-	 * Deletes a user from the database.
-	 * 
-	 * @param userId The ID of the user to delete.
-	 * @return true if the deletion was successful.
-	 */
+	public boolean updateUserTheme(int userId, String theme) {
+		String sql = "UPDATE users SET theme = ? WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, theme, userId) > 0;
+		} catch (Exception e) {
+			logger.error("Error updating theme for user ID {}", userId, e);
+			return false;
+		}
+	}
+
+	public boolean updateUserChatColor(int userId, String chatColor) {
+		String sql = "UPDATE users SET chat_color = ? WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, chatColor, userId) > 0;
+		} catch (Exception e) {
+			logger.error("Error updating chat color for user ID {}", userId, e);
+			return false;
+		}
+	}
+
+	public boolean updateDashboardLayout(int userId, String layoutJson) {
+		String sql = "UPDATE users SET dashboard_layout = ? WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, layoutJson, userId) > 0;
+		} catch (Exception e) {
+			logger.error("Error updating dashboard layout for user ID {}", userId, e);
+			return false;
+		}
+	}
+
+	public boolean updateFcmToken(int userId, String fcmToken) {
+		String sql = "UPDATE users SET fcm_token = ? WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, fcmToken, userId) > 0;
+		} catch (Exception e) {
+			logger.error("Error updating FCM token for user ID {}", userId, e);
+			return false;
+		}
+	}
+
 	public boolean deleteUser(int userId) {
 		String sql = "DELETE FROM users WHERE id = ?";
-		logger.warn("Attempting to delete user with ID: {}", userId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, userId);
-			return pstmt.executeUpdate() > 0;
-		} catch (SQLException e) {
+		try {
+			return jdbcTemplate.update(sql, userId) > 0;
+		} catch (Exception e) {
 			logger.error("SQL error deleting user with ID: {}", userId, e);
 			return false;
 		}
 	}
 
-	/**
-	 * Changes a user's password.
-	 * 
-	 * @param userId      The ID of the user whose password is to be changed.
-	 * @param newPassword The new plaintext password.
-	 * @return true if the password was changed successfully.
-	 */
 	public boolean changePassword(int userId, String newPassword) {
+		String hashedPassword = passwordEncoder.encode(newPassword);
 		String sql = "UPDATE users SET password_hash = ? WHERE id = ?";
-		logger.debug("Changing password for user ID: {}", userId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setString(1, newPassword); // Should be a hash in production.
-			pstmt.setInt(2, userId);
-			return pstmt.executeUpdate() > 0;
-		} catch (SQLException e) {
+		try {
+			return jdbcTemplate.update(sql, hashedPassword, userId) > 0;
+		} catch (Exception e) {
 			logger.error("SQL error changing password for user ID: {}", userId, e);
 			return false;
 		}
+	}
+
+	public List<User> getAllUsers() {
+		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id ORDER BY u.username";
+		try {
+			List<User> users = jdbcTemplate.query(sql, userRowMapper);
+			users.forEach(user -> {
+				clearExpiredSuspensionIfNeeded(user);
+				user.setLocked(loginAttemptService.isUserLocked(user.getUsername()));
+			});
+			return users;
+		} catch (Exception e) {
+			logger.error("SQL error fetching all users", e);
+			return List.of();
+		}
+	}
+
+	public User getUserById(int userId) {
+		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = ?";
+		try {
+			User user = jdbcTemplate.queryForObject(sql, userRowMapper, userId);
+			if (user != null) {
+				clearExpiredSuspensionIfNeeded(user);
+				user.setPermissions(getPermissionsForUser(userId));
+				user.setUnseenNotificationsCount(userNotificationDAO.getUnseenCount(user.getId()));
+				user.setLocked(loginAttemptService.isUserLocked(user.getUsername()));
+			}
+			return user;
+		} catch (EmptyResultDataAccessException e) {
+			return null;
+		} catch (Exception e) {
+			logger.error("SQL error fetching user by ID with permissions: {}", userId, e);
+			return null;
+		}
+	}
+
+	public List<Integer> findUserIdsByPermission(String permissionKey) {
+		String sql = "SELECT up.user_id FROM user_permissions up JOIN permissions p ON up.permission_id = p.id WHERE p.permission_key = ?";
+		try {
+			return jdbcTemplate.queryForList(sql, Integer.class, permissionKey);
+		} catch (Exception e) {
+			logger.error("Error fetching user IDs by permission key '{}'", permissionKey, e);
+			return List.of();
+		}
+	}
+
+	public boolean suspendUser(int userId, LocalDateTime suspendedUntil, String reason) {
+		String sql = "UPDATE users SET status = 'SUSPENDED', suspended_until = ?, suspended_reason = ? WHERE id = ?";
+		try {
+			Timestamp suspendedUntilTimestamp = (suspendedUntil != null) ? Timestamp.valueOf(suspendedUntil) : null;
+			int updated = jdbcTemplate.update(sql, suspendedUntilTimestamp, reason, userId);
+			return updated > 0;
+		} catch (Exception e) {
+			logger.error("Error suspending user id {}", userId, e);
+			return false;
+		}
+	}
+
+	public boolean unsuspendUser(int userId) {
+		String sql = "UPDATE users SET status = 'ACTIVE', suspended_until = NULL, suspended_reason = NULL WHERE id = ?";
+		try {
+			int updated = jdbcTemplate.update(sql, userId);
+			return updated > 0;
+		} catch (Exception e) {
+			logger.error("Error unsuspending user id {}", userId, e);
+			return false;
+		}
+	}
+
+	private void clearExpiredSuspensionIfNeeded(User user) {
+		if (user == null)
+			return;
+		if ("SUSPENDED".equals(user.getStatus()) && user.getSuspendedUntil() != null
+				&& user.getSuspendedUntil().isBefore(LocalDateTime.now())) {
+			logger.info("Auto-clearing expired suspension for user: {}", user.getUsername());
+			unsuspendUser(user.getId());
+			user.setStatus("ACTIVE");
+			user.setSuspendedUntil(null);
+			user.setSuspendedReason(null);
+		}
+	}
+
+	public boolean isUserCurrentlySuspended(User user) {
+		if (!"SUSPENDED".equals(user.getStatus())) {
+			return false;
+		}
+		// Indefinite suspension
+		if (user.getSuspendedUntil() == null) {
+			return true;
+		}
+		// Temporary suspension that is still active
+		return user.getSuspendedUntil().isAfter(LocalDateTime.now());
 	}
 }

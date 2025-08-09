@@ -19,22 +19,22 @@ public class Event {
 	private String location;
 	private String status;
 	private int leaderUserId;
-	private String userAttendanceStatus; // Specific to the logged-in user (e.g., ANGEMELDET, ZUGEWIESEN)
+	private String userAttendanceStatus;
 
-	// These fields are populated on-demand for detailed views and are not direct
-	// table columns.
 	private List<SkillRequirement> skillRequirements;
 	private List<User> assignedAttendees;
 	private List<EventTask> eventTasks;
 	private List<EventChatMessage> chatMessages;
-	private List<EventAttachment> attachments;
+	private List<Attachment> attachments;
 	private List<StorageItem> reservedItems;
 	private String leaderUsername;
+	private List<EventCustomField> customFields;
+	private List<ChecklistItem> checklistItems;
+
+	private boolean isUserQualified;
 
 	public Event() {
 	}
-
-	// --- Getters and Setters ---
 
 	public int getId() {
 		return id;
@@ -148,11 +148,11 @@ public class Event {
 		this.chatMessages = chatMessages;
 	}
 
-	public List<EventAttachment> getAttachments() {
+	public List<Attachment> getAttachments() {
 		return attachments;
 	}
 
-	public void setAttachments(List<EventAttachment> attachments) {
+	public void setAttachments(List<Attachment> attachments) {
 		this.attachments = attachments;
 	}
 
@@ -164,7 +164,29 @@ public class Event {
 		this.reservedItems = reservedItems;
 	}
 
-	// --- Formatted Helpers ---
+	public List<EventCustomField> getCustomFields() {
+		return customFields;
+	}
+
+	public void setCustomFields(List<EventCustomField> customFields) {
+		this.customFields = customFields;
+	}
+
+	public List<ChecklistItem> getChecklistItems() {
+		return checklistItems;
+	}
+
+	public void setChecklistItems(List<ChecklistItem> checklistItems) {
+		this.checklistItems = checklistItems;
+	}
+
+	public boolean isUserQualified() {
+		return isUserQualified;
+	}
+
+	public void setUserQualified(boolean isUserQualified) {
+		this.isUserQualified = isUserQualified;
+	}
 
 	public String getFormattedEventDateTime() {
 		return de.technikteam.config.DateFormatter.formatDateTime(this.eventDateTime);

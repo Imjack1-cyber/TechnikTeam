@@ -12,8 +12,6 @@ public class SystemStatsDTO {
 	private String uptime;
 	private int batteryPercentage;
 
-	// --- Getters and Setters ---
-
 	public double getCpuLoad() {
 		return cpuLoad;
 	}

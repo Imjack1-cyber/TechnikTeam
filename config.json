@@ -1,0 +1,36 @@
+﻿{
+    "SourceDirectory":  "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\",
+    "OutputFile":  "technikteam.txt",
+    "MaxFileSizeKB":  475,
+    "ExcludedDirectories":  [
+                                "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\.metadata",
+                                "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\.settings",
+                                "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\frontend\\node_modules",
+                                "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\resources",
+                                "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\src\\test",
+                                "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\target"
+                            ],
+    "ExcludedFiles":  [
+                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\technikteam.txt",
+                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\technikteam-1.txt",
+                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\technikteam-2.txt",
+                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\technikteam-3.txt",
+                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\technikteam-4.txt",
+                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\technikteam-5.txt",
+                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\src\\main\\resources\\Wiki.md",
+                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\dependency-tree.txt",
+                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\run_combine_code_gui.txt"
+                      ],
+    "ExtensionFilterList":  [
+                                ".java",
+                                ".jsp",
+                                ".js",
+                                ".jsx",
+                                ".css",
+                                ".txt",
+                                ".html",
+                                ".md",
+                                ".xml"
+                            ],
+    "ExtensionFilterMode":  "include"
+}

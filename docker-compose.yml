@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  db:
+    image: mariadb:10.4
+    container_name: technikteam-db
+    restart: always
+    environment:
+      MYSQL_DATABASE: technik_team_db
+      MYSQL_USER: technik_user
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - technikteam-db-data:/var/lib/mysql
+    networks:
+      - technikteam-net
+
+  web:
+    build: .
+    container_name: technikteam-web
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./resources/uploads:/usr/local/tomcat/uploads
+    depends_on:
+      - db
+    networks:
+      - technikteam-net
+
+networks:
+  technikteam-net:
+    driver: bridge
+
+volumes:
+  technikteam-db-data:

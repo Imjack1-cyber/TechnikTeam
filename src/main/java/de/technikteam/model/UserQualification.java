@@ -10,12 +10,10 @@ import java.time.LocalDate;
 public class UserQualification {
 	private int userId;
 	private int courseId;
-	private String courseName; // For display, joined from 'courses' table
-	private String status; // e.g., "BESUCHT", "ABSOLVIERT"
+	private String courseName; 
+	private String status; 
 	private LocalDate completionDate;
 	private String remarks;
-
-	// --- Getters and Setters ---
 
 	public int getUserId() {
 		return userId;

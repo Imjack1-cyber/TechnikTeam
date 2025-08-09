@@ -3,32 +3,32 @@ package de.technikteam.model;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-/**
- * Represents a single chat message from the `event_chat_messages` table,
- * associated with a specific "running" event. It holds the message content,
- * sender information, and timestamp.
- */
 public class EventChatMessage {
 	private int id;
 	private int eventId;
 	private int userId;
 	private String username;
 	private String messageText;
+	private boolean isAnnouncement;
+	private boolean edited;
+	private LocalDateTime editedAt;
+	private boolean isDeleted;
+	private int deletedByUserId;
+	private String deletedByUsername;
+	private LocalDateTime deletedAt;
 	private LocalDateTime sentAt;
+	private String chatColor;
 
 	private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yy, HH:mm");
 
-	/**
-	 * A convenience method to get the sent-at timestamp as a formatted time string
-	 * (e.g., "15:30"), suitable for display in the chat UI.
-	 * 
-	 * @return A formatted time string.
-	 */
 	public String getFormattedSentAt() {
 		return sentAt != null ? sentAt.format(TIME_FORMATTER) : "";
 	}
 
-	// --- Getters and Setters ---
+	public String getFormattedDeletedAt() {
+		return deletedAt != null ? deletedAt.format(DATE_TIME_FORMATTER) : "";
+	}
 
 	public int getId() {
 		return id;
@@ -70,11 +70,75 @@ public class EventChatMessage {
 		this.messageText = messageText;
 	}
 
+	public boolean isAnnouncement() {
+		return isAnnouncement;
+	}
+
+	public void setAnnouncement(boolean announcement) {
+		isAnnouncement = announcement;
+	}
+
+	public boolean isEdited() {
+		return edited;
+	}
+
+	public void setEdited(boolean edited) {
+		this.edited = edited;
+	}
+
+	public LocalDateTime getEditedAt() {
+		return editedAt;
+	}
+
+	public void setEditedAt(LocalDateTime editedAt) {
+		this.editedAt = editedAt;
+	}
+
+	public boolean isDeleted() {
+		return isDeleted;
+	}
+
+	public void setDeleted(boolean isDeleted) {
+		this.isDeleted = isDeleted;
+	}
+
+	public int getDeletedByUserId() {
+		return deletedByUserId;
+	}
+
+	public void setDeletedByUserId(int deletedByUserId) {
+		this.deletedByUserId = deletedByUserId;
+	}
+
+	public String getDeletedByUsername() {
+		return deletedByUsername;
+	}
+
+	public void setDeletedByUsername(String deletedByUsername) {
+		this.deletedByUsername = deletedByUsername;
+	}
+
+	public LocalDateTime getDeletedAt() {
+		return deletedAt;
+	}
+
+	public void setDeletedAt(LocalDateTime deletedAt) {
+		this.deletedAt = deletedAt;
+	}
+
 	public LocalDateTime getSentAt() {
 		return sentAt;
 	}
 
 	public void setSentAt(LocalDateTime sentAt) {
 		this.sentAt = sentAt;
+	}
+
+	public String getChatColor() {
+		return chatColor;
+	}
+
+	public void setChatColor(String chatColor) {
+		this.chatColor = chatColor;
 	}
 }

@@ -1,52 +1,49 @@
 package de.technikteam.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
+import java.util.Set;
 
-/**
- * The core model for an application user, representing a record from the
- * `users` table. It contains the user's ID, username, role ("ADMIN" or
- * "NUTZER"), and other profile information like class year and creation date.
- */
 public class User {
 	private int id;
 	private String username;
-	private String role;
+	private int roleId;
+	private String roleName;
+	private Set<String> permissions;
 	private LocalDateTime createdAt;
 	private int classYear;
 	private String className;
+	private String email;
+	private String chatColor;
+	private String theme;
+	private String fcmToken;
+	private String profileIconClass;
+	private String adminNotes;
+	private String dashboardLayout; // JSON string
+	private String assignedEventRole; // Transient field for event details
+	private int unseenNotificationsCount; // Transient field
+
+	// Suspension related fields
+	private String status;
+	private LocalDateTime suspendedUntil;
+	private String suspendedReason;
+	private boolean isLocked; // Transient field for login attempts
+
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+	private String passwordHash;
 
 	public User() {
 	}
 
-	public User(int id, String username, String role) {
-		this(id, username, role, null, 0, null);
-	}
-
-	public User(int id, String username, String role, LocalDateTime createdAt, int classYear, String className) {
+	public User(int id, String username, String roleName) {
 		this.id = id;
 		this.username = username;
-		this.role = role;
-		this.createdAt = createdAt;
-		this.classYear = classYear;
-		this.className = className;
+		this.roleName = roleName;
 	}
 
-	// --- Getters and Setters ---
-
-	public int getClassYear() {
-		return classYear;
-	}
-
-	public void setClassYear(int classYear) {
-		this.classYear = classYear;
-	}
-
-	public String getClassName() {
-		return className;
-	}
-
-	public void setClassName(String className) {
-		this.className = className;
+	public boolean hasAdminAccess() {
+		// With granular permissions removed, admin access is determined solely by role.
+		return "ADMIN".equals(this.roleName);
 	}
 
 	public int getId() {
@@ -65,12 +62,28 @@ public class User {
 		this.username = username;
 	}
 
-	public String getRole() {
-		return role;
+	public int getRoleId() {
+		return roleId;
 	}
 
-	public void setRole(String role) {
-		this.role = role;
+	public void setRoleId(int roleId) {
+		this.roleId = roleId;
+	}
+
+	public String getRoleName() {
+		return roleName;
+	}
+
+	public void setRoleName(String roleName) {
+		this.roleName = roleName;
+	}
+
+	public Set<String> getPermissions() {
+		return permissions;
+	}
+
+	public void setPermissions(Set<String> permissions) {
+		this.permissions = permissions;
 	}
 
 	public LocalDateTime getCreatedAt() {
@@ -81,12 +94,135 @@ public class User {
 		this.createdAt = createdAt;
 	}
 
-	/**
-	 * A convenience method to get the creation timestamp as a formatted string,
-	 * suitable for display in the user interface.
-	 * 
-	 * @return A German-style date-time string (e.g., "10.06.2025 17:45").
-	 */
+	public int getClassYear() {
+		return classYear;
+	}
+
+	public void setClassYear(int classYear) {
+		this.classYear = classYear;
+	}
+
+	public String getClassName() {
+		return className;
+	}
+
+	public void setClassName(String className) {
+		this.className = className;
+	}
+
+	public String getEmail() {
+		return email;
+	}
+
+	public void setEmail(String email) {
+		this.email = email;
+	}
+
+	public String getChatColor() {
+		return chatColor;
+	}
+
+	public void setChatColor(String chatColor) {
+		this.chatColor = chatColor;
+	}
+
+	public String getTheme() {
+		return theme;
+	}
+
+	public void setTheme(String theme) {
+		this.theme = theme;
+	}
+
+	public String getFcmToken() {
+		return fcmToken;
+	}
+
+	public void setFcmToken(String fcmToken) {
+		this.fcmToken = fcmToken;
+	}
+
+	public String getProfileIconClass() {
+		return profileIconClass;
+	}
+
+	public void setProfileIconClass(String profileIconClass) {
+		this.profileIconClass = profileIconClass;
+	}
+
+	public String getAdminNotes() {
+		return adminNotes;
+	}
+
+	public void setAdminNotes(String adminNotes) {
+		this.adminNotes = adminNotes;
+	}
+
+	public String getDashboardLayout() {
+		return dashboardLayout;
+	}
+
+	public void setDashboardLayout(String dashboardLayout) {
+		this.dashboardLayout = dashboardLayout;
+	}
+
+	public String getAssignedEventRole() {
+		return assignedEventRole;
+	}
+
+	public void setAssignedEventRole(String assignedEventRole) {
+		this.assignedEventRole = assignedEventRole;
+	}
+
+	public int getUnseenNotificationsCount() {
+		return unseenNotificationsCount;
+	}
+
+	public void setUnseenNotificationsCount(int unseenNotificationsCount) {
+		this.unseenNotificationsCount = unseenNotificationsCount;
+	}
+
+	public String getPasswordHash() {
+		return passwordHash;
+	}
+
+	public void setPasswordHash(String passwordHash) {
+		this.passwordHash = passwordHash;
+	}
+
+	public String getStatus() {
+		return status;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
+	}
+
+	public LocalDateTime getSuspendedUntil() {
+		return suspendedUntil;
+	}
+
+	public void setSuspendedUntil(LocalDateTime suspendedUntil) {
+		this.suspendedUntil = suspendedUntil;
+	}
+
+	public String getSuspendedReason() {
+		return suspendedReason;
+	}
+
+	public void setSuspendedReason(String suspendedReason) {
+		this.suspendedReason = suspendedReason;
+	}
+
+	@JsonProperty("isLocked")
+	public boolean isLocked() {
+		return isLocked;
+	}
+
+	public void setLocked(boolean locked) {
+		isLocked = locked;
+	}
+
 	public String getFormattedCreatedAt() {
 		return de.technikteam.config.DateFormatter.formatDateTime(this.createdAt);
 	}

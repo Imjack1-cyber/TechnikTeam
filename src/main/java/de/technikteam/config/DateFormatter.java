@@ -12,15 +12,12 @@ import java.util.Locale;
  */
 public class DateFormatter {
 
-	// A formatter for a full date and time, e.g., "10.06.2025, 17:45"
 	private static final DateTimeFormatter GERMAN_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy, HH:mm",
 			Locale.GERMANY);
 
-	// A formatter for just the date, e.g., "10.06.2025"
 	private static final DateTimeFormatter GERMAN_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy",
 			Locale.GERMANY);
 
-	// A formatter for just the time, e.g., "17:45"
 	private static final DateTimeFormatter GERMAN_TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm", Locale.GERMANY);
 
 	/**
@@ -65,18 +62,16 @@ public class DateFormatter {
 		if (start == null) {
 			return "";
 		}
-		// Case 1: No end time provided
+
 		if (end == null) {
 			return formatDateTime(start) + " Uhr";
 		}
 
-		// Case 2: Start and end are on the same day
 		if (start.toLocalDate().equals(end.toLocalDate())) {
 			return formatDate(start) + ", " + start.format(GERMAN_TIME_FORMATTER) + " - "
 					+ end.format(GERMAN_TIME_FORMATTER) + " Uhr";
 		}
 
-		// Case 3: Start and end are on different days
 		return formatDateTime(start) + " Uhr - " + formatDateTime(end) + " Uhr";
 	}
 }

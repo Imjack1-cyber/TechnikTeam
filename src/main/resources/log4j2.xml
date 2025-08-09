@@ -1,63 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Log4j2 Configuration File This file controls all logging behavior for 
-	the application. It defines where log messages are sent (appenders) and at 
-	what detail level (loggers). It's configured to log to both the server console 
-	(for live debugging in Eclipse) and a rolling file on the server's filesystem 
-	for persistent records. -->
 <Configuration status="WARN">
-	<Properties>
-		<!-- Use the 'catalina.base' system property provided by Tomcat to create 
-			the logs folder in a guaranteed writable location relative to the server 
-			instance (e.g., .../wst.server.core/tmp0/logs). This avoids permission issues 
-			with writing to the source directory. -->
-		<Property name="log-path">${sys:catalina.base}/logs</Property>
-	</Properties>
-
 	<Appenders>
-		<!-- Console Appender: Sends log output to SYSTEM_OUT, which is typically 
-			visible in the Eclipse Console view. -->
 		<Console name="Console" target="SYSTEM_OUT">
-			<!-- Pattern includes: timestamp, thread name, log level, logger name 
-				(abbreviated), the log message, and a newline. -->
-			<PatternLayout
-				pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n" />
+			<!-- For development, use a human-readable pattern -->
+			<!-- <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} 
+				- %msg%n"/> -->
+
+			<!-- For production/structured logging, use JSON Template Layout -->
+			<JsonTemplateLayout
+				eventTemplateUri="classpath:Log4j2JsonTemplate.json" />
 		</Console>
-
-		<!-- Rolling File Appender: Writes logs to a file. It "rolls over" (creates 
-			a new file) based on time (daily) or size (10 MB), keeping a maximum of 10 
-			old log files compressed in .gz format. -->
-		<RollingFile name="RollingFile"
-			fileName="${log-path}/technik-team-app.log"
-			filePattern="${log-path}/technik-team-app-%d{MM-dd-yyyy}-%i.log.gz">
-			<PatternLayout>
-				<Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} -
-					%msg%n</Pattern>
-			</PatternLayout>
-			<Policies>
-				<TimeBasedTriggeringPolicy />
-				<SizeBasedTriggeringPolicy size="10 MB" />
-			</Policies>
-			<DefaultRolloverStrategy max="10" />
-		</RollingFile>
 	</Appenders>
-
 	<Loggers>
-		<!-- Application-specific Logger: Logs all messages from the 'de.technikteam' 
-			package and its sub-packages at the DEBUG level or higher (DEBUG, INFO, WARN, 
-			ERROR, FATAL). 'additivity="false"' prevents these messages from being passed 
-			up to the root logger, avoiding duplicate output. -->
+		<Root level="info">
+			<AppenderRef ref="Console" />
+		</Root>
+		<!-- Set a more verbose level for our application's packages during development -->
 		<Logger name="de.technikteam" level="debug" additivity="false">
 			<AppenderRef ref="Console" />
-			<AppenderRef ref="RollingFile" />
 		</Logger>
-
-		<!-- Root Logger: This is the catch-all logger for all other libraries 
-			used in the project (e.g., Tomcat, HikariCP, etc.). Setting it to WARN reduces 
-			log noise by only showing important warnings and errors from third-party 
-			code. -->
-		<Root level="warn">
-			<AppenderRef ref="Console" />
-			<AppenderRef ref="RollingFile" />
-		</Root>
 	</Loggers>
 </Configuration>

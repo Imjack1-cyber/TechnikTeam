@@ -3,70 +3,114 @@ package de.technikteam.dao;
 import de.technikteam.model.EventChatMessage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.stereotype.Repository;
 
-import java.sql.*;
-import java.util.ArrayList;
+import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.util.List;
+import java.util.Objects;
 
-/**
- * Data Access Object for handling chat messages specific to a single event. It
- * manages records in the `event_chat_messages` table, allowing users to post
- * messages and retrieve the chat history for a particular event.
- */
+@Repository
 public class EventChatDAO {
 	private static final Logger logger = LogManager.getLogger(EventChatDAO.class);
+	private final JdbcTemplate jdbcTemplate;
 
-	/**
-	 * Posts a new message to an event's chat log in the database.
-	 * 
-	 * @param message The EventChatMessage object to persist.
-	 * @return true if the message was successfully inserted, false otherwise.
-	 */
-	public boolean postMessage(EventChatMessage message) {
+	@Autowired
+	public EventChatDAO(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
+	}
+
+	private final RowMapper<EventChatMessage> chatMessageRowMapper = (rs, rowNum) -> {
+		EventChatMessage message = new EventChatMessage();
+		message.setId(rs.getInt("id"));
+		message.setEventId(rs.getInt("event_id"));
+		message.setUserId(rs.getInt("user_id"));
+		message.setUsername(rs.getString("username"));
+		message.setMessageText(rs.getString("message_text"));
+		message.setEdited(rs.getBoolean("edited"));
+		if (rs.getTimestamp("edited_at") != null) {
+			message.setEditedAt(rs.getTimestamp("edited_at").toLocalDateTime());
+		}
+		message.setDeleted(rs.getBoolean("is_deleted"));
+		message.setDeletedByUserId(rs.getInt("deleted_by_user_id"));
+		message.setDeletedByUsername(rs.getString("deleted_by_username"));
+		message.setChatColor(rs.getString("chat_color"));
+		if (rs.getTimestamp("deleted_at") != null) {
+			message.setDeletedAt(rs.getTimestamp("deleted_at").toLocalDateTime());
+		}
+		message.setSentAt(rs.getTimestamp("sent_at").toLocalDateTime());
+		return message;
+	};
+
+	public EventChatMessage postMessage(EventChatMessage message) {
 		String sql = "INSERT INTO event_chat_messages (event_id, user_id, username, message_text) VALUES (?, ?, ?, ?)";
-		logger.debug("Posting chat message for event {}: '{}'", message.getEventId(), message.getMessageText());
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, message.getEventId());
-			pstmt.setInt(2, message.getUserId());
-			pstmt.setString(3, message.getUsername());
-			pstmt.setString(4, message.getMessageText());
-			return pstmt.executeUpdate() > 0;
-		} catch (SQLException e) {
+		try {
+			KeyHolder keyHolder = new GeneratedKeyHolder();
+			jdbcTemplate.update(connection -> {
+				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+				ps.setInt(1, message.getEventId());
+				ps.setInt(2, message.getUserId());
+				ps.setString(3, message.getUsername());
+				ps.setString(4, message.getMessageText());
+				return ps;
+			}, keyHolder);
+
+			int newId = Objects.requireNonNull(keyHolder.getKey()).intValue();
+			return getMessageById(newId);
+		} catch (Exception e) {
 			logger.error("Error posting chat message for event {}", message.getEventId(), e);
+			return null;
+		}
+	}
+
+	public List<EventChatMessage> getMessagesForEvent(int eventId) {
+		String sql = "SELECT m.*, u_del.username as deleted_by_username, u_orig.chat_color FROM event_chat_messages m LEFT JOIN users u_del ON m.deleted_by_user_id = u_del.id JOIN users u_orig ON m.user_id = u_orig.id WHERE m.event_id = ? ORDER BY m.sent_at ASC";
+		try {
+			return jdbcTemplate.query(sql, chatMessageRowMapper, eventId);
+		} catch (Exception e) {
+			logger.error("Error fetching chat messages for event {}", eventId, e);
+			return List.of();
+		}
+	}
+
+	public EventChatMessage getMessageById(int messageId) {
+		String sql = "SELECT m.*, u_del.username as deleted_by_username, u_orig.chat_color FROM event_chat_messages m LEFT JOIN users u_del ON m.deleted_by_user_id = u_del.id JOIN users u_orig ON m.user_id = u_orig.id WHERE m.id = ?";
+		try {
+			return jdbcTemplate.queryForObject(sql, chatMessageRowMapper, messageId);
+		} catch (Exception e) {
+			logger.error("Error fetching message by ID {}", messageId, e);
+			return null;
+		}
+	}
+
+	public boolean updateMessage(int messageId, int userId, String newText) {
+		String sql = "UPDATE event_chat_messages SET message_text = ?, edited = TRUE, edited_at = NOW() WHERE id = ? AND user_id = ? AND is_deleted = FALSE AND sent_at >= NOW() - INTERVAL 24 HOUR";
+		try {
+			return jdbcTemplate.update(sql, newText, messageId, userId) > 0;
+		} catch (Exception e) {
+			logger.error("Error updating message ID {}", messageId, e);
 			return false;
 		}
 	}
 
-	/**
-	 * Fetches all messages for a specific event, ordered by the time they were
-	 * sent.
-	 * 
-	 * @param eventId The ID of the event.
-	 * @return A list of EventChatMessage objects, or an empty list if none are
-	 *         found.
-	 */
-	public List<EventChatMessage> getMessagesForEvent(int eventId) {
-		List<EventChatMessage> messages = new ArrayList<>();
-		String sql = "SELECT * FROM event_chat_messages WHERE event_id = ? ORDER BY sent_at ASC";
-		logger.debug("Fetching chat messages for event ID: {}", eventId);
-		try (Connection conn = DatabaseManager.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-			pstmt.setInt(1, eventId);
-			try (ResultSet rs = pstmt.executeQuery()) {
-				while (rs.next()) {
-					EventChatMessage msg = new EventChatMessage();
-					msg.setId(rs.getInt("id"));
-					msg.setEventId(rs.getInt("event_id"));
-					msg.setUserId(rs.getInt("user_id"));
-					msg.setUsername(rs.getString("username"));
-					msg.setMessageText(rs.getString("message_text"));
-					msg.setSentAt(rs.getTimestamp("sent_at").toLocalDateTime());
-					messages.add(msg);
-				}
-				logger.info("Found {} chat messages for event ID: {}", messages.size(), eventId);
+	public boolean deleteMessage(int messageId, int deletersUserId, boolean isAdmin) {
+		String sql = isAdmin
+				? "UPDATE event_chat_messages SET is_deleted = TRUE, message_text = '', deleted_by_user_id = ?, deleted_at = NOW() WHERE id = ?"
+				: "UPDATE event_chat_messages SET is_deleted = TRUE, message_text = '', deleted_by_user_id = ?, deleted_at = NOW() WHERE id = ? AND user_id = ?";
+		try {
+			if (isAdmin) {
+				return jdbcTemplate.update(sql, deletersUserId, messageId) > 0;
+			} else {
+				return jdbcTemplate.update(sql, deletersUserId, messageId, deletersUserId) > 0;
 			}
-		} catch (SQLException e) {
-			logger.error("Error fetching chat messages for event {}", eventId, e);
+		} catch (Exception e) {
+			logger.error("Error soft-deleting message ID {}:", messageId, e);
+			return false;
 		}
-		return messages;
 	}
 }
