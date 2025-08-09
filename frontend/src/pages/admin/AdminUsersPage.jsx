@@ -6,6 +6,54 @@ import useAdminData from '../../hooks/useAdminData';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 
+const SuspendUserModal = ({ isOpen, onClose, user, onSuccess }) => {
+	const [duration, setDuration] = useState('7d');
+	const [reason, setReason] = useState('');
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [error, setError] = useState('');
+	const { addToast } = useToast();
+
+	const handleSubmit = async (e) => {
+		e.preventDefault();
+		setIsSubmitting(true);
+		setError('');
+		try {
+			const result = await apiClient.post(`/admin/users/${user.id}/suspend`, { duration, reason });
+			if (result.success) {
+				addToast(`Benutzer ${user.username} wurde gesperrt.`, 'success');
+				onSuccess();
+			} else {
+				throw new Error(result.message);
+			}
+		} catch (err) {
+			setError(err.message || 'Sperren fehlgeschlagen.');
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
+
+	return (
+		<Modal isOpen={isOpen} onClose={onClose} title={`Benutzer sperren: ${user.username}`}>
+			<form onSubmit={handleSubmit}>
+				{error && <p className="error-message">{error}</p>}
+				<div className="form-group">
+					<label htmlFor="duration">Dauer</label>
+					<input type="text" id="duration" value={duration} onChange={e => setDuration(e.target.value)} placeholder="z.B. 1h, 7d, indefinite" />
+					<small>Einheiten: h (Stunden), d (Tage), w (Wochen). Leer lassen für unbegrenzt.</small>
+				</div>
+				<div className="form-group">
+					<label htmlFor="reason">Grund</label>
+					<textarea id="reason" value={reason} onChange={e => setReason(e.target.value)} rows="3"></textarea>
+				</div>
+				<button type="submit" className="btn btn-danger" disabled={isSubmitting}>
+					{isSubmitting ? 'Wird gesperrt...' : 'Benutzer sperren'}
+				</button>
+			</form>
+		</Modal>
+	);
+};
+
 const AdminUsersPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/users'), []);
 	const { data: users, loading, error, reload } = useApi(apiCall);
@@ -14,6 +62,7 @@ const AdminUsersPage = () => {
 
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingUser, setEditingUser] = useState(null);
+	const [suspendingUser, setSuspendingUser] = useState(null);
 	const [resetPasswordInfo, setResetPasswordInfo] = useState({ user: null, password: '' });
 
 	const handleOpenNewUserModal = () => {
@@ -29,6 +78,7 @@ const AdminUsersPage = () => {
 	const handleCloseModal = () => {
 		setIsModalOpen(false);
 		setEditingUser(null);
+		setSuspendingUser(null);
 	};
 
 	const handleClosePasswordModal = () => {
@@ -72,6 +122,22 @@ const AdminUsersPage = () => {
 		}
 	};
 
+	const handleUnsuspend = async (user) => {
+		if (window.confirm(`Benutzer '${user.username}' wirklich entsperren? Dies hebt auch eine eventuelle Sperre durch zu viele Login-Versuche auf.`)) {
+			try {
+				const result = await apiClient.post(`/admin/users/${user.id}/unsuspend`);
+				if (result.success) {
+					addToast('Benutzer erfolgreich entsperrt.', 'success');
+					reload();
+				} else {
+					throw new Error(result.message);
+				}
+			} catch (err) {
+				addToast(`Entsperren fehlgeschlagen: ${err.message}`, 'error');
+			}
+		}
+	};
+
 	const copyToClipboard = () => {
 		navigator.clipboard.writeText(resetPasswordInfo.password);
 		addToast('Passwort in die Zwischenablage kopiert.', 'info');
@@ -95,20 +161,31 @@ const AdminUsersPage = () => {
 							<th>ID</th>
 							<th>Benutzername</th>
 							<th>Rolle</th>
+							<th>Status</th>
 							<th>Aktionen</th>
 						</tr>
 					</thead>
 					<tbody>
-						{loading && <tr><td colSpan="4">Lade Benutzer...</td></tr>}
-						{error && <tr><td colSpan="4" className="error-message">{error}</td></tr>}
+						{loading && <tr><td colSpan="5">Lade Benutzer...</td></tr>}
+						{error && <tr><td colSpan="5" className="error-message">{error}</td></tr>}
 						{users?.map(user => (
 							<tr key={user.id}>
 								<td>{user.id}</td>
 								<td>{user.username}</td>
 								<td>{user.roleName}</td>
+								<td>
+									{user.status === 'SUSPENDED'
+										? <span className="status-badge status-danger">Gesperrt</span>
+										: <span className="status-badge status-ok">Aktiv</span>
+									}
+								</td>
 								<td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
 									<button onClick={() => handleOpenEditModal(user)} className="btn btn-small">Bearbeiten</button>
-									<button onClick={() => handleResetPassword(user)} className="btn btn-small btn-warning">Passwort Reset</button>
+									<button onClick={() => handleResetPassword(user)} className="btn btn-small btn-secondary">Passwort Reset</button>
+									{user.status === 'SUSPENDED'
+										? <button onClick={() => handleUnsuspend(user)} className="btn btn-small btn-success">Entsperren</button>
+										: <button onClick={() => setSuspendingUser(user)} className="btn btn-small btn-warning">Sperren</button>
+									}
 									<button onClick={() => handleDelete(user)} className="btn btn-small btn-danger">Löschen</button>
 								</td>
 							</tr>
@@ -125,9 +202,19 @@ const AdminUsersPage = () => {
 						<h3 className="card-title">{user.username}</h3>
 						<div className="card-row"><strong>ID:</strong> <span>{user.id}</span></div>
 						<div className="card-row"><strong>Rolle:</strong> <span>{user.roleName}</span></div>
+						<div className="card-row"><strong>Status:</strong>
+							{user.status === 'SUSPENDED'
+								? <span className="status-badge status-danger">Gesperrt</span>
+								: <span className="status-badge status-ok">Aktiv</span>
+							}
+						</div>
 						<div className="card-actions">
 							<button onClick={() => handleOpenEditModal(user)} className="btn btn-small">Bearbeiten</button>
-							<button onClick={() => handleResetPassword(user)} className="btn btn-small btn-warning">Passwort Reset</button>
+							<button onClick={() => handleResetPassword(user)} className="btn btn-small btn-secondary">Reset</button>
+							{user.status === 'SUSPENDED'
+								? <button onClick={() => handleUnsuspend(user)} className="btn btn-small btn-success">Entsperren</button>
+								: <button onClick={() => setSuspendingUser(user)} className="btn btn-small btn-warning">Sperren</button>
+							}
 							<button onClick={() => handleDelete(user)} className="btn btn-small btn-danger">Löschen</button>
 						</div>
 					</div>
@@ -143,6 +230,15 @@ const AdminUsersPage = () => {
 					roles={adminFormData.roles}
 					groupedPermissions={adminFormData.groupedPermissions}
 					isLoadingData={adminFormData.loading}
+				/>
+			)}
+
+			{suspendingUser && (
+				<SuspendUserModal
+					isOpen={!!suspendingUser}
+					onClose={handleCloseModal}
+					onSuccess={handleSuccess}
+					user={suspendingUser}
 				/>
 			)}
 

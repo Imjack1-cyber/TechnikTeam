@@ -158,6 +158,16 @@ const Sidebar = () => {
 				<div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
 					<NavLink to="/profil" className="btn btn-secondary btn-small" style={{ flexGrow: 1 }}>Profil</NavLink>
 					<button onClick={handleLogout} className="btn btn-danger-outline btn-small" style={{ flexGrow: 1 }}>Logout</button>
+					{isHorizontal && (
+						<NavLink to="/notifications" className="btn btn-secondary btn-small" title="Benachrichtigungen" style={{ position: 'relative' }}>
+							<i className="fas fa-bell"></i>
+							{user.unseenNotificationsCount > 0 && (
+								<span className="cart-badge" style={{ position: 'absolute', top: '-5px', right: '-5px', width: '18px', height: '18px', fontSize: '0.6rem' }}>
+									{user.unseenNotificationsCount}
+								</span>
+							)}
+						</NavLink>
+					)}
 					<ThemeSwitcher />
 				</div>
 			</div>

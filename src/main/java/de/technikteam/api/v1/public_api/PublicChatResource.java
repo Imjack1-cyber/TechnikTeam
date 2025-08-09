@@ -5,6 +5,7 @@ import de.technikteam.model.ApiResponse;
 import de.technikteam.model.ChatConversation;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
+import de.technikteam.service.ChatService;
 import de.technikteam.service.FileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -28,11 +29,13 @@ public class PublicChatResource {
 
 	private final ChatDAO chatDAO;
 	private final FileService fileService;
+	private final ChatService chatService;
 
 	@Autowired
-	public PublicChatResource(ChatDAO chatDAO, FileService fileService) {
+	public PublicChatResource(ChatDAO chatDAO, FileService fileService, ChatService chatService) {
 		this.chatDAO = chatDAO;
 		this.fileService = fileService;
+		this.chatService = chatService;
 	}
 
 	@GetMapping("/conversations")
@@ -90,7 +93,7 @@ public class PublicChatResource {
 					.body(new ApiResponse(false, "Gruppenname und Teilnehmer sind erforderlich.", null));
 		}
 
-		int conversationId = chatDAO.createGroupConversation(name, securityUser.getUser().getId(), participantIds);
+		int conversationId = chatService.createGroupConversation(name, securityUser.getUser(), participantIds);
 		return ResponseEntity.status(HttpStatus.CREATED)
 				.body(new ApiResponse(true, "Gruppe erfolgreich erstellt.", Map.of("conversationId", conversationId)));
 	}
@@ -115,11 +118,28 @@ public class PublicChatResource {
 		return ResponseEntity.ok(new ApiResponse(true, "Teilnehmer erfolgreich hinzugefügt.", null));
 	}
 
+	@DeleteMapping("/conversations/{id}/participants/{userId}")
+	@Operation(summary = "Remove a participant from a group")
+	public ResponseEntity<ApiResponse> removeParticipant(@PathVariable int id, @PathVariable int userId,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		try {
+			if (chatService.removeParticipantFromGroup(id, userId, securityUser.getUser())) {
+				return ResponseEntity.ok(new ApiResponse(true, "Teilnehmer erfolgreich entfernt.", null));
+			}
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new ApiResponse(false, "Entfernen des Teilnehmers fehlgeschlagen.", null));
+		} catch (IllegalArgumentException e) {
+			return new ResponseEntity<>(new ApiResponse(false, e.getMessage(), null), HttpStatus.BAD_REQUEST);
+		} catch (AccessDeniedException e) {
+			return new ResponseEntity<>(new ApiResponse(false, e.getMessage(), null), HttpStatus.FORBIDDEN);
+		}
+	}
+
 	@PostMapping("/conversations/{id}/leave")
 	@Operation(summary = "Leave a group conversation")
 	public ResponseEntity<ApiResponse> leaveGroup(@PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
-		if (chatDAO.leaveGroup(id, securityUser.getUser().getId())) {
+		if (chatService.leaveGroup(id, securityUser.getUser().getId())) {
 			return ResponseEntity.ok(new ApiResponse(true, "Gruppe erfolgreich verlassen.", null));
 		}
 		return ResponseEntity.badRequest().body(new ApiResponse(false, "Verlassen der Gruppe fehlgeschlagen.", null));
@@ -129,20 +149,18 @@ public class PublicChatResource {
 	@Operation(summary = "Delete a group conversation")
 	public ResponseEntity<ApiResponse> deleteGroup(@PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
-		ChatConversation conversation = chatDAO.getConversationById(id);
-		if (conversation == null) {
-			return new ResponseEntity<>(new ApiResponse(false, "Gespräch nicht gefunden.", null), HttpStatus.NOT_FOUND);
+		try {
+			if (chatService.deleteGroup(id, securityUser.getUser())) {
+				return ResponseEntity.ok(new ApiResponse(true, "Gruppe erfolgreich gelöscht.", null));
+			}
+			// This part should ideally not be reached if service throws exceptions
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new ApiResponse(false, "Löschen der Gruppe fehlgeschlagen.", null));
+		} catch (IllegalArgumentException e) {
+			return new ResponseEntity<>(new ApiResponse(false, e.getMessage(), null), HttpStatus.NOT_FOUND);
+		} catch (AccessDeniedException e) {
+			return new ResponseEntity<>(new ApiResponse(false, e.getMessage(), null), HttpStatus.FORBIDDEN);
 		}
-		User currentUser = securityUser.getUser();
-		if (!conversation.isGroupChat()
-				|| (conversation.getCreatorId() != currentUser.getId() && !currentUser.hasAdminAccess())) {
-			throw new AccessDeniedException("Nur der Ersteller der Gruppe oder ein Admin kann diese löschen.");
-		}
-		if (chatDAO.deleteGroup(id)) {
-			return ResponseEntity.ok(new ApiResponse(true, "Gruppe erfolgreich gelöscht.", null));
-		}
-		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-				.body(new ApiResponse(false, "Löschen der Gruppe fehlgeschlagen.", null));
 	}
 
 	@PostMapping("/upload")

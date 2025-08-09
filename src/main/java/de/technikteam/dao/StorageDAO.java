@@ -89,11 +89,11 @@ public class StorageDAO {
 	}
 
 	public boolean createItem(StorageItem item) {
-		String sql = "INSERT INTO storage_items (name, location, cabinet, compartment, quantity, max_quantity, weight_kg, price_eur, image_path, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'IN_STORAGE')";
+		String sql = "INSERT INTO storage_items (name, location, cabinet, compartment, quantity, max_quantity, weight_kg, price_eur, image_path, category, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'IN_STORAGE')";
 		try {
 			return jdbcTemplate.update(sql, item.getName(), item.getLocation(), item.getCabinet(),
 					item.getCompartment(), item.getQuantity(), item.getMaxQuantity(), item.getWeightKg(),
-					item.getPriceEur(), item.getImagePath()) > 0;
+					item.getPriceEur(), item.getImagePath(), item.getCategory()) > 0;
 		} catch (Exception e) {
 			logger.error("Error creating storage item: {}", item.getName(), e);
 			return false;
@@ -101,14 +101,14 @@ public class StorageDAO {
 	}
 
 	public boolean updateItem(StorageItem item) {
-		String sql = "UPDATE storage_items SET name=?, location=?, cabinet=?, compartment=?, quantity=?, max_quantity=?, defective_quantity=?, defect_reason=?, weight_kg=?, price_eur=?, image_path=?, status=?, current_holder_user_id=?, assigned_event_id=? WHERE id=?";
+		String sql = "UPDATE storage_items SET name=?, location=?, cabinet=?, compartment=?, quantity=?, max_quantity=?, defective_quantity=?, defect_reason=?, weight_kg=?, price_eur=?, image_path=?, category=?, status=?, current_holder_user_id=?, assigned_event_id=? WHERE id=?";
 		try {
 			Object holderId = item.getCurrentHolderUserId() > 0 ? item.getCurrentHolderUserId() : null;
 			Object eventId = item.getAssignedEventId() > 0 ? item.getAssignedEventId() : null;
 			return jdbcTemplate.update(sql, item.getName(), item.getLocation(), item.getCabinet(),
 					item.getCompartment(), item.getQuantity(), item.getMaxQuantity(), item.getDefectiveQuantity(),
 					item.getDefectReason(), item.getWeightKg(), item.getPriceEur(), item.getImagePath(),
-					item.getStatus(), holderId, eventId, item.getId()) > 0;
+					item.getCategory(), item.getStatus(), holderId, eventId, item.getId()) > 0;
 		} catch (Exception e) {
 			logger.error("Error updating storage item with ID: {}", item.getId(), e);
 			return false;

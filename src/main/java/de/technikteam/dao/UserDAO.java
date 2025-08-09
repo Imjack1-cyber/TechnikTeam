@@ -16,7 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -67,6 +69,16 @@ public class UserDAO {
 		if (DaoUtils.hasColumn(resultSet, "email")) {
 			user.setEmail(resultSet.getString("email"));
 		}
+		if (DaoUtils.hasColumn(resultSet, "status")) {
+			user.setStatus(resultSet.getString("status"));
+		}
+		if (DaoUtils.hasColumn(resultSet, "suspended_until") && resultSet.getTimestamp("suspended_until") != null) {
+			user.setSuspendedUntil(resultSet.getTimestamp("suspended_until").toLocalDateTime());
+		}
+		if (DaoUtils.hasColumn(resultSet, "suspended_reason")) {
+			user.setSuspendedReason(resultSet.getString("suspended_reason"));
+		}
+
 		return user;
 	};
 
@@ -254,6 +266,29 @@ public class UserDAO {
 		} catch (Exception e) {
 			logger.error("Error fetching user IDs by permission key '{}'", permissionKey, e);
 			return List.of();
+		}
+	}
+
+	public boolean suspendUser(int userId, LocalDateTime suspendedUntil, String reason) {
+		String sql = "UPDATE users SET status = 'SUSPENDED', suspended_until = ?, suspended_reason = ? WHERE id = ?";
+		try {
+			Timestamp suspendedUntilTimestamp = (suspendedUntil != null) ? Timestamp.valueOf(suspendedUntil) : null;
+			int updated = jdbcTemplate.update(sql, suspendedUntilTimestamp, reason, userId);
+			return updated > 0;
+		} catch (Exception e) {
+			logger.error("Error suspending user id {}", userId, e);
+			return false;
+		}
+	}
+
+	public boolean unsuspendUser(int userId) {
+		String sql = "UPDATE users SET status = 'ACTIVE', suspended_until = NULL, suspended_reason = NULL WHERE id = ?";
+		try {
+			int updated = jdbcTemplate.update(sql, userId);
+			return updated > 0;
+		} catch (Exception e) {
+			logger.error("Error unsuspending user id {}", userId, e);
+			return false;
 		}
 	}
 }

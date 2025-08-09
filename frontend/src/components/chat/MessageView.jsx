@@ -212,6 +212,10 @@ const MessageView = ({ conversationId }) => {
 		}
 	};
 
+	const handleRemoveUser = () => {
+		reloadConversation();
+	};
+
 	const getHeaderText = () => {
 		if (!conversation) return 'Lade...';
 		if (conversation.groupChat) return conversation.name;
@@ -324,6 +328,7 @@ const MessageView = ({ conversationId }) => {
 					isOpen={isManageModalOpen}
 					onClose={() => setIsManageModalOpen(false)}
 					onAddUsers={handleAddUsers}
+					onRemoveUser={handleRemoveUser}
 					conversation={conversation}
 				/>
 			)}

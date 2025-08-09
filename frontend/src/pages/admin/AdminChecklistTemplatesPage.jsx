@@ -135,12 +135,22 @@ const TemplateModal = ({ isOpen, onClose, onSuccess, template, allStorageItems }
 		const newItems = [...items];
 		const currentItem = { ...newItems[index], [field]: value };
 
+		// When changing item type, reset the other type
+		if (field === 'storageItemId' && value !== null) {
+			currentItem.itemText = null;
+		} else if (field === 'itemText' && value !== null) {
+			currentItem.storageItemId = null;
+			currentItem.quantity = 1; // Reset quantity for text items
+		}
+
+		// Validate quantity against max available if it's a storage item
 		if (field === 'storageItemId') {
 			const selectedStorageItem = allStorageItems.find(si => si.id === parseInt(value));
 			if (selectedStorageItem && currentItem.quantity > selectedStorageItem.maxQuantity) {
 				currentItem.quantity = selectedStorageItem.maxQuantity;
 			}
 		}
+
 		newItems[index] = currentItem;
 		setItems(newItems);
 	};

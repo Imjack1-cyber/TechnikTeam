@@ -149,7 +149,7 @@ public class ChatDAO {
 	public List<ChatConversation> getConversationsForUser(int userId) {
 		String sql = """
 				    SELECT
-				        c.id, c.name, c.is_group_chat,
+				        c.id, c.name, c.is_group_chat, c.creator_id,
 				        other_p.user_id as other_participant_id,
 				        other_u.username as other_participant_username,
 				        (SELECT cm.message_text FROM chat_messages cm WHERE cm.conversation_id = c.id AND cm.is_deleted = FALSE ORDER BY cm.sent_at DESC LIMIT 1) as last_message,
@@ -166,6 +166,7 @@ public class ChatDAO {
 			conv.setId(rs.getInt("id"));
 			conv.setName(rs.getString("name"));
 			conv.setGroupChat(rs.getBoolean("is_group_chat"));
+			conv.setCreatorId(rs.getInt("creator_id"));
 			conv.setOtherParticipantId(rs.getInt("other_participant_id"));
 			conv.setOtherParticipantUsername(rs.getString("other_participant_username"));
 			conv.setLastMessage(rs.getString("last_message"));
@@ -288,6 +289,12 @@ public class ChatDAO {
 			ps.setInt(1, conversationId);
 			ps.setInt(2, userId);
 		});
+	}
+
+	@Transactional
+	public boolean removeParticipant(int conversationId, int userId) {
+		return jdbcTemplate.update("DELETE FROM chat_participants WHERE conversation_id = ? AND user_id = ?",
+				conversationId, userId) > 0;
 	}
 
 	@Transactional

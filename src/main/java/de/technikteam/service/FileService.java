@@ -8,6 +8,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -38,6 +39,7 @@ public class FileService {
 		return storeFile(multipartFile, categoryId, requiredRole, adminUser, "docs");
 	}
 
+	@Transactional
 	public de.technikteam.model.File storeFile(MultipartFile multipartFile, Integer categoryId, String requiredRole,
 			User adminUser, String subDirectory) throws IOException {
 		logger.debug("Starting file storage process. User: {}, CategoryID: {}, Role: {}, SubDir: {}",
@@ -97,12 +99,14 @@ public class FileService {
 		}
 	}
 
+	@Transactional
 	public boolean deleteFile(int fileId, User adminUser) throws IOException {
 		de.technikteam.model.File file = fileDAO.getFileById(fileId);
 		if (file == null) {
 			return false;
 		}
 
+		// Delete the database record first
 		boolean success = fileDAO.deleteFile(fileId);
 		if (success) {
 			Path filePath = this.fileStorageLocation.resolve(file.getFilepath()).normalize();
@@ -111,5 +115,44 @@ public class FileService {
 					"Datei '" + file.getFilename() + "' (ID: " + fileId + ") gelöscht.");
 		}
 		return success;
+	}
+
+	@Transactional
+	public de.technikteam.model.File replaceFile(int existingFileId, MultipartFile newMultipartFile, Integer categoryId,
+			String requiredRole, User adminUser) throws IOException {
+		// 1. Get existing file record to find old physical file path
+		de.technikteam.model.File existingFile = fileDAO.getFileById(existingFileId);
+		if (existingFile == null) {
+			throw new IOException("Die zu ersetzende Datei wurde nicht gefunden.");
+		}
+		Path oldFilePath = this.fileStorageLocation.resolve(existingFile.getFilepath()).normalize();
+
+		// 2. Store the new file physically (this already does all validations)
+		de.technikteam.model.File newFile = storeFile(newMultipartFile, categoryId, requiredRole, adminUser);
+
+		// 3. Update the existing record with the new file's data
+		existingFile.setFilename(newFile.getFilename());
+		existingFile.setFilepath(newFile.getFilepath());
+		existingFile.setCategoryId(categoryId);
+		existingFile.setRequiredRole(requiredRole);
+		existingFile.setNeedsWarning(newFile.isNeedsWarning());
+		fileDAO.updateFile(existingFile);
+
+		// 4. Delete the temporary record created by storeFile
+		fileDAO.deleteFile(newFile.getId());
+
+		// 5. Delete the old physical file
+		try {
+			Files.deleteIfExists(oldFilePath);
+		} catch (IOException e) {
+			// Log this, but don't fail the transaction. Orphaned files are not ideal but
+			// better than a failed replacement.
+			logger.error("Could not delete old file '{}' after replacement.", oldFilePath, e);
+		}
+
+		adminLogService.log(adminUser.getUsername(), "REPLACE_FILE",
+				"Datei '" + existingFile.getFilename() + "' (ID: " + existingFileId + ") ersetzt.");
+
+		return existingFile;
 	}
 }

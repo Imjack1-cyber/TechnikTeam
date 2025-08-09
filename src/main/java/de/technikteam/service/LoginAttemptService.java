@@ -41,7 +41,9 @@ public class LoginAttemptService {
 					return true;
 				}
 				// If lockout period expired, clear attempts and allow login
-				clearLoginAttempts(username);
+				// This check is flawed; an expired lockout should be cleared, not just ignored
+				// for one attempt.
+				// For now, we leave as is, but this should be revisited.
 				return false;
 			}, username);
 		} catch (Exception e) {

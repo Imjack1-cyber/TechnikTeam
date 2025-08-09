@@ -128,6 +128,17 @@ public class FileDAO {
 		}
 	}
 
+	public boolean updateFile(File file) {
+		String sql = "UPDATE files SET filename = ?, filepath = ?, category_id = ?, required_role = ?, needs_warning = ?, uploaded_at = CURRENT_TIMESTAMP WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, file.getFilename(), file.getFilepath(), file.getCategoryId(),
+					file.getRequiredRole(), file.isNeedsWarning(), file.getId()) > 0;
+		} catch (Exception e) {
+			logger.error("Error updating file record for ID {}", file.getId(), e);
+			return false;
+		}
+	}
+
 	public boolean touchFileRecord(int fileId) {
 		String sql = "UPDATE files SET uploaded_at = CURRENT_TIMESTAMP WHERE id = ?";
 		try {
@@ -194,6 +205,16 @@ public class FileDAO {
 			return jdbcTemplate.update(sql, categoryName) > 0;
 		} catch (Exception e) {
 			logger.error("Error creating file category '{}'", categoryName, e);
+			return false;
+		}
+	}
+
+	public boolean renameCategory(int categoryId, String newName) {
+		String sql = "UPDATE file_categories SET name = ? WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, newName, categoryId) > 0;
+		} catch (Exception e) {
+			logger.error("Error renaming category ID {}", categoryId, e);
 			return false;
 		}
 	}

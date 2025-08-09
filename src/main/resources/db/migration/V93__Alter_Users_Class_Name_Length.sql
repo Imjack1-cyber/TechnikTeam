@@ -1,0 +1,1 @@
+ALTER TABLE users MODIFY COLUMN class_name VARCHAR(255);

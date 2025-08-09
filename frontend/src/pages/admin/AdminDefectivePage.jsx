@@ -6,8 +6,8 @@ import StorageItemModal from '../../components/admin/storage/StorageItemModal';
 import { useToast } from '../../context/ToastContext';
 
 const AdminDefectivePage = () => {
-	const apiCall = useCallback(() => apiClient.get('/storage?status=defective'), []);
-	const { data: items, loading, error, reload } = useApi(apiCall);
+	const apiCall = useCallback(() => apiClient.get('/storage'), []);
+	const { data: allItems, loading, error, reload } = useApi(apiCall);
 	const [modalState, setModalState] = useState({ isOpen: false, item: null, mode: 'defect' });
 	const { addToast } = useToast();
 
@@ -25,6 +25,8 @@ const AdminDefectivePage = () => {
 		reload();
 	};
 
+	const items = allItems?.filter(item => item.defectiveQuantity > 0);
+
 	const renderTable = () => {
 		if (loading) return <tr><td colSpan="4">Lade defekte Artikel...</td></tr>;
 		if (error) return <tr><td colSpan="4" className="error-message">{error}</td></tr>;
@@ -36,7 +38,8 @@ const AdminDefectivePage = () => {
 				<td>{item.defectiveQuantity} / {item.quantity}</td>
 				<td>{item.defectReason || '-'}</td>
 				<td>
-					<button onClick={() => openModal('defect', item)} className="btn btn-small btn-warning">Status bearbeiten</button>
+					<button onClick={() => openModal('repair', item)} className="btn btn-small btn-success">Repariert</button>
+					<button onClick={() => openModal('defect', item)} className="btn btn-small btn-warning" style={{ marginLeft: '0.5rem' }}>Status bearbeiten</button>
 				</td>
 			</tr>
 		));
@@ -53,6 +56,7 @@ const AdminDefectivePage = () => {
 				<div className="card-row"><strong>Defekt / Gesamt:</strong> <span>{item.defectiveQuantity} / {item.quantity}</span></div>
 				<div className="card-row"><strong>Grund:</strong> <span>{item.defectReason || '-'}</span></div>
 				<div className="card-actions">
+					<button onClick={() => openModal('repair', item)} className="btn btn-small btn-success">Repariert</button>
 					<button onClick={() => openModal('defect', item)} className="btn btn-small btn-warning">Status bearbeiten</button>
 				</div>
 			</div>

@@ -77,6 +77,10 @@ public class NotificationService {
 				"Neuer Client für SSE-Benachrichtigungen für Benutzer-ID {} registriert. Gesamtzahl der Clients für Benutzer: {}",
 				userId, emittersByUser.get(userId).size());
 
+		// When a user connects via SSE, we can consider their unseen notifications
+		// "seen".
+		userNotificationDAO.markAllAsSeen(userId);
+
 		// Send a confirmation event
 		try {
 			emitter.send(SseEmitter.event().name("connected").data("Verbindung hergestellt"));

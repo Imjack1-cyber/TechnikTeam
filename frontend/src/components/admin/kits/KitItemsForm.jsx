@@ -44,6 +44,14 @@ const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
 		const validItems = items.filter(item => item.itemId && item.quantity > 0)
 			.map(item => ({ itemId: parseInt(item.itemId), quantity: parseInt(item.quantity) }));
 
+		// Check for duplicate items before submitting
+		const itemIds = validItems.map(item => item.itemId);
+		if (new Set(itemIds).size !== itemIds.length) {
+			setError('Jeder Artikel darf nur einmal pro Kit hinzugefügt werden.');
+			setIsSubmitting(false);
+			return;
+		}
+
 		try {
 			const result = await apiClient.put(`/kits/${kit.id}/items`, validItems);
 			if (result.success) {

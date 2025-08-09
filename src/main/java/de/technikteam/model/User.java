@@ -22,6 +22,11 @@ public class User {
 	private String assignedEventRole; // Transient field for event details
 	private int unseenNotificationsCount; // Transient field
 
+	// Suspension related fields
+	private String status;
+	private LocalDateTime suspendedUntil;
+	private String suspendedReason;
+
 	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String passwordHash;
 
@@ -159,6 +164,14 @@ public class User {
 		this.assignedEventRole = assignedEventRole;
 	}
 
+	public int getUnseenNotificationsCount() {
+		return unseenNotificationsCount;
+	}
+
+	public void setUnseenNotificationsCount(int unseenNotificationsCount) {
+		this.unseenNotificationsCount = unseenNotificationsCount;
+	}
+
 	public String getPasswordHash() {
 		return passwordHash;
 	}
@@ -167,12 +180,28 @@ public class User {
 		this.passwordHash = passwordHash;
 	}
 
-	public int getUnseenNotificationsCount() {
-		return unseenNotificationsCount;
+	public String getStatus() {
+		return status;
 	}
 
-	public void setUnseenNotificationsCount(int unseenNotificationsCount) {
-		this.unseenNotificationsCount = unseenNotificationsCount;
+	public void setStatus(String status) {
+		this.status = status;
+	}
+
+	public LocalDateTime getSuspendedUntil() {
+		return suspendedUntil;
+	}
+
+	public void setSuspendedUntil(LocalDateTime suspendedUntil) {
+		this.suspendedUntil = suspendedUntil;
+	}
+
+	public String getSuspendedReason() {
+		return suspendedReason;
+	}
+
+	public void setSuspendedReason(String suspendedReason) {
+		this.suspendedReason = suspendedReason;
 	}
 
 	public String getFormattedCreatedAt() {

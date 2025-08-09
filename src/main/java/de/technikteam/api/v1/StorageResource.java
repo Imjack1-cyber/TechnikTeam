@@ -5,6 +5,7 @@ import de.technikteam.model.ApiResponse;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
 import de.technikteam.service.AdminLogService;
+import de.technikteam.service.FileService;
 import de.technikteam.service.StorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,12 +26,15 @@ public class StorageResource {
 	private final StorageDAO storageDAO;
 	private final StorageService storageService;
 	private final AdminLogService adminLogService;
+	private final FileService fileService;
 
 	@Autowired
-	public StorageResource(StorageDAO storageDAO, StorageService storageService, AdminLogService adminLogService) {
+	public StorageResource(StorageDAO storageDAO, StorageService storageService, AdminLogService adminLogService,
+			FileService fileService) {
 		this.storageDAO = storageDAO;
 		this.storageService = storageService;
 		this.adminLogService = adminLogService;
+		this.fileService = fileService;
 	}
 
 	private User getSystemUser() {
@@ -49,14 +53,27 @@ public class StorageResource {
 
 	@PostMapping
 	@Operation(summary = "Create a new storage item")
-	public ResponseEntity<ApiResponse> createItem(@RequestBody StorageItem item) {
-		if (storageDAO.createItem(item)) {
-			adminLogService.log(getSystemUser().getUsername(), "CREATE_STORAGE_ITEM_API",
-					"Item '" + item.getName() + "' created.");
-			return new ResponseEntity<>(new ApiResponse(true, "Artikel erfolgreich erstellt.", item),
-					HttpStatus.CREATED);
+	public ResponseEntity<ApiResponse> createItem(@ModelAttribute StorageItem item,
+			@RequestParam(value = "imageFile", required = false) MultipartFile imageFile) {
+		try {
+			if (imageFile != null && !imageFile.isEmpty()) {
+				de.technikteam.model.File savedFile = fileService.storeFile(imageFile, null, "NUTZER", getSystemUser(),
+						"images");
+				item.setImagePath(savedFile.getFilepath());
+			}
+
+			if (storageDAO.createItem(item)) {
+				adminLogService.log(getSystemUser().getUsername(), "CREATE_STORAGE_ITEM_API",
+						"Item '" + item.getName() + "' created.");
+				return new ResponseEntity<>(new ApiResponse(true, "Artikel erfolgreich erstellt.", item),
+						HttpStatus.CREATED);
+			}
+			return ResponseEntity.badRequest()
+					.body(new ApiResponse(false, "Artikel konnte nicht erstellt werden.", null));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new ApiResponse(false, "Fehler beim Erstellen des Artikels: " + e.getMessage(), null));
 		}
-		return ResponseEntity.badRequest().body(new ApiResponse(false, "Artikel konnte nicht erstellt werden.", null));
 	}
 
 	@PutMapping("/{id}")
@@ -74,15 +91,27 @@ public class StorageResource {
 
 	@PostMapping("/{id}")
 	@Operation(summary = "Update a storage item's core details")
-	public ResponseEntity<ApiResponse> updateItemDetails(@PathVariable int id, @ModelAttribute StorageItem item) {
-		item.setId(id);
-		if (storageDAO.updateItem(item)) {
-			adminLogService.log(getSystemUser().getUsername(), "UPDATE_STORAGE_ITEM_API",
-					"Item '" + item.getName() + "' updated.");
-			return ResponseEntity.ok(new ApiResponse(true, "Artikel erfolgreich aktualisiert.", item));
+	public ResponseEntity<ApiResponse> updateItemDetails(@PathVariable int id, @ModelAttribute StorageItem item,
+			@RequestParam(value = "imageFile", required = false) MultipartFile imageFile) {
+		try {
+			item.setId(id);
+			if (imageFile != null && !imageFile.isEmpty()) {
+				de.technikteam.model.File savedFile = fileService.storeFile(imageFile, null, "NUTZER", getSystemUser(),
+						"images");
+				item.setImagePath(savedFile.getFilepath());
+			}
+
+			if (storageDAO.updateItem(item)) {
+				adminLogService.log(getSystemUser().getUsername(), "UPDATE_STORAGE_ITEM_API",
+						"Item '" + item.getName() + "' updated.");
+				return ResponseEntity.ok(new ApiResponse(true, "Artikel erfolgreich aktualisiert.", item));
+			}
+			return ResponseEntity.status(HttpStatus.NOT_FOUND)
+					.body(new ApiResponse(false, "Artikel nicht gefunden oder Aktualisierung fehlgeschlagen.", null));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new ApiResponse(false, "Fehler beim Aktualisieren des Artikels: " + e.getMessage(), null));
 		}
-		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ApiResponse(false, "Artikel nicht gefunden oder Aktualisierung fehlgeschlagen.", null));
 	}
 
 	@DeleteMapping("/{id}")

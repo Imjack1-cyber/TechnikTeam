@@ -3,10 +3,15 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import Modal from '../ui/Modal';
 import './GroupChatModal.css'; // Reuse styles
+import { useAuthStore } from '../../store/authStore';
+import { useToast } from '../../context/ToastContext';
 
-const ManageParticipantsModal = ({ isOpen, onClose, onAddUsers, conversation }) => {
+const ManageParticipantsModal = ({ isOpen, onClose, onAddUsers, onRemoveUser, conversation }) => {
+	const user = useAuthStore(state => state.user);
 	const { data: allUsers, loading } = useApi(useCallback(() => apiClient.get('/users'), []));
 	const [selectedUsers, setSelectedUsers] = useState(new Set());
+	const { addToast } = useToast();
+
 
 	const existingParticipantIds = new Set(conversation.participants.map(p => p.id));
 	const usersToAdd = allUsers?.filter(u => !existingParticipantIds.has(u.id));
@@ -29,11 +34,36 @@ const ManageParticipantsModal = ({ isOpen, onClose, onAddUsers, conversation }) 
 		}
 	};
 
+	const handleRemoveClick = async (participant) => {
+		if (window.confirm(`${participant.username} wirklich aus der Gruppe entfernen?`)) {
+			try {
+				const result = await apiClient.delete(`/public/chat/conversations/${conversation.id}/participants/${participant.id}`);
+				if (result.success) {
+					addToast(`${participant.username} wurde entfernt.`, 'success');
+					onRemoveUser(); // This should trigger a reload in the parent component
+				} else {
+					throw new Error(result.message);
+				}
+			} catch (err) {
+				addToast(err.message, 'error');
+			}
+		}
+	};
+
 	return (
 		<Modal isOpen={isOpen} onClose={onClose} title={`"${conversation.name}" verwalten`}>
 			<h4>Aktuelle Mitglieder</h4>
 			<ul className="participant-list">
-				{conversation.participants.map(p => <li key={p.id}>{p.username}</li>)}
+				{conversation.participants.map(p => (
+					<li key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+						<span>{p.username} {p.id === conversation.creatorId && '(Ersteller)'}</span>
+						{user.id !== p.id && ( // Can't remove yourself
+							<button onClick={() => handleRemoveClick(p)} className="btn btn-small btn-danger-outline" title="Entfernen">
+								<i className="fas fa-times"></i>
+							</button>
+						)}
+					</li>
+				))}
 			</ul>
 			<hr />
 			<h4>Mitglieder hinzufügen</h4>
