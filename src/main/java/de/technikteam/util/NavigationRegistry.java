@@ -21,6 +21,7 @@ public final class NavigationRegistry {
 		// User Section
 		ALL_ITEMS.add(new NavigationItem("Dashboard", "/home", "fa-home", null));
 		ALL_ITEMS.add(new NavigationItem("Anschlagbrett", "/bulletin-board", "fa-thumbtack", null));
+		ALL_ITEMS.add(new NavigationItem("Benachrichtigungen", "/notifications", "fa-bell", null));
 		ALL_ITEMS.add(new NavigationItem("Team", "/team", "fa-users", null));
 		ALL_ITEMS.add(new NavigationItem("Chat", "/chat", "fa-comments", null));
 		ALL_ITEMS.add(new NavigationItem("Lehrgänge", "/lehrgaenge", "fa-graduation-cap", null));

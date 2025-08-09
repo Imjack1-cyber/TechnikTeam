@@ -153,6 +153,16 @@ export const useAuthStore = create(
 			triggerEventUpdate: (eventId) => {
 				set({ lastUpdatedEvent: { id: eventId, nonce: Math.random() } });
 			},
+			setUnseenNotificationCount: (count) => {
+				set(state => ({
+					user: state.user ? { ...state.user, unseenNotificationsCount: count } : null
+				}));
+			},
+			incrementUnseenNotificationCount: () => {
+				set(state => ({
+					user: state.user ? { ...state.user, unseenNotificationsCount: (state.user.unseenNotificationsCount || 0) + 1 } : null
+				}));
+			}
 		}),
 		{
 			name: 'auth-storage',

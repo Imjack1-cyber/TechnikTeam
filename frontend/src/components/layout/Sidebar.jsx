@@ -84,6 +84,8 @@ const Sidebar = () => {
 	};
 
 	const renderNavItem = (item) => {
+		const hasBadge = item.url === '/notifications' && user.unseenNotificationsCount > 0;
+
 		// Use a simple startsWith check as the full path might vary
 		if (item.url.startsWith('/swagger-ui')) {
 			// Construct the correct absolute path including the backend's context path
@@ -96,7 +98,9 @@ const Sidebar = () => {
 		}
 		return (
 			<NavLink to={item.url} className={({ isActive }) => (isActive ? 'active-nav-link' : '')}>
-				<i className={`fas ${item.icon} fa-fw`}></i> {item.label}
+				<i className={`fas ${item.icon} fa-fw`}></i>
+				{item.label}
+				{hasBadge && <span className="cart-badge" style={{ position: 'static', marginLeft: 'auto', width: '20px', height: '20px', fontSize: '0.7rem' }}>{user.unseenNotificationsCount}</span>}
 			</NavLink>
 		);
 	};

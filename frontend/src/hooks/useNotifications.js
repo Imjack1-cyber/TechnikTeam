@@ -5,9 +5,10 @@ import { useAuthStore } from '../store/authStore';
 export const useNotifications = () => {
 	const { addToast } = useToast();
 	const [warningNotification, setWarningNotification] = useState(null);
-	const { isAuthenticated, triggerEventUpdate } = useAuthStore(state => ({
+	const { isAuthenticated, triggerEventUpdate, incrementUnseenNotificationCount } = useAuthStore(state => ({
 		isAuthenticated: state.isAuthenticated,
 		triggerEventUpdate: state.triggerEventUpdate,
+		incrementUnseenNotificationCount: state.incrementUnseenNotificationCount,
 	}));
 
 	const dismissWarning = useCallback(() => {
@@ -27,6 +28,7 @@ export const useNotifications = () => {
 
 		events.addEventListener("notification", (event) => {
 			const data = JSON.parse(event.data);
+			incrementUnseenNotificationCount();
 			if (data.level === 'Warning') {
 				setWarningNotification(data);
 			} else {
@@ -54,7 +56,7 @@ export const useNotifications = () => {
 		return () => {
 			events.close();
 		};
-	}, [isAuthenticated, addToast, triggerEventUpdate]);
+	}, [isAuthenticated, addToast, triggerEventUpdate, incrementUnseenNotificationCount]);
 
 	return { warningNotification, dismissWarning };
 };

@@ -104,7 +104,8 @@ public class AuthResource {
 					HttpStatus.UNAUTHORIZED);
 		}
 
-		User authenticatedUser = securityUser.getUser();
+		User authenticatedUser = userDAO.getUserById(securityUser.getUser().getId()); // Re-fetch to get latest data
+																						// including count
 		List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(authenticatedUser);
 		Map<String, Object> responseData = Map.of("user", authenticatedUser, "navigation", navigationItems);
 		return ResponseEntity.ok(new ApiResponse(true, "Current user session retrieved.", responseData));

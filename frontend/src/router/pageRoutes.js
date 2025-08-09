@@ -18,6 +18,7 @@ const pageRoutes = {
 	'/passwort': 'password_change',
 	'/suche': 'search_results',
 	'/help': 'help_list',
+	'/notifications': 'notifications',
 
 	// Admin Pages
 	'/admin/dashboard': 'admin_dashboard',

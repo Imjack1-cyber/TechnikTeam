@@ -38,6 +38,7 @@ const AnnouncementsPage = lazy(() => import('../pages/AnnouncementsPage'));
 const HelpListPage = lazy(() => import('../pages/HelpListPage'));
 const HelpDetailsPage = lazy(() => import('../pages/HelpDetailsPage'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
+const NotificationsPage = lazy(() => import('../pages/NotificationsPage'));
 
 // Admin Pages
 const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage'));
@@ -112,6 +113,7 @@ const router = createBrowserRouter([
 			{ path: 'help/:pageKey', element: <HelpDetailsPage /> },
 			{ path: 'chat', element: <ChatPage /> },
 			{ path: 'chat/:conversationId', element: <ChatPage /> },
+			{ path: 'notifications', element: <NotificationsPage /> },
 			{ path: 'test-500', element: <ErrorTrigger /> },
 
 			{

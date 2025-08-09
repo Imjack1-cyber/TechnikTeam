@@ -20,6 +20,7 @@ public class User {
 	private String adminNotes;
 	private String dashboardLayout; // JSON string
 	private String assignedEventRole; // Transient field for event details
+	private int unseenNotificationsCount; // Transient field
 
 	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String passwordHash;
@@ -164,6 +165,14 @@ public class User {
 
 	public void setPasswordHash(String passwordHash) {
 		this.passwordHash = passwordHash;
+	}
+
+	public int getUnseenNotificationsCount() {
+		return unseenNotificationsCount;
+	}
+
+	public void setUnseenNotificationsCount(int unseenNotificationsCount) {
+		this.unseenNotificationsCount = unseenNotificationsCount;
 	}
 
 	public String getFormattedCreatedAt() {

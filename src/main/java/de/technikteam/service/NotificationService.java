@@ -7,7 +7,9 @@ import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.MeetingDAO;
 import de.technikteam.dao.UserDAO;
+import de.technikteam.dao.UserNotificationDAO;
 import de.technikteam.model.User;
+import de.technikteam.model.UserNotification;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Service;
@@ -31,13 +33,15 @@ public class NotificationService {
 	private final EventDAO eventDAO;
 	private final MeetingDAO meetingDAO;
 	private final AdminLogService adminLogService;
+	private final UserNotificationDAO userNotificationDAO;
 
 	public NotificationService(UserDAO userDAO, EventDAO eventDAO, MeetingDAO meetingDAO,
-			AdminLogService adminLogService) {
+			AdminLogService adminLogService, UserNotificationDAO userNotificationDAO) {
 		this.userDAO = userDAO;
 		this.eventDAO = eventDAO;
 		this.meetingDAO = meetingDAO;
 		this.adminLogService = adminLogService;
+		this.userNotificationDAO = userNotificationDAO;
 		new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
@@ -101,6 +105,16 @@ public class NotificationService {
 	}
 
 	public void sendNotificationToUser(int userId, Map<String, Object> payload) {
+		// 1. Persist the notification
+		UserNotification notification = new UserNotification();
+		notification.setUserId(userId);
+		notification.setTitle((String) payload.get("title"));
+		notification.setDescription((String) payload.get("description"));
+		notification.setLevel((String) payload.get("level"));
+		notification.setUrl((String) payload.get("url"));
+		userNotificationDAO.create(notification);
+
+		// 2. Push via SSE if user is connected
 		List<SseEmitter> userEmitters = emittersByUser.get(userId);
 		if (userEmitters != null && !userEmitters.isEmpty()) {
 			SseEmitter.SseEventBuilder event = SseEmitter.event().name("notification").data(payload);

@@ -25,10 +25,12 @@ public class UserDAO {
 	private static final Logger logger = LogManager.getLogger(UserDAO.class);
 	private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 	private final JdbcTemplate jdbcTemplate;
+	private final UserNotificationDAO userNotificationDAO;
 
 	@Autowired
-	public UserDAO(JdbcTemplate jdbcTemplate) {
+	public UserDAO(JdbcTemplate jdbcTemplate, UserNotificationDAO userNotificationDAO) {
 		this.jdbcTemplate = jdbcTemplate;
+		this.userNotificationDAO = userNotificationDAO;
 	}
 
 	private final RowMapper<User> userRowMapper = (resultSet, rowNum) -> {
@@ -76,6 +78,7 @@ public class UserDAO {
 
 			if (storedHash != null && passwordEncoder.matches(password, storedHash)) {
 				user.setPermissions(getPermissionsForUser(user.getId()));
+				user.setUnseenNotificationsCount(userNotificationDAO.getUnseenCount(user.getId()));
 				return user;
 			}
 		} catch (EmptyResultDataAccessException e) {
@@ -92,6 +95,7 @@ public class UserDAO {
 			User user = jdbcTemplate.queryForObject(sql, userRowMapper, username);
 			if (user != null) {
 				user.setPermissions(getPermissionsForUser(user.getId()));
+				user.setUnseenNotificationsCount(userNotificationDAO.getUnseenCount(user.getId()));
 			}
 			return user;
 		} catch (EmptyResultDataAccessException e) {
@@ -232,6 +236,7 @@ public class UserDAO {
 			User user = jdbcTemplate.queryForObject(sql, userRowMapper, userId);
 			if (user != null) {
 				user.setPermissions(getPermissionsForUser(userId));
+				user.setUnseenNotificationsCount(userNotificationDAO.getUnseenCount(user.getId()));
 			}
 			return user;
 		} catch (EmptyResultDataAccessException e) {
