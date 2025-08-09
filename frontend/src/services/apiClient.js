@@ -24,11 +24,28 @@ const apiClient = {
 				credentials: 'include'
 			});
 
+			const contentType = response.headers.get("content-type");
+			const isJson = contentType && contentType.includes("application/json");
+
 			if (response.status === 401) {
+				// Handle 401 specifically: could be a login failure or an expired session.
+				if (isJson) {
+					const errorResult = await response.json();
+					// If there's a specific message (like "Wrong username or password"), throw it.
+					if (errorResult.message) {
+						throw new Error(errorResult.message);
+					}
+				}
+				// Otherwise, it's a generic unauthorized, likely an expired session.
 				onUnauthorizedCallback();
 				throw new Error('Nicht autorisiert. Ihre Sitzung ist möglicherweise abgelaufen.');
 			}
+
 			if (response.status === 403) {
+				if (isJson) {
+					const errorResult = await response.json();
+					throw new Error(errorResult.message || 'Zugriff verweigert.');
+				}
 				throw new Error('Zugriff verweigert.');
 			}
 
@@ -36,8 +53,7 @@ const apiClient = {
 				return { success: true, message: 'Operation successful.', data: null };
 			}
 
-			const contentType = response.headers.get("content-type");
-			if (!contentType || !contentType.includes("application/json")) {
+			if (!isJson) {
 				const textError = await response.text();
 				console.error("Non-JSON API response:", textError);
 				throw new Error(`Serververbindung fehlgeschlagen (Status: ${response.status}). Das Backend ist möglicherweise offline.`);

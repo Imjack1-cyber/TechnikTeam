@@ -82,6 +82,8 @@ const AdminFilesPage = () => {
 
 	const filesGrouped = fileApiResponse?.grouped;
 
+	console.log("[AdminFilesPage] Render. Grouped data from API:", filesGrouped);
+
 	const handleSuccess = () => {
 		setModalState({ isOpen: false, file: null });
 		reloadFiles();
@@ -98,6 +100,19 @@ const AdminFilesPage = () => {
 				} else {
 					throw new Error(result.message);
 				}
+			} catch (err) {
+				addToast(err.message, 'error');
+			}
+		}
+	};
+
+	const handleRenameFile = async (file) => {
+		const newName = prompt('Neuer Dateiname:', file.filename);
+		if (newName && newName !== file.filename) {
+			try {
+				await apiClient.put(`/admin/files/${file.id}/rename`, { newName });
+				addToast('Datei umbenannt', 'success');
+				reloadFiles();
 			} catch (err) {
 				addToast(err.message, 'error');
 			}
@@ -172,6 +187,7 @@ const AdminFilesPage = () => {
 					</div>
 					<ul className="details-list">
 						{files.map(file => {
+							console.log(`[AdminFilesPage] Rendering file: ${file.filename} in category: ${file.categoryName} (ID: ${file.categoryId})`);
 							return (
 								<li key={file.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
 									<div>
@@ -182,11 +198,14 @@ const AdminFilesPage = () => {
 											Sichtbarkeit: {file.requiredRole}
 										</small>
 									</div>
-									<div>
+									<div style={{ display: 'flex', gap: '0.5rem' }}>
+										<button onClick={() => handleRenameFile(file)} className="btn btn-small btn-secondary" title="Umbenennen">
+											<i className="fas fa-i-cursor"></i>
+										</button>
 										<button onClick={() => setModalState({ isOpen: true, file: file })} className="btn btn-small btn-secondary" title="Ersetzen">
 											<i className="fas fa-sync-alt"></i>
 										</button>
-										<button onClick={() => handleDeleteFile(file)} className="btn btn-small btn-danger" style={{ marginLeft: '0.5rem' }}>Löschen</button>
+										<button onClick={() => handleDeleteFile(file)} className="btn btn-small btn-danger">Löschen</button>
 									</div>
 								</li>
 							);

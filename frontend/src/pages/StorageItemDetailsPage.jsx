@@ -60,6 +60,13 @@ const StorageItemDetailsPage = () => {
 		// No need to reload data, as the report is handled by admins
 	};
 
+	const getImagePath = (path) => {
+		// The API endpoint for images doesn't include the subfolder in the URL parameter.
+		// It expects only the filename. The backend service adds the subfolder.
+		const filename = path.split('/').pop();
+		return `/api/v1/public/files/images/${filename}`;
+	};
+
 	if (itemLoading || historyLoading) return <div>Lade Artikeldetails...</div>;
 	if (itemError) return <div className="error-message">{itemError}</div>;
 	if (!itemData) return <div className="error-message">Artikel nicht gefunden.</div>;
@@ -75,7 +82,7 @@ const StorageItemDetailsPage = () => {
 					<h2 className="card-title">{item.name}</h2>
 					{item.imagePath && (
 						<img
-							src={`/api/v1/public/files/images/${item.imagePath}`}
+							src={getImagePath(item.imagePath)}
 							alt={item.name}
 							style={{ width: '100%', borderRadius: 'var(--border-radius)', marginBottom: '1rem', cursor: 'zoom-in' }}
 							onClick={() => setIsLightboxOpen(true)}
@@ -169,7 +176,7 @@ const StorageItemDetailsPage = () => {
 				<Link to="/lager" className="btn btn-secondary"><i className="fas fa-arrow-left"></i> Zur Lagerübersicht</Link>
 			</div>
 
-			{isLightboxOpen && <Lightbox src={`/api/v1/public/files/images/${item.imagePath}`} onClose={() => setIsLightboxOpen(false)} />}
+			{isLightboxOpen && <Lightbox src={getImagePath(item.imagePath)} onClose={() => setIsLightboxOpen(false)} />}
 
 			<DamageReportModal
 				isOpen={isReportModalOpen}

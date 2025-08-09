@@ -139,6 +139,16 @@ public class FileDAO {
 		}
 	}
 
+	public boolean renameFile(int fileId, String newName) {
+		String sql = "UPDATE files SET filename = ? WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, newName, fileId) > 0;
+		} catch (Exception e) {
+			logger.error("Error renaming file ID {}", fileId, e);
+			return false;
+		}
+	}
+
 	public boolean touchFileRecord(int fileId) {
 		String sql = "UPDATE files SET uploaded_at = CURRENT_TIMESTAMP WHERE id = ?";
 		try {

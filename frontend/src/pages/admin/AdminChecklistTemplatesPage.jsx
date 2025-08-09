@@ -136,9 +136,9 @@ const TemplateModal = ({ isOpen, onClose, onSuccess, template, allStorageItems }
 		const currentItem = { ...newItems[index], [field]: value };
 
 		// When changing item type, reset the other type
-		if (field === 'storageItemId' && value !== null) {
+		if (field === 'storageItemId' && value) {
 			currentItem.itemText = null;
-		} else if (field === 'itemText' && value !== null) {
+		} else if (field === 'itemText') {
 			currentItem.storageItemId = null;
 			currentItem.quantity = 1; // Reset quantity for text items
 		}
@@ -210,7 +210,7 @@ const TemplateModal = ({ isOpen, onClose, onSuccess, template, allStorageItems }
 				<div className="form-group">
 					<label>Checklisten-Punkte</label>
 					{items.map((item, index) => {
-						const isStorageItem = item.storageItemId !== null && item.storageItemId !== '';
+						const isStorageItem = item.storageItemId !== null;
 						const selectedStorageItem = isStorageItem ? allStorageItems.find(si => si.id === parseInt(item.storageItemId)) : null;
 
 						return (

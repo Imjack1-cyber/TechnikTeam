@@ -1,6 +1,7 @@
 package de.technikteam.config;
 
 import de.technikteam.model.ApiResponse;
+import de.technikteam.security.UserSuspendedException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.http.HttpStatus;
@@ -29,6 +30,12 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiResponse> handleAccessDeniedException(AccessDeniedException ex) {
 		ApiResponse apiResponse = new ApiResponse(false,
 				ex.getMessage() != null ? ex.getMessage() : "Zugriff verweigert.", null);
+		return new ResponseEntity<>(apiResponse, HttpStatus.FORBIDDEN);
+	}
+
+	@ExceptionHandler(UserSuspendedException.class)
+	public ResponseEntity<ApiResponse> handleUserSuspendedException(UserSuspendedException ex) {
+		ApiResponse apiResponse = new ApiResponse(false, ex.getMessage(), null);
 		return new ResponseEntity<>(apiResponse, HttpStatus.FORBIDDEN);
 	}
 

@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -30,7 +31,6 @@ public class AdminUserManagementResource {
 	}
 
 	@PostMapping("/{userId}/suspend")
-	@PreAuthorize("hasAuthority('USER_UPDATE')")
 	public ResponseEntity<ApiResponse> suspendUser(@PathVariable int userId, @RequestBody SuspendRequest request,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		if (request == null) {
@@ -46,13 +46,13 @@ public class AdminUserManagementResource {
 						.body(new ApiResponse(false, "Failed to suspend user.", null));
 			}
 		} catch (IllegalArgumentException e) {
-			return ResponseEntity.badRequest()
-					.body(new ApiResponse(false, "Invalid duration format: " + e.getMessage(), null));
+			return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
+		} catch (AccessDeniedException e) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, e.getMessage(), null));
 		}
 	}
 
 	@PostMapping("/{userId}/unsuspend")
-	@PreAuthorize("hasAuthority('USER_UPDATE')")
 	public ResponseEntity<ApiResponse> unsuspendUser(@PathVariable int userId,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		boolean success = adminService.unsuspendUser(userId, securityUser.getUser());

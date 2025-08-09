@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
@@ -72,8 +74,14 @@ public class AuthService {
 		response.addHeader(HttpHeaders.SET_COOKIE, header);
 	}
 
+	/**
+	 * Validate the JWT, load the user and return a UserDetails. If the user does
+	 * not exist or is currently suspended, returns null. This ensures that
+	 * previously-issued tokens are rejected immediately once a user is suspended.
+	 */
 	public UserDetails validateTokenAndGetUser(String token) {
 		try {
+			// Parse and validate token
 			Claims claims = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
 
 			int userId = Integer.parseInt(claims.getSubject());
@@ -83,6 +91,14 @@ public class AuthService {
 				logger.warn("JWT-Validierung erfolgreich, aber Benutzer mit ID {} existiert nicht mehr.", userId);
 				return null;
 			}
+
+			// Enforce suspension check
+			if (userDAO.isUserCurrentlySuspended(user)) {
+				logger.warn("JWT validation failed: User {} is currently suspended.", user.getUsername());
+				return null;
+			}
+
+			// Build security user
 			return new SecurityUser(user);
 		} catch (Exception e) {
 			logger.warn("JWT-Verifizierung fehlgeschlagen: {}", e.getMessage());

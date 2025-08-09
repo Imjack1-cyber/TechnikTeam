@@ -87,6 +87,14 @@ const EventGalleryTab = ({ event, user }) => {
 		}
 	};
 
+	const getImagePath = (path) => {
+		// The path from the DB might be like "event_galleries/1/xyz.jpg"
+		// The API endpoint is /api/v1/public/files/images/{filename}
+		// We only need the filename part.
+		const filename = path.split('/').pop();
+		return `/api/v1/public/files/images/${filename}`;
+	};
+
 	return (
 		<div>
 			{isParticipant && (
@@ -106,9 +114,10 @@ const EventGalleryTab = ({ event, user }) => {
 				<div className="photo-gallery-grid">
 					{photos?.map(photo => {
 						const canDelete = user.isAdmin || user.id === event.leaderUserId || user.id === photo.uploaderUserId;
+						const imageUrl = getImagePath(photo.filepath);
 						return (
 							<div key={photo.id} className="photo-card">
-								<img src={`/api/v1/public/files/images/${photo.filepath}`} alt={photo.caption || 'Event-Foto'} onClick={() => setLightboxSrc(`/api/v1/public/files/images/${photo.filepath}`)} />
+								<img src={imageUrl} alt={photo.caption || 'Event-Foto'} onClick={() => setLightboxSrc(imageUrl)} />
 								<div className="photo-card-caption">
 									<p>{photo.caption}</p>
 									<small>Von: {photo.uploaderUsername}</small>

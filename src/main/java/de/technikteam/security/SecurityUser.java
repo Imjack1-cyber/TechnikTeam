@@ -7,6 +7,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class SecurityUser implements UserDetails, Serializable {
@@ -24,9 +26,15 @@ public class SecurityUser implements UserDetails, Serializable {
 
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
-		// Convert the user's permission strings into Spring Security GrantedAuthority
-		// objects.
-		return user.getPermissions().stream().map(SimpleGrantedAuthority::new).collect(Collectors.toSet());
+		// Convert the user's permission strings and role into Spring Security
+		// GrantedAuthority objects.
+		Set<GrantedAuthority> authorities = user.getPermissions().stream().map(SimpleGrantedAuthority::new)
+				.collect(Collectors.toSet());
+		// Add role as an authority, prefixed with "ROLE_"
+		if (user.getRoleName() != null && !user.getRoleName().isBlank()) {
+			authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRoleName().toUpperCase()));
+		}
+		return authorities;
 	}
 
 	@Override

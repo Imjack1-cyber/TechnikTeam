@@ -9,7 +9,11 @@ const CartModal = ({ isOpen, onClose, cart, onUpdateQuantity, onRemove, onSwitch
 			<div style={{ marginBottom: '1.5rem' }}>
 				<h4>{title}</h4>
 				{items.map(item => {
-					const maxQuantity = type === 'checkout' ? item.availableQuantity : (item.maxQuantity > 0 ? item.maxQuantity - item.quantity : Infinity);
+					// Use original item properties (quantity, maxQuantity) for calculation
+					const maxQuantity = type === 'checkout'
+						? item.availableQuantity
+						: (item.maxQuantity > 0 ? item.maxQuantity - item.quantity : Infinity);
+
 					return (
 						<div className="dynamic-row" key={`${item.id}-${type}`}>
 							<button
@@ -24,7 +28,7 @@ const CartModal = ({ isOpen, onClose, cart, onUpdateQuantity, onRemove, onSwitch
 							<span style={{ flexGrow: 1 }}>{item.name}</span>
 							<input
 								type="number"
-								value={item.quantity}
+								value={item.cartQuantity} // Use the specific cart quantity state
 								onChange={e => onUpdateQuantity(item.id, type, parseInt(e.target.value, 10))}
 								min="1"
 								max={maxQuantity === Infinity ? undefined : maxQuantity}

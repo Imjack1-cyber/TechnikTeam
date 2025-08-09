@@ -46,6 +46,11 @@ const AdminStoragePage = () => {
 		}
 	};
 
+	const getImagePath = (path) => {
+		const filename = path.split('/').pop();
+		return `/api/v1/public/files/images/${filename}`;
+	};
+
 	return (
 		<div>
 			<h1><i className="fas fa-warehouse"></i> Lagerverwaltung</h1>
@@ -74,7 +79,7 @@ const AdminStoragePage = () => {
 								<td className="item-name-cell">
 									<Link to={`/lager/details/${item.id}`}>{item.name}</Link>
 									{item.imagePath && (
-										<button className="camera-btn" onClick={() => setLightboxSrc(`/api/v1/public/files/images/${item.imagePath}`)}>
+										<button className="camera-btn" onClick={() => setLightboxSrc(getImagePath(item.imagePath))}>
 											<i className="fas fa-camera"></i>
 										</button>
 									)}
@@ -108,7 +113,7 @@ const AdminStoragePage = () => {
 						<h3 className="card-title">
 							<Link to={`/lager/details/${item.id}`}>{item.name}</Link>
 							{item.imagePath && (
-								<button className="camera-btn" onClick={() => setLightboxSrc(`/api/v1/public/files/images/${item.imagePath}`)}>
+								<button className="camera-btn" onClick={() => setLightboxSrc(getImagePath(item.imagePath))}>
 									<i className="fas fa-camera"></i>
 								</button>
 							)}

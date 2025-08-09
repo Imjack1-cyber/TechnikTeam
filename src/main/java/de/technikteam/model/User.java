@@ -26,6 +26,7 @@ public class User {
 	private String status;
 	private LocalDateTime suspendedUntil;
 	private String suspendedReason;
+	private boolean isLocked; // Transient field for login attempts
 
 	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String passwordHash;
@@ -202,6 +203,15 @@ public class User {
 
 	public void setSuspendedReason(String suspendedReason) {
 		this.suspendedReason = suspendedReason;
+	}
+
+	@JsonProperty("isLocked")
+	public boolean isLocked() {
+		return isLocked;
+	}
+
+	public void setLocked(boolean locked) {
+		isLocked = locked;
 	}
 
 	public String getFormattedCreatedAt() {

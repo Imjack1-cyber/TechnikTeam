@@ -168,28 +168,31 @@ const AdminUsersPage = () => {
 					<tbody>
 						{loading && <tr><td colSpan="5">Lade Benutzer...</td></tr>}
 						{error && <tr><td colSpan="5" className="error-message">{error}</td></tr>}
-						{users?.map(user => (
-							<tr key={user.id}>
-								<td>{user.id}</td>
-								<td>{user.username}</td>
-								<td>{user.roleName}</td>
-								<td>
-									{user.status === 'SUSPENDED'
-										? <span className="status-badge status-danger">Gesperrt</span>
-										: <span className="status-badge status-ok">Aktiv</span>
-									}
-								</td>
-								<td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-									<button onClick={() => handleOpenEditModal(user)} className="btn btn-small">Bearbeiten</button>
-									<button onClick={() => handleResetPassword(user)} className="btn btn-small btn-secondary">Passwort Reset</button>
-									{user.status === 'SUSPENDED'
-										? <button onClick={() => handleUnsuspend(user)} className="btn btn-small btn-success">Entsperren</button>
-										: <button onClick={() => setSuspendingUser(user)} className="btn btn-small btn-warning">Sperren</button>
-									}
-									<button onClick={() => handleDelete(user)} className="btn btn-small btn-danger">Löschen</button>
-								</td>
-							</tr>
-						))}
+						{users?.map(user => {
+							const isLocked = user.isLocked || user.status === 'SUSPENDED';
+							return (
+								<tr key={user.id}>
+									<td>{user.id}</td>
+									<td>{user.username}</td>
+									<td>{user.roleName}</td>
+									<td>
+										{isLocked
+											? <span className="status-badge status-danger">Gesperrt</span>
+											: <span className="status-badge status-ok">Aktiv</span>
+										}
+									</td>
+									<td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+										<button onClick={() => handleOpenEditModal(user)} className="btn btn-small">Bearbeiten</button>
+										<button onClick={() => handleResetPassword(user)} className="btn btn-small btn-secondary">Passwort Reset</button>
+										{isLocked
+											? <button onClick={() => handleUnsuspend(user)} className="btn btn-small btn-success">Entsperren</button>
+											: <button onClick={() => setSuspendingUser(user)} className="btn btn-small btn-warning" disabled={user.roleName === 'ADMIN'}>Sperren</button>
+										}
+										<button onClick={() => handleDelete(user)} className="btn btn-small btn-danger">Löschen</button>
+									</td>
+								</tr>
+							);
+						})}
 					</tbody>
 				</table>
 			</div>
@@ -197,28 +200,31 @@ const AdminUsersPage = () => {
 			<div className="mobile-card-list">
 				{loading && <p>Lade Benutzer...</p>}
 				{error && <p className="error-message">{error}</p>}
-				{users?.map(user => (
-					<div key={user.id} className="list-item-card">
-						<h3 className="card-title">{user.username}</h3>
-						<div className="card-row"><strong>ID:</strong> <span>{user.id}</span></div>
-						<div className="card-row"><strong>Rolle:</strong> <span>{user.roleName}</span></div>
-						<div className="card-row"><strong>Status:</strong>
-							{user.status === 'SUSPENDED'
-								? <span className="status-badge status-danger">Gesperrt</span>
-								: <span className="status-badge status-ok">Aktiv</span>
-							}
+				{users?.map(user => {
+					const isLocked = user.isLocked || user.status === 'SUSPENDED';
+					return (
+						<div key={user.id} className="list-item-card">
+							<h3 className="card-title">{user.username}</h3>
+							<div className="card-row"><strong>ID:</strong> <span>{user.id}</span></div>
+							<div className="card-row"><strong>Rolle:</strong> <span>{user.roleName}</span></div>
+							<div className="card-row"><strong>Status:</strong>
+								{isLocked
+									? <span className="status-badge status-danger">Gesperrt</span>
+									: <span className="status-badge status-ok">Aktiv</span>
+								}
+							</div>
+							<div className="card-actions">
+								<button onClick={() => handleOpenEditModal(user)} className="btn btn-small">Bearbeiten</button>
+								<button onClick={() => handleResetPassword(user)} className="btn btn-small btn-secondary">Reset</button>
+								{isLocked
+									? <button onClick={() => handleUnsuspend(user)} className="btn btn-small btn-success">Entsperren</button>
+									: <button onClick={() => setSuspendingUser(user)} className="btn btn-small btn-warning" disabled={user.roleName === 'ADMIN'}>Sperren</button>
+								}
+								<button onClick={() => handleDelete(user)} className="btn btn-small btn-danger">Löschen</button>
+							</div>
 						</div>
-						<div className="card-actions">
-							<button onClick={() => handleOpenEditModal(user)} className="btn btn-small">Bearbeiten</button>
-							<button onClick={() => handleResetPassword(user)} className="btn btn-small btn-secondary">Reset</button>
-							{user.status === 'SUSPENDED'
-								? <button onClick={() => handleUnsuspend(user)} className="btn btn-small btn-success">Entsperren</button>
-								: <button onClick={() => setSuspendingUser(user)} className="btn btn-small btn-warning">Sperren</button>
-							}
-							<button onClick={() => handleDelete(user)} className="btn btn-small btn-danger">Löschen</button>
-						</div>
-					</div>
-				))}
+					);
+				})}
 			</div>
 
 			{isModalOpen && (

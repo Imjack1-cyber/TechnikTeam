@@ -35,24 +35,19 @@ public class SecurityConfig {
 	}
 
 	@Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(
-                    "/api/v1/auth/**",
-                    "/api/v1/public/**", // alle public-Endpoints
-                    "/api/v1/admin/notifications/sse", // SSE vorerst offen
-                    "/ws/**", // WS-Verbindungen offen
-                    "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**"
-                ).permitAll()
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+		http.csrf(AbstractHttpConfigurer::disable)
+				.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.authorizeHttpRequests(auth -> auth.requestMatchers("/api/v1/auth/**", "/api/v1/public/**", // alle
+																											// public-Endpoints
+						"/api/v1/admin/notifications/sse", // SSE vorerst offen
+						"/ws/**", // WS-Verbindungen offen
+						"/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+						.requestMatchers("/api/v1/admin/**").hasRole("ADMIN").anyRequest().authenticated())
+				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-        return http.build();
-    }
+		return http.build();
+	}
 
 	@Bean
 	public UserDetailsService userDetailsService() {
@@ -64,11 +59,11 @@ public class SecurityConfig {
 			return new SecurityUser(user);
 		};
 	}
-	
+
 	@Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
-    }
+	public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+		return config.getAuthenticationManager();
+	}
 
 	@Bean
 	public PasswordEncoder passwordEncoder() {

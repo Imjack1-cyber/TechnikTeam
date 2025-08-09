@@ -4,6 +4,7 @@ import de.technikteam.model.ApiResponse;
 import de.technikteam.model.NavigationItem;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
+import de.technikteam.security.UserSuspendedException;
 import de.technikteam.service.AuthService;
 import de.technikteam.service.LoginAttemptService;
 import de.technikteam.dao.UserDAO;
@@ -59,22 +60,28 @@ public class AuthResource {
 
 		if (loginAttemptService.isLockedOut(username, ipAddress)) {
 			logger.warn("Blocked login attempt for locked-out user '{}' from IP {}", username, ipAddress);
-			return new ResponseEntity<>(new ApiResponse(false, "Konto ist vorübergehend gesperrt.", null),
-					HttpStatus.FORBIDDEN);
+			long remainingSeconds = loginAttemptService.getRemainingLockoutSeconds(username);
+			String message = String.format(
+					"Konto ist vorübergehend gesperrt. Bitte versuchen Sie es in %d Sekunden erneut.",
+					remainingSeconds);
+			return new ResponseEntity<>(new ApiResponse(false, message, null), HttpStatus.FORBIDDEN);
 		}
 
-		User user = userDAO.validateUser(username, password);
-		if (user != null) {
-			loginAttemptService.clearLoginAttempts(username);
-			authService.addJwtCookie(user, response);
-			logger.info("JWT cookie set successfully for user '{}'", username);
-			// Return user data but not the token itself
-			return ResponseEntity.ok(new ApiResponse(true, "Anmeldung erfolgreich", user));
-		} else {
-			loginAttemptService.recordFailedLogin(username, ipAddress);
-			logger.warn("Failed API login attempt for user '{}' from IP {}", username, ipAddress);
-			return new ResponseEntity<>(new ApiResponse(false, "Falscher Benutzername oder Passwort.", null),
-					HttpStatus.UNAUTHORIZED);
+		try {
+			User user = userDAO.validateUser(username, password);
+			if (user != null) {
+				loginAttemptService.clearLoginAttempts(username);
+				authService.addJwtCookie(user, response);
+				logger.info("JWT cookie set successfully for user '{}'", username);
+				return ResponseEntity.ok(new ApiResponse(true, "Anmeldung erfolgreich", user));
+			} else {
+				loginAttemptService.recordFailedLogin(username, ipAddress);
+				logger.warn("Failed API login attempt for user '{}' from IP {}", username, ipAddress);
+				return new ResponseEntity<>(new ApiResponse(false, "Falscher Benutzername oder Passwort.", null),
+						HttpStatus.UNAUTHORIZED);
+			}
+		} catch (UserSuspendedException e) {
+			return new ResponseEntity<>(new ApiResponse(false, e.getMessage(), null), HttpStatus.FORBIDDEN);
 		}
 	}
 

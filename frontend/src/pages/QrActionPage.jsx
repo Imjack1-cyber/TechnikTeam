@@ -71,7 +71,7 @@ const QrActionPage = () => {
 			<div className="card qr-action-container">
 				<h1>Aktion für:</h1>
 				<h2 className="qr-action-item-name">{item.name}</h2>
-				<p>Verfügbar: <strong>{item.availableQuantity}</strong> / {item.maxQuantity}</p>
+				<p>Verfügbar: <strong>{item.availableQuantity}</strong> / {item.quantity}</p>
 
 				{error && <p className="error-message">{error}</p>}
 

@@ -4,6 +4,7 @@ import de.technikteam.dao.UserDAO;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import de.technikteam.model.User;
@@ -28,6 +29,14 @@ public class AdminUserManagementService {
 
 	@Transactional
 	public boolean suspendUser(int userId, String durationStr, String reason, User adminUser) {
+		User userToSuspend = userDAO.getUserById(userId);
+		if (userToSuspend == null) {
+			throw new IllegalArgumentException("Benutzer nicht gefunden.");
+		}
+		if ("ADMIN".equals(userToSuspend.getRoleName())) {
+			throw new AccessDeniedException("Administratoren können nicht gesperrt werden.");
+		}
+
 		LocalDateTime suspendedUntil = null;
 
 		if (durationStr != null && !durationStr.isBlank() && !durationStr.equalsIgnoreCase("indefinite")) {

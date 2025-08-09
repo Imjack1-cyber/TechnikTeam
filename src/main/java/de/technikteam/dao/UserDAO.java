@@ -1,6 +1,8 @@
 package de.technikteam.dao;
 
 import de.technikteam.model.User;
+import de.technikteam.security.UserSuspendedException;
+import de.technikteam.service.LoginAttemptService;
 import de.technikteam.util.DaoUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -19,6 +21,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -28,11 +31,14 @@ public class UserDAO {
 	private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 	private final JdbcTemplate jdbcTemplate;
 	private final UserNotificationDAO userNotificationDAO;
+	private final LoginAttemptService loginAttemptService;
 
 	@Autowired
-	public UserDAO(JdbcTemplate jdbcTemplate, UserNotificationDAO userNotificationDAO) {
+	public UserDAO(JdbcTemplate jdbcTemplate, UserNotificationDAO userNotificationDAO,
+			LoginAttemptService loginAttemptService) {
 		this.jdbcTemplate = jdbcTemplate;
 		this.userNotificationDAO = userNotificationDAO;
+		this.loginAttemptService = loginAttemptService;
 	}
 
 	private final RowMapper<User> userRowMapper = (resultSet, rowNum) -> {
@@ -86,8 +92,24 @@ public class UserDAO {
 		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ?";
 		try {
 			User user = jdbcTemplate.queryForObject(sql, this.userRowMapper, username);
-			String storedHash = user.getPasswordHash();
+			if (user == null)
+				return null;
 
+			clearExpiredSuspensionIfNeeded(user);
+
+			if (isUserCurrentlySuspended(user)) {
+				logger.warn("Login attempt failed for suspended user: {}", username);
+				String reason = user.getSuspendedReason() != null && !user.getSuspendedReason().isBlank()
+						? user.getSuspendedReason()
+						: "Keine Angabe";
+				String until = user.getSuspendedUntil() != null
+						? user.getSuspendedUntil().format(DateTimeFormatter.ofPattern("dd.MM.yyyy 'um' HH:mm 'Uhr'"))
+						: "unbegrenzt";
+				throw new UserSuspendedException(
+						String.format("Dieses Konto ist gesperrt bis %s. Grund: %s", until, reason));
+			}
+
+			String storedHash = user.getPasswordHash();
 			if (storedHash != null && passwordEncoder.matches(password, storedHash)) {
 				user.setPermissions(getPermissionsForUser(user.getId()));
 				user.setUnseenNotificationsCount(userNotificationDAO.getUnseenCount(user.getId()));
@@ -95,6 +117,8 @@ public class UserDAO {
 			}
 		} catch (EmptyResultDataAccessException e) {
 			return null;
+		} catch (UserSuspendedException e) {
+			throw e; // Propagate the specific exception
 		} catch (Exception e) {
 			logger.error("SQL error during user validation for username: {}", username, e);
 		}
@@ -106,8 +130,10 @@ public class UserDAO {
 		try {
 			User user = jdbcTemplate.queryForObject(sql, userRowMapper, username);
 			if (user != null) {
+				clearExpiredSuspensionIfNeeded(user);
 				user.setPermissions(getPermissionsForUser(user.getId()));
 				user.setUnseenNotificationsCount(userNotificationDAO.getUnseenCount(user.getId()));
+				user.setLocked(loginAttemptService.isUserLocked(user.getUsername()));
 			}
 			return user;
 		} catch (EmptyResultDataAccessException e) {
@@ -235,7 +261,12 @@ public class UserDAO {
 	public List<User> getAllUsers() {
 		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id ORDER BY u.username";
 		try {
-			return jdbcTemplate.query(sql, userRowMapper);
+			List<User> users = jdbcTemplate.query(sql, userRowMapper);
+			users.forEach(user -> {
+				clearExpiredSuspensionIfNeeded(user);
+				user.setLocked(loginAttemptService.isUserLocked(user.getUsername()));
+			});
+			return users;
 		} catch (Exception e) {
 			logger.error("SQL error fetching all users", e);
 			return List.of();
@@ -247,8 +278,10 @@ public class UserDAO {
 		try {
 			User user = jdbcTemplate.queryForObject(sql, userRowMapper, userId);
 			if (user != null) {
+				clearExpiredSuspensionIfNeeded(user);
 				user.setPermissions(getPermissionsForUser(userId));
 				user.setUnseenNotificationsCount(userNotificationDAO.getUnseenCount(user.getId()));
+				user.setLocked(loginAttemptService.isUserLocked(user.getUsername()));
 			}
 			return user;
 		} catch (EmptyResultDataAccessException e) {
@@ -290,5 +323,30 @@ public class UserDAO {
 			logger.error("Error unsuspending user id {}", userId, e);
 			return false;
 		}
+	}
+
+	private void clearExpiredSuspensionIfNeeded(User user) {
+		if (user == null)
+			return;
+		if ("SUSPENDED".equals(user.getStatus()) && user.getSuspendedUntil() != null
+				&& user.getSuspendedUntil().isBefore(LocalDateTime.now())) {
+			logger.info("Auto-clearing expired suspension for user: {}", user.getUsername());
+			unsuspendUser(user.getId());
+			user.setStatus("ACTIVE");
+			user.setSuspendedUntil(null);
+			user.setSuspendedReason(null);
+		}
+	}
+
+	public boolean isUserCurrentlySuspended(User user) {
+		if (!"SUSPENDED".equals(user.getStatus())) {
+			return false;
+		}
+		// Indefinite suspension
+		if (user.getSuspendedUntil() == null) {
+			return true;
+		}
+		// Temporary suspension that is still active
+		return user.getSuspendedUntil().isAfter(LocalDateTime.now());
 	}
 }

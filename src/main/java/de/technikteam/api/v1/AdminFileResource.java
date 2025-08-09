@@ -1,6 +1,7 @@
 package de.technikteam.api.v1;
 
 import de.technikteam.api.v1.dto.CategoryRequest;
+import de.technikteam.api.v1.dto.FileRenameRequest;
 import de.technikteam.dao.FileDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.FileCategory;
@@ -69,6 +70,24 @@ public class AdminFileResource {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body(new ApiResponse(false, "Datei konnte nicht ersetzt werden: " + e.getMessage(), null));
 		}
+	}
+
+	@PutMapping("/{id}/rename")
+	@Operation(summary = "Rename a file")
+	public ResponseEntity<ApiResponse> renameFile(@PathVariable int id, @Valid @RequestBody FileRenameRequest request,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		de.technikteam.model.File file = fileDAO.getFileById(id);
+		if (file == null) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND)
+					.body(new ApiResponse(false, "Datei nicht gefunden.", null));
+		}
+		if (fileDAO.renameFile(id, request.newName())) {
+			adminLogService.log(securityUser.getUser().getUsername(), "FILE_RENAME",
+					"File '" + file.getFilename() + "' (ID: " + id + ") renamed to '" + request.newName() + "'.");
+			return ResponseEntity.ok(new ApiResponse(true, "Datei erfolgreich umbenannt.", null));
+		}
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+				.body(new ApiResponse(false, "Datei konnte nicht umbenannt werden.", null));
 	}
 
 	@DeleteMapping("/{id}")

@@ -15,6 +15,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Service
@@ -31,6 +32,10 @@ public class LoginAttemptService {
 	}
 
 	public boolean isLockedOut(String username, String ipAddress) {
+		return isUserLocked(username);
+	}
+
+	public boolean isUserLocked(String username) {
 		String sql = "SELECT last_attempt, attempts FROM login_attempts WHERE username = ?";
 		try {
 			return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
@@ -38,17 +43,33 @@ public class LoginAttemptService {
 				int attempts = rs.getInt("attempts");
 				if (attempts >= MAX_ATTEMPTS
 						&& lastAttempt.isAfter(LocalDateTime.now().minusMinutes(LOCKOUT_MINUTES))) {
-					return true;
+					return true; // User is actively locked out.
 				}
-				// If lockout period expired, clear attempts and allow login
-				// This check is flawed; an expired lockout should be cleared, not just ignored
-				// for one attempt.
-				// For now, we leave as is, but this should be revisited.
+				// If we reach here, the user is not actively locked out.
+				// If the lockout period has expired, we should clear the record.
+				if (attempts >= MAX_ATTEMPTS) {
+					clearLoginAttempts(username);
+				}
 				return false;
 			}, username);
 		} catch (Exception e) {
 			return false; // No record means not locked out
 		}
+	}
+
+	public long getRemainingLockoutSeconds(String username) {
+		String sql = "SELECT last_attempt FROM login_attempts WHERE username = ?";
+		try {
+			LocalDateTime lastAttempt = jdbcTemplate.queryForObject(sql, LocalDateTime.class, username);
+			if (lastAttempt != null) {
+				LocalDateTime lockoutExpiry = lastAttempt.plusMinutes(LOCKOUT_MINUTES);
+				Duration remaining = Duration.between(LocalDateTime.now(), lockoutExpiry);
+				return remaining.isNegative() ? 0 : remaining.getSeconds();
+			}
+		} catch (Exception e) {
+			// No record or other error means not locked out
+		}
+		return 0;
 	}
 
 	public void recordFailedLogin(String username, String ipAddress) {

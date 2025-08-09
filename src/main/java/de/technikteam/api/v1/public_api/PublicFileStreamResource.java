@@ -84,6 +84,10 @@ public class PublicFileStreamResource {
 	@ApiResponse(responseCode = "200", description = "Image content", content = @Content(mediaType = "image/*"))
 	public ResponseEntity<Resource> getImage(
 			@Parameter(description = "The filename of the image") @PathVariable String filename) {
+		// The relative path in the database is already "images/filename.jpg", so we
+		// pass it directly.
+		// The serveFile method will correctly resolve this against the base storage
+		// location.
 		return serveFile("images/" + filename, filename, true);
 	}
 

@@ -111,9 +111,10 @@ public class ProfileRequestService {
 				adminLogService.log(adminUser.getUsername(), "PROFILE_CHANGE_APPROVED_API", "Profile change for '"
 						+ userToUpdate.getUsername() + "' (Request ID: " + requestId + ") approved via API.");
 
-				String notificationMessage = "Your profile change has been approved.";
-				Map<String, Object> payload = Map.of("type", "alert", "payload",
-						Map.of("message", notificationMessage));
+				String notificationTitle = "Profiländerung genehmigt";
+				String notificationMessage = "Ihre beantragte Profiländerung wurde von einem Administrator genehmigt.";
+				Map<String, Object> payload = Map.of("title", notificationTitle, "description", notificationMessage,
+						"level", "Informational", "url", "/profil");
 				notificationService.sendNotificationToUser(userToUpdate.getId(), payload);
 
 				return true;
