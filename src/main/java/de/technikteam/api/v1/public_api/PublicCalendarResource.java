@@ -4,6 +4,7 @@ import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.MeetingDAO;
 import de.technikteam.model.Event;
 import de.technikteam.model.Meeting;
+import de.technikteam.service.ConfigurationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -39,26 +40,27 @@ public class PublicCalendarResource {
 
 	private final EventDAO eventDAO;
 	private final MeetingDAO meetingDAO;
+	private final ConfigurationService configService;
 
 	@Autowired
-	public PublicCalendarResource(EventDAO eventDAO, MeetingDAO meetingDAO) {
+	public PublicCalendarResource(EventDAO eventDAO, MeetingDAO meetingDAO, ConfigurationService configService) {
 		this.eventDAO = eventDAO;
 		this.meetingDAO = meetingDAO;
+		this.configService = configService;
 	}
 
 	@GetMapping("/calendar.ics")
 	@Operation(summary = "Get iCalendar Feed", description = "Provides an iCalendar (.ics) feed of all upcoming events and meetings.", responses = {
 			@ApiResponse(responseCode = "200", description = "iCalendar feed generated successfully", content = @Content(mediaType = "text/calendar")),
 			@ApiResponse(responseCode = "500", description = "Internal server error while generating the feed") })
-	public ResponseEntity<byte[]> getICalendarFeed(HttpServletRequest request) {
+	public ResponseEntity<byte[]> getICalendarFeed() {
 		try {
 			Calendar calendar = new Calendar();
 			calendar.getProperties().add(new ProdId("-//TechnikTeam Calendar//iCal4j 3.2.4//DE"));
 			calendar.getProperties().add(Version.VERSION_2_0);
 
 			RandomUidGenerator uidGenerator = new RandomUidGenerator();
-			String baseUrl = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort()
-					+ request.getContextPath();
+			String baseUrl = configService.getProperty("app.base-url");
 			ZoneId systemZone = ZoneId.systemDefault();
 
 			List<Event> events = eventDAO.getAllActiveAndUpcomingEvents();

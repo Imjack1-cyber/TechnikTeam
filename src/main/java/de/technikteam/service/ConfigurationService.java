@@ -27,6 +27,9 @@ public class ConfigurationService {
 	@Value("${upload.directory}")
 	private String uploadDirectory;
 
+	@Value("${app.base-url}")
+	private String appBaseUrl;
+
 	public String getProperty(String key) {
 		switch (key) {
 		case "context.path":
@@ -41,6 +44,8 @@ public class ConfigurationService {
 			return jwtSecret;
 		case "upload.directory":
 			return uploadDirectory;
+		case "app.base-url":
+			return appBaseUrl;
 		default:
 			logger.warn("Attempted to access unknown property key: {}", key);
 			return null;

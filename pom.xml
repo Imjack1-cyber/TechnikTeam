@@ -123,6 +123,12 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
         <artifactId>bucket4j-core</artifactId>
         <version>${bucket4j.version}</version>
     </dependency>
+    <dependency>
+        <groupId>com.google.firebase</groupId>
+        <artifactId>firebase-admin</artifactId>
+        <version>9.2.0</version>
+    </dependency>
+
 
     <!-- API Documentation -->
     <dependency>
@@ -176,7 +182,7 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
             <artifactId>spring-boot-maven-plugin</artifactId>
             <configuration>
                 <jvmArguments>
-                    -Dserver.port=8081
+                    -Dserver.port=8080
                 </jvmArguments>
             </configuration>
         </plugin>

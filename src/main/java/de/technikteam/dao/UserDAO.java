@@ -51,6 +51,9 @@ public class UserDAO {
 		if (DaoUtils.hasColumn(resultSet, "theme")) {
 			user.setTheme(resultSet.getString("theme"));
 		}
+		if (DaoUtils.hasColumn(resultSet, "fcm_token")) {
+			user.setFcmToken(resultSet.getString("fcm_token"));
+		}
 		if (DaoUtils.hasColumn(resultSet, "profile_icon_class")) {
 			user.setProfileIconClass(resultSet.getString("profile_icon_class"));
 		}
@@ -233,6 +236,16 @@ public class UserDAO {
 			return jdbcTemplate.update(sql, layoutJson, userId) > 0;
 		} catch (Exception e) {
 			logger.error("Error updating dashboard layout for user ID {}", userId, e);
+			return false;
+		}
+	}
+
+	public boolean updateFcmToken(int userId, String fcmToken) {
+		String sql = "UPDATE users SET fcm_token = ? WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, fcmToken, userId) > 0;
+		} catch (Exception e) {
+			logger.error("Error updating FCM token for user ID {}", userId, e);
 			return false;
 		}
 	}

@@ -16,6 +16,7 @@ public class User {
 	private String email;
 	private String chatColor;
 	private String theme;
+	private String fcmToken;
 	private String profileIconClass;
 	private String adminNotes;
 	private String dashboardLayout; // JSON string
@@ -131,6 +132,14 @@ public class User {
 
 	public void setTheme(String theme) {
 		this.theme = theme;
+	}
+
+	public String getFcmToken() {
+		return fcmToken;
+	}
+
+	public void setFcmToken(String fcmToken) {
+		this.fcmToken = fcmToken;
 	}
 
 	public String getProfileIconClass() {

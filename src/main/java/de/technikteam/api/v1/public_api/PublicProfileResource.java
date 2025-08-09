@@ -93,6 +93,20 @@ public class PublicProfileResource {
 		}
 	}
 
+	@PostMapping("/register-device")
+	@Operation(summary = "Register a device token for push notifications")
+	public ResponseEntity<ApiResponse> registerDevice(@RequestBody Map<String, String> payload,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		String token = payload.get("token");
+		if (token == null || token.isBlank()) {
+			return ResponseEntity.badRequest().body(new ApiResponse(false, "Token is required.", null));
+		}
+		if (userDAO.updateFcmToken(securityUser.getUser().getId(), token)) {
+			return ResponseEntity.ok(new ApiResponse(true, "Device token registered successfully.", null));
+		}
+		return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to register token.", null));
+	}
+
 	@PutMapping("/theme")
 	@Operation(summary = "Update user theme", description = "Updates the user's preferred theme (light/dark).")
 	public ResponseEntity<ApiResponse> updateUserTheme(@RequestBody Map<String, String> payload,

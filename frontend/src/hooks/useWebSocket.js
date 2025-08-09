@@ -25,10 +25,19 @@ const useWebSocket = (url, onMessage, dependencies = []) => {
 		};
 
 		const connect = () => {
-			// Construct the final URL, ensuring it works with the Vite proxy
-			const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-			const host = window.location.host; // e.g., localhost:3000
-			const finalUrl = `${protocol}//${host}${url}`;
+			let finalUrl;
+			if (import.meta.env.PROD) {
+				// In production, construct absolute URL based on current host
+				const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+				const host = window.location.host;
+				finalUrl = `${protocol}//${host}/TechnikTeam${url}`;
+			} else {
+				// In development, use the relative path for the Vite proxy
+				const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+				const host = window.location.host; // e.g., localhost:3000
+				finalUrl = `${protocol}//${host}${url}`;
+			}
+
 
 			console.log(`Attempting to connect to WebSocket at: ${finalUrl}`);
 

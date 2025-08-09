@@ -1,4 +1,6 @@
-const BASE_URL = '/api/v1';
+// In development, all requests go to the proxy.
+// In production, they go to the same origin, but under the /TechnikTeam context path.
+const BASE_URL = import.meta.env.PROD ? '/TechnikTeam/api/v1' : '/api/v1';
 
 let onUnauthorizedCallback = () => { }; // Placeholder for the logout function
 
