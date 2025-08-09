@@ -35,7 +35,7 @@ public class AdminEventResource {
 
 	private User getSystemUser() {
 		User user = new User();
-		user.setId(1); // Default system user ID
+		user.setId(0); // Default system user ID
 		user.setUsername("SYSTEM");
 		return user;
 	}
