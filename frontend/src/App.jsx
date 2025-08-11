@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet, useLocation, Link, useRevalidator } from 'react-router-dom';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import ToastContainer from './components/ui/ToastContainer';
@@ -7,6 +8,7 @@ import { ToastProvider } from './context/ToastContext';
 import { useNotifications } from './hooks/useNotifications';
 import WarningNotification from './components/ui/WarningNotification';
 import ChangelogModal from './components/ui/ChangelogModal';
+import UpdateNotification from './components/ui/UpdateNotification';
 import apiClient from './services/apiClient';
 import { useAuthStore } from './store/authStore';
 import pageRoutes from './router/pageRoutes';
@@ -15,6 +17,21 @@ const AppLayout = () => {
 	const [isNavOpen, setIsNavOpen] = useState(false);
 	const location = useLocation();
 	const revalidator = useRevalidator();
+
+	// PWA update logic
+	const {
+		offlineReady: [offlineReady, setOfflineReady],
+		needRefresh: [needRefresh, setNeedRefresh],
+		updateServiceWorker,
+	} = useRegisterSW({
+		onRegistered(r) {
+			console.log('Service Worker registered:', r);
+		},
+		onRegisterError(error) {
+			console.log('Service Worker registration error:', error);
+		},
+	});
+
 
 	const handleEventUpdate = useCallback((updatedEventId) => {
 		const match = location.pathname.match(/\/veranstaltungen\/details\/(\d+)/);
@@ -101,6 +118,7 @@ const AppLayout = () => {
 				</main>
 			</div>
 			<ToastContainer />
+			{needRefresh && <UpdateNotification onUpdate={() => updateServiceWorker(true)} />}
 			{showHelpButton && currentPageHelpKey && (
 				<Link to={`/help/${currentPageHelpKey}`} className="help-fab" title="Hilfe für diese Seite">
 					<i className="fas fa-question"></i>

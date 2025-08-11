@@ -1,10 +1,12 @@
 import React, { useCallback, useState } from 'react';
+import { Link } from 'react-router-dom';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import DownloadWarningModal from '../components/ui/DownloadWarningModal';
 
 const FileLink = ({ file }) => {
 	const [isModalOpen, setIsModalOpen] = useState(false);
+	const isMarkdown = file.filename.toLowerCase().endsWith('.md');
 
 	const handleDownloadClick = (e) => {
 		if (file.needsWarning) {
@@ -29,6 +31,11 @@ const FileLink = ({ file }) => {
 			<a href={`/api/v1/public/files/download/${file.id}`} target="_blank" rel="noopener noreferrer" onClick={handleDownloadClick}>
 				<i className="fas fa-download"></i> {file.filename}
 			</a>
+			{isMarkdown && (
+				<Link to={`/dateien/edit/${file.id}`} className="btn btn-small btn-secondary" style={{ marginLeft: '1rem' }}>
+					<i className="fas fa-pen-alt"></i> Bearbeiten
+				</Link>
+			)}
 			<DownloadWarningModal
 				isOpen={isModalOpen}
 				onClose={() => setIsModalOpen(false)}
@@ -58,9 +65,7 @@ const FilesPage = () => {
 				<ul className="details-list">
 					{files.map(file => (
 						<li key={file.id} style={{ padding: '0.75rem 0' }}>
-							<div>
-								<FileLink file={file} />
-							</div>
+							<FileLink file={file} />
 						</li>
 					))}
 				</ul>

@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -71,9 +72,20 @@ public class AuthResource {
 			User user = userDAO.validateUser(username, password);
 			if (user != null) {
 				loginAttemptService.clearLoginAttempts(username);
-				authService.addJwtCookie(user, response);
+				String token = authService.generateToken(user);
+				authService.addJwtCookie(user, response); // Keep cookie for web app
 				logger.info("JWT cookie set successfully for user '{}'", username);
-				return ResponseEntity.ok(new ApiResponse(true, "Anmeldung erfolgreich", user));
+
+				List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(user);
+				Map<String, Object> sessionData = new HashMap<>();
+				sessionData.put("user", user);
+				sessionData.put("navigation", navigationItems);
+
+				Map<String, Object> responseData = new HashMap<>();
+				responseData.put("session", sessionData);
+				responseData.put("token", token); // Return token for mobile clients
+
+				return ResponseEntity.ok(new ApiResponse(true, "Anmeldung erfolgreich", responseData));
 			} else {
 				loginAttemptService.recordFailedLogin(username, ipAddress);
 				logger.warn("Failed API login attempt for user '{}' from IP {}", username, ipAddress);

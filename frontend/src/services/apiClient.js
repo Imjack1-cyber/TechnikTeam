@@ -3,16 +3,25 @@
 const BASE_URL = import.meta.env.PROD ? '/TechnikTeam/api/v1' : '/api/v1';
 
 let onUnauthorizedCallback = () => { }; // Placeholder for the logout function
+let authToken = null; // Module-level variable to hold the token
 
 const apiClient = {
 	setup: function(callbacks) {
 		onUnauthorizedCallback = callbacks.onUnauthorized;
 	},
 
+	setAuthToken: function(token) {
+		authToken = token;
+	},
+
 	request: async function(endpoint, options = {}) {
 		const headers = {
 			...options.headers,
 		};
+
+		if (authToken) {
+			headers['Authorization'] = `Bearer ${authToken}`;
+		}
 
 		// Set Content-Type for JSON, but not for FormData, which needs the browser to set it.
 		if (!(options.body instanceof FormData)) {
@@ -28,6 +37,11 @@ const apiClient = {
 
 			const contentType = response.headers.get("content-type");
 			const isJson = contentType && contentType.includes("application/json");
+
+			if (response.status === 503) {
+				window.location.href = '/maintenance';
+				throw new Error('Die Anwendung befindet sich im Wartungsmodus.');
+			}
 
 			if (response.status === 401) {
 				// Handle 401 specifically: could be a login failure or an expired session.

@@ -14,6 +14,7 @@ import LoginPage from '../pages/LoginPage';
 import ErrorPage from '../pages/error/ErrorPage';
 import NotFoundPage from '../pages/error/NotFoundPage';
 import ChatPage from '../pages/ChatPage'; // Eagerly load ChatPage
+import MaintenancePage from '../pages/error/MaintenancePage';
 
 // Lazy load all other pages
 const DashboardPage = lazy(() => import('../pages/DashboardPage'));
@@ -27,6 +28,7 @@ const MeetingDetailsPage = lazy(() => import('../pages/MeetingDetailsPage'));
 const ProfilePage = lazy(() => import('../pages/ProfilePage'));
 const PasswordPage = lazy(() => import('../pages/PasswordPage'));
 const FilesPage = lazy(() => import('../pages/FilesPage'));
+const FileEditorPage = lazy(() => import('../pages/files/FileEditorPage'));
 const FeedbackPage = lazy(() => import('../pages/FeedbackPage'));
 const EventFeedbackPage = lazy(() => import('../pages/EventFeedbackPage'));
 const CalendarPage = lazy(() => import('../pages/CalendarPage'));
@@ -64,6 +66,7 @@ const AdminReportsPage = lazy(() => import('../pages/admin/AdminReportsPage'));
 const AdminSystemPage = lazy(() => import('../pages/admin/AdminSystemPage'));
 const AdminContentIndex = lazy(() => import('../pages/admin/AdminContentIndex'));
 const AdminFilesPage = lazy(() => import('../pages/admin/AdminFilesPage'));
+const AdminFileEditorPage = lazy(() => import('../pages/admin/AdminFileEditorPage'));
 const AdminFeedbackPage = lazy(() => import('../pages/admin/AdminFeedbackPage'));
 const AdminAchievementsPage = lazy(() => import('../pages/admin/AdminAchievementsPage'));
 const AdminWikiPage = lazy(() => import('../pages/admin/AdminWikiPage'));
@@ -102,6 +105,7 @@ const router = createBrowserRouter([
 			{ path: 'profil/einstellungen', element: <SettingsPage /> },
 			{ path: 'passwort', element: <PasswordPage /> },
 			{ path: 'dateien', element: <FilesPage /> },
+			{ path: 'dateien/edit/:fileId', element: <FileEditorPage /> },
 			{ path: 'feedback', element: <FeedbackPage /> },
 			{ path: 'feedback/event/:eventId', element: <EventFeedbackPage /> },
 			{ path: 'kalender', element: <CalendarPage /> },
@@ -159,6 +163,7 @@ const router = createBrowserRouter([
 							{ index: true, element: <AdminAnnouncementsPage /> },
 							{ path: 'announcements', element: <AdminAnnouncementsPage /> },
 							{ path: 'dateien', element: <AdminFilesPage /> },
+							{ path: 'dateien/edit/:fileId', element: <AdminFileEditorPage /> },
 							{ path: 'feedback', element: <AdminFeedbackPage /> },
 							{ path: 'changelogs', element: <AdminChangelogPage /> },
 							{ path: 'documentation', element: <AdminDocumentationPage /> },
@@ -219,6 +224,10 @@ const router = createBrowserRouter([
 	{
 		path: '/forbidden',
 		element: <ErrorLayout><ForbiddenPage /></ErrorLayout>,
+	},
+	{
+		path: '/maintenance',
+		element: <ErrorLayout><MaintenancePage /></ErrorLayout>,
 	},
 	{
 		path: '*',

@@ -13,8 +13,8 @@ const DownloadWarningModal = ({ isOpen, onClose, onConfirm, file }) => {
 					Sie sind im Begriff, die Datei <strong>"{file.filename}"</strong> herunterzuladen.
 				</p>
 				<p>
-					Dateien dieses Typs (z.B. <code>.js</code>, <code>.html</code>, <code>.zip</code>) könnten potenziell schädlichen Code enthalten.
-					Öffnen Sie diese Datei nur, wenn Sie der Quelle vertrauen.
+					Dateien dieses Typs könnten potenziell schädlichen Code enthalten.
+					Öffnen Sie diese Datei nur, wenn Sie der Quelle vertrauen und wissen, was Sie tun.
 				</p>
 				<p>
 					<strong>Möchten Sie den Download fortsetzen?</strong>

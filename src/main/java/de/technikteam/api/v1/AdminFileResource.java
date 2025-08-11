@@ -1,6 +1,7 @@
 package de.technikteam.api.v1;
 
 import de.technikteam.api.v1.dto.CategoryRequest;
+import de.technikteam.api.v1.dto.FileContentUpdateRequest;
 import de.technikteam.api.v1.dto.FileRenameRequest;
 import de.technikteam.dao.FileDAO;
 import de.technikteam.model.ApiResponse;
@@ -48,7 +49,7 @@ public class AdminFileResource {
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
 			de.technikteam.model.File savedFile = fileService.storeFile(file, categoryId, requiredRole,
-					securityUser.getUser());
+					securityUser.getUser(), "docs");
 			return new ResponseEntity<>(new ApiResponse(true, "Datei erfolgreich hochgeladen.", savedFile),
 					HttpStatus.CREATED);
 		} catch (Exception e) {
@@ -69,6 +70,37 @@ public class AdminFileResource {
 		} catch (IOException e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body(new ApiResponse(false, "Datei konnte nicht ersetzt werden: " + e.getMessage(), null));
+		}
+	}
+
+	@GetMapping("/content/{id}")
+	@Operation(summary = "Get a file's text content for editing")
+	public ResponseEntity<ApiResponse> getFileContent(@PathVariable int id) {
+		try {
+			String content = fileService.getFileContent(id);
+			de.technikteam.model.File file = fileDAO.getFileById(id);
+			file.setContent(content);
+			return ResponseEntity.ok(new ApiResponse(true, "File content retrieved.", file));
+		} catch (IOException | SecurityException e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new ApiResponse(false, e.getMessage(), null));
+		}
+	}
+
+	@PutMapping("/content/{id}")
+	@Operation(summary = "Update a file's text content")
+	public ResponseEntity<ApiResponse> updateFileContent(@PathVariable int id,
+			@Valid @RequestBody FileContentUpdateRequest request, @AuthenticationPrincipal SecurityUser securityUser) {
+		try {
+			if (fileService.updateFileContent(id, request.content(), securityUser.getUser())) {
+				return ResponseEntity.ok(new ApiResponse(true, "Datei-Inhalt erfolgreich gespeichert.", null));
+			} else {
+				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+						.body(new ApiResponse(false, "Speichern des Datei-Inhalts fehlgeschlagen.", null));
+			}
+		} catch (IOException | SecurityException e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new ApiResponse(false, e.getMessage(), null));
 		}
 	}
 

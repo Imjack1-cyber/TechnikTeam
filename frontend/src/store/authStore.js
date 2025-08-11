@@ -22,6 +22,7 @@ const defaultLayout = {
 	},
 };
 
+const AUTH_TOKEN_KEY = 'technikteam-auth-token';
 
 export const useAuthStore = create(
 	persist(
@@ -35,10 +36,24 @@ export const useAuthStore = create(
 			lastUpdatedEvent: null, // { id: eventId, nonce: Math.random() }
 			login: async (username, password) => {
 				try {
-					// The login endpoint now returns the user object on success and sets the cookie
 					const response = await apiClient.post('/auth/login', { username, password });
-					if (response.success && response.data) {
-						await get().fetchUserSession(); // Fetch full session data to be sure
+					if (response.success && response.data?.session) {
+						const { session, token } = response.data;
+						const { user, navigation } = session;
+
+						localStorage.setItem(AUTH_TOKEN_KEY, token);
+						apiClient.setAuthToken(token);
+
+						const newTheme = user.theme || 'light';
+						document.documentElement.setAttribute('data-theme', newTheme);
+
+						set({
+							user: user,
+							navigationItems: navigation,
+							isAuthenticated: true,
+							isAdmin: hasAdminAccess(user.roleName),
+							theme: newTheme,
+						});
 						return true;
 					}
 					throw new Error(response.message || 'Anmeldung fehlgeschlagen');
@@ -54,6 +69,8 @@ export const useAuthStore = create(
 				} catch (error) {
 					console.error("Logout API call failed, clearing state anyway.", error);
 				} finally {
+					localStorage.removeItem(AUTH_TOKEN_KEY);
+					apiClient.setAuthToken(null);
 					set({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, theme: 'light', layout: defaultLayout, lastUpdatedEvent: null });
 					localStorage.removeItem('auth-storage');
 					document.documentElement.setAttribute('data-theme', 'light');

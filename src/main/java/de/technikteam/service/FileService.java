@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -128,7 +129,8 @@ public class FileService {
 		Path oldFilePath = this.fileStorageLocation.resolve(existingFile.getFilepath()).normalize();
 
 		// 2. Store the new file physically (this already does all validations)
-		de.technikteam.model.File newFile = storeFile(newMultipartFile, categoryId, requiredRole, adminUser);
+		// Use the "docs" subdirectory as a default for general file replacements.
+		de.technikteam.model.File newFile = storeFile(newMultipartFile, categoryId, requiredRole, adminUser, "docs");
 
 		// 3. Update the existing record with the new file's data
 		existingFile.setFilename(newFile.getFilename());
@@ -154,5 +156,41 @@ public class FileService {
 				"Datei '" + existingFile.getFilename() + "' (ID: " + existingFileId + ") ersetzt.");
 
 		return existingFile;
+	}
+
+	public String getFileContent(int fileId) throws IOException {
+		de.technikteam.model.File file = fileDAO.getFileById(fileId);
+		if (file == null) {
+			throw new IOException("Datei nicht in der Datenbank gefunden.");
+		}
+		Path filePath = this.fileStorageLocation.resolve(file.getFilepath()).normalize();
+		if (!filePath.startsWith(this.fileStorageLocation)) {
+			throw new SecurityException("Path Traversal Attack attempt detected.");
+		}
+		if (!Files.exists(filePath)) {
+			throw new IOException("Datei auf dem Dateisystem nicht gefunden.");
+		}
+		return Files.readString(filePath, StandardCharsets.UTF_8);
+	}
+
+	@Transactional
+	public boolean updateFileContent(int fileId, String content, User adminUser) throws IOException {
+		de.technikteam.model.File file = fileDAO.getFileById(fileId);
+		if (file == null) {
+			throw new IOException("Datei nicht in der Datenbank gefunden.");
+		}
+		Path filePath = this.fileStorageLocation.resolve(file.getFilepath()).normalize();
+		if (!filePath.startsWith(this.fileStorageLocation)) {
+			throw new SecurityException("Path Traversal Attack attempt detected.");
+		}
+		Files.writeString(filePath, content, StandardCharsets.UTF_8);
+
+		// "Touch" the file record to update the `uploaded_at` timestamp
+		boolean success = fileDAO.touchFileRecord(fileId);
+		if (success) {
+			adminLogService.log(adminUser.getUsername(), "FILE_CONTENT_UPDATE",
+					"Inhalt der Datei '" + file.getFilename() + "' (ID: " + fileId + ") aktualisiert.");
+		}
+		return success;
 	}
 }

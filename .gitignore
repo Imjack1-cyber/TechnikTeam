@@ -40,6 +40,7 @@ flyway.conf
 logs/
 
 # Temporary and script files from the root directory
+resources/uploads/images
 combine_code_gui.ps1
 run_combine_code_gui.txt
 ProjectTree.ps1
@@ -52,3 +53,6 @@ technikteam-2.txt
 # Operating System files
 .DS_Store
 Thumbs.db
+start_development.bat
+DEPLOYMENT.md
+deploy_production.bat

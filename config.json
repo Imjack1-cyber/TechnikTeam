@@ -1,25 +1,17 @@
 ﻿{
-    "SourceDirectory":  "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\",
+    "SourceDirectory":  "C:\\dev\\eclipse\\workspace\\TechnikTeam",
     "OutputFile":  "technikteam.txt",
     "MaxFileSizeKB":  475,
     "ExcludedDirectories":  [
-                                "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\.metadata",
-                                "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\.settings",
-                                "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\frontend\\node_modules",
-                                "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\resources",
-                                "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\src\\test",
-                                "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\target"
+                                "C:\\dev\\eclipse\\workspace\\TechnikTeam\\.metadata",
+                                "C:\\dev\\eclipse\\workspace\\TechnikTeam\\.settings",
+                                "C:\\dev\\eclipse\\workspace\\TechnikTeam\\frontend\\dist",
+                                "C:\\dev\\eclipse\\workspace\\TechnikTeam\\frontend\\node_modules",
+                                "C:\\dev\\eclipse\\workspace\\TechnikTeam\\resources",
+                                "C:\\dev\\eclipse\\workspace\\TechnikTeam\\target"
                             ],
     "ExcludedFiles":  [
-                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\technikteam.txt",
-                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\technikteam-1.txt",
-                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\technikteam-2.txt",
-                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\technikteam-3.txt",
-                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\technikteam-4.txt",
-                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\technikteam-5.txt",
-                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\src\\main\\resources\\Wiki.md",
-                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\dependency-tree.txt",
-                          "C:\\Users\\techn\\eclipse\\workspace\\TechnikTeam\\run_combine_code_gui.txt"
+
                       ],
     "ExtensionFilterList":  [
                                 ".java",
@@ -30,7 +22,8 @@
                                 ".txt",
                                 ".html",
                                 ".md",
-                                ".xml"
+                                ".xml",
+                                ".sql"
                             ],
     "ExtensionFilterMode":  "include"
 }

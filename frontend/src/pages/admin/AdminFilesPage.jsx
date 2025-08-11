@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
@@ -81,8 +82,6 @@ const AdminFilesPage = () => {
 	const { addToast } = useToast();
 
 	const filesGrouped = fileApiResponse?.grouped;
-
-	console.log("[AdminFilesPage] Render. Grouped data from API:", filesGrouped);
 
 	const handleSuccess = () => {
 		setModalState({ isOpen: false, file: null });
@@ -187,7 +186,8 @@ const AdminFilesPage = () => {
 					</div>
 					<ul className="details-list">
 						{files.map(file => {
-							console.log(`[AdminFilesPage] Rendering file: ${file.filename} in category: ${file.categoryName} (ID: ${file.categoryId})`);
+							const isMarkdown = file.filename.toLowerCase().endsWith('.md');
+							const editUrl = file.requiredRole === 'ADMIN' ? `/admin/content/dateien/edit/${file.id}` : `/dateien/edit/${file.id}`;
 							return (
 								<li key={file.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
 									<div>
@@ -199,6 +199,11 @@ const AdminFilesPage = () => {
 										</small>
 									</div>
 									<div style={{ display: 'flex', gap: '0.5rem' }}>
+										{isMarkdown && (
+											<Link to={editUrl} className="btn btn-small btn-secondary" title="Inhalt bearbeiten">
+												<i className="fas fa-pen-alt"></i>
+											</Link>
+										)}
 										<button onClick={() => handleRenameFile(file)} className="btn btn-small btn-secondary" title="Umbenennen">
 											<i className="fas fa-i-cursor"></i>
 										</button>

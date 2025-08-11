@@ -5,18 +5,32 @@ import router from './router';
 import { useAuthStore } from './store/authStore';
 import apiClient from './services/apiClient'; // Import apiClient here
 
+const AUTH_TOKEN_KEY = 'technikteam-auth-token';
+
 const initializeApp = async () => {
+	// If we are on the maintenance page, do nothing. This prevents a redirect loop.
+	if (window.location.pathname === '/maintenance') {
+		return;
+	}
+
 	// Inject the logout function into the apiClient
 	apiClient.setup({ onUnauthorized: useAuthStore.getState().logout });
 
-	try {
-		// Attempt to fetch the user session. This will succeed if the JWT cookie is valid.
-		// This GET request is also crucial because it will trigger the backend
-		// to send the initial XSRF-TOKEN cookie needed for subsequent state-changing requests.
-		await useAuthStore.getState().fetchUserSession();
-	} catch (error) {
-		// This is an expected and normal outcome if the user is not logged in.
-		console.log("No valid session found. User will be directed to login page if required.");
+	// Check for a token in local storage to restore session on page load
+	const token = localStorage.getItem(AUTH_TOKEN_KEY);
+	if (token) {
+		apiClient.setAuthToken(token);
+		try {
+			await useAuthStore.getState().fetchUserSession();
+		} catch (error) {
+			console.log("Session token from storage is invalid. Clearing.");
+			// The error handler in fetchUserSession will call logout(), which clears everything.
+		}
+	} else {
+		// This is also a valid state for a first-time visitor.
+		// We can try to get the CSRF token for the login form if needed.
+		// For now, we do nothing and let ProtectedRoute handle redirection.
+		console.log("No auth token found in storage.");
 	}
 };
 
