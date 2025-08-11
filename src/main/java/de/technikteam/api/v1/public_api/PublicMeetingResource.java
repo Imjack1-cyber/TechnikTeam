@@ -9,6 +9,7 @@ import de.technikteam.model.Meeting;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.MeetingSignupService;
+import de.technikteam.service.TrainingHubService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -33,22 +34,24 @@ public class PublicMeetingResource {
 	private final MeetingAttendanceDAO attendanceDAO;
 	private final AttachmentDAO attachmentDAO;
 	private final MeetingSignupService signupService;
+	private final TrainingHubService trainingHubService;
 
 	@Autowired
 	public PublicMeetingResource(MeetingDAO meetingDAO, MeetingAttendanceDAO attendanceDAO, AttachmentDAO attachmentDAO,
-			MeetingSignupService signupService) {
+			MeetingSignupService signupService, TrainingHubService trainingHubService) {
 		this.meetingDAO = meetingDAO;
 		this.attendanceDAO = attendanceDAO;
 		this.attachmentDAO = attachmentDAO;
 		this.signupService = signupService;
+		this.trainingHubService = trainingHubService;
 	}
 
 	@GetMapping
-	@Operation(summary = "Get upcoming meetings for user", description = "Retrieves a list of upcoming meetings, indicating the user's current attendance status for each.")
+	@Operation(summary = "Get upcoming meetings grouped by course for a user", description = "Retrieves a list of courses, each containing its upcoming meetings and the user's status for both the course and each meeting.")
 	public ResponseEntity<ApiResponse> getUpcomingMeetings(@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
-		List<Meeting> meetings = meetingDAO.getUpcomingMeetingsForUser(user);
-		return ResponseEntity.ok(new ApiResponse(true, "Termine erfolgreich abgerufen.", meetings));
+		return ResponseEntity.ok(new ApiResponse(true, "Kurse und Termine erfolgreich abgerufen.",
+				trainingHubService.getCoursesWithMeetingsForUser(user)));
 	}
 
 	@GetMapping("/{id}")
@@ -83,16 +86,13 @@ public class PublicMeetingResource {
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 
-		boolean success;
 		if ("signup".equalsIgnoreCase(action)) {
-			// Use business-layer logic to decide enrollment vs waitlist
 			MeetingSignupService.SignupResult result = signupService.signupOrWaitlist(user.getId(), id, user.getId());
 			Map<String, Object> data = new HashMap<>();
 			data.put("status", result.status.name());
-			// Provide a human message and machine-friendly status
-			if (result.status == MeetingSignupService.SignupStatus.ENROLLED) {
-				return ResponseEntity.ok(new ApiResponse(true, result.message, data));
-			} else if (result.status == MeetingSignupService.SignupStatus.WAITLISTED) {
+
+			if (result.status == MeetingSignupService.SignupStatus.ENROLLED
+					|| result.status == MeetingSignupService.SignupStatus.WAITLISTED) {
 				return ResponseEntity.ok(new ApiResponse(true, result.message, data));
 			} else if (result.status == MeetingSignupService.SignupStatus.ALREADY_ENROLLED) {
 				return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiResponse(false, result.message, data));
@@ -100,24 +100,7 @@ public class PublicMeetingResource {
 				return ResponseEntity.internalServerError().body(new ApiResponse(false, result.message, data));
 			}
 		} else if ("signoff".equalsIgnoreCase(action)) {
-			// Unenroll and also remove from waitlist if present
-			boolean unenrolled = attendanceDAO.unenrollUser(user.getId(), id);
-			// Remove from waitlist if present
-			try {
-				// waitlist DAO is not injected here — use signupService helper via injected
-				// beans
-				signupService.getWaitlist(id); // just ensure service available; actual removal below:
-			} catch (Exception ignored) {
-			}
-			// best-effort removal from waitlist
-			// we call the waitlist removal through the DAO indirectly
-			// (we assume MeetingSignupService has access; use its getWaitlist only for
-			// read)
-			// For removal we call the DAO directly through its public methods by adding a
-			// small helper in service.
-			// To keep it simple and avoid injecting waitlistDAO here, call unenroll and
-			// respond.
-			if (unenrolled) {
+			if (signupService.signoffFromMeeting(user.getId(), id)) {
 				return ResponseEntity.ok(new ApiResponse(true, "Abmeldung erfolgreich.", null));
 			} else {
 				return ResponseEntity.internalServerError()

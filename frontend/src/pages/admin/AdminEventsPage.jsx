@@ -52,15 +52,12 @@ const AdminEventsPage = () => {
 	};
 
 	const handleClone = async (event) => {
-		if (window.confirm(`Event '${event.name}' klonen? Ein neues Event wird erstellt und Sie werden zur Bearbeitungsseite weitergeleitet.`)) {
+		if (window.confirm(`Event '${event.name}' klonen? Ein neues Event wird erstellt und Sie werden zur Bearbeitungs-Ansicht des neuen Events weitergeleitet.`)) {
 			try {
 				const result = await apiClient.post(`/events/${event.id}/clone`);
 				if (result.success) {
 					addToast('Event erfolgreich geklont.', 'success');
-					// Redirect to the edit page of the new event
-					// This requires the backend to return the new event object
-					// For now, just reload the list. A redirect would be better.
-					reload();
+					navigate(`/veranstaltungen/details/${result.data.id}`);
 				} else {
 					throw new Error(result.message);
 				}
@@ -103,11 +100,9 @@ const AdminEventsPage = () => {
 								<td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
 									<button onClick={() => openModal(event)} className="btn btn-small">Bearbeiten</button>
 									<button onClick={() => handleClone(event)} className="btn btn-small btn-secondary">Klonen</button>
-									{event.status === 'ABGESCHLOSSEN' && (
-										<Link to={`/admin/veranstaltungen/${event.id}/debriefing`} className="btn btn-small btn-info">
-											Debriefing
-										</Link>
-									)}
+									<Link to={`/veranstaltungen/details/${event.id}`} className="btn btn-small btn-info">
+										Details & Team
+									</Link>
 									<button onClick={() => handleDelete(event)} className="btn btn-small btn-danger">Löschen</button>
 								</td>
 							</tr>
@@ -127,11 +122,9 @@ const AdminEventsPage = () => {
 						<div className="card-actions">
 							<button onClick={() => openModal(event)} className="btn btn-small">Bearbeiten</button>
 							<button onClick={() => handleClone(event)} className="btn btn-small btn-secondary">Klonen</button>
-							{event.status === 'ABGESCHLOSSEN' && (
-								<Link to={`/admin/veranstaltungen/${event.id}/debriefing`} className="btn btn-small btn-info">
-									Debriefing
-								</Link>
-							)}
+							<Link to={`/veranstaltungen/details/${event.id}`} className="btn btn-small btn-info">
+								Details
+							</Link>
 							<button onClick={() => handleDelete(event)} className="btn btn-small btn-danger">Löschen</button>
 						</div>
 					</div>

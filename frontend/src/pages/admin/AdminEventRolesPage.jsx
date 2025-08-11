@@ -147,7 +147,12 @@ const RoleModal = ({ isOpen, onClose, onSuccess, role }) => {
 					<textarea id="modal-desc" name="description" defaultValue={role?.description} rows="3"></textarea>
 				</div>
 				<div className="form-group">
-					<label htmlFor="modal-icon">Font Awesome Icon-Klasse</label>
+					<label htmlFor="modal-icon">
+						Font Awesome Icon-Klasse
+						<a href="https://fontawesome.com/search?m=free&s=solid" target="_blank" rel="noopener noreferrer" style={{ marginLeft: '0.5rem', fontSize: '0.8rem' }}>
+							<i className="fas fa-search"></i> Icons suchen
+						</a>
+					</label>
 					<input id="modal-icon" name="iconClass" defaultValue={role?.iconClass || 'fa-user-tag'} placeholder="z.B. fa-user-tie" required />
 				</div>
 				<button type="submit" className="btn" disabled={isSubmitting}>

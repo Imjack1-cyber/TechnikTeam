@@ -12,9 +12,13 @@ public class Meeting {
 	private int leaderUserId;
 	private String description;
 	private String location;
+	private Integer maxParticipants;
+	private LocalDateTime signupDeadline;
 	private String parentCourseName;
 	private String leaderUsername;
 	private String userAttendanceStatus;
+	private int participantCount; // Transient
+	private int waitlistCount; // Transient
 
 	// getters / setters
 
@@ -90,6 +94,22 @@ public class Meeting {
 		this.location = location;
 	}
 
+	public Integer getMaxParticipants() {
+		return maxParticipants;
+	}
+
+	public void setMaxParticipants(Integer maxParticipants) {
+		this.maxParticipants = maxParticipants;
+	}
+
+	public LocalDateTime getSignupDeadline() {
+		return signupDeadline;
+	}
+
+	public void setSignupDeadline(LocalDateTime signupDeadline) {
+		this.signupDeadline = signupDeadline;
+	}
+
 	public String getParentCourseName() {
 		return parentCourseName;
 	}
@@ -112,5 +132,21 @@ public class Meeting {
 
 	public void setUserAttendanceStatus(String userAttendanceStatus) {
 		this.userAttendanceStatus = userAttendanceStatus;
+	}
+
+	public int getParticipantCount() {
+		return participantCount;
+	}
+
+	public void setParticipantCount(int participantCount) {
+		this.participantCount = participantCount;
+	}
+
+	public int getWaitlistCount() {
+		return waitlistCount;
+	}
+
+	public void setWaitlistCount(int waitlistCount) {
+		this.waitlistCount = waitlistCount;
 	}
 }

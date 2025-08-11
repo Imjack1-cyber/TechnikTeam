@@ -57,6 +57,7 @@ const useAdminData = () => {
 		storageItems: [],
 		courses: [],
 		users: [],
+		venues: [],
 		loading: true,
 		error: null,
 	});
@@ -69,6 +70,7 @@ const useAdminData = () => {
 	const canReadCourses = isAdmin || userPermissions.includes('COURSE_READ');
 	const canReadStorage = isAdmin || userPermissions.includes('STORAGE_READ');
 	const canReadUsers = isAdmin || userPermissions.includes('USER_READ');
+	const canReadVenues = isAdmin || userPermissions.includes('EVENT_CREATE');
 
 
 	useEffect(() => {
@@ -79,17 +81,19 @@ const useAdminData = () => {
 					canReadStorage ? apiClient.get('/storage') : Promise.resolve({ success: true, data: [] }),
 					canReadCourses ? apiClient.get('/courses') : Promise.resolve({ success: true, data: [] }),
 					canReadUsers ? apiClient.get('/users') : Promise.resolve({ success: true, data: [] }),
+					canReadVenues ? apiClient.get('/admin/venues') : Promise.resolve({ success: true, data: [] }),
 				];
 
-				const [usersFormData, storageItemsData, coursesData, usersData] = await Promise.all(promises);
+				const [usersFormData, storageItemsData, coursesData, usersData, venuesData] = await Promise.all(promises);
 
-				if (usersFormData.success && storageItemsData.success && coursesData.success && usersData.success) {
+				if (usersFormData.success && storageItemsData.success && coursesData.success && usersData.success && venuesData.success) {
 					setData({
 						roles: usersFormData.data.roles,
 						groupedPermissions: usersFormData.data.groupedPermissions,
 						storageItems: storageItemsData.data,
 						courses: coursesData.data,
 						users: usersData.data,
+						venues: venuesData.data,
 						loading: false,
 						error: null,
 					});
@@ -106,7 +110,7 @@ const useAdminData = () => {
 		};
 
 		fetchData();
-	}, [canReadCourses, canReadStorage, canReadUsers]);
+	}, [canReadCourses, canReadStorage, canReadUsers, canReadVenues]);
 
 	return data;
 };

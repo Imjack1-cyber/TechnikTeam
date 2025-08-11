@@ -87,12 +87,19 @@ public class UserDAO {
 		if (DaoUtils.hasColumn(resultSet, "suspended_reason")) {
 			user.setSuspendedReason(resultSet.getString("suspended_reason"));
 		}
+		// Also map soft-delete columns
+		if (DaoUtils.hasColumn(resultSet, "is_deleted")) {
+			user.setDeleted(resultSet.getBoolean("is_deleted"));
+		}
+		if (DaoUtils.hasColumn(resultSet, "deleted_at") && resultSet.getTimestamp("deleted_at") != null) {
+			user.setDeletedAt(resultSet.getTimestamp("deleted_at").toLocalDateTime());
+		}
 
 		return user;
 	};
 
 	public User validateUser(String username, String password) {
-		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ?";
+		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ? AND u.is_deleted = FALSE";
 		try {
 			User user = jdbcTemplate.queryForObject(sql, this.userRowMapper, username);
 			if (user == null)
@@ -129,7 +136,7 @@ public class UserDAO {
 	}
 
 	public User getUserByUsername(String username) {
-		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ?";
+		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ? AND u.is_deleted = FALSE";
 		try {
 			User user = jdbcTemplate.queryForObject(sql, userRowMapper, username);
 			if (user != null) {
@@ -164,8 +171,12 @@ public class UserDAO {
 		jdbcTemplate.update("DELETE FROM user_permissions WHERE user_id = ?", userId);
 		if (permissionIds != null && permissionIds.length > 0) {
 			List<Object[]> batchArgs = Arrays.stream(permissionIds)
+					.filter(idStr -> idStr != null && !idStr.equalsIgnoreCase("null")) // Filter out nulls
 					.map(idStr -> new Object[] { userId, Integer.parseInt(idStr) }).collect(Collectors.toList());
-			jdbcTemplate.batchUpdate("INSERT INTO user_permissions (user_id, permission_id) VALUES (?, ?)", batchArgs);
+			if (!batchArgs.isEmpty()) {
+				jdbcTemplate.batchUpdate("INSERT INTO user_permissions (user_id, permission_id) VALUES (?, ?)",
+						batchArgs);
+			}
 		}
 		return true;
 	}
@@ -199,7 +210,7 @@ public class UserDAO {
 	}
 
 	public boolean updateUser(User user) {
-		String sql = "UPDATE users SET username = ?, role_id = ?, class_year = ?, class_name = ?, email = ?, profile_icon_class = ?, admin_notes = ? WHERE id = ?";
+		String sql = "UPDATE users SET username = ?, role_id = ?, class_year = ?, class_name = ?, email = ?, profile_icon_class = ?, admin_notes = ? WHERE id = ? AND is_deleted = FALSE";
 		try {
 			return jdbcTemplate.update(sql, user.getUsername(), user.getRoleId(), user.getClassYear(),
 					user.getClassName(), user.getEmail(), user.getProfileIconClass(), user.getAdminNotes(),
@@ -251,11 +262,21 @@ public class UserDAO {
 	}
 
 	public boolean deleteUser(int userId) {
-		String sql = "DELETE FROM users WHERE id = ?";
+		String sql = "UPDATE users SET is_deleted = TRUE, deleted_at = NOW() WHERE id = ?";
 		try {
 			return jdbcTemplate.update(sql, userId) > 0;
 		} catch (Exception e) {
-			logger.error("SQL error deleting user with ID: {}", userId, e);
+			logger.error("SQL error soft-deleting user with ID: {}", userId, e);
+			return false;
+		}
+	}
+
+	public boolean undeleteUser(int userId) {
+		String sql = "UPDATE users SET is_deleted = FALSE, deleted_at = NULL WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, userId) > 0;
+		} catch (Exception e) {
+			logger.error("SQL error un-deleting user with ID: {}", userId, e);
 			return false;
 		}
 	}
@@ -272,7 +293,7 @@ public class UserDAO {
 	}
 
 	public List<User> getAllUsers() {
-		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id ORDER BY u.username";
+		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.is_deleted = FALSE ORDER BY u.username";
 		try {
 			List<User> users = jdbcTemplate.query(sql, userRowMapper);
 			users.forEach(user -> {
@@ -287,7 +308,7 @@ public class UserDAO {
 	}
 
 	public User getUserById(int userId) {
-		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = ?";
+		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = ? AND u.is_deleted = FALSE";
 		try {
 			User user = jdbcTemplate.queryForObject(sql, userRowMapper, userId);
 			if (user != null) {
@@ -306,13 +327,53 @@ public class UserDAO {
 	}
 
 	public List<Integer> findUserIdsByPermission(String permissionKey) {
-		String sql = "SELECT up.user_id FROM user_permissions up JOIN permissions p ON up.permission_id = p.id WHERE p.permission_key = ?";
+		String sql = "SELECT up.user_id FROM user_permissions up JOIN permissions p ON up.permission_id = p.id JOIN users u ON up.user_id = u.id WHERE p.permission_key = ? AND u.is_deleted = FALSE";
 		try {
 			return jdbcTemplate.queryForList(sql, Integer.class, permissionKey);
 		} catch (Exception e) {
 			logger.error("Error fetching user IDs by permission key '{}'", permissionKey, e);
 			return List.of();
 		}
+	}
+
+	public List<User> getQualifiedAndAvailableUsersForEvent(int eventId) {
+		String sql = """
+				    SELECT u.*, r.role_name
+				    FROM users u
+				    JOIN event_attendance ea ON u.id = ea.user_id
+				    LEFT JOIN roles r ON u.role_id = r.id
+				    WHERE u.is_deleted = FALSE AND u.status = 'ACTIVE'
+				      AND ea.event_id = ? AND ea.signup_status = 'ANGEMELDET'
+				      -- Check for skill qualifications
+				      AND NOT EXISTS (
+				          SELECT 1 FROM event_skill_requirements esr
+				          WHERE esr.event_id = ?
+				            AND NOT EXISTS (
+				                SELECT 1 FROM user_qualifications uq
+				                WHERE uq.user_id = u.id
+				                  AND uq.course_id = esr.required_course_id
+				                  AND uq.status = 'BESTANDEN'
+				            )
+				      )
+				      -- Check for availability (not assigned to another event at the same time)
+				      AND NOT EXISTS (
+				          SELECT 1
+				          FROM event_assignments ea_other
+				          JOIN events e_other ON ea_other.event_id = e_other.id
+				          JOIN events e_current ON e_current.id = ?
+				          WHERE ea_other.user_id = u.id
+				            AND e_other.id != e_current.id
+				            AND e_other.status IN ('GEPLANT', 'LAUFEND')
+				            AND (
+				                -- Check for overlapping time intervals
+				                (e_other.event_datetime <= e_current.event_datetime AND e_other.end_datetime >= e_current.event_datetime) OR
+				                (e_other.event_datetime <= e_current.end_datetime AND e_other.end_datetime >= e_current.end_datetime) OR
+				                (e_other.event_datetime >= e_current.event_datetime AND e_other.end_datetime <= e_current.end_datetime)
+				            )
+				      )
+				    ORDER BY u.username;
+				""";
+		return jdbcTemplate.query(sql, userRowMapper, eventId, eventId, eventId);
 	}
 
 	public boolean suspendUser(int userId, LocalDateTime suspendedUntil, String reason) {

@@ -46,10 +46,10 @@ public class CourseResource {
 	@PostMapping
 	@Operation(summary = "Create a new course template")
 	public ResponseEntity<ApiResponse> createCourse(@RequestBody Course course) {
-		if (courseDAO.createCourse(course)) {
-			adminLogService.log(getSystemUser().getUsername(), "CREATE_COURSE_API",
-					"Course '" + course.getName() + "' created.");
-			return new ResponseEntity<>(new ApiResponse(true, "Lehrgang erfolgreich erstellt.", course),
+		Course createdCourse = courseDAO.createCourse(course);
+		if (createdCourse != null) {
+			adminLogService.logCourseCreation(getSystemUser().getUsername(), createdCourse);
+			return new ResponseEntity<>(new ApiResponse(true, "Lehrgang erfolgreich erstellt.", createdCourse),
 					HttpStatus.CREATED);
 		}
 		return ResponseEntity.badRequest().body(new ApiResponse(false, "Lehrgang konnte nicht erstellt werden.", null));
@@ -58,10 +58,14 @@ public class CourseResource {
 	@PutMapping("/{id}")
 	@Operation(summary = "Update a course template")
 	public ResponseEntity<ApiResponse> updateCourse(@PathVariable int id, @RequestBody Course course) {
+		Course originalCourse = courseDAO.getCourseById(id);
+		if (originalCourse == null) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND)
+					.body(new ApiResponse(false, "Vorlage nicht gefunden.", null));
+		}
 		course.setId(id);
 		if (courseDAO.updateCourse(course)) {
-			adminLogService.log(getSystemUser().getUsername(), "UPDATE_COURSE_API",
-					"Course '" + course.getName() + "' updated.");
+			adminLogService.logCourseUpdate(getSystemUser().getUsername(), originalCourse, course);
 			return ResponseEntity.ok(new ApiResponse(true, "Lehrgang erfolgreich aktualisiert.", course));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -73,8 +77,7 @@ public class CourseResource {
 	public ResponseEntity<ApiResponse> deleteCourse(@PathVariable int id) {
 		Course course = courseDAO.getCourseById(id);
 		if (course != null && courseDAO.deleteCourse(id)) {
-			adminLogService.log(getSystemUser().getUsername(), "DELETE_COURSE_API",
-					"Course '" + course.getName() + "' deleted.");
+			adminLogService.logCourseDeletion(getSystemUser().getUsername(), course);
 			return ResponseEntity.ok(new ApiResponse(true, "Lehrgang erfolgreich gelöscht.", Map.of("deletedId", id)));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)

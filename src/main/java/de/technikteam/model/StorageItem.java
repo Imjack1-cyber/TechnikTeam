@@ -1,5 +1,7 @@
 package de.technikteam.model;
 
+import java.time.LocalDateTime;
+
 /**
  * Represents a single item from the `storage_items` (inventory) table.
  */
@@ -22,6 +24,10 @@ public class StorageItem {
 	private int currentHolderUserId;
 	private int assignedEventId;
 	private String currentHolderUsername;
+
+	// Transient fields for UI
+	private LocalDateTime nextReservationDate;
+	private String lastTransactionInfo;
 
 	public StorageItem() {
 	}
@@ -192,5 +198,21 @@ public class StorageItem {
 
 	public void setCurrentHolderUsername(String currentHolderUsername) {
 		this.currentHolderUsername = currentHolderUsername;
+	}
+
+	public LocalDateTime getNextReservationDate() {
+		return nextReservationDate;
+	}
+
+	public void setNextReservationDate(LocalDateTime nextReservationDate) {
+		this.nextReservationDate = nextReservationDate;
+	}
+
+	public String getLastTransactionInfo() {
+		return lastTransactionInfo;
+	}
+
+	public void setLastTransactionInfo(String lastTransactionInfo) {
+		this.lastTransactionInfo = lastTransactionInfo;
 	}
 }

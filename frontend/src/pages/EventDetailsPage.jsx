@@ -11,6 +11,7 @@ import { useToast } from '../context/ToastContext';
 import ChecklistTab from '../components/events/ChecklistTab';
 import EventGalleryTab from '../components/events/EventGalleryTab';
 import TaskModal from '../components/events/TaskModal';
+import AdminEventTeamTab from '../components/admin/events/AdminEventTeamTab';
 
 const TaskList = ({ title, tasks, isCollapsed, onToggle, event, user, canManageTasks, isParticipant, onOpenModal, onAction }) => {
 	if (tasks.length === 0) {
@@ -95,6 +96,7 @@ const EventDetailsPage = () => {
 	const apiCall = useCallback(() => apiClient.get(`/public/events/${eventId}`), [eventId]);
 	const { data: event, loading, error, reload: reloadEventDetails } = useApi(apiCall);
 	const { data: allUsers } = useApi(useCallback(() => (isAdmin || user?.id === event?.leaderUserId) ? apiClient.get('/users') : null, [isAdmin, user, event]));
+	const { data: feedbackSummary } = useApi(useCallback(() => (event?.status === 'ABGESCHLOSSEN' && isAdmin) ? apiClient.get(`/admin/events/${eventId}/feedback-summary`) : null, [event, isAdmin, eventId]));
 	const { addToast } = useToast();
 
 	const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -107,7 +109,7 @@ const EventDetailsPage = () => {
 	const [editingText, setEditingText] = useState('');
 	const longPressTimer = useRef();
 	const [activeOptionsMessageId, setActiveOptionsMessageId] = useState(null);
-	const [activeTab, setActiveTab] = useState('tasks');
+	const [activeTab, setActiveTab] = useState('details');
 	const [collapsedTasks, setCollapsedTasks] = useState({});
 
 	const toggleTaskCategory = (category) => {
@@ -116,6 +118,19 @@ const EventDetailsPage = () => {
 			[category]: !prev[category]
 		}));
 	};
+
+	useEffect(() => {
+		if (event?.status === 'LAUFEND') {
+			setActiveTab('cockpit');
+		} else if (event?.status === 'ABGESCHLOSSEN') {
+			setActiveTab('debriefing');
+		} else if (isAdmin) {
+			setActiveTab('team');
+		} else {
+			setActiveTab('details');
+		}
+	}, [event?.status, isAdmin]);
+
 
 	useEffect(() => {
 		if (lastUpdatedEvent && lastUpdatedEvent.id === parseInt(eventId, 10)) {
@@ -280,6 +295,7 @@ const EventDetailsPage = () => {
 
 	const canManageTasks = (isAdmin || user.permissions.includes('EVENT_MANAGE_TASKS') || user.id === event.leaderUserId) && (event.status === 'GEPLANT' || event.status === 'LAUFEND');
 	const canManageDebriefing = (isAdmin || user.permissions.includes('EVENT_DEBRIEFING_MANAGE') || user.id === event.leaderUserId) && event.status === 'ABGESCHLOSSEN';
+	const canManageTeam = isAdmin || user.permissions.includes('EVENT_MANAGE_ASSIGNMENTS') || user.id === event.leaderUserId;
 	const isParticipant = event.userAttendanceStatus === 'ANGEMELDET' || event.userAttendanceStatus === 'ZUGEWIESEN';
 
 	const groupedAttendees = event.assignedAttendees?.reduce((acc, member) => {
@@ -291,16 +307,20 @@ const EventDetailsPage = () => {
 		return acc;
 	}, {});
 
+	const averageRating = feedbackSummary?.data?.length > 0
+		? (feedbackSummary.data.reduce((sum, fb) => sum + fb.rating, 0) / feedbackSummary.data.length).toFixed(1)
+		: 'N/A';
+
 	return (
-		<div onClick={() => setActiveOptionsMessageId(null)}>
+		<div>
 			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
 				<div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
 					<h1>{event.name}</h1>
 					<StatusBadge status={event.status} />
 				</div>
-				{canManageDebriefing && (
-					<Link to={`/admin/veranstaltungen/${event.id}/debriefing`} className="btn btn-secondary">
-						<i className="fas fa-clipboard-check"></i> Debriefing ansehen/bearbeiten
+				{event.status === 'ABGESCHLOSSEN' && isParticipant && (
+					<Link to={`/feedback/event/${event.id}`} className="btn btn-success">
+						<i className="fas fa-star"></i> Feedback geben
 					</Link>
 				)}
 			</div>
@@ -309,170 +329,224 @@ const EventDetailsPage = () => {
 				{event.endDateTime && ` - ${new Date(event.endDateTime).toLocaleString('de-DE')}`}
 			</p>
 
-			<div className="responsive-dashboard-grid">
-				<div className="card">
-					<h2 className="card-title">Beschreibung</h2>
-					<div className="markdown-content">
-						<ReactMarkdown rehypePlugins={[rehypeSanitize]}>
-							{event.description || 'Keine Beschreibung.'}
-						</ReactMarkdown>
+			<div className="card" style={{ gridColumn: '1 / -1' }}>
+				<div className="modal-tabs">
+					{event.status === 'LAUFEND' && <button className={`modal-tab-button ${activeTab === 'cockpit' ? 'active' : ''}`} onClick={() => setActiveTab('cockpit')}>Live Cockpit</button>}
+					<button className={`modal-tab-button ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>Details</button>
+					<button className={`modal-tab-button ${activeTab === 'team' ? 'active' : ''}`} onClick={() => setActiveTab('team')}>Team</button>
+					<button className={`modal-tab-button ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>Aufgaben</button>
+					<button className={`modal-tab-button ${activeTab === 'checklist' ? 'active' : ''}`} onClick={() => setActiveTab('checklist')}>
+						Inventar-Checkliste
+						{canManageTasks && <Link to="/admin/veranstaltungen/checklist-templates" className="btn btn-small btn-secondary" style={{ marginLeft: '1rem' }} onClick={e => e.stopPropagation()} title="Vorlagen verwalten"><i className="fas fa-edit"></i></Link>}
+					</button>
+					<button className={`modal-tab-button ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>Event-Chat</button>
+					{event.status === 'ABGESCHLOSSEN' && <button className={`modal-tab-button ${activeTab === 'gallery' ? 'active' : ''}`} onClick={() => setActiveTab('gallery')}>Galerie</button>}
+					{event.status === 'ABGESCHLOSSEN' && <button className={`modal-tab-button ${activeTab === 'debriefing' ? 'active' : ''}`} onClick={() => setActiveTab('debriefing')}>Debriefing & Feedback</button>}
+				</div>
+
+				<div className={`modal-tab-content ${activeTab === 'details' ? 'active' : ''}`}>
+					<div className="responsive-dashboard-grid" style={{ gridTemplateColumns: '2fr 1fr' }}>
+						<div>
+							<h3>Beschreibung</h3>
+							<div className="markdown-content">
+								<ReactMarkdown rehypePlugins={[rehypeSanitize]}>{event.description || 'Keine Beschreibung.'}</ReactMarkdown>
+							</div>
+						</div>
+						<div>
+							<h3>Details</h3>
+							<ul className="details-list">
+								<li><strong>Ort:</strong> <span>{event.location || 'N/A'}</span></li>
+								<li><strong>Leitung:</strong> <span>{event.leaderUsername || 'N/A'}</span></li>
+							</ul>
+							<h3 style={{ marginTop: '1rem' }}>Personalbedarf</h3>
+							<ul className="details-list">
+								{event.skillRequirements?.length > 0 ? (
+									event.skillRequirements.map(req => <li key={req.requiredCourseId}><strong>{req.courseName}:</strong> <span>{req.requiredPersons} Person(en)</span></li>)
+								) : (
+									<li>Keine speziellen Qualifikationen benötigt.</li>
+								)}
+							</ul>
+						</div>
 					</div>
 				</div>
 
-				<div className="card">
-					<h2 className="card-title">Details</h2>
-					<ul className="details-list">
-						<li><strong>Ort:</strong> <span>{event.location || 'N/A'}</span></li>
-						<li><strong>Leitung:</strong> <span>{event.leaderUsername || 'N/A'}</span></li>
-					</ul>
-				</div>
-
-				<div className="card">
-					<h2 className="card-title">Benötigter Personalbedarf</h2>
-					<ul className="details-list">
-						{event.skillRequirements?.length > 0 ? (
-							event.skillRequirements.map(req => <li key={req.requiredCourseId}><strong>{req.courseName}:</strong> <span>{req.requiredPersons} Person(en)</span></li>)
-						) : (
-							<li>Keine speziellen Qualifikationen benötigt.</li>
-						)}
-					</ul>
-				</div>
-
-				<div className="card">
-					<h2 className="card-title">Zugewiesenes Team</h2>
-					{groupedAttendees && Object.keys(groupedAttendees).length > 0 ? (
-						Object.entries(groupedAttendees).map(([role, members]) => (
-							<div key={role} style={{ marginBottom: '1rem' }}>
-								<h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>{role}</h4>
-								<ul className="details-list">
-									{members.map(member => <li key={member.id} style={{ border: 'none', padding: '0.25rem 0' }}>{member.username}</li>)}
-								</ul>
-							</div>
-						))
+				<div className={`modal-tab-content ${activeTab === 'team' ? 'active' : ''}`}>
+					{canManageTeam ? (
+						<AdminEventTeamTab event={event} onTeamUpdate={reloadEventDetails} />
 					) : (
-						<p>Noch kein Team zugewiesen.</p>
+						<div className="card">
+							<h2 className="card-title">Zugewiesenes Team</h2>
+							{groupedAttendees && Object.keys(groupedAttendees).length > 0 ? (
+								Object.entries(groupedAttendees).map(([role, members]) => (
+									<div key={role} style={{ marginBottom: '1rem' }}>
+										<h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>{role}</h4>
+										<ul className="details-list">
+											{members.map(member => <li key={member.id} style={{ border: 'none', padding: '0.25rem 0' }}>{member.username}</li>)}
+										</ul>
+									</div>
+								))
+							) : (
+								<p>Noch kein Team zugewiesen.</p>
+							)}
+						</div>
 					)}
 				</div>
 
-				<div className="card" style={{ gridColumn: '1 / -1' }}>
-					<div className="modal-tabs">
-						<button className={`modal-tab-button ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>Aufgaben</button>
-						<button className={`modal-tab-button ${activeTab === 'checklist' ? 'active' : ''}`} onClick={() => setActiveTab('checklist')}>
-							Inventar-Checkliste
-							{canManageTasks && <Link to="/admin/veranstaltungen/checklist-templates" className="btn btn-small btn-secondary" style={{ marginLeft: '1rem' }} onClick={e => e.stopPropagation()} title="Vorlagen verwalten"><i className="fas fa-edit"></i></Link>}
-						</button>
-						<button className={`modal-tab-button ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>Event-Chat</button>
-						{event.status === 'ABGESCHLOSSEN' && <button className={`modal-tab-button ${activeTab === 'gallery' ? 'active' : ''}`} onClick={() => setActiveTab('gallery')}>Galerie</button>}
-					</div>
-
-					<div className={`modal-tab-content ${activeTab === 'tasks' ? 'active' : ''}`}>
-						{canManageTasks && (
-							<div className="table-controls">
-								<button className="btn btn-success" onClick={() => openTaskModal()}>
-									<i className="fas fa-plus"></i> Neue Aufgabe
-								</button>
+				<div className={`modal-tab-content ${activeTab === 'cockpit' ? 'active' : ''}`}>
+					<div className="responsive-dashboard-grid">
+						<div className="card">
+							<h3 className="card-title">Meine Aufgaben</h3>
+							<TaskList title="In Arbeit" tasks={groupedTasks.inProgress.filter(t => t.assignedUsers.some(u => u.id === user.id))} isCollapsed={false} onToggle={() => { }} event={event} user={user} canManageTasks={canManageTasks} isParticipant={isParticipant} onOpenModal={openTaskModal} onAction={handleTaskAction} />
+							<TaskList title="Offen" tasks={groupedTasks.open.filter(t => t.assignedUsers.some(u => u.id === user.id))} isCollapsed={false} onToggle={() => { }} event={event} user={user} canManageTasks={canManageTasks} isParticipant={isParticipant} onOpenModal={openTaskModal} onAction={handleTaskAction} />
+						</div>
+						<div className="card">
+							<h3 className="card-title">Event-Chat</h3>
+							{/* Simplified chat view for cockpit */}
+							<div id="chat-box-cockpit" style={{ height: '300px', overflowY: 'auto', border: '1px solid var(--border-color)', padding: '0.5rem', marginBottom: '1rem', background: 'var(--bg-color)', display: 'flex', flexDirection: 'column' }}>
+								{chatMessages.map(msg => (
+									<div key={msg.id} className={`chat-message-container ${msg.userId === user.id ? 'current-user' : ''}`}>
+										<div className="chat-bubble" style={{ backgroundColor: msg.userId === user.id ? 'var(--primary-color)' : msg.chatColor || '#e9ecef', color: msg.userId === user.id ? '#fff' : 'var(--text-color)' }}>
+											{!msg.isDeleted && <>
+												{msg.userId !== user.id && <strong className="chat-username">{msg.username}</strong>}
+												<span className="chat-text">{renderMessageText(msg)}</span>
+												<span className="chat-timestamp">{new Date(msg.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</span>
+											</>}
+										</div>
+									</div>
+								))}
 							</div>
-						)}
-
-						<TaskList title="Offen" tasks={groupedTasks.open} isCollapsed={collapsedTasks.open} onToggle={() => toggleTaskCategory('open')} event={event} user={user} canManageTasks={canManageTasks} isParticipant={isParticipant} onOpenModal={openTaskModal} onAction={handleTaskAction} />
-						<TaskList title="In Arbeit" tasks={groupedTasks.inProgress} isCollapsed={collapsedTasks.inProgress} onToggle={() => toggleTaskCategory('inProgress')} event={event} user={user} canManageTasks={canManageTasks} isParticipant={isParticipant} onOpenModal={openTaskModal} onAction={handleTaskAction} />
-						<TaskList title="Erledigt" tasks={groupedTasks.done} isCollapsed={collapsedTasks.done} onToggle={() => toggleTaskCategory('done')} event={event} user={user} canManageTasks={canManageTasks} isParticipant={isParticipant} onOpenModal={openTaskModal} onAction={handleTaskAction} />
-
-						{event.eventTasks?.length === 0 && (
-							<p>Für dieses Event wurden noch keine Aufgaben erstellt.</p>
-						)}
+							<form onSubmit={handleChatSubmit} style={{ display: 'flex', gap: '0.5rem' }}>
+								<input type="text" className="form-group" style={{ flexGrow: 1, margin: 0 }} placeholder="Nachricht..." value={chatInput} onChange={(e) => setChatInput(e.target.value)} disabled={readyState !== WebSocket.OPEN} />
+								<button type="submit" className="btn" disabled={readyState !== WebSocket.OPEN}>Senden</button>
+							</form>
+						</div>
 					</div>
+				</div>
 
-					<div className={`modal-tab-content ${activeTab === 'checklist' ? 'active' : ''}`}>
-						<ChecklistTab event={event} user={user} />
+				<div className={`modal-tab-content ${activeTab === 'tasks' ? 'active' : ''}`}>
+					{canManageTasks && (
+						<div className="table-controls">
+							<button className="btn btn-success" onClick={() => openTaskModal()}>
+								<i className="fas fa-plus"></i> Neue Aufgabe
+							</button>
+						</div>
+					)}
+
+					<TaskList title="Offen" tasks={groupedTasks.open} isCollapsed={collapsedTasks.open} onToggle={() => toggleTaskCategory('open')} event={event} user={user} canManageTasks={canManageTasks} isParticipant={isParticipant} onOpenModal={openTaskModal} onAction={handleTaskAction} />
+					<TaskList title="In Arbeit" tasks={groupedTasks.inProgress} isCollapsed={collapsedTasks.inProgress} onToggle={() => toggleTaskCategory('inProgress')} event={event} user={user} canManageTasks={canManageTasks} isParticipant={isParticipant} onOpenModal={openTaskModal} onAction={handleTaskAction} />
+					<TaskList title="Erledigt" tasks={groupedTasks.done} isCollapsed={collapsedTasks.done} onToggle={() => toggleTaskCategory('done')} event={event} user={user} canManageTasks={canManageTasks} isParticipant={isParticipant} onOpenModal={openTaskModal} onAction={handleTaskAction} />
+
+					{event.eventTasks?.length === 0 && (
+						<p>Für dieses Event wurden noch keine Aufgaben erstellt.</p>
+					)}
+				</div>
+
+				<div className={`modal-tab-content ${activeTab === 'checklist' ? 'active' : ''}`}>
+					<ChecklistTab event={event} user={user} />
+				</div>
+
+				<div className={`modal-tab-content ${activeTab === 'gallery' ? 'active' : ''}`}>
+					<EventGalleryTab event={event} user={user} />
+				</div>
+
+				<div className={`modal-tab-content ${activeTab === 'debriefing' ? 'active' : ''}`}>
+					{canManageDebriefing && <Link to={`/admin/veranstaltungen/${event.id}/debriefing`} className="btn"><i className="fas fa-edit"></i> Debriefing ansehen/bearbeiten</Link>}
+					<div className="card" style={{ marginTop: '1.5rem' }}>
+						<h3 className="card-title">User-Feedback Zusammenfassung</h3>
+						<ul className="details-list">
+							<li><strong>Durchschnittliche Bewertung:</strong> <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{averageRating} / 5 ★</span></li>
+						</ul>
+						<div style={{ maxHeight: '400px', overflowY: 'auto', marginTop: '1rem' }}>
+							{feedbackSummary?.data?.map(fb => (
+								<div key={fb.id} className="card" style={{ background: 'var(--bg-color)' }}>
+									<strong>{fb.username} ({fb.rating} ★):</strong>
+									<p style={{ fontStyle: 'italic', margin: '0.5rem 0 0 0' }}>"{fb.comments}"</p>
+								</div>
+							))}
+						</div>
 					</div>
+				</div>
 
-					<div className={`modal-tab-content ${activeTab === 'gallery' ? 'active' : ''}`}>
-						<EventGalleryTab event={event} user={user} />
-					</div>
-
-					<div className={`modal-tab-content ${activeTab === 'chat' ? 'active' : ''}`}>
-						{(event.status === 'LAUFEND' || event.status === 'GEPLANT') ? (
-							<>
-								<div id="chat-box" style={{ height: '300px', overflowY: 'auto', border: '1px solid var(--border-color)', padding: '0.5rem', marginBottom: '1rem', background: 'var(--bg-color)', display: 'flex', flexDirection: 'column' }}>
-									{chatMessages.map(msg => {
-										const isSentByMe = msg.userId === user.id;
-										const isMessageEditable = () => {
-											if (!msg.sentAt) return false;
-											const sentAt = new Date(msg.sentAt);
-											const now = new Date();
-											return (now - sentAt) < 24 * 60 * 60 * 1000;
-										};
-										const canEdit = !msg.isDeleted && isSentByMe && isMessageEditable();
-										const canDelete = !msg.isDeleted && (isSentByMe || isAdmin || user.id === event.leaderUserId);
-										const isEditing = editingMessageId === msg.id;
-										return (
-											<div
-												key={msg.id}
-												className={`chat-message-container ${isSentByMe ? 'current-user' : ''} ${activeOptionsMessageId === msg.id ? 'options-visible' : ''}`}
-												onTouchStart={() => handleTouchStart(msg.id)}
-												onTouchEnd={handleTouchEnd}
-												onTouchMove={handleTouchMove}
-												onClick={(e) => { if (activeOptionsMessageId) e.stopPropagation() }}
-											>
-												<div className="chat-bubble" style={{ backgroundColor: isSentByMe ? 'var(--primary-color)' : msg.chatColor || '#e9ecef', color: isSentByMe ? '#fff' : 'var(--text-color)' }}>
-													{!msg.isDeleted ? (
-														<>
-															{!isSentByMe && <strong className="chat-username">{msg.username}</strong>}
-															{isEditing ? (
-																<div>
-																	<textarea value={editingText} onChange={(e) => setEditingText(e.target.value)} className="chat-edit-input" />
-																	<div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
-																		<button onClick={handleEditSubmit} className="btn btn-small btn-success">Speichern</button>
-																		<button onClick={handleCancelEdit} className="btn btn-small btn-secondary">Abbrechen</button>
-																	</div>
+				<div className={`modal-tab-content ${activeTab === 'chat' ? 'active' : ''}`}>
+					{(event.status === 'LAUFEND' || event.status === 'GEPLANT') ? (
+						<>
+							<div id="chat-box" style={{ height: '300px', overflowY: 'auto', border: '1px solid var(--border-color)', padding: '0.5rem', marginBottom: '1rem', background: 'var(--bg-color)', display: 'flex', flexDirection: 'column' }}>
+								{chatMessages.map(msg => {
+									const isSentByMe = msg.userId === user.id;
+									const isMessageEditable = () => {
+										if (!msg.sentAt) return false;
+										const sentAt = new Date(msg.sentAt);
+										const now = new Date();
+										return (now - sentAt) < 24 * 60 * 60 * 1000;
+									};
+									const canEdit = !msg.isDeleted && isSentByMe && isMessageEditable();
+									const canDelete = !msg.isDeleted && (isSentByMe || isAdmin || user.id === event.leaderUserId);
+									const isEditing = editingMessageId === msg.id;
+									return (
+										<div
+											key={msg.id}
+											className={`chat-message-container ${isSentByMe ? 'current-user' : ''} ${activeOptionsMessageId === msg.id ? 'options-visible' : ''}`}
+											onTouchStart={() => handleTouchStart(msg.id)}
+											onTouchEnd={handleTouchEnd}
+											onTouchMove={handleTouchMove}
+											onClick={(e) => { if (activeOptionsMessageId) e.stopPropagation() }}
+										>
+											<div className="chat-bubble" style={{ backgroundColor: isSentByMe ? 'var(--primary-color)' : msg.chatColor || '#e9ecef', color: isSentByMe ? '#fff' : 'var(--text-color)' }}>
+												{!msg.isDeleted ? (
+													<>
+														{!isSentByMe && <strong className="chat-username">{msg.username}</strong>}
+														{isEditing ? (
+															<div>
+																<textarea value={editingText} onChange={(e) => setEditingText(e.target.value)} className="chat-edit-input" />
+																<div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+																	<button onClick={handleEditSubmit} className="btn btn-small btn-success">Speichern</button>
+																	<button onClick={handleCancelEdit} className="btn btn-small btn-secondary">Abbrechen</button>
 																</div>
-															) : (
-																<span className="chat-text">{renderMessageText(msg)}</span>
-															)}
-															<span className="chat-timestamp">{new Date(msg.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} {msg.edited && <em style={{ opacity: 0.8 }} title={`Bearbeitet am ${new Date(msg.editedAt).toLocaleString('de-DE')}`}>(bearbeitet)</em>}</span>
-														</>
-													) : (
-														<span className="chat-deleted-info" style={{ opacity: 0.7 }}>
-															Diese Nachricht wurde von {msg.deletedByUsername} gelöscht.<br />
-															<small>{new Date(msg.deletedAt).toLocaleString('de-DE')}</small>
-														</span>
-													)}
-												</div>
-												{!msg.isDeleted && !isEditing && (canEdit || canDelete) && (
-													<div className="chat-options">
-														{canEdit && <button className="chat-option-btn" title="Bearbeiten" onClick={() => handleEditClick(msg)}><i className="fas fa-pencil-alt"></i></button>}
-														{canDelete && <button className="chat-option-btn" title="Löschen" onClick={() => handleDeleteClick(msg)}><i className="fas fa-trash"></i></button>}
-													</div>
+															</div>
+														) : (
+															<span className="chat-text">{renderMessageText(msg)}</span>
+														)}
+														<span className="chat-timestamp">{new Date(msg.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} {msg.edited && <em style={{ opacity: 0.8 }} title={`Bearbeitet am ${new Date(msg.editedAt).toLocaleString('de-DE')}`}>(bearbeitet)</em>}</span>
+													</>
+												) : (
+													<span className="chat-deleted-info" style={{ opacity: 0.7 }}>
+														Diese Nachricht wurde von {msg.deletedByUsername} gelöscht.<br />
+														<small>{new Date(msg.deletedAt).toLocaleString('de-DE')}</small>
+													</span>
 												)}
 											</div>
-										);
-									})}
-								</div>
-								<form id="chat-form" onSubmit={handleChatSubmit} style={{ display: 'flex', gap: '0.5rem' }}>
-									<input type="file" ref={fileInputRef} onChange={handleFileUpload} style={{ display: 'none' }} accept="image/*,application/pdf" />
-									<button type="button" className="btn" onClick={() => fileInputRef.current.click()} disabled={isUploading || readyState !== WebSocket.OPEN} title="Datei anhängen">
-										{isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-paperclip"></i>}
-									</button>
-									<input
-										type="text"
-										id="chat-message-input"
-										className="form-group"
-										style={{ flexGrow: 1, margin: 0 }}
-										placeholder="Nachricht eingeben..."
-										value={chatInput}
-										onChange={(e) => setChatInput(e.target.value)}
-										autoComplete="off"
-										disabled={readyState !== WebSocket.OPEN}
-									/>
-									<button type="submit" className="btn" disabled={readyState !== WebSocket.OPEN}>Senden</button>
-								</form>
-							</>
-						) : (
-							<p>Der Chat ist nur für geplante oder laufende Events verfügbar.</p>
-						)}
-					</div>
-
+											{!msg.isDeleted && !isEditing && (canEdit || canDelete) && (
+												<div className="chat-options">
+													{canEdit && <button className="chat-option-btn" title="Bearbeiten" onClick={() => handleEditClick(msg)}><i className="fas fa-pencil-alt"></i></button>}
+													{canDelete && <button className="chat-option-btn" title="Löschen" onClick={() => handleDeleteClick(msg)}><i className="fas fa-trash"></i></button>}
+												</div>
+											)}
+										</div>
+									);
+								})}
+							</div>
+							<form id="chat-form" onSubmit={handleChatSubmit} style={{ display: 'flex', gap: '0.5rem' }}>
+								<input type="file" ref={fileInputRef} onChange={handleFileUpload} style={{ display: 'none' }} accept="image/*,application/pdf" />
+								<button type="button" className="btn" onClick={() => fileInputRef.current.click()} disabled={isUploading || readyState !== WebSocket.OPEN} title="Datei anhängen">
+									{isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-paperclip"></i>}
+								</button>
+								<input
+									type="text"
+									id="chat-message-input"
+									className="form-group"
+									style={{ flexGrow: 1, margin: 0 }}
+									placeholder="Nachricht eingeben..."
+									value={chatInput}
+									onChange={(e) => setChatInput(e.target.value)}
+									autoComplete="off"
+									disabled={readyState !== WebSocket.OPEN}
+								/>
+								<button type="submit" className="btn" disabled={readyState !== WebSocket.OPEN}>Senden</button>
+							</form>
+						</>
+					) : (
+						<p>Der Chat ist nur für geplante oder laufende Events verfügbar.</p>
+					)}
 				</div>
 			</div>
 			{isTaskModalOpen && (

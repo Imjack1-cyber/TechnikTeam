@@ -14,6 +14,11 @@ public class AdminLog {
 	private String actionType;
 	private String details;
 	private LocalDateTime actionTimestamp;
+	private String status;
+	private String context; // JSON string
+	private Integer revokedByAdminId;
+	private LocalDateTime revokedAt;
+	private String revokingAdminUsername; // Transient
 
 	public AdminLog() {
 	}
@@ -56,6 +61,46 @@ public class AdminLog {
 
 	public void setActionTimestamp(LocalDateTime actionTimestamp) {
 		this.actionTimestamp = actionTimestamp;
+	}
+
+	public String getStatus() {
+		return status;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
+	}
+
+	public String getContext() {
+		return context;
+	}
+
+	public void setContext(String context) {
+		this.context = context;
+	}
+
+	public Integer getRevokedByAdminId() {
+		return revokedByAdminId;
+	}
+
+	public void setRevokedByAdminId(Integer revokedByAdminId) {
+		this.revokedByAdminId = revokedByAdminId;
+	}
+
+	public LocalDateTime getRevokedAt() {
+		return revokedAt;
+	}
+
+	public void setRevokedAt(LocalDateTime revokedAt) {
+		this.revokedAt = revokedAt;
+	}
+
+	public String getRevokingAdminUsername() {
+		return revokingAdminUsername;
+	}
+
+	public void setRevokingAdminUsername(String revokingAdminUsername) {
+		this.revokingAdminUsername = revokingAdminUsername;
 	}
 
 	/**

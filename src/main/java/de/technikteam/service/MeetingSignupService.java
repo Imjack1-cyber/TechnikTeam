@@ -7,7 +7,9 @@ import de.technikteam.model.Meeting;
 import de.technikteam.model.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -50,41 +52,47 @@ public class MeetingSignupService {
 	 * requestedBy can be null; usually the same as userId but allows admins to sign
 	 * up on behalf of user.
 	 */
+	@Transactional
 	public SignupResult signupOrWaitlist(int userId, int meetingId, Integer requestedBy) {
 		try {
-			// already enrolled?
-			if (attendanceDAO.hasAttendedMeeting(userId, meetingId)
-					|| attendanceDAO.existsForUserAndMeeting(userId, meetingId)
-							&& attendanceDAO.hasAttendedMeeting(userId, meetingId)) {
-				// user has an attended record -> already enrolled previously
-				return new SignupResult(SignupStatus.ALREADY_ENROLLED, "User already enrolled for this meeting.");
-			}
-
 			Meeting meeting = meetingDAO.getMeetingById(meetingId);
 			if (meeting == null) {
 				return new SignupResult(SignupStatus.ERROR, "Meeting not found.");
 			}
 
-			// if this is a repeat (parent_meeting_id set) then check attendance on original
-			// meeting
-			int parentMeetingId = meeting.getParentMeetingId();
-			if (parentMeetingId > 0) {
-				boolean attendedOriginal = attendanceDAO.hasAttendedMeeting(userId, parentMeetingId);
-				if (attendedOriginal) {
-					// add to waitlist
-					boolean added = waitlistDAO.addToWaitlist(meetingId, userId, requestedBy);
-					if (added) {
-						return new SignupResult(SignupStatus.WAITLISTED, "User was added to the waitlist.");
-					} else {
-						return new SignupResult(SignupStatus.ERROR, "Failed to add user to waitlist.");
-					}
+			// Check if signup deadline has passed
+			LocalDateTime deadline = meeting.getSignupDeadline() != null ? meeting.getSignupDeadline()
+					: meeting.getMeetingDateTime().minusHours(36);
+			if (LocalDateTime.now().isAfter(deadline)) {
+				return new SignupResult(SignupStatus.ERROR, "Die Anmeldefrist für diesen Termin ist abgelaufen.");
+			}
+
+			if (attendanceDAO.hasAttendedMeeting(userId, meetingId)) {
+				return new SignupResult(SignupStatus.ALREADY_ENROLLED, "User already enrolled for this meeting.");
+			}
+
+			boolean isFull = meeting.getMaxParticipants() != null
+					&& meetingDAO.getParticipantCount(meetingId) >= meeting.getMaxParticipants();
+
+			boolean attendedOriginal = false;
+			if (meeting.getParentMeetingId() > 0) {
+				attendedOriginal = attendanceDAO.hasAttendedMeeting(userId, meeting.getParentMeetingId());
+			}
+
+			if (isFull || attendedOriginal) {
+				boolean added = waitlistDAO.addToWaitlist(meetingId, userId, requestedBy);
+				if (added) {
+					String message = attendedOriginal
+							? "Sie wurden auf die Warteliste gesetzt, da Sie den Lehrgang bereits absolviert haben."
+							: "Sie wurden auf die Warteliste gesetzt, da der Termin voll ist.";
+					return new SignupResult(SignupStatus.WAITLISTED, message);
+				} else {
+					return new SignupResult(SignupStatus.ERROR, "Failed to add user to waitlist.");
 				}
 			}
 
-			// otherwise enroll directly
 			boolean enrolled = attendanceDAO.enrollUser(userId, meetingId);
 			if (enrolled) {
-				// If user was on waitlist accidentally, remove them
 				waitlistDAO.removeFromWaitlist(meetingId, userId);
 				return new SignupResult(SignupStatus.ENROLLED, "User successfully enrolled.");
 			} else {
@@ -93,6 +101,15 @@ public class MeetingSignupService {
 		} catch (Exception e) {
 			return new SignupResult(SignupStatus.ERROR, "Unexpected error: " + e.getMessage());
 		}
+	}
+
+	@Transactional
+	public boolean signoffFromMeeting(int userId, int meetingId) {
+		// Remove from both potential places
+		boolean unenrolled = attendanceDAO.unenrollUser(userId, meetingId);
+		boolean removedFromWaitlist = waitlistDAO.removeFromWaitlist(meetingId, userId);
+		// Return true if either action had an effect
+		return unenrolled || removedFromWaitlist;
 	}
 
 	/**
@@ -105,6 +122,7 @@ public class MeetingSignupService {
 	/**
 	 * Admin: promote a specific user from waitlist to enrollment.
 	 */
+	@Transactional
 	public boolean promoteUserFromWaitlist(int meetingId, int userId, int adminUserId) {
 		// double-check: user is on waitlist
 		if (!waitlistDAO.isUserOnWaitlist(meetingId, userId)) {

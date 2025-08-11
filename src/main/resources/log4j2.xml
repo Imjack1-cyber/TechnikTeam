@@ -1,23 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN">
 	<Appenders>
+		<!-- Appender 1: Logs to the console in a human-readable format -->
 		<Console name="Console" target="SYSTEM_OUT">
-			<!-- For development, use a human-readable pattern -->
-			<!-- <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} 
-				- %msg%n"/> -->
+			<PatternLayout
+				pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n" />
+		</Console>
 
-			<!-- For production/structured logging, use JSON Template Layout -->
+		<!-- Appender 2: Logs to a file in a structured JSON format -->
+		<RollingFile name="JsonFile"
+			fileName="logs/technikteam-backend.log"
+			filePattern="logs/technikteam-backend-%d{yyyy-MM-dd}-%i.log.gz">
+			<!-- This uses your existing JSON template -->
 			<JsonTemplateLayout
 				eventTemplateUri="classpath:Log4j2JsonTemplate.json" />
-		</Console>
+			<Policies>
+				<TimeBasedTriggeringPolicy />
+				<SizeBasedTriggeringPolicy size="20 MB" />
+			</Policies>
+			<DefaultRolloverStrategy max="10" />
+		</RollingFile>
 	</Appenders>
+
 	<Loggers>
 		<Root level="info">
+			<!-- The root logger sends all INFO+ logs to BOTH the console and the 
+				file -->
 			<AppenderRef ref="Console" />
+			<AppenderRef ref="JsonFile" />
 		</Root>
-		<!-- Set a more verbose level for our application's packages during development -->
+
+		<!-- This logger sends all DEBUG+ logs from your application to BOTH appenders -->
 		<Logger name="de.technikteam" level="debug" additivity="false">
 			<AppenderRef ref="Console" />
+			<AppenderRef ref="JsonFile" />
 		</Logger>
 	</Loggers>
 </Configuration>

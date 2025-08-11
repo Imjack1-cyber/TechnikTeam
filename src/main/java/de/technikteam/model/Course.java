@@ -1,5 +1,7 @@
 package de.technikteam.model;
 
+import java.util.List;
+
 /**
  * Represents a parent course template from the `courses` table. This is not a
  * schedulable event itself, but a blueprint for a type of training (e.g.,
@@ -11,6 +13,8 @@ public class Course {
 	private String name;
 	private String abbreviation;
 	private String description;
+	private List<Meeting> upcomingMeetings; // Transient field for Training Hub UI
+	private String userCourseStatus; // Transient field for Training Hub UI
 
 	public Course() {
 	}
@@ -45,5 +49,21 @@ public class Course {
 
 	public void setDescription(String description) {
 		this.description = description;
+	}
+
+	public List<Meeting> getUpcomingMeetings() {
+		return upcomingMeetings;
+	}
+
+	public void setUpcomingMeetings(List<Meeting> upcomingMeetings) {
+		this.upcomingMeetings = upcomingMeetings;
+	}
+
+	public String getUserCourseStatus() {
+		return userCourseStatus;
+	}
+
+	public void setUserCourseStatus(String userCourseStatus) {
+		this.userCourseStatus = userCourseStatus;
 	}
 }

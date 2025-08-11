@@ -78,6 +78,7 @@ const AdminAnnouncementsPage = lazy(() => import('../pages/admin/AdminAnnounceme
 const AdminTrainingRequestsPage = lazy(() => import('../pages/admin/AdminTrainingRequestsPage'));
 const AdminDocumentationPage = lazy(() => import('../pages/admin/AdminDocumentationPage'));
 const AdminReportsIndex = lazy(() => import('../pages/admin/AdminReportsIndex'));
+const AdminSystemIndex = lazy(() => import('../pages/admin/AdminSystemIndex'));
 
 
 import ErrorTrigger from '../pages/error/ErrorTrigger';
@@ -128,14 +129,15 @@ const router = createBrowserRouter([
 					{ path: 'dashboard', element: <AdminDashboardPage /> },
 					{
 						path: 'mitglieder', element: <AdminUsersIndex />, children: [
-							{ index: true, element: <AdminUsersPage /> },
+							{ path: 'users', element: <AdminUsersPage /> },
 							{ path: 'requests', element: <AdminRequestsPage /> },
 							{ path: 'training-requests', element: <AdminTrainingRequestsPage /> },
+							{ path: 'achievements', element: <AdminAchievementsPage /> },
 						]
 					},
 					{
 						path: 'veranstaltungen', element: <AdminEventsIndex />, children: [
-							{ index: true, element: <AdminEventsPage /> },
+							{ path: 'events', element: <AdminEventsPage /> },
 							{ path: 'debriefings', element: <AdminDebriefingsListPage /> },
 							{ path: 'roles', element: <AdminEventRolesPage /> },
 							{ path: 'venues', element: <AdminVenuesPage /> },
@@ -145,14 +147,14 @@ const router = createBrowserRouter([
 					{ path: 'veranstaltungen/:eventId/debriefing', element: <AdminEventDebriefingPage /> },
 					{
 						path: 'lehrgaenge', element: <AdminCoursesIndex />, children: [
-							{ index: true, element: <AdminCoursesPage /> },
+							{ path: 'courses', element: <AdminCoursesPage /> },
 							{ path: 'matrix', element: <AdminMatrixPage /> },
+							{ path: 'meetings/:courseId', element: <AdminMeetingsPage /> },
 						]
 					},
-					{ path: 'lehrgaenge/:courseId/meetings', element: <AdminMeetingsPage /> },
 					{
 						path: 'lager', element: <AdminStorageIndex />, children: [
-							{ index: true, element: <AdminStoragePage /> },
+							{ path: 'items', element: <AdminStoragePage /> },
 							{ path: 'kits', element: <AdminKitsPage /> },
 							{ path: 'defekte', element: <AdminDefectivePage /> },
 							{ path: 'damage-reports', element: <AdminDamageReportsPage /> },
@@ -160,7 +162,6 @@ const router = createBrowserRouter([
 					},
 					{
 						path: 'content', element: <AdminContentIndex />, children: [
-							{ index: true, element: <AdminAnnouncementsPage /> },
 							{ path: 'announcements', element: <AdminAnnouncementsPage /> },
 							{ path: 'dateien', element: <AdminFilesPage /> },
 							{ path: 'dateien/edit/:fileId', element: <AdminFileEditorPage /> },
@@ -172,15 +173,16 @@ const router = createBrowserRouter([
 					},
 					{
 						path: 'reports', element: <AdminReportsIndex />, children: [
-							{ index: true, element: <AdminReportsPage /> },
+							{ path: 'analysis', element: <AdminReportsPage /> },
 							{ path: 'log', element: <AdminLogPage /> },
-							{ path: 'system', element: <AdminSystemPage /> },
 						]
 					},
-					// This route was incorrectly placed inside 'content'. Moved to be a direct child of 'admin'.
-					{ path: 'benachrichtigungen', element: <AdminNotificationsPage /> },
-					{ path: 'achievements', element: <AdminAchievementsPage /> },
-					{ path: 'wiki', element: <AdminWikiPage /> },
+					{
+						path: 'system', element: <AdminSystemIndex />, children: [
+							{ path: 'status', element: <AdminSystemPage /> },
+							{ path: 'wiki', element: <AdminWikiPage /> },
+						]
+					},
 				],
 			},
 		],

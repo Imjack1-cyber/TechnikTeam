@@ -42,24 +42,22 @@ public class InitialAdminCreator implements CommandLineRunner {
 			adminUser.setUsername("admin");
 			adminUser.setRoleId(1); // Assuming 1 is the ADMIN role ID
 
-			String randomPassword = generateRandomPassword(16);
+//			String randomPassword = generateRandomPassword(8);
+			String randomPassword = "TechnikTeam1+"; 
 
-			// Grant both master admin and notification permissions by default
+			List<String> permissionKeysToGrant = List.of(Permissions.ACCESS_ADMIN_PANEL, Permissions.NOTIFICATION_SEND,
+					Permissions.LOG_READ, Permissions.LOG_REVOKE);
 			List<String> permissionIds = new ArrayList<>();
-			Integer adminPermissionId = permissionDAO.getPermissionIdByKey(Permissions.ACCESS_ADMIN_PANEL);
-			if (adminPermissionId != null) {
-				permissionIds.add(String.valueOf(adminPermissionId));
-			} else {
-				logger.error(
-						"FATAL: Could not find the essential ACCESS_ADMIN_PANEL permission. Admin user will lack full rights.");
-			}
 
-			Integer notificationPermissionId = permissionDAO.getPermissionIdByKey(Permissions.NOTIFICATION_SEND);
-			if (notificationPermissionId != null) {
-				permissionIds.add(String.valueOf(notificationPermissionId));
-			} else {
-				logger.error(
-						"FATAL: Could not find the NOTIFICATION_SEND permission. Admin user will not be able to send notifications.");
+			for (String key : permissionKeysToGrant) {
+				Integer id = permissionDAO.getPermissionIdByKey(key);
+				if (id != null) {
+					permissionIds.add(String.valueOf(id));
+				} else {
+					logger.error(
+							"FATAL: Could not find the essential permission '{}'. The default admin user will lack this right.",
+							key);
+				}
 			}
 
 			userService.createUserWithPermissions(adminUser, randomPassword, permissionIds.toArray(new String[0]),

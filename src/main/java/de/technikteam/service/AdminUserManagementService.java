@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import de.technikteam.model.User;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Service
 public class AdminUserManagementService {
@@ -54,7 +55,8 @@ public class AdminUserManagementService {
 			String logDetails = String.format("User '%s' (ID: %d) suspended until %s. Reason: %s",
 					suspendedUser.getUsername(), userId,
 					suspendedUntil != null ? suspendedUntil.toString() : "indefinite", reason);
-			adminLogService.log(adminUser.getUsername(), "USER_SUSPEND", logDetails);
+			Map<String, Object> context = Map.of("userId", userId, "revocable", true);
+			adminLogService.log(adminUser.getUsername(), "USER_SUSPEND", logDetails, context);
 		} else {
 			logger.warn("Failed to suspend user id {}", userId);
 		}
@@ -74,7 +76,9 @@ public class AdminUserManagementService {
 			if (result) {
 				String logDetails = String.format("User '%s' (ID: %d) unsuspended and unlocked.",
 						unsuspendedUser.getUsername(), userId);
-				adminLogService.log(adminUser.getUsername(), "USER_UNSUSPEND", logDetails);
+				// Un-suspending is not easily reversible, so mark as not revocable
+				Map<String, Object> context = Map.of("userId", userId, "revocable", false);
+				adminLogService.log(adminUser.getUsername(), "USER_UNSUSPEND", logDetails, context);
 			}
 			return true; // Return true if the user is now in an unsuspended state, even if they already
 							// were

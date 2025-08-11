@@ -4,9 +4,11 @@ import de.technikteam.api.v1.dto.EventDebriefingDTO;
 import de.technikteam.config.Permissions;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.EventDebriefingDAO;
+import de.technikteam.dao.EventFeedbackDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Event;
 import de.technikteam.model.EventDebriefing;
+import de.technikteam.model.FeedbackResponse;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.EventDebriefingService;
@@ -21,7 +23,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -34,13 +38,15 @@ public class AdminEventDebriefingResource {
 	private final EventDebriefingDAO debriefingDAO;
 	private final EventDebriefingService debriefingService;
 	private final EventDAO eventDAO;
+	private final EventFeedbackDAO feedbackDAO;
 
 	@Autowired
 	public AdminEventDebriefingResource(EventDebriefingDAO debriefingDAO, EventDebriefingService debriefingService,
-			EventDAO eventDAO) {
+			EventDAO eventDAO, EventFeedbackDAO feedbackDAO) {
 		this.debriefingDAO = debriefingDAO;
 		this.debriefingService = debriefingService;
 		this.eventDAO = eventDAO;
+		this.feedbackDAO = feedbackDAO;
 	}
 
 	@GetMapping("/debriefings")
@@ -81,5 +87,12 @@ public class AdminEventDebriefingResource {
 		} catch (IllegalStateException e) {
 			return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
 		}
+	}
+
+	@GetMapping("/{eventId}/feedback-summary")
+	@Operation(summary = "Get aggregated user feedback for an event")
+	public ResponseEntity<ApiResponse> getFeedbackSummary(@PathVariable int eventId) {
+		List<FeedbackResponse> responses = feedbackDAO.getResponsesForEvent(eventId);
+		return ResponseEntity.ok(new ApiResponse(true, "User feedback summary retrieved.", responses));
 	}
 }

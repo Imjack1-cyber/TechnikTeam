@@ -15,9 +15,10 @@ const useWebSocket = (url, onMessage, dependencies = []) => {
 	const onMessageCallback = useCallback(onMessage, []);
 
 	useEffect(() => {
-		if (!url) {
+		const token = localStorage.getItem('technikteam-auth-token');
+		if (!url || !token) {
 			if (socketRef.current) {
-				socketRef.current.close(1000, "URL changed to null");
+				socketRef.current.close(1000, "URL or token changed to null");
 				socketRef.current = null;
 			}
 			setReadyState(WebSocket.CLOSED);
@@ -25,17 +26,18 @@ const useWebSocket = (url, onMessage, dependencies = []) => {
 		};
 
 		const connect = () => {
+			const authenticatedUrl = `${url}?token=${encodeURIComponent(token)}`;
 			let finalUrl;
 			if (import.meta.env.PROD) {
 				// In production, construct absolute URL based on current host
 				const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 				const host = window.location.host;
-				finalUrl = `${protocol}//${host}/TechnikTeam${url}`;
+				finalUrl = `${protocol}//${host}/TechnikTeam${authenticatedUrl}`;
 			} else {
 				// In development, use the relative path for the Vite proxy
 				const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 				const host = window.location.host; // e.g., localhost:3000
-				finalUrl = `${protocol}//${host}${url}`;
+				finalUrl = `${protocol}//${host}${authenticatedUrl}`;
 			}
 
 
@@ -61,7 +63,7 @@ const useWebSocket = (url, onMessage, dependencies = []) => {
 			};
 
 			socket.onclose = (event) => {
-				if (event.code === 1000 && event.reason === "URL changed to null") {
+				if (event.code === 1000 && event.reason === "URL or token changed to null") {
 					console.log("WebSocket connection intentionally closed.");
 				} else if (event.code === 4001 || event.code === 403) {
 					console.error('WebSocket-Verbindung aufgrund von Authentifizierungs-/Autorisierungsfehler geschlossen.');

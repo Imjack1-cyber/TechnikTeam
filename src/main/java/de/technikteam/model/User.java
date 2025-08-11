@@ -21,6 +21,7 @@ public class User {
 	private String adminNotes;
 	private String dashboardLayout; // JSON string
 	private String assignedEventRole; // Transient field for event details
+	private Integer assignedEventRoleId; // Transient field for event details
 	private int unseenNotificationsCount; // Transient field
 
 	// Suspension related fields
@@ -28,6 +29,10 @@ public class User {
 	private LocalDateTime suspendedUntil;
 	private String suspendedReason;
 	private boolean isLocked; // Transient field for login attempts
+
+	// Soft delete fields
+	private boolean isDeleted;
+	private LocalDateTime deletedAt;
 
 	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String passwordHash;
@@ -174,6 +179,14 @@ public class User {
 		this.assignedEventRole = assignedEventRole;
 	}
 
+	public Integer getAssignedEventRoleId() {
+		return assignedEventRoleId;
+	}
+
+	public void setAssignedEventRoleId(Integer assignedEventRoleId) {
+		this.assignedEventRoleId = assignedEventRoleId;
+	}
+
 	public int getUnseenNotificationsCount() {
 		return unseenNotificationsCount;
 	}
@@ -221,6 +234,22 @@ public class User {
 
 	public void setLocked(boolean locked) {
 		isLocked = locked;
+	}
+
+	public boolean isDeleted() {
+		return isDeleted;
+	}
+
+	public void setDeleted(boolean deleted) {
+		isDeleted = deleted;
+	}
+
+	public LocalDateTime getDeletedAt() {
+		return deletedAt;
+	}
+
+	public void setDeletedAt(LocalDateTime deletedAt) {
+		this.deletedAt = deletedAt;
 	}
 
 	public String getFormattedCreatedAt() {

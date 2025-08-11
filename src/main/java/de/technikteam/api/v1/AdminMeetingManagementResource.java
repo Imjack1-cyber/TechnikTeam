@@ -36,6 +36,13 @@ public class AdminMeetingManagementResource {
 		this.meetingDAO = meetingDAO;
 	}
 
+	@Operation(summary = "Get enrolled users for a meeting (admin)")
+	@GetMapping("/{meetingId}/participants")
+	public ResponseEntity<ApiResponse> getParticipants(@PathVariable int meetingId) {
+		List<User> participants = meetingDAO.getEnrolledUsersForMeeting(meetingId);
+		return ResponseEntity.ok(new ApiResponse(true, "Teilnehmerliste abgerufen.", participants));
+	}
+
 	@Operation(summary = "Get waitlist for a meeting (admin)")
 	@GetMapping("/{meetingId}/waitlist")
 	public ResponseEntity<ApiResponse> getWaitlist(@PathVariable int meetingId) {
@@ -47,8 +54,12 @@ public class AdminMeetingManagementResource {
 
 	@Operation(summary = "Promote a user from a meeting's waitlist to enrolled status (admin)")
 	@PostMapping("/{meetingId}/promote")
-	public ResponseEntity<ApiResponse> promoteUser(@PathVariable int meetingId, @RequestParam int userId,
-			@AuthenticationPrincipal SecurityUser securityUser) {
+	public ResponseEntity<ApiResponse> promoteUser(@PathVariable int meetingId,
+			@RequestBody Map<String, Integer> payload, @AuthenticationPrincipal SecurityUser securityUser) {
+		Integer userId = payload.get("userId");
+		if (userId == null) {
+			return ResponseEntity.badRequest().body(new ApiResponse(false, "userId ist erforderlich.", null));
+		}
 		if (securityUser == null || securityUser.getUser() == null) {
 			return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "Nicht autorisiert.", null));
 		}

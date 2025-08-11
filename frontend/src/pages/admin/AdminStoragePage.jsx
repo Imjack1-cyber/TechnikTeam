@@ -9,6 +9,22 @@ import { useToast } from '../../context/ToastContext';
 import Modal from '../../components/ui/Modal';
 import QRCode from 'qrcode.react';
 
+const HealthIndicator = ({ item }) => {
+	let color = 'var(--success-color)';
+	let title = `Verfügbar: ${item.availableQuantity}/${item.maxQuantity}`;
+
+	if (item.defectiveQuantity > 0) {
+		color = 'var(--danger-color)';
+		title += ` | Defekt: ${item.defectiveQuantity}`;
+	} else if (item.maxQuantity > 0 && item.availableQuantity < item.maxQuantity) {
+		color = 'var(--warning-color)';
+	}
+
+	return (
+		<span style={{ color, fontSize: '1.5rem' }} title={title}>●</span>
+	);
+};
+
 const AdminStoragePage = () => {
 	const apiCall = useCallback(() => apiClient.get('/storage'), []);
 	const { data: items, loading, error, reload } = useApi(apiCall);
@@ -64,18 +80,20 @@ const AdminStoragePage = () => {
 				<table className="data-table">
 					<thead>
 						<tr>
+							<th style={{ width: '5%' }}>Health</th>
 							<th>Name</th>
 							<th>Ort</th>
-							<th>Verfügbar</th>
-							<th>Status</th>
+							<th>Bestand</th>
+							<th>Letzte Aktion</th>
 							<th>Aktionen</th>
 						</tr>
 					</thead>
 					<tbody>
-						{loading && <tr><td colSpan="5">Lade Artikel...</td></tr>}
-						{error && <tr><td colSpan="5" className="error-message">{error}</td></tr>}
+						{loading && <tr><td colSpan="6">Lade Artikel...</td></tr>}
+						{error && <tr><td colSpan="6" className="error-message">{error}</td></tr>}
 						{items?.map(item => (
 							<tr key={item.id}>
+								<td style={{ textAlign: 'center' }}><HealthIndicator item={item} /></td>
 								<td className="item-name-cell">
 									<Link to={`/lager/details/${item.id}`}>{item.name}</Link>
 									{item.imagePath && (
@@ -89,7 +107,7 @@ const AdminStoragePage = () => {
 									{item.availableQuantity}/{item.maxQuantity}
 									{item.defectiveQuantity > 0 && <span className="text-danger"> ({item.defectiveQuantity} def.)</span>}
 								</td>
-								<td><StatusBadge status={item.status} /></td>
+								<td>{item.lastTransactionInfo || '-'}</td>
 								<td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
 									<button onClick={() => openModal('edit', item)} className="btn btn-small">Bearbeiten</button>
 									<button onClick={() => openModal('defect', item)} className="btn btn-small btn-warning">Defekt</button>
@@ -111,16 +129,15 @@ const AdminStoragePage = () => {
 				{items?.map(item => (
 					<div key={item.id} className="list-item-card">
 						<h3 className="card-title">
-							<Link to={`/lager/details/${item.id}`}>{item.name}</Link>
+							<HealthIndicator item={item} /> <Link to={`/lager/details/${item.id}`}>{item.name}</Link>
 							{item.imagePath && (
 								<button className="camera-btn" onClick={() => setLightboxSrc(getImagePath(item.imagePath))}>
 									<i className="fas fa-camera"></i>
 								</button>
 							)}
 						</h3>
-						<div className="card-row"><strong>Status:</strong> <StatusBadge status={item.status} /></div>
 						<div className="card-row"><strong>Verfügbar:</strong> <span>{item.availableQuantity}/{item.maxQuantity}{item.defectiveQuantity > 0 && <span className="text-danger"> ({item.defectiveQuantity} def.)</span>}</span></div>
-						<div className="card-row"><strong>Ort:</strong> <span>{item.location}</span></div>
+						<div className="card-row"><strong>Letzte Aktion:</strong> <span>{item.lastTransactionInfo || '-'}</span></div>
 						<div className="card-actions">
 							<button onClick={() => openModal('edit', item)} className="btn btn-small">Bearbeiten</button>
 							<button onClick={() => openModal('defect', item)} className="btn btn-small btn-warning">Defekt</button>

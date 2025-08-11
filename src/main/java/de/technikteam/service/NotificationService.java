@@ -12,6 +12,7 @@ import de.technikteam.model.User;
 import de.technikteam.model.UserNotification;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -92,6 +93,19 @@ public class NotificationService {
 		return emitter;
 	}
 
+	@Scheduled(fixedRate = 30000) // Run every 30 seconds
+	public void sendHeartbeat() {
+		SseEmitter.SseEventBuilder heartbeatEvent = SseEmitter.event().comment("heartbeat");
+		emittersByUser.values().forEach(emitterList -> emitterList.forEach(emitter -> {
+			try {
+				emitter.send(heartbeatEvent);
+			} catch (Exception e) {
+				logger.debug(
+						"Heartbeat failed for a client, it has likely disconnected. Emitter will be removed by its onCompletion handler.");
+			}
+		}));
+	}
+
 	public void broadcastUIUpdate(String type, Object payload) {
 		logger.info("Sende UI-Update vom Typ '{}' an alle Clients.", type);
 		Map<String, Object> message = Map.of("updateType", type, "data", payload);
@@ -158,7 +172,7 @@ public class NotificationService {
 		case "MEETING":
 			if (request.targetId() == null)
 				throw new IllegalArgumentException("Meeting-ID ist erforderlich.");
-			targetUsers = meetingDAO.getParticipantUsersForMeeting(request.targetId());
+			targetUsers = meetingDAO.getEnrolledUsersForMeeting(request.targetId());
 			targetDescription = "Teilnehmer des Meetings ID " + request.targetId();
 			break;
 		default:

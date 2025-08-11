@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -83,5 +84,18 @@ public class MatrixResource {
 		}
 		return ResponseEntity.internalServerError()
 				.body(new ApiResponse(false, "Fehler beim Aktualisieren der Teilnahme.", null));
+	}
+
+	@PutMapping("/qualification")
+	@Operation(summary = "Update a user's course qualification status")
+	public ResponseEntity<ApiResponse> updateQualification(@RequestBody UserQualification qualification) {
+		boolean success = qualificationsDAO.updateQualificationStatus(qualification.getUserId(),
+				qualification.getCourseId(), qualification.getStatus(), qualification.getCompletionDate(),
+				qualification.getRemarks());
+		if (success) {
+			return ResponseEntity.ok(new ApiResponse(true, "Qualifikationsstatus aktualisiert.", null));
+		}
+		return ResponseEntity.internalServerError()
+				.body(new ApiResponse(false, "Fehler beim Aktualisieren des Qualifikationsstatus.", null));
 	}
 }

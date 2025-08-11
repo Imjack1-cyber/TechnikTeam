@@ -7,6 +7,9 @@ import AttendanceModal from '../../components/admin/matrix/AttendanceModal';
 const AdminMatrixPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/matrix'), []);
 	const { data, loading, error, reload } = useApi(apiCall);
+	const qualificationsApiCall = useCallback(() => apiClient.get('/admin/qualifications/all'), []);
+	const { data: allQualifications } = useApi(qualificationsApiCall);
+
 	const [modalData, setModalData] = useState(null);
 
 	const openModal = (cellData) => {
@@ -49,7 +52,7 @@ const AdminMatrixPage = () => {
 	return (
 		<div>
 			<h1><i className="fas fa-th-list"></i> Qualifikations-Matrix</h1>
-			<p>Klicken Sie auf eine Zelle, um die Teilnahme an einem Meeting zu bearbeiten. Die Kopfzeile und die Benutzerleiste bleiben beim Scrollen fixiert.</p>
+			<p>Klicken Sie auf eine Zelle, um die Teilnahme an einem Meeting zu bearbeiten oder den Gesamtstatus eines Kurses für einen Benutzer zu setzen. Die Kopfzeile und die Benutzerleiste bleiben beim Scrollen fixiert.</p>
 
 			<div className="table-wrapper">
 				<table className="data-table">
@@ -89,12 +92,21 @@ const AdminMatrixPage = () => {
 									const hasCompletedCourse = completionMap[`${user.id}-${course.id}`];
 									const meetings = uniqueMeetingsByCourse[course.id] || [];
 
+									const cellBaseData = {
+										userId: user.id,
+										userName: user.username,
+										courseId: course.id,
+										courseName: course.name,
+										qualification: allQualifications?.find(q => q.userId === user.id && q.courseId === course.id) || null
+									};
+
 									if (hasCompletedCourse) {
 										return (
 											<td
 												key={`${course.id}-completed`}
 												colSpan={meetings.length || 1}
-												style={{ backgroundColor: 'var(--success-color)', color: '#fff', textAlign: 'center', fontWeight: 'bold' }}
+												style={{ backgroundColor: 'var(--success-color)', color: '#fff', textAlign: 'center', fontWeight: 'bold', cursor: 'pointer' }}
+												onClick={() => openModal({ ...cellBaseData, meetingId: 0, meetingName: '' })}
 											>
 												Qualifiziert
 											</td>
@@ -102,7 +114,7 @@ const AdminMatrixPage = () => {
 									}
 
 									if (meetings.length === 0) {
-										return <td key={`${course.id}-empty`} style={{ textAlign: 'center' }}>-</td>;
+										return <td key={`${course.id}-empty`} style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => openModal({ ...cellBaseData, meetingId: 0, meetingName: '' })}>-</td>;
 									}
 
 									return meetings.map(meeting => {
@@ -110,10 +122,9 @@ const AdminMatrixPage = () => {
 										const attended = attendance ? attendance.attended : false;
 
 										const cellData = {
-											userId: user.id,
-											userName: user.username,
+											...cellBaseData,
 											meetingId: meeting.id,
-											meetingName: `${course.name} - ${meeting.name}`,
+											meetingName: meeting.name,
 											attended: attended,
 											remarks: attendance?.remarks || ''
 										};

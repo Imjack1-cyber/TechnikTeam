@@ -8,7 +8,7 @@ import TaskDependenciesForm from './TaskDependenciesForm';
 
 const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklistTemplates }) => {
 	const isEditMode = !!event;
-	const { users, courses, storageItems } = adminFormData;
+	const { users, courses, storageItems, venues } = adminFormData;
 	const [activeTab, setActiveTab] = useState('general');
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
@@ -152,7 +152,13 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklis
 						<div className="form-group"><label>Beginn</label><input type="datetime-local" name="eventDateTime" value={formData.eventDateTime} onChange={handleChange} required /></div>
 						<div className="form-group"><label>Ende</label><input type="datetime-local" name="endDateTime" value={formData.endDateTime} onChange={handleChange} /></div>
 					</div>
-					<div className="form-group"><label>Ort</label><input name="location" value={formData.location} onChange={handleChange} /></div>
+					<div className="form-group">
+						<label htmlFor="location">Ort</label>
+						<input list="venue-list" id="location" name="location" value={formData.location} onChange={handleChange} placeholder="z.B. Aula, Turnhalle..." />
+						<datalist id="venue-list">
+							{venues?.map(v => <option key={v.id} value={v.name} />)}
+						</datalist>
+					</div>
 					<div className="form-group"><label>Beschreibung</label><textarea name="description" value={formData.description} onChange={handleChange} rows="4"></textarea></div>
 				</div>
 

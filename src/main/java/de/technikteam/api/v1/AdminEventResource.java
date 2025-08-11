@@ -1,5 +1,6 @@
 package de.technikteam.api.v1;
 
+import de.technikteam.api.v1.dto.EventAssignmentDTO;
 import de.technikteam.api.v1.dto.EventUpdateRequest;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.model.ApiResponse;
@@ -12,6 +13,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import de.technikteam.security.SecurityUser;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -122,6 +125,19 @@ public class AdminEventResource {
 		} else {
 			return ResponseEntity.internalServerError()
 					.body(new ApiResponse(false, "Fehler beim Löschen der Veranstaltung.", null));
+		}
+	}
+
+	@PostMapping("/{eventId}/assignments")
+	@Operation(summary = "Update team assignments for an event", description = "Sets the entire team for an event, including their roles.")
+	public ResponseEntity<ApiResponse> updateAssignments(@PathVariable int eventId,
+			@RequestBody List<EventAssignmentDTO> assignments, @AuthenticationPrincipal SecurityUser securityUser) {
+		try {
+			eventService.updateTeamAssignmentsAndNotify(eventId, assignments, securityUser.getUser());
+			return ResponseEntity.ok(new ApiResponse(true, "Team-Zuweisungen erfolgreich aktualisiert.", null));
+		} catch (Exception e) {
+			return ResponseEntity.internalServerError()
+					.body(new ApiResponse(false, "Fehler beim Aktualisieren der Zuweisungen: " + e.getMessage(), null));
 		}
 	}
 

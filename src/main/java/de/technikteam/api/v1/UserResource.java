@@ -47,8 +47,13 @@ public class UserResource {
 
 	@GetMapping
 	@Operation(summary = "Get all users", description = "Retrieves a list of all users in the system.")
-	public ResponseEntity<ApiResponse> getAllUsers() {
-		List<User> users = userDAO.getAllUsers();
+	public ResponseEntity<ApiResponse> getAllUsers(@RequestParam(required = false) Integer eventId) {
+		List<User> users;
+		if (eventId != null) {
+			users = userDAO.getQualifiedAndAvailableUsersForEvent(eventId);
+		} else {
+			users = userDAO.getAllUsers();
+		}
 		return ResponseEntity.ok(new ApiResponse(true, "Users retrieved successfully", users));
 	}
 
@@ -101,11 +106,12 @@ public class UserResource {
 			@Parameter(description = "ID of the user to update") @PathVariable int id,
 			@Valid @RequestBody UserUpdateRequest updateRequest) {
 
-		User userToUpdate = userDAO.getUserById(id);
-		if (userToUpdate == null) {
+		User originalUser = userDAO.getUserById(id);
+		if (originalUser == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, "User not found.", null));
 		}
 
+		User userToUpdate = userDAO.getUserById(id);
 		userToUpdate.setUsername(updateRequest.username());
 		userToUpdate.setRoleId(updateRequest.roleId());
 		userToUpdate.setEmail(updateRequest.email());
@@ -116,9 +122,8 @@ public class UserResource {
 		String[] permissionIds = updateRequest.permissionIds().stream().map(String::valueOf).toArray(String[]::new);
 
 		if (userService.updateUserWithPermissions(userToUpdate, permissionIds)) {
-			adminLogService.log(getSystemUsername(), "UPDATE_USER_API",
-					"User '" + userToUpdate.getUsername() + "' (ID: " + id + ") updated via API.");
 			User refreshedUser = userDAO.getUserById(id);
+			adminLogService.logUserUpdate(getSystemUsername(), originalUser, refreshedUser);
 			return ResponseEntity.ok(new ApiResponse(true, "User updated successfully", refreshedUser));
 		} else {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -143,8 +148,7 @@ public class UserResource {
 		}
 
 		if (userDAO.deleteUser(id)) {
-			adminLogService.log(getSystemUsername(), "DELETE_USER_API",
-					"User '" + userToDelete.getUsername() + "' (ID: " + id + ") deleted via API.");
+			adminLogService.logUserDeletion(getSystemUsername(), userToDelete);
 			return ResponseEntity.ok(new ApiResponse(true, "User deleted successfully", Map.of("deletedUserId", id)));
 		} else {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

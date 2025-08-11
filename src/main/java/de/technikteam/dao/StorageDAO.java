@@ -46,6 +46,12 @@ public class StorageDAO {
 		if (DaoUtils.hasColumn(rs, "holder_username")) {
 			item.setCurrentHolderUsername(rs.getString("holder_username"));
 		}
+		if (DaoUtils.hasColumn(rs, "next_reservation_date") && rs.getTimestamp("next_reservation_date") != null) {
+			item.setNextReservationDate(rs.getTimestamp("next_reservation_date").toLocalDateTime());
+		}
+		if (DaoUtils.hasColumn(rs, "last_transaction_info")) {
+			item.setLastTransactionInfo(rs.getString("last_transaction_info"));
+		}
 		return item;
 	};
 
@@ -57,7 +63,10 @@ public class StorageDAO {
 	}
 
 	public List<StorageItem> getAllItems() {
-		String sql = "SELECT si.*, u.username as holder_username FROM storage_items si LEFT JOIN users u ON si.current_holder_user_id = u.id ORDER BY si.location, si.name";
+		String sql = "SELECT si.*, u.username as holder_username, "
+				+ "(SELECT MIN(e.event_datetime) FROM event_storage_reservations esr JOIN events e ON esr.event_id = e.id WHERE esr.item_id = si.id AND e.event_datetime > NOW()) as next_reservation_date, "
+				+ "(SELECT CONCAT(sl.quantity_change, ' von ', u_log.username, ' am ', DATE_FORMAT(sl.transaction_timestamp, '%d.%m.%Y')) FROM storage_log sl JOIN users u_log ON sl.user_id = u_log.id WHERE sl.item_id = si.id ORDER BY sl.transaction_timestamp DESC LIMIT 1) as last_transaction_info "
+				+ "FROM storage_items si LEFT JOIN users u ON si.current_holder_user_id = u.id ORDER BY si.location, si.name";
 		try {
 			return jdbcTemplate.query(sql, storageItemRowMapper);
 		} catch (Exception e) {
@@ -77,7 +86,9 @@ public class StorageDAO {
 	}
 
 	public StorageItem getItemById(int itemId) {
-		String sql = "SELECT si.*, u.username as holder_username FROM storage_items si LEFT JOIN users u ON si.current_holder_user_id = u.id WHERE si.id = ?";
+		String sql = "SELECT si.*, u.username as holder_username, "
+				+ "(SELECT MIN(e.event_datetime) FROM event_storage_reservations esr JOIN events e ON esr.event_id = e.id WHERE esr.item_id = si.id AND e.event_datetime > NOW()) as next_reservation_date "
+				+ "FROM storage_items si LEFT JOIN users u ON si.current_holder_user_id = u.id WHERE si.id = ?";
 		try {
 			return jdbcTemplate.queryForObject(sql, storageItemRowMapper, itemId);
 		} catch (EmptyResultDataAccessException e) {

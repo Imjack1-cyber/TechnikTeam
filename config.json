@@ -11,7 +11,20 @@
                                 "C:\\dev\\eclipse\\workspace\\TechnikTeam\\target"
                             ],
     "ExcludedFiles":  [
-
+                          "C:\\dev\\eclipse\\workspace\\TechnikTeam\\dependency-tree.txt",
+                          "C:\\dev\\eclipse\\workspace\\TechnikTeam\\combine_code_gui.ps1",
+                          "C:\\dev\\eclipse\\workspace\\TechnikTeam\\deploy_production.bat",
+                          "C:\\dev\\eclipse\\workspace\\TechnikTeam\\DEPLOYMENT.md",
+                          "C:\\dev\\eclipse\\workspace\\TechnikTeam\\ProjectTree.ps1",
+                          "C:\\dev\\eclipse\\workspace\\TechnikTeam\\run_combine_code_gui.txt",
+                          "C:\\dev\\eclipse\\workspace\\TechnikTeam\\start_development.bat",
+                          "C:\\dev\\eclipse\\workspace\\TechnikTeam\\technikteam.txt",
+                          "C:\\dev\\eclipse\\workspace\\TechnikTeam\\technikteam-1.txt",
+                          "C:\\dev\\eclipse\\workspace\\TechnikTeam\\technikteam-2.txt",
+                          "C:\\dev\\eclipse\\workspace\\TechnikTeam\\technikteam-3.txt",
+                          "C:\\dev\\eclipse\\workspace\\TechnikTeam\\technikteam-4.txt",
+                          "C:\\dev\\eclipse\\workspace\\TechnikTeam\\technikteam-5.txt",
+                          "C:\\dev\\eclipse\\workspace\\TechnikTeam\\src\\main\\resources\\Wiki.md"
                       ],
     "ExtensionFilterList":  [
                                 ".java",

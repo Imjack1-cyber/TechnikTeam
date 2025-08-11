@@ -7,9 +7,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
+import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.util.List;
+import java.util.Objects;
 
 @Repository
 public class CourseDAO {
@@ -30,13 +35,23 @@ public class CourseDAO {
 		return course;
 	};
 
-	public boolean createCourse(Course course) {
+	public Course createCourse(Course course) {
 		String sql = "INSERT INTO courses (name, abbreviation, description) VALUES (?, ?, ?)";
+		KeyHolder keyHolder = new GeneratedKeyHolder();
 		try {
-			return jdbcTemplate.update(sql, course.getName(), course.getAbbreviation(), course.getDescription()) > 0;
+			jdbcTemplate.update(connection -> {
+				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+				ps.setString(1, course.getName());
+				ps.setString(2, course.getAbbreviation());
+				ps.setString(3, course.getDescription());
+				return ps;
+			}, keyHolder);
+			int newId = Objects.requireNonNull(keyHolder.getKey()).intValue();
+			course.setId(newId);
+			return course;
 		} catch (Exception e) {
 			logger.error("Error creating course: {}", course.getName(), e);
-			return false;
+			return null;
 		}
 	}
 

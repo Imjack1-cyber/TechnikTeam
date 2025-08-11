@@ -1,8 +1,10 @@
 package de.technikteam.api.v1;
 
+import de.technikteam.dao.CourseDAO;
 import de.technikteam.dao.PermissionDAO;
 import de.technikteam.dao.RoleDAO;
 import de.technikteam.model.ApiResponse;
+import de.technikteam.model.Course;
 import de.technikteam.model.Permission;
 import de.technikteam.model.Role;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,21 +21,23 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/v1/users/form-data")
-@Tag(name = "Admin Users", description = "Endpoints for managing users.")
+@RequestMapping("/api/v1/form-data")
+@Tag(name = "Admin Form Data", description = "Endpoints for populating admin forms.")
 @SecurityRequirement(name = "bearerAuth")
 public class AdminFormDataResource {
 
 	private final RoleDAO roleDAO;
 	private final PermissionDAO permissionDAO;
+	private final CourseDAO courseDAO;
 
 	@Autowired
-	public AdminFormDataResource(RoleDAO roleDAO, PermissionDAO permissionDAO) {
+	public AdminFormDataResource(RoleDAO roleDAO, PermissionDAO permissionDAO, CourseDAO courseDAO) {
 		this.roleDAO = roleDAO;
 		this.permissionDAO = permissionDAO;
+		this.courseDAO = courseDAO;
 	}
 
-	@GetMapping
+	@GetMapping("/users")
 	@Operation(summary = "Get data for user forms", description = "Retrieves all roles and grouped permissions needed to populate admin forms for creating or editing users.")
 	public ResponseEntity<ApiResponse> getFormDataForUserForms() {
 		List<Role> roles = roleDAO.getAllRoles();
@@ -50,5 +54,13 @@ public class AdminFormDataResource {
 		Map<String, Object> formData = Map.of("roles", roles, "groupedPermissions", groupedPermissions);
 
 		return ResponseEntity.ok(new ApiResponse(true, "Formulardaten erfolgreich abgerufen.", formData));
+	}
+
+	@GetMapping("/achievements")
+	@Operation(summary = "Get data for achievement forms", description = "Retrieves all courses for use in achievement conditions.")
+	public ResponseEntity<ApiResponse> getFormDataForAchievementForms() {
+		List<Course> courses = courseDAO.getAllCourses();
+		return ResponseEntity.ok(new ApiResponse(true, "Formulardaten für Abzeichen erfolgreich abgerufen.",
+				Map.of("courses", courses)));
 	}
 }

@@ -64,6 +64,7 @@ public final class Permissions {
 	public static final String LOG_READ = "LOG_READ";
 	public static final String REPORT_READ = "REPORT_READ";
 	public static final String SYSTEM_READ = "SYSTEM_READ";
+	public static final String LOG_REVOKE = "LOG_REVOKE";
 
 	// --- ACHIEVEMENTS ---
 	public static final String ACHIEVEMENT_CREATE = "ACHIEVEMENT_CREATE";

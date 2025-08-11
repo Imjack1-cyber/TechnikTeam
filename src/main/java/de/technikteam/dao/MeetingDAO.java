@@ -38,6 +38,10 @@ public class MeetingDAO {
 		meeting.setLeaderUserId(rs.getInt("leader_user_id"));
 		meeting.setDescription(rs.getString("description"));
 		meeting.setLocation(rs.getString("location"));
+		meeting.setMaxParticipants(rs.getObject("max_participants", Integer.class));
+		if (rs.getTimestamp("signup_deadline") != null) {
+			meeting.setSignupDeadline(rs.getTimestamp("signup_deadline").toLocalDateTime());
+		}
 		meeting.setParentCourseName(rs.getString("parent_course_name"));
 		meeting.setLeaderUsername(rs.getString("leader_username"));
 		return meeting;
@@ -51,8 +55,7 @@ public class MeetingDAO {
 	};
 
 	public int createMeeting(Meeting meeting) {
-		// include parent_meeting_id if present
-		String sql = "INSERT INTO meetings (course_id, parent_meeting_id, name, meeting_datetime, end_datetime, leader_user_id, description, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+		String sql = "INSERT INTO meetings (course_id, parent_meeting_id, name, meeting_datetime, end_datetime, leader_user_id, description, location, max_participants, signup_deadline) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 		KeyHolder keyHolder = new GeneratedKeyHolder();
 		try {
 			jdbcTemplate.update(connection -> {
@@ -74,6 +77,16 @@ public class MeetingDAO {
 					ps.setNull(6, Types.INTEGER);
 				ps.setString(7, meeting.getDescription());
 				ps.setString(8, meeting.getLocation());
+				if (meeting.getMaxParticipants() != null) {
+					ps.setInt(9, meeting.getMaxParticipants());
+				} else {
+					ps.setNull(9, Types.INTEGER);
+				}
+				if (meeting.getSignupDeadline() != null) {
+					ps.setTimestamp(10, Timestamp.valueOf(meeting.getSignupDeadline()));
+				} else {
+					ps.setNull(10, Types.TIMESTAMP);
+				}
 				return ps;
 			}, keyHolder);
 			return Objects.requireNonNull(keyHolder.getKey()).intValue();
@@ -96,9 +109,14 @@ public class MeetingDAO {
 	}
 
 	public List<Meeting> getMeetingsForCourse(int courseId) {
-		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id WHERE m.course_id = ? ORDER BY meeting_datetime ASC";
+		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username, (SELECT COUNT(*) FROM meeting_attendance ma WHERE ma.meeting_id = m.id AND ma.attended = 1) as participant_count, (SELECT COUNT(*) FROM meeting_waitlist mw WHERE mw.meeting_id = m.id) as waitlist_count FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id WHERE m.course_id = ? ORDER BY meeting_datetime ASC";
 		try {
-			return jdbcTemplate.query(sql, meetingRowMapper, courseId);
+			return jdbcTemplate.query(sql, (rs, rowNum) -> {
+				Meeting meeting = meetingRowMapper.mapRow(rs, rowNum);
+				meeting.setParticipantCount(rs.getInt("participant_count"));
+				meeting.setWaitlistCount(rs.getInt("waitlist_count"));
+				return meeting;
+			}, courseId);
 		} catch (Exception e) {
 			logger.error("Error fetching meetings for course ID: {}", courseId, e);
 			return List.of();
@@ -106,12 +124,14 @@ public class MeetingDAO {
 	}
 
 	public boolean updateMeeting(Meeting meeting) {
-		String sql = "UPDATE meetings SET name = ?, meeting_datetime = ?, end_datetime = ?, leader_user_id = ?, description = ?, location = ?, parent_meeting_id = ? WHERE id = ?";
+		String sql = "UPDATE meetings SET name = ?, meeting_datetime = ?, end_datetime = ?, leader_user_id = ?, description = ?, location = ?, parent_meeting_id = ?, max_participants = ?, signup_deadline = ? WHERE id = ?";
 		try {
 			return jdbcTemplate.update(sql, meeting.getName(), Timestamp.valueOf(meeting.getMeetingDateTime()),
 					meeting.getEndDateTime() != null ? Timestamp.valueOf(meeting.getEndDateTime()) : null,
 					meeting.getLeaderUserId() > 0 ? meeting.getLeaderUserId() : null, meeting.getDescription(),
 					meeting.getLocation(), meeting.getParentMeetingId() > 0 ? meeting.getParentMeetingId() : null,
+					meeting.getMaxParticipants(),
+					meeting.getSignupDeadline() != null ? Timestamp.valueOf(meeting.getSignupDeadline()) : null,
 					meeting.getId()) > 0;
 		} catch (Exception e) {
 			logger.error("Error updating meeting ID: {}", meeting.getId(), e);
@@ -132,10 +152,11 @@ public class MeetingDAO {
 	}
 
 	public List<Meeting> getUpcomingMeetingsForUser(User user) {
-		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username, ma.attended FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id LEFT JOIN meeting_attendance ma ON m.id = ma.meeting_id AND ma.user_id = ? WHERE m.meeting_datetime >= NOW() ORDER BY m.meeting_datetime ASC";
+		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username, ma.attended, (SELECT COUNT(*) FROM meeting_attendance ma_count WHERE ma_count.meeting_id = m.id AND ma_count.attended = 1) as participant_count FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id LEFT JOIN meeting_attendance ma ON m.id = ma.meeting_id AND ma.user_id = ? WHERE m.meeting_datetime >= NOW() ORDER BY m.meeting_datetime ASC";
 		try {
 			return jdbcTemplate.query(sql, (rs, rowNum) -> {
 				Meeting meeting = meetingRowMapper.mapRow(rs, rowNum);
+				meeting.setParticipantCount(rs.getInt("participant_count"));
 				if (rs.getObject("attended") != null) {
 					meeting.setUserAttendanceStatus(rs.getBoolean("attended") ? "ANGEMELDET" : "ABGEMELDET");
 				} else {
@@ -181,13 +202,19 @@ public class MeetingDAO {
 		}
 	}
 
-	public List<User> getParticipantUsersForMeeting(int meetingId) {
-		String sql = "SELECT u.id, u.username FROM users u JOIN meeting_attendance ma ON u.id = ma.user_id WHERE ma.meeting_id = ? AND ma.attended = 1";
+	public List<User> getEnrolledUsersForMeeting(int meetingId) {
+		String sql = "SELECT u.id, u.username FROM users u JOIN meeting_attendance ma ON u.id = ma.user_id WHERE ma.meeting_id = ? AND ma.attended = 1 ORDER BY u.username";
 		try {
 			return jdbcTemplate.query(sql, userRowMapper, meetingId);
 		} catch (Exception e) {
 			logger.error("Error fetching participant users for meeting {}", meetingId, e);
 			return List.of();
 		}
+	}
+
+	public int getParticipantCount(int meetingId) {
+		String sql = "SELECT COUNT(*) FROM meeting_attendance WHERE meeting_id = ? AND attended = 1";
+		Integer count = jdbcTemplate.queryForObject(sql, Integer.class, meetingId);
+		return count != null ? count : 0;
 	}
 }

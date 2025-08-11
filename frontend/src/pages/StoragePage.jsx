@@ -7,11 +7,28 @@ import Lightbox from '../components/ui/Lightbox';
 import { useToast } from '../context/ToastContext';
 import CartModal from '../components/storage/CartModal';
 
+const AvailabilityBar = ({ available, max }) => {
+	if (max === 0) {
+		return <div title={`Verfügbar: ${available}`} style={{ height: '8px', background: 'var(--success-color)', borderRadius: '4px' }} />;
+	}
+	const percentage = Math.max(0, (available / max) * 100);
+	let color = 'var(--success-color)';
+	if (percentage <= 25) color = 'var(--danger-color)';
+	else if (percentage <= 50) color = 'var(--warning-color)';
+
+	return (
+		<div style={{ height: '8px', background: 'var(--bg-color)', borderRadius: '4px', overflow: 'hidden' }}>
+			<div style={{ width: `${percentage}%`, height: '100%', background: color, transition: 'width 0.3s' }} />
+		</div>
+	);
+};
+
 const StoragePage = () => {
 	const apiCall = useCallback(() => apiClient.get('/public/storage'), []);
 	const { data, loading, error, reload } = useApi(apiCall);
 	const [isCartModalOpen, setIsCartModalOpen] = useState(false);
 	const [cart, setCart] = useState([]);
+	const [quickAddQuantities, setQuickAddQuantities] = useState({});
 	const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 	const [lightboxSrc, setLightboxSrc] = useState('');
 	const [transactionError, setTransactionError] = useState('');
@@ -22,6 +39,7 @@ const StoragePage = () => {
 	const [searchTerm, setSearchTerm] = useState('');
 	const [categoryFilter, setCategoryFilter] = useState('');
 	const [statusFilter, setStatusFilter] = useState('');
+	const [showOnlyAvailable, setShowOnlyAvailable] = useState(false);
 
 	const handleAddToCart = (item, type) => {
 		const existingItem = cart.find(cartItem => cartItem.id === item.id && cartItem.type === type);
@@ -29,14 +47,11 @@ const StoragePage = () => {
 			addToast(`${item.name} ist bereits im Warenkorb für diese Aktion.`, 'info');
 			return;
 		}
-		// Add the original item properties to the cart item for later reference
-		setCart(prevCart => [...prevCart, {
-			...item,
-			cartQuantity: 1, // Use a different name to avoid confusion with total quantity
-			type
-		}]);
-		addToast(`${item.name} zum Warenkorb hinzugefügt.`, 'success');
+		const quantity = quickAddQuantities[item.id] || 1;
+		setCart(prevCart => [...prevCart, { ...item, cartQuantity: quantity, type }]);
+		addToast(`${item.name} (${quantity}x) zum Warenkorb hinzugefügt.`, 'success');
 	};
+
 
 	const handleUpdateCartItemQuantity = (itemId, type, newQuantity) => {
 		setCart(prevCart => prevCart.map(cartItem => {
@@ -143,6 +158,7 @@ const StoragePage = () => {
 		const lowerCaseSearchTerm = searchTerm.toLowerCase();
 
 		const filteredItems = allItems.filter(item => {
+			if (showOnlyAvailable && item.availableQuantity === 0) return false;
 			const matchesSearch = item.name.toLowerCase().includes(lowerCaseSearchTerm) || (item.location && item.location.toLowerCase().includes(lowerCaseSearchTerm));
 			const matchesCategory = !categoryFilter || item.category === categoryFilter;
 			const matchesStatus = !statusFilter || (statusFilter === 'LOW_STOCK' && (item.maxQuantity > 0 && item.availableQuantity / item.maxQuantity <= 0.25)) || item.status === statusFilter;
@@ -159,7 +175,7 @@ const StoragePage = () => {
 			return acc;
 		}, {});
 
-	}, [data, searchTerm, categoryFilter, statusFilter, allItems]);
+	}, [data, searchTerm, categoryFilter, statusFilter, allItems, showOnlyAvailable]);
 
 
 	if (loading) return <div>Lade Lagerdaten...</div>;
@@ -173,10 +189,9 @@ const StoragePage = () => {
 				<table className="data-table">
 					<thead>
 						<tr>
-							<th>Gerät</th>
-							<th>Kategorie</th>
+							<th style={{ width: '40%' }}>Gerät</th>
 							<th>Bestand</th>
-							<th>Aktion</th>
+							<th style={{ width: '30%' }}>Aktion</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -189,15 +204,21 @@ const StoragePage = () => {
 											<i className="fas fa-camera"></i>
 										</button>
 									)}
+									{item.nextReservationDate && (
+										<i className="fas fa-calendar-alt" style={{ marginLeft: '0.5rem', color: 'var(--primary-color)' }} title={`Nächste Reservierung am ${new Date(item.nextReservationDate).toLocaleDateString('de-DE')}`}></i>
+									)}
+									<div style={{ marginTop: '0.25rem' }}>
+										<AvailabilityBar available={item.availableQuantity} max={item.maxQuantity} />
+									</div>
 								</td>
-								<td>{item.category || '-'}</td>
 								<td>
 									<span>{item.availableQuantity} / {item.maxQuantity}</span>
 									{item.defectiveQuantity > 0 && <span className="text-danger"> ({item.defectiveQuantity} defekt)</span>}
 								</td>
-								<td style={{ display: 'flex', gap: '0.5rem' }}>
-									<button className="btn btn-small btn-danger-outline" onClick={() => handleAddToCart(item, 'checkout')} disabled={item.availableQuantity <= 0}>Entnehmen</button>
-									<button className="btn btn-small btn-success" onClick={() => handleAddToCart(item, 'checkin')}>Einräumen</button>
+								<td style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+									<input type="number" defaultValue="1" min="1" max={item.availableQuantity} onChange={e => setQuickAddQuantities(prev => ({ ...prev, [item.id]: parseInt(e.target.value, 10) || 1 }))} style={{ width: '60px', textAlign: 'center' }} className="form-group" />
+									<button className="btn btn-small btn-danger-outline" onClick={() => handleAddToCart(item, 'checkout')} disabled={item.availableQuantity <= 0}><i className="fas fa-minus"></i> Entnehmen</button>
+									<button className="btn btn-small btn-success" onClick={() => handleAddToCart(item, 'checkin')}><i className="fas fa-plus"></i> Einräumen</button>
 								</td>
 							</tr>
 						))}
@@ -214,12 +235,16 @@ const StoragePage = () => {
 									<i className="fas fa-camera"></i>
 								</button>
 							)}
+							{item.nextReservationDate && (
+								<i className="fas fa-calendar-alt" style={{ marginLeft: '0.5rem', color: 'var(--primary-color)' }} title={`Nächste Reservierung am ${new Date(item.nextReservationDate).toLocaleDateString('de-DE')}`}></i>
+							)}
 						</h3>
-						<div className="card-row"><strong>Kategorie:</strong> <span>{item.category || '-'}</span></div>
+						<AvailabilityBar available={item.availableQuantity} max={item.maxQuantity} />
 						<div className="card-row"><strong>Bestand:</strong> <span>{item.availableQuantity} / {item.maxQuantity}{item.defectiveQuantity > 0 && <span className="text-danger"> ({item.defectiveQuantity} def.)</span>}</span></div>
-						<div className="card-actions">
-							<button className="btn btn-small btn-danger-outline" onClick={() => handleAddToCart(item, 'checkout')} disabled={item.availableQuantity <= 0}>Entnehmen</button>
-							<button className="btn btn-small btn-success" onClick={() => handleAddToCart(item, 'checkin')}>Einräumen</button>
+						<div className="card-actions" style={{ alignItems: 'center' }}>
+							<input type="number" defaultValue="1" min="1" max={item.availableQuantity} onChange={e => setQuickAddQuantities(prev => ({ ...prev, [item.id]: parseInt(e.target.value, 10) || 1 }))} style={{ width: '60px', textAlign: 'center' }} className="form-group" />
+							<button className="btn btn-small btn-danger-outline" onClick={() => handleAddToCart(item, 'checkout')} disabled={item.availableQuantity <= 0}><i className="fas fa-minus"></i></button>
+							<button className="btn btn-small btn-success" onClick={() => handleAddToCart(item, 'checkin')}><i className="fas fa-plus"></i></button>
 						</div>
 					</div>
 				))}
@@ -229,12 +254,10 @@ const StoragePage = () => {
 
 	return (
 		<>
-			{cart.length > 0 && (
-				<button className="cart-fab" onClick={() => setIsCartModalOpen(true)}>
-					<i className="fas fa-shopping-cart"></i>
-					<span className="cart-badge">{cart.length}</span>
-				</button>
-			)}
+			<button className="cart-fab" onClick={() => setIsCartModalOpen(true)} style={{ opacity: cart.length > 0 ? 1 : 0.5 }}>
+				<i className="fas fa-shopping-cart"></i>
+				<span className="cart-badge">{cart.length}</span>
+			</button>
 
 			<h1><i className="fas fa-boxes"></i> Lagerübersicht</h1>
 			<p>Hier finden Sie eine Übersicht aller erfassten Artikel im Lager. Klicken Sie auf einen Artikelnamen für Details und Verlauf.</p>
@@ -260,6 +283,12 @@ const StoragePage = () => {
 							<option value="CHECKED_OUT">Entnommen</option>
 							<option value="LOW_STOCK">Niedriger Bestand</option>
 						</select>
+					</div>
+					<div className="form-group" style={{ alignSelf: 'flex-end' }}>
+						<label>
+							<input type="checkbox" checked={showOnlyAvailable} onChange={e => setShowOnlyAvailable(e.target.checked)} />
+							Nur verfügbare anzeigen
+						</label>
 					</div>
 				</div>
 			</div>

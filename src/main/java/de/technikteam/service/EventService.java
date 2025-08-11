@@ -1,6 +1,7 @@
 package de.technikteam.service;
 
 import com.google.gson.Gson;
+import de.technikteam.api.v1.dto.EventAssignmentDTO;
 import de.technikteam.dao.*;
 import de.technikteam.model.*;
 import org.apache.logging.log4j.LogManager;
@@ -112,19 +113,31 @@ public class EventService {
 		return eventId;
 	}
 
-	public void assignUsersToEventAndNotify(int eventId, String[] userIds, User adminUser) {
-		eventDAO.assignUsersToEvent(eventId, userIds);
+	@Transactional
+	public void updateTeamAssignmentsAndNotify(int eventId, List<EventAssignmentDTO> newAssignments, User adminUser) {
 		Event event = eventDAO.getEventById(eventId);
-		String logDetails = String.format("Benutzer %s zu Event '%s' zugewiesen.", Arrays.toString(userIds),
-				event.getName());
-		adminLogService.log(adminUser.getUsername(), "ASSIGN_USERS_EVENT", logDetails);
+		if (event == null) {
+			throw new IllegalArgumentException("Event not found.");
+		}
 
-		for (String userIdStr : userIds) {
-			int userId = Integer.parseInt(userIdStr);
-			String notificationMessage = String.format("Du wurdest zum Event '%s' zugewiesen.", event.getName());
-			Map<String, Object> payload = Map.of("type", "assignment", "title", "Neue Zuweisung", "description",
-					notificationMessage, "level", "Important", "url", "/veranstaltungen/details/" + eventId);
-			notificationService.sendNotificationToUser(userId, payload);
+		List<User> oldAssignees = event.getAssignedAttendees();
+		List<Integer> oldAssigneeIds = oldAssignees.stream().map(User::getId).collect(Collectors.toList());
+		List<Integer> newAssigneeIds = newAssignments.stream().map(EventAssignmentDTO::userId)
+				.collect(Collectors.toList());
+
+		eventDAO.updateTeamAssignments(eventId, newAssignments);
+
+		String logDetails = String.format("Team for event '%s' (ID: %d) updated.", event.getName(), eventId);
+		adminLogService.log(adminUser.getUsername(), "UPDATE_TEAM_ASSIGNMENTS", logDetails);
+
+		// Notify newly added users
+		for (Integer newUserId : newAssigneeIds) {
+			if (!oldAssigneeIds.contains(newUserId)) {
+				String notificationMessage = String.format("Du wurdest zum Event '%s' zugewiesen.", event.getName());
+				Map<String, Object> payload = Map.of("title", "Neue Zuweisung", "description", notificationMessage,
+						"level", "Informational", "url", "/veranstaltungen/details/" + eventId);
+				notificationService.sendNotificationToUser(newUserId, payload);
+			}
 		}
 	}
 

@@ -139,8 +139,26 @@ const AdminUsersPage = () => {
 	};
 
 	const copyToClipboard = () => {
-		navigator.clipboard.writeText(resetPasswordInfo.password);
-		addToast('Passwort in die Zwischenablage kopiert.', 'info');
+		if (navigator.clipboard && window.isSecureContext) {
+			// Modern, secure way
+			navigator.clipboard.writeText(resetPasswordInfo.password)
+				.then(() => addToast('Passwort in die Zwischenablage kopiert.', 'info'))
+				.catch(err => addToast('Kopieren fehlgeschlagen.', 'error'));
+		} else {
+			// Fallback for insecure contexts (like HTTP) or older browsers
+			const textArea = document.createElement("textarea");
+			textArea.value = resetPasswordInfo.password;
+			document.body.appendChild(textArea);
+			textArea.focus();
+			textArea.select();
+			try {
+				document.execCommand('copy');
+				addToast('Passwort in die Zwischenablage kopiert.', 'info');
+			} catch (err) {
+				addToast('Kopieren fehlgeschlagen.', 'error');
+			}
+			document.body.removeChild(textArea);
+		}
 	};
 
 	return (

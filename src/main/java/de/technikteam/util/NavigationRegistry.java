@@ -32,20 +32,20 @@ public final class NavigationRegistry {
 		ALL_ITEMS.add(new NavigationItem("Feedback", "/feedback", "fa-lightbulb", null));
 		ALL_ITEMS.add(new NavigationItem("Changelogs", "/changelogs", "fa-history", null));
 
-		// Admin Section
+		// Admin Section - CONSOLIDATED
 		ALL_ITEMS.add(new NavigationItem("Admin Dashboard", "/admin/dashboard", "fa-tachometer-alt",
 				Permissions.ADMIN_DASHBOARD_ACCESS));
-		ALL_ITEMS.add(new NavigationItem("Benutzer", "/admin/mitglieder", "fa-users-cog", Permissions.USER_READ));
-		ALL_ITEMS.add(
-				new NavigationItem("Events", "/admin/veranstaltungen", "fa-calendar-plus", Permissions.EVENT_READ));
-		ALL_ITEMS.add(new NavigationItem("Lager", "/admin/lager", "fa-warehouse", Permissions.STORAGE_READ));
+		ALL_ITEMS.add(new NavigationItem("Benutzer & Anträge", "/admin/mitglieder", "fa-user-friends",
+				Permissions.USER_READ));
+		ALL_ITEMS.add(new NavigationItem("Event Management", "/admin/veranstaltungen", "fa-calendar-alt",
+				Permissions.EVENT_READ));
+		ALL_ITEMS.add(new NavigationItem("Lager & Material", "/admin/lager", "fa-warehouse", Permissions.STORAGE_READ));
 		ALL_ITEMS
 				.add(new NavigationItem("Lehrgänge & Skills", "/admin/lehrgaenge", "fa-book", Permissions.COURSE_READ));
-		ALL_ITEMS.add(new NavigationItem("Inhalte & System", "/admin/content", "fa-desktop", Permissions.FILE_MANAGE));
-		ALL_ITEMS.add(new NavigationItem("Berichte & Logs", "/admin/reports", "fa-chart-pie", Permissions.REPORT_READ));
 		ALL_ITEMS.add(
-				new NavigationItem("Technische Wiki", "/admin/wiki", "fa-book-reader", Permissions.ACCESS_ADMIN_PANEL));
-		ALL_ITEMS.add(new NavigationItem("API Docs", "/swagger-ui.html", "fa-code", Permissions.ACCESS_ADMIN_PANEL));
+				new NavigationItem("Inhalte & Kommunikation", "/admin/content", "fa-desktop", Permissions.FILE_MANAGE));
+		ALL_ITEMS.add(new NavigationItem("Berichte", "/admin/reports", "fa-chart-line", Permissions.REPORT_READ));
+		ALL_ITEMS.add(new NavigationItem("System & Entwicklung", "/admin/system", "fa-cogs", Permissions.SYSTEM_READ));
 	}
 
 	private NavigationRegistry() {

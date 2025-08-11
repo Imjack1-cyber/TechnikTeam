@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
 	const wsTarget = backendTarget.replace(/^http/, 'ws');
 
 	return {
+		base: '/', // Ensure asset paths are absolute from the domain root
 		plugins: [
 			react(),
 			VitePWA({
@@ -45,20 +46,12 @@ export default defineConfig(({ mode }) => {
 					target: backendTarget,
 					changeOrigin: true,
 					secure: false,
-					rewrite: (path) => path.replace(/^\/api/, '/TechnikTeam/api'),
 				},
 				// Proxy all WebSocket connections to the Spring Boot backend
 				'/ws': {
 					target: wsTarget,
 					ws: true,
-					rewrite: (path) => path.replace(/^\/ws/, '/TechnikTeam/ws'),
 				},
-				// Proxy direct access to backend resources like Swagger UI
-				'/TechnikTeam': {
-					target: backendTarget,
-					changeOrigin: true,
-					secure: false,
-				}
 			},
 		},
 		resolve: {

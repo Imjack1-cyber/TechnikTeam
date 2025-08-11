@@ -56,3 +56,8 @@ Thumbs.db
 start_development.bat
 DEPLOYMENT.md
 deploy_production.bat
+flyway-dev.conf
+flyway-prod.conf
+config.json
+Caddyfile
+deploy_production.txt

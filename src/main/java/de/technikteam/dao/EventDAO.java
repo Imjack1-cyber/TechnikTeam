@@ -1,5 +1,6 @@
 package de.technikteam.dao;
 
+import de.technikteam.api.v1.dto.EventAssignmentDTO;
 import de.technikteam.model.Event;
 import de.technikteam.model.SkillRequirement;
 import de.technikteam.model.StorageItem;
@@ -14,6 +15,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -54,8 +56,12 @@ public class EventDAO {
 		return event;
 	};
 
-	private final RowMapper<User> simpleUserRowMapper = (rs, rowNum) -> new User(rs.getInt("id"),
-			rs.getString("username"), rs.getString("role"));
+	private final RowMapper<User> simpleUserRowMapper = (rs, rowNum) -> {
+		User user = new User(rs.getInt("id"), rs.getString("username"), rs.getString("role"));
+		user.setAssignedEventRole(rs.getString("assigned_event_role"));
+		user.setAssignedEventRoleId(rs.getObject("assigned_event_role_id", Integer.class));
+		return user;
+	};
 
 	public List<Event> getUpcomingEventsForUser(User user) {
 		String sql = "SELECT e.*, u_leader.username AS leader_username, " + "COALESCE("
@@ -230,18 +236,25 @@ public class EventDAO {
 		}
 	}
 
-	public void assignUsersToEvent(int eventId, String[] userIds) {
+	@Transactional
+	public void updateTeamAssignments(int eventId, List<EventAssignmentDTO> assignments) {
 		try {
 			jdbcTemplate.update("DELETE FROM event_assignments WHERE event_id = ?", eventId);
-			if (userIds != null && userIds.length > 0) {
-				String insertSql = "INSERT INTO event_assignments (event_id, user_id) VALUES (?, ?)";
-				jdbcTemplate.batchUpdate(insertSql, List.of(userIds), 100, (ps, userId) -> {
+			if (assignments != null && !assignments.isEmpty()) {
+				String insertSql = "INSERT INTO event_assignments (event_id, user_id, role_id) VALUES (?, ?, ?)";
+				jdbcTemplate.batchUpdate(insertSql, assignments, 100, (ps, assignment) -> {
 					ps.setInt(1, eventId);
-					ps.setInt(2, Integer.parseInt(userId));
+					ps.setInt(2, assignment.userId());
+					if (assignment.roleId() != null) {
+						ps.setInt(3, assignment.roleId());
+					} else {
+						ps.setNull(3, Types.INTEGER);
+					}
 				});
 			}
 		} catch (Exception e) {
-			logger.error("Error during user assignment for event ID: {}.", eventId, e);
+			logger.error("Error during team assignment for event ID: {}.", eventId, e);
+			throw new RuntimeException(e); // Propagate to trigger rollback
 		}
 	}
 
@@ -352,7 +365,7 @@ public class EventDAO {
 	}
 
 	public List<User> getAssignedUsersForEvent(int eventId) {
-		String sql = "SELECT u.id, u.username, r.role_name AS role FROM users u JOIN event_assignments ea ON u.id = ea.user_id LEFT JOIN roles r ON u.role_id = r.id WHERE ea.event_id = ?";
+		String sql = "SELECT u.id, u.username, r.role_name AS role, er.name as assigned_event_role, er.id as assigned_event_role_id FROM users u JOIN event_assignments ea ON u.id = ea.user_id LEFT JOIN roles r ON u.role_id = r.id LEFT JOIN event_roles er ON ea.role_id = er.id WHERE ea.event_id = ? AND u.is_deleted = FALSE ORDER BY er.name, u.username";
 		try {
 			return jdbcTemplate.query(sql, simpleUserRowMapper, eventId);
 		} catch (Exception e) {

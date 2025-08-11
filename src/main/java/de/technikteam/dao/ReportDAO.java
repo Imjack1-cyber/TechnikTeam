@@ -73,7 +73,7 @@ public class ReportDAO {
 	public List<Map<String, Object>> getEventCountByMonth(int months) {
 		String sql = "SELECT DATE_FORMAT(event_datetime, '%Y-%m') AS month, COUNT(*) AS count " + "FROM events "
 				+ "WHERE event_datetime >= DATE_SUB(NOW(), INTERVAL ? MONTH) "
-				+ "GROUP BY YEAR(event_datetime), MONTH(event_datetime) " + "ORDER BY month ASC";
+				+ "GROUP BY month, YEAR(event_datetime), MONTH(event_datetime) " + "ORDER BY month ASC";
 		try {
 			return jdbcTemplate.query(sql, new ColumnMapRowMapper(), months);
 		} catch (Exception e) {

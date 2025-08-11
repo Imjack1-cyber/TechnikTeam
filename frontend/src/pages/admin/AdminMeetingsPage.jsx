@@ -6,6 +6,52 @@ import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import RepeatMeetingModal from '../../components/admin/meetings/RepeatMeetingModal';
 
+const ParticipantsModal = ({ isOpen, onClose, meeting, onPromote }) => {
+	const participantsApiCall = useCallback(() => apiClient.get(`/admin/meetings/${meeting.id}/participants`), [meeting.id]);
+	const waitlistApiCall = useCallback(() => apiClient.get(`/admin/meetings/${meeting.id}/waitlist`), [meeting.id]);
+	const { data: participantsData, loading: pLoading, error: pError } = useApi(participantsApiCall);
+	const { data: waitlistData, loading: wLoading, error: wError, reload: reloadWaitlist } = useApi(waitlistApiCall);
+
+	const [isPromoting, setIsPromoting] = useState(false);
+
+	const handlePromote = async (userId) => {
+		setIsPromoting(true);
+		await onPromote(userId);
+		reloadWaitlist();
+		setIsPromoting(false);
+	};
+
+	return (
+		<Modal isOpen={isOpen} onClose={onClose} title={`Teilnehmer & Warteliste: ${meeting.name}`}>
+			<div className="responsive-dashboard-grid">
+				<div>
+					<h4>Teilnehmer ({participantsData?.length || 0} / {meeting.maxParticipants || '∞'})</h4>
+					{pLoading && <p>Lade Teilnehmer...</p>}
+					{pError && <p className="error-message">{pError}</p>}
+					<ul className="details-list">
+						{participantsData?.map(user => <li key={user.id}>{user.username}</li>)}
+					</ul>
+				</div>
+				<div>
+					<h4>Warteliste ({waitlistData?.waitlist?.length || 0})</h4>
+					{wLoading && <p>Lade Warteliste...</p>}
+					{wError && <p className="error-message">{wError}</p>}
+					<ul className="details-list">
+						{waitlistData?.waitlist?.map(user => (
+							<li key={user.id}>
+								<span>{user.username}</span>
+								<button onClick={() => handlePromote(user.id)} className="btn btn-small btn-success" disabled={isPromoting}>
+									Befördern
+								</button>
+							</li>
+						))}
+					</ul>
+				</div>
+			</div>
+		</Modal>
+	);
+};
+
 const AdminMeetingsPage = () => {
 	const { courseId } = useParams();
 	const meetingsApiCall = useCallback(() => apiClient.get(`/meetings?courseId=${courseId}`), [courseId]);
@@ -20,6 +66,7 @@ const AdminMeetingsPage = () => {
 	const [formError, setFormError] = useState('');
 	const [isRepeatModalOpen, setIsRepeatModalOpen] = useState(false);
 	const [repeatingMeeting, setRepeatingMeeting] = useState(null);
+	const [viewingParticipantsMeeting, setViewingParticipantsMeeting] = useState(null);
 
 	const courseName = meetingsData?.[0]?.parentCourseName || 'Lehrgang';
 
@@ -49,6 +96,20 @@ const AdminMeetingsPage = () => {
 		setRepeatingMeeting(null);
 	};
 
+	const handlePromoteUser = async (userId) => {
+		try {
+			const result = await apiClient.post(`/admin/meetings/${viewingParticipantsMeeting.id}/promote`, { userId });
+			if (result.success) {
+				addToast('Benutzer erfolgreich zur Teilnahme hinzugefügt.', 'success');
+				// Let the modal reload its own data
+			} else {
+				throw new Error(result.message);
+			}
+		} catch (err) {
+			addToast(err.message, 'error');
+		}
+	};
+
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
@@ -58,7 +119,9 @@ const AdminMeetingsPage = () => {
 		const payload = {
 			...data,
 			courseId: parseInt(courseId),
-			leaderUserId: data.leaderUserId ? parseInt(data.leaderUserId) : null
+			leaderUserId: data.leaderUserId ? parseInt(data.leaderUserId) : null,
+			maxParticipants: data.maxParticipants ? parseInt(data.maxParticipants) : null,
+			signupDeadline: data.signupDeadline || null
 		};
 
 		try {
@@ -113,7 +176,7 @@ const AdminMeetingsPage = () => {
 						<tr>
 							<th>Meeting-Name</th>
 							<th>Datum & Uhrzeit</th>
-							<th>Leitung</th>
+							<th>Teilnehmer</th>
 							<th>Aktionen</th>
 						</tr>
 					</thead>
@@ -122,9 +185,16 @@ const AdminMeetingsPage = () => {
 						{error && <tr><td colSpan="4" className="error-message">{error}</td></tr>}
 						{meetingsData?.map(meeting => (
 							<tr key={meeting.id}>
-								<td><Link to={`/lehrgaenge/details/${meeting.id}`}>{meeting.name}</Link></td>
+								<td>
+									<Link to={`/lehrgaenge/details/${meeting.id}`}>{meeting.name}</Link>
+									{meeting.parentMeetingId > 0 && <i className="fas fa-redo-alt" style={{ marginLeft: '0.5rem', color: 'var(--text-muted-color)' }} title={`Wiederholung von Termin ID ${meeting.parentMeetingId}`}></i>}
+								</td>
 								<td>{new Date(meeting.meetingDateTime).toLocaleString('de-DE')}</td>
-								<td>{meeting.leaderUsername || 'N/A'}</td>
+								<td>
+									<button onClick={() => setViewingParticipantsMeeting(meeting)} className="btn btn-small btn-info">
+										{meeting.participantCount || 0} / {meeting.maxParticipants || '∞'} (+{meeting.waitlistCount || 0})
+									</button>
+								</td>
 								<td style={{ display: 'flex', gap: '0.5rem' }}>
 									<button onClick={() => handleOpenEditModal(meeting)} className="btn btn-small">Bearbeiten</button>
 									<button onClick={() => handleOpenRepeatModal(meeting)} className="btn btn-small btn-secondary">Wiederholen</button>
@@ -134,23 +204,6 @@ const AdminMeetingsPage = () => {
 						))}
 					</tbody>
 				</table>
-			</div>
-
-			<div className="mobile-card-list">
-				{loading && <p>Lade Meetings...</p>}
-				{error && <p className="error-message">{error}</p>}
-				{meetingsData?.map(meeting => (
-					<div className="list-item-card" key={meeting.id}>
-						<h3 className="card-title"><Link to={`/lehrgaenge/details/${meeting.id}`}>{meeting.name}</Link></h3>
-						<div className="card-row"><strong>Datum:</strong> <span>{new Date(meeting.meetingDateTime).toLocaleString('de-DE')}</span></div>
-						<div className="card-row"><strong>Leitung:</strong> <span>{meeting.leaderUsername || 'N/A'}</span></div>
-						<div className="card-actions">
-							<button onClick={() => handleOpenEditModal(meeting)} className="btn btn-small">Bearbeiten</button>
-							<button onClick={() => handleOpenRepeatModal(meeting)} className="btn btn-small btn-secondary">Wiederholen</button>
-							<button onClick={() => handleDelete(meeting)} className="btn btn-small btn-danger">Löschen</button>
-						</div>
-					</div>
-				))}
 			</div>
 
 			{isModalOpen && (
@@ -182,6 +235,16 @@ const AdminMeetingsPage = () => {
 								{allUsers?.map(user => <option key={user.id} value={user.id}>{user.username}</option>)}
 							</select>
 						</div>
+						<div className="responsive-dashboard-grid">
+							<div className="form-group">
+								<label htmlFor="maxParticipants-modal">Max. Teilnehmer</label>
+								<input type="number" id="maxParticipants-modal" name="maxParticipants" defaultValue={editingMeeting?.maxParticipants} min="1" placeholder="Unbegrenzt" />
+							</div>
+							<div className="form-group">
+								<label htmlFor="signupDeadline-modal">Anmeldefrist (optional)</label>
+								<input type="datetime-local" id="signupDeadline-modal" name="signupDeadline" defaultValue={editingMeeting?.signupDeadline ? editingMeeting.signupDeadline.substring(0, 16) : ''} />
+							</div>
+						</div>
 						<div className="form-group">
 							<label htmlFor="description-modal">Beschreibung</label>
 							<textarea id="description-modal" name="description" defaultValue={editingMeeting?.description} rows="3"></textarea>
@@ -196,6 +259,14 @@ const AdminMeetingsPage = () => {
 					onClose={handleCloseRepeatModal}
 					onSuccess={() => { handleCloseRepeatModal(); reload(); }}
 					meeting={repeatingMeeting}
+				/>
+			)}
+			{viewingParticipantsMeeting && (
+				<ParticipantsModal
+					isOpen={!!viewingParticipantsMeeting}
+					onClose={() => setViewingParticipantsMeeting(null)}
+					meeting={viewingParticipantsMeeting}
+					onPromote={handlePromoteUser}
 				/>
 			)}
 		</div>

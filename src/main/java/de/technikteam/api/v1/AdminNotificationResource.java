@@ -1,23 +1,27 @@
 package de.technikteam.api.v1;
 
 import de.technikteam.api.v1.dto.NotificationRequest;
-import de.technikteam.config.Permissions;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
+import de.technikteam.service.AuthService;
 import de.technikteam.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -28,16 +32,12 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class AdminNotificationResource {
 
 	private final NotificationService notificationService;
+	private final AuthService authService;
 
 	@Autowired
-	public AdminNotificationResource(NotificationService notificationService) {
+	public AdminNotificationResource(NotificationService notificationService, AuthService authService) {
 		this.notificationService = notificationService;
-	}
-
-	@GetMapping("/sse")
-	@Operation(summary = "Subscribe to SSE notifications", description = "Establishes a Server-Sent Events connection for real-time notifications.")
-	public SseEmitter handleSse(@AuthenticationPrincipal SecurityUser securityUser) {
-		return notificationService.register(securityUser.getUser());
+		this.authService = authService;
 	}
 
 	@PostMapping

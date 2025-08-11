@@ -112,6 +112,28 @@ public class EventFeedbackDAO {
 		}
 	}
 
+	public List<FeedbackResponse> getResponsesForEvent(int eventId) {
+		String sql = "SELECT fr.*, u.username FROM feedback_responses fr " + "JOIN users u ON fr.user_id = u.id "
+				+ "JOIN feedback_forms ff ON fr.form_id = ff.id "
+				+ "WHERE ff.event_id = ? ORDER BY fr.submitted_at DESC";
+		try {
+			return jdbcTemplate.query(sql, (rs, rowNum) -> {
+				FeedbackResponse response = new FeedbackResponse();
+				response.setId(rs.getInt("id"));
+				response.setFormId(rs.getInt("form_id"));
+				response.setUserId(rs.getInt("user_id"));
+				response.setUsername(rs.getString("username"));
+				response.setRating(rs.getInt("rating"));
+				response.setComments(rs.getString("comments"));
+				response.setSubmittedAt(rs.getTimestamp("submitted_at").toLocalDateTime());
+				return response;
+			}, eventId);
+		} catch (Exception e) {
+			logger.error("Error fetching responses for event ID {}", eventId, e);
+			return List.of();
+		}
+	}
+
 	public boolean hasUserSubmittedFeedback(int formId, int userId) {
 		String sql = "SELECT COUNT(*) FROM feedback_responses WHERE form_id = ? AND user_id = ?";
 		try {

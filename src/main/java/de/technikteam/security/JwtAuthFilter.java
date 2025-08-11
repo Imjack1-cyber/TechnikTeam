@@ -42,8 +42,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 	protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
 			@NonNull FilterChain filterChain) throws ServletException, IOException {
 
-		// 1. Try to get token from Authorization header (for mobile clients)
 		String token = null;
+
+		// 1. Try to get token from Authorization header (for mobile clients)
 		final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 		if (authHeader != null && authHeader.startsWith("Bearer ")) {
 			token = authHeader.substring(7);
@@ -54,6 +55,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 			token = Arrays.stream(request.getCookies())
 					.filter(cookie -> AuthService.AUTH_COOKIE_NAME.equals(cookie.getName())).map(Cookie::getValue)
 					.findFirst().orElse(null);
+		}
+
+		// 3. For SSE and WebSockets, fall back to query parameter
+		if (token == null && (request.getRequestURI().contains("/sse") || request.getRequestURI().contains("/ws/"))) {
+			token = request.getParameter("token");
 		}
 
 		if (token == null) {
@@ -70,7 +76,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 			SecurityContextHolder.getContext().setAuthentication(authToken);
 		}
 
-		// 3. Maintenance Mode Check
+		// 4. Maintenance Mode Check
 		if (settingsService.isMaintenanceModeEnabled() && userDetails instanceof SecurityUser) {
 			User currentUser = ((SecurityUser) userDetails).getUser();
 			if (!currentUser.hasAdminAccess() && !MAINTENANCE_WHITELIST.contains(request.getRequestURI())) {

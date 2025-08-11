@@ -2,6 +2,7 @@ package de.technikteam.api.v1.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.FutureOrPresent;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
@@ -19,5 +20,9 @@ public record MeetingRequest(
 
 		@Schema(description = "A description of the meeting's content.") String description,
 
-		@Schema(description = "The location of the meeting.") String location) {
+		@Schema(description = "The location of the meeting.") String location,
+
+		@Min(value = 1, message = "Maximale Teilnehmerzahl muss mindestens 1 sein") @Schema(description = "The maximum number of participants for the meeting. Null for unlimited.") Integer maxParticipants,
+
+		@Schema(description = "The date and time after which signups are closed.") LocalDateTime signupDeadline) {
 }

@@ -158,8 +158,15 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 						<li><strong>E-Mail:</strong> <input type="email" name="email" value={formData.email} onChange={handleChange} readOnly={!isEditing} style={{ border: isEditing ? '' : 'none', background: isEditing ? '' : 'transparent' }} /></li>
 						{isEditing && (
 							<li>
-								<strong>Profil-Icon:</strong>
-								<input type="text" name="profileIconClass" value={formData.profileIconClass} onChange={handleChange} placeholder="z.B. fa-user-ninja" />
+								<label htmlFor="profileIconClass" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+									<span>
+										<strong>Profil-Icon:</strong>
+										<a href="https://fontawesome.com/search?m=free&s=solid" target="_blank" rel="noopener noreferrer" style={{ marginLeft: '0.5rem', fontSize: '0.8rem', fontWeight: 'normal' }}>
+											<i className="fas fa-search"></i> Icons suchen
+										</a>
+									</span>
+									<input type="text" id="profileIconClass" name="profileIconClass" value={formData.profileIconClass} onChange={handleChange} placeholder="z.B. fa-user-ninja" style={{ maxWidth: '200px' }} />
+								</label>
 							</li>
 						)}
 					</ul>
