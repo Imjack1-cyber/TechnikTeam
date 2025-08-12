@@ -8,7 +8,8 @@ export const useAdminRolesAndPermissions = () => {
 	useEffect(() => {
 		const fetchData = async () => {
 			try {
-				const result = await apiClient.get('/users/form-data');
+				// FIX: Changed endpoint to /form-data/users
+				const result = await apiClient.get('/form-data/users');
 				if (result.success) {
 					setData({ roles: result.data.roles, groupedPermissions: result.data.groupedPermissions, loading: false, error: null });
 				} else { throw new Error(result.message); }
@@ -77,7 +78,8 @@ const useAdminData = () => {
 		const fetchData = async () => {
 			try {
 				const promises = [
-					apiClient.get('/users/form-data'), // roles & permissions
+					// FIX: Changed endpoint to /form-data/users
+					apiClient.get('/form-data/users'), // roles & permissions
 					canReadStorage ? apiClient.get('/storage') : Promise.resolve({ success: true, data: [] }),
 					canReadCourses ? apiClient.get('/courses') : Promise.resolve({ success: true, data: [] }),
 					canReadUsers ? apiClient.get('/users') : Promise.resolve({ success: true, data: [] }),

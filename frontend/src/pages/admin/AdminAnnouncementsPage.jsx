@@ -5,6 +5,7 @@ import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
+import { Link } from 'react-router-dom';
 
 const AnnouncementModal = ({ isOpen, onClose, onSuccess, announcement }) => {
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -113,7 +114,7 @@ const AdminAnnouncementsPage = () => {
 						<div>
 							<h2 className="card-title" style={{ border: 'none', padding: 0 }}>{post.title}</h2>
 							<p className="details-subtitle" style={{ marginTop: '-0.5rem' }}>
-								Von <strong>{post.authorUsername}</strong> am {new Date(post.createdAt).toLocaleDateString('de-DE')}
+								Von <strong><Link to={`/team/${post.authorUserId}`}>{post.authorUsername}</Link></strong> am {new Date(post.createdAt).toLocaleDateString('de-DE')}
 							</p>
 						</div>
 						<div>

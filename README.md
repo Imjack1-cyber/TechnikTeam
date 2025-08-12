@@ -65,9 +65,11 @@ Follow these steps to get a local instance of the application running for develo
 
 ### 3. Backend Configuration & Setup
 1.  Navigate to the project's root directory.
-2.  Open `src/main/resources/application.properties`.
-3.  Update the `spring.datasource.*` properties to match your database connection details.
-4.  Set a strong, unique secret for `jwt.secret`. This is critical for security. It **must** be at least 32 characters long.
+2.  **CRITICAL SECURITY STEP:** The JWT secret key must be provided as an environment variable. Create or edit your system's environment variables to add a new variable:
+    *   **Variable name:** `JWT_SECRET`
+    *   **Variable value:** A strong, unique, randomly-generated string of at least 32 characters.
+3.  Open `src/main/resources/application.properties`.
+4.  Update the `spring.datasource.*` properties to match your database connection details.
 5.  Set the `upload.directory` to an absolute path on your local machine. This directory must exist and be writable by the application.
 6.  Set the `app.base-url` to the full public URL where your application will be hosted (e.g., `http://localhost:8080/TechnikTeam` for local development).
 7.  The application uses Flyway for database migrations. The necessary tables will be created automatically when the application starts for the first time.

@@ -52,7 +52,7 @@ const AdminDamageReportsPage = () => {
 							<tr key={report.id}>
 								<td>{new Date(report.reportedAt).toLocaleString('de-DE')}</td>
 								<td><Link to={`/lager/details/${report.itemId}`}>{report.itemName}</Link></td>
-								<td>{report.reporterUsername}</td>
+								<td><Link to={`/team/${report.reporterUserId}`}>{report.reporterUsername}</Link></td>
 								<td style={{ whiteSpace: 'normal' }}>{report.reportDescription}</td>
 								<td style={{ display: 'flex', gap: '0.5rem' }}>
 									<button onClick={() => openModal(report, 'confirm')} className="btn btn-small btn-success">Bestätigen</button>
@@ -68,7 +68,7 @@ const AdminDamageReportsPage = () => {
 				{reports?.map(report => (
 					<div className="list-item-card" key={report.id}>
 						<h3 className="card-title"><Link to={`/lager/details/${report.itemId}`}>{report.itemName}</Link></h3>
-						<div className="card-row"><strong>Von:</strong> <span>{report.reporterUsername}</span></div>
+						<div className="card-row"><strong>Von:</strong> <span><Link to={`/team/${report.reporterUserId}`}>{report.reporterUsername}</Link></span></div>
 						<div className="card-row"><strong>Am:</strong> <span>{new Date(report.reportedAt).toLocaleString('de-DE')}</span></div>
 						<p style={{ marginTop: '0.5rem' }}><strong>Beschreibung:</strong> {report.reportDescription}</p>
 						<div className="card-actions">

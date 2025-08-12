@@ -3,6 +3,7 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
 import useWebSocket from '../../hooks/useWebSocket'; // Assuming you have a generic WS hook
+import { Link } from 'react-router-dom';
 
 const ChecklistTab = ({ event, user }) => {
 	const { addToast } = useToast();
@@ -83,7 +84,7 @@ const ChecklistTab = ({ event, user }) => {
 						) : (
 							checklistItems.map(item => (
 								<tr key={item.id}>
-									<td>{item.itemName}</td>
+									<td><Link to={`/lager/details/${item.itemId}`}>{item.itemName}</Link></td>
 									<td>{item.quantity}</td>
 									<td>
 										<select

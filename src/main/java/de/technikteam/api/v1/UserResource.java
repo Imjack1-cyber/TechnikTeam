@@ -5,6 +5,7 @@ import de.technikteam.api.v1.dto.UserUpdateRequest;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.LoginAttemptService;
 import de.technikteam.service.UserService;
@@ -16,6 +17,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.SecureRandom;
@@ -39,10 +41,6 @@ public class UserResource {
 		this.userDAO = userDAO;
 		this.adminLogService = adminLogService;
 		this.loginAttemptService = loginAttemptService;
-	}
-
-	private String getSystemUsername() {
-		return "SYSTEM";
 	}
 
 	@GetMapping
@@ -71,7 +69,8 @@ public class UserResource {
 
 	@PostMapping
 	@Operation(summary = "Create a new user", description = "Creates a new user with a specified role and individual permissions.")
-	public ResponseEntity<ApiResponse> createUser(@Valid @RequestBody UserCreateRequest createRequest) {
+	public ResponseEntity<ApiResponse> createUser(@Valid @RequestBody UserCreateRequest createRequest,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		PasswordPolicyValidator.ValidationResult validationResult = PasswordPolicyValidator
 				.validate(createRequest.password());
 		if (!validationResult.isValid()) {
@@ -89,7 +88,7 @@ public class UserResource {
 		String[] permissionIds = createRequest.permissionIds().stream().map(String::valueOf).toArray(String[]::new);
 
 		int newUserId = userService.createUserWithPermissions(newUser, createRequest.password(), permissionIds,
-				getSystemUsername());
+				securityUser.getUser().getUsername());
 		if (newUserId > 0) {
 			User createdUser = userDAO.getUserById(newUserId);
 			return new ResponseEntity<>(new ApiResponse(true, "User created successfully", createdUser),
@@ -104,7 +103,7 @@ public class UserResource {
 	@Operation(summary = "Update a user", description = "Updates an existing user's profile details, role, and individual permissions.")
 	public ResponseEntity<ApiResponse> updateUser(
 			@Parameter(description = "ID of the user to update") @PathVariable int id,
-			@Valid @RequestBody UserUpdateRequest updateRequest) {
+			@Valid @RequestBody UserUpdateRequest updateRequest, @AuthenticationPrincipal SecurityUser securityUser) {
 
 		User originalUser = userDAO.getUserById(id);
 		if (originalUser == null) {
@@ -123,7 +122,7 @@ public class UserResource {
 
 		if (userService.updateUserWithPermissions(userToUpdate, permissionIds)) {
 			User refreshedUser = userDAO.getUserById(id);
-			adminLogService.logUserUpdate(getSystemUsername(), originalUser, refreshedUser);
+			adminLogService.logUserUpdate(securityUser.getUser().getUsername(), originalUser, refreshedUser);
 			return ResponseEntity.ok(new ApiResponse(true, "User updated successfully", refreshedUser));
 		} else {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -134,7 +133,8 @@ public class UserResource {
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete a user", description = "Permanently deletes a user from the system.")
 	public ResponseEntity<ApiResponse> deleteUser(
-			@Parameter(description = "ID of the user to delete") @PathVariable int id) {
+			@Parameter(description = "ID of the user to delete") @PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 
 		User userToDelete = userDAO.getUserById(id);
 		if (userToDelete == null) {
@@ -147,8 +147,7 @@ public class UserResource {
 					.body(new ApiResponse(false, "The default admin account cannot be deleted.", null));
 		}
 
-		if (userDAO.deleteUser(id)) {
-			adminLogService.logUserDeletion(getSystemUsername(), userToDelete);
+		if (userService.deleteUser(id, securityUser.getUser())) {
 			return ResponseEntity.ok(new ApiResponse(true, "User deleted successfully", Map.of("deletedUserId", id)));
 		} else {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -159,7 +158,8 @@ public class UserResource {
 	@PostMapping("/{id}/reset-password")
 	@Operation(summary = "Reset user's password", description = "Resets a user's password to a new, randomly generated password.")
 	public ResponseEntity<ApiResponse> resetPassword(
-			@Parameter(description = "ID of the user whose password will be reset") @PathVariable int id) {
+			@Parameter(description = "ID of the user whose password will be reset") @PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 
 		User userToReset = userDAO.getUserById(id);
 		if (userToReset == null) {
@@ -169,7 +169,7 @@ public class UserResource {
 
 		String newPassword = generateRandomPassword(12);
 		if (userDAO.changePassword(id, newPassword)) {
-			adminLogService.log(getSystemUsername(), "RESET_PASSWORD_API",
+			adminLogService.log(securityUser.getUser().getUsername(), "RESET_PASSWORD_API",
 					"Password for user '" + userToReset.getUsername() + "' (ID: " + id + ") reset via API.");
 			return ResponseEntity
 					.ok(new ApiResponse(true, "Password for " + userToReset.getUsername() + " has been reset.",
@@ -183,7 +183,8 @@ public class UserResource {
 	@PostMapping("/{id}/unlock")
 	@Operation(summary = "Unlock a user account", description = "Unlocks a user account that was locked due to too many failed login attempts.")
 	public ResponseEntity<ApiResponse> unlockUser(
-			@Parameter(description = "ID of the user to unlock") @PathVariable int id) {
+			@Parameter(description = "ID of the user to unlock") @PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 
 		User userToUnlock = userDAO.getUserById(id);
 		if (userToUnlock == null) {
@@ -192,7 +193,7 @@ public class UserResource {
 		}
 
 		loginAttemptService.clearLoginAttempts(userToUnlock.getUsername());
-		adminLogService.log(getSystemUsername(), "UNLOCK_USER_API",
+		adminLogService.log(securityUser.getUser().getUsername(), "UNLOCK_USER_API",
 				"User account '" + userToUnlock.getUsername() + "' (ID: " + id + ") unlocked via API.");
 		return ResponseEntity.ok(new ApiResponse(true,
 				"User account '" + userToUnlock.getUsername() + "' has been unlocked.", Map.of("unlockedUserId", id)));

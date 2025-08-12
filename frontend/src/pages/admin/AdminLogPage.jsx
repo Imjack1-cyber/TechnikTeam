@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useAuthStore } from '../../store/authStore';
@@ -44,7 +45,7 @@ const AdminLogPage = () => {
 			return (
 				<tr key={log.id}>
 					<td>{new Date(log.actionTimestamp).toLocaleString('de-DE')} Uhr</td>
-					<td>{log.adminUsername}</td>
+					<td>{log.adminUserId ? <Link to={`/team/${log.adminUserId}`}>{log.adminUsername}</Link> : log.adminUsername}</td>
 					<td>{log.actionType}</td>
 					<td style={{ whiteSpace: 'normal' }}>{log.details}</td>
 					<td>
@@ -84,7 +85,7 @@ const AdminLogPage = () => {
 							? <span className="status-badge status-info" title={`Widerrufen von ${log.revokingAdminUsername} am ${new Date(log.revokedAt).toLocaleString('de-DE')}`}>Widerrufen</span>
 							: <span className="status-badge status-ok">Aktiv</span>}
 					</div>
-					<div className="card-row"><strong>Wer:</strong> <span>{log.adminUsername}</span></div>
+					<div className="card-row"><strong>Wer:</strong> <span>{log.adminUserId ? <Link to={`/team/${log.adminUserId}`}>{log.adminUsername}</Link> : log.adminUsername}</span></div>
 					<div className="card-row"><strong>Wann:</strong> <span>{new Date(log.actionTimestamp).toLocaleString('de-DE')}</span></div>
 					<p style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)', whiteSpace: 'normal' }}>{log.details}</p>
 					{canRevoke && (

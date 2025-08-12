@@ -76,6 +76,7 @@ public class PublicProfileResource {
 		profileData.put("user", user); // The DTO is already safe, no password hash
 		profileData.put("qualifications", qualificationsDAO.getQualificationsForUser(userId));
 		profileData.put("achievements", achievementDAO.getAchievementsForUser(userId));
+		profileData.put("eventHistory", eventDAO.getEventHistoryForUser(userId));
 
 		return ResponseEntity.ok(new ApiResponse(true, "Profildaten erfolgreich abgerufen.", profileData));
 	}

@@ -10,7 +10,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Erweitere das Gamification-System der Anwendung.
 - Schaffe neue Anreize für Engagement und Teilnahme im Team.',
 '["profile"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/AdminAchievementResource.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/AdminAchievementResource.java')),
 
 ('admin_defective_items', 'Admin Defekte Artikel', '/admin/defekte',
 '## Features
@@ -32,7 +32,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Verarbeite schnell und effizient Meldungen von Benutzern über defektes Equipment.
 - Stelle sicher, dass keine Schadensmeldung verloren geht.',
 '["admin_defective_items", "storage_details"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/AdminDamageReportResource.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/AdminDamageReportResource.java')),
 
 ('admin_checklist_templates', 'Admin Checklisten-Vorlagen', '/admin/checklist-templates',
 '## Features
@@ -43,7 +43,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Standardisiere wiederkehrende Arbeitsabläufe bei Events.
 - Erstelle "Pre-Flight-Checklisten", um sicherzustellen, dass vor einem Event nichts vergessen wird.',
 '["admin_events"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/AdminChecklistTemplateResource.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/AdminChecklistTemplateResource.java')),
 
 ('admin_matrix', 'Admin Qualifikations-Matrix', '/admin/matrix',
 '## Features
@@ -55,7 +55,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Verfolge den Ausbildungsfortschritt des gesamten Teams auf einen Blick.
 - Pflege die Anwesenheitslisten für alle Lehrgänge an einem zentralen Ort.',
 '["admin_courses"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/MatrixResource.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/MatrixResource.java')),
 
 ('admin_reports', 'Admin Berichte', '/admin/berichte',
 '## Features
@@ -67,7 +67,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Analysiere die Entwicklung und das Wachstum des Technik-Teams über die Zeit.
 - Erstelle Auswertungen und Statistiken für Jahresberichte oder Präsentationen.',
 '[]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/ReportResource.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/ReportResource.java')),
 
 ('admin_changelogs', 'Admin Changelogs', '/admin/changelogs',
 '## Features
@@ -77,7 +77,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 ## Use Cases
 - Informiere die Benutzer über neue Features und wichtige Änderungen in der Anwendung.',
 '["changelogs"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/AdminChangelogResource.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/AdminChangelogResource.java')),
 
 ('admin_log', 'Admin Aktions-Log', '/admin/log',
 '## Features
@@ -88,7 +88,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Nachvollziehbarkeit und Sicherheit: Überprüfe, wer kritische Änderungen vorgenommen hat.
 - Fehlersuche: Analysiere vergangene Aktionen, um Probleme zu verstehen.',
 '[]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/LogResource.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/LogResource.java')),
 
 ('admin_system', 'Admin System', '/admin/system',
 '## Features
@@ -99,7 +99,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Überwache die Systemgesundheit des Anwendungsservers.
 - Diagnostiziere Performance-Probleme.',
 '[]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/SystemResource.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/SystemResource.java')),
 
 ('admin_wiki', 'Admin Wiki', '/admin/wiki',
 '## Features
@@ -111,7 +111,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Dokumentiere die Software-Architektur und wichtige Code-Teile.
 - Schaffe eine Wissensdatenbank für Entwickler und Administratoren.',
 '[]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/WikiResource.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/WikiResource.java')),
 
 ('admin_documentation', 'Admin Hilfeseiten', '/admin/documentation',
 '## Features

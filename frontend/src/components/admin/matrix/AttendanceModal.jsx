@@ -128,6 +128,12 @@ const AttendanceModal = ({ isOpen, onClose, onSuccess, cellData }) => {
 
 			<div className="card" style={{ marginTop: '1.5rem' }}>
 				<h4 className="card-title">Gesamt-Qualifikation für Kurs: "{cellData.courseName}"</h4>
+				{!cellData.hasAttendedAllMeetings && (
+					<p className="info-message" style={{ background: 'var(--warning-color)' }}>
+						<i className="fas fa-exclamation-triangle"></i>
+						Hinweis: Der Benutzer hat nicht alle Termine dieses Lehrgangs besucht.
+					</p>
+				)}
 				<form onSubmit={handleQualificationSubmit}>
 					{qualError && <p className="error-message">{qualError}</p>}
 					<div className="form-group">

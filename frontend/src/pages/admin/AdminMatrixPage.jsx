@@ -13,8 +13,17 @@ const AdminMatrixPage = () => {
 	const [modalData, setModalData] = useState(null);
 
 	const openModal = (cellData) => {
-		setModalData(cellData);
+		// Enhance cellData with attendance info for the entire course
+		const courseMeetings = uniqueMeetingsByCourse[cellData.courseId] || [];
+		const attendedMeetingsCount = courseMeetings.filter(meeting => {
+			const attendance = attendanceMap[`${cellData.userId}-${meeting.id}`];
+			return attendance && attendance.attended;
+		}).length;
+		const hasAttendedAllMeetings = courseMeetings.length > 0 && attendedMeetingsCount === courseMeetings.length;
+
+		setModalData({ ...cellData, hasAttendedAllMeetings });
 	};
+
 
 	const closeModal = () => {
 		setModalData(null);

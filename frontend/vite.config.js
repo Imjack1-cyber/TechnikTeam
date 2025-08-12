@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
 	const wsTarget = backendTarget.replace(/^http/, 'ws');
 
 	return {
-		base: '/', // Ensure asset paths are absolute from the domain root
+		base: '/',
 		plugins: [
 			react(),
 			VitePWA({
@@ -41,14 +41,12 @@ export default defineConfig(({ mode }) => {
 		server: {
 			port: 3000,
 			proxy: {
-				// Proxy all API requests starting with /api to the Spring Boot backend
-				'/api': {
+				'/TechnikTeam/api': {
 					target: backendTarget,
 					changeOrigin: true,
 					secure: false,
 				},
-				// Proxy all WebSocket connections to the Spring Boot backend
-				'/ws': {
+				'/TechnikTeam/ws': {
 					target: wsTarget,
 					ws: true,
 				},

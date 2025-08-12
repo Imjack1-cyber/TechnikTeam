@@ -6,6 +6,7 @@ import de.technikteam.dao.MeetingDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.dao.UserQualificationsDAO;
 import de.technikteam.model.*;
+import de.technikteam.service.AchievementService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,15 +32,18 @@ public class MatrixResource {
 	private final MeetingDAO meetingDAO;
 	private final MeetingAttendanceDAO meetingAttendanceDAO;
 	private final UserQualificationsDAO qualificationsDAO;
+	private final AchievementService achievementService;
 
 	@Autowired
 	public MatrixResource(UserDAO userDAO, CourseDAO courseDAO, MeetingDAO meetingDAO,
-			MeetingAttendanceDAO meetingAttendanceDAO, UserQualificationsDAO qualificationsDAO) {
+			MeetingAttendanceDAO meetingAttendanceDAO, UserQualificationsDAO qualificationsDAO,
+			AchievementService achievementService) {
 		this.userDAO = userDAO;
 		this.courseDAO = courseDAO;
 		this.meetingDAO = meetingDAO;
 		this.meetingAttendanceDAO = meetingAttendanceDAO;
 		this.qualificationsDAO = qualificationsDAO;
+		this.achievementService = achievementService;
 	}
 
 	@GetMapping
@@ -93,6 +97,14 @@ public class MatrixResource {
 				qualification.getCourseId(), qualification.getStatus(), qualification.getCompletionDate(),
 				qualification.getRemarks());
 		if (success) {
+			// If the user has now passed the course, check for achievements.
+			if ("BESTANDEN".equals(qualification.getStatus())) {
+				User user = userDAO.getUserById(qualification.getUserId());
+				if (user != null) {
+					achievementService.checkAndGrantAchievements(user, "QUALIFICATION_GAINED",
+							qualification.getCourseId());
+				}
+			}
 			return ResponseEntity.ok(new ApiResponse(true, "Qualifikationsstatus aktualisiert.", null));
 		}
 		return ResponseEntity.internalServerError()

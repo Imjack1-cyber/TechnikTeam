@@ -147,7 +147,7 @@ public class StorageDAO {
 	}
 
 	public List<Map<String, Object>> getFutureReservationsForItem(int itemId) {
-		String sql = "SELECT e.name as event_name, e.event_datetime, e.end_datetime "
+		String sql = "SELECT e.id as event_id, e.name as event_name, e.event_datetime, e.end_datetime "
 				+ "FROM event_storage_reservations esr " + "JOIN events e ON esr.event_id = e.id "
 				+ "WHERE esr.item_id = ? AND e.status IN ('GEPLANT', 'LAUFEND') AND e.event_datetime >= NOW() "
 				+ "ORDER BY e.event_datetime ASC";

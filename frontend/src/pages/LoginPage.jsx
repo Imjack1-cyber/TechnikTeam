@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-// import { passkeyService } from '../../services/passkeyService'; // REMOVED
 
 const LoginPage = () => {
 	const [username, setUsername] = useState('');
@@ -36,8 +35,6 @@ const LoginPage = () => {
 		}
 	};
 
-	// REMOVED handlePasskeyLogin function
-
 	const togglePasswordVisibility = () => {
 		setIsPasswordVisible(!isPasswordVisible);
 	};
@@ -59,7 +56,7 @@ const LoginPage = () => {
 							value={username}
 							onChange={(e) => setUsername(e.target.value)}
 							required
-							autoComplete="username" // REMOVED webauthn
+							autoComplete="username"
 							autoFocus
 							disabled={isLoading}
 						/>
@@ -96,7 +93,6 @@ const LoginPage = () => {
 							'Anmelden'
 						)}
 					</button>
-					{/* MODIFIED Passkey Button */}
 					<button
 						type="button"
 						className="btn btn-secondary"

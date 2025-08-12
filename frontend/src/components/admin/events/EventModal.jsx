@@ -4,7 +4,6 @@ import apiClient from '../../../services/apiClient';
 import { useToast } from '../../../context/ToastContext';
 import DynamicSkillRows from './DynamicSkillRows';
 import DynamicItemRows from './DynamicItemRows';
-import TaskDependenciesForm from './TaskDependenciesForm';
 
 const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklistTemplates }) => {
 	const isEditMode = !!event;

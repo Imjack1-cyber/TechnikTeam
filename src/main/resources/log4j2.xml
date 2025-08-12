@@ -9,8 +9,8 @@
 
 		<!-- Appender 2: Logs to a file in a structured JSON format -->
 		<RollingFile name="JsonFile"
-			fileName="logs/technikteam-backend.log"
-			filePattern="logs/technikteam-backend-%d{yyyy-MM-dd}-%i.log.gz">
+			fileName="logs-backend.log"
+			filePattern="logs-backend-%d{yyyy-MM-dd}-%i.log.gz">
 			<!-- This uses your existing JSON template -->
 			<JsonTemplateLayout
 				eventTemplateUri="classpath:Log4j2JsonTemplate.json" />

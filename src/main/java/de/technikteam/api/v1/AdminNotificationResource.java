@@ -15,6 +15,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -42,6 +43,7 @@ public class AdminNotificationResource {
 
 	@PostMapping
 	@Operation(summary = "Send a broadcast notification", description = "Sends a real-time notification to a specified group of users.")
+	@PreAuthorize("hasRole('ADMIN') or hasAuthority('NOTIFICATION_SEND')")
 	public ResponseEntity<ApiResponse> sendNotification(@Valid @RequestBody NotificationRequest request,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 

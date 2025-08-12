@@ -36,13 +36,6 @@ public class AdminEventResource {
 		this.eventService = eventService;
 	}
 
-	private User getSystemUser() {
-		User user = new User();
-		user.setId(0); // Default system user ID
-		user.setUsername("SYSTEM");
-		return user;
-	}
-
 	@GetMapping
 	@Operation(summary = "Get all events", description = "Retrieves a list of all events in the system, sorted by date.")
 	public ResponseEntity<ApiResponse> getAllEvents() {
@@ -53,13 +46,13 @@ public class AdminEventResource {
 	@PostMapping
 	@Operation(summary = "Create a new event", description = "Creates a new event with attachments, skill requirements, and item reservations.")
 	public ResponseEntity<ApiResponse> createEvent(@RequestPart("eventData") EventUpdateRequest eventData,
-			@RequestPart(value = "file", required = false) MultipartFile file) {
+			@RequestPart(value = "file", required = false) MultipartFile file,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
-			User adminUser = getSystemUser();
 			Event event = new Event();
 			mapDtoToEvent(eventData, event);
 
-			int newEventId = eventService.createOrUpdateEvent(event, false, adminUser,
+			int newEventId = eventService.createOrUpdateEvent(event, false, securityUser.getUser(),
 					eventData.requiredCourseIds().toArray(new String[0]),
 					eventData.requiredPersons().toArray(new String[0]), eventData.itemIds().toArray(new String[0]),
 					eventData.quantities().toArray(new String[0]), null, file, eventData.requiredRole(),
@@ -78,9 +71,9 @@ public class AdminEventResource {
 	@Operation(summary = "Update an event", description = "Updates an existing event with attachments, skill requirements, and item reservations.")
 	public ResponseEntity<ApiResponse> updateEvent(@PathVariable int id,
 			@RequestPart("eventData") EventUpdateRequest eventData,
-			@RequestPart(value = "file", required = false) MultipartFile file) {
+			@RequestPart(value = "file", required = false) MultipartFile file,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
-			User adminUser = getSystemUser();
 			Event event = eventDAO.getEventById(id);
 			if (event == null) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -89,7 +82,7 @@ public class AdminEventResource {
 			mapDtoToEvent(eventData, event);
 			event.setId(id); // Ensure ID is set for update
 
-			eventService.createOrUpdateEvent(event, true, adminUser,
+			eventService.createOrUpdateEvent(event, true, securityUser.getUser(),
 					eventData.requiredCourseIds().toArray(new String[0]),
 					eventData.requiredPersons().toArray(new String[0]), eventData.itemIds().toArray(new String[0]),
 					eventData.quantities().toArray(new String[0]), null, file, eventData.requiredRole(),
@@ -104,9 +97,10 @@ public class AdminEventResource {
 
 	@PostMapping("/{id}/clone")
 	@Operation(summary = "Clone an event", description = "Creates a deep copy of an existing event, including its details, requirements, and tasks.")
-	public ResponseEntity<ApiResponse> cloneEvent(@PathVariable int id) {
+	public ResponseEntity<ApiResponse> cloneEvent(@PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
-			Event clonedEvent = eventService.cloneEvent(id, getSystemUser());
+			Event clonedEvent = eventService.cloneEvent(id, securityUser.getUser());
 			return new ResponseEntity<>(new ApiResponse(true, "Event erfolgreich geklont.", clonedEvent),
 					HttpStatus.CREATED);
 		} catch (IllegalArgumentException e) {

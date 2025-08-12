@@ -93,7 +93,7 @@ const StorageItemDetailsPage = () => {
 						<li><strong>Verfügbar / Gesamt:</strong> <span>{item.availableQuantity} / {item.quantity}</span></li>
 						<li><strong>Defekt:</strong> <span>{item.defectiveQuantity}</span></li>
 						<li><strong>Tracking-Status:</strong> <span>{item.status}</span></li>
-						{item.currentHolderUsername && <li><strong>Aktueller Inhaber:</strong> <span>{item.currentHolderUsername}</span></li>}
+						{item.currentHolderUsername && <li><strong>Aktueller Inhaber:</strong> <span><Link to={`/team/${item.currentHolderUserId}`}>{item.currentHolderUsername}</Link></span></li>}
 						<li><strong>Ort:</strong> <span>{item.location}</span></li>
 						<li><strong>Schrank:</strong> <span>{item.cabinet || 'N/A'}</span></li>
 						<li><strong>Fach:</strong> <span>{item.compartment || 'N/A'}</span></li>
@@ -124,7 +124,7 @@ const StorageItemDetailsPage = () => {
 												<tr key={entry.id}>
 													<td>{new Date(entry.transactionTimestamp).toLocaleString('de-DE')}</td>
 													<td><span className={`status-badge ${entry.quantityChange > 0 ? 'status-ok' : 'status-danger'}`}>{entry.quantityChange > 0 ? '+' : ''}{entry.quantityChange}</span></td>
-													<td>{entry.username}</td>
+													<td><Link to={`/team/${entry.userId}`}>{entry.username}</Link></td>
 													<td>{entry.notes || '-'}</td>
 												</tr>
 											))}
@@ -148,7 +148,7 @@ const StorageItemDetailsPage = () => {
 												<tr key={entry.id}>
 													<td>{new Date(entry.logDate).toLocaleString('de-DE')}</td>
 													<td>{entry.action}</td>
-													<td>{entry.username}</td>
+													<td><Link to={`/team/${entry.userId}`}>{entry.username}</Link></td>
 													<td>{entry.notes || '-'}</td>
 												</tr>
 											))}

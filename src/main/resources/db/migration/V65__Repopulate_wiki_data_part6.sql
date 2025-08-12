@@ -1,7 +1,7 @@
 -- Flyway migration V65, Part 6: Overhaul Technical Wiki Documentation
 
 INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
-('src/main/java/de/technikteam/api/v1/AdminAchievementResource.java',
+('src/main/java/de/api/v1/AdminAchievementResource.java',
 '## 1. File Overview & Purpose
 
 This class is a Spring `@RestController` that exposes administrative **CRUD (Create, Read, Update, Delete) endpoints** for managing `Achievement` entities. It provides the API for the admin page where achievements (badges) are defined.
@@ -24,7 +24,7 @@ This is a component of the **Web/API Tier**. It handles incoming HTTP requests f
 - **`updateAchievement(...)`**: Handles `PUT /{id}`. Updates an existing achievement.
 - **`deleteAchievement(...)`**: Handles `DELETE /{id}`. Deletes an achievement.'),
 
-('src/main/java/de/technikteam/api/v1/AdminAnnouncementResource.java',
+('src/main/java/de/api/v1/AdminAnnouncementResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the administrative CRUD endpoints for managing announcements on the Digital Bulletin Board. It is the backend for the `/admin/announcements` page.
@@ -46,7 +46,7 @@ This is a component of the **Web/API Tier**. It handles HTTP requests, delegates
 - **`updateAnnouncement(...)`**: `PUT /{id}` - Updates an existing announcement.
 - **`deleteAnnouncement(...)`**: `DELETE /{id}` - Deletes an announcement.'),
 
-('src/main/java/de/technikteam/api/v1/AdminChangelogResource.java',
+('src/main/java/de/api/v1/AdminChangelogResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the administrative CRUD endpoints for managing `Changelog` entries. It is the backend for the `/admin/changelogs` page, allowing admins to communicate updates to users.
@@ -67,7 +67,7 @@ This is a component of the **Web/API Tier**. It handles HTTP requests related to
 - **`updateChangelog(...)`**: `PUT /{id}` - Updates an existing entry.
 - **`deleteChangelog(...)`**: `DELETE /{id}` - Deletes an entry.'),
 
-('src/main/java/de/technikteam/api/v1/AdminChecklistTemplateResource.java',
+('src/main/java/de/api/v1/AdminChecklistTemplateResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the administrative CRUD endpoints for managing `ChecklistTemplate` entities. It serves as the backend for the admin page where pre-flight checklist templates are created and managed.
@@ -88,7 +88,7 @@ This is a component of the **Web/API Tier**. It handles HTTP requests, delegates
 - **`updateTemplate(...)`**: `PUT /{id}` - Updates a template and its items.
 - **`deleteTemplate(...)`**: `DELETE /{id}` - Deletes a template.'),
 
-('src/main/java/de/technikteam/api/v1/AdminDamageReportResource.java',
+('src/main/java/de/api/v1/AdminDamageReportResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides endpoints for administrators to manage user-submitted `DamageReport`s. It allows admins to view pending reports and then either confirm (which marks the item as defective) or reject them.
@@ -109,7 +109,7 @@ This is a component of the **Web/API Tier**. It is the backend for the `/admin/d
 - **`confirmReport(...)`**: `POST /{reportId}/confirm` - Triggers the `storageService` to mark the associated item as defective and update the report''s status to "CONFIRMED".
 - **`rejectReport(...)`**: `POST /{reportId}/reject` - Triggers the `storageService` to update the report''s status to "REJECTED" and record the admin''s notes.'),
 
-('src/main/java/de/technikteam/api/v1/AdminDashboardResource.java',
+('src/main/java/de/api/v1/AdminDashboardResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides a single, aggregated API endpoint for the administrative dashboard. It fetches all the data required for the dashboard widgets in one call.
@@ -127,7 +127,7 @@ This is a component of the **Web/API Tier**. It is the sole data source for the 
 
 - **`getDashboardData()`**: `GET /` - Calls the `dashboardService` to get a `DashboardDataDTO` containing upcoming events, low-stock items, recent logs, and event trend data, then returns it as a JSON response.'),
 
-('src/main/java/de/technikteam/api/v1/AdminDocumentationResource.java',
+('src/main/java/de/api/v1/AdminDocumentationResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the administrative CRUD endpoints for managing the user-facing `PageDocumentation`. It is the backend for the `/admin/documentation` page.

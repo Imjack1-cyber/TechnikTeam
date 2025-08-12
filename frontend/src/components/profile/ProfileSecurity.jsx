@@ -1,9 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-// REMOVED unused imports
 
 const ProfileSecurity = ({ onUpdate }) => {
-	// REMOVED all passkey-related state and handlers
 
 	return (
 		<div className="card" id="profile-security-container">
@@ -14,7 +12,6 @@ const ProfileSecurity = ({ onUpdate }) => {
 				</li>
 			</ul>
 			<h3 style={{ marginTop: '1.5rem', fontSize: '1.1rem' }}>Passkeys (Passwortloser Login)</h3>
-			{/* REPLACED passkey logic with placeholder */}
 			<p className="text-muted">
 				Dieses Feature wird zurzeit überarbeitet und ist in Kürze wieder verfügbar.
 			</p>

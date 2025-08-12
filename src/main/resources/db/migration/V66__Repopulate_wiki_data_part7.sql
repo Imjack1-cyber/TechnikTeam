@@ -1,7 +1,7 @@
 -- Flyway migration V66, Part 7: Overhaul Technical Wiki Documentation
 
 INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
-('src/main/java/de/technikteam/api/v1/AdminEventDebriefingResource.java',
+('src/main/java/de/api/v1/AdminEventDebriefingResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the API endpoints for managing post-event `EventDebriefing` reports. It allows authorized users (admins or event leaders) to create, view, and update these reports.
@@ -22,7 +22,7 @@ This is a component of the **Web/API Tier**. It is the backend for the `/admin/v
 - **`getDebriefingForEvent(...)`**: `GET /{eventId}/debriefing` - Fetches the specific debriefing for a given event.
 - **`saveDebriefing(...)`**: `POST /{eventId}/debriefing` - This is an "upsert" endpoint. It creates a new debriefing if one doesn''t exist for the event, or updates the existing one if it does.'),
 
-('src/main/java/de/technikteam/api/v1/AdminEventResource.java',
+('src/main/java/de/api/v1/AdminEventResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the administrative CRUD endpoints for managing `Event` entities. It handles complex multipart requests that include both JSON data for the event and an optional file upload for attachments.
@@ -46,7 +46,7 @@ This is a key component of the **Web/API Tier**. It serves as the backend for th
 - **`cloneEvent(...)`**: `POST /{id}/clone` - Triggers the `eventService` to create a deep copy of an existing event, including its skill requirements and tasks.
 - **`deleteEvent(...)`**: `DELETE /{id}` - Deletes an event.'),
 
-('src/main/java/de/technikteam/api/v1/AdminEventRoleResource.java',
+('src/main/java/de/api/v1/AdminEventRoleResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the administrative CRUD endpoints for managing reusable `EventRole` entities. It is the backend for the `/admin/event-roles` page.
@@ -67,7 +67,7 @@ This is a component of the **Web/API Tier**. It delegates database operations di
 - **`updateRole(...)`**: `PUT /{id}` - Updates an existing role.
 - **`deleteRole(...)`**: `DELETE /{id}` - Deletes a role.'),
 
-('src/main/java/de/technikteam/api/v1/AdminFeedbackResource.java',
+('src/main/java/de/api/v1/AdminFeedbackResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the administrative API endpoints for managing general `FeedbackSubmission`s. It is the backend for the Kanban-style feedback board on the `/admin/feedback` page.
@@ -86,7 +86,7 @@ This is a component of the **Web/API Tier**. It handles fetching all submissions
 - **`getAllSubmissions()`**: `GET /` - Retrieves all feedback submissions, ordered correctly for display on the Kanban board.
 - **`updateStatus(...)`**: `PUT /{id}/status` - Updates the status of a single feedback submission (e.g., from "NEW" to "VIEWED"). This is triggered when a card is moved on the board or updated in the modal.'),
 
-('src/main/java/de/technikteam/api/v1/AdminFileResource.java',
+('src/main/java/de/api/v1/AdminFileResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the administrative API for managing files and `FileCategory` entities. It handles file uploads, deletions, and category management.
@@ -110,7 +110,7 @@ This is a component of the **Web/API Tier**. It is the backend for the `/admin/d
 - **`getAllFiles()`**: `GET /` - Retrieves all files, regardless of role, for the admin view.
 - **`getAllCategories()`**: `GET /categories` - Retrieves all defined file categories.'),
 
-('src/main/java/de/technikteam/api/v1/AdminFormDataResource.java',
+('src/main/java/de/api/v1/AdminFormDataResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides a specialized, aggregated API endpoint that serves up all the data needed to populate the administrative user creation and editing forms. It fetches all available roles and permissions in a single request.
@@ -132,7 +132,7 @@ This is a component of the **Web/API Tier**. It acts as an efficient data source
     - It then processes the permissions list, grouping them by their prefix (e.g., "USER_", "EVENT_") into a `Map` structure.
     - It returns a single JSON object containing both the `roles` list and the `groupedPermissions` map.'),
 
-('src/main/java/de/technikteam/api/v1/AdminNotificationResource.java',
+('src/main/java/de/api/v1/AdminNotificationResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the API endpoints for the real-time notification system. It includes an endpoint for clients to subscribe to Server-Sent Events (SSE) and an endpoint for administrators to send broadcast notifications.

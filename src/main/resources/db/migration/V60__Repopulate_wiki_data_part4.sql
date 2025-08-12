@@ -1,7 +1,7 @@
 -- Flyway migration V60, Part 4: Overhaul Technical Wiki Documentation
 
 INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
-('src/main/java/de/technikteam/util/DaoUtils.java',
+('src/main/java/de/util/DaoUtils.java',
 '## 1. File Overview & Purpose
 
 This is a small utility class that provides common helper methods for DAO classes. Its purpose is to encapsulate reusable database-related logic, reducing code duplication across the DAO layer.
@@ -18,7 +18,7 @@ This is a utility class for the **DAO (Data Access) Tier**.
 
 - **`hasColumn(ResultSet rs, String columnName)`**: This is a crucial helper method used in many DAOs. It safely checks if a given `ResultSet` contains a column with a specific name (case-insensitively). This is extremely useful in DAOs that perform complex JOINs where a column might be present in some results but not others (e.g., `leader_username`). Using this check before calling `rs.getString(...)` prevents a `SQLException` if the column doesn''t exist for a particular row.'),
 
-('src/main/java/de/technikteam/util/FileSignatureValidator.java',
+('src/main/java/de/util/FileSignatureValidator.java',
 '## 1. File Overview & Purpose
 
 This is a security utility class designed to validate uploaded files based on their "magic numbers" (the first few bytes of the file) rather than just their file extension or MIME type. This provides a strong defense against attacks where a malicious executable file is renamed to something benign like `.jpg`.
@@ -41,7 +41,7 @@ This is a cross-cutting **Security/Utility** component. It is used by the `FileS
     4.  It compares these actual bytes with the expected signature. If they match, the file is considered valid and the method returns `true`.
     5.  If they do not match, it logs a security warning and returns `false`, preventing the file from being processed further.'),
 
-('src/main/java/de/technikteam/util/MarkdownUtil.java',
+('src/main/java/de/util/MarkdownUtil.java',
 '## 1. File Overview & Purpose
 
 This is a **deprecated** utility class. Its original purpose was to sanitize Markdown content to prevent XSS attacks. However, it has been replaced by the much more robust **OWASP Java HTML Sanitizer**, which is configured in `SanitizerConfig.java`.
@@ -58,7 +58,7 @@ This is a **Legacy/Utility** class. It is no longer used in security-sensitive c
 
 The `transform` method is now a simple pass-through and performs no sanitization. All sanitization logic has been moved to the `PolicyFactory` beans defined in `SanitizerConfig.java`.'),
 
-('src/main/java/de/technikteam/util/NavigationRegistry.java',
+('src/main/java/de/util/NavigationRegistry.java',
 '## 1. File Overview & Purpose
 
 This class is a centralized, static registry for all navigation links in the application''s sidebar. It defines the complete set of possible navigation items and provides a single method to generate a user-specific list of links based on their assigned permissions. This approach ensures a single source of truth for the site''s navigation structure and access control.
@@ -81,7 +81,7 @@ This is a **Configuration/Utility** class that primarily supports the **Web/Cont
     2.  The user has the master `ACCESS_ADMIN_PANEL` permission.
     3.  The user''s set of permissions contains the specific permission required by the item.'),
 
-('src/main/java/de/technikteam/util/PasswordPolicyValidator.java',
+('src/main/java/de/util/PasswordPolicyValidator.java',
 '## 1. File Overview & Purpose
 
 This is a utility class for enforcing a strong password policy. It provides a single static method to validate a given password against a set of predefined complexity rules (minimum length, character types). This ensures that all new passwords set in the application meet the required security standards.

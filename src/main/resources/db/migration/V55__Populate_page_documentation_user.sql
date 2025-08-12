@@ -13,7 +13,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Behalte den Überblick über deine Aufgaben während eines Events.
 - Finde neue Möglichkeiten, dich im Team zu engagieren.',
 '["events", "lehrgaenge", "profile"]',
-0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/service/AdminDashboardService.java')),
+0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/service/AdminDashboardService.java')),
 
 ('team_directory', 'Team-Verzeichnis', '/team',
 '## Features
@@ -41,7 +41,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Koordination in kleineren Gruppen für spezifische Projekte.
 - Informeller Austausch im Team.',
 '[]',
-0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/websocket/ChatWebSocketHandler.java')),
+0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/websocket/ChatWebSocketHandler.java')),
 
 ('lehrgaenge', 'Lehrgänge', '/lehrgaenge',
 '## Features
@@ -55,7 +55,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Behalte den Überblick über alle Fortbildungsmöglichkeiten.
 - Gib den Admins Feedback, welche Themen für das Team interessant sind.',
 '["dashboard", "profile", "calendar"]',
-0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/dao/MeetingDAO.java')),
+0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/dao/MeetingDAO.java')),
 
 ('events', 'Veranstaltungen', '/veranstaltungen',
 '## Features
@@ -68,7 +68,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Finde heraus, bei welchen Events du mitarbeiten kannst.
 - Melde deine Verfügbarkeit für anstehende Veranstaltungen.',
 '["dashboard", "profile", "calendar"]',
-0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/dao/EventDAO.java')),
+0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/dao/EventDAO.java')),
 
 ('storage', 'Lager', '/lager',
 '## Features
@@ -82,7 +82,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Bereite eine Materialliste vor und buche alles mit einer einzigen Transaktion aus.
 - Finde schnell heraus, wo ein bestimmter Artikel gelagert wird.',
 '["storage_details"]',
-0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/dao/StorageDAO.java')),
+0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/dao/StorageDAO.java')),
 
 ('storage_details', 'Lagerartikel Details', '/lager/details/:itemId',
 '## Features
@@ -109,7 +109,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Lade die neueste Version einer Checkliste oder eines Protokollformulars herunter.
 - Greife auf Bedienungsanleitungen für komplexes Equipment zu.',
 '[]',
-0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/dao/FileDAO.java')),
+0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/dao/FileDAO.java')),
 
 ('calendar', 'Kalender', '/kalender',
 '## Features
@@ -121,7 +121,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Plane deine Termine und sieh auf einen Blick, was in den nächsten Wochen ansteht.
 - Halte deinen persönlichen Kalender automatisch auf dem neuesten Stand.',
 '["events", "lehrgaenge"]',
-0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/public_api/PublicCalendarResource.java')),
+0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/public_api/PublicCalendarResource.java')),
 
 ('feedback', 'Feedback', '/feedback',
 '## Features
@@ -133,7 +133,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Melde einen Bug, den du gefunden hast.
 - Teile eine Idee für eine neue Funktion, die dem Team helfen würde.',
 '["admin_feedback"]',
-0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/dao/FeedbackSubmissionDAO.java')),
+0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/dao/FeedbackSubmissionDAO.java')),
 
 ('changelogs', 'Changelogs', '/changelogs',
 '## Features
@@ -144,7 +144,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Bleibe auf dem Laufenden über die Entwicklung der App.
 - Entdecke neue Funktionen, die dir die Arbeit erleichtern können.',
 '[]',
-0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/dao/ChangelogDAO.java')),
+0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/dao/ChangelogDAO.java')),
 
 ('profile', 'Mein Profil', '/profil',
 '## Features
@@ -159,4 +159,4 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Verfolge deinen Lernfortschritt und deine Erfolge im Team.
 - Gib Feedback für vergangene Events.',
 '["dashboard", "team_directory"]',
-0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/public_api/PublicProfileResource.java'));
+0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/public_api/PublicProfileResource.java'));

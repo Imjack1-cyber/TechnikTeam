@@ -38,6 +38,9 @@ public class AdminLogDAO {
 		if (DaoUtils.hasColumn(rs, "revoking_admin_username")) {
 			logEntry.setRevokingAdminUsername(rs.getString("revoking_admin_username"));
 		}
+		if (DaoUtils.hasColumn(rs, "admin_user_id")) {
+			logEntry.setAdminUserId(rs.getObject("admin_user_id", Integer.class));
+		}
 		return logEntry;
 	};
 
@@ -51,7 +54,8 @@ public class AdminLogDAO {
 	}
 
 	public List<AdminLog> getAllLogs() {
-		String sql = "SELECT l.*, a.username as revoking_admin_username " + "FROM admin_logs l "
+		String sql = "SELECT l.*, u.id as admin_user_id, a.username as revoking_admin_username " + "FROM admin_logs l "
+				+ "LEFT JOIN users u ON l.admin_username = u.username "
 				+ "LEFT JOIN users a ON l.revoked_by_admin_id = a.id " + "ORDER BY l.action_timestamp DESC";
 		try {
 			return jdbcTemplate.query(sql, rowMapper);
@@ -62,7 +66,8 @@ public class AdminLogDAO {
 	}
 
 	public AdminLog getLogById(long logId) {
-		String sql = "SELECT l.*, a.username as revoking_admin_username " + "FROM admin_logs l "
+		String sql = "SELECT l.*, u.id as admin_user_id, a.username as revoking_admin_username " + "FROM admin_logs l "
+				+ "LEFT JOIN users u ON l.admin_username = u.username "
 				+ "LEFT JOIN users a ON l.revoked_by_admin_id = a.id " + "WHERE l.id = ?";
 		try {
 			return jdbcTemplate.queryForObject(sql, rowMapper, logId);
@@ -85,7 +90,8 @@ public class AdminLogDAO {
 	}
 
 	public List<AdminLog> getRecentLogs(int limit) {
-		String sql = "SELECT l.*, a.username as revoking_admin_username " + "FROM admin_logs l "
+		String sql = "SELECT l.*, u.id as admin_user_id, a.username as revoking_admin_username " + "FROM admin_logs l "
+				+ "LEFT JOIN users u ON l.admin_username = u.username "
 				+ "LEFT JOIN users a ON l.revoked_by_admin_id = a.id " + "ORDER BY l.action_timestamp DESC LIMIT ?";
 		try {
 			return jdbcTemplate.query(sql, rowMapper, limit);

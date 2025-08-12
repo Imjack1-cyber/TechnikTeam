@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import UserModal from '../../components/admin/users/UserModal';
@@ -201,6 +202,7 @@ const AdminUsersPage = () => {
 									</td>
 									<td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
 										<button onClick={() => handleOpenEditModal(user)} className="btn btn-small">Bearbeiten</button>
+										<Link to={`/team/${user.id}`} className="btn btn-small btn-info">Profil ansehen</Link>
 										<button onClick={() => handleResetPassword(user)} className="btn btn-small btn-secondary">Passwort Reset</button>
 										{isLocked
 											? <button onClick={() => handleUnsuspend(user)} className="btn btn-small btn-success">Entsperren</button>
@@ -233,6 +235,7 @@ const AdminUsersPage = () => {
 							</div>
 							<div className="card-actions">
 								<button onClick={() => handleOpenEditModal(user)} className="btn btn-small">Bearbeiten</button>
+								<Link to={`/team/${user.id}`} className="btn btn-small btn-info">Profil</Link>
 								<button onClick={() => handleResetPassword(user)} className="btn btn-small btn-secondary">Reset</button>
 								{isLocked
 									? <button onClick={() => handleUnsuspend(user)} className="btn btn-small btn-success">Entsperren</button>

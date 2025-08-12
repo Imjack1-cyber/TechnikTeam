@@ -35,13 +35,15 @@ public class AuthService {
 	@Autowired
 	public AuthService(UserDAO userDAO, ConfigurationService configService) {
 		this.userDAO = userDAO;
-		// TODO: SECURITY-AUDIT-FIX (CWE-547)
-		// Loading secrets from properties files committed to version control is
-		// insecure.
-		// REMEDIATION: Refactor to read the JWT secret from an environment variable
-		// (e.g., System.getenv("JWT_SECRET")) or a dedicated secrets management
-		// service.
-		String secret = configService.getProperty("jwt.secret");
+		// REMEDIATION: Load the JWT secret from an environment variable.
+		String secret = System.getenv("JWT_SECRET");
+		if (secret == null || secret.isBlank()) {
+			// Fallback to properties file only for local development if env var is not
+			// set.
+			logger.warn(
+					"JWT_SECRET environment variable not found. Falling back to application.properties. This is insecure and should not be used in production.");
+			secret = configService.getProperty("jwt.secret");
+		}
 		if (secret == null || secret.isBlank() || secret.length() < 32) {
 			logger.fatal(
 					"JWT-Secret ist nicht konfiguriert oder zu kurz (muss mindestens 32 Zeichen lang sein). Die Anwendung kann nicht sicher gestartet werden.");

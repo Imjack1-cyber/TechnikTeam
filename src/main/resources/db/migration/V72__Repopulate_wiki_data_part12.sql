@@ -1,7 +1,7 @@
 -- Flyway migration V72, Part 12: Overhaul Technical Wiki Documentation (Backend Public API)
 
 INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
-('src/main/java/de/technikteam/api/v1/public_api/PublicDocumentationResource.java',
+('src/main/java/de/api/v1/public_api/PublicDocumentationResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the public-facing API endpoints for viewing the `PageDocumentation`. It is the backend for the `/help` and `/help/:pageKey` pages.
@@ -20,7 +20,7 @@ This is a component of the **Web/API Tier**. It handles read-only requests for d
 - **`getAllDocs(...)`**: `GET /` - Fetches all documentation pages, automatically filtering out admin-only pages if the current user is not an admin.
 - **`getDocByKey(...)`**: `GET /{pageKey}` - Fetches a single documentation page. It includes an authorization check to ensure non-admins cannot access admin-only documentation via a direct URL.'),
 
-('src/main/java/de/technikteam/api/v1/public_api/PublicEventGalleryResource.java',
+('src/main/java/de/api/v1/public_api/PublicEventGalleryResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the public API endpoints for interacting with an event''s photo gallery. It allows participants to view, upload, and delete photos.
@@ -40,7 +40,7 @@ This is a component of the **Web/API Tier**. It is the backend for the "Gallery"
 - **`uploadPhoto(...)`**: `POST /{eventId}/gallery` - Handles the upload of a new photo. The service layer performs authorization checks to ensure only participants of a completed event can upload.
 - **`deletePhoto(...)`**: `DELETE /gallery/{photoId}` - Deletes a photo. The service layer ensures a user can only delete their own photos, unless they are an admin or the event leader.'),
 
-('src/main/java/de/technikteam/api/v1/public_api/PublicEventResource.java',
+('src/main/java/de/api/v1/public_api/PublicEventResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the main public-facing API endpoints for user interactions with events. It handles fetching event lists, viewing details, and signing up/off.
@@ -65,7 +65,7 @@ This is a component of the **Web/API Tier**. It is the backend for the `/veranst
 - **`getEventCustomFields(...)`**: `GET /{id}/custom-fields` - Fetches the custom questions for an event''s sign-up form.
 - **`uploadEventChatFile(...)`**: `POST /{eventId}/chat/upload` - Handles file uploads specifically for the event chat.'),
 
-('src/main/java/de/technikteam/api/v1/public_api/PublicFeedbackResource.java',
+('src/main/java/de/api/v1/public_api/PublicFeedbackResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the public API endpoints for the feedback system. It allows users to submit general feedback and event-specific feedback, and to view their own submission history.
@@ -86,7 +86,7 @@ This is a component of the **Web/API Tier**. It is the backend for the `/feedbac
 - **`getEventFeedbackForm(...)`**: `GET /forms` - Retrieves the necessary data to render the event-specific feedback form, including a check to see if the user has already submitted it.
 - **`submitEventFeedback(...)`**: `POST /event` - Submits a user''s rating and comments for a specific event. **This includes a security check** to ensure a user can only submit feedback for events they were actually assigned to.'),
 
-('src/main/java/de/technikteam/api/v1/public_api/PublicFilesResource.java',
+('src/main/java/de/api/v1/public_api/PublicFilesResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides a public API endpoint for fetching the list of downloadable files.
@@ -104,7 +104,7 @@ This is a component of the **Web/API Tier**. It is the backend for the `/dateien
 
 - **`getFiles(...)`**: `GET /` - Fetches all files, grouped by category. The DAO method automatically filters the results based on the current user''s role, so non-admins will not see admin-only files in the list.'),
 
-('src/main/java/de/technikteam/api/v1/public_api/PublicFileStreamResource.java',
+('src/main/java/de/api/v1/public_api/PublicFileStreamResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` is a specialized controller for securely streaming file content (downloads and images) to the client. It acts as a secure gateway to the file system, performing validation and authorization before serving a file.
@@ -127,7 +127,7 @@ This is a critical component of the **Web/API Tier** that bridges the gap to the
     2.  **Path Traversal Protection**: It crucially checks that the final, resolved path is still *inside* the base upload directory. This prevents attacks where a user might try to access files outside this directory (e.g., `../../../../etc/passwd`).
     3.  It sets the appropriate `Content-Type` and `Content-Disposition` headers (`attachment` for downloads, `inline` for images) and streams the file''s bytes to the response.'),
 
-('src/main/java/de/technikteam/api/v1/public_api/PublicMeetingResource.java',
+('src/main/java/de/api/v1/public_api/PublicMeetingResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the public API endpoints for user interactions with `Meeting` entities (training sessions).
@@ -146,7 +146,7 @@ This is a component of the **Web/API Tier**. It is the backend for the `/lehrgae
 - **`getUpcomingMeetings(...)`**: `GET /` - Retrieves the list of upcoming meetings, enriched with the current user''s sign-up status for each.
 - **`handleMeetingAction(...)`**: `POST /{id}/{action}` - A single endpoint that handles both signing up (`action=signup`) and signing off (`action=signoff`) from a meeting.'),
 
-('src/main/java/de/technikteam/api/v1/public_api/PublicProfileResource.java',
+('src/main/java/de/api/v1/public_api/PublicProfileResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the API endpoints for managing a user''s own profile. It handles fetching all data for the profile page, submitting change requests, and updating preferences like theme and password.
@@ -171,7 +171,7 @@ This is a component of the **Web/API Tier**. It is the backend for the `/profil`
 - **`updatePassword(...)`**: `PUT /password` - Handles the secure password change process, including validating the current password and the new password policy.
 - **`updateDashboardLayout(...)`**: `PUT /dashboard-layout` - Saves the user''s custom widget layout for their dashboard.'),
 
-('src/main/java/de/technikteam/api/v1/public_api/PublicSearchResource.java',
+('src/main/java/de/api/v1/public_api/PublicSearchResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides a single API endpoint for the global, site-wide search functionality.
@@ -189,7 +189,7 @@ This is a component of the **Web/API Tier**. It is the backend for the `/suche` 
 
 - **`search(...)`**: `GET /` - Takes a `query` parameter. It includes a basic validation to ensure the query is at least 3 characters long. It then calls the `searchService` to perform the multi-table search and returns the aggregated results.'),
 
-('src/main/java/de/technikteam/api/v1/public_api/PublicStorageDetailsResource.java',
+('src/main/java/de/api/v1/public_api/PublicStorageDetailsResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides public API endpoints for retrieving detailed information about a single `StorageItem`, including its history and future reservations.
@@ -211,7 +211,7 @@ This is a component of the **Web/API Tier**. It is the backend for the `/lager/d
 - **`getStorageItemReservations(...)`**: `GET /{itemId}/reservations` - Fetches a list of all future events for which this item is reserved.
 - **`getRelatedItems(...)`**: `GET /{itemId}/relations` - Fetches the list of items that are defined as "related" to this one.'),
 
-('src/main/java/de/technikteam/api/v1/public_api/PublicStorageResource.java',
+('src/main/java/de/api/v1/public_api/PublicStorageResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the public API endpoints for general inventory interaction. It handles fetching the data for the main `/lager` page and processing check-in/checkout transactions.
@@ -232,7 +232,7 @@ This is a component of the **Web/API Tier**. It is the backend for the `/lager` 
 - **`performTransaction(...)`**: `POST /transactions` - The endpoint for the multi-item cart system. It receives a single transaction request and passes it to the `StorageService` to be processed atomically.
 - **`reportDamage(...)`**: `POST /{itemId}/report-damage` - Allows a user to submit a damage report for an item.'),
 
-('src/main/java/de/technikteam/api/v1/public_api/PublicTrainingRequestResource.java',
+('src/main/java/de/api/v1/public_api/PublicTrainingRequestResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the public API endpoints for the user-initiated training request feature. It allows users to submit new requests and register their interest in existing ones.

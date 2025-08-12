@@ -43,8 +43,11 @@ public class InitialAdminCreator implements CommandLineRunner {
 			adminUser.setRoleId(1); // Assuming 1 is the ADMIN role ID
 
 //			String randomPassword = generateRandomPassword(8);
-			String randomPassword = "TechnikTeam1+"; 
+			String randomPassword = "TechnikTeam1+";
 
+			// Grant a few key permissions explicitly, although the ADMIN role should cover
+			// everything.
+			// This provides a fallback if the security config were to change.
 			List<String> permissionKeysToGrant = List.of(Permissions.ACCESS_ADMIN_PANEL, Permissions.NOTIFICATION_SEND,
 					Permissions.LOG_READ, Permissions.LOG_REVOKE);
 			List<String> permissionIds = new ArrayList<>();

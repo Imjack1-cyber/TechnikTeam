@@ -187,7 +187,7 @@ const AdminFilesPage = () => {
 					<ul className="details-list">
 						{files.map(file => {
 							const isMarkdown = file.filename.toLowerCase().endsWith('.md');
-							const editUrl = file.requiredRole === 'ADMIN' ? `/admin/content/dateien/edit/${file.id}` : `/dateien/edit/${file.id}`;
+							const editUrl = `/admin/content/dateien/edit/${file.id}`;
 							return (
 								<li key={file.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
 									<div>

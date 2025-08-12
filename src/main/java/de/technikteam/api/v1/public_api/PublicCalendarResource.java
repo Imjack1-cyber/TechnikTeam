@@ -56,7 +56,7 @@ public class PublicCalendarResource {
 	public ResponseEntity<byte[]> getICalendarFeed() {
 		try {
 			Calendar calendar = new Calendar();
-			calendar.getProperties().add(new ProdId("-//TechnikTeam Calendar//iCal4j 3.2.4//DE"));
+			calendar.getProperties().add(new ProdId("-/ Calendar//iCal4j 3.2.4//DE"));
 			calendar.getProperties().add(Version.VERSION_2_0);
 
 			RandomUidGenerator uidGenerator = new RandomUidGenerator();

@@ -1,7 +1,7 @@
 -- Flyway migration V68, Part 9: Overhaul Technical Wiki Documentation
 
 INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
-('src/main/java/de/technikteam/api/v1/LogResource.java',
+('src/main/java/de/api/v1/LogResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides an API endpoint for viewing the `AdminLog`. It is the backend for the `/admin/log` page.
@@ -19,7 +19,7 @@ This is a component of the **Web/API Tier**. It directly interacts with the `Adm
 
 - **`getLogs(...)`**: `GET /` - Retrieves admin action logs. It accepts an optional `limit` query parameter to fetch only the most recent N entries, which is used by the admin dashboard widget.'),
 
-('src/main/java/de/technikteam/api/v1/MatrixResource.java',
+('src/main/java/de/api/v1/MatrixResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the API endpoints for the Qualification Matrix feature. It serves the aggregated data needed to build the matrix view and handles updates to attendance records.
@@ -38,7 +38,7 @@ This is a component of the **Web/API Tier**. It is the backend for the `/admin/m
 - **`getMatrixData()`**: `GET /` - This is the main data-fetching endpoint. It queries all necessary tables and returns a single, large JSON object containing lists of users, courses, meetings grouped by course, and a map of all attendance records. The frontend then uses this data to construct the visual matrix.
 - **`updateAttendance(...)`**: `PUT /attendance` - This endpoint is called when an admin clicks a cell in the matrix. It takes a `MeetingAttendance` object and updates the database, marking a user as having attended (or not attended) a specific meeting.'),
 
-('src/main/java/de/technikteam/api/v1/MeetingResource.java',
+('src/main/java/de/api/v1/MeetingResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the administrative CRUD endpoints for managing `Meeting` entities (specific training dates). It is the backend for the `/admin/lehrgaenge/:courseId/meetings` page.
@@ -63,7 +63,7 @@ This is a component of the **Web/API Tier**. It delegates database operations to
 - **`cloneMeeting(...)`**: `POST /{id}/clone` - Clones a meeting to serve as a template for a new one.
 - **`deleteMeeting(...)`**: `DELETE /{id}` - Deletes a meeting.'),
 
-('src/main/java/de/technikteam/api/v1/ReportResource.java',
+('src/main/java/de/api/v1/ReportResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides API endpoints for generating analytical reports and aggregated statistics. It is the backend for the `/admin/berichte` page.
@@ -81,7 +81,7 @@ This is a component of the **Web/API Tier**. It delegates the execution of compl
 
 - **`getDashboardReport()`**: `GET /dashboard` - A dedicated endpoint that aggregates several key metrics (event trend, user activity, inventory value) required specifically for the admin reports dashboard page. This provides all necessary data in a single API call.'),
 
-('src/main/java/de/technikteam/api/v1/StorageResource.java',
+('src/main/java/de/api/v1/StorageResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the primary administrative CRUD endpoints for managing `StorageItem` entities. It is the backend for the main `/admin/lager` page.
@@ -102,7 +102,7 @@ This is a component of the **Web/API Tier**. It delegates database operations di
 - **`updateItem(...)`**: `PUT /{id}` - Updates an existing item.
 - **`deleteItem(...)`**: `DELETE /{id}` - Deletes an item.'),
 
-('src/main/java/de/technikteam/api/v1/SystemResource.java',
+('src/main/java/de/api/v1/SystemResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides an API endpoint to retrieve live statistics about the server''s system health. It is the backend for the `/admin/system` page.
@@ -120,7 +120,7 @@ This is a component of the **Web/API Tier**. It delegates the task of collecting
 
 - **`getSystemStats()`**: `GET /stats` - Calls the `systemInfoService` to gather current system statistics and returns them in a `SystemStatsDTO`.'),
 
-('src/main/java/de/technikteam/api/v1/UserResource.java',
+('src/main/java/de/api/v1/UserResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the primary administrative CRUD and management endpoints for `User` accounts. It is the backend for the `/admin/mitglieder` page.
@@ -148,7 +148,7 @@ This is a key component of the **Web/API Tier**. It handles all user management 
 - **`resetPassword(...)`**: `POST /{id}/reset-password` - Generates a new random password for a user and returns it in the API response.
 - **`unlockUser(...)`**: `POST /{id}/unlock` - Clears the failed login attempts for a user, unlocking their account.'),
 
-('src/main/java/de/technikteam/api/v1/WikiResource.java',
+('src/main/java/de/api/v1/WikiResource.java',
 '## 1. File Overview & Purpose
 
 This `@RestController` provides the administrative CRUD endpoints for the technical `WikiEntry` documentation. It is the backend for the `/admin/wiki` page.

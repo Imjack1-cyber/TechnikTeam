@@ -47,7 +47,7 @@ This is a top-level **Project Configuration** file. It defines the software stac
     - `flyway-maven-plugin`: Allows running database migrations from the command line.
     - `maven-compiler-plugin`: Ensures the code is compiled with Java 21 compatibility.'),
 
-('src/main/java/de/technikteam/TechnikTeamApplication.java',
+('src/main/java/deApplication.java',
 '## 1. File Overview & Purpose
 
 This is the main entry point of the Spring Boot application. The `@SpringBootApplication` annotation triggers auto-configuration, component scanning, and enables the application to be run as a standalone executable JAR.
@@ -66,7 +66,7 @@ This is the **Application Bootstrap** component. It initializes the Spring Appli
 - **`@ComponentScan(basePackages = "de.technikteam")`**: This explicitly tells Spring to scan the `de.technikteam` package and all its sub-packages for components (like `@Service`, `@RestController`, `@Repository`) to manage.
 - **`main(String[] args)`**: The standard Java entry point. `SpringApplication.run()` starts the entire application, including the embedded web server (Tomcat).'),
 
-('src/main/java/de/technikteam/config/DateFormatter.java',
+('src/main/java/de/config/DateFormatter.java',
 '## 1. File Overview & Purpose
 
 This is a simple utility class that provides static methods for consistently formatting `java.time.LocalDateTime` objects into German-locale strings. It ensures that dates and times are displayed uniformly across the application.
@@ -86,7 +86,7 @@ This is a cross-cutting **Utility** class. It is used primarily in the **Model T
 - **`formatDate(LocalDateTime ldt)`**: Formats a `LocalDateTime` into a date-only string (e.g., "10.06.2025").
 - **`formatDateTimeRange(LocalDateTime start, LocalDateTime end)`**: An intelligent formatter that creates a compact range string. For example, if the start and end are on the same day, it produces "10.06.2025, 17:45 - 19:00 Uhr" instead of repeating the date.'),
 
-('src/main/java/de/technikteam/config/GlobalExceptionHandler.java',
+('src/main/java/de/config/GlobalExceptionHandler.java',
 '## 1. File Overview & Purpose
 
 This class acts as a global, centralized exception handler for the entire REST API. By using the `@ControllerAdvice` annotation, it intercepts exceptions thrown from any `@RestController`, preventing raw stack traces from being sent to the client and ensuring that all error responses follow the standard `ApiResponse` JSON format.
@@ -107,7 +107,7 @@ This is a cross-cutting **Configuration** component that provides a uniform erro
 - **`@ExceptionHandler(AccessDeniedException.class)`**: This catches security-related exceptions from `@PreAuthorize` or other Spring Security checks. It returns a generic "Access Denied" message with an HTTP 403 (Forbidden) status.
 - **`@ExceptionHandler(Exception.class)`**: This is the catch-all handler for any other unhandled exception. It logs the full error for debugging purposes and returns a generic "Internal Server Error" message with an HTTP 500 status, avoiding the leak of implementation details.'),
 
-('src/main/java/de/technikteam/config/InitialAdminCreator.java',
+('src/main/java/de/config/InitialAdminCreator.java',
 '## 1. File Overview & Purpose
 
 This component is a `CommandLineRunner` that executes once on application startup. Its sole responsibility is to check if a default "admin" user exists in the database. If not (indicating a first-time setup), it creates the user with full administrative permissions and a strong, randomly generated password.
@@ -132,7 +132,7 @@ This is a critical **Application Bootstrap / Configuration** component. It ensur
     - It calls the transactional `userService.createUserWithPermissions` method to create the user and assign these permissions.
     - **Crucially**, it logs the newly generated password to the console with a prominent warning. This password is only ever displayed this one time and must be copied and stored securely by the system administrator.'),
 
-('src/main/java/de/technikteam/config/LocalDateTimeAdapter.java',
+('src/main/java/de/config/LocalDateTimeAdapter.java',
 '## 1. File Overview & Purpose
 
 This is a custom `TypeAdapter` for the **Gson** library. It provides explicit instructions on how to serialize `java.time.LocalDateTime` objects into JSON strings and deserialize them back. This is necessary to ensure consistent, standard formatting (ISO 8601) and to work around potential reflection issues in modern Java versions.
@@ -151,7 +151,7 @@ This is a **Configuration/Utility** class used by the **Web/API Tier**. It is re
 - **`write(...)`**: This method is called during serialization (Java -> JSON). It takes a `LocalDateTime` object and writes its ISO 8601 string representation (e.g., `"2025-08-05T22:19:35.516"`) to the JSON output.
 - **`read(...)`**: This method is called during deserialization (JSON -> Java). It reads a string from the JSON input and parses it back into a `LocalDateTime` object using the same ISO 8601 format.'),
 
-('src/main/java/de/technikteam/config/OpenApiConfig.java',
+('src/main/java/de/config/OpenApiConfig.java',
 '## 1. File Overview & Purpose
 
 This class configures the **Springdoc OpenAPI** library, which automatically generates interactive API documentation (Swagger UI) for the application''s REST controllers.

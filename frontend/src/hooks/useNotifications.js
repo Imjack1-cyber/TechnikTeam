@@ -27,15 +27,7 @@ export const useNotifications = () => {
 		}
 
 		// Construct the correct URL for EventSource with the token as a query parameter
-		const ssePath = `/api/v1/public/notifications/sse?token=${encodeURIComponent(token)}`;
-		let sseUrl;
-		if (import.meta.env.PROD) {
-			// In production, the path is relative to the origin
-			sseUrl = `/TechnikTeam${ssePath}`;
-		} else {
-			// In development, it's an absolute path to be caught by the Vite proxy
-			sseUrl = ssePath;
-		}
+		const sseUrl = `/TechnikTeam/api/v1/public/notifications/sse?token=${encodeURIComponent(token)}`;
 
 		console.log(`[useNotifications] Connecting to SSE at: ${sseUrl}`);
 		const events = new EventSource(sseUrl);

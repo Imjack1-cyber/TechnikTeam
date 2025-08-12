@@ -1,0 +1,892 @@
+﻿
+========================================================================
+FILE: src\main\resources\db\migration\V81__Repopulate_wiki_data_part21.sql
+========================================================================
+
+-- Flyway migration V81, Part 21: Overhaul Technical Wiki Documentation (Frontend Components)
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('frontend/src/components/calendar/CalendarDesktopView.jsx',
+'## 1. File Overview & Purpose
+
+This component renders a traditional, grid-based **monthly calendar view** for desktop screens.
+
+## 2. Architectural Role
+
+This is a **View** sub-component, used by `CalendarPage`.
+
+## 3. Key Features & Logic
+
+- **Date Calculation (`date-fns`):** It heavily uses the `date-fns` library to perform all necessary date calculations:
+    - `startOfMonth`, `endOfMonth`: To find the boundaries of the current month.
+    - `startOfWeek`, `endOfWeek`: To find the start and end of the visible grid, ensuring full weeks are always displayed.
+    - `eachDayOfInterval`: To generate an array of all `Date` objects to be rendered in the grid.
+- **Data Grouping:** It uses `useMemo` to transform the flat list of `entries` (from props) into a `Map` where keys are date strings (`"yyyy-MM-dd"`) and values are arrays of events for that day. This is an efficient way to look up events for each day cell.
+- **Rendering:** It maps over the `daysInGrid` array. For each day, it looks up the events in the memoized map and renders them. Days not in the current month are visually greyed out.'),
+
+('frontend/src/components/calendar/CalendarMobileView.jsx',
+'## 1. File Overview & Purpose
+
+This component renders a simple, **chronological list of upcoming events and meetings**, optimized for mobile screens.
+
+## 2. Architectural Role
+
+This is a **View** sub-component, used by `CalendarPage`.
+
+## 3. Key Features & Logic
+
+- **Sorting:** It first sorts the incoming `entries` array by date to ensure they are displayed in chronological order.
+- **Rendering:** It maps over the sorted array and renders each entry as a list item (`termin-item`). Each item displays the day, month, title, and type of the entry, and links to the respective details page.'),
+
+('frontend/src/components/chat/ConversationList.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the **list of conversations** on the left side of the `ChatPage`. It displays all of the user''s 1-on-1 and group chats and provides controls for starting new ones.
+
+## 2. Architectural Role
+
+This is a **View** sub-component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to fetch the user''s conversation list from `/api/v1/public/chat/conversations`.
+- **Starting New Chats:**
+    - The "New Direct Message" button opens a `UserSearchModal`. When a user is selected, it calls `POST /api/v1/public/chat/conversations` to find or create a conversation and then navigates to the new chat URL.
+    - The "New Group" button opens the `GroupChatModal`, which handles the creation of a new group conversation.
+- **Active State:** It compares the `selectedConversationId` prop (from the URL) with each conversation''s ID to apply an "active" CSS class to the currently viewed chat.'),
+
+('frontend/src/components/chat/GroupChatModal.jsx',
+'## 1. File Overview & Purpose
+
+This component provides the **modal dialog for creating a new group chat**.
+
+## 2. Architectural Role
+
+This is a **UI Container Component**.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to fetch a list of all users from `/api/v1/users` to populate the member selection checklist.
+- **State Management:** Uses `useState` to manage the `groupName` input and a `Set` of `selectedUsers`.
+- **Submission:** The "Create Group" button calls the `onCreateGroup` prop (passed from `ConversationList`), providing the group name and the array of selected user IDs.'),
+
+('frontend/src/components/chat/ManageParticipantsModal.jsx',
+'## 1. File Overview & Purpose
+
+This component provides the **modal dialog for adding new members to an existing group chat**.
+
+## 2. Architectural Role
+
+This is a **UI Container Component**.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to get a list of all users.
+- **Filtering:** It filters the list of all users to show only those who are *not* already in the current conversation.
+- **Submission:** The "Add" button calls the `onAddUsers` prop (passed from `MessageView`), providing the array of newly selected user IDs.'),
+
+('frontend/src/components/chat/MessageStatus.jsx',
+'## 1. File Overview & Purpose
+
+This is a small, presentational component that displays the **read receipt status** (Sent, Delivered, Read) for a chat message.
+
+## 2. Architectural Role
+
+This is a **View** sub-component, used within `MessageView`.
+
+## 3. Key Features & Logic
+
+- **Conditional Rendering:** It only renders if the message was sent by the current user (`isSentByMe` prop is true).
+- **Icon Logic:** It uses a `switch` statement on the `status` prop to determine which FontAwesome icon to display (`fa-check`, `fa-check-double`) and whether to apply a different color for the "Read" status.'),
+
+('frontend/src/components/chat/MessageView.jsx',
+'## 1. File Overview & Purpose
+
+This is a large, complex component that renders the **main message view** for a single conversation on the `ChatPage`. It handles displaying message history, real-time message updates, and the message input form.
+
+## 2. Architectural Role
+
+This is a key **View** component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to fetch the initial message history from `/api/v1/public/chat/conversations/:id/messages`.
+- **Real-Time Updates:** Uses the `useWebSocket` hook to connect to `/ws/dm/:conversationId`. The `handleWebSocketMessage` callback handles incoming messages (`new_message`, `message_updated`, `message_deleted`, `messages_status_updated`) and updates the local `messages` state accordingly.
+- **Read Receipts:** An `useEffect` hook monitors the `messages` state. If it detects unread messages received from another user, it sends a `mark_as_read` event over the WebSocket to inform the server and other clients.
+- **Message Rendering:** It maps over the `messages` array, rendering each one as a "bubble". It handles different styles for sent vs. received messages, displays sender info for group chats, and renders message content (including file links) via the `renderMessageContent` helper.
+- **Message Actions:** It provides options for editing and deleting messages, which send `update_message` and `delete_message` events over the WebSocket.
+- **Input Form:** Provides a controlled form for typing new messages and uploading files.
+
+## 4. State Management
+
+- **Message History:** Managed by `useState`, initialized by `useApi` and updated by `useWebSocket`.
+- **Conversation Details:** Managed by a separate `useApi` hook.
+- **UI State:** Uses `useState` for the message input, editing state, and modal visibility.');
+COMMIT;
+========================================================================
+FILE: src\main\resources\db\migration\V82__Repopulate_wiki_data_part22.sql
+========================================================================
+
+-- Flyway migration V82, Part 22: Overhaul Technical Wiki Documentation (Frontend Components)
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('frontend/src/components/events/ChecklistTab.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the **Inventory Checklist** tab on the `EventDetailsPage`. It provides an interactive checklist for tracking equipment during event load-in and load-out.
+
+## 2. Architectural Role
+
+This is a **View** sub-component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to fetch the initial checklist items for the event from `/api/v1/events/:id/checklist`.
+- **Real-Time Updates:** Uses the `useWebSocket` hook to connect to `/ws/checklist/:id`. It listens for `checklist_update` events and updates the local state in real-time when another user changes an item''s status.
+- **Status Changes:** When the user changes the status of an item in the dropdown, it sends a `PUT` request to `/api/v1/events/:id/checklist/:itemId/status`. The component''s state is then updated by the incoming WebSocket broadcast, ensuring consistency across all clients.
+- **Generate from Reservations:** Provides a button that calls `POST /api/v1/events/:id/checklist/generate` to populate the checklist from the event''s material reservations.'),
+
+('frontend/src/components/events/EventGalleryTab.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the **Photo Gallery** tab on the `EventDetailsPage` for completed events. It displays uploaded photos and provides an interface for participants to upload new ones.
+
+## 2. Architectural Role
+
+This is a **View** sub-component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to fetch all photo metadata for the event from `/api/v1/public/events/:id/gallery`.
+- **Photo Upload:**
+    - It conditionally renders an "Upload Photo" button only if the current user was a participant in the event.
+    - The button opens a `PhotoUploadModal` which handles the file selection and submission to `POST /api/v1/public/events/:id/gallery`.
+- **Photo Deletion:** It renders a delete button on each photo. This button is only visible if the current user is the uploader, an admin, or the event leader.
+- **Lightbox:** Clicking on any photo opens it in a full-screen `Lightbox` view.
+
+## 4. State Management
+
+- **Photo List & Modals:** Managed by `useApi` and `useState` hooks.'),
+
+('frontend/src/components/layout/ErrorLayout.jsx',
+'## 1. File Overview & Purpose
+
+This is a specialized **Layout Component** used by React Router to wrap all error pages (403, 404, 500). Its primary purpose is to apply a consistent, minimal theme and layout to these pages, ensuring they match the user''s selected theme even if the full application fails to render.
+
+## 2. Architectural Role
+
+This is a **Layout** component.
+
+## 3. Key Features & Logic
+
+- **Theme Application:** It directly accesses the `authStore` state via `getState()` to retrieve the user''s theme. It then sets the `data-theme` attribute on the `<html>` element. This is crucial because error pages render outside the main `<App />` component, so they don''t have access to the normal theme context.
+- **Styling:** It wraps the error page content (rendered via `<Outlet />` or `children`) in a `<div class="error-page-wrapper">` which provides the necessary styling for the terminal-themed error pages.'),
+
+('frontend/src/components/layout/Header.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the **mobile-only header** that appears at the top of the screen on small viewports.
+
+## 2. Architectural Role
+
+This is a **Layout** component, part of the main `App` layout.
+
+## 3. Key Features & Logic
+
+- **Hamburger Menu:** It contains the hamburger menu button (`mobile-nav-toggle`). Clicking this button calls the `onNavToggle` function passed down from the `App` component, which manages the mobile sidebar''s open/closed state.
+- **Logo & Profile Link:** It displays the application logo (which links home) and a link to the user''s profile page, showing their selected profile icon.'),
+
+('frontend/src/components/layout/MinimalLayout.jsx',
+'## 1. File Overview & Purpose
+
+This is a specialized **Layout Component** for pages that should be displayed without the main application sidebar and header, such as the printable `PackKitPage` or the mobile-focused `QrActionPage`.
+
+## 2. Architectural Role
+
+This is a **Layout** component.
+
+## 3. Key Features & Logic
+
+- **Simplicity:** It simply renders the child route''s content (via `<Outlet />`) inside a basic, centered content wrapper. This provides a clean slate for pages that need a unique, uncluttered layout.'),
+
+('frontend/src/components/layout/Sidebar.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the main **sidebar navigation** for the application.
+
+## 2. Architectural Role
+
+This is a key **Layout** component, part of the main `App` layout.
+
+## 3. Key Features & Logic
+
+- **Data Source:** It reads the `user` object and the `navigationItems` array directly from the global `useAuthStore`. The `navigationItems` array is pre-filtered by the backend to only contain links the user is authorized to see.
+- **Rendering:** It iterates through the `navigationItems` list and renders a `NavLink` for each. It separates the links into "User" and "Admin" sections.
+- **Active Link Styling:** It uses the `isActive` property provided by `NavLink` to apply the `active-nav-link` class to the currently active route.
+- **Global Search:** It includes the site-wide search bar. On submit, it navigates the user to the `/suche` page with the search term as a query parameter.
+- **User Actions:** It displays the logged-in user''s name, a link to their profile, the logout button, and the `ThemeSwitcher` component.'),
+
+('frontend/src/components/profile/ProfileAchievements.jsx',
+'## 1. File Overview & Purpose
+
+This is a presentational component that displays the **user''s earned achievements** on their profile page.
+
+## 2. Architectural Role
+
+This is a **View** sub-component, used within `ProfilePage`.
+
+## 3. Key Features & Logic
+
+- **Props-Based:** It receives the `achievements` array as a prop.
+- **Rendering:** It maps over the array and displays each achievement in its own card, showing the icon, name, description, and the date it was earned.'),
+
+('frontend/src/components/profile/ProfileDetails.jsx',
+'## 1. File Overview & Purpose
+
+This is a stateful component that manages the display and editing of a user''s **core profile data** on their profile page.
+
+## 2. Architectural Role
+
+This is a **View** and **Form** sub-component, used within `ProfilePage`.
+
+## 3. Key Features & Logic
+
+- **Controlled Form:** It manages the form data for email, class year, etc., in its local `useState`.
+- **Change Request Flow:**
+    1.  When the user clicks "Save," it doesn''t submit directly. Instead, it compares the current form data with the original `user` prop to detect what has changed.
+    2.  It then opens a `ConfirmationModal`, showing the user a summary of their requested changes.
+    3.  Only after the user confirms in this modal does it send the `POST` request to `/api/v1/public/profile/request-change`.
+- **Update Propagation:** After a successful submission, it calls the `onUpdate` function (passed down from `ProfilePage`) to trigger a full refresh of the profile data.
+- **Chat Color:** It also contains a separate, simple form for updating the user''s chat color, which calls the `PUT /api/v1/public/profile/chat-color` endpoint directly.');
+COMMIT;
+========================================================================
+FILE: src\main\resources\db\migration\V83__Repopulate_wiki_data_part23.sql
+========================================================================
+
+-- Flyway migration V83, Part 23: Overhaul Technical Wiki Documentation (Frontend Components & UI)
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('frontend/src/components/profile/ProfileEventHistory.jsx',
+'## 1. File Overview & Purpose
+
+This is a presentational component that displays the user''s **event participation history** on their profile page.
+
+## 2. Architectural Role
+
+This is a **View** sub-component, used within `ProfilePage`.
+
+## 3. Key Features & Logic
+
+- **Props-Based:** It receives the `eventHistory` array as a prop.
+- **Rendering:** It renders a table displaying the event name, date, and the user''s status for that event.
+- **Feedback Link:** For events that are "ABGESCHLOSSEN" (Completed) and where the user was "ZUGEWIESEN" (Assigned), it renders a link to the `/feedback/event/:id` page, prompting the user to provide feedback.'),
+
+('frontend/src/components/profile/ProfileQualifications.jsx',
+'## 1. File Overview & Purpose
+
+This is a presentational component that displays the user''s **earned qualifications** on their profile page.
+
+## 2. Architectural Role
+
+This is a **View** sub-component, used within `ProfilePage`.
+
+## 3. Key Features & Logic
+
+- **Props-Based:** It receives the `qualifications` array as a prop.
+- **Rendering:** It renders a simple table listing the names of the courses the user has completed and their status.'),
+
+('frontend/src/components/profile/ProfileSecurity.jsx',
+'## 1. File Overview & Purpose
+
+This component handles the **security-related aspects** of the user''s profile, such as changing their password. The Passkey/WebAuthn functionality has been removed and is currently disabled.
+
+## 2. Architectural Role
+
+This is a **View** sub-component, used within `ProfilePage`.
+
+## 3. Key Features & Logic
+
+- **Password Change:** Provides a link to the dedicated `/passwort` page.
+- **Passkey (Disabled):** Displays a placeholder message indicating that the passwordless login feature is being reworked. The "Register New Device" button is present but disabled.'),
+
+('frontend/src/components/storage/DamageReportModal.jsx',
+'## 1. File Overview & Purpose
+
+This component provides the **modal dialog for a user to report damage** to a specific inventory item.
+
+## 2. Architectural Role
+
+This is a **UI Container Component** used by the `StorageItemDetailsPage`.
+
+## 3. Key Features & Logic
+
+- **Controlled Form:** It is a controlled form that manages the `description` of the damage in its local `useState`.
+- **Submission:** On submit, it calls the `POST /api/v1/public/storage/:itemId/report-damage` endpoint.
+- **Success Callback:** On a successful submission, it calls the `onSuccess` prop to close the modal and notify the parent component.'),
+
+('frontend/src/components/storage/ReservationCalendar.jsx',
+'## 1. File Overview & Purpose
+
+This component renders a simple, read-only **monthly calendar to display future reservations** for a single inventory item.
+
+## 2. Architectural Role
+
+This is a **View** sub-component used within the `StorageItemDetailsPage`.
+
+## 3. Key Features & Logic
+
+- **Data Transformation:** It takes a `reservations` prop (a list of events with start/end times) and uses `useMemo` to convert them into a more easily searchable format (`reservationIntervals`).
+- **Date Calculation (`date-fns`):** Like the main calendar, it uses `date-fns` to calculate the days to display in the grid.
+- **Rendering:** It iterates through each day of the month grid. For each day, it checks if the day falls within any of the reservation intervals. If it does, it applies a `.reserved` CSS class to visually mark the day and adds a `title` attribute to show which event it''s reserved for.'),
+
+('frontend/src/components/ui/ChangelogModal.jsx',
+'## 1. File Overview & Purpose
+
+This component is the **"What''s New" modal** that is automatically shown to a user after an application update.
+
+## 2. Architectural Role
+
+This is a reusable **UI Component**, managed and displayed by the root `App.jsx` component.
+
+## 3. Key Features & Logic
+
+- **Props-Based:** It receives a `changelog` object and an `onClose` callback as props.
+- **Markdown Rendering:** It uses `react-markdown` to render the `changelog.notes`, allowing for richly formatted update descriptions.
+- **Action:** The "Verstanden!" (Got it!) button simply calls the `onClose` callback. The parent `App` component is responsible for making the API call to mark the changelog as seen.'),
+
+('frontend/src/components/ui/Lightbox.jsx',
+'## 1. File Overview & Purpose
+
+This component provides a simple, full-screen **lightbox for viewing images**.
+
+## 2. Architectural Role
+
+This is a reusable **UI Component**.
+
+## 3. Key Features & Logic
+
+- **Rendering:** When its `src` prop is not null, it renders a full-screen overlay with the image centered.
+- **Closing:** It can be closed by clicking the overlay, clicking the "×" button, or by pressing the "Escape" key. The Escape key functionality is implemented in a `useEffect` hook that adds and removes a global keydown event listener.'),
+
+('frontend/src/components/ui/Modal.jsx',
+'## 1. File Overview & Purpose
+
+This is the generic, reusable **Modal** component used throughout the entire application for dialogs and forms.
+
+## 2. Architectural Role
+
+This is a fundamental, reusable **UI Component**.
+
+## 3. Key Features & Logic
+
+- **Conditional Rendering:** It only renders its content if the `isOpen` prop is `true`.
+- **Layout:** It creates the standard modal structure: a semi-transparent overlay (`modal-overlay`) and a centered content box (`modal-content`).
+- **Closing:** It provides multiple ways to close:
+    - Clicking the overlay calls the `onClose` prop.
+    - Clicking the "×" button calls `onClose`.
+    - Pressing the "Escape" key triggers the `onClose` prop (managed via a `useEffect` hook).
+- **Content Projection:** It uses the `children` prop to render any content passed into it from the parent component.'),
+
+('frontend/src/components/ui/StatusBadge.jsx',
+'## 1. File Overview & Purpose
+
+This is a simple, presentational component that renders a **colored status badge**.
+
+## 2. Architectural Role
+
+This is a reusable **UI Component**.
+
+## 3. Key Features & Logic
+
+- **Props-Based:** It takes a single `status` string as a prop.
+- **CSS Class Logic:** It contains a `getStatusClass` function that uses a `switch` statement to map different status strings (e.g., "LAUFEND", "GEPLANT", "ABGESCHLOSSEN") to specific CSS classes (`status-warn`, `status-ok`, `status-info`) which control the badge''s color.'),
+
+('frontend/src/components/ui/ThemeSwitcher.jsx',
+'## 1. File Overview & Purpose
+
+This component is the **light/dark theme toggle button** found in the sidebar.
+
+## 2. Architectural Role
+
+This is a reusable **UI Component**.
+
+## 3. Key Features & Logic
+
+- **Global State Interaction:** It reads the current `theme` and the `setTheme` function from the global `useAuthStore`.
+- **Icon Toggling:** It conditionally renders either a moon icon or a sun icon based on the current theme.
+- **Action:** When clicked, it calls the `setTheme` function from the auth store, which handles both updating the global state and making the API call to persist the user''s preference.'),
+
+('frontend/src/components/ui/ToastContainer.jsx',
+'## 1. File Overview & Purpose
+
+This component is responsible for rendering the **toast notifications** (small, non-blocking pop-up messages) in the corner of the screen.
+
+## 2. Architectural Role
+
+This is a **UI Component** that is rendered once in the root `App.jsx` component.
+
+## 3. Key Features & Logic
+
+- **Context Consumption:** It uses the `useToast` hook to get the current array of active `toasts` from the `ToastContext`.
+- **Rendering:** It maps over the `toasts` array and renders a `Toast` component for each one.
+- **`Toast` Sub-Component:**
+    - The inner `Toast` component manages its own visibility with a `useEffect` hook. When mounted, it sets itself to visible, and after a timeout, it fades out.
+    - It applies the correct CSS class (`toast-success`, `toast-danger`, etc.) based on the `type` prop.
+    - If a `url` prop is provided, it wraps the toast in a `<Link>` tag, making the entire notification clickable.'),
+
+('frontend/src/components/ui/WarningNotification.jsx',
+'## 1. File Overview & Purpose
+
+This component displays a high-priority, blocking **Warning Notification** modal. It is used for critical, real-time alerts sent from the server.
+
+## 2. Architectural Role
+
+This is a specialized **UI Component**, managed by the `useNotifications` hook and rendered in `App.jsx`.
+
+## 3. Key Features & Logic
+
+- **Attention-Grabbing:** It is designed to be highly disruptive to get the user''s immediate attention.
+    - It plays a looping audio alert (`attention.mp3`).
+    - A `useEffect` hook adds a `warning-flash` class to the `<body>`, causing the entire page background to flash red.
+- **Lifecycle Management:** The `useEffect` hook returns a cleanup function that stops the audio and removes the flashing class when the component is unmounted (i.e., when the user dismisses it).');
+COMMIT;
+========================================================================
+FILE: src\main\resources\db\migration\V84__Repopulate_wiki_data_part24.sql
+========================================================================
+
+-- Flyway migration V84, Part 24: Overhaul Technical Wiki Documentation (Frontend Context, Hooks, Router)
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('frontend/src/context/ToastContext.jsx',
+'## 1. File Overview & Purpose
+
+This file defines and exports the **Toast Context** and its associated `ToastProvider` and `useToast` hook. It provides a global, application-wide system for creating toast notifications from any component.
+
+## 2. Architectural Role
+
+This is a core **State Management** component using React''s Context API.
+
+## 3. Key Features & Logic
+
+- **`ToastContext`**: Created with `createContext` to hold the toast state and functions.
+- **`ToastProvider`**: The wrapper component that provides the context to its children.
+    - It uses `useState` to manage an array of `toasts`.
+    - It exposes an `addToast` function. When called, this function adds a new toast object (with a unique ID, message, type, etc.) to the state array and sets a `setTimeout` to automatically remove that toast from the array after 5 seconds.
+- **`useToast()`**: The custom hook that components use to access the `addToast` function from the context. It includes a check to ensure it''s used within a `ToastProvider`.'),
+
+('frontend/src/hooks/useAdminData.js',
+'## 1. File Overview & Purpose
+
+This custom hook provides a centralized and efficient way for admin components to fetch the prerequisite data they need for forms (e.g., lists of users, roles, courses, items).
+
+## 2. Architectural Role
+
+This is a **Data Fetching Hook** in the frontend application.
+
+## 3. Key Features & Logic
+
+- **Data Aggregation:** The main `useAdminData` hook makes multiple parallel API calls using `Promise.all` to fetch all necessary data sources at once.
+- **Permission-Aware Fetching:** It reads the current user''s permissions from the `useAuthStore` and conditionally skips API calls for data the user is not allowed to see. For example, if a user doesn''t have `COURSE_READ` permission, it won''t attempt to fetch the courses list.
+- **State Management:** It manages a single state object that contains all the fetched data, a `loading` flag, and an `error` state.
+- **Granular Hooks:** The file also exports smaller, more focused hooks like `useAdminRolesAndPermissions` for components that only need a subset of the admin data, improving performance and separation of concerns.'),
+
+('frontend/src/hooks/useApi.js',
+'## 1. File Overview & Purpose
+
+This is a generic, reusable custom hook for managing the state of an API call. It encapsulates the standard pattern of handling data, loading, and error states for any asynchronous data-fetching operation.
+
+## 2. Architectural Role
+
+This is a fundamental **Data Fetching Hook** used by almost every page and component in the application that needs to retrieve data from the backend.
+
+## 3. Key Features & Logic
+
+- **State Management:** It uses `useState` to manage three key pieces of state: `data`, `loading`, and `error`. The `loading` state is importantly initialized to `true` to prevent race conditions and "component suspended" errors with React.lazy and routing.
+- **`fetchData` Function:**
+    - It uses `useCallback` to memoize the data-fetching function.
+    - It wraps the `apiCall` (passed in as an argument) in a `try...catch...finally` block.
+    - On success, it sets the `data`.
+    - On failure, it sets the `error` message.
+    - In the `finally` block, it always sets `loading` to `false`.
+- **`useEffect` Hook:** It calls `fetchData` once when the component mounts and whenever the `apiCall` function itself changes.
+- **Return Value:** It returns an object containing the current `data`, `loading` state, `error` state, and a `reload` function (which is simply a reference to `fetchData`) that allows components to manually trigger a data refresh.'),
+
+('frontend/src/hooks/useNotifications.js',
+'## 1. File Overview & Purpose
+
+This custom hook encapsulates the logic for connecting to the server''s real-time notification stream (Server-Sent Events) and handling incoming messages.
+
+## 2. Architectural Role
+
+This is a **Real-Time Data Hook** used by the root `App.jsx` component to listen for global notifications.
+
+## 3. Key Features & Logic
+
+- **SSE Connection:** It uses the native browser `EventSource` API to establish a persistent connection to the `/api/v1/admin/notifications/sse` endpoint.
+- **Event Listeners:**
+    - It sets up an `onmessage` listener for generic messages.
+    - It adds a specific event listener for the `"notification"` event type.
+- **Message Handling:** When a `"notification"` event is received:
+    - If the notification `level` is `"Warning"`, it uses `useState` to set the `warningNotification` state, which causes the `App` component to render the disruptive `WarningNotification` modal.
+    - For other levels, it calls the `addToast` function from the `useToast` context to display a less intrusive toast message. It also passes along any `url` from the notification payload to make the toast clickable.
+- **Lifecycle Management:** The `useEffect` hook returns a cleanup function that calls `events.close()`, ensuring the SSE connection is terminated when the `App` component unmounts.'),
+
+('frontend/src/hooks/useTypingAnimation.js',
+'## 1. File Overview & Purpose
+
+This custom hook implements a **typing animation effect**. It takes an array of text lines and "types" them out one character at a time, simulating a terminal or command-line interface.
+
+## 2. Architectural Role
+
+This is a **UI/Animation Hook** used by the stylized error pages (`ErrorPage`, `NotFoundPage`, `ForbiddenPage`).
+
+## 3. Key Features & Logic
+
+- **State Management:** It uses `useState` to manage the `renderedLines` (the portion of text currently visible) and an `isComplete` flag.
+- **Animation Logic:** It uses a series of nested `setTimeout` calls to achieve the animation.
+    - The main function `typeLine` handles moving from one line to the next.
+    - The inner function `typeChar` handles adding one character at a time to the current line.
+- **Cleanup:** The `useEffect` hook returns a cleanup function that clears all pending `setTimeout`s when the component unmounts, preventing memory leaks.
+- **Scrolling:** It exposes a `containerRef` that should be attached to the scrollable element. It automatically scrolls this container to the bottom as new lines are typed.'),
+
+('frontend/src/hooks/useWebSocket.js',
+'## 1. File Overview & Purpose
+
+This is a generic, reusable custom hook for managing a **WebSocket connection**. It handles connecting, receiving messages, and automatically attempting to reconnect if the connection is dropped.
+
+## 2. Architectural Role
+
+This is a fundamental **Real-Time Data Hook** used by components that require two-way real-time communication, such as `MessageView` and `ChecklistTab`.
+
+## 3. Key Features & Logic
+
+- **Connection Management:**
+    - It uses `useRef` to hold a persistent reference to the WebSocket object across renders.
+    - A `useEffect` hook establishes the connection when the component mounts and the `url` is provided.
+- **Event Handlers:** It sets up all the standard WebSocket event handlers:
+    - `onopen`: Updates the `readyState` and logs a success message.
+    - `onmessage`: Parses the incoming JSON data and calls the `onMessage` callback function that was passed in from the parent component.
+    - `onclose`: Logs the closure and schedules a reconnection attempt after a 5-second delay (unless it was a specific auth-related closure code).
+    - `onerror`: Logs errors and closes the connection.
+- **Cleanup:** The `useEffect` hook returns a cleanup function that properly closes the WebSocket connection when the component unmounts, preventing reconnection attempts.
+- **`sendMessage` Function:** It returns a memoized `sendMessage` function that the parent component can use to send JSON objects over the WebSocket.'),
+
+('frontend/src/router/AdminRoute.jsx',
+'## 1. File Overview & Purpose
+
+This is a route wrapper component that protects all administrative routes. It checks if the currently logged-in user has admin privileges.
+
+## 2. Architectural Role
+
+This is a **Routing/Authorization** component.
+
+## 3. Key Features & Logic
+
+- **Authorization Check:** It reads the `isAdmin` boolean flag from the global `useAuthStore`.
+- **Protected Content:** If `isAdmin` is `true`, it renders the `<Outlet />`, which allows React Router to render the nested admin page.
+- **Access Denied:** If `isAdmin` is `false`, it uses the `<Navigate>` component from React Router to perform a client-side redirect to the `/forbidden` page, preventing the user from accessing the admin content.'),
+
+('frontend/src/router/ProtectedRoute.jsx',
+'## 1. File Overview & Purpose
+
+This is a route wrapper component that protects all routes requiring authentication. It checks if a user is currently logged in.
+
+## 2. Architectural Role
+
+This is a **Routing/Authentication** component.
+
+## 3. Key Features & Logic
+
+- **Authentication Check:** It reads the `isAuthenticated` boolean flag from the global `useAuthStore`.
+- **Protected Content:** If `isAuthenticated` is `true`, it renders its `children`, which is typically the main `<App />` layout.
+- **Redirect to Login:** If `isAuthenticated` is `false`, it uses the `<Navigate>` component to redirect the user to the `/login` page. It also passes the user''s originally intended location in the state, so they can be redirected back to it after a successful login.'),
+
+('frontend/src/router/index.jsx',
+'## 1. File Overview & Purpose
+
+This file contains the complete **routing configuration** for the entire frontend application, using `react-router-dom`.
+
+## 2. Architectural Role
+
+This is a core **Configuration** file for the frontend.
+
+## 3. Key Features & Logic
+
+- **`createBrowserRouter`**: The function used to define all the application''s routes.
+- **Lazy Loading:** It uses `React.lazy()` for almost all page components. This enables code splitting, meaning the JavaScript for a specific page is only downloaded when the user navigates to it, improving initial load times. `Suspense` is used implicitly by React Router to handle the loading state.
+- **Layout Nesting:** It defines a nested route structure:
+    - The root path (`/`) is protected by `ProtectedRoute` and renders the main `App` layout.
+    - All standard user-facing pages are defined as children of this root route.
+    - The `/admin` path is further protected by the `AdminRoute` component. All admin pages are nested as children of this route.
+- **Specialized Layouts:** It defines separate top-level routes for pages that need a `MinimalLayout` (like `/pack-kit`) or an `ErrorLayout` (like `/forbidden` and `/not-found`).
+- **Error Handling:** It configures the `errorElement` for the main route to point to the `ErrorPage`, which will catch any rendering errors within the protected application.');
+COMMIT;
+========================================================================
+FILE: src\main\resources\db\migration\V85__Repopulate_wiki_data_part25.sql
+========================================================================
+
+-- Flyway migration V85, Part 25: Overhaul Technical Wiki Documentation (Frontend Services & Store)
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('frontend/src/services/apiClient.js',
+'## 1. File Overview & Purpose
+
+This is a singleton service that acts as a centralized wrapper around the native `fetch` API. It is used by every component and hook in the application to communicate with the backend REST API.
+
+## 2. Architectural Role
+
+This is a core **Service** component in the frontend application''s infrastructure layer.
+
+## 3. Key Features & Logic
+
+- **Standardized Responses:** Its `request` method ensures that all API calls have a consistent return format (`{ success: boolean, message: string, data: object }`).
+- **Error Handling:** It contains centralized logic to handle different types of errors:
+    - **Network Errors:** Catches `Failed to fetch` errors and returns a user-friendly message indicating the backend is likely offline.
+    - **HTTP Errors (4xx, 5xx):** Parses the JSON error response from the backend and throws an `Error` with the message provided by the server.
+    - **Non-JSON Responses:** Detects if the server returns something other than JSON (like an HTML error page) and provides a generic server connection error.
+- **Automatic Logout:** The `setup` method allows the `authStore` to inject its `logout` function. The `request` method will automatically call this function if it ever receives an HTTP 401 (Unauthorized) response, ensuring that an invalid session is immediately cleared.
+- **CSRF Protection (Stubbed):** It includes logic to read the `XSRF-TOKEN` from the document cookies and add it as an `X-XSRF-TOKEN` header to all state-changing requests (POST, PUT, DELETE). **However**, this is currently bypassed by the backend''s security configuration, which ignores CSRF for API routes.
+- **Convenience Methods:** Provides simple `get`, `post`, `put`, and `delete` methods that pre-configure the `fetch` options.'),
+
+('frontend/src/store/authStore.js',
+'## 1. File Overview & Purpose
+
+This file defines the global **authentication and session state** for the entire frontend application, using the **Zustand** state management library. It is the single source of truth for the currently logged-in user, their permissions, and UI preferences.
+
+## 2. Architectural Role
+
+This is the core **State Management** component for the application.
+
+## 3. Key Dependencies & Libraries
+
+- **Zustand (`create`)**: The function for creating a new state store.
+- **Zustand Middleware (`persist`)**: Middleware that automatically persists parts of the store''s state to `localStorage`.
+- `apiClient`: The service used for all authentication-related API calls.
+
+## 4. In-Depth Breakdown
+
+- **`create(persist(...))`**: The store is created and wrapped with the `persist` middleware.
+    - **`partialize`**: This configuration option tells the `persist` middleware to *only* save the `theme` property to localStorage. The user session data is intentionally not persisted for security; it is always re-fetched on application load.
+- **State Properties:**
+    - `user`: The full user object returned from the backend.
+    - `navigationItems`: The user-specific list of navigation links.
+    - `isAuthenticated`: A boolean flag derived from the presence of a user object.
+    - `isAdmin`: A boolean flag derived from the user''s role.
+    - `theme`: The user''s selected UI theme (''light'' or ''dark'').
+- **Actions (Functions):**
+    - **`login(username, password)`**: Makes the `POST /api/v1/auth/login` call. On success, it calls `fetchUserSession` to populate the store.
+    - **`logout()`**: Makes the `POST /api/v1/auth/logout` call to clear the backend cookie, then clears all local state and removes the item from `localStorage`.
+    - **`fetchUserSession()`**: Makes the `GET /api/v1/auth/me` call. This is the primary function for populating the session state. It stores the user object and navigation items, and sets the `isAuthenticated` and `isAdmin` flags.
+    - **`setTheme(newTheme)`**: Makes the `PUT /api/v1/public/profile/theme` call to persist the user''s theme preference to the database, then updates the local state.'),
+
+('frontend/App.jsx', 'This file is a duplicate of `src/App.jsx` and its documentation is identical. See `src/App.jsx`.'),
+
+('frontend/main.jsx', 'This file is a duplicate of `src/main.jsx` and its documentation is identical. See `src/main.jsx`.');
+COMMIT;
+========================================================================
+FILE: src\main\resources\db\migration\V86__Add_layout_preferences.sql
+========================================================================
+
+-- Flyway migration V86: Add detailed layout preferences to users table
+
+-- We will reuse the existing dashboard_layout JSON column and expand its purpose.
+-- No schema change is needed if the column already exists and is of a JSON or TEXT type.
+-- This migration serves as a marker for the application logic change.
+-- The default value will be handled by the application logic if the column is NULL.
+
+ALTER TABLE `users` MODIFY `dashboard_layout` JSON NULL;
+========================================================================
+FILE: src\main\resources\db\migration\V87__Add_warning_flag_to_files.sql
+========================================================================
+
+-- Flyway migration V88: Add a flag to files to indicate if a download warning is needed
+
+ALTER TABLE `files`
+ADD COLUMN `needs_warning` BOOLEAN NOT NULL DEFAULT FALSE AFTER `required_role`;
+========================================================================
+FILE: src\main\resources\db\migration\V88__Add_updated_at_to_tasks.sql
+========================================================================
+
+-- Flyway migration V88: Add an auto-updating timestamp to event_tasks
+
+ALTER TABLE `event_tasks`
+ADD COLUMN `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER `created_at`;
+========================================================================
+FILE: src\main\resources\db\migration\V89__Add_Storage_Item_To_Checklist_Templates.sql
+========================================================================
+
+ALTER TABLE preflight_checklist_items
+ADD COLUMN storage_item_id INT NULL DEFAULT NULL AFTER item_text,
+ADD CONSTRAINT fk_checklist_item_storage_item
+    FOREIGN KEY (storage_item_id) REFERENCES storage_items(id)
+    ON DELETE SET NULL;
+
+ALTER TABLE preflight_checklist_items
+MODIFY COLUMN item_text VARCHAR(255) NULL;
+========================================================================
+FILE: src\main\resources\db\migration\V8__Populate_wiki_data_part3.sql
+========================================================================
+
+-- Flyway migration V8, Part 3
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('src/main/java/de/dao/RoleDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO provides read-only access to the user roles defined in the `roles` table. It features a simple caching mechanism using Caffeine to avoid repeatedly querying the database for the list of roles, which changes very infrequently.\n\n2.  **Architectural Role**\n\n    This class belongs to the **DAO (Data Access) Tier**. It is used by the `AdminUserServlet` to populate the roles dropdown in the user editing modal.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   **Caffeine (`com.github.benmanes.caffeine.cache.LoadingCache`)**: A high-performance caching library used to cache the list of roles in memory.\n\n4.  **In-Depth Breakdown**\n\n    *   **`RoleDAO(DatabaseManager dbManager)` (Constructor)**: Initializes the Caffeine `LoadingCache`. The cache is configured to expire after one hour and to hold only one entry (the list of all roles). The `build` method provides the loader function (`fetchAllRolesFromDb`) that is called automatically on a cache miss.\n    *   **`getAllRoles()`**: The main public method. It retrieves the list of all roles from the cache using `roleCache.get(ALL_ROLES_KEY)`. If the cache is empty or expired, the loader function is automatically triggered.\n    *   **`fetchAllRolesFromDb()`**: A private method that performs the actual database query to get all roles. This method is only called when the cache needs to be populated.'),
+('src/main/java/de/dao/StatisticsDAO.java', '1.  **File Overview & Purpose**\n\n    This is a specialized, read-only DAO for retrieving simple statistical counts from the database. It is used to quickly fetch aggregate numbers for display on the admin dashboard without the overhead of more complex reporting queries.\n\n2.  **Architectural Role**\n\n    This class is part of the **DAO (Data Access) Tier**. It is used by the `AdminDashboardServlet` to gather high-level metrics about the system''s state.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n\n4.  **In-Depth Breakdown**\n\n    *   **`getUserCount()`**: Executes a `SELECT COUNT(*)` query on the `users` table to get the total number of registered users.\n    *   **`getActiveEventCount()`**: Executes a `SELECT COUNT(*)` query on the `events` table to count events that have not yet finished.\n    *   **`getCount(String sql)`**: A private helper method that takes a SQL `COUNT` query as a string, executes it, and returns the integer result, reducing code duplication.'),
+('src/main/java/de/dao/StorageDAO.java', '1.  **File Overview & Purpose**\n\n    This is the primary DAO for managing the inventory, handling all database operations for the `storage_items` table. It provides comprehensive CRUD functionality, methods for handling defective and repaired items, and transactional logic for checking items in and out.\n\n2.  **Architectural Role**\n\n    This class is a cornerstone of the **DAO (Data Access) Tier**. It is used extensively by the `StorageService` to perform transactional operations and by various servlets (`StorageServlet`, `AdminStorageServlet`, `AdminDefectServlet`) to display and manage inventory data.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `StorageItem` (Model): The data model for an inventory item.\n\n4.  **In-Depth Breakdown**\n\n    *   **Listing Methods (`getAllItemsGroupedByLocation`, `getAllItems`, `getDefectiveItems`, `getLowStockItems`)**: Provide different views of the inventory data, tailored for specific pages like the public lager view or admin dashboard widgets.\n    *   **CRUD Operations (`createItem`, `getItemById`, `updateItem`, `deleteItem`)**: Standard methods for managing the lifecycle of `StorageItem` records. The `updateItem` method is particularly comprehensive, updating nearly every column.\n    *   **Transactional Methods (`performCheckout`, `performCheckin`)**: These methods are designed to be called within a transaction managed by the `StorageService`. They update an item''s `quantity`, `status`, and `current_holder_user_id` atomically. The `performCheckout` query includes a `WHERE` clause to prevent checking out more items than are available.\n    *   **Defect & Repair Management (`updateDefectiveStatus`, `permanentlyReduceQuantities`, `repairItems`)**:\n        *   `updateDefectiveStatus`: Increases the `defective_quantity` for an item.\n        *   `permanentlyReduceQuantities`: Decreases both `quantity` and `defective_quantity`, effectively removing an unrepairable item from the total stock.\n        *   `repairItems`: Decreases the `defective_quantity`, moving an item back into the available pool.\n    *   **`mapResultSetToStorageItem(ResultSet rs)`**: A private helper method to construct a `StorageItem` object from a database query result.'),
+('src/main/java/de/dao/StorageLogDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO is responsible for all interactions with the `storage_log` table. Its purpose is to create transaction records when inventory items are checked in or out, and to retrieve the history of these transactions for a specific item.\n\n2.  **Architectural Role**\n\n    This class is part of the **DAO (Data Access) Tier**. It is used by the `StorageService` to log transactions and by the `StorageItemDetailsServlet` to display an item''s history.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `StorageLogEntry` (Model): The data model for a log entry.\n\n4.  **In-Depth Breakdown**\n\n    *   **`logTransaction(...)`**: Inserts a new transaction record into the `storage_log` table. This method takes a `Connection` object as a parameter because it is designed to be called from within a larger transaction managed by the `StorageService`.\n    *   **`getHistoryForItem(int itemId)`**: Retrieves the complete transaction history for a single item, ordered from newest to oldest. It joins with the `users` table to include the username of the person who performed each transaction.'),
+('src/main/java/de/dao/TodoDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO manages all database operations for the administrative To-Do list feature. It handles CRUD for both categories (`todo_categories`) and tasks (`todo_tasks`), and includes methods for batch-updating their display order to support drag-and-drop functionality.\n\n2.  **Architectural Role**\n\n    This class is part of the **DAO (Data Access) Tier**. It is used exclusively by the `TodoService` to persist and retrieve all To-Do list data.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `TodoCategory`, `TodoTask` (Models).\n\n4.  **In-Depth Breakdown**\n\n    *   **`getAllCategoriesWithTasks()`**: The main retrieval method. It fetches all categories and, using a `LEFT JOIN`, also fetches all their associated tasks in a single query. It then uses a `LinkedHashMap` to aggregate the flat result set into a structured list of `TodoCategory` objects, each containing its list of `TodoTask` objects.\n    *   **`createCategory(...)` / `createTask(...)`**: These methods use a subquery (`SELECT COALESCE(MAX(display_order), -1) + 1 FROM ...`) to automatically assign the new item the next available display order index, ensuring it appears at the bottom of the list.\n    *   **`updateCategoryOrder(...)` / `updateTaskOrders(...)`**: These methods are crucial for the drag-and-drop feature. They accept a list of IDs in their new order and perform a batch `UPDATE` to efficiently persist the new sorting to the database within a single transaction.'),
+('src/main/java/de/dao/UserDAO.java', '1.  **File Overview & Purpose**\n\n    This is the central DAO for managing user accounts. It handles all database operations for the `users` table, including credential validation, CRUD operations, password changes, and managing the user-permission relationship in the `user_permissions` table.\n\n2.  **Architectural Role**\n\n    This is a critical class in the **DAO (Data Access) Tier**. It is used by the `LoginServlet` for authentication, by the `UserService` for transactional updates, and by numerous other servlets and DAOs to retrieve user information.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   **Spring Security Crypto (`BCryptPasswordEncoder`)**: The library used for securely hashing and verifying passwords.\n    *   `PermissionDAO`: Used to fetch the permissions for a user.\n\n4.  **In-Depth Breakdown**\n\n    *   **`validateUser(String username, String password)`**: The core authentication method. It fetches the user''s `password_hash` from the database and uses `passwordEncoder.matches()` to securely compare it with the provided password. If validation is successful, it fetches the user''s permissions and returns a fully populated `User` object.\n    *   **`getPermissionsForUser(int userId)`**: Retrieves all permission keys for a given user.\n    *   **`updateUserPermissions(int userId, String[] permissionIds, Connection conn)`**: A transactional method that first deletes all of a user''s existing permissions and then batch-inserts the new set.\n    *   **`createUser(...)` / `updateUser(...)`**: Standard CRUD methods. `createUser` hashes the provided password before storing it.\n    *   **`changePassword(...)`**: Securely updates a user''s password by hashing the new password before saving it.'),
+('src/main/java/de/dao/UserQualificationsDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO manages the `user_qualifications` table, which links users to the courses they have attended or completed. It is the persistence layer for tracking user skills and qualifications.\n\n2.  **Architectural Role**\n\n    This class belongs to the **DAO (Data Access) Tier**. It is used by the `MatrixServlet` and `AdminAttendanceServlet` to update qualifications based on meeting attendance, and by the `ProfileServlet` to display a user''s qualifications.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `UserQualification` (Model).\n\n4.  **In-Depth Breakdown**\n\n    *   **`getQualificationsForUser(int userId)`**: Retrieves all qualifications for a single user.\n    *   **`getAllQualifications()`**: Fetches all qualification records for all users, primarily for building the data structures needed by the Qualification Matrix.\n    *   **`updateQualificationStatus(...)`**: The core update method. It uses an `INSERT ... ON DUPLICATE KEY UPDATE` statement (an \"upsert\") to create or update a qualification record. It also contains special logic: if the new status is `\"NICHT BESUCHT\"`, it deletes the record entirely instead of updating it.'),
+('src/main/java/de/dao/WikiDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO is responsible for all database interactions with the `wiki_documentation` table. It provides full CRUD (Create, Read, Update, Delete) operations for managing the content of the technical documentation wiki pages.\n\n2.  **Architectural Role**\n\n    This class is part of the **DAO (Data Access) Tier**. It is used by the `WikiService` to load the documentation into its cache at startup, and by the various `Wiki` action classes to display and save changes to the wiki content.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `WikiEntry` (Model): The data model object that this DAO creates and populates.\n\n4.  **In-Depth Breakdown**\n\n    *   **`getWikiEntryById(int id)`**: Retrieves a single wiki page by its primary key.\n    *   **`getAllWikiEntries()`**: Fetches all wiki pages from the database, ordered by their file path. This is used by the `WikiService` to populate its initial cache.\n    *   **`updateWikiContent(int id, String content)`**: Updates the `content` field for a specific wiki entry.\n    *   **`createWikiEntry(WikiEntry entry)`**: Inserts a new documentation record into the database and returns the created object with its new ID.\n    *   **`deleteWikiEntry(int id)`**: Deletes a wiki documentation record from the database by its primary key.'),
+('src/main/java/de/service/AchievementService.java', '1.  **File Overview & Purpose**\n\n    This service class contains the business logic for checking and granting achievements to users based on specific trigger events. It decouples the achievement logic from the DAOs and the servlets where the triggering actions occur.\n\n2.  **Architectural Role**\n\n    This class belongs to the **Service Tier**. It is called by other components (like `AdminEventServlet` after an event is marked as ''ABGESCHLOSSEN'') to evaluate a user''s progress and potentially award new achievements. It coordinates between the `AchievementDAO` and other DAOs (`EventDAO`) to gather the necessary data for its checks.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `AchievementDAO` and `EventDAO`.\n    *   `AchievementDAO`: Used to check if a user already has an achievement and to grant new ones.\n    *   `EventDAO`: Used to fetch data about a user''s event history (participation count, leadership count).\n\n4.  **In-Depth Breakdown**\n\n    *   **`checkAndGrantAchievements(User user, String triggerType)`**\n        *   **Method Signature:** `public void checkAndGrantAchievements(User user, String triggerType)`\n        *   **Purpose:** The main entry point for the service. It acts as a router, calling specific check methods based on the `triggerType`.\n        *   **Parameters:**\n            *   `user` (User): The user whose achievements should be checked.\n            *   `triggerType` (String): A string identifying the event that triggered the check (e.g., \"EVENT_COMPLETED\").\n        *   **Side Effects:** Can lead to database writes via the `achievementDAO.grantAchievementToUser` method.\n\n    *   **`checkEventParticipationAchievements(User user)`**\n        *   **Method Signature:** `private void checkEventParticipationAchievements(User user)`\n        *   **Purpose:** Checks if the user has met the criteria for event participation achievements (e.g., 1, 5, or 10 completed events).\n        *   **Logic:** It fetches the number of completed events for the user from the `EventDAO` and then calls `achievementDAO.grantAchievementToUser` for each milestone the user has reached.\n        *   **Side Effects:** Database writes.\n\n    *   **`checkEventLeaderAchievements(User user)`**\n        *   **Method Signature:** `private void checkEventLeaderAchievements(User user)`\n        *   **Purpose:** Checks if the user has met the criteria for event leadership achievements.\n        *   **Logic:** It calculates the number of completed events where the user was the leader and grants the corresponding achievement if the criteria are met.\n        *   **Side Effects:** Database writes.'),
+('src/main/java/de/service/AdminDashboardService.java', '1.  **File Overview & Purpose**\n\n    This service class is responsible for aggregating all the data required for the administrative dashboard. It acts as a facade, coordinating calls to various DAOs to collect information for the different dashboard widgets (Upcoming Events, Low Stock, Recent Logs, Event Trend) and assembling it into a single `DashboardDataDTO`.\n\n2.  **Architectural Role**\n\n    This class belongs to the **Service Tier**. It encapsulates the business logic for what data should be displayed on the admin dashboard. It is called by the `AdminDashboardApiServlet` to provide the data needed for the dynamic, client-side rendering of the dashboard.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `EventDAO`, `StorageDAO`, `AdminLogDAO`, and `ReportDAO`.\n    *   `EventDAO`: Used to fetch upcoming events.\n    *   `StorageDAO`: Used to fetch items with low stock levels.\n    *   `AdminLogDAO`: Used to fetch the most recent log entries.\n    *   `ReportDAO`: Used to fetch the time-series data for the event trend chart.\n    *   `DashboardDataDTO` (Model): The Data Transfer Object this service populates and returns.\n\n4.  **In-Depth Breakdown**\n\n    *   **`getDashboardData()`**\n        *   **Method Signature:** `public DashboardDataDTO getDashboardData()`\n        *   **Purpose:** The single public method of this service. It orchestrates the data retrieval for the entire admin dashboard.\n        *   **Parameters:** None.\n        *   **Returns:** A fully populated `DashboardDataDTO` object containing all the data required by the dashboard''s widgets.\n        *   **Side Effects:** Performs multiple read operations on the database via the injected DAOs. It uses a `WIDGET_LIMIT` constant to control the number of items fetched for list-based widgets.');
+COMMIT;
+========================================================================
+FILE: src\main\resources\db\migration\V90__Add_Quantity_To_Checklist_Items.sql
+========================================================================
+
+ALTER TABLE preflight_checklist_items
+ADD COLUMN quantity INT NULL DEFAULT NULL AFTER storage_item_id;
+========================================================================
+FILE: src\main\resources\db\migration\V91__Add_Meeting_Waitlist.sql
+========================================================================
+
+-- V27__Add_Meeting_Waitlist.sql
+-- Add parent_meeting_id to meetings to reference original meeting when creating repeats
+ALTER TABLE meetings
+  ADD COLUMN parent_meeting_id INT NULL AFTER course_id,
+  ADD CONSTRAINT fk_meetings_parent FOREIGN KEY (parent_meeting_id) REFERENCES meetings (id) ON DELETE SET NULL;
+
+-- Create meeting_waitlist table to store waitlist entries (separate from attendance)
+CREATE TABLE meeting_waitlist (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  meeting_id INT NOT NULL,
+  user_id INT NOT NULL,
+  requested_by INT NULL, -- user who made the request (usually same as user_id, but left for auditing)
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  promoted_by INT NULL,
+  promoted_at TIMESTAMP NULL,
+  CONSTRAINT fk_waitlist_meeting FOREIGN KEY (meeting_id) REFERENCES meetings (id) ON DELETE CASCADE,
+  CONSTRAINT fk_waitlist_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT uniq_waitlist_user_meeting UNIQUE (meeting_id, user_id),
+  INDEX idx_waitlist_meeting_created (meeting_id, created_at)
+);
+
+========================================================================
+FILE: src\main\resources\db\migration\V92__Create_User_Notifications_Table.sql
+========================================================================
+
+CREATE TABLE user_notifications (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    level VARCHAR(20) NOT NULL, -- Informational, Important, Warning
+    url VARCHAR(255),
+    is_seen BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_notifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_user_notifications_user_id_is_seen ON user_notifications(user_id, is_seen);
+========================================================================
+FILE: src\main\resources\db\migration\V93__Alter_Users_Class_Name_Length.sql
+========================================================================
+
+ALTER TABLE users MODIFY COLUMN class_name VARCHAR(255);
+========================================================================
+FILE: src\main\resources\db\migration\V94__Add_User_Suspension.sql
+========================================================================
+
+-- Adds suspension-related columns to the `users` table.
+-- Using a status column is efficient for querying suspended users.
+-- Using a nullable TIMESTAMP for `suspended_until` allows for both temporary and indefinite suspensions.
+ALTER TABLE users
+ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' AFTER role_id,
+ADD COLUMN suspended_until TIMESTAMP NULL DEFAULT NULL AFTER status,
+ADD COLUMN suspended_reason TEXT NULL DEFAULT NULL AFTER suspended_until;
+
+-- Add an index for potentially querying expired suspensions.
+CREATE INDEX idx_users_suspended_until ON users(suspended_until);
+========================================================================
+FILE: src\main\resources\db\migration\V95__Add_Fcm_Token_To_Users.sql
+========================================================================
+
+ALTER TABLE users
+ADD COLUMN fcm_token VARCHAR(255) NULL DEFAULT NULL AFTER theme;
+
+CREATE INDEX idx_users_fcm_token ON users(fcm_token);
+========================================================================
+FILE: src\main\resources\db\migration\V96__Add_System_Settings.sql
+========================================================================
+
+CREATE TABLE system_settings (
+    setting_key VARCHAR(50) PRIMARY KEY NOT NULL,
+    setting_value TEXT,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO system_settings (setting_key, setting_value) VALUES ('maintenance_mode', 'false');
+========================================================================
+FILE: src\main\resources\db\migration\V97__Add_Log_Revocation.sql
+========================================================================
+
+-- Flyway migration V97: Add columns to support revoking admin log actions
+-- MODIFIED: Removed ADD COLUMN statements for columns 'status', 'context', 'revoked_by_admin_id', and 'revoked_at' as they are already present in V1.
+
+-- Add constraint to track who revoked an action and when
+ALTER TABLE `admin_logs`
+ADD CONSTRAINT `fk_admin_log_revoked_by` FOREIGN KEY (`revoked_by_admin_id`) REFERENCES `users`(`id`) ON DELETE SET NULL;
+
+-- Add a new permission for revoking actions
+INSERT INTO `permissions` (`permission_key`, `description`)
+VALUES ('LOG_REVOKE', 'Kann protokollierte Admin-Aktionen rückgängig machen.');
+
+-- Grant to default admin
+INSERT INTO user_permissions (user_id, permission_id)
+SELECT 1, LAST_INSERT_ID()
+WHERE EXISTS (SELECT 1 FROM users WHERE id = 1);
+========================================================================
+FILE: src\main\resources\db\migration\V98__Add_Revocable_Flag_To_Suspensions.sql
+========================================================================
+
+-- Flyway migration V98: Add context to existing USER_SUSPEND logs to make them revocable
+
+UPDATE admin_logs
+SET context = JSON_OBJECT(
+    'revocable', TRUE,
+    'userId', CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(details, '(ID: ', -1), ')', 1) AS UNSIGNED)
+)
+WHERE action_type = 'USER_SUSPEND' AND status = 'ACTIVE' AND context IS NULL;
+========================================================================
+FILE: src\main\resources\db\migration\V99__Add_User_Soft_Delete.sql
+========================================================================
+
+-- Flyway migration V100: Add soft delete columns to the users table
+
+ALTER TABLE `users`
+ADD COLUMN `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE AFTER `suspended_reason`,
+ADD COLUMN `deleted_at` TIMESTAMP NULL DEFAULT NULL AFTER `is_deleted`;
+
+-- Add an index for efficient querying of active users
+CREATE INDEX `idx_users_active_username` ON `users` (`is_deleted`, `username`);
+========================================================================
+FILE: src\main\resources\db\migration\V9__Populate_wiki_data_part4.sql
+========================================================================
+
+-- Flyway migration V9, Part 4
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('src/main/java/de/service/AdminLogService.java', '1.  **File Overview & Purpose**\n\n    This service provides a centralized and safe way to create audit log entries. It acts as an abstraction layer over the `AdminLogDAO`, adding input sanitization and structured logging to ensure that all administrative actions are reliably recorded in both the database and the application logs.\n\n2.  **Architectural Role**\n\n    This is a cross-cutting concern that belongs to the **Service Tier**. It is injected into and used by numerous other services and servlets throughout the administrative side of the application whenever a state-changing action is performed.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `AdminLogDAO`.\n    *   `AdminLogDAO`: The DAO used to persist the log entries.\n    *   `Log4j`: Used to write the audit message to the main application log file in addition to the database.\n\n4.  **In-Depth Breakdown**\n\n    *   **`log(String adminUsername, String actionType, String details)`**\n        *   **Method Signature:** `public void log(String adminUsername, String actionType, String details)`\n        *   **Purpose:** Creates and persists a new audit log entry.\n        *   **Parameters:**\n            *   `adminUsername` (String): The username of the admin performing the action.\n            *   `actionType` (String): A short, standardized key for the action (e.g., \"CREATE_USER\").\n            *   `details` (String): A human-readable description of the action.\n        *   **Returns:** void.\n        *   **Side Effects:**\n            1.  **Sanitization:** It first sanitizes all input strings to remove newlines, preventing log injection or formatting issues.\n            2.  **Application Logging:** It logs the audit event to the application''s main log file at the `INFO` level with a clear `[AUDIT]` prefix.\n            3.  **Database Logging:** It creates an `AdminLog` model object and passes it to the `AdminLogDAO` to be written to the database.\n            4.  **Error Handling:** It wraps the entire process in a `try-catch` block to ensure that a failure in the logging mechanism (e.g., a database connection issue) does not crash the primary operation that was being logged. A critical error is logged if this happens.'),
+('src/main/java/de/service/AuthorizationService.java', '1.  **File Overview & Purpose**\n\n    This service provides a centralized mechanism for performing permission checks. It encapsulates the logic for determining whether a given user has the authority to perform a specific action, based on the set of permissions associated with their user object.\n\n2.  **Architectural Role**\n\n    This is a cross-cutting concern that belongs to the **Service Tier**. It is used by servlets and action classes in the **Web/Controller Tier** to enforce fine-grained access control before executing sensitive operations.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `User` (Model): The object containing the user''s set of permissions.\n\n4.  **In-Depth Breakdown**\n\n    *   **`checkPermission(User user, String permissionKey)`**\n        *   **Method Signature:** `public boolean checkPermission(User user, String permissionKey)`\n        *   **Purpose:** Determines if a user has a specific permission.\n        *   **Parameters:**\n            *   `user` (User): The user object to check.\n            *   `permissionKey` (String): The string key of the permission to verify (e.g., \"USER_CREATE\").\n        *   **Returns:** `true` if the user has the permission, `false` otherwise.\n        *   **Logic:**\n            1.  It first performs null checks on the user and their permissions set.\n            2.  It implements a \"superuser\" check: if the user has the `ACCESS_ADMIN_PANEL` permission, the method immediately returns `true`, granting access to any action.\n            3.  Otherwise, it checks if the user''s `permissions` set contains the requested `permissionKey`.'),
+('src/main/java/de/service/ConfigurationService.java', '1.  **File Overview & Purpose**\n\n    This service is responsible for loading and providing access to the application''s configuration settings from the `config.properties` file. As a Guice Singleton, it ensures that the properties file is read only once at application startup, and the settings are then available globally.\n\n2.  **Architectural Role**\n\n    This is a core **Infrastructure/Configuration** component that supports all other tiers. It is injected into any class that needs access to configuration parameters, such as the `DatabaseManager` (for DB credentials) and file handling servlets (for the upload directory path).\n\n3.  **Key Dependencies & Libraries**\n\n    *   `java.util.Properties`: The standard Java class used to load and store the key-value pairs from the `.properties` file.\n\n4.  **In-Depth Breakdown**\n\n    *   **`ConfigurationService()` (Constructor)**\n        *   **Purpose:** Loads the `config.properties` file from the classpath when the application starts.\n        *   **Side Effects:** Reads the properties file and populates the internal `Properties` object. If the file cannot be found or read, it logs a fatal error and throws a `RuntimeException`, preventing the application from starting in a misconfigured state.\n\n    *   **`getProperty(String key)`**\n        *   **Method Signature:** `public String getProperty(String key)`\n        *   **Purpose:** Retrieves the value for a given configuration key.\n        *   **Parameters:**\n            *   `key` (String): The name of the property to retrieve.\n        *   **Returns:** The property value as a `String`, or `null` if the key is not found.\n\n    *   **`getProperty(String key, String defaultValue)`**\n        *   **Method Signature:** `public String getProperty(String key, String defaultValue)`\n        *   **Purpose:** Retrieves the value for a given configuration key, returning a default value if the key is not found.\n        *   **Parameters:**\n            *   `key` (String): The name of the property to retrieve.\n            *   `defaultValue` (String): The value to return if the key is not present in the properties file.\n        *   **Returns:** The property value or the default value.'),
+('src/main/java/de/service/EventService.java', '1.  **File Overview & Purpose**\n\n    This service class orchestrates the complex business logic for creating and updating events. It manages the transactional saving of an event and all its related data (skill requirements, material reservations, custom fields, attachments) in a single, atomic operation.\n\n2.  **Architectural Role**\n\n    This class is a key component of the **Service Tier**. It is called by the `AdminEventServlet` to handle form submissions for creating or editing events. It coordinates multiple DAOs (`EventDAO`, `AttachmentDAO`, `EventCustomFieldDAO`) within a single database transaction to ensure data integrity.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the various DAOs, `DatabaseManager`, `ConfigurationService`, and `AdminLogService`.\n    *   `EventDAO`: For managing the core event record and its direct relationships.\n    *   `AttachmentDAO`: For saving new file attachment records.\n    *   `EventCustomFieldDAO`: For saving custom field definitions.\n    *   `DatabaseManager`: Used to get a connection and manage the transaction (`setAutoCommit`, `commit`, `rollback`).\n\n4.  **In-Depth Breakdown**\n\n    *   **`createOrUpdateEvent(Event event, boolean isUpdate, User adminUser, HttpServletRequest request)`**\n        *   **Method Signature:** `public int createOrUpdateEvent(...)`\n        *   **Purpose:** The main method of the service. It handles the entire process of saving an event and its associated data within a single database transaction.\n        *   **Parameters:**\n            *   `event` (Event): The core event object to save.\n            *   `isUpdate` (boolean): A flag to determine if this is a new event (`INSERT`) or an existing one (`UPDATE`).\n            *   `adminUser` (User): The administrator performing the action, for logging purposes.\n            *   `request` (HttpServletRequest): The request object, used to retrieve arrays of related data like skill requirements, item reservations, and uploaded files.\n        *   **Returns:** The ID of the created or updated event, or `0` on failure.\n        *   **Side Effects:**\n            1.  **Transaction Management:** It gets a connection from the `DatabaseManager` and sets `autoCommit` to `false`.\n            2.  **Core Event Save:** It calls either `eventDAO.createEvent` or `eventDAO.updateEvent`.\n            3.  **Associated Data Save:** It calls the respective DAOs to save skill requirements, reservations, and custom fields, all using the same `Connection` object.\n            4.  **File Upload:** It handles any uploaded file (`Part`) by saving it to disk and creating a corresponding record in the `attachments` table.\n            5.  **Commit/Rollback:** If all operations succeed, it calls `conn.commit()`. If any exception occurs, it calls `conn.rollback()` to undo all changes, ensuring the database remains in a consistent state.\n\n    *   **`signOffUserFromRunningEvent(...)`**: Contains the logic to sign a user off and send a notification to the event leader.'),
+('src/main/java/de/service/NotificationService.java', '1.  **File Overview & Purpose**\n\n    This service implements a server-side push notification system using Server-Sent Events (SSE). It manages persistent HTTP connections with clients, allowing the server to push real-time updates to the frontend. It is implemented as a thread-safe Singleton to provide a single, global point for broadcasting messages.\n\n2.  **Architectural Role**\n\n    This is a cross-cutting **Infrastructure/Service Tier** component. It is called by various other services and servlets (e.g., `EventService`, `AdminUserServlet`, `EventChatSocket`) whenever a state change occurs that needs to be reflected in real-time on other users'' browsers. The `NotificationServlet` is the client-facing entry point that registers clients with this service.\n\n3.  **Key Dependencies & Libraries**\n\n    *   **Jakarta Servlet API (`jakarta.servlet.AsyncContext`)**: Used to manage the long-lived asynchronous connections required for SSE.\n    *   **Gson**: Used to serialize notification payloads into JSON strings before sending them to the client.\n\n4.  **In-Depth Breakdown**\n\n    *   **Singleton Implementation**: The service uses a private constructor and a static `INSTANCE` field with a `getInstance()` method to ensure only one instance exists for the entire application.\n    *   **`contextsByUser` (Map<Integer, List<AsyncContext>>)**: A thread-safe `ConcurrentHashMap` that is the core of the service. It maps a `userId` to a list of all active SSE connections for that user (a user can have multiple browser tabs open).\n    *   **`register(HttpServletRequest request)`**: Called by the `NotificationServlet` when a client connects. It starts an `AsyncContext`, sets its timeout to infinite, and adds it to the `contextsByUser` map.\n    *   **`broadcastGenericMessage(String message)`**: Sends a simple text message to *all* connected clients.\n    *   **`broadcastUIUpdate(String type, Object payload)`**: Sends a structured update message to *all* connected clients, indicating a specific type of UI change (e.g., \"user_updated\") and providing the relevant data.\n    *   **`sendNotificationToUser(int userId, Map<String, Object> payload)`**: Sends a targeted notification to all active sessions for a *single* user. This is used for user-specific alerts like mentions or invitations.\n    *   **`sendEventInvitation(...)`**: A specialized convenience method that constructs and sends an event invitation notification.\n    *   **`sendMessageToContext(...)`**: A private helper method that handles the actual writing of the SSE-formatted data (`data: ...\\n\\n`) to a client''s response stream. It includes robust error handling to detect and remove disconnected clients, preventing memory leaks.'),
+('src/main/java/de/service/PasskeyService.java', '1.  **File Overview & Purpose**\n\n    This service class encapsulates the server-side business logic for WebAuthn/Passkey authentication. It handles the start and finish of both the registration and authentication ceremonies. **Note: The current implementation is a placeholder/simulation** and does not perform the actual cryptographic operations required for a secure WebAuthn flow. It demonstrates the API structure and interaction with the DAO layer.\n\n2.  **Architectural Role**\n\n    This class belongs to the **Service Tier**. It is called by the Passkey API servlets (`RegistrationStartServlet`, `AuthenticationFinishServlet`, etc.) to process passkey-related requests. It coordinates between the client-side WebAuthn API and the `PasskeyDAO` for credential storage.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `PasskeyDAO` and `UserDAO`.\n    *   `PasskeyDAO`: Used to store and retrieve passkey credential data.\n    *   `UserDAO`: Used to retrieve user information during the ceremonies.\n\n4.  **In-Depth Breakdown**\n\n    *   **`startRegistration(User user)`**\n        *   **Purpose:** Generates the initial challenge and options required by the browser to start the passkey creation process.\n        *   **Logic (Simulated):** Generates a random challenge string and constructs a JSON object containing the Relying Party (RP) information, user details, and public key parameters. In a real implementation, this would use a library like `webauthn-server-core` to generate a cryptographically secure challenge and store it in the session.\n        *   **Returns:** A JSON string with the `PublicKeyCredentialCreationOptions`.\n\n    *   **`finishRegistration(int userId, String credentialData, String deviceName)`**\n        *   **Purpose:** Receives the response from the browser''s `navigator.credentials.create()` call and saves the new credential.\n        *   **Logic (Simulated):** It does not validate the `credentialData`. Instead, it creates a new `PasskeyCredential` object with simulated data (random user handle, credential ID, and a placeholder public key) and saves it via the `PasskeyDAO`.\n        *   **Returns:** `true` on successful save.\n\n    *   **`startAuthentication(String username)`**\n        *   **Purpose:** Generates the challenge and options for the browser to start the passkey authentication process.\n        *   **Logic (Simulated):** Generates a random challenge. In a real implementation, it would also fetch the `credentialId`s for the given username from the DAO to include in the `allowCredentials` list.\n        *   **Returns:** A JSON string with the `PublicKeyCredentialRequestOptions`.\n\n    *   **`finishAuthentication(String credentialData)`**\n        *   **Purpose:** Receives the response from the browser''s `navigator.credentials.get()` call, verifies it, and logs the user in.\n        *   **Logic (Simulated):** This is the most significant simulation. It **does not perform any cryptographic verification**. It simply fetches a hardcoded user (admin user with ID 1) from the `UserDAO` and returns it, effectively logging them in. In a real implementation, this method would be the most complex, involving fetching the stored public key, verifying the signature against the challenge, and updating the signature counter.'),
+('src/main/java/de/service/StorageService.java', '1.  **File Overview & Purpose**\n\n    This service class contains the business logic for all inventory-related state changes. It provides transactional methods for processing check-ins/check-outs and for managing the status of defective items, ensuring that all related database updates and logging occur as a single, atomic operation.\n\n2.  **Architectural Role**\n\n    This class belongs to the **Service Tier**. It is called by the `StorageTransactionServlet` and `AdminStorageServlet` to execute inventory operations. It coordinates multiple DAOs (`StorageDAO`, `StorageLogDAO`, `EventDAO`) and the `AdminLogService` within a database transaction.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the DAOs, `DatabaseManager`, and `AdminLogService`.\n    *   `DatabaseManager`: Used to manage database connections and transactions.\n    *   `StorageDAO`: For updating the `storage_items` table.\n    *   `StorageLogDAO`: For creating entries in the `storage_log` table.\n    *   `AdminLogService`: For creating entries in the `admin_logs` table.\n\n4.  **In-Depth Breakdown**\n\n    *   **`processTransaction(int itemId, int quantity, String type, User user, Integer eventId, String notes)`**\n        *   **Method Signature:** `public boolean processTransaction(...)`\n        *   **Purpose:** Handles the check-out and check-in of inventory items within a database transaction.\n        *   **Logic:**\n            1.  Opens a database connection and disables auto-commit.\n            2.  Retrieves the `StorageItem` to perform validation checks (e.g., sufficient stock for checkout).\n            3.  Calls the appropriate method on `StorageDAO` (`performCheckout` or `performCheckin`).\n            4.  If the DAO operation is successful, it calls `StorageLogDAO.logTransaction` to record the event.\n            5.  It then calls `AdminLogService.log` to create an audit trail.\n            6.  If all steps succeed, it calls `conn.commit()`.\n            7.  If any step fails, it calls `conn.rollback()` and logs the error, ensuring the database remains in a consistent state.\n        *   **Returns:** `true` if the entire transaction was successful, `false` otherwise.\n\n    *   **`updateDefectiveItemStatus(int itemId, String status, int quantity, String reason, User adminUser)`**\n        *   **Method Signature:** `public boolean updateDefectiveItemStatus(...)`\n        *   **Purpose:** Manages the process of marking items as defective or unrepairable within a transaction.\n        *   **Logic:** Similar to `processTransaction`, it wraps the database operations in a transaction.\n            *   If `status` is `\"UNREPAIRABLE\"`, it calls `storageDAO.permanentlyReduceQuantities`, which decreases both the total and defective counts.\n            *   If `status` is `\"DEFECT\"`, it calls `storageDAO.updateDefectiveStatus`, which increases the defective count.\n            *   It logs the action to the `admin_logs` table.\n        *   **Returns:** `true` on success, `false` on failure.'),
+('src/main/java/de/service/SystemInfoService.java', '1.  **File Overview & Purpose**\n\n    This service is responsible for gathering and formatting live system statistics from the host operating system. It uses Java''s Management Extensions (JMX) and, for Linux-specific data like uptime and battery, reads directly from the `/proc` and `/sys` filesystems to provide a snapshot of the server''s health.\n\n2.  **Architectural Role**\n\n    This is a specialized **Service Tier** component. It is called by the `SystemStatsApiServlet` to provide real-time data for the admin system status page. It is designed to be platform-aware, providing graceful fallbacks for metrics that are not available on non-Linux systems.\n\n3.  **Key Dependencies & Libraries**\n\n    *   **JMX (`com.sun.management.OperatingSystemMXBean`)**: The core Java API for accessing operating system-level metrics like CPU load and memory usage.\n    *   `java.nio.file.Files`: Used to read system files for Linux-specific stats.\n\n4.  **In-Depth Breakdown**\n\n    *   **`getSystemStats()`**\n        *   **Method Signature:** `public SystemStatsDTO getSystemStats()`\n        *   **Purpose:** The main public method that collects all system metrics.\n        *   **Logic:**\n            1.  Gets an instance of `OperatingSystemMXBean`.\n            2.  Retrieves CPU load (`getSystemCpuLoad`), total and free physical memory.\n            3.  Retrieves total and usable disk space for the root partition (`/`).\n            4.  Calls the private helper methods `getSystemUptime()` and `getBatteryPercentage()`.\n            5.  Populates and returns a `SystemStatsDTO` with the collected data, converting byte values to Gigabytes where appropriate.\n        *   **Returns:** A `SystemStatsDTO` object.\n\n    *   **`getSystemUptime()`**: A private helper that reads the uptime in seconds from `/proc/uptime` on Linux and formats it into a human-readable \"days, hours, minutes\" string. It returns \"Nicht verfügbar\" on non-Linux systems or if the file cannot be read.\n\n    *   **`getBatteryPercentage()`**: A private helper that reads the battery capacity from `/sys/class/power_supply/BAT0/capacity` on Linux. It returns `-1` if the file doesn''t exist (e.g., on a desktop or non-Linux system), which signals the UI to hide the battery widget.'),
+('src/main/java/de/service/TodoService.java', '1.  **File Overview & Purpose**\n\n    This service class encapsulates the business logic for the administrative To-Do list feature. It provides transactional methods for creating, updating, reordering, and deleting To-Do categories and tasks, ensuring that both the database operations and the corresponding audit logs are handled correctly.\n\n2.  **Architectural Role**\n\n    This class is part of the **Service Tier**. It is used exclusively by the `AdminTodoApiServlet` to perform all state-changing operations on the To-Do list. It coordinates the `TodoDAO` and `AdminLogService`.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`, `TodoDAO`, and `AdminLogService`.\n    *   `DatabaseManager`: Used for managing database transactions.\n    *   `TodoDAO`: The DAO for all To-Do list database operations.\n    *   `AdminLogService`: Used to create an audit trail for every action performed.\n\n4.  **In-Depth Breakdown**\n\n    *   **`getAllTodos()`**: A simple pass-through method to retrieve all categories and their tasks from the DAO.\n    *   **`createCategory(String name, User admin)`**: Creates a new To-Do category and logs the action.\n    *   **`createTask(int categoryId, String content, User admin)`**: Creates a new task within a category and logs the action.\n    *   **`updateTask(int taskId, String content, Boolean isCompleted, User admin)`**: A transactional method to update a task''s content and/or completion status. It logs the specific action performed.\n    *   **`deleteTask(int taskId, User admin)`**: Deletes a task and logs the action.\n    *   **`deleteCategory(int categoryId, User admin)`**: Deletes a category (which cascades to its tasks) and logs the action.\n    *   **`reorder(Map<String, List<Integer>> reorderData, User admin)`**\n        *   **Method Signature:** `public boolean reorder(Map<String, List<Integer>> reorderData, User admin)`\n        *   **Purpose:** A transactional method to handle complex reordering operations from the drag-and-drop UI.\n        *   **Logic:** It opens a transaction and calls the DAO''s batch update methods to persist the new order of categories and the new order/category assignment of tasks. It commits the transaction if successful and logs a single \"reorder\" event.\n        *   **Returns:** `true` on success, `false` on failure.'),
+('src/main/java/de/service/UserService.java', '1.  **File Overview & Purpose**\n\n    This service class contains the business logic for user management operations that require database transactions. It orchestrates the creation and updating of users and their associated permissions as a single, atomic operation to ensure data integrity.\n\n2.  **Architectural Role**\n\n    This class belongs to the **Service Tier**. It is used by the `Action` classes (`CreateUserAction`, `UpdateUserAction`) which are invoked by the `FrontControllerServlet`. It provides a higher-level abstraction over the `UserDAO`.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`, `UserDAO`, and `AdminLogService`.\n    *   `DatabaseManager`: Used to obtain a connection and manage transactions.\n    *   `UserDAO`: The DAO for performing the actual user and permission database operations.\n    *   `AdminLogService`: Used to create an audit log entry for the actions.\n\n4.  **In-Depth Breakdown**\n\n    *   **`createUserWithPermissions(User user, String password, String[] permissionIds, String adminUsername)`**\n        *   **Method Signature:** `public int createUserWithPermissions(...)`\n        *   **Purpose:** Creates a new user and assigns their initial permissions within a single database transaction.\n        *   **Logic:**\n            1.  Begins a transaction by disabling auto-commit.\n            2.  Calls `userDAO.createUser()` to insert the new user record.\n            3.  If the user is created successfully (returns a new ID), it calls `userDAO.updateUserPermissions()` to set their permissions.\n            4.  If both operations succeed, it commits the transaction.\n            5.  It then logs the successful creation event to the admin log.\n            6.  If any step fails, it rolls back the transaction.\n        *   **Returns:** The ID of the newly created user, or `0` on failure.\n\n    *   **`updateUserWithPermissions(User user, String[] permissionIds)`**\n        *   **Method Signature:** `public boolean updateUserWithPermissions(...)`\n        *   **Purpose:** Updates a user''s profile information and their set of permissions within a single database transaction.\n        *   **Logic:**\n            1.  Begins a transaction.\n            2.  Calls `userDAO.updateUser()` to save changes to the user''s profile.\n            3.  Calls `userDAO.updateUserPermissions()` to overwrite the user''s existing permissions with the new set.\n            4.  Commits the transaction if both operations succeed, otherwise rolls back.\n        *   **Returns:** `true` if the transaction was successful, `false` otherwise.'),
+('src/main/java/de/filter/AdminFilter.java', '1.  **File Overview & Purpose**\n\n    This servlet filter acts as a security gate for all administrative sections of the application. It intercepts every request to URLs matching `/admin/*` and `/api/admin/*` to ensure that only authenticated users with appropriate administrative permissions can access them.\n\n2.  **Architectural Role**\n\n    This class is a core component of the **Web/Controller Tier**. It enforces access control at the entry point of the application, before any admin servlet or API endpoint is executed. It relies on the `User` object stored in the session, which is populated by the `AuthenticationFilter`.\n\n3.  **Key Dependencies & Libraries**\n\n    *   **Jakarta Servlet API (`jakarta.servlet.Filter`)**: The core interface for implementing a web filter.\n    *   `User` (Model): The object representing the logged-in user, retrieved from the `HttpSession`.\n\n4.  **In-Depth Breakdown**\n\n    *   **`init(FilterConfig filterConfig)`**: Called once by the servlet container on startup. It logs a confirmation message that the filter has been initialized.\n\n    *   **`doFilter(ServletRequest req, ServletResponse res, FilterChain chain)`**\n        *   **Method Signature:** `public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException`\n        *   **Purpose:** This is the main logic of the filter, executed for every matching request.\n        *   **Parameters:**\n            *   `req` (ServletRequest): The incoming request.\n            *   `res` (ServletResponse): The outgoing response.\n            *   `chain` (FilterChain): An object that allows the filter to pass the request along to the next entity in the chain (another filter or the target servlet).\n        *   **Logic:**\n            1.  It first checks if a user session exists and if a `User` object is present. If not, it redirects the user to the `/login` page.\n            2.  If a user is logged in, it calls the `user.hasAdminAccess()` method. This method centrally determines if the user has any permission that qualifies them for admin access.\n            3.  If `hasAdminAccess()` returns `true`, it calls `chain.doFilter()`, allowing the request to proceed to the requested admin page or API.\n            4.  If `hasAdminAccess()` returns `false`, it logs a warning, sets a user-facing error message in the session, and sends an HTTP 403 (Forbidden) error back to the client.\n\n    *   **`destroy()`**: Called when the application is shut down. Logs a confirmation message.'),
+('src/main/java/de/filter/AuthenticationFilter.java', '1.  **File Overview & Purpose**\n\n    This is the primary authentication filter for the entire application. It intercepts every single request (`/*`) to determine if the user is authenticated. It protects all resources except for a defined set of public paths and resource prefixes.\n\n2.  **Architectural Role**\n\n    This class is a fundamental component of the **Web/Controller Tier**. It acts as the first line of defense, ensuring that unauthenticated users cannot access any protected part of the application.\n\n3.  **Key Dependencies & Libraries**\n\n    *   **Jakarta Servlet API (`jakarta.servlet.Filter`)**: The interface it implements.\n    *   `User` (Model): The object it looks for in the `HttpSession` to verify authentication.\n\n4.  **In-Depth Breakdown**\n\n    *   **Static Fields:**\n        *   `PUBLIC_PATHS`: A `Set` containing specific URL paths that do not require authentication (e.g., `/login`, `/logout`).\n        *   `PUBLIC_RESOURCE_PREFIXES`: A `Set` containing URL prefixes for static resources (like CSS, JS, images) and the passkey authentication API (`/api/auth`) that must be publicly accessible.\n    *   **`doFilter(ServletRequest req, ServletResponse res, FilterChain chain)`**:\n        *   **Purpose:** The core filter logic.\n        *   **Logic:**\n            1.  It retrieves the current `HttpSession` (without creating one if it doesn''t exist).\n            2.  It extracts the request path and sanitizes it by removing any `jsessionid` path parameters.\n            3.  It checks if a `User` object exists in the session to determine the `isLoggedIn` status.\n            4.  It checks if the requested path is in the `PUBLIC_PATHS` set or starts with any of the `PUBLIC_RESOURCE_PREFIXES`.\n            5.  If the user is logged in OR the resource is public, it calls `chain.doFilter()` to allow the request to proceed.\n            6.  If the user is not logged in AND the resource is not public, it logs a warning and redirects the user to the `/login` page.');
+COMMIT;

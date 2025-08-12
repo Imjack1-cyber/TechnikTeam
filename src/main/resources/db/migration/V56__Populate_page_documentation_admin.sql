@@ -13,7 +13,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Identifiziere proaktiv potenzielle Materialengpässe.
 - Überwache die letzten administrativen Änderungen.',
 '["admin_events", "admin_storage", "admin_log"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/service/AdminDashboardService.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/service/AdminDashboardService.java')),
 
 ('admin_announcements', 'Admin Anschlagbrett', '/admin/announcements',
 '## Features
@@ -25,7 +25,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Informiere das gesamte Team über wichtige, aber nicht zeitkritische Themen (z.B. neue Lagerordnung, anstehende Team-Treffen).
 - Veröffentliche Protokolle oder Zusammenfassungen.',
 '["bulletin_board"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/service/AnnouncementService.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/service/AnnouncementService.java')),
 
 ('admin_users', 'Admin Benutzerverwaltung', '/admin/mitglieder',
 '## Features
@@ -40,7 +40,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Passe Berechtigungen für einzelne Benutzer an, um ihnen spezielle Zugriffsrechte zu geben.
 - Hilf Benutzern, die ihr Passwort vergessen haben.',
 '["admin_requests"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/service/UserService.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/service/UserService.java')),
 
 ('admin_requests', 'Admin Anträge', '/admin/requests',
 '## Features
@@ -52,7 +52,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Überprüfe und verarbeite von Benutzern gewünschte Änderungen ihrer Stammdaten.
 - Sorge für die Datenqualität und -konsistenz der Benutzerprofile.',
 '["admin_users"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/service/ProfileRequestService.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/service/ProfileRequestService.java')),
 
 ('admin_training_requests', 'Admin Lehrgangsanfragen', '/admin/training-requests',
 '## Features
@@ -64,4 +64,4 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Erkenne, welche Fortbildungen im Team am meisten nachgefragt werden.
 - Plane zukünftige Lehrgänge basierend auf dem Bedarf der Mitglieder.',
 '["lehrgaenge"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/service/TrainingRequestService.java'));
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/service/TrainingRequestService.java'));

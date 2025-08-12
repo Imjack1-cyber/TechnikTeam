@@ -15,7 +15,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Verwalte den gesamten Lebenszyklus eines Events von der Planung bis zur Nachbereitung.
 - Erstelle schnell neue Events auf Basis alter Vorlagen.',
 '["admin_debriefings_list", "admin_event_roles", "admin_venues"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/AdminEventResource.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/AdminEventResource.java')),
 
 ('admin_debriefing_details', 'Admin Event-Debriefing', '/admin/veranstaltungen/:eventId/debriefing',
 '## Features
@@ -28,7 +28,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Erkenne und würdige herausragende Leistungen von Team-Mitgliedern.
 - Dokumentiere Probleme mit dem Equipment, die während des Events aufgetreten sind.',
 '["admin_events", "admin_debriefings_list"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/AdminEventDebriefingResource.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/AdminEventDebriefingResource.java')),
 
 ('admin_debriefings_list', 'Admin Debriefing-Übersicht', '/admin/debriefings',
 '## Features
@@ -50,7 +50,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Definiere einen Standardkatalog von Verantwortlichkeiten für Events.
 - Strukturiere die Team-Zuweisung bei der Event-Planung.',
 '["admin_events"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/AdminEventRoleResource.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/AdminEventRoleResource.java')),
 
 ('admin_venues', 'Admin Veranstaltungsorte', '/admin/venues',
 '## Features
@@ -62,7 +62,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Erstelle eine zentrale Datenbank aller relevanten Veranstaltungsorte.
 - Vereinfache die Event-Planung durch schnellen Zugriff auf Ortsdetails und Pläne.',
 '["admin_events"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/AdminVenueResource.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/AdminVenueResource.java')),
 
 ('admin_courses', 'Admin Lehrgangs-Vorlagen', '/admin/lehrgaenge',
 '## Features
@@ -73,7 +73,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Strukturiere das Ausbildungsangebot des Technik-Teams.
 - Definiere die Qualifikationen, die für Events benötigt werden können.',
 '["admin_meetings", "admin_matrix"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/CourseResource.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/CourseResource.java')),
 
 ('admin_meetings', 'Admin Meetings', '/admin/lehrgaenge/:courseId/meetings',
 '## Features
@@ -85,7 +85,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Organisiere die konkreten Schulungstermine für das Team.
 - Verwalte den Kalender der Ausbildungsveranstaltungen.',
 '["admin_courses"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/MeetingResource.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/MeetingResource.java')),
 
 ('admin_storage', 'Admin Lagerverwaltung', '/admin/lager',
 '## Features
@@ -99,7 +99,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Pflege den kompletten Inventarstamm der Technik-AG.
 - Halte die Bestandszahlen und den Zustand des Equipments aktuell.',
 '["admin_defective_items", "storage_details"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/StorageResource.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/StorageResource.java')),
 
 ('admin_files', 'Admin Dateien', '/admin/dateien',
 '## Features
@@ -111,7 +111,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Verwalte den zentralen Dokumentenpool für das Team.
 - Stelle sicher, dass sensible Dokumente nur für Admins sichtbar sind.',
 '["files"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/AdminFileResource.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/AdminFileResource.java')),
 
 ('admin_kits', 'Admin Kit-Verwaltung', '/admin/kits',
 '## Features
@@ -123,7 +123,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Standardisiere Materialzusammenstellungen für wiederkehrende Aufgaben.
 - Vereinfache das Packen für Events durch vordefinierte Listen.',
 '["pack_kit", "admin_storage"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/KitResource.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/KitResource.java')),
 
 ('admin_feedback', 'Admin Feedback-Board', '/admin/feedback',
 '## Features
@@ -135,7 +135,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Verarbeite und organisiere Feature-Wünsche und Bug-Reports von Benutzern.
 - Behalte den Überblick über den Bearbeitungsstatus von Feedback.',
 '["feedback"]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/AdminFeedbackResource.java')),
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/AdminFeedbackResource.java')),
 
 ('admin_notifications', 'Admin Benachrichtigungen', '/admin/benachrichtigungen',
 '## Features
@@ -148,4 +148,4 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 - Sende gezielte Erinnerungen an die Teilnehmer eines bevorstehenden Events.
 - Alarmiere das Team in einem echten Notfall.',
 '[]',
-1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/AdminNotificationResource.java'));
+1, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/AdminNotificationResource.java'));

@@ -36,6 +36,7 @@ const PackKitPage = lazy(() => import('../pages/PackKitPage'));
 const SearchResultsPage = lazy(() => import('../pages/SearchResultsPage'));
 const ChangelogPage = lazy(() => import('../pages/ChangelogPage'));
 const TeamDirectoryPage = lazy(() => import('../pages/TeamDirectoryPage'));
+const UserProfilePage = lazy(() => import('../pages/UserProfilePage'));
 const AnnouncementsPage = lazy(() => import('../pages/AnnouncementsPage'));
 const HelpListPage = lazy(() => import('../pages/HelpListPage'));
 const HelpDetailsPage = lazy(() => import('../pages/HelpDetailsPage'));
@@ -66,7 +67,6 @@ const AdminReportsPage = lazy(() => import('../pages/admin/AdminReportsPage'));
 const AdminSystemPage = lazy(() => import('../pages/admin/AdminSystemPage'));
 const AdminContentIndex = lazy(() => import('../pages/admin/AdminContentIndex'));
 const AdminFilesPage = lazy(() => import('../pages/admin/AdminFilesPage'));
-const AdminFileEditorPage = lazy(() => import('../pages/admin/AdminFileEditorPage'));
 const AdminFeedbackPage = lazy(() => import('../pages/admin/AdminFeedbackPage'));
 const AdminAchievementsPage = lazy(() => import('../pages/admin/AdminAchievementsPage'));
 const AdminWikiPage = lazy(() => import('../pages/admin/AdminWikiPage'));
@@ -113,6 +113,7 @@ const router = createBrowserRouter([
 			{ path: 'suche', element: <SearchResultsPage /> },
 			{ path: 'changelogs', element: <ChangelogPage /> },
 			{ path: 'team', element: <TeamDirectoryPage /> },
+			{ path: 'team/:userId', element: <UserProfilePage /> },
 			{ path: 'bulletin-board', element: <AnnouncementsPage /> },
 			{ path: 'help', element: <HelpListPage /> },
 			{ path: 'help/:pageKey', element: <HelpDetailsPage /> },
@@ -164,7 +165,7 @@ const router = createBrowserRouter([
 						path: 'content', element: <AdminContentIndex />, children: [
 							{ path: 'announcements', element: <AdminAnnouncementsPage /> },
 							{ path: 'dateien', element: <AdminFilesPage /> },
-							{ path: 'dateien/edit/:fileId', element: <AdminFileEditorPage /> },
+							{ path: 'dateien/edit/:fileId', element: <FileEditorPage /> },
 							{ path: 'feedback', element: <AdminFeedbackPage /> },
 							{ path: 'changelogs', element: <AdminChangelogPage /> },
 							{ path: 'documentation', element: <AdminDocumentationPage /> },

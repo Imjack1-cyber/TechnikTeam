@@ -1,7 +1,7 @@
 -- Flyway migration V61, Part 5: Overhaul Technical Wiki Documentation
 
 INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
-('src/main/java/de/technikteam/model/Announcement.java',
+('src/main/java/de/model/Announcement.java',
 '## 1. File Overview & Purpose
 
 This is a Plain Old Java Object (POJO) that serves as the data model for an announcement on the Digital Bulletin Board. It represents a record from the `announcements` table and includes fields for its title, content, author, and creation date.
@@ -25,7 +25,7 @@ This class is part of the **Model Tier**. It is used to transfer announcement da
 - **Transient Fields:**
     - `authorUsername`: Populated by a JOIN in the DAO to display the author''s name without needing a separate query.'),
 
-('src/main/java/de/technikteam/model/EventRole.java',
+('src/main/java/de/model/EventRole.java',
 '## 1. File Overview & Purpose
 
 This POJO represents a reusable, predefined role that can be assigned to a user within the context of a specific event (e.g., "Audio Tech", "Lighting Operator"). It corresponds to a record in the `event_roles` table.
@@ -47,7 +47,7 @@ This class is part of the **Model Tier**. It is managed via the `AdminEventRoleR
     - `iconClass`: A FontAwesome CSS class for a representative icon.
     - `createdAt`: The timestamp of when the role was defined.'),
 
-('src/main/java/de/technikteam/model/EventPhoto.java',
+('src/main/java/de/model/EventPhoto.java',
 '## 1. File Overview & Purpose
 
 This POJO represents the metadata for a single photo uploaded to an event''s gallery. It corresponds to a record in the `event_photos` junction table, linking a `File` record to an `Event` record.
@@ -72,7 +72,7 @@ This class is part of the **Model Tier**. It is used to transfer photo metadata 
     - `filepath`: The path to the image file, populated by a JOIN for easy access.
     - `uploaderUsername`: The name of the uploader, populated by a JOIN.'),
 
-('src/main/java/de/technikteam/model/PageDocumentation.java',
+('src/main/java/de/model/PageDocumentation.java',
 '## 1. File Overview & Purpose
 
 This POJO represents a single user-facing help page. It corresponds to a record in the `page_documentation` table and contains all the structured content needed to render a complete help article, including its title, features, and links to related help pages and technical wiki articles.
@@ -98,7 +98,7 @@ This class is part of the **Model Tier**. It is managed via the `AdminDocumentat
 - **Transient Fields:**
     - `wikiLink`: A URL string generated on the backend to provide a direct link to the associated wiki page.'),
 
-('src/main/java/de/technikteam/model/TrainingRequest.java',
+('src/main/java/de/model/TrainingRequest.java',
 '## 1. File Overview & Purpose
 
 This POJO represents a user-initiated request for a new training course. It corresponds to a record in the `training_requests` table and captures the requested topic and the original requester.

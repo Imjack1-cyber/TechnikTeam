@@ -56,7 +56,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 ## Use Cases
 - Finde schnell Informationen, ohne durch die einzelnen Menüs navigieren zu müssen.',
 '[]',
-0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/service/SearchService.java')),
+0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/service/SearchService.java')),
 
 ('pack_kit', 'Kit Packliste', '/pack-kit/:kitId',
 '## Features
@@ -86,7 +86,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 ## Use Cases
 - Greife auf deinen personalisierten Bereich der Anwendung zu.',
 '[]',
-0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/api/v1/auth/AuthResource.java')),
+0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/api/v1/auth/AuthResource.java')),
 
 ('forbidden', 'Zugriff Verweigert (403)', '/forbidden',
 '## Features
@@ -113,7 +113,7 @@ INSERT INTO `page_documentation` (`page_key`, `title`, `page_path`, `features`, 
 ## Use Cases
 - Tritt auf, wenn ein Programmierfehler oder ein unvorhergesehenes Problem im Backend auftritt.',
 '[]',
-0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/technikteam/config/GlobalExceptionHandler.java')),
+0, (SELECT id FROM wiki_documentation WHERE file_path = 'src/main/java/de/config/GlobalExceptionHandler.java')),
 
 ('help_list', 'Hilfe-Übersicht', '/help',
 '## Features

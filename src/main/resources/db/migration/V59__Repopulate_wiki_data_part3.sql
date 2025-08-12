@@ -1,7 +1,7 @@
 -- Flyway migration V59, Part 3: Overhaul Technical Wiki Documentation
 
 INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
-('src/main/java/de/technikteam/websocket/ChatSessionManager.java',
+('src/main/java/de/websocket/ChatSessionManager.java',
 '## 1. File Overview & Purpose
 
 This class is a thread-safe singleton manager for WebSocket sessions related to **event-specific** chats. It maintains a map of active chat rooms, where each room (keyed by an `eventId`) contains a set of connected user sessions. This allows for targeted message broadcasting to all participants in a specific event''s chat.
@@ -22,7 +22,7 @@ This is an **Infrastructure** component for the real-time communication feature,
 - **`removeSession(String eventId, WebSocketSession session)`**: Removes a user''s session when they disconnect. If a room becomes empty, it is removed from the main map to conserve memory.
 - **`broadcast(String eventId, String message)`**: Sends a message to *every* active and open session in a specific event room.'),
 
-('src/main/java/de/technikteam/websocket/ChatWebSocketHandler.java',
+('src/main/java/de/websocket/ChatWebSocketHandler.java',
 '## 1. File Overview & Purpose
 
 This is the WebSocket endpoint that powers the real-time **direct messaging and group chat** feature. It manages client connections for specific conversation rooms, processes incoming messages (new, edit, delete, read receipts), persists them to the database via `ChatDAO`, and broadcasts them to all participants in the room.
@@ -48,7 +48,7 @@ This is a key component of the **Web/Controller Tier**. It provides the real-tim
 - **`handleUpdateMessage(...)`**: Handles a message edit request. It performs a DAO update (which includes a check to ensure only the original author can edit within a 24-hour window) and then broadcasts the `message_updated` event.
 - **`handleDeleteMessage(...)`**: Performs a soft delete in the database and broadcasts a `message_deleted` event.'),
 
-('src/main/java/de/technikteam/websocket/ChatWebSocketSessionManager.java',
+('src/main/java/de/websocket/ChatWebSocketSessionManager.java',
 '## 1. File Overview & Purpose
 
 This class is a thread-safe singleton manager for WebSocket sessions related to the **direct messaging and group chat** feature. It is functionally identical to `ChatSessionManager` but operates on `conversationId`s instead of `eventId`s, keeping the two real-time features isolated.
@@ -67,7 +67,7 @@ This is an **Infrastructure** component within the **Web/Controller Tier**. It i
 - **`sessionsByConversation` (Map)**: The central map where the key is the `conversationId` (as a string) and the value is a `CopyOnWriteArraySet` of `WebSocketSession` objects.
 - **`addSession(...)`, `removeSession(...)`, `broadcast(...)`**: These methods provide the core functionality for adding, removing, and broadcasting messages to all sessions within a specific conversation room.'),
 
-('src/main/java/de/technikteam/websocket/EventChatSocketHandler.java',
+('src/main/java/de/websocket/EventChatSocketHandler.java',
 '## 1. File Overview & Purpose
 
 This is the WebSocket endpoint that powers the real-time **event-specific chat** feature (the chat tab on an event''s detail page). It manages client connections for event chat rooms, processes incoming messages (new, edit, delete), persists them to the database, and broadcasts them to all participants in the room.
@@ -93,7 +93,7 @@ This is a key component of the **Web/Controller Tier**. It provides the real-tim
 - **`handleDeleteMessage(...)`**: Handles a message delete request, performing a soft delete and broadcasting the change. It includes logic to check if the deleter is an admin or the event leader.
 - **`handleMentions(...)`**: Parses the message text for `@username` patterns and sends targeted, out-of-app notifications via the `NotificationService`.'),
 
-('src/main/java/de/technikteam/websocket/WebSocketConfig.java',
+('src/main/java/de/websocket/WebSocketConfig.java',
 '## 1. File Overview & Purpose
 
 This class configures the WebSocket endpoints for the Spring application. It registers the different `WebSocketHandler` classes and maps them to specific URL paths.

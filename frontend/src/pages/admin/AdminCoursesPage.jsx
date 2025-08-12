@@ -95,7 +95,7 @@ const AdminCoursesPage = () => {
 								<td>{course.name}</td>
 								<td>{course.abbreviation}</td>
 								<td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-									<Link to={`/admin/lehrgaenge/${course.id}/meetings`} className="btn btn-small">
+									<Link to={`/admin/lehrgaenge/meetings/${course.id}`} className="btn btn-small">
 										<i className="fas fa-calendar-day"></i> Meetings
 									</Link>
 									<button onClick={() => handleOpenEditModal(course)} className="btn btn-small btn-secondary">
@@ -119,7 +119,7 @@ const AdminCoursesPage = () => {
 						<h3 className="card-title">{course.name}</h3>
 						<div className="card-row"><strong>Abkürzung:</strong> <span>{course.abbreviation}</span></div>
 						<div className="card-actions">
-							<Link to={`/admin/lehrgaenge/${course.id}/meetings`} className="btn btn-small">
+							<Link to={`/admin/lehrgaenge/meetings/${course.id}`} className="btn btn-small">
 								<i className="fas fa-calendar-day"></i> Meetings
 							</Link>
 							<button onClick={() => handleOpenEditModal(course)} className="btn btn-small btn-secondary">

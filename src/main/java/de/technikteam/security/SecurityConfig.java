@@ -36,19 +36,17 @@ public class SecurityConfig {
 
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-		http.csrf(AbstractHttpConfigurer::disable)
+		http.csrf(AbstractHttpConfigurer::disable) // CSRF is disabled for stateless API
 				.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
-						// Whitelist public and authentication endpoints first
+						// Whitelist public and authentication endpoints first (NO context path)
 						.requestMatchers("/api/v1/auth/**", "/ws/**", "/swagger-ui.html", "/swagger-ui/**",
 								"/v3/api-docs/**", "/favicon.ico")
 						.permitAll()
-						// More specific authenticated routes
-						.requestMatchers("/api/v1/public/notifications/sse").authenticated() // SSE must be
-																								// authenticated
-						.requestMatchers("/api/v1/public/**").authenticated() // Secure all public API endpoints
-						.requestMatchers("/api/v1/logs/**").hasAnyAuthority("LOG_READ", "LOG_REVOKE")
-						// General admin rule (must come AFTER more specific /admin rules)
+						// Secure all public API endpoints for any authenticated user
+						.requestMatchers("/api/v1/public/**").authenticated()
+						// Secure all admin paths under a single, clear rule.
+						// Granular permissions are now handled by @PreAuthorize on controller methods.
 						.requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 						// All other requests must be authenticated
 						.anyRequest().authenticated())

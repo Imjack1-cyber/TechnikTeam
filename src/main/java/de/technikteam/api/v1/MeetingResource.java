@@ -5,6 +5,7 @@ import de.technikteam.dao.MeetingDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Meeting;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -39,13 +41,6 @@ public class MeetingResource {
 		this.richTextPolicy = richTextPolicy;
 	}
 
-	private User getSystemUser() {
-		User user = new User();
-		user.setId(0);
-		user.setUsername("SYSTEM");
-		return user;
-	}
-
 	@GetMapping
 	@Operation(summary = "Get all meetings for a course")
 	public ResponseEntity<ApiResponse> getMeetingsForCourse(@RequestParam int courseId) {
@@ -65,7 +60,8 @@ public class MeetingResource {
 
 	@PostMapping
 	@Operation(summary = "Create a new meeting")
-	public ResponseEntity<ApiResponse> createMeeting(@Valid @RequestBody MeetingRequest request) {
+	public ResponseEntity<ApiResponse> createMeeting(@Valid @RequestBody MeetingRequest request,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		Meeting meeting = new Meeting();
 		meeting.setCourseId(request.courseId());
 		meeting.setName(request.name());
@@ -78,7 +74,7 @@ public class MeetingResource {
 		int newId = meetingDAO.createMeeting(meeting);
 		if (newId > 0) {
 			meeting.setId(newId);
-			adminLogService.log(getSystemUser().getUsername(), "CREATE_MEETING_API",
+			adminLogService.log(securityUser.getUser().getUsername(), "CREATE_MEETING_API",
 					"Meeting '" + meeting.getName() + "' created.");
 			return new ResponseEntity<>(new ApiResponse(true, "Termin erfolgreich erstellt.", meeting),
 					HttpStatus.CREATED);
@@ -88,7 +84,8 @@ public class MeetingResource {
 
 	@PutMapping("/{id}")
 	@Operation(summary = "Update a meeting")
-	public ResponseEntity<ApiResponse> updateMeeting(@PathVariable int id, @Valid @RequestBody MeetingRequest request) {
+	public ResponseEntity<ApiResponse> updateMeeting(@PathVariable int id, @Valid @RequestBody MeetingRequest request,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		Meeting meeting = new Meeting();
 		meeting.setId(id);
 		meeting.setCourseId(request.courseId());
@@ -100,7 +97,7 @@ public class MeetingResource {
 		meeting.setLocation(request.location());
 
 		if (meetingDAO.updateMeeting(meeting)) {
-			adminLogService.log(getSystemUser().getUsername(), "UPDATE_MEETING_API",
+			adminLogService.log(securityUser.getUser().getUsername(), "UPDATE_MEETING_API",
 					"Meeting '" + meeting.getName() + "' updated.");
 			return ResponseEntity.ok(new ApiResponse(true, "Termin erfolgreich aktualisiert.", meeting));
 		}
@@ -110,9 +107,10 @@ public class MeetingResource {
 
 	@PostMapping("/{id}/clone")
 	@Operation(summary = "Clone a meeting")
-	public ResponseEntity<ApiResponse> cloneMeeting(@PathVariable int id) {
+	public ResponseEntity<ApiResponse> cloneMeeting(@PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
-			Meeting clonedMeeting = eventService.cloneMeeting(id, getSystemUser());
+			Meeting clonedMeeting = eventService.cloneMeeting(id, securityUser.getUser());
 			return new ResponseEntity<>(new ApiResponse(true, "Meeting erfolgreich geklont.", clonedMeeting),
 					HttpStatus.CREATED);
 		} catch (IllegalArgumentException e) {
@@ -125,10 +123,11 @@ public class MeetingResource {
 
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete a meeting")
-	public ResponseEntity<ApiResponse> deleteMeeting(@PathVariable int id) {
+	public ResponseEntity<ApiResponse> deleteMeeting(@PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser) {
 		Meeting meeting = meetingDAO.getMeetingById(id);
 		if (meeting != null && meetingDAO.deleteMeeting(id)) {
-			adminLogService.log(getSystemUser().getUsername(), "DELETE_MEETING_API",
+			adminLogService.log(securityUser.getUser().getUsername(), "DELETE_MEETING_API",
 					"Meeting '" + meeting.getName() + "' deleted.");
 			return ResponseEntity.ok(new ApiResponse(true, "Termin erfolgreich gelöscht.", Map.of("deletedId", id)));
 		}

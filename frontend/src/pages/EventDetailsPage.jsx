@@ -356,7 +356,7 @@ const EventDetailsPage = () => {
 							<h3>Details</h3>
 							<ul className="details-list">
 								<li><strong>Ort:</strong> <span>{event.location || 'N/A'}</span></li>
-								<li><strong>Leitung:</strong> <span>{event.leaderUsername || 'N/A'}</span></li>
+								<li><strong>Leitung:</strong> <span>{event.leaderUsername ? <Link to={`/team/${event.leaderUserId}`}>{event.leaderUsername}</Link> : 'N/A'}</span></li>
 							</ul>
 							<h3 style={{ marginTop: '1rem' }}>Personalbedarf</h3>
 							<ul className="details-list">
@@ -381,7 +381,7 @@ const EventDetailsPage = () => {
 									<div key={role} style={{ marginBottom: '1rem' }}>
 										<h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>{role}</h4>
 										<ul className="details-list">
-											{members.map(member => <li key={member.id} style={{ border: 'none', padding: '0.25rem 0' }}>{member.username}</li>)}
+											{members.map(member => <li key={member.id} style={{ border: 'none', padding: '0.25rem 0' }}><Link to={`/team/${member.id}`}>{member.username}</Link></li>)}
 										</ul>
 									</div>
 								))
@@ -459,7 +459,7 @@ const EventDetailsPage = () => {
 						<div style={{ maxHeight: '400px', overflowY: 'auto', marginTop: '1rem' }}>
 							{feedbackSummary?.data?.map(fb => (
 								<div key={fb.id} className="card" style={{ background: 'var(--bg-color)' }}>
-									<strong>{fb.username} ({fb.rating} ★):</strong>
+									<strong><Link to={`/team/${fb.userId}`}>{fb.username}</Link> ({fb.rating} ★):</strong>
 									<p style={{ fontStyle: 'italic', margin: '0.5rem 0 0 0' }}>"{fb.comments}"</p>
 								</div>
 							))}

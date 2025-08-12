@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 public class AdminLog {
 	private int id;
 	private String adminUsername;
+	private Integer adminUserId; // Transient
 	private String actionType;
 	private String details;
 	private LocalDateTime actionTimestamp;
@@ -37,6 +38,14 @@ public class AdminLog {
 
 	public void setAdminUsername(String adminUsername) {
 		this.adminUsername = adminUsername;
+	}
+
+	public Integer getAdminUserId() {
+		return adminUserId;
+	}
+
+	public void setAdminUserId(Integer adminUserId) {
+		this.adminUserId = adminUserId;
 	}
 
 	public String getActionType() {

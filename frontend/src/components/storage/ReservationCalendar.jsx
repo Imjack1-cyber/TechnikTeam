@@ -14,6 +14,7 @@ import {
 	isWithinInterval,
 } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { Link } from 'react-router-dom';
 
 const ReservationCalendar = ({ reservations }) => {
 	const [currentDate, setCurrentDate] = useState(new Date());
@@ -24,6 +25,7 @@ const ReservationCalendar = ({ reservations }) => {
 			start: parseISO(res.event_datetime),
 			end: res.end_datetime ? parseISO(res.end_datetime) : parseISO(res.event_datetime),
 			title: res.event_name,
+			eventId: res.event_id,
 		}));
 	}, [reservations]);
 
@@ -59,16 +61,37 @@ const ReservationCalendar = ({ reservations }) => {
 					const dayReservations = getReservationsForDay(day);
 					const isReserved = dayReservations.length > 0;
 					const title = isReserved ? "Reserviert für: " + dayReservations.map(r => r.title).join(', ') : '';
+					const eventId = isReserved ? dayReservations[0].eventId : null;
 
-					return (
-						<div
-							key={day.toString()}
-							className={`reservation-calendar-day ${!isSameMonth(day, currentDate) ? 'other-month' : ''} ${isToday(day) ? 'today' : ''} ${isReserved ? 'reserved' : ''}`}
-							title={title}
-						>
-							<span>{format(day, 'd')}</span>
-						</div>
+					const className = `reservation-calendar-day ${!isSameMonth(day, currentDate) ? 'other-month' : ''} ${isToday(day) ? 'today' : ''} ${isReserved ? 'reserved' : ''}`;
+
+					const dayCellContent = (
+						<span>{format(day, 'd')}</span>
 					);
+
+					if (isReserved && eventId) {
+						return (
+							<Link
+								key={day.toString()}
+								to={`/veranstaltungen/details/${eventId}`}
+								className={className}
+								title={title}
+								style={{ textDecoration: 'none', color: 'inherit' }}
+							>
+								{dayCellContent}
+							</Link>
+						);
+					} else {
+						return (
+							<div
+								key={day.toString()}
+								className={className}
+								title={title}
+							>
+								{dayCellContent}
+							</div>
+						);
+					}
 				})}
 			</div>
 		</div>
