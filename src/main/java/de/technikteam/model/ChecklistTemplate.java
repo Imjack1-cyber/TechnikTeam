@@ -10,7 +10,6 @@ public class ChecklistTemplate {
 	private LocalDateTime createdAt;
 	private List<ChecklistTemplateItem> items;
 
-	// Getters and Setters
 	public int getId() {
 		return id;
 	}

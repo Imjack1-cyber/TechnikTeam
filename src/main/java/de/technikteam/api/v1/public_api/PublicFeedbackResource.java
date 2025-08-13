@@ -94,19 +94,15 @@ public class PublicFeedbackResource {
 		User user = securityUser.getUser();
 		response.setUserId(user.getId());
 
-		// --- REMEDIATION START ---
 		FeedbackForm form = eventFeedbackDAO.getFormById(response.getFormId());
 		if (form == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)
 					.body(new ApiResponse(false, "Feedback-Formular nicht gefunden.", null));
 		}
-		// Check if user was actually assigned to the event for which they are giving
-		// feedback
 		if (!eventDAO.isUserAssociatedWithEvent(form.getEventId(), user.getId())) {
 			return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false,
 					"Sie können nur Feedback für Veranstaltungen abgeben, an denen Sie teilgenommen haben.", null));
 		}
-		// --- REMEDIATION END ---
 
 		if (eventFeedbackDAO.saveFeedbackResponse(response)) {
 			return ResponseEntity.ok(new ApiResponse(true, "Event-Feedback erfolgreich übermittelt.", null));

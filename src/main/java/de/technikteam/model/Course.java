@@ -13,8 +13,8 @@ public class Course {
 	private String name;
 	private String abbreviation;
 	private String description;
-	private List<Meeting> upcomingMeetings; // Transient field for Training Hub UI
-	private String userCourseStatus; // Transient field for Training Hub UI
+	private List<Meeting> upcomingMeetings; 
+	private String userCourseStatus; 
 
 	public Course() {
 	}

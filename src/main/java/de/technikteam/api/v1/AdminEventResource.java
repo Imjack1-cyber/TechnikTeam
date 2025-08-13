@@ -80,7 +80,7 @@ public class AdminEventResource {
 						.body(new ApiResponse(false, "Veranstaltung nicht gefunden.", null));
 			}
 			mapDtoToEvent(eventData, event);
-			event.setId(id); // Ensure ID is set for update
+			event.setId(id); 
 
 			eventService.createOrUpdateEvent(event, true, securityUser.getUser(),
 					eventData.requiredCourseIds().toArray(new String[0]),

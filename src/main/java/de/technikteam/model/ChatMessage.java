@@ -8,7 +8,7 @@ public class ChatMessage {
 	private int senderId;
 	private String senderUsername;
 	private String messageText;
-	private String status; // SENT, DELIVERED, READ
+	private String status; 
 	private LocalDateTime sentAt;
 	private String chatColor;
 	private boolean edited;
@@ -16,7 +16,7 @@ public class ChatMessage {
 	private boolean isDeleted;
 	private LocalDateTime deletedAt;
 	private Integer deletedByUserId;
-	private String deletedByUsername; // Transient
+	private String deletedByUsername; 
 
 	public long getId() {
 		return id;

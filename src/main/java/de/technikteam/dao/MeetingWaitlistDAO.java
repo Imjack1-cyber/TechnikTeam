@@ -77,7 +77,6 @@ public class MeetingWaitlistDAO {
 		String sql = "UPDATE meeting_waitlist SET promoted_by = ?, promoted_at = ? WHERE meeting_id = ? AND user_id = ?";
 		try {
 			jdbcTemplate.update(sql, adminUserId, Timestamp.valueOf(java.time.LocalDateTime.now()), meetingId, userId);
-			// then remove the entry
 			return removeFromWaitlist(meetingId, userId);
 		} catch (Exception e) {
 			logger.error("Error marking promoted for user {} meeting {}", userId, meetingId, e);

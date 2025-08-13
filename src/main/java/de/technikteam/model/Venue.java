@@ -10,7 +10,6 @@ public class Venue {
 	private String mapImagePath;
 	private LocalDateTime createdAt;
 
-	// Getters and Setters
 	public int getId() {
 		return id;
 	}

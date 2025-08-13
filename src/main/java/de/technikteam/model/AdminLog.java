@@ -11,15 +11,15 @@ import java.time.LocalDateTime;
 public class AdminLog {
 	private int id;
 	private String adminUsername;
-	private Integer adminUserId; // Transient
+	private Integer adminUserId; 
 	private String actionType;
 	private String details;
 	private LocalDateTime actionTimestamp;
 	private String status;
-	private String context; // JSON string
+	private String context; 
 	private Integer revokedByAdminId;
 	private LocalDateTime revokedAt;
-	private String revokingAdminUsername; // Transient
+	private String revokingAdminUsername; 
 
 	public AdminLog() {
 	}

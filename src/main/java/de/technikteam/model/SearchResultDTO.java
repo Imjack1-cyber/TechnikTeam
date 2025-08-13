@@ -6,7 +6,7 @@ package de.technikteam.model;
  * storage, etc.) into a unified list for the API response.
  */
 public class SearchResultDTO {
-	private String type; // e.g., "Veranstaltung", "Lagerartikel", "Dokumentation"
+	private String type; 
 	private String title;
 	private String url;
 	private String snippet;
@@ -18,7 +18,6 @@ public class SearchResultDTO {
 		this.snippet = snippet;
 	}
 
-	// Getters and Setters
 	public String getType() {
 		return type;
 	}

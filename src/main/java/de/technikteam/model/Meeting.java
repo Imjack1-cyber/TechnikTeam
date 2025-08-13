@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 public class Meeting {
 	private int id;
 	private int courseId;
-	private int parentMeetingId; // 0 if none
+	private int parentMeetingId; 
 	private String name;
 	private LocalDateTime meetingDateTime;
 	private LocalDateTime endDateTime;
@@ -17,10 +17,8 @@ public class Meeting {
 	private String parentCourseName;
 	private String leaderUsername;
 	private String userAttendanceStatus;
-	private int participantCount; // Transient
-	private int waitlistCount; // Transient
-
-	// getters / setters
+	private int participantCount; 
+	private int waitlistCount; 
 
 	public int getId() {
 		return id;

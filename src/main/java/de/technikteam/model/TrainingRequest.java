@@ -6,11 +6,10 @@ public class TrainingRequest {
 	private int id;
 	private String topic;
 	private int requesterUserId;
-	private String requesterUsername; // Transient
+	private String requesterUsername; 
 	private LocalDateTime createdAt;
-	private int interestCount; // Transient
+	private int interestCount; 
 
-	// Getters and Setters
 	public int getId() {
 		return id;
 	}

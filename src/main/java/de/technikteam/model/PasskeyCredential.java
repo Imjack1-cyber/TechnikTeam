@@ -18,7 +18,6 @@ public class PasskeyCredential {
 	private long signatureCount;
 	private LocalDateTime createdAt;
 
-	// Helper methods to handle byte arrays for the WebAuthn library
 	@JsonIgnore
 	public byte[] getUserHandleBytes() {
 		return Base64.getUrlDecoder().decode(this.userHandle);
@@ -46,7 +45,6 @@ public class PasskeyCredential {
 		this.publicKey = Base64.getUrlEncoder().withoutPadding().encodeToString(publicKeyBytes);
 	}
 
-	// Getters and Setters
 	public int getId() {
 		return id;
 	}

@@ -13,7 +13,6 @@ public class ChecklistItem {
 	private String lastUpdatedByUsername;
 	private LocalDateTime lastUpdatedAt;
 
-	// Getters and Setters
 	public int getId() {
 		return id;
 	}

@@ -8,15 +8,14 @@ public class PageDocumentation {
 	private String title;
 	private String pagePath;
 	private String features;
-	private String relatedPages; // Stored as JSON
+	private String relatedPages; 
 	private boolean adminOnly;
 	private Integer wikiEntryId;
-	private String category; // New field
+	private String category; 
 	private LocalDateTime createdAt;
 	private LocalDateTime updatedAt;
-	private String wikiLink; // Transient field
+	private String wikiLink; 
 
-	// Getters and Setters
 	public int getId() {
 		return id;
 	}

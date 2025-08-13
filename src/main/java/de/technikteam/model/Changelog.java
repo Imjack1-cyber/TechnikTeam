@@ -9,9 +9,8 @@ public class Changelog {
 	private LocalDate releaseDate;
 	private String title;
 	private String notes;
-	private List<Integer> seenByUserIds; // Mapped from JSON
+	private List<Integer> seenByUserIds; 
 
-	// Getters and Setters
 	public int getId() {
 		return id;
 	}

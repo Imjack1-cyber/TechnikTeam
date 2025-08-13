@@ -44,7 +44,6 @@ public class EventRoleDAO {
 	}
 
 	public boolean delete(int id) {
-		// ON DELETE SET NULL will handle un-assigning from event_assignments
 		String sql = "DELETE FROM event_roles WHERE id = ?";
 		return jdbcTemplate.update(sql, id) > 0;
 	}

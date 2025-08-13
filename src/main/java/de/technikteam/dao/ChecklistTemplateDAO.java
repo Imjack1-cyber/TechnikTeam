@@ -34,7 +34,6 @@ public class ChecklistTemplateDAO {
 			template.setId(newId);
 		}
 
-		// Sync items
 		jdbcTemplate.update("DELETE FROM preflight_checklist_items WHERE template_id = ?", template.getId());
 		if (template.getItems() != null && !template.getItems().isEmpty()) {
 			String itemSql = "INSERT INTO preflight_checklist_items (template_id, item_text, storage_item_id, quantity, display_order) VALUES (?, ?, ?, ?, ?)";

@@ -38,15 +38,8 @@ public class EventTaskResource {
 		logger.debug("Received request to save task for event {}: {}", eventId, task.getDescription());
 		try {
 			task.setEventId(eventId);
-			// Assuming userIds, itemIds etc. are part of the task DTO or handled
-			// differently
 			int taskId = eventTaskService.saveTaskAndHandleMentions(task,
-					task.getAssignedUsers().stream().mapToInt(User::getId).toArray(), null, null, null, // Simplified
-																										// for now,
-																										// assuming
-																										// these are not
-																										// sent in this
-																										// payload
+					task.getAssignedUsers().stream().mapToInt(User::getId).toArray(), null, null, null, 
 					task.getDependsOn().stream().mapToInt(EventTask::getId).toArray(), securityUser.getUser());
 			logger.info("Task {} for event {} saved successfully with ID: {}", task.getDescription(), eventId, taskId);
 			return new ResponseEntity<>(new ApiResponse(true, "Task saved successfully.", Map.of("taskId", taskId)),

@@ -26,8 +26,7 @@ public class SecurityUser implements UserDetails, Serializable {
 
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
-		// Convert the user's permission strings and role into Spring Security
-		// GrantedAuthority objects.
+		// Convert the user's permission strings and role into Spring Security GrantedAuthority objects.
 		Set<GrantedAuthority> authorities = user.getPermissions().stream().map(SimpleGrantedAuthority::new)
 				.collect(Collectors.toSet());
 		// Add role as an authority, prefixed with "ROLE_"

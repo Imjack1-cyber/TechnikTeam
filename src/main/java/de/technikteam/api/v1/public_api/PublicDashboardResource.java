@@ -56,7 +56,7 @@ public class PublicDashboardResource {
 
 		List<Event> assignedEvents = eventDAO.getAssignedEventsForUser(user.getId(), 5);
 		List<EventTask> openTasks = eventTaskDAO.getOpenTasksForUser(user.getId());
-		List<Event> upcomingEvents = eventDAO.getAllActiveAndUpcomingEvents(); // Simplified for now
+		List<Event> upcomingEvents = eventDAO.getAllActiveAndUpcomingEvents(); 
 		List<Event> recommendedEvents = eventDAO.getPersonalizedEventFeed(user.getId(), 3);
 		List<ChatConversation> recentConversations = chatDAO.getConversationsForUser(user.getId());
 		List<Meeting> signedUpMeetings = meetingDAO.getUpcomingMeetingsForUser(user);

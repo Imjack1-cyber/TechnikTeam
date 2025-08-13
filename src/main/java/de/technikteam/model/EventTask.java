@@ -5,11 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Represents a single task from the `event_tasks` table, associated with a
- * specific "running" event. It includes the task description, its status,
- * required personnel, ordering, and linked equipment.
- */
 public class EventTask {
 	private int id;
 	private int eventId;
@@ -25,8 +20,8 @@ public class EventTask {
 	private List<User> assignedUsers = new ArrayList<>();
 	private List<StorageItem> requiredItems = new ArrayList<>();
 	private List<InventoryKit> requiredKits = new ArrayList<>();
-	private List<EventTask> dependsOn = new ArrayList<>(); // Tasks that must be completed before this one
-	private List<EventTask> dependencyFor = new ArrayList<>(); // Tasks that depend on this one
+	private List<EventTask> dependsOn = new ArrayList<>(); 
+	private List<EventTask> dependencyFor = new ArrayList<>(); 
 
 	public String getAssignedUsernames() {
 		if (assignedUsers != null && !assignedUsers.isEmpty()) {

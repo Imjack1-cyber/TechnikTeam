@@ -10,13 +10,12 @@ public class ChatConversation {
 	private Integer creatorId;
 	private LocalDateTime createdAt;
 
-	// Transient fields for UI
 	private int otherParticipantId;
 	private String otherParticipantUsername;
 	private String lastMessage;
 	private LocalDateTime lastMessageTimestamp;
 	private List<User> participants;
-
+	
 	public int getId() {
 		return id;
 	}

@@ -91,7 +91,6 @@ public class CourseDAO {
 	public boolean deleteCourse(int courseId) {
 		String sql = "DELETE FROM courses WHERE id = ?";
 		try {
-			// Manually delete related data due to foreign key constraints
 			jdbcTemplate.update("DELETE FROM event_skill_requirements WHERE required_course_id = ?", courseId);
 			jdbcTemplate.update("DELETE FROM user_qualifications WHERE course_id = ?", courseId);
 			jdbcTemplate.update("DELETE FROM meetings WHERE course_id = ?", courseId);

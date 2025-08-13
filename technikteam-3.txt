@@ -1,23 +1,5 @@
 ﻿
 ========================================================================
-FILE: src\main\resources\db\migration\V12__Populate_wiki_data_part7.sql
-========================================================================
-
--- Flyway migration V12, Part 7
-
-INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
-('src/main/java/de/model/InventoryKit.java', '1.  **File Overview & Purpose**\n\n    This POJO represents an \"inventory kit\" or a \"case,\" corresponding to a record in the `inventory_kits` table. A kit is a conceptual container that groups a predefined list of `StorageItem`s together, such as \"Audio Kit A\" or \"Lighting Case 1\".\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is used to transfer data about kits between the `InventoryKitDAO` and the `AdminKitServlet` for management, and the `PackKitServlet` for displaying packing lists.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `InventoryKitItem`: The model class representing the items contained within this kit.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`: The primary key of the kit.\n        *   `name`: The user-facing name of the kit (e.g., \"Mics and Stands\").\n        *   `description`: A brief description of the kit''s purpose.\n        *   `location`: The physical storage location of the assembled kit (e.g., \"Lager, Schrank 3\").\n        *   `items` (List<InventoryKitItem>): A list of the items and their quantities that belong to this kit. This is populated by a JOIN query in the DAO.\n    *   **Getters and Setters**: Standard methods for property access.'),
-('src/main/java/de/model/InventoryKitItem.java', '1.  **File Overview & Purpose**\n\n    This POJO represents an entry in the `inventory_kit_items` junction table. It defines the relationship between an `InventoryKit` and a `StorageItem`, specifying the quantity of that item that belongs in the kit.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is primarily used within the `InventoryKit` model to represent the contents of a kit.\n\n3.  **Key Dependencies & Libraries**\n\n    *   None. This is a self-contained POJO.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `kitId`: Foreign key to the `inventory_kits` table.\n        *   `itemId`: Foreign key to the `storage_items` table.\n        *   `quantity`: The number of this specific item that should be in the kit.\n        *   `itemName`: A transient field, populated from a JOIN in the DAO, to display the item''s name without needing to fetch the full `StorageItem` object.\n    *   **Getters and Setters**: Standard methods for property access.'),
-('src/main/java/de/model/MaintenanceLogEntry.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a single record from the `maintenance_log` table. It captures the history of maintenance actions performed on a specific `StorageItem`, including repairs, marking for maintenance, and associated notes or costs.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is created by servlets like `AdminStorageServlet` to be persisted by the `MaintenanceLogDAO`, and is retrieved to be displayed on the `storage_item_details.jsp` page.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `DateFormatter`: Used for the `getFormattedLogDate()` convenience method.\n    *   `java.time.LocalDateTime`: Used for the `logDate` field.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`: The primary key of the log entry.\n        *   `itemId`: Foreign key to the `storage_items` table.\n        *   `userId`: Foreign key to the `users` table, indicating who performed the action.\n        *   `logDate`: The timestamp of the maintenance action.\n        *   `action`: A string describing the action (e.g., \"Marked for Maintenance\", \"Returned to Service\").\n        *   `notes`: Free-text notes from the user about the action.\n        *   `cost`: The cost associated with the maintenance, if any.\n        *   `username`: A transient field, populated by a JOIN, for displaying the user''s name.\n    *   **`getFormattedLogDate()`**: A view-helper method to provide a pre-formatted timestamp string.\n    *   **Getters and Setters**: Standard methods for property access.'),
-('src/main/java/de/model/Meeting.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a specific, schedulable session or \"meeting\" for a course, corresponding to a record in the `meetings` table. Unlike a `Course` which is a template, a `Meeting` has a concrete date, time, and location.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is used to transfer data about scheduled meetings between the `MeetingDAO`, various servlets (e.g., `MeetingServlet`, `AdminMeetingServlet`), and the JSP views.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `DateFormatter`: Used for convenience methods that provide display-ready date and time strings.\n    *   `java.time.LocalDateTime`: Used for the meeting''s start and end times.\n\n4.  **In-Depth Breakdown**\n\n    *   **Core Fields:**\n        *   `id`, `courseId`, `name`, `meetingDateTime`, `endDateTime`, `leaderUserId`, `description`, `location`: These map directly to columns in the `meetings` table.\n    *   **Transient UI Fields:**\n        *   `parentCourseName`: The name of the `Course` this meeting belongs to, populated by a JOIN.\n        *   `leaderUsername`: The name of the user leading the meeting, populated by a JOIN.\n        *   `userAttendanceStatus`: Stores the current logged-in user''s sign-up status for this meeting (`ANGEMELDET`, `ABGEMELDET`, `OFFEN`).\n    *   **Convenience Methods (`getFormatted...`)**: These methods use the `DateFormatter` to provide JSP-ready strings for the meeting''s date and time range, encapsulating formatting logic.'),
-('src/main/java/de/model/MeetingAttendance.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a user''s attendance record for a specific meeting, corresponding to a row in the `meeting_attendance` table. It tracks whether a user was present and allows for optional administrative remarks.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is used to transfer attendance data between the `MeetingAttendanceDAO` and the servlets that manage and display this information, most notably the `MatrixServlet`.\n\n3.  **Key Dependencies & Libraries**\n\n    *   None. This is a self-contained POJO.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `userId`: Foreign key to the `users` table.\n        *   `meetingId`: Foreign key to the `meetings` table.\n        *   `attended`: A boolean flag indicating if the user was present (`true`) or not (`false`).\n        *   `remarks`: An optional string for administrative notes, such as \"excused absence\".\n    *   **Getters and Setters**: Standard methods for property access.'),
-('src/main/java/de/model/NavigationItem.java', '1.  **File Overview & Purpose**\n\n    This is a simple, immutable POJO used to represent a single link in the application''s sidebar navigation. It holds all the necessary data to render a navigation item, including its label, URL, icon, and the permission required to view it.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. Instances of this class are created and managed exclusively by the `NavigationRegistry` utility and are stored in the user''s session to be rendered by the `main_header.jspf` fragment on every page.\n\n3.  **Key Dependencies & Libraries**\n\n    *   None.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields (all `final`):**\n        *   `label`: The user-visible text of the link (e.g., \"Dashboard\").\n        *   `url`: The relative URL for the link (e.g., \"/home\").\n        *   `icon`: The FontAwesome CSS class for the link''s icon (e.g., \"fa-home\").\n        *   `requiredPermission`: The permission key (from the `Permissions` class) that a user must have to see this link. A `null` value indicates the link is visible to all authenticated users.\n    *   **Constructor and Getters**: A standard constructor to initialize the final fields and getters to access their values. There are no setters, making the object immutable.'),
-('src/main/java/de/model/ParticipationHistory.java', '1.  **File Overview & Purpose**\n\n    This is a Data Transfer Object (DTO) designed specifically for reporting purposes. It aggregates data from multiple tables (`users`, `events`, `event_attendance`, `event_assignments`) to create a flattened view of a user''s participation in an event. It does not map to a single database table.\n\n2.  **Architectural Role**\n\n    This class belongs to the **Model Tier**. It is used by the `ReportDAO` to structure the results of complex analytical queries and is then passed to the `AdminReportServlet` for display or export.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `java.time.LocalDateTime`: For the `eventDate` field.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `username`: The name of the user.\n        *   `eventName`: The name of the event.\n        *   `eventDate`: The date and time of the event.\n        *   `status`: The user''s status for that event (e.g., \"ZUGEWIESEN\", \"ANGEMELDET\").\n    *   **Getters and Setters**: Standard methods for property access.'),
-('src/main/java/de/model/PasskeyCredential.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a WebAuthn/Passkey credential stored in the `user_passkeys` table. It holds all the necessary information for a user to perform a passwordless login, including the public key, credential ID, and a signature counter for security.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is used to transfer credential data between the `PasskeyDAO` and the `PasskeyService`.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `java.time.LocalDateTime`: For the `createdAt` timestamp.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`: The internal primary key in the database.\n        *   `userId`: Foreign key linking the credential to a `User`.\n        *   `name`: A user-provided name for the device (e.g., \"My Laptop\").\n        *   `userHandle`: A unique identifier for the user, provided during registration.\n        *   `credentialId`: The globally unique, URL-safe Base64 encoded ID for this credential.\n        *   `publicKey`: The user''s public key, encoded as a string.\n        *   `signatureCount`: A counter that is incremented on each successful authentication to help prevent credential cloning.\n        *   `createdAt`: The timestamp of when the credential was registered.\n    *   **Getters and Setters**: Standard methods for property access.'),
-('src/main/java/de/model/Permission.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a single, defined permission from the `permissions` table. It models a granular action that can be assigned to a user, providing a structured object containing the permission''s unique key and a human-readable description.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is used by the `PermissionDAO` to represent permission data retrieved from the database and is passed to the `AdminUserServlet` to populate the permissions checklist in the user editing modal.\n\n3.  **Key Dependencies & Libraries**\n\n    *   None. This is a self-contained POJO.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`: The primary key of the permission.\n        *   `permissionKey`: The unique string identifier for the permission (e.g., \"USER_CREATE\"). This key is used for programmatic checks.\n        *   `description`: A user-friendly description of what the permission allows (e.g., \"Kann neue Benutzer anlegen.\").\n    *   **Getters and Setters**: Standard methods for property access.'),
-('src/main/java/de/model/ProfileChangeRequest.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a user''s request to modify their own profile data, corresponding to a record in the `profile_change_requests` table. It captures who made the request, what changes they requested (as a JSON string), its current status, and who reviewed it.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is used to transfer request data between the `ProfileChangeRequestDAO` and the servlets that handle the request workflow (`ProfileServlet` for creation, `AdminChangeRequestServlet` for review).\n\n3.  **Key Dependencies & Libraries**\n\n    *   `java.time.LocalDateTime`: For the `requestedAt` and `reviewedAt` timestamps.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`: The primary key of the request.\n        *   `userId`: Foreign key of the user who made the request.\n        *   `username`: Transient field for the requester''s name, for display in the admin UI.\n        *   `requestedChanges`: A JSON string containing a map of the fields to be changed and their new values (e.g., `{\"email\":\"new@email.com\", \"className\":\"11a\"}`).\n        *   `status`: An enum-like string (`\"PENDING\"`, `\"APPROVED\"`, `\"DENIED\"`) indicating the state of the request.\n        *   `requestedAt`: Timestamp of when the request was submitted.\n        *   `reviewedByAdminId`: Foreign key of the admin who reviewed the request.\n        *   `reviewedByAdminName`: Transient field for the admin''s name.\n        *   `reviewedAt`: Timestamp of when the request was reviewed.\n    *   **Getters and Setters**: Standard methods for property access.');
-COMMIT;
-========================================================================
 FILE: src\main\resources\db\migration\V13__Populate_wiki_data_part8.sql
 ========================================================================
 
@@ -138,6 +120,7 @@ INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
 ('src/main/java/de/servlet/TaskActionServlet.java', '1.  **File Overview & Purpose**\n\n    This servlet serves as a dedicated controller for all actions related to event tasks. It handles a variety of POST requests for creating, updating, deleting, and changing the status of tasks, as well as user-specific actions like claiming or un-claiming a task.\n\n2.  **Architectural Role**\n\n    This class belongs to the **Web/Controller Tier**. It acts as a command handler for task-related operations, primarily receiving requests from the `eventDetails.jsp` page. It coordinates between user actions and the `EventTaskDAO`, and performs necessary authorization checks.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `EventTaskDAO`, `EventDAO`, and `AdminLogService`.\n    *   `EventTaskDAO`: The primary DAO for all task-related database operations.\n    *   `EventDAO`: Used to fetch event details for authorization checks (e.g., to verify if the current user is the event leader).\n    *   `AdminLogService`: To log administrative actions like creating or deleting tasks.\n    *   `CSRFUtil`: For security validation on all POST requests.\n\n4.  **In-Depth Breakdown**\n\n    *   **`doPost(HttpServletRequest request, HttpServletResponse response)`**:\n        *   **Purpose:** The main entry point that routes requests based on the `action` parameter.\n        *   **Logic:** After authenticating the user and validating the CSRF token, it uses a `switch` statement to delegate to the appropriate handler method (`handleSaveTask`, `handleDeleteTask`, etc.).\n\n    *   **`handleSaveTask(...)`**:\n        *   **Purpose:** Handles both creation and updating of a task.\n        *   **Logic:**\n            1.  Performs an authorization check: only an admin or the event leader can save a task.\n            2.  It constructs an `EventTask` object from the request parameters.\n            3.  It determines if it''s a create or update based on the presence of a `taskId`.\n            4.  It collects arrays of associated data (assigned user IDs, required item IDs, etc.) from the request.\n            5.  It calls the transactional `taskDAO.saveTask()` method, which handles saving the task and all its relationships.\n            6.  Logs the action and sets a session message before redirecting back to the event details page.\n\n    *   **`handleDeleteTask(...)`**:\n        *   **Purpose:** Deletes a task.\n        *   **Logic:** Performs an authorization check (admin or event leader), then calls `taskDAO.deleteTask()`, logs the action, sets a session message, and redirects.\n\n    *   **`handleUserTaskAction(...)`**:\n        *   **Purpose:** Handles actions that a regular participant can perform on a task.\n        *   **Logic:**\n            *   For `updateStatus` (e.g., marking as \"ERLEDIGT\"), it checks if the user is an admin, the leader, or an assignee of the task.\n            *   For `claim` and `unclaim`, it checks if the user is a participant in the event.\n            *   It then calls the appropriate `EventTaskDAO` method to perform the action.'),
 ('src/main/java/de/util/CSRFUtil.java', '1.  **File Overview & Purpose**\n\n    This is a critical security utility class that provides methods to protect the application against Cross-Site Request Forgery (CSRF) attacks. It implements the synchronizer token pattern by generating a secure, random token, storing it in the user''s session, and providing a method to validate that incoming state-changing requests include this same token.\n\n2.  **Architectural Role**\n\n    This is a cross-cutting **Security/Utility** component. It is used throughout the **Web/Controller Tier**. The `storeToken` method is called by the `LoginServlet`, and the `isTokenValid` method is called at the beginning of the `doPost` method of nearly every servlet that handles form submissions.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `java.security.SecureRandom`: Used to generate cryptographically strong random bytes for the token.\n    *   `java.util.Base64`: Used to encode the random bytes into a URL-safe string.\n\n4.  **In-Depth Breakdown**\n\n    *   **`storeToken(HttpSession session)`**:\n        *   **Purpose:** Generates a new CSRF token and saves it in the user''s session.\n        *   **Logic:** It calls the private `generateToken()` method and sets the result as a session attribute with the key `\"csrfToken\"`. This should be called upon successful login to establish the initial token.\n\n    *   **`generateToken()`**:\n        *   **Purpose:** A private helper to create a secure, random token.\n        *   **Logic:** It uses `SecureRandom` to generate 32 random bytes and then Base64-encodes them into a URL-safe, padding-free string.\n\n    *   **`isTokenValid(HttpServletRequest request)`**:\n        *   **Purpose:** The main validation method. It compares the token submitted in a request parameter with the token stored in the session.\n        *   **Logic:** It retrieves the token from the session and the token from the request parameter named `\"csrfToken\"`. It performs null/empty checks and then uses `Objects.equals()` for a timing-attack-safe comparison. It returns `true` only if both tokens exist and are identical.\n\n    *   **`getCsrfInputField(HttpSession session)`**: A utility method intended for use in JSPs (though the project uses direct EL `$${sessionScope.csrfToken}` instead). It generates the complete `<input type=\"hidden\" ...>` HTML tag needed in forms.');
 COMMIT;
+
 ========================================================================
 FILE: src\main\resources\db\migration\V1__Create_core_tables.sql
 ========================================================================
@@ -528,7 +511,7 @@ ALTER TABLE `users`
 ADD COLUMN `profile_picture_path` VARCHAR(255) DEFAULT NULL AFTER `theme`;
 
 ALTER TABLE `profile_change_requests`
-MODIFY COLUMN `requested_changes` LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL;
+MODIFY COLUMN `requested_changes` LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
 ========================================================================
 FILE: src\main\resources\db\migration\V22__Remove_Default_Admin_User.sql
 ========================================================================
@@ -5183,4 +5166,264 @@ This is a key **UI Container Component** used by the `AdminUsersPage`.
 - **Component Composition:** It renders the `PermissionsTab` component, passing down the `groupedPermissions` (received from `AdminUsersPage`), the `formData.permissionIds` set, and the `handlePermissionChange` callback.
 - **Permission Handling:** The `handlePermissionChange` function is responsible for updating the `permissionIds` `Set` in the component''s state when a checkbox is toggled in the child component.
 - **Submission:** On submit, it converts the `permissionIds` `Set` back into an array and sends the complete payload to the backend.');
+COMMIT;
+========================================================================
+FILE: src\main\resources\db\migration\V81__Repopulate_wiki_data_part21.sql
+========================================================================
+
+-- Flyway migration V81, Part 21: Overhaul Technical Wiki Documentation (Frontend Components)
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('frontend/src/components/calendar/CalendarDesktopView.jsx',
+'## 1. File Overview & Purpose
+
+This component renders a traditional, grid-based **monthly calendar view** for desktop screens.
+
+## 2. Architectural Role
+
+This is a **View** sub-component, used by `CalendarPage`.
+
+## 3. Key Features & Logic
+
+- **Date Calculation (`date-fns`):** It heavily uses the `date-fns` library to perform all necessary date calculations:
+    - `startOfMonth`, `endOfMonth`: To find the boundaries of the current month.
+    - `startOfWeek`, `endOfWeek`: To find the start and end of the visible grid, ensuring full weeks are always displayed.
+    - `eachDayOfInterval`: To generate an array of all `Date` objects to be rendered in the grid.
+- **Data Grouping:** It uses `useMemo` to transform the flat list of `entries` (from props) into a `Map` where keys are date strings (`"yyyy-MM-dd"`) and values are arrays of events for that day. This is an efficient way to look up events for each day cell.
+- **Rendering:** It maps over the `daysInGrid` array. For each day, it looks up the events in the memoized map and renders them. Days not in the current month are visually greyed out.'),
+
+('frontend/src/components/calendar/CalendarMobileView.jsx',
+'## 1. File Overview & Purpose
+
+This component renders a simple, **chronological list of upcoming events and meetings**, optimized for mobile screens.
+
+## 2. Architectural Role
+
+This is a **View** sub-component, used by `CalendarPage`.
+
+## 3. Key Features & Logic
+
+- **Sorting:** It first sorts the incoming `entries` array by date to ensure they are displayed in chronological order.
+- **Rendering:** It maps over the sorted array and renders each entry as a list item (`termin-item`). Each item displays the day, month, title, and type of the entry, and links to the respective details page.'),
+
+('frontend/src/components/chat/ConversationList.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the **list of conversations** on the left side of the `ChatPage`. It displays all of the user''s 1-on-1 and group chats and provides controls for starting new ones.
+
+## 2. Architectural Role
+
+This is a **View** sub-component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to fetch the user''s conversation list from `/api/v1/public/chat/conversations`.
+- **Starting New Chats:**
+    - The "New Direct Message" button opens a `UserSearchModal`. When a user is selected, it calls `POST /api/v1/public/chat/conversations` to find or create a conversation and then navigates to the new chat URL.
+    - The "New Group" button opens the `GroupChatModal`, which handles the creation of a new group conversation.
+- **Active State:** It compares the `selectedConversationId` prop (from the URL) with each conversation''s ID to apply an "active" CSS class to the currently viewed chat.'),
+
+('frontend/src/components/chat/GroupChatModal.jsx',
+'## 1. File Overview & Purpose
+
+This component provides the **modal dialog for creating a new group chat**.
+
+## 2. Architectural Role
+
+This is a **UI Container Component**.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to fetch a list of all users from `/api/v1/users` to populate the member selection checklist.
+- **State Management:** Uses `useState` to manage the `groupName` input and a `Set` of `selectedUsers`.
+- **Submission:** The "Create Group" button calls the `onCreateGroup` prop (passed from `ConversationList`), providing the group name and the array of selected user IDs.'),
+
+('frontend/src/components/chat/ManageParticipantsModal.jsx',
+'## 1. File Overview & Purpose
+
+This component provides the **modal dialog for adding new members to an existing group chat**.
+
+## 2. Architectural Role
+
+This is a **UI Container Component**.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to get a list of all users.
+- **Filtering:** It filters the list of all users to show only those who are *not* already in the current conversation.
+- **Submission:** The "Add" button calls the `onAddUsers` prop (passed from `MessageView`), providing the array of newly selected user IDs.'),
+
+('frontend/src/components/chat/MessageStatus.jsx',
+'## 1. File Overview & Purpose
+
+This is a small, presentational component that displays the **read receipt status** (Sent, Delivered, Read) for a chat message.
+
+## 2. Architectural Role
+
+This is a **View** sub-component, used within `MessageView`.
+
+## 3. Key Features & Logic
+
+- **Conditional Rendering:** It only renders if the message was sent by the current user (`isSentByMe` prop is true).
+- **Icon Logic:** It uses a `switch` statement on the `status` prop to determine which FontAwesome icon to display (`fa-check`, `fa-check-double`) and whether to apply a different color for the "Read" status.'),
+
+('frontend/src/components/chat/MessageView.jsx',
+'## 1. File Overview & Purpose
+
+This is a large, complex component that renders the **main message view** for a single conversation on the `ChatPage`. It handles displaying message history, real-time message updates, and the message input form.
+
+## 2. Architectural Role
+
+This is a key **View** component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to fetch the initial message history from `/api/v1/public/chat/conversations/:id/messages`.
+- **Real-Time Updates:** Uses the `useWebSocket` hook to connect to `/ws/dm/:conversationId`. The `handleWebSocketMessage` callback handles incoming messages (`new_message`, `message_updated`, `message_deleted`, `messages_status_updated`) and updates the local `messages` state accordingly.
+- **Read Receipts:** An `useEffect` hook monitors the `messages` state. If it detects unread messages received from another user, it sends a `mark_as_read` event over the WebSocket to inform the server and other clients.
+- **Message Rendering:** It maps over the `messages` array, rendering each one as a "bubble". It handles different styles for sent vs. received messages, displays sender info for group chats, and renders message content (including file links) via the `renderMessageContent` helper.
+- **Message Actions:** It provides options for editing and deleting messages, which send `update_message` and `delete_message` events over the WebSocket.
+- **Input Form:** Provides a controlled form for typing new messages and uploading files.
+
+## 4. State Management
+
+- **Message History:** Managed by `useState`, initialized by `useApi` and updated by `useWebSocket`.
+- **Conversation Details:** Managed by a separate `useApi` hook.
+- **UI State:** Uses `useState` for the message input, editing state, and modal visibility.');
+COMMIT;
+========================================================================
+FILE: src\main\resources\db\migration\V82__Repopulate_wiki_data_part22.sql
+========================================================================
+
+-- Flyway migration V82, Part 22: Overhaul Technical Wiki Documentation (Frontend Components)
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('frontend/src/components/events/ChecklistTab.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the **Inventory Checklist** tab on the `EventDetailsPage`. It provides an interactive checklist for tracking equipment during event load-in and load-out.
+
+## 2. Architectural Role
+
+This is a **View** sub-component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to fetch the initial checklist items for the event from `/api/v1/events/:id/checklist`.
+- **Real-Time Updates:** Uses the `useWebSocket` hook to connect to `/ws/checklist/:id`. It listens for `checklist_update` events and updates the local state in real-time when another user changes an item''s status.
+- **Status Changes:** When the user changes the status of an item in the dropdown, it sends a `PUT` request to `/api/v1/events/:id/checklist/:itemId/status`. The component''s state is then updated by the incoming WebSocket broadcast, ensuring consistency across all clients.
+- **Generate from Reservations:** Provides a button that calls `POST /api/v1/events/:id/checklist/generate` to populate the checklist from the event''s material reservations.'),
+
+('frontend/src/components/events/EventGalleryTab.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the **Photo Gallery** tab on the `EventDetailsPage` for completed events. It displays uploaded photos and provides an interface for participants to upload new ones.
+
+## 2. Architectural Role
+
+This is a **View** sub-component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to fetch all photo metadata for the event from `/api/v1/public/events/:id/gallery`.
+- **Photo Upload:**
+    - It conditionally renders an "Upload Photo" button only if the current user was a participant in the event.
+    - The button opens a `PhotoUploadModal` which handles the file selection and submission to `POST /api/v1/public/events/:id/gallery`.
+- **Photo Deletion:** It renders a delete button on each photo. This button is only visible if the current user is the uploader, an admin, or the event leader.
+- **Lightbox:** Clicking on any photo opens it in a full-screen `Lightbox` view.
+
+## 4. State Management
+
+- **Photo List & Modals:** Managed by `useApi` and `useState` hooks.'),
+
+('frontend/src/components/layout/ErrorLayout.jsx',
+'## 1. File Overview & Purpose
+
+This is a specialized **Layout Component** used by React Router to wrap all error pages (403, 404, 500). Its primary purpose is to apply a consistent, minimal theme and layout to these pages, ensuring they match the user''s selected theme even if the full application fails to render.
+
+## 2. Architectural Role
+
+This is a **Layout** component.
+
+## 3. Key Features & Logic
+
+- **Theme Application:** It directly accesses the `authStore` state via `getState()` to retrieve the user''s theme. It then sets the `data-theme` attribute on the `<html>` element. This is crucial because error pages render outside the main `<App />` component, so they don''t have access to the normal theme context.
+- **Styling:** It wraps the error page content (rendered via `<Outlet />` or `children`) in a `<div class="error-page-wrapper">` which provides the necessary styling for the terminal-themed error pages.'),
+
+('frontend/src/components/layout/Header.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the **mobile-only header** that appears at the top of the screen on small viewports.
+
+## 2. Architectural Role
+
+This is a **Layout** component, part of the main `App` layout.
+
+## 3. Key Features & Logic
+
+- **Hamburger Menu:** It contains the hamburger menu button (`mobile-nav-toggle`). Clicking this button calls the `onNavToggle` function passed down from the `App` component, which manages the mobile sidebar''s open/closed state.
+- **Logo & Profile Link:** It displays the application logo (which links home) and a link to the user''s profile page, showing their selected profile icon.'),
+
+('frontend/src/components/layout/MinimalLayout.jsx',
+'## 1. File Overview & Purpose
+
+This is a specialized **Layout Component** for pages that should be displayed without the main application sidebar and header, such as the printable `PackKitPage` or the mobile-focused `QrActionPage`.
+
+## 2. Architectural Role
+
+This is a **Layout** component.
+
+## 3. Key Features & Logic
+
+- **Simplicity:** It simply renders the child route''s content (via `<Outlet />`) inside a basic, centered content wrapper. This provides a clean slate for pages that need a unique, uncluttered layout.'),
+
+('frontend/src/components/layout/Sidebar.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the main **sidebar navigation** for the application.
+
+## 2. Architectural Role
+
+This is a key **Layout** component, part of the main `App` layout.
+
+## 3. Key Features & Logic
+
+- **Data Source:** It reads the `user` object and the `navigationItems` array directly from the global `useAuthStore`. The `navigationItems` array is pre-filtered by the backend to only contain links the user is authorized to see.
+- **Rendering:** It iterates through the `navigationItems` list and renders a `NavLink` for each. It separates the links into "User" and "Admin" sections.
+- **Active Link Styling:** It uses the `isActive` property provided by `NavLink` to apply the `active-nav-link` class to the currently active route.
+- **Global Search:** It includes the site-wide search bar. On submit, it navigates the user to the `/suche` page with the search term as a query parameter.
+- **User Actions:** It displays the logged-in user''s name, a link to their profile, the logout button, and the `ThemeSwitcher` component.'),
+
+('frontend/src/components/profile/ProfileAchievements.jsx',
+'## 1. File Overview & Purpose
+
+This is a presentational component that displays the **user''s earned achievements** on their profile page.
+
+## 2. Architectural Role
+
+This is a **View** sub-component, used within `ProfilePage`.
+
+## 3. Key Features & Logic
+
+- **Props-Based:** It receives the `achievements` array as a prop.
+- **Rendering:** It maps over the array and displays each achievement in its own card, showing the icon, name, description, and the date it was earned.'),
+
+('frontend/src/components/profile/ProfileDetails.jsx',
+'## 1. File Overview & Purpose
+
+This is a stateful component that manages the display and editing of a user''s **core profile data** on their profile page.
+
+## 2. Architectural Role
+
+This is a **View** and **Form** sub-component, used within `ProfilePage`.
+
+## 3. Key Features & Logic
+
+- **Controlled Form:** It manages the form data for email, class year, etc., in its local `useState`.
+- **Change Request Flow:**
+    1.  When the user clicks "Save," it doesn''t submit directly. Instead, it compares the current form data with the original `user` prop to detect what has changed.
+    2.  It then opens a `ConfirmationModal`, showing the user a summary of their requested changes.
+    3.  Only after the user confirms in this modal does it send the `POST` request to `/api/v1/public/profile/request-change`.
+- **Update Propagation:** After a successful submission, it calls the `onUpdate` function (passed down from `ProfilePage`) to trigger a full refresh of the profile data.
+- **Chat Color:** It also contains a separate, simple form for updating the user''s chat color, which calls the `PUT /api/v1/public/profile/chat-color` endpoint directly.');
 COMMIT;

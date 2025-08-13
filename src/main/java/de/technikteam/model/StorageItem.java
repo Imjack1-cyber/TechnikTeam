@@ -25,7 +25,6 @@ public class StorageItem {
 	private int assignedEventId;
 	private String currentHolderUsername;
 
-	// Transient fields for UI
 	private LocalDateTime nextReservationDate;
 	private String lastTransactionInfo;
 

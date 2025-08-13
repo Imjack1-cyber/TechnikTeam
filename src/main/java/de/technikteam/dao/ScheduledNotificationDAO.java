@@ -21,10 +21,8 @@ public class ScheduledNotificationDAO {
 
 	public void createOrUpdateReminder(String type, int entityId, List<Integer> userIds, LocalDateTime sendAt,
 			String title, String description, String url) {
-		// First, delete any existing reminders for this entity to prevent duplicates
 		deleteReminders(type, entityId);
 
-		// If a valid send time and user list are provided, create new reminders
 		if (sendAt != null && userIds != null && !userIds.isEmpty()) {
 			String sql = "INSERT INTO scheduled_notifications (target_user_id, notification_type, related_entity_id, send_at, title, description, url) VALUES (?, ?, ?, ?, ?, ?, ?)";
 			jdbcTemplate.batchUpdate(sql, userIds, 100, (ps, userId) -> {

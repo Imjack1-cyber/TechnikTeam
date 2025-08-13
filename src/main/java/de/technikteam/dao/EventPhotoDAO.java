@@ -32,7 +32,6 @@ public class EventPhotoDAO {
 		photo.setUploaderUserId(rs.getInt("uploader_user_id"));
 		photo.setCaption(rs.getString("caption"));
 		photo.setUploadedAt(rs.getTimestamp("uploaded_at").toLocalDateTime());
-		// Joined fields
 		photo.setFilepath(rs.getString("filepath"));
 		photo.setUploaderUsername(rs.getString("username"));
 		return photo;

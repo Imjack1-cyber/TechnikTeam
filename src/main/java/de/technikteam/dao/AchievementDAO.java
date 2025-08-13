@@ -78,7 +78,6 @@ public class AchievementDAO {
 	public boolean deleteAchievement(int id) {
 		String sql = "DELETE FROM achievements WHERE id = ?";
 		try {
-			// First, delete dependencies in user_achievements
 			jdbcTemplate.update("DELETE FROM user_achievements WHERE achievement_id = ?", id);
 			return jdbcTemplate.update(sql, id) > 0;
 		} catch (Exception e) {
@@ -103,7 +102,7 @@ public class AchievementDAO {
 
 	public boolean grantAchievementToUser(int userId, String achievementKey) {
 		if (hasAchievement(userId, achievementKey)) {
-			return false; // Already has it, not an error
+			return false; 
 		}
 		String sql = "INSERT INTO user_achievements (user_id, achievement_id) SELECT ?, id FROM achievements WHERE achievement_key = ?";
 		try {

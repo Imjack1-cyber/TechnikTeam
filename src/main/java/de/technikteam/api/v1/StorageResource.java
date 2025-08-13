@@ -77,7 +77,6 @@ public class StorageResource {
 	public ResponseEntity<ApiResponse> updateItemStatus(@PathVariable int id, @RequestBody Map<String, Object> payload,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
-			// This endpoint is now specifically for defect/repair actions
 			storageService.handleItemStatusUpdate(id, payload, securityUser.getUser());
 			return ResponseEntity.ok(new ApiResponse(true, "Artikelstatus erfolgreich aktualisiert.", null));
 		} catch (IllegalArgumentException e) {

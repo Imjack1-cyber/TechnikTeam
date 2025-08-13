@@ -19,18 +19,16 @@ public class User {
 	private String fcmToken;
 	private String profileIconClass;
 	private String adminNotes;
-	private String dashboardLayout; // JSON string
-	private String assignedEventRole; // Transient field for event details
-	private Integer assignedEventRoleId; // Transient field for event details
-	private int unseenNotificationsCount; // Transient field
+	private String dashboardLayout; 
+	private String assignedEventRole; 
+	private Integer assignedEventRoleId; 
+	private int unseenNotificationsCount; 
 
-	// Suspension related fields
 	private String status;
 	private LocalDateTime suspendedUntil;
 	private String suspendedReason;
-	private boolean isLocked; // Transient field for login attempts
+	private boolean isLocked; 
 
-	// Soft delete fields
 	private boolean isDeleted;
 	private LocalDateTime deletedAt;
 
@@ -47,7 +45,6 @@ public class User {
 	}
 
 	public boolean hasAdminAccess() {
-		// With granular permissions removed, admin access is determined solely by role.
 		return "ADMIN".equals(this.roleName);
 	}
 

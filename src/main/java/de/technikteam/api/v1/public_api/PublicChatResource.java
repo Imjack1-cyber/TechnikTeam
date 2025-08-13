@@ -153,7 +153,6 @@ public class PublicChatResource {
 			if (chatService.deleteGroup(id, securityUser.getUser())) {
 				return ResponseEntity.ok(new ApiResponse(true, "Gruppe erfolgreich gelöscht.", null));
 			}
-			// This part should ideally not be reached if service throws exceptions
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body(new ApiResponse(false, "Löschen der Gruppe fehlgeschlagen.", null));
 		} catch (IllegalArgumentException e) {

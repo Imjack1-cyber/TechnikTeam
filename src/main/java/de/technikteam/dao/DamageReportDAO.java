@@ -40,7 +40,6 @@ public class DamageReportDAO {
 			report.setReviewedAt(rs.getTimestamp("reviewed_at").toLocalDateTime());
 		}
 		report.setAdminNotes(rs.getString("admin_notes"));
-		// Joined fields
 		report.setItemName(rs.getString("item_name"));
 		report.setReporterUsername(rs.getString("reporter_username"));
 		return report;

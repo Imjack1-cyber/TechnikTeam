@@ -171,7 +171,6 @@ public class EventTaskDAO {
 			}
 		}, eventId);
 
-		// Now fetch and assemble dependencies
 		if (!tasksById.isEmpty()) {
 			String depSql = "SELECT * FROM event_task_dependencies WHERE task_id IN ("
 					+ tasksById.keySet().stream().map(String::valueOf).collect(Collectors.joining(",")) + ")";

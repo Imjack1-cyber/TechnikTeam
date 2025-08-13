@@ -77,8 +77,6 @@ public class AdminMeetingManagementResource {
 	@PostMapping("/{meetingId}/repeat")
 	public ResponseEntity<ApiResponse> createRepeatMeeting(@PathVariable int meetingId,
 			@RequestBody Map<String, String> payload, @AuthenticationPrincipal SecurityUser securityUser) {
-		// payload should contain meetingDateTime (ISO) and optionally endDateTime,
-		// leaderUserId, location, description, name
 		Meeting original = meetingDAO.getMeetingById(meetingId);
 		if (original == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -89,7 +87,6 @@ public class AdminMeetingManagementResource {
 			Meeting newMeeting = new Meeting();
 			newMeeting.setCourseId(original.getCourseId());
 			newMeeting.setParentMeetingId(original.getId());
-			// copy name/description/location/leader by default, allow override
 			newMeeting.setName(payload.getOrDefault("name", original.getName()));
 			if (payload.containsKey("meetingDateTime")) {
 				newMeeting.setMeetingDateTime(LocalDateTime.parse(payload.get("meetingDateTime")));

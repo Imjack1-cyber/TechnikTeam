@@ -11,14 +11,12 @@ public class EventDebriefing {
 	private String whatWentWell;
 	private String whatToImprove;
 	private String equipmentNotes;
-	private String standoutCrewMembers; // Stored as JSON string of user IDs
+	private String standoutCrewMembers; 
 
-	// Transient fields for display
 	private String eventName;
 	private String authorUsername;
-	private List<User> standoutCrewDetails; // Populated in service/resource layer
+	private List<User> standoutCrewDetails; 
 
-	// Getters and Setters
 	public int getId() {
 		return id;
 	}

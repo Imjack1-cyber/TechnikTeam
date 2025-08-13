@@ -38,7 +38,6 @@ public class EventCustomFieldDAO {
 			}
 		} catch (Exception e) {
 			logger.error("Error in transaction for saving custom fields for event {}", eventId, e);
-			// Transactional annotation will handle rollback
 			throw new RuntimeException(e);
 		}
 	}

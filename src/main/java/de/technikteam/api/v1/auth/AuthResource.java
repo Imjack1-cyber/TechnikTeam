@@ -73,7 +73,7 @@ public class AuthResource {
 			if (user != null) {
 				loginAttemptService.clearLoginAttempts(username);
 				String token = authService.generateToken(user);
-				authService.addJwtCookie(user, response); // Keep cookie for web app
+				authService.addJwtCookie(user, response); 
 				logger.info("JWT cookie set successfully for user '{}'", username);
 
 				List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(user);
@@ -83,7 +83,7 @@ public class AuthResource {
 
 				Map<String, Object> responseData = new HashMap<>();
 				responseData.put("session", sessionData);
-				responseData.put("token", token); // Return token for mobile clients
+				responseData.put("token", token); 
 
 				return ResponseEntity.ok(new ApiResponse(true, "Anmeldung erfolgreich", responseData));
 			} else {
@@ -100,7 +100,6 @@ public class AuthResource {
 	@GetMapping("/csrf-token")
 	@Operation(summary = "Get CSRF Token", description = "An endpoint that does nothing but allows the client to make a GET request to receive the initial XSRF-TOKEN cookie from the server.")
 	public ResponseEntity<ApiResponse> getCsrfToken(HttpServletRequest request) {
-		// By accessing the token, we ensure it's generated and added to the response.
 		CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
 		if (csrfToken != null) {
 			logger.info("CSRF token explicitly requested and provided.");
@@ -112,9 +111,6 @@ public class AuthResource {
 	@Operation(summary = "Get current user session", description = "Retrieves the user object and navigation items for the currently authenticated user.", security = @SecurityRequirement(name = "bearerAuth"))
 	public ResponseEntity<ApiResponse> getCurrentUser(@AuthenticationPrincipal SecurityUser securityUser,
 			HttpServletRequest request) {
-		// Explicitly load the CSRF token to ensure the XSRF-TOKEN cookie is set on the
-		// response
-		// for the very first authenticated GET request the client makes.
 		CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
 		logger.info("CSRF token loaded during /me request: {}", csrfToken != null ? "OK" : "NULL");
 
@@ -123,8 +119,7 @@ public class AuthResource {
 					HttpStatus.UNAUTHORIZED);
 		}
 
-		User authenticatedUser = userDAO.getUserById(securityUser.getUser().getId()); // Re-fetch to get latest data
-																						// including count
+		User authenticatedUser = userDAO.getUserById(securityUser.getUser().getId()); 
 		List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(authenticatedUser);
 		Map<String, Object> responseData = Map.of("user", authenticatedUser, "navigation", navigationItems);
 		return ResponseEntity.ok(new ApiResponse(true, "Current user session retrieved.", responseData));

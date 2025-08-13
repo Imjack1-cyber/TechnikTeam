@@ -10,11 +10,9 @@ public class EventPhoto {
 	private String caption;
 	private LocalDateTime uploadedAt;
 
-	// Transient fields from JOINs
 	private String filepath;
 	private String uploaderUsername;
 
-	// Getters and Setters
 	public int getId() {
 		return id;
 	}

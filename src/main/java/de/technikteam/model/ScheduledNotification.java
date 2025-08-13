@@ -13,7 +13,6 @@ public class ScheduledNotification {
 	private String url;
 	private String status;
 
-	// Getters and Setters
 	public int getId() {
 		return id;
 	}

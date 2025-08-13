@@ -57,7 +57,7 @@ public class PublicProfileResource {
 		profileData.put("eventHistory", eventDAO.getEventHistoryForUser(user.getId()));
 		profileData.put("qualifications", qualificationsDAO.getQualificationsForUser(user.getId()));
 		profileData.put("achievements", achievementDAO.getAchievementsForUser(user.getId()));
-		profileData.put("passkeys", Collections.emptyList()); // Passkeys removed
+		profileData.put("passkeys", Collections.emptyList()); 
 		profileData.put("hasPendingRequest", requestDAO.hasPendingRequest(user.getId()));
 
 		return ResponseEntity.ok(new ApiResponse(true, "Profildaten erfolgreich abgerufen.", profileData));
@@ -73,7 +73,7 @@ public class PublicProfileResource {
 		}
 
 		Map<String, Object> profileData = new HashMap<>();
-		profileData.put("user", user); // The DTO is already safe, no password hash
+		profileData.put("user", user); 
 		profileData.put("qualifications", qualificationsDAO.getQualificationsForUser(userId));
 		profileData.put("achievements", achievementDAO.getAchievementsForUser(userId));
 		profileData.put("eventHistory", eventDAO.getEventHistoryForUser(userId));

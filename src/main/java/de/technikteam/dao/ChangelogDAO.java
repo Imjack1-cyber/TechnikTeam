@@ -55,7 +55,6 @@ public class ChangelogDAO {
 	}
 
 	public Optional<Changelog> findLatestUnseen(int userId) {
-		// FIX: Correctly use JSON_CONTAINS by passing the value to check as a string.
 		String sql = "SELECT * FROM changelogs WHERE NOT JSON_CONTAINS(seen_by_users, CAST(? AS CHAR), '$') ORDER BY release_date DESC, version DESC LIMIT 1";
 		try {
 			return Optional.ofNullable(jdbcTemplate.queryForObject(sql, rowMapper, String.valueOf(userId)));
@@ -65,7 +64,6 @@ public class ChangelogDAO {
 	}
 
 	public boolean markAsSeen(int changelogId, int userId) {
-		// FIX: Correctly use JSON_CONTAINS by passing the value to check as a string.
 		String sql = "UPDATE changelogs SET seen_by_users = JSON_ARRAY_APPEND(seen_by_users, '$', ?) WHERE id = ? AND NOT JSON_CONTAINS(seen_by_users, CAST(? AS CHAR), '$')";
 		return jdbcTemplate.update(sql, userId, changelogId, String.valueOf(userId)) > 0;
 	}

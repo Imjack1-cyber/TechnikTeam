@@ -6,10 +6,9 @@ public class ChecklistTemplateItem {
 	private String itemText;
 	private Integer storageItemId;
 	private Integer quantity;
-	private String storageItemName; // Transient
+	private String storageItemName; 
 	private int displayOrder;
 
-	// Getters and Setters
 	public int getId() {
 		return id;
 	}

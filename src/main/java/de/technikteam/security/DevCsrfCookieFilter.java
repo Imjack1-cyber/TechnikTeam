@@ -14,7 +14,6 @@ public class DevCsrfCookieFilter implements Filter {
 	private final boolean isDev;
 
 	public DevCsrfCookieFilter(Environment environment) {
-		// Enable this filter only in 'dev' or no active profile
 		String[] profiles = environment.getActiveProfiles();
 		this.isDev = profiles.length == 0 || java.util.Arrays.asList(profiles).contains("dev");
 	}

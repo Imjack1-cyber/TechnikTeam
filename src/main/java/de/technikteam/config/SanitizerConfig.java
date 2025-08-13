@@ -47,6 +47,6 @@ public class SanitizerConfig {
 	 */
 	@Bean("plainTextPolicy")
 	public PolicyFactory plainTextPolicy() {
-		return new HtmlPolicyBuilder().toFactory(); // No elements allowed
+		return new HtmlPolicyBuilder().toFactory(); 
 	}
 }

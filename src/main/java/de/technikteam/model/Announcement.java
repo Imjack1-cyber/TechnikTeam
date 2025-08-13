@@ -7,10 +7,9 @@ public class Announcement {
 	private String title;
 	private String content;
 	private int authorUserId;
-	private String authorUsername; // Transient
+	private String authorUsername; 
 	private LocalDateTime createdAt;
 
-	// Getters and Setters
 	public int getId() {
 		return id;
 	}

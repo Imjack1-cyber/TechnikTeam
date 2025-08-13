@@ -39,16 +39,13 @@ public class SecurityConfig {
 		http.csrf(AbstractHttpConfigurer::disable) // CSRF is disabled for stateless API
 				.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
-						// Whitelist public and authentication endpoints first (NO context path)
+						// Whitelist public and authentication endpoints first
 						.requestMatchers("/api/v1/auth/**", "/ws/**", "/swagger-ui.html", "/swagger-ui/**",
-								"/v3/api-docs/**", "/favicon.ico")
+								"/v3/api-docs/**", "/favicon.ico", "/actuator/health")
 						.permitAll()
-						// Secure all public API endpoints for any authenticated user
-						.requestMatchers("/api/v1/public/**").authenticated()
-						// Secure all admin paths under a single, clear rule.
-						// Granular permissions are now handled by @PreAuthorize on controller methods.
+						// Secure all admin paths. Granular control is done with @PreAuthorize
 						.requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-						// All other requests must be authenticated
+						// Secure all other API endpoints for any authenticated user
 						.anyRequest().authenticated())
 				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

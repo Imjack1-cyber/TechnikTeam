@@ -35,7 +35,7 @@ public class ProfileChangeRequestDAO {
 		if (rs.getTimestamp("reviewed_at") != null) {
 			request.setReviewedAt(rs.getTimestamp("reviewed_at").toLocalDateTime());
 		}
-		if (rs.getMetaData().getColumnCount() > 8) { // Simple check if admin_username is present
+		if (rs.getMetaData().getColumnCount() > 8) { 
 			request.setReviewedByAdminName(rs.getString("admin_username"));
 		}
 		return request;

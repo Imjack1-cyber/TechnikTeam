@@ -29,8 +29,6 @@ public class AdminDashboardResource {
 	@GetMapping
 	@Operation(summary = "Get all data for the admin dashboard")
 	public ResponseEntity<ApiResponse> getDashboardData(@AuthenticationPrincipal SecurityUser securityUser) {
-		// The service method doesn't require the user, but this demonstrates the
-		// pattern.
 		return ResponseEntity.ok(
 				new ApiResponse(true, "Dashboard-Daten erfolgreich abgerufen.", dashboardService.getDashboardData()));
 	}

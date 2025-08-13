@@ -9,7 +9,6 @@ public class EventRole {
 	private String iconClass;
 	private LocalDateTime createdAt;
 
-	// Getters and Setters
 	public int getId() {
 		return id;
 	}

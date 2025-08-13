@@ -72,8 +72,6 @@ public class AdminVenueResource {
 					securityUser.getUser(), "venues");
 			venue.setMapImagePath(savedFile.getFilepath());
 		} else if (venue.getMapImagePath() == null) {
-			// Preserve existing image if a new one is not uploaded but path is not null in
-			// DTO
 			Optional<Venue> existingVenue = venueDAO.findById(id);
 			existingVenue.ifPresent(v -> venue.setMapImagePath(v.getMapImagePath()));
 		}

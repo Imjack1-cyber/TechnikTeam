@@ -192,7 +192,6 @@ public class ChatDAO {
 		if (messageIds == null || messageIds.isEmpty()) {
 			return false;
 		}
-		// FIX: Use NamedParameterJdbcTemplate to avoid SQL injection
 		MapSqlParameterSource parameters = new MapSqlParameterSource();
 		parameters.addValue("ids", messageIds);
 		parameters.addValue("conversationId", conversationId);
@@ -265,7 +264,6 @@ public class ChatDAO {
 		int newConversationId = Objects.requireNonNull(keyHolder.getKey()).intValue();
 
 		String addParticipantsSql = "INSERT INTO chat_participants (conversation_id, user_id) VALUES (?, ?)";
-		// Add the creator as well
 		if (!participantIds.contains(creatorId)) {
 			participantIds.add(creatorId);
 		}

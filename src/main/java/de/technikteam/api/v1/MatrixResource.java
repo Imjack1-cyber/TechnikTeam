@@ -97,7 +97,6 @@ public class MatrixResource {
 				qualification.getCourseId(), qualification.getStatus(), qualification.getCompletionDate(),
 				qualification.getRemarks());
 		if (success) {
-			// If the user has now passed the course, check for achievements.
 			if ("BESTANDEN".equals(qualification.getStatus())) {
 				User user = userDAO.getUserById(qualification.getUserId());
 				if (user != null) {

@@ -13,7 +13,6 @@ public class DamageReport {
 	private LocalDateTime reviewedAt;
 	private String adminNotes;
 
-	// Transient fields for easy display
 	private String itemName;
 	private String reporterUsername;
 	private String reviewedByAdminUsername;

@@ -12,7 +12,6 @@ public class UserNotification {
 	private boolean isSeen;
 	private LocalDateTime createdAt;
 
-	// Getters and Setters
 	public long getId() {
 		return id;
 	}

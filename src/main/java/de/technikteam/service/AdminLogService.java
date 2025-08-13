@@ -46,7 +46,6 @@ public class AdminLogService {
 		if (input == null) {
 			return "";
 		}
-		// Replace newlines and carriage returns to prevent log injection
 		return input.replace('\n', '_').replace('\r', '_');
 	}
 

@@ -30,7 +30,6 @@ public class EventDebriefingDAO {
 		d.setWhatToImprove(rs.getString("what_to_improve"));
 		d.setEquipmentNotes(rs.getString("equipment_notes"));
 		d.setStandoutCrewMembers(rs.getString("standout_crew_members"));
-		// Joined fields
 		d.setEventName(rs.getString("event_name"));
 		d.setAuthorUsername(rs.getString("author_username"));
 		return d;

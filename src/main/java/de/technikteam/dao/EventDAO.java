@@ -254,7 +254,7 @@ public class EventDAO {
 			}
 		} catch (Exception e) {
 			logger.error("Error during team assignment for event ID: {}.", eventId, e);
-			throw new RuntimeException(e); // Propagate to trigger rollback
+			throw new RuntimeException(e); 
 		}
 	}
 
@@ -281,7 +281,6 @@ public class EventDAO {
 					&& requiredCourseIds.length == requiredPersons.length) {
 				String sql = "INSERT INTO event_skill_requirements (event_id, required_course_id, required_persons) VALUES (?, ?, ?)";
 				jdbcTemplate.batchUpdate(sql, List.of(requiredCourseIds), 100, (ps, courseId) -> {
-					// This is a bit clumsy but necessary to align arrays
 					int index = List.of(requiredCourseIds).indexOf(courseId);
 					if (!courseId.isEmpty()) {
 						ps.setInt(1, eventId);

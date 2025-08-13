@@ -32,7 +32,7 @@ public class TrainingRequestDAO {
 		request.setRequesterUserId(rs.getInt("requester_user_id"));
 		request.setRequesterUsername(rs.getString("requester_username"));
 		request.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
-		if (rs.getMetaData().getColumnCount() > 5) { // Check if interest_count is present
+		if (rs.getMetaData().getColumnCount() > 5) { 
 			request.setInterestCount(rs.getInt("interest_count"));
 		}
 		return request;
@@ -78,7 +78,6 @@ public class TrainingRequestDAO {
 			return jdbcTemplate.update("INSERT INTO training_request_interest (request_id, user_id) VALUES (?, ?)",
 					requestId, userId) > 0;
 		} catch (DuplicateKeyException e) {
-			// User has already registered interest, which is not an error state.
 			return true;
 		}
 	}

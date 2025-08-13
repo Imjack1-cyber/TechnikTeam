@@ -40,7 +40,6 @@ public class PublicFileEditorResource {
             if (file == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, "Datei nicht gefunden.", null));
             }
-            // Security Check: Allow if user is admin OR if the file is public
             if (!"NUTZER".equals(file.getRequiredRole()) && !securityUser.getUser().hasAdminAccess()) {
                 throw new AccessDeniedException("Sie haben keine Berechtigung, den Inhalt dieser Datei anzuzeigen.");
             }
@@ -62,7 +61,6 @@ public class PublicFileEditorResource {
             if (file == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, "Datei nicht gefunden.", null));
             }
-            // Security Check: Allow if user is admin OR if the file is public
             if (!"NUTZER".equals(file.getRequiredRole()) && !securityUser.getUser().hasAdminAccess()) {
                 throw new AccessDeniedException("Sie haben keine Berechtigung, den Inhalt dieser Datei zu bearbeiten.");
             }

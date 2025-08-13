@@ -87,7 +87,6 @@ public class UserDAO {
 		if (DaoUtils.hasColumn(resultSet, "suspended_reason")) {
 			user.setSuspendedReason(resultSet.getString("suspended_reason"));
 		}
-		// Also map soft-delete columns
 		if (DaoUtils.hasColumn(resultSet, "is_deleted")) {
 			user.setDeleted(resultSet.getBoolean("is_deleted"));
 		}
@@ -128,7 +127,7 @@ public class UserDAO {
 		} catch (EmptyResultDataAccessException e) {
 			return null;
 		} catch (UserSuspendedException e) {
-			throw e; // Propagate the specific exception
+			throw e; 
 		} catch (Exception e) {
 			logger.error("SQL error during user validation for username: {}", username, e);
 		}
@@ -171,7 +170,7 @@ public class UserDAO {
 		jdbcTemplate.update("DELETE FROM user_permissions WHERE user_id = ?", userId);
 		if (permissionIds != null && permissionIds.length > 0) {
 			List<Object[]> batchArgs = Arrays.stream(permissionIds)
-					.filter(idStr -> idStr != null && !idStr.equalsIgnoreCase("null")) // Filter out nulls
+					.filter(idStr -> idStr != null && !idStr.equalsIgnoreCase("null")) 
 					.map(idStr -> new Object[] { userId, Integer.parseInt(idStr) }).collect(Collectors.toList());
 			if (!batchArgs.isEmpty()) {
 				jdbcTemplate.batchUpdate("INSERT INTO user_permissions (user_id, permission_id) VALUES (?, ?)",
@@ -193,7 +192,6 @@ public class UserDAO {
 				ps.setInt(3, user.getRoleId());
 				ps.setInt(4, user.getClassYear());
 				ps.setString(5, user.getClassName());
-				// Treat empty string as NULL to avoid unique constraint violation
 				if (user.getEmail() != null && !user.getEmail().isEmpty()) {
 					ps.setString(6, user.getEmail());
 				} else {
@@ -416,11 +414,9 @@ public class UserDAO {
 		if (!"SUSPENDED".equals(user.getStatus())) {
 			return false;
 		}
-		// Indefinite suspension
 		if (user.getSuspendedUntil() == null) {
 			return true;
 		}
-		// Temporary suspension that is still active
 		return user.getSuspendedUntil().isAfter(LocalDateTime.now());
 	}
 }

@@ -72,7 +72,7 @@ public class InventoryKitDAO {
 		try {
 			return jdbcTemplate.queryForObject(sql, kitRowMapper, kitId);
 		} catch (EmptyResultDataAccessException e) {
-			return null; // Expected case when not found
+			return null; 
 		} catch (Exception e) {
 			logger.error("Error fetching kit by ID {}", kitId, e);
 			return null;
@@ -82,9 +82,7 @@ public class InventoryKitDAO {
 	public boolean deleteKit(int kitId) {
 		String sql = "DELETE FROM inventory_kits WHERE id = ?";
 		try {
-			// First, delete dependencies in the linking table
 			jdbcTemplate.update("DELETE FROM inventory_kit_items WHERE kit_id = ?", kitId);
-			// Then, delete the kit itself
 			return jdbcTemplate.update(sql, kitId) > 0;
 		} catch (Exception e) {
 			logger.error("Error deleting inventory kit ID {}", kitId, e);
@@ -102,7 +100,6 @@ public class InventoryKitDAO {
 				try {
 					return kitRowMapper.mapRow(rs, 0);
 				} catch (SQLException e) {
-					// This is a safe way to handle checked exceptions within a lambda
 					throw new RuntimeException("Failed to map ResultSet to InventoryKit", e);
 				}
 			});
@@ -129,7 +126,6 @@ public class InventoryKitDAO {
 				try {
 					return kitRowMapper.mapRow(rs, 0);
 				} catch (SQLException e) {
-					// This is a safe way to handle checked exceptions within a lambda
 					throw new RuntimeException("Failed to map ResultSet to InventoryKit", e);
 				}
 			});
@@ -147,10 +143,8 @@ public class InventoryKitDAO {
 
 	@Transactional
 	public void updateKitItems(int kitId, List<InventoryKitItem> items) {
-		// First, delete all existing items for this kit
 		jdbcTemplate.update("DELETE FROM inventory_kit_items WHERE kit_id = ?", kitId);
 
-		// Then, insert the new items
 		if (items != null && !items.isEmpty()) {
 			String sql = "INSERT INTO inventory_kit_items (kit_id, item_id, quantity) VALUES (?, ?, ?)";
 			jdbcTemplate.batchUpdate(sql, items, 100, (ps, item) -> {

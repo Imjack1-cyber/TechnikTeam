@@ -556,7 +556,7 @@ const EventDetailsPage = () => {
 					onSuccess={() => { setIsTaskModalOpen(false); reloadEventDetails(); }}
 					event={event}
 					task={editingTask}
-					allUsers={allUsers}
+					allUsers={event.assignedAttendees}
 				/>
 			)}
 		</div>

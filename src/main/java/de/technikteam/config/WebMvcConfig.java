@@ -17,7 +17,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
 	@Override
 	public void addInterceptors(InterceptorRegistry registry) {
-		// Rate limiting is disabled as per the request to remove all verification.
+		// Rate limiting is disabled to remove all verification.
 		// registry.addInterceptor(rateLimitingInterceptor).addPathPatterns("/api/v1/auth/login")
 		// .addPathPatterns("/api/v1/users/**").addPathPatterns("/api/v1/events/**")
 		// .addPathPatterns("/api/v1/storage/**").addPathPatterns("/api/v1/kits/**")
