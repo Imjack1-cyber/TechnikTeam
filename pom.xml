@@ -208,10 +208,8 @@
                         <groupId>org.flywaydb</groupId>
                         <artifactId>flyway-maven-plugin</artifactId>
                         <configuration>
-                            <!-- THIS IS THE CORRECTED PARAMETER -->
-                            <configFiles>
-                                <configFile>flyway-dev.conf</configFile>
-                            </configFiles>
+                            <!-- THIS IS THE CORRECTED SYNTAX -->
+                            <configFiles>flyway-dev.conf</configFiles>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -231,10 +229,8 @@
                         <groupId>org.flywaydb</groupId>
                         <artifactId>flyway-maven-plugin</artifactId>
                         <configuration>
-                            <!-- THIS IS THE CORRECTED PARAMETER -->
-                            <configFiles>
-                                <configFile>flyway-prod.conf</configFile>
-                            </configFiles>
+                            <!-- THIS IS THE CORRECTED SYNTAX -->
+                            <configFiles>flyway-prod.conf</configFiles>
                         </configuration>
                     </plugin>
                 </plugins>
