@@ -61,3 +61,8 @@ flyway-prod.conf
 config.json
 Caddyfile
 deploy_production.txt
+logs-backend-2025-08-20-1.log.gz
+deploy.bat
+dependency-tree.txt
+.vscode/launch.json
+.settings/org.eclipse.jdt.core.prefs
