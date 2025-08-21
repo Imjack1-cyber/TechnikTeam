@@ -173,9 +173,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <arguments>
-                        <argument>--server.servlet.context-path=/TechnikTeam</argument>
-                    </arguments>
+                    <!-- Removing the arguments block to rely solely on application.properties -->
                 </configuration>
             </plugin>
             <plugin>

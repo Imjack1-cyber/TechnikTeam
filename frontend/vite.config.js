@@ -41,14 +41,10 @@ export default defineConfig(({ mode }) => {
 		server: {
 			port: 3000,
 			proxy: {
-				'/TechnikTeam/api': {
+				'/TechnikTeam': {
 					target: backendTarget,
 					changeOrigin: true,
 					secure: false,
-				},
-				'/TechnikTeam/ws': {
-					target: wsTarget,
-					ws: true,
 				},
 			},
 		},
