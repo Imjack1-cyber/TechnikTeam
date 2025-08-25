@@ -3,16 +3,20 @@ package de.technikteam.api.v1.public_api;
 import com.google.gson.Gson;
 import de.technikteam.api.v1.dto.PasswordChangeRequest;
 import de.technikteam.api.v1.dto.ProfileChangeRequestDTO;
+import de.technikteam.api.v1.dto.TwoFactorSetupDTO;
 import de.technikteam.dao.*;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.ProfileRequestService;
+import de.technikteam.service.TwoFactorAuthService;
 import de.technikteam.util.PasswordPolicyValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -28,6 +33,7 @@ import java.util.Map;
 @Tag(name = "Public Profile", description = "Endpoints for managing the current user's profile.")
 @SecurityRequirement(name = "bearerAuth")
 public class PublicProfileResource {
+    private static final Logger logger = LogManager.getLogger(PublicProfileResource.class);
 
 	private final UserDAO userDAO;
 	private final EventDAO eventDAO;
@@ -35,29 +41,32 @@ public class PublicProfileResource {
 	private final AchievementDAO achievementDAO;
 	private final ProfileChangeRequestDAO requestDAO;
 	private final ProfileRequestService profileRequestService;
+	private final TwoFactorAuthService twoFactorAuthService;
 
 	@Autowired
 	public PublicProfileResource(UserDAO userDAO, EventDAO eventDAO, UserQualificationsDAO qualificationsDAO,
 			AchievementDAO achievementDAO, ProfileChangeRequestDAO requestDAO,
-			ProfileRequestService profileRequestService) {
+			ProfileRequestService profileRequestService, TwoFactorAuthService twoFactorAuthService) {
 		this.userDAO = userDAO;
 		this.eventDAO = eventDAO;
 		this.qualificationsDAO = qualificationsDAO;
 		this.achievementDAO = achievementDAO;
 		this.requestDAO = requestDAO;
 		this.profileRequestService = profileRequestService;
+		this.twoFactorAuthService = twoFactorAuthService;
 	}
 
 	@GetMapping
 	@Operation(summary = "Get current user's profile data", description = "Retrieves a comprehensive set of data for the authenticated user's profile page.")
 	public ResponseEntity<ApiResponse> getMyProfile(@AuthenticationPrincipal SecurityUser securityUser) {
-		User user = securityUser.getUser();
+	    logger.debug("Fetching full profile data for user '{}'", securityUser.getUsername());
+		User user = userDAO.getUserById(securityUser.getUser().getId()); // Fetch latest user data
 		Map<String, Object> profileData = new HashMap<>();
 		profileData.put("user", user);
 		profileData.put("eventHistory", eventDAO.getEventHistoryForUser(user.getId()));
 		profileData.put("qualifications", qualificationsDAO.getQualificationsForUser(user.getId()));
 		profileData.put("achievements", achievementDAO.getAchievementsForUser(user.getId()));
-		profileData.put("passkeys", Collections.emptyList()); 
+		profileData.put("passkeys", Collections.emptyList());
 		profileData.put("hasPendingRequest", requestDAO.hasPendingRequest(user.getId()));
 
 		return ResponseEntity.ok(new ApiResponse(true, "Profildaten erfolgreich abgerufen.", profileData));
@@ -66,6 +75,7 @@ public class PublicProfileResource {
 	@GetMapping("/{userId}")
 	@Operation(summary = "Get another user's public profile data", description = "Retrieves a public-safe subset of another user's profile data.")
 	public ResponseEntity<ApiResponse> getUserProfile(@PathVariable int userId) {
+        logger.debug("Fetching public profile data for user ID {}", userId);
 		User user = userDAO.getUserById(userId);
 		if (user == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -73,7 +83,7 @@ public class PublicProfileResource {
 		}
 
 		Map<String, Object> profileData = new HashMap<>();
-		profileData.put("user", user); 
+		profileData.put("user", user);
 		profileData.put("qualifications", qualificationsDAO.getQualificationsForUser(userId));
 		profileData.put("achievements", achievementDAO.getAchievementsForUser(userId));
 		profileData.put("eventHistory", eventDAO.getEventHistoryForUser(userId));
@@ -85,10 +95,12 @@ public class PublicProfileResource {
 	@Operation(summary = "Request a profile data change", description = "Submits a request for an administrator to approve changes to the user's profile data.")
 	public ResponseEntity<ApiResponse> requestProfileChange(@Valid @RequestBody ProfileChangeRequestDTO requestDTO,
 			@AuthenticationPrincipal SecurityUser securityUser) {
+        logger.info("Received profile change request from user '{}' with data: {}", securityUser.getUsername(), requestDTO);
 		try {
 			profileRequestService.createChangeRequest(securityUser.getUser(), requestDTO);
 			return ResponseEntity.ok(new ApiResponse(true, "Änderungsantrag erfolgreich eingereicht.", null));
 		} catch (Exception e) {
+		    logger.error("Error creating profile change request for user '{}'", securityUser.getUsername(), e);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
 					new ApiResponse(false, "Ihr Antrag konnte nicht gespeichert werden: " + e.getMessage(), null));
 		}
@@ -99,6 +111,7 @@ public class PublicProfileResource {
 	public ResponseEntity<ApiResponse> registerDevice(@RequestBody Map<String, String> payload,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		String token = payload.get("token");
+		logger.debug("Received request to register FCM token for user '{}'", securityUser.getUsername());
 		if (token == null || token.isBlank()) {
 			return ResponseEntity.badRequest().body(new ApiResponse(false, "Token is required.", null));
 		}
@@ -114,6 +127,7 @@ public class PublicProfileResource {
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 		String theme = payload.get("theme");
+        logger.debug("User '{}' requested theme change to '{}'", user.getUsername(), theme);
 		if (theme != null && (theme.equals("light") || theme.equals("dark"))) {
 			if (userDAO.updateUserTheme(user.getId(), theme)) {
 				User updatedUser = userDAO.getUserById(user.getId());
@@ -129,6 +143,7 @@ public class PublicProfileResource {
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 		String chatColor = payload.get("chatColor");
+        logger.debug("User '{}' requested chat color change to '{}'", user.getUsername(), chatColor);
 		if (userDAO.updateUserChatColor(user.getId(), chatColor)) {
 			return ResponseEntity.ok(new ApiResponse(true, "Chatfarbe aktualisiert.", null));
 		} else {
@@ -141,8 +156,10 @@ public class PublicProfileResource {
 	@Operation(summary = "Change password", description = "Allows the authenticated user to change their own password after verifying their current one.")
 	public ResponseEntity<ApiResponse> updatePassword(@Valid @RequestBody PasswordChangeRequest request,
 			@AuthenticationPrincipal SecurityUser securityUser) {
+        logger.info("Processing password change request for user '{}'", securityUser.getUsername());
 		User user = securityUser.getUser();
 		if (userDAO.validateUser(user.getUsername(), request.currentPassword()) == null) {
+		    logger.warn("Password change failed for user '{}': Incorrect current password provided.", user.getUsername());
 			return ResponseEntity.badRequest()
 					.body(new ApiResponse(false, "Das aktuelle Passwort ist nicht korrekt.", null));
 		}
@@ -156,6 +173,7 @@ public class PublicProfileResource {
 			return ResponseEntity.badRequest().body(new ApiResponse(false, validationResult.getMessage(), null));
 		}
 		if (userDAO.changePassword(user.getId(), request.newPassword())) {
+		    logger.info("Successfully changed password for user '{}'", user.getUsername());
 			return ResponseEntity.ok(new ApiResponse(true, "Ihr Passwort wurde erfolgreich geändert.", null));
 		} else {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -169,11 +187,62 @@ public class PublicProfileResource {
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 		String layoutJson = new Gson().toJson(layout);
+        logger.debug("Updating layout for user '{}' with JSON: {}", user.getUsername(), layoutJson);
 		if (userDAO.updateDashboardLayout(user.getId(), layoutJson)) {
 			User updatedUser = userDAO.getUserById(user.getId());
 			return ResponseEntity.ok(new ApiResponse(true, "Layout-Einstellungen gespeichert.", updatedUser));
 		}
 		return ResponseEntity.internalServerError()
 				.body(new ApiResponse(false, "Layout konnte nicht gespeichert werden.", null));
+	}
+
+	@PostMapping("/2fa/setup")
+	@Operation(summary = "Start 2FA setup", description = "Generates a new TOTP secret and QR code for the user.")
+	public ResponseEntity<ApiResponse> setup2FA(@AuthenticationPrincipal SecurityUser securityUser) {
+	    logger.info("Initiating 2FA setup for user '{}'", securityUser.getUsername());
+		try {
+			TwoFactorSetupDTO setupData = twoFactorAuthService.generateNewSecretAndQrCode(securityUser.getUser());
+			return ResponseEntity.ok(new ApiResponse(true, "2FA setup data generated.", setupData));
+		} catch (Exception e) {
+		    logger.error("Error during 2FA setup for user '{}'", securityUser.getUsername(), e);
+			return ResponseEntity.internalServerError().body(new ApiResponse(false, e.getMessage(), null));
+		}
+	}
+
+	@PostMapping("/2fa/enable")
+	@Operation(summary = "Verify and enable 2FA", description = "Verifies a TOTP token and enables 2FA for the user, returning backup codes.")
+	public ResponseEntity<ApiResponse> enable2FA(@RequestBody Map<String, String> payload,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		String secret = payload.get("secret");
+		String token = payload.get("token");
+        logger.info("Attempting to enable 2FA for user '{}'", securityUser.getUsername());
+		if (secret == null || token == null) {
+			return ResponseEntity.badRequest().body(new ApiResponse(false, "Secret and token are required.", null));
+		}
+		try {
+			List<String> backupCodes = twoFactorAuthService.enableTotpForUser(securityUser.getUser().getId(), secret, token);
+			return ResponseEntity.ok(new ApiResponse(true, "2FA enabled successfully.", Map.of("backupCodes", backupCodes)));
+		} catch (Exception e) {
+		    logger.error("Failed to enable 2FA for user '{}': {}", securityUser.getUsername(), e.getMessage());
+			return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
+		}
+	}
+
+	@PostMapping("/2fa/disable")
+	@Operation(summary = "Disable 2FA", description = "Disables 2FA for the user after verifying a current TOTP token.")
+	public ResponseEntity<ApiResponse> disable2FA(@RequestBody Map<String, String> payload,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		String token = payload.get("token");
+        logger.info("Attempting to disable 2FA for user '{}'", securityUser.getUsername());
+		if (token == null) {
+			return ResponseEntity.badRequest().body(new ApiResponse(false, "Token is required.", null));
+		}
+		try {
+			twoFactorAuthService.disableTotpForUser(securityUser.getUser().getId(), token);
+			return ResponseEntity.ok(new ApiResponse(true, "2FA disabled successfully.", null));
+		} catch (Exception e) {
+            logger.error("Failed to disable 2FA for user '{}': {}", securityUser.getUsername(), e.getMessage());
+			return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
+		}
 	}
 }

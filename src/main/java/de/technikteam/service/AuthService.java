@@ -1,5 +1,8 @@
 package de.technikteam.service;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
+import de.technikteam.dao.JwtBlocklistDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
@@ -11,6 +14,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +25,8 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class AuthService {
@@ -31,10 +37,13 @@ public class AuthService {
 
 	private final SecretKey secretKey;
 	private final UserDAO userDAO;
+	private final JwtBlocklistDAO jwtBlocklistDAO;
+	private final LoadingCache<String, Boolean> revokedTokenCache;
 
 	@Autowired
-	public AuthService(UserDAO userDAO, ConfigurationService configService) {
+	public AuthService(UserDAO userDAO, ConfigurationService configService, JwtBlocklistDAO jwtBlocklistDAO) {
 		this.userDAO = userDAO;
+		this.jwtBlocklistDAO = jwtBlocklistDAO;
 		// REMEDIATION: Load the JWT secret from an environment variable.
 		String secret = System.getenv("JWT_SECRET");
 		if (secret == null || secret.isBlank()) {
@@ -50,14 +59,28 @@ public class AuthService {
 			throw new RuntimeException("JWT-Secret ist nicht konfiguriert oder unsicher.");
 		}
 		this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+		this.revokedTokenCache = Caffeine.newBuilder().expireAfterWrite(15, TimeUnit.MINUTES).maximumSize(10_000)
+				.build(jti -> jwtBlocklistDAO.isBlocklisted(jti));
 	}
 
 	public String generateToken(User user) {
 		Instant now = Instant.now();
 		Instant expiry = now.plus(COOKIE_MAX_AGE_SECONDS, ChronoUnit.SECONDS);
 
-		return Jwts.builder().issuer(JWT_ISSUER).subject(String.valueOf(user.getId())).issuedAt(Date.from(now))
-				.expiration(Date.from(expiry)).signWith(secretKey).compact();
+		return Jwts.builder().issuer(JWT_ISSUER).subject(String.valueOf(user.getId())).id(UUID.randomUUID().toString())
+				.issuedAt(Date.from(now)).expiration(Date.from(expiry)).signWith(secretKey).compact();
+	}
+
+	public String generatePreAuthToken(int userId) {
+		Instant now = Instant.now();
+		Instant expiry = now.plus(5, ChronoUnit.MINUTES); // Short-lived token for 2FA
+
+		return Jwts.builder().issuer(JWT_ISSUER).subject(String.valueOf(userId)).claim("auth_level", "PRE_AUTH_2FA")
+				.issuedAt(Date.from(now)).expiration(Date.from(expiry)).signWith(secretKey).compact();
+	}
+
+	public Claims parseTokenClaims(String token) {
+		return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
 	}
 
 	public void addJwtCookie(User user, HttpServletResponse response) {
@@ -68,23 +91,23 @@ public class AuthService {
 	}
 
 	public void clearJwtCookie(HttpServletResponse response) {
-		// Construct a Set-Cookie header that expires the cookie immediately.
-		// It's crucial to include the same attributes (Path, HttpOnly, Secure,
-		// SameSite) as
-		// the original cookie to ensure the browser overwrites it correctly.
 		String header = String.format("%s=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict", AUTH_COOKIE_NAME);
 		response.addHeader(HttpHeaders.SET_COOKIE, header);
 	}
 
-	/**
-	 * Validate the JWT, load the user and return a UserDetails. If the user does
-	 * not exist or is currently suspended, returns null. This ensures that
-	 * previously-issued tokens are rejected immediately once a user is suspended.
-	 */
 	public UserDetails validateTokenAndGetUser(String token) {
 		try {
-			// Parse and validate token
-			Claims claims = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
+			Claims claims = parseTokenClaims(token);
+
+			// Pre-auth tokens are not valid for general API access
+			if ("PRE_AUTH_2FA".equals(claims.get("auth_level", String.class))) {
+				return null;
+			}
+
+			if (isTokenRevoked(claims.getId())) {
+				logger.warn("JWT validation failed: Token with JTI {} has been revoked.", claims.getId());
+				return null;
+			}
 
 			int userId = Integer.parseInt(claims.getSubject());
 			User user = userDAO.getUserById(userId);
@@ -94,17 +117,51 @@ public class AuthService {
 				return null;
 			}
 
-			// Enforce suspension check
 			if (userDAO.isUserCurrentlySuspended(user)) {
 				logger.warn("JWT validation failed: User {} is currently suspended.", user.getUsername());
 				return null;
 			}
 
-			// Build security user
 			return new SecurityUser(user);
 		} catch (Exception e) {
 			logger.warn("JWT-Verifizierung fehlgeschlagen: {}", e.getMessage());
 			return null;
 		}
+	}
+
+	public User validatePreAuthTokenAndGetUser(String token) {
+		try {
+			Claims claims = parseTokenClaims(token);
+			if (!"PRE_AUTH_2FA".equals(claims.get("auth_level", String.class))) {
+				throw new SecurityException("Not a valid 2FA pre-authentication token.");
+			}
+			int userId = Integer.parseInt(claims.getSubject());
+			return userDAO.getUserById(userId);
+		} catch (Exception e) {
+			logger.warn("Pre-auth JWT validation failed: {}", e.getMessage());
+			return null;
+		}
+	}
+
+	public void revokeToken(String jti) {
+		// Since we don't have the full token, we can't get its original expiry.
+		// We'll set a reasonable expiry in the future (e.g., the default session duration).
+		LocalDateTime expiry = LocalDateTime.now().plus(COOKIE_MAX_AGE_SECONDS, ChronoUnit.SECONDS);
+		jwtBlocklistDAO.blocklist(jti, expiry);
+		revokedTokenCache.put(jti, true); // Eagerly update cache
+	}
+
+	public boolean isTokenRevoked(String jti) {
+		return revokedTokenCache.get(jti);
+	}
+
+	@Scheduled(cron = "0 0 4 * * *") // Run daily at 4 AM
+	public void cleanExpiredBlocklistEntries() {
+		logger.info("Running scheduled cleanup of expired JWT blocklist entries.");
+		jwtBlocklistDAO.cleanExpired();
+	}
+
+	public SecretKey getSecretKey() {
+		return secretKey;
 	}
 }

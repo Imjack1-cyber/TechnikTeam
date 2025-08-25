@@ -1,5 +1,6 @@
 package de.technikteam.api.v1;
 
+import de.technikteam.api.v1.dto.MaintenanceStatusDTO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.SystemStatsDTO;
 import de.technikteam.security.SecurityUser;
@@ -44,24 +45,21 @@ public class AdminSystemResource {
 	@GetMapping("/maintenance")
 	@Operation(summary = "Get maintenance mode status")
 	public ResponseEntity<ApiResponse> getMaintenanceMode() {
-		boolean isEnabled = settingsService.isMaintenanceModeEnabled();
-		return ResponseEntity
-				.ok(new ApiResponse(true, "Wartungsmodus-Status abgerufen.", Map.of("isEnabled", isEnabled)));
+		MaintenanceStatusDTO status = settingsService.getMaintenanceStatus();
+		return ResponseEntity.ok(new ApiResponse(true, "Wartungsmodus-Status abgerufen.", status));
 	}
 
 	@PostMapping("/maintenance")
 	@Operation(summary = "Set maintenance mode status")
-	public ResponseEntity<ApiResponse> setMaintenanceMode(@RequestBody Map<String, Boolean> payload,
+	public ResponseEntity<ApiResponse> setMaintenanceMode(@RequestBody MaintenanceStatusDTO status,
 			@AuthenticationPrincipal SecurityUser securityUser) {
-		Boolean isEnabled = payload.get("isEnabled");
-		if (isEnabled == null) {
+		if (status == null || status.mode() == null) {
 			return ResponseEntity.badRequest()
-					.body(new ApiResponse(false, "Payload must contain 'isEnabled' boolean.", null));
+					.body(new ApiResponse(false, "Payload must contain 'mode'.", null));
 		}
-		settingsService.setMaintenanceMode(isEnabled);
-		adminLogService.log(securityUser.getUser().getUsername(), "MAINTENANCE_MODE_TOGGLE",
-				"Maintenance mode " + (isEnabled ? "enabled" : "disabled"));
-		return ResponseEntity.ok(new ApiResponse(true,
-				"Wartungsmodus erfolgreich " + (isEnabled ? "aktiviert" : "deaktiviert") + ".", null));
+		settingsService.setMaintenanceMode(status);
+		adminLogService.log(securityUser.getUser().getUsername(), "MAINTENANCE_MODE_UPDATE",
+				"Maintenance mode set to " + status.mode() + ". Message: " + status.message());
+		return ResponseEntity.ok(new ApiResponse(true, "Wartungsmodus erfolgreich aktualisiert.", null));
 	}
 }

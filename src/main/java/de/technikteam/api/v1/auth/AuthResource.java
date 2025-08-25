@@ -1,14 +1,21 @@
 package de.technikteam.api.v1.auth;
 
+import de.technikteam.api.v1.dto.TwoFactorVerificationRequest;
 import de.technikteam.model.ApiResponse;
+import de.technikteam.model.AuthenticationLog;
 import de.technikteam.model.NavigationItem;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.security.UserSuspendedException;
 import de.technikteam.service.AuthService;
+import de.technikteam.service.AuthenticationLogService;
 import de.technikteam.service.LoginAttemptService;
+import de.technikteam.dao.TwoFactorAuthDAO;
 import de.technikteam.dao.UserDAO;
+import de.technikteam.service.SystemSettingsService;
+import de.technikteam.service.TwoFactorAuthService;
 import de.technikteam.util.NavigationRegistry;
+import io.jsonwebtoken.Claims;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -29,6 +36,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,12 +50,22 @@ public class AuthResource {
 	private final UserDAO userDAO;
 	private final AuthService authService;
 	private final LoginAttemptService loginAttemptService;
+	private final AuthenticationLogService authLogService;
+	private final SystemSettingsService settingsService;
+	private final TwoFactorAuthDAO twoFactorAuthDAO;
+	private final TwoFactorAuthService twoFactorAuthService;
 
 	@Autowired
-	public AuthResource(UserDAO userDAO, AuthService authService, LoginAttemptService loginAttemptService) {
+	public AuthResource(UserDAO userDAO, AuthService authService, LoginAttemptService loginAttemptService,
+			AuthenticationLogService authLogService, SystemSettingsService settingsService,
+			TwoFactorAuthDAO twoFactorAuthDAO, TwoFactorAuthService twoFactorAuthService) {
 		this.userDAO = userDAO;
 		this.authService = authService;
 		this.loginAttemptService = loginAttemptService;
+		this.authLogService = authLogService;
+		this.settingsService = settingsService;
+		this.twoFactorAuthDAO = twoFactorAuthDAO;
+		this.twoFactorAuthService = twoFactorAuthService;
 	}
 
 	@PostMapping("/login")
@@ -58,6 +76,7 @@ public class AuthResource {
 		String username = loginRequest.username();
 		String password = loginRequest.password();
 		String ipAddress = getClientIp(request);
+		logger.info("Login attempt for user '{}' from IP address: {}", username, ipAddress);
 
 		if (loginAttemptService.isLockedOut(username, ipAddress)) {
 			logger.warn("Blocked login attempt for locked-out user '{}' from IP {}", username, ipAddress);
@@ -72,28 +91,90 @@ public class AuthResource {
 			User user = userDAO.validateUser(username, password);
 			if (user != null) {
 				loginAttemptService.clearLoginAttempts(username);
+
+				// Risk-Based 2FA Check
+				boolean needs2fa = false;
+				if (user.isTotpEnabled()) {
+					boolean isKnownIp = twoFactorAuthDAO.isIpKnownForUser(user.getId(), ipAddress);
+					LocalDateTime lastLoginTime = authLogService.getTimestampOfLastLogin(user.getId());
+
+					if (!isKnownIp) {
+						needs2fa = true;
+						logger.info("2FA required for user '{}': Unrecognized IP subnet.", username);
+					} else if (lastLoginTime != null && lastLoginTime.isBefore(LocalDateTime.now().minusDays(30))) {
+						needs2fa = true;
+						logger.info("2FA required for user '{}': Inactivity period exceeded.", username);
+					}
+				}
+
+				if (needs2fa) {
+					String preAuthToken = authService.generatePreAuthToken(user.getId());
+					return ResponseEntity.ok(new ApiResponse(true, "2FA_REQUIRED", Map.of("token", preAuthToken)));
+				}
+
+				// If no 2FA is needed, proceed with full login
+				twoFactorAuthDAO.addKnownIpForUser(user.getId(), ipAddress);
 				String token = authService.generateToken(user);
-				authService.addJwtCookie(user, response); 
+				authService.addJwtCookie(user, response);
 				logger.info("JWT cookie set successfully for user '{}'", username);
+
+				Claims claims = authService.parseTokenClaims(token);
+				authLogService.logLoginSuccess(user.getId(), username, ipAddress, claims.getId(), claims.getExpiration().toInstant());
 
 				List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(user);
 				Map<String, Object> sessionData = new HashMap<>();
 				sessionData.put("user", user);
 				sessionData.put("navigation", navigationItems);
+				sessionData.put("previousLogin", authLogService.getPreviousLoginInfo(user.getId()));
+				sessionData.put("maintenanceStatus", settingsService.getMaintenanceStatus());
 
 				Map<String, Object> responseData = new HashMap<>();
 				responseData.put("session", sessionData);
-				responseData.put("token", token); 
+				responseData.put("token", token);
 
 				return ResponseEntity.ok(new ApiResponse(true, "Anmeldung erfolgreich", responseData));
 			} else {
 				loginAttemptService.recordFailedLogin(username, ipAddress);
+				authLogService.logLoginFailure(username, ipAddress);
 				logger.warn("Failed API login attempt for user '{}' from IP {}", username, ipAddress);
 				return new ResponseEntity<>(new ApiResponse(false, "Falscher Benutzername oder Passwort.", null),
 						HttpStatus.UNAUTHORIZED);
 			}
 		} catch (UserSuspendedException e) {
 			return new ResponseEntity<>(new ApiResponse(false, e.getMessage(), null), HttpStatus.FORBIDDEN);
+		}
+	}
+
+	@PostMapping("/verify-2fa")
+	@Operation(summary = "Verify 2FA Token", description = "Verifies a TOTP or backup code to complete a login attempt from an unknown location.")
+	public ResponseEntity<ApiResponse> verifyTwoFactor(@RequestBody TwoFactorVerificationRequest verificationRequest,
+			HttpServletRequest request, HttpServletResponse response) {
+		try {
+			User user = authService.validatePreAuthTokenAndGetUser(verificationRequest.token());
+			if (user == null) {
+				return new ResponseEntity<>(new ApiResponse(false, "Invalid or expired pre-authentication token.", null), HttpStatus.FORBIDDEN);
+			}
+			String ipAddress = getClientIp(request);
+
+			boolean isValid = false;
+			if (verificationRequest.backupCode() != null && !verificationRequest.backupCode().isBlank()) {
+				isValid = twoFactorAuthService.verifyBackupCode(user.getId(), verificationRequest.backupCode());
+			} else if (verificationRequest.token() != null && !verificationRequest.token().isBlank()) {
+				String decryptedSecret = twoFactorAuthService.decrypt(user.getTotpSecret());
+				isValid = twoFactorAuthService.verifyCode(decryptedSecret, verificationRequest.token());
+			}
+
+			if (isValid) {
+				twoFactorAuthDAO.addKnownIpForUser(user.getId(), ipAddress);
+				// Generate final, full-privilege token
+				String finalToken = authService.generateToken(user);
+				authService.addJwtCookie(user, response);
+				return ResponseEntity.ok(new ApiResponse(true, "2FA verification successful.", Map.of("token", finalToken)));
+			} else {
+				return new ResponseEntity<>(new ApiResponse(false, "Invalid code.", null), HttpStatus.UNAUTHORIZED);
+			}
+		} catch (Exception e) {
+			return new ResponseEntity<>(new ApiResponse(false, "Verification failed: " + e.getMessage(), null), HttpStatus.FORBIDDEN);
 		}
 	}
 
@@ -119,15 +200,23 @@ public class AuthResource {
 					HttpStatus.UNAUTHORIZED);
 		}
 
-		User authenticatedUser = userDAO.getUserById(securityUser.getUser().getId()); 
+		User authenticatedUser = userDAO.getUserById(securityUser.getUser().getId());
 		List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(authenticatedUser);
-		Map<String, Object> responseData = Map.of("user", authenticatedUser, "navigation", navigationItems);
+		Map<String, Object> responseData = new HashMap<>();
+		responseData.put("user", authenticatedUser);
+		responseData.put("navigation", navigationItems);
+		responseData.put("maintenanceStatus", settingsService.getMaintenanceStatus());
+
 		return ResponseEntity.ok(new ApiResponse(true, "Current user session retrieved.", responseData));
 	}
 
 	@PostMapping("/logout")
 	@Operation(summary = "User Logout", description = "Logs out the user by clearing the JWT authentication cookie.")
-	public ResponseEntity<ApiResponse> logout(HttpServletResponse response) {
+	public ResponseEntity<ApiResponse> logout(@AuthenticationPrincipal SecurityUser securityUser,
+			HttpServletRequest request, HttpServletResponse response) {
+		if (securityUser != null) {
+			authLogService.logLogout(securityUser.getUser().getId(), securityUser.getUsername(), getClientIp(request));
+		}
 		authService.clearJwtCookie(response);
 		return ResponseEntity.ok(new ApiResponse(true, "Abmeldung erfolgreich", null));
 	}

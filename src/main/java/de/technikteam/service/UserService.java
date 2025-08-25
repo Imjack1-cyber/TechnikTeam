@@ -39,7 +39,9 @@ public class UserService {
 			}
 		} catch (DuplicateKeyException e) {
 			logger.warn("Attempted to create a user with a duplicate username or email: {}", user.getUsername());
-			return 0; // Indicate failure due to duplicate key
+			// Re-throw as a runtime exception to ensure the transaction rolls back
+			// and the caller knows about the failure.
+			throw new IllegalStateException("Benutzername oder E-Mail existiert bereits.", e);
 		} catch (Exception e) {
 			logger.error("Unexpected error during user creation for '{}'", user.getUsername(), e);
 			throw new RuntimeException("Benutzererstellung ist aufgrund eines unerwarteten Fehlers fehlgeschlagen.");

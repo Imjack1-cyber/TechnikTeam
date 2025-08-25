@@ -1,7 +1,9 @@
 package de.technikteam.config;
 
 import de.technikteam.dao.PermissionDAO;
+import de.technikteam.dao.RoleDAO;
 import de.technikteam.dao.UserDAO;
+import de.technikteam.model.Role;
 import de.technikteam.model.User;
 import de.technikteam.service.UserService;
 import org.apache.logging.log4j.LogManager;
@@ -22,12 +24,14 @@ public class InitialAdminCreator implements CommandLineRunner {
 	private final UserDAO userDAO;
 	private final UserService userService;
 	private final PermissionDAO permissionDAO;
+	private final RoleDAO roleDAO;
 
 	@Autowired
-	public InitialAdminCreator(UserDAO userDAO, UserService userService, PermissionDAO permissionDAO) {
+	public InitialAdminCreator(UserDAO userDAO, UserService userService, PermissionDAO permissionDAO, RoleDAO roleDAO) {
 		this.userDAO = userDAO;
 		this.userService = userService;
 		this.permissionDAO = permissionDAO;
+		this.roleDAO = roleDAO;
 	}
 
 	@Override
@@ -40,7 +44,13 @@ public class InitialAdminCreator implements CommandLineRunner {
 
 			User adminUser = new User();
 			adminUser.setUsername("admin");
-			adminUser.setRoleId(0); 
+
+			// Dynamically find the ADMIN role ID
+			Role adminRole = roleDAO.getAllRoles().stream()
+					.filter(role -> "ADMIN".equalsIgnoreCase(role.getRoleName()))
+					.findFirst()
+					.orElseThrow(() -> new RuntimeException("CRITICAL: 'ADMIN' role not found in database. Cannot create initial admin user."));
+			adminUser.setRoleId(adminRole.getId());
 
 //			String randomPassword = generateRandomPassword(8);
 			String randomPassword = "TechnikTeam1+";

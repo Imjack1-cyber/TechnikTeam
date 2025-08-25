@@ -1,5 +1,6 @@
 package de.technikteam.security;
 
+import de.technikteam.api.v1.dto.MaintenanceStatusDTO;
 import de.technikteam.model.User;
 import de.technikteam.service.AuthService;
 import de.technikteam.service.SystemSettingsService;
@@ -77,13 +78,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 		}
 
 		// 4. Maintenance Mode Check
-		if (settingsService.isMaintenanceModeEnabled() && userDetails instanceof SecurityUser) {
+		if (userDetails instanceof SecurityUser) {
+			MaintenanceStatusDTO status = settingsService.getMaintenanceStatus();
 			User currentUser = ((SecurityUser) userDetails).getUser();
-			if (!currentUser.hasAdminAccess() && !MAINTENANCE_WHITELIST.contains(request.getRequestURI())) {
+
+			if ("HARD".equals(status.mode()) && !currentUser.hasAdminAccess() && !MAINTENANCE_WHITELIST.contains(request.getRequestURI())) {
 				response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
 				response.setContentType("application/json");
 				response.getWriter().write(
-						"{\"success\":false,\"message\":\"Die Anwendung befindet sich derzeit im Wartungsmodus.\",\"data\":null}");
+						"{\"success\":false,\"message\":\"" + status.message() + "\",\"data\":null}");
 				return;
 			}
 		}

@@ -53,6 +53,7 @@ const pageRoutes = {
 	'/admin/reports/log': 'admin_log',
 	'/admin/system': 'admin_system_index',
 	'/admin/system/status': 'admin_system',
+	'/admin/system/auth-log': 'admin_auth_log',
 	'/admin/system/wiki': 'admin_wiki',
 };
 

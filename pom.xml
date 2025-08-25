@@ -149,6 +149,16 @@
             <artifactId>log4j-layout-template-json</artifactId>
         </dependency>
         <dependency>
+            <groupId>de.taimos</groupId>
+            <artifactId>totp</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>javase</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
@@ -206,7 +216,6 @@
                         <groupId>org.flywaydb</groupId>
                         <artifactId>flyway-maven-plugin</artifactId>
                         <configuration>
-                            <!-- THIS IS THE CORRECTED SYNTAX -->
                             <configFiles>flyway-dev.conf</configFiles>
                         </configuration>
                     </plugin>
@@ -227,7 +236,6 @@
                         <groupId>org.flywaydb</groupId>
                         <artifactId>flyway-maven-plugin</artifactId>
                         <configuration>
-                            <!-- THIS IS THE CORRECTED SYNTAX -->
                             <configFiles>flyway-prod.conf</configFiles>
                         </configuration>
                     </plugin>

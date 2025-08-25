@@ -4,6 +4,7 @@ import { RouterProvider } from 'react-router-dom';
 import router from './router';
 import { useAuthStore } from './store/authStore';
 import apiClient from './services/apiClient'; // Import apiClient here
+import { ToastProvider } from './context/ToastContext';
 
 const AUTH_TOKEN_KEY = 'technikteam-auth-token';
 
@@ -37,9 +38,11 @@ const initializeApp = async () => {
 initializeApp().then(() => {
 	ReactDOM.createRoot(document.getElementById('root')).render(
 		<React.StrictMode>
-			<Suspense fallback={<div className="loading-fullscreen">Lade Anwendung...</div>}>
-				<RouterProvider router={router} />
-			</Suspense>
+			<ToastProvider>
+				<Suspense fallback={<div className="loading-fullscreen">Lade Anwendung...</div>}>
+					<RouterProvider router={router} />
+				</Suspense>
+			</ToastProvider>
 		</React.StrictMode>
 	);
 });

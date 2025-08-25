@@ -3,21 +3,34 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
 
-const MaintenanceModeToggle = () => {
+const MaintenanceModeManager = () => {
 	const apiCall = useCallback(() => apiClient.get('/admin/system/maintenance'), []);
 	const { data, loading, error, reload } = useApi(apiCall);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [mode, setMode] = useState('OFF');
+	const [message, setMessage] = useState('');
 	const { addToast } = useToast();
 
-	const isEnabled = data?.isEnabled || false;
+	useEffect(() => {
+		if (data) {
+			setMode(data.mode || 'OFF');
+			setMessage(data.message || '');
+		}
+	}, [data]);
 
-	const handleToggle = async () => {
-		const newState = !isEnabled;
-		const action = newState ? 'aktivieren' : 'deaktivieren';
-		if (window.confirm(`Sind Sie sicher, dass Sie den Wartungsmodus ${action} möchten? Alle nicht-administrativen Benutzer werden ausgesperrt.`)) {
+	const handleSubmit = async (e) => {
+		e.preventDefault();
+		const newStatus = { mode, message };
+		const actionText = {
+			OFF: 'deaktivieren',
+			SOFT: 'aktivieren (Warnung)',
+			HARD: 'aktivieren (Sperre)'
+		}[mode];
+
+		if (window.confirm(`Sind Sie sicher, dass Sie den Wartungsmodus ${actionText} möchten?`)) {
 			setIsSubmitting(true);
 			try {
-				const result = await apiClient.post('/admin/system/maintenance', { isEnabled: newState });
+				const result = await apiClient.post('/admin/system/maintenance', newStatus);
 				if (result.success) {
 					addToast(result.message, 'success');
 					reload();
@@ -38,15 +51,30 @@ const MaintenanceModeToggle = () => {
 	return (
 		<div className="card">
 			<h2 className="card-title">Wartungsmodus</h2>
-			<p>Wenn aktiviert, können sich nur Administratoren anmelden. Alle anderen Benutzer sehen eine Wartungsseite.</p>
-			<div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
-				<button onClick={handleToggle} className={`btn ${isEnabled ? 'btn-success' : 'btn-danger'}`} disabled={isSubmitting}>
-					{isSubmitting ? 'Wird geändert...' : (isEnabled ? 'Wartungsmodus Deaktivieren' : 'Wartungsmodus Aktivieren')}
+			<p>Steuern Sie den globalen Zugriffsstatus der Anwendung.</p>
+			<form onSubmit={handleSubmit}>
+				<div className="form-group">
+					<label>Modus</label>
+					<div style={{ display: 'flex', gap: '1.5rem' }}>
+						<label><input type="radio" name="mode" value="OFF" checked={mode === 'OFF'} onChange={e => setMode(e.target.value)} /> Aus</label>
+						<label><input type="radio" name="mode" value="SOFT" checked={mode === 'SOFT'} onChange={e => setMode(e.target.value)} /> Warnung (Banner)</label>
+						<label><input type="radio" name="mode" value="HARD" checked={mode === 'HARD'} onChange={e => setMode(e.target.value)} /> Sperre (Nur Admins)</label>
+					</div>
+				</div>
+				<div className="form-group">
+					<label htmlFor="maintenance-message">Angezeigte Nachricht</label>
+					<textarea
+						id="maintenance-message"
+						value={message}
+						onChange={e => setMessage(e.target.value)}
+						rows="3"
+						placeholder="z.B. Führen gerade Datenbank-Updates durch. Voraussichtlich wieder verfügbar um 15:00 Uhr."
+					/>
+				</div>
+				<button type="submit" className="btn btn-success" disabled={isSubmitting}>
+					{isSubmitting ? 'Wird geändert...' : 'Status aktualisieren'}
 				</button>
-				<span className={`status-badge ${isEnabled ? 'status-danger' : 'status-ok'}`}>
-					{isEnabled ? 'AKTIV' : 'INAKTIV'}
-				</span>
-			</div>
+			</form>
 		</div>
 	);
 };
@@ -63,7 +91,7 @@ const AdminSystemPage = () => {
 			<h1><i className="fas fa-server"></i> Systeminformationen</h1>
 			<p>Live-Statistiken über den Zustand des Servers, auf dem die Anwendung läuft.</p>
 
-			<MaintenanceModeToggle />
+			<MaintenanceModeManager />
 
 			{loading && <p>Lade Systemstatistiken...</p>}
 			{error && <p className="error-message">{error}</p>}

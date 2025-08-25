@@ -19,18 +19,21 @@ public class User {
 	private String fcmToken;
 	private String profileIconClass;
 	private String adminNotes;
-	private String dashboardLayout; 
-	private String assignedEventRole; 
-	private Integer assignedEventRoleId; 
-	private int unseenNotificationsCount; 
+	private String dashboardLayout;
+	private String assignedEventRole;
+	private Integer assignedEventRoleId;
+	private int unseenNotificationsCount;
 
 	private String status;
 	private LocalDateTime suspendedUntil;
 	private String suspendedReason;
-	private boolean isLocked; 
+	private boolean isLocked;
 
 	private boolean isDeleted;
 	private LocalDateTime deletedAt;
+
+	private boolean isTotpEnabled;
+	private String totpSecret;
 
 	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String passwordHash;
@@ -251,5 +254,22 @@ public class User {
 
 	public String getFormattedCreatedAt() {
 		return de.technikteam.config.DateFormatter.formatDateTime(this.createdAt);
+	}
+
+	public boolean isTotpEnabled() {
+		return isTotpEnabled;
+	}
+
+	public void setTotpEnabled(boolean totpEnabled) {
+		isTotpEnabled = totpEnabled;
+	}
+
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+	public String getTotpSecret() {
+		return totpSecret;
+	}
+
+	public void setTotpSecret(String totpSecret) {
+		this.totpSecret = totpSecret;
 	}
 }

@@ -1,6 +1,71 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import apiClient from '../services/apiClient';
+import { useToast } from '../context/ToastContext';
+
+const TwoFactorAuthForm = ({ username, preAuthToken, onAuthSuccess }) => {
+	const [token, setToken] = useState('');
+	const [backupCode, setBackupCode] = useState('');
+	const [isLoading, setIsLoading] = useState(false);
+	const [error, setError] = useState('');
+
+	const handleSubmit = async (e) => {
+		e.preventDefault();
+		setIsLoading(true);
+		setError('');
+
+		try {
+			// Set the temporary token for this one request
+			apiClient.setAuthToken(preAuthToken);
+			const result = await apiClient.post('/auth/verify-2fa', { token, backupCode });
+			if (result.success && result.data.token) {
+				onAuthSuccess(result.data.token);
+			} else {
+				throw new Error(result.message || 'Verifizierung fehlgeschlagen.');
+			}
+		} catch (err) {
+			setError(err.message);
+		} finally {
+			setIsLoading(false);
+			apiClient.setAuthToken(null); // Unset the temporary token
+		}
+	};
+
+	return (
+		<div>
+			<h3>Zwei-Faktor-Authentifizierung</h3>
+			<p>Login für <strong>{username}</strong> von einem neuen Standort. Bitte geben Sie Ihren Code ein.</p>
+			{error && <p className="error-message">{error}</p>}
+			<form onSubmit={handleSubmit}>
+				<div className="form-group">
+					<label htmlFor="2fa-token">Authenticator-Code</label>
+					<input
+						type="text"
+						id="2fa-token"
+						value={token}
+						onChange={(e) => setToken(e.target.value)}
+						placeholder="6-stelliger Code"
+						autoFocus
+					/>
+				</div>
+				<div className="form-group">
+					<label htmlFor="2fa-backup">oder Backup-Code</label>
+					<input
+						type="text"
+						id="2fa-backup"
+						value={backupCode}
+						onChange={(e) => setBackupCode(e.target.value)}
+						placeholder="8-stelliger Code"
+					/>
+				</div>
+				<button type="submit" className="btn" style={{ width: '100%' }} disabled={isLoading}>
+					{isLoading ? 'Wird geprüft...' : 'Bestätigen'}
+				</button>
+			</form>
+		</div>
+	);
+};
 
 const LoginPage = () => {
 	const [username, setUsername] = useState('');
@@ -11,8 +76,11 @@ const LoginPage = () => {
 	const navigate = useNavigate();
 	const location = useLocation();
 
-	const login = useAuthStore((state) => state.login);
-	const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+	// State for 2FA flow
+	const [preAuthToken, setPreAuthToken] = useState(null);
+
+	const { login, isAuthenticated, completeLoginWithToken } = useAuthStore();
+	const { addToast } = useToast();
 
 	useEffect(() => {
 		if (isAuthenticated) {
@@ -21,12 +89,20 @@ const LoginPage = () => {
 		}
 	}, [isAuthenticated, navigate, location.state]);
 
+	const handleAuthSuccess = async (finalToken) => {
+		await completeLoginWithToken(finalToken);
+		addToast('Erfolgreich angemeldet!', 'success');
+	};
+
 	const handleSubmit = async (e) => {
 		e.preventDefault();
 		setIsLoading(true);
 		setError('');
 		try {
-			await login(username, password);
+			const result = await login(username, password);
+			if (result.status === '2FA_REQUIRED') {
+				setPreAuthToken(result.token);
+			}
 		} catch (err) {
 			console.error(err);
 			setError(err.message || 'Login fehlgeschlagen. Bitte überprüfen Sie Ihre Eingaben.');
@@ -38,6 +114,20 @@ const LoginPage = () => {
 	const togglePasswordVisibility = () => {
 		setIsPasswordVisible(!isPasswordVisible);
 	};
+
+	if (preAuthToken) {
+		return (
+			<div className="login-page-container">
+				<div className="login-box">
+					<TwoFactorAuthForm
+						username={username}
+						preAuthToken={preAuthToken}
+						onAuthSuccess={handleAuthSuccess}
+					/>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className="login-page-container">

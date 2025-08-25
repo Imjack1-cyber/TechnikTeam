@@ -8,16 +8,19 @@ import ProfileAchievements from '../components/profile/ProfileAchievements';
 import ProfileEventHistory from '../components/profile/ProfileEventHistory';
 import { useToast } from '../context/ToastContext';
 import { Link } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
 
 const ProfilePage = () => {
 	const { addToast } = useToast();
+	const fetchUserSession = useAuthStore(state => state.fetchUserSession);
 	const apiCall = useCallback(() => apiClient.get('/public/profile'), []);
 	const { data: profileData, loading, error, reload } = useApi(apiCall);
 
-	const handleUpdate = () => {
-		addToast('Profildaten aktualisiert', 'success');
-		reload();
-	};
+	const handleUpdate = useCallback(() => {
+		addToast('Profildaten werden aktualisiert...', 'info');
+		reload(); // Reloads the local page data
+		fetchUserSession(); // Reloads the global user state in the store
+	}, [reload, fetchUserSession, addToast]);
 
 	if (loading) {
 		return (

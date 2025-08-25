@@ -34,12 +34,14 @@ export const useAuthStore = create(
 			theme: 'light',
 			layout: defaultLayout,
 			lastUpdatedEvent: null, // { id: eventId, nonce: Math.random() }
+			maintenanceStatus: { mode: 'OFF', message: '' },
+			previousLogin: null,
 			login: async (username, password) => {
 				try {
 					const response = await apiClient.post('/auth/login', { username, password });
 					if (response.success && response.data?.session) {
 						const { session, token } = response.data;
-						const { user, navigation } = session;
+						const { user, navigation, maintenanceStatus, previousLogin } = session;
 
 						localStorage.setItem(AUTH_TOKEN_KEY, token);
 						apiClient.setAuthToken(token);
@@ -53,8 +55,10 @@ export const useAuthStore = create(
 							isAuthenticated: true,
 							isAdmin: hasAdminAccess(user.roleName),
 							theme: newTheme,
+							maintenanceStatus: maintenanceStatus || { mode: 'OFF', message: '' },
+							previousLogin: previousLogin,
 						});
-						return true;
+						return { status: 'SUCCESS' };
 					}
 					throw new Error(response.message || 'Anmeldung fehlgeschlagen');
 				} catch (error) {
@@ -71,7 +75,7 @@ export const useAuthStore = create(
 				} finally {
 					localStorage.removeItem(AUTH_TOKEN_KEY);
 					apiClient.setAuthToken(null);
-					set({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, theme: 'light', layout: defaultLayout, lastUpdatedEvent: null });
+					set({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, theme: 'light', layout: defaultLayout, lastUpdatedEvent: null, maintenanceStatus: { mode: 'OFF', message: '' }, previousLogin: null });
 					localStorage.removeItem('auth-storage');
 					document.documentElement.setAttribute('data-theme', 'light');
 				}
@@ -81,7 +85,7 @@ export const useAuthStore = create(
 					const result = await apiClient.get('/auth/me');
 
 					if (result.success && result.data.user && result.data.navigation) {
-						const user = result.data.user;
+						const { user, navigation, maintenanceStatus } = result.data;
 						const newTheme = user.theme || 'light';
 						let userLayout = defaultLayout;
 						if (user.dashboardLayout) {
@@ -103,11 +107,12 @@ export const useAuthStore = create(
 
 						set({
 							user: user,
-							navigationItems: result.data.navigation,
+							navigationItems: navigation,
 							isAuthenticated: true,
 							isAdmin: hasAdminAccess(user.roleName),
 							theme: newTheme,
 							layout: userLayout,
+							maintenanceStatus: maintenanceStatus || { mode: 'OFF', message: '' },
 						});
 						document.documentElement.setAttribute('data-theme', newTheme);
 					} else {
@@ -179,7 +184,10 @@ export const useAuthStore = create(
 				set(state => ({
 					user: state.user ? { ...state.user, unseenNotificationsCount: (state.user.unseenNotificationsCount || 0) + 1 } : null
 				}));
-			}
+			},
+			setMaintenanceStatus: (status) => {
+				set({ maintenanceStatus: status });
+			},
 		}),
 		{
 			name: 'auth-storage',

@@ -22,7 +22,7 @@ const useApi = (apiCall) => {
 		}
 
 		try {
-			// setLoading(true) was here and caused the issue. It's now the initial state.
+			setLoading(true); // Set loading to true at the start of a fetch/refetch
 			setError(null);
 			const result = await apiCall();
 			if (result.success) {

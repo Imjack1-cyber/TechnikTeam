@@ -4,7 +4,6 @@ import { useRegisterSW } from 'virtual:pwa-register/react';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import ToastContainer from './components/ui/ToastContainer';
-import { ToastProvider } from './context/ToastContext';
 import { useNotifications } from './hooks/useNotifications';
 import WarningNotification from './components/ui/WarningNotification';
 import ChangelogModal from './components/ui/ChangelogModal';
@@ -12,11 +11,27 @@ import UpdateNotification from './components/ui/UpdateNotification';
 import apiClient from './services/apiClient';
 import { useAuthStore } from './store/authStore';
 import pageRoutes from './router/pageRoutes';
+import { useToast } from './context/ToastContext';
+import MaintenancePage from './pages/error/MaintenancePage';
+
+// Banners for maintenance mode
+const MaintenanceBanner = () => (
+	<div style={{ padding: '0.5rem', background: 'var(--danger-color)', color: 'white', textAlign: 'center', fontWeight: 'bold' }}>
+		<i className="fas fa-exclamation-triangle"></i> WARTUNGSMODUS (SPERRE) AKTIV
+	</div>
+);
+
+const InstabilityBanner = ({ message }) => (
+	<div style={{ padding: '0.5rem', background: 'var(--warning-color)', color: 'black', textAlign: 'center', fontWeight: 'bold' }}>
+		<i className="fas fa-exclamation-triangle"></i> {message || 'Anwendung ist möglicherweise instabil.'}
+	</div>
+);
 
 const AppLayout = () => {
 	const [isNavOpen, setIsNavOpen] = useState(false);
 	const location = useLocation();
 	const revalidator = useRevalidator();
+	const { addToast } = useToast();
 
 	// PWA update logic
 	const {
@@ -43,9 +58,19 @@ const AppLayout = () => {
 	const { warningNotification, dismissWarning } = useNotifications(handleEventUpdate);
 	const [changelog, setChangelog] = useState(null);
 	const [isChangelogVisible, setIsChangelogVisible] = useState(false);
-	const { isAuthenticated, layout } = useAuthStore(state => ({
+
+	const {
+		isAuthenticated,
+		isAdmin,
+		layout,
+		previousLogin,
+		maintenanceStatus
+	} = useAuthStore(state => ({
 		isAuthenticated: state.isAuthenticated,
+		isAdmin: state.isAdmin,
 		layout: state.layout,
+		previousLogin: state.previousLogin,
+		maintenanceStatus: state.maintenanceStatus,
 	}));
 	const sidebarPosition = layout.sidebarPosition || 'left';
 	const isVerticalLayout = sidebarPosition === 'left' || sidebarPosition === 'right';
@@ -53,6 +78,16 @@ const AppLayout = () => {
 	const currentPageHelpKey = pageRoutes[location.pathname];
 	const showHelpButton = layout.showHelpButton !== false;
 
+
+	useEffect(() => {
+		if (isAuthenticated && previousLogin) {
+			const { timestamp, ipAddress } = previousLogin;
+			const formattedDate = new Date(timestamp).toLocaleString('de-DE');
+			addToast(`Willkommen zurück! Letzter Login: ${formattedDate} von ${ipAddress}`, 'info');
+			// Clear it so it doesn't show again on hot-reload
+			useAuthStore.setState({ previousLogin: null });
+		}
+	}, [isAuthenticated, previousLogin, addToast]);
 
 	const fetchChangelog = useCallback(async () => {
 		if (isAuthenticated) {
@@ -107,8 +142,15 @@ const AppLayout = () => {
 		};
 	}, [sidebarPosition]);
 
+	// Main maintenance mode logic
+	if (maintenanceStatus.mode === 'HARD' && !isAdmin) {
+		return <MaintenancePage message={maintenanceStatus.message} />;
+	}
+
 	return (
 		<>
+			{maintenanceStatus.mode === 'HARD' && isAdmin && <MaintenanceBanner />}
+			{maintenanceStatus.mode === 'SOFT' && <InstabilityBanner message={maintenanceStatus.message} />}
 			<Sidebar />
 			{isVerticalLayout && <Header onNavToggle={() => setIsNavOpen(!isNavOpen)} />}
 			{isNavOpen && isVerticalLayout && <div className="page-overlay" onClick={() => setIsNavOpen(false)}></div>}
@@ -136,11 +178,8 @@ const AppLayout = () => {
 };
 
 function App() {
-	return (
-		<ToastProvider>
-			<AppLayout />
-		</ToastProvider>
-	);
+	// ToastProvider is now in main.jsx
+	return <AppLayout />;
 }
 
 export default App;

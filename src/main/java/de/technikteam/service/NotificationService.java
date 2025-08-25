@@ -2,6 +2,7 @@ package de.technikteam.service;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import de.technikteam.api.v1.dto.MaintenanceStatusDTO;
 import de.technikteam.api.v1.dto.NotificationRequest;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.EventDAO;
@@ -196,6 +197,19 @@ public class NotificationService {
 		adminLogService.log(adminUser.getUsername(), "SEND_NOTIFICATION", logDetails);
 
 		return targetUsers.size();
+	}
+	
+	public void broadcastSystemStatusUpdate(MaintenanceStatusDTO status) {
+		logger.info("Broadcasting system status update to all clients: mode={}, message='{}'", status.mode(), status.message());
+		SseEmitter.SseEventBuilder event = SseEmitter.event().name("system_status_update").data(status);
+
+		emittersByUser.values().forEach(emitterList -> emitterList.forEach(emitter -> {
+			try {
+				emitter.send(event);
+			} catch (Exception e) {
+				logger.warn("Error broadcasting system status update to a client: {}", e.getMessage());
+			}
+		}));
 	}
 
 	private void removeEmitter(int userId, SseEmitter emitter) {

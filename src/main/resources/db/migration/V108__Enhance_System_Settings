@@ -1,0 +1,14 @@
+-- Flyway migration V108: Enhance system_settings for advanced maintenance mode
+
+-- Step 1: Update the existing boolean-like value to the new ENUM-like 'OFF' value.
+-- This ensures a clean transition without losing the current "off" state.
+UPDATE `system_settings` SET `setting_value` = 'OFF' WHERE `setting_key` = 'maintenance_mode';
+
+-- Step 2: Widen the value column to TEXT to accommodate longer messages.
+ALTER TABLE `system_settings` MODIFY COLUMN `setting_value` TEXT;
+
+-- Step 3: Insert the new setting for the maintenance message.
+-- ON DUPLICATE KEY UPDATE is used as a safeguard in case this migration is run multiple times after a repair.
+INSERT INTO `system_settings` (`setting_key`, `setting_value`)
+VALUES ('maintenance_message', 'Die Anwendung wird gerade gewartet. Bitte versuchen Sie es später erneut.')
+ON DUPLICATE KEY UPDATE `setting_key`=`setting_key`;

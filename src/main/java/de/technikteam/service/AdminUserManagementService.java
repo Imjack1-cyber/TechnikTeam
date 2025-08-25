@@ -1,5 +1,6 @@
 package de.technikteam.service;
 
+import de.technikteam.dao.TwoFactorAuthDAO;
 import de.technikteam.dao.UserDAO;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -19,13 +20,15 @@ public class AdminUserManagementService {
 	private final UserDAO userDAO;
 	private final AdminLogService adminLogService;
 	private final LoginAttemptService loginAttemptService;
+	private final TwoFactorAuthDAO twoFactorAuthDAO;
 
 	@Autowired
 	public AdminUserManagementService(UserDAO userDAO, AdminLogService adminLogService,
-			LoginAttemptService loginAttemptService) {
+			LoginAttemptService loginAttemptService, TwoFactorAuthDAO twoFactorAuthDAO) {
 		this.userDAO = userDAO;
 		this.adminLogService = adminLogService;
 		this.loginAttemptService = loginAttemptService;
+		this.twoFactorAuthDAO = twoFactorAuthDAO;
 	}
 
 	@Transactional
@@ -72,9 +75,10 @@ public class AdminUserManagementService {
 			// Also clear any login attempt lockouts, regardless of whether the unsuspend
 			// operation changed the row
 			loginAttemptService.clearLoginAttempts(unsuspendedUser.getUsername());
+			twoFactorAuthDAO.clearKnownIpsForUser(userId);
 
 			if (result) {
-				String logDetails = String.format("User '%s' (ID: %d) unsuspended and unlocked.",
+				String logDetails = String.format("User '%s' (ID: %d) unsuspended, unlocked, and known IPs cleared.",
 						unsuspendedUser.getUsername(), userId);
 				// Un-suspending is not easily reversible, so mark as not revocable
 				Map<String, Object> context = Map.of("userId", userId, "revocable", false);

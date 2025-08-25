@@ -43,7 +43,7 @@ public class SecurityConfig {
 				.authorizeHttpRequests(auth -> auth
 						// Whitelist public and authentication endpoints first
 						.requestMatchers("/api/v1/auth/**", "/ws/**", "/swagger-ui.html", "/swagger-ui/**",
-								"/v3/api-docs/**", "/favicon.ico", "/actuator/health")
+								"/v3/api-docs/**", "/favicon.ico", "/actuator/health", "/api/v1/public/notifications/sse")
 						.permitAll()
 						// Secure all admin paths. Granular control is done with @PreAuthorize
 						.requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
