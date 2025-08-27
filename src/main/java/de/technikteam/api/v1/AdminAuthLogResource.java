@@ -57,6 +57,11 @@ public class AdminAuthLogResource {
             return ResponseEntity.badRequest().body(new ApiResponse(false, "JWT ID (jti) is required.", null));
         }
 
+        if (authService.isTokenRevoked(jti)) {
+            logger.warn("Attempted to revoke an already-revoked session with JTI: {}", jti);
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Diese Sitzung wurde bereits widerrufen.", null));
+        }
+
         AuthenticationLog logToRevoke = authLogDAO.getLogByJti(jti);
         authService.revokeToken(jti);
 

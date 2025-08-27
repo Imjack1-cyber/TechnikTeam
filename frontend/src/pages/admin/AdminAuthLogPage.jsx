@@ -1,23 +1,33 @@
-import React, { useCallback, useState, useMemo, useEffect } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../context/ToastContext';
 
 const AdminAuthLogPage = () => {
-    const [refetchTrigger, setRefetchTrigger] = useState(0);
-    const apiCall = useCallback(() => apiClient.get(`/admin/auth-log?cb=${refetchTrigger}`), [refetchTrigger]);
+    const apiCall = useCallback(() => apiClient.get('/admin/auth-log'), []);
     const { data: logs, loading, error, reload } = useApi(apiCall);
     const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
     const { addToast } = useToast();
 
     // Filter states
-    const [showFilter, setShowFilter] = useState('ACTIVE'); // ACTIVE, INACTIVE, ALL
+    const [showFilter, setShowFilter] = useState('ACTIVE');
     const [userFilter, setUserFilter] = useState('');
     const [ipFilter, setIpFilter] = useState('');
+    const [countryFilter, setCountryFilter] = useState('');
+    const [deviceFilter, setDeviceFilter] = useState('');
     const [groupIp, setGroupIp] = useState(true);
 
     const canRevoke = isAdmin || user?.permissions.includes('LOG_REVOKE');
+
+    const getDeviceIcon = (deviceType) => {
+        switch (deviceType?.toLowerCase()) {
+            case 'desktop': return 'fa-desktop';
+            case 'mobile': return 'fa-mobile-alt';
+            case 'tablet': return 'fa-tablet-alt';
+            default: return 'fa-question-circle';
+        }
+    };
 
     const handleForceLogout = async (jti) => {
         if (!jti) {
@@ -29,7 +39,7 @@ const AdminAuthLogPage = () => {
                 const result = await apiClient.post('/admin/auth-log/revoke-session', { jti: jti });
                 if (result.success) {
                     addToast('Sitzung erfolgreich widerrufen.', 'success');
-                    await reload(); // Await the refetch before the component re-renders
+                    await reload();
                 } else {
                     throw new Error(result.message);
                 }
@@ -40,7 +50,7 @@ const AdminAuthLogPage = () => {
     };
 
     const isSessionActive = useCallback((log) => {
-        return log.eventType === 'LOGIN_SUCCESS' && !log.isRevoked && log.tokenExpiry && new Date(log.tokenExpiry) > new Date();
+        return log.eventType === 'LOGIN_SUCCESS' && !log.revoked && log.tokenExpiry && new Date(log.tokenExpiry) > new Date();
     }, []);
 
     const filteredLogs = useMemo(() => {
@@ -50,7 +60,9 @@ const AdminAuthLogPage = () => {
             .filter(log => {
                 const matchesUser = userFilter ? log.username.toLowerCase().includes(userFilter.toLowerCase()) : true;
                 const matchesIp = ipFilter ? log.ipAddress.toLowerCase().includes(ipFilter.toLowerCase()) : true;
-                return matchesUser && matchesIp;
+                const matchesCountry = countryFilter ? log.countryCode?.toLowerCase().includes(countryFilter.toLowerCase()) : true;
+                const matchesDevice = deviceFilter ? log.deviceType?.toLowerCase().includes(deviceFilter.toLowerCase()) : true;
+                return matchesUser && matchesIp && matchesCountry && matchesDevice;
             })
             .filter(log => {
                 if (showFilter === 'ACTIVE') return isSessionActive(log);
@@ -58,7 +70,7 @@ const AdminAuthLogPage = () => {
                 return true; // 'ALL'
             });
 
-        if (groupIp) {
+        if (groupIp && showFilter === 'ACTIVE') {
             const uniqueIps = new Map();
             processedLogs.forEach(log => {
                 if (!uniqueIps.has(log.ipAddress)) {
@@ -69,14 +81,14 @@ const AdminAuthLogPage = () => {
         }
 
         return processedLogs;
-    }, [logs, showFilter, userFilter, ipFilter, groupIp, isSessionActive]);
+    }, [logs, showFilter, userFilter, ipFilter, countryFilter, deviceFilter, groupIp, isSessionActive]);
 
 
     const getStatusBadge = (log) => {
         if (log.eventType === 'LOGOUT') {
             return <span className="status-badge status-info">Ausgeloggt</span>;
         }
-        if (log.isRevoked) {
+        if (log.revoked) {
             return <span className="status-badge status-info">Widerrufen</span>;
         }
         if (log.tokenExpiry && new Date(log.tokenExpiry) > new Date()) {
@@ -92,8 +104,9 @@ const AdminAuthLogPage = () => {
                     onClick={() => handleForceLogout(log.jti)}
                     className="btn btn-small btn-danger"
                     title="Diese Sitzung zwangsweise beenden"
+                    disabled={log.revoked}
                 >
-                    Logout erzwingen
+                    {log.revoked ? 'Widerrufen' : 'Logout erzwingen'}
                 </button>
             );
         }
@@ -106,28 +119,36 @@ const AdminAuthLogPage = () => {
             <p>Übersicht der letzten erfolgreichen An- und Abmeldungen. Fehlgeschlagene Logins werden hier nicht mehr angezeigt.</p>
 
             <div className="card">
-                <h4 style={{marginTop: 0}}>Filter</h4>
-                <div className="responsive-dashboard-grid">
+                <h4 style={{ marginTop: 0 }}>Filter</h4>
+                <div className="responsive-dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
                     <div className="form-group">
                         <label>Status anzeigen</label>
                         <div>
-                            <label style={{marginRight: '1rem'}}><input type="radio" value="ACTIVE" checked={showFilter === 'ACTIVE'} onChange={e => setShowFilter(e.target.value)} /> Aktive</label>
-                            <label style={{marginRight: '1rem'}}><input type="radio" value="INACTIVE" checked={showFilter === 'INACTIVE'} onChange={e => setShowFilter(e.target.value)} /> Inaktive</label>
+                            <label style={{ marginRight: '1rem' }}><input type="radio" value="ACTIVE" checked={showFilter === 'ACTIVE'} onChange={e => setShowFilter(e.target.value)} /> Aktive</label>
+                            <label style={{ marginRight: '1rem' }}><input type="radio" value="INACTIVE" checked={showFilter === 'INACTIVE'} onChange={e => setShowFilter(e.target.value)} /> Inaktive</label>
                             <label><input type="radio" value="ALL" checked={showFilter === 'ALL'} onChange={e => setShowFilter(e.target.value)} /> Alle</label>
                         </div>
                     </div>
                     <div className="form-group">
-                        <label htmlFor="user-filter">Nach Benutzer filtern</label>
-                        <input type="text" id="user-filter" value={userFilter} onChange={e => setUserFilter(e.target.value)} placeholder="Username..."/>
+                        <label htmlFor="user-filter">Nach Benutzer</label>
+                        <input type="text" id="user-filter" value={userFilter} onChange={e => setUserFilter(e.target.value)} placeholder="Username..." />
                     </div>
                     <div className="form-group">
-                        <label htmlFor="ip-filter">Nach IP-Adresse filtern</label>
-                        <input type="text" id="ip-filter" value={ipFilter} onChange={e => setIpFilter(e.target.value)} placeholder="127.0.0.1..."/>
+                        <label htmlFor="ip-filter">Nach IP-Adresse</label>
+                        <input type="text" id="ip-filter" value={ipFilter} onChange={e => setIpFilter(e.target.value)} placeholder="127.0.0.1..." />
                     </div>
-                    <div className="form-group" style={{alignSelf: 'flex-end'}}>
+                    <div className="form-group">
+                        <label htmlFor="country-filter">Nach Land</label>
+                        <input type="text" id="country-filter" value={countryFilter} onChange={e => setCountryFilter(e.target.value)} placeholder="DE, US..." />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="device-filter">Nach Gerätetyp</label>
+                        <input type="text" id="device-filter" value={deviceFilter} onChange={e => setDeviceFilter(e.target.value)} placeholder="Desktop, Mobile..." />
+                    </div>
+                    <div className="form-group" style={{ alignSelf: 'flex-end' }}>
                         <label>
-                            <input type="checkbox" checked={groupIp} onChange={e => setGroupIp(e.target.checked)} />
-                            Neuesten Eintrag pro IP gruppieren
+                            <input type="checkbox" checked={groupIp} onChange={e => setGroupIp(e.target.checked)} disabled={showFilter !== 'ACTIVE'} />
+                            Neuesten pro IP (nur bei 'Aktive')
                         </label>
                     </div>
                 </div>
@@ -140,18 +161,25 @@ const AdminAuthLogPage = () => {
                             <th>Zeitpunkt</th>
                             <th>Benutzername</th>
                             <th>IP-Adresse</th>
+                            <th>Land</th>
+                            <th>Gerät</th>
                             <th>Status</th>
                             {canRevoke && <th>Aktion</th>}
                         </tr>
                     </thead>
                     <tbody>
-                        {loading && <tr><td colSpan={canRevoke ? 5 : 4}>Lade Verlauf...</td></tr>}
-                        {error && <tr><td colSpan={canRevoke ? 5 : 4} className="error-message">{error}</td></tr>}
+                        {loading && <tr><td colSpan={canRevoke ? 7 : 6}>Lade Verlauf...</td></tr>}
+                        {error && <tr><td colSpan={canRevoke ? 7 : 6} className="error-message">{error}</td></tr>}
                         {filteredLogs.map(log => (
                             <tr key={log.id}>
                                 <td>{new Date(log.timestamp).toLocaleString('de-DE')}</td>
                                 <td>{log.username}</td>
                                 <td>{log.ipAddress}</td>
+                                <td>{log.countryCode || 'N/A'}</td>
+                                <td title={log.userAgent}>
+                                    <i className={`fas ${getDeviceIcon(log.deviceType)}`} style={{ marginRight: '0.5rem' }}></i>
+                                    {log.deviceType}
+                                </td>
                                 <td>{getStatusBadge(log)}</td>
                                 {canRevoke && <td>{renderAction(log)}</td>}
                             </tr>

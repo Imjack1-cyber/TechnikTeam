@@ -80,6 +80,7 @@ const AdminDocumentationPage = lazy(() => import('../pages/admin/AdminDocumentat
 const AdminReportsIndex = lazy(() => import('../pages/admin/AdminReportsIndex'));
 const AdminSystemIndex = lazy(() => import('../pages/admin/AdminSystemIndex'));
 const AdminAuthLogPage = lazy(() => import('../pages/admin/AdminAuthLogPage'));
+const AdminGeoIpPage = lazy(() => import('../pages/admin/AdminGeoIpPage'));
 
 
 import ErrorTrigger from '../pages/error/ErrorTrigger';
@@ -184,6 +185,7 @@ const router = createBrowserRouter([
 							{ path: 'status', element: <AdminSystemPage /> },
 							{ path: 'auth-log', element: <AdminAuthLogPage /> },
 							{ path: 'wiki', element: <AdminWikiPage /> },
+							{ path: 'geoip', element: <AdminGeoIpPage /> },
 						]
 					},
 				],

@@ -6,6 +6,7 @@ import ProfileSecurity from '../components/profile/ProfileSecurity';
 import ProfileQualifications from '../components/profile/ProfileQualifications';
 import ProfileAchievements from '../components/profile/ProfileAchievements';
 import ProfileEventHistory from '../components/profile/ProfileEventHistory';
+import ProfileActiveSessions from '../components/profile/ProfileActiveSessions';
 import { useToast } from '../context/ToastContext';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
@@ -56,6 +57,9 @@ const ProfilePage = () => {
 				<ProfileQualifications qualifications={qualifications} />
 				<ProfileAchievements achievements={achievements} />
 				<ProfileEventHistory eventHistory={eventHistory} />
+				<div style={{ gridColumn: '1 / -1' }}>
+					<ProfileActiveSessions />
+				</div>
 			</div>
 		</div>
 	);

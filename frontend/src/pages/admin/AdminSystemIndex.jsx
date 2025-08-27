@@ -9,6 +9,7 @@ const AdminSystemIndex = () => {
 	const baseLinks = [
 		{ to: '/admin/system/status', label: 'System-Status', icon: 'fa-server', perm: 'SYSTEM_READ' },
 		{ to: '/admin/system/auth-log', label: 'Auth Log', icon: 'fa-history', perm: 'LOG_READ' },
+		{ to: '/admin/system/geoip', label: 'GeoIP Filter', icon: 'fa-globe-americas', perm: 'ACCESS_ADMIN_PANEL' },
 		{ to: '/admin/system/wiki', label: 'Technische Wiki', icon: 'fa-book-reader', perm: 'ACCESS_ADMIN_PANEL' },
 		{ to: '/TechnikTeam/swagger-ui.html', label: 'API Docs (Swagger)', icon: 'fa-code', perm: 'ACCESS_ADMIN_PANEL', isExternal: true },
 	];

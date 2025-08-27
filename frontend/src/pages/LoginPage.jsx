@@ -16,9 +16,7 @@ const TwoFactorAuthForm = ({ username, preAuthToken, onAuthSuccess }) => {
 		setError('');
 
 		try {
-			// Set the temporary token for this one request
-			apiClient.setAuthToken(preAuthToken);
-			const result = await apiClient.post('/auth/verify-2fa', { token, backupCode });
+			const result = await apiClient.post('/auth/verify-2fa', { preAuthToken, token, backupCode });
 			if (result.success && result.data.token) {
 				onAuthSuccess(result.data.token);
 			} else {
@@ -28,7 +26,6 @@ const TwoFactorAuthForm = ({ username, preAuthToken, onAuthSuccess }) => {
 			setError(err.message);
 		} finally {
 			setIsLoading(false);
-			apiClient.setAuthToken(null); // Unset the temporary token
 		}
 	};
 

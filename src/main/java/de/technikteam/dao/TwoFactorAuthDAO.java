@@ -55,6 +55,13 @@ public class TwoFactorAuthDAO {
         jdbcTemplate.update(sql, userId, ipAddress, Timestamp.valueOf(LocalDateTime.now()));
     }
 
+    public void nameKnownIp(int userId, String ipAddress, String deviceName) {
+        // We might need to add an IP that isn't there yet if the user renames it before a second login
+        String sql = "INSERT INTO user_known_ips (user_id, ip_address, device_name, last_seen) VALUES (?, ?, ?, ?) " +
+                     "ON DUPLICATE KEY UPDATE device_name = VALUES(device_name), last_seen = VALUES(last_seen)";
+        jdbcTemplate.update(sql, userId, ipAddress, deviceName, Timestamp.valueOf(LocalDateTime.now()));
+    }
+
     @Transactional
     public void setTotpSecretForUser(int userId, String encryptedSecret) {
         jdbcTemplate.update("UPDATE users SET totp_secret = ? WHERE id = ?", encryptedSecret, userId);

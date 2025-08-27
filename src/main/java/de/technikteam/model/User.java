@@ -1,5 +1,6 @@
 package de.technikteam.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -34,6 +35,7 @@ public class User {
 
 	private boolean isTotpEnabled;
 	private String totpSecret;
+	private String jti; // JWT ID of the current session token
 
 	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String passwordHash;
@@ -271,5 +273,14 @@ public class User {
 
 	public void setTotpSecret(String totpSecret) {
 		this.totpSecret = totpSecret;
+	}
+
+	@JsonIgnore
+	public String getJti() {
+		return jti;
+	}
+
+	public void setJti(String jti) {
+		this.jti = jti;
 	}
 }

@@ -29,6 +29,9 @@ public class AuthenticationLogDAO {
         log.setUserId(rs.getObject("user_id", Integer.class));
         log.setUsername(rs.getString("username"));
         log.setIpAddress(rs.getString("ip_address"));
+        log.setUserAgent(rs.getString("user_agent"));
+        log.setDeviceType(rs.getString("device_type"));
+        log.setCountryCode(rs.getString("country_code"));
         log.setEventType(rs.getString("event_type"));
         log.setTimestamp(rs.getTimestamp("timestamp").toLocalDateTime());
         log.setJti(rs.getString("jti"));
@@ -42,9 +45,16 @@ public class AuthenticationLogDAO {
     };
 
     public void createLog(AuthenticationLog log) {
-        String sql = "INSERT INTO authentication_logs (user_id, username, ip_address, event_type, jti, token_expiry) VALUES (?, ?, ?, ?, ?, ?)";
-        Object[] args = {log.getUserId(), log.getUsername(), log.getIpAddress(), log.getEventType(), log.getJti(), log.getTokenExpiry() != null ? Timestamp.valueOf(log.getTokenExpiry()) : null};
-        int[] types = {Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.TIMESTAMP};
+        String sql = "INSERT INTO authentication_logs (user_id, username, ip_address, event_type, jti, token_expiry, user_agent, device_type, country_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        Object[] args = {
+                log.getUserId(), log.getUsername(), log.getIpAddress(), log.getEventType(), log.getJti(),
+                log.getTokenExpiry() != null ? Timestamp.valueOf(log.getTokenExpiry()) : null,
+                log.getUserAgent(), log.getDeviceType(), log.getCountryCode()
+        };
+        int[] types = {
+                Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
+                Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR
+        };
         jdbcTemplate.update(sql, args, types);
     }
 
@@ -82,5 +92,23 @@ public class AuthenticationLogDAO {
         } catch (EmptyResultDataAccessException e) {
             return null;
         }
+    }
+
+    public AuthenticationLog getLogById(long logId) {
+        String sql = "SELECT * FROM authentication_logs WHERE id = ?";
+        try {
+            return jdbcTemplate.queryForObject(sql, rowMapper, logId);
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        }
+    }
+
+    public List<AuthenticationLog> getActiveSessionsForUser(int userId) {
+        String sql = "SELECT l.*, (b.jti IS NOT NULL) AS is_revoked " +
+                     "FROM authentication_logs l " +
+                     "LEFT JOIN jwt_blocklist b ON l.jti = b.jti " +
+                     "WHERE l.user_id = ? AND l.event_type = 'LOGIN_SUCCESS' AND l.token_expiry > NOW() AND b.jti IS NULL " +
+                     "ORDER BY l.timestamp DESC";
+        return jdbcTemplate.query(sql, rowMapper, userId);
     }
 }

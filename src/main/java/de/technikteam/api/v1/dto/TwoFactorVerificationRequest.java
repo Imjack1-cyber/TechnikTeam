@@ -3,7 +3,8 @@ package de.technikteam.api.v1.dto;
 import jakarta.validation.constraints.NotBlank;
 
 public record TwoFactorVerificationRequest(
-        @NotBlank String token,
+        @NotBlank String preAuthToken,
+        String token,
         String backupCode
 ) {
 }

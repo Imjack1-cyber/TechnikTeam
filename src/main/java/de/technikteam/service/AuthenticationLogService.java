@@ -23,7 +23,7 @@ public class AuthenticationLogService {
         this.userDAO = userDAO;
     }
 
-    public void logLoginSuccess(int userId, String username, String ipAddress, String jti, Instant tokenExpiry) {
+    public void logLoginSuccess(int userId, String username, String ipAddress, String jti, Instant tokenExpiry, String userAgent, String deviceType, String countryCode) {
         AuthenticationLog log = new AuthenticationLog();
         log.setUserId(userId);
         log.setUsername(username);
@@ -33,6 +33,9 @@ public class AuthenticationLogService {
         if (tokenExpiry != null) {
             log.setTokenExpiry(tokenExpiry.atZone(ZoneId.systemDefault()).toLocalDateTime());
         }
+        log.setUserAgent(userAgent);
+        log.setDeviceType(deviceType);
+        log.setCountryCode(countryCode);
         authLogDAO.createLog(log);
     }
 

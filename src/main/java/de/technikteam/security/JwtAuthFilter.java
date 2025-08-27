@@ -4,6 +4,7 @@ import de.technikteam.api.v1.dto.MaintenanceStatusDTO;
 import de.technikteam.model.User;
 import de.technikteam.service.AuthService;
 import de.technikteam.service.SystemSettingsService;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -71,6 +72,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 		UserDetails userDetails = authService.validateTokenAndGetUser(token);
 
 		if (userDetails != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+			// Add JTI to the user object in the security context
+			if (userDetails instanceof SecurityUser) {
+				Claims claims = authService.parseTokenClaims(token);
+				((SecurityUser) userDetails).getUser().setJti(claims.getId());
+			}
 			UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null,
 					userDetails.getAuthorities());
 			authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

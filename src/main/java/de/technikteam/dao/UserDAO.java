@@ -54,6 +54,12 @@ public class UserDAO {
 		if (DaoUtils.hasColumn(resultSet, "fcm_token")) {
 			user.setFcmToken(resultSet.getString("fcm_token"));
 		}
+		if (DaoUtils.hasColumn(resultSet, "is_totp_enabled")) {
+			user.setTotpEnabled(resultSet.getBoolean("is_totp_enabled"));
+		}
+		if (DaoUtils.hasColumn(resultSet, "totp_secret")) {
+			user.setTotpSecret(resultSet.getString("totp_secret"));
+		}
 		if (DaoUtils.hasColumn(resultSet, "profile_icon_class")) {
 			user.setProfileIconClass(resultSet.getString("profile_icon_class"));
 		}

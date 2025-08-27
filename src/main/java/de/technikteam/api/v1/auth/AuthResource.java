@@ -2,18 +2,13 @@ package de.technikteam.api.v1.auth;
 
 import de.technikteam.api.v1.dto.TwoFactorVerificationRequest;
 import de.technikteam.model.ApiResponse;
-import de.technikteam.model.AuthenticationLog;
 import de.technikteam.model.NavigationItem;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.security.UserSuspendedException;
-import de.technikteam.service.AuthService;
-import de.technikteam.service.AuthenticationLogService;
-import de.technikteam.service.LoginAttemptService;
+import de.technikteam.service.*;
 import de.technikteam.dao.TwoFactorAuthDAO;
 import de.technikteam.dao.UserDAO;
-import de.technikteam.service.SystemSettingsService;
-import de.technikteam.service.TwoFactorAuthService;
 import de.technikteam.util.NavigationRegistry;
 import io.jsonwebtoken.Claims;
 import io.swagger.v3.oas.annotations.Operation;
@@ -54,11 +49,14 @@ public class AuthResource {
 	private final SystemSettingsService settingsService;
 	private final TwoFactorAuthDAO twoFactorAuthDAO;
 	private final TwoFactorAuthService twoFactorAuthService;
+	private final GeoIpService geoIpService;
+	private final UserAgentService userAgentService;
 
 	@Autowired
 	public AuthResource(UserDAO userDAO, AuthService authService, LoginAttemptService loginAttemptService,
 			AuthenticationLogService authLogService, SystemSettingsService settingsService,
-			TwoFactorAuthDAO twoFactorAuthDAO, TwoFactorAuthService twoFactorAuthService) {
+			TwoFactorAuthDAO twoFactorAuthDAO, TwoFactorAuthService twoFactorAuthService,
+			GeoIpService geoIpService, UserAgentService userAgentService) {
 		this.userDAO = userDAO;
 		this.authService = authService;
 		this.loginAttemptService = loginAttemptService;
@@ -66,6 +64,8 @@ public class AuthResource {
 		this.settingsService = settingsService;
 		this.twoFactorAuthDAO = twoFactorAuthDAO;
 		this.twoFactorAuthService = twoFactorAuthService;
+		this.geoIpService = geoIpService;
+		this.userAgentService = userAgentService;
 	}
 
 	@PostMapping("/login")
@@ -76,7 +76,14 @@ public class AuthResource {
 		String username = loginRequest.username();
 		String password = loginRequest.password();
 		String ipAddress = getClientIp(request);
+		String userAgent = request.getHeader("User-Agent");
 		logger.info("Login attempt for user '{}' from IP address: {}", username, ipAddress);
+
+		if (geoIpService.isIpBlocked(ipAddress)) {
+			logger.warn("Blocked login attempt for user '{}' from blocked country. IP: {}", username, ipAddress);
+			return new ResponseEntity<>(new ApiResponse(false, "Zugriff von Ihrem Standort aus verweigert.", null),
+					HttpStatus.FORBIDDEN);
+		}
 
 		if (loginAttemptService.isLockedOut(username, ipAddress)) {
 			logger.warn("Blocked login attempt for locked-out user '{}' from IP {}", username, ipAddress);
@@ -119,7 +126,10 @@ public class AuthResource {
 				logger.info("JWT cookie set successfully for user '{}'", username);
 
 				Claims claims = authService.parseTokenClaims(token);
-				authLogService.logLoginSuccess(user.getId(), username, ipAddress, claims.getId(), claims.getExpiration().toInstant());
+				Map<String, String> agentDetails = userAgentService.parseUserAgent(userAgent);
+				String countryCode = geoIpService.getCountryCode(ipAddress);
+				authLogService.logLoginSuccess(user.getId(), username, ipAddress, claims.getId(),
+						claims.getExpiration().toInstant(), userAgent, agentDetails.get("deviceType"), countryCode);
 
 				List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(user);
 				Map<String, Object> sessionData = new HashMap<>();
@@ -150,11 +160,12 @@ public class AuthResource {
 	public ResponseEntity<ApiResponse> verifyTwoFactor(@RequestBody TwoFactorVerificationRequest verificationRequest,
 			HttpServletRequest request, HttpServletResponse response) {
 		try {
-			User user = authService.validatePreAuthTokenAndGetUser(verificationRequest.token());
+			User user = authService.validatePreAuthTokenAndGetUser(verificationRequest.preAuthToken());
 			if (user == null) {
 				return new ResponseEntity<>(new ApiResponse(false, "Invalid or expired pre-authentication token.", null), HttpStatus.FORBIDDEN);
 			}
 			String ipAddress = getClientIp(request);
+			String userAgent = request.getHeader("User-Agent");
 
 			boolean isValid = false;
 			if (verificationRequest.backupCode() != null && !verificationRequest.backupCode().isBlank()) {
@@ -169,6 +180,14 @@ public class AuthResource {
 				// Generate final, full-privilege token
 				String finalToken = authService.generateToken(user);
 				authService.addJwtCookie(user, response);
+
+				// Log successful login with all details
+				Claims claims = authService.parseTokenClaims(finalToken);
+				Map<String, String> agentDetails = userAgentService.parseUserAgent(userAgent);
+				String countryCode = geoIpService.getCountryCode(ipAddress);
+				authLogService.logLoginSuccess(user.getId(), user.getUsername(), ipAddress, claims.getId(),
+						claims.getExpiration().toInstant(), userAgent, agentDetails.get("deviceType"), countryCode);
+
 				return ResponseEntity.ok(new ApiResponse(true, "2FA verification successful.", Map.of("token", finalToken)));
 			} else {
 				return new ResponseEntity<>(new ApiResponse(false, "Invalid code.", null), HttpStatus.UNAUTHORIZED);

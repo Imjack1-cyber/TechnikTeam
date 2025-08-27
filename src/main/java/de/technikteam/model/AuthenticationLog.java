@@ -7,6 +7,9 @@ public class AuthenticationLog {
     private Integer userId;
     private String username;
     private String ipAddress;
+    private String userAgent;
+    private String deviceType;
+    private String countryCode;
     private String eventType;
     private LocalDateTime timestamp;
     private String jti;
@@ -43,6 +46,30 @@ public class AuthenticationLog {
 
     public void setIpAddress(String ipAddress) {
         this.ipAddress = ipAddress;
+    }
+
+    public String getUserAgent() {
+        return userAgent;
+    }
+
+    public void setUserAgent(String userAgent) {
+        this.userAgent = userAgent;
+    }
+
+    public String getDeviceType() {
+        return deviceType;
+    }
+
+    public void setDeviceType(String deviceType) {
+        this.deviceType = deviceType;
+    }
+
+    public String getCountryCode() {
+        return countryCode;
+    }
+
+    public void setCountryCode(String countryCode) {
+        this.countryCode = countryCode;
     }
 
     public String getEventType() {
