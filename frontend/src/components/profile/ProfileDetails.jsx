@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
 import Modal from '../ui/Modal';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, changes, isSubmitting }) => {
 	if (!isOpen) return null;
@@ -15,35 +17,34 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, changes, isSubmitting }
 
 	return (
 		<Modal isOpen={isOpen} onClose={onClose} title="Änderungen bestätigen">
-			<p>Bitte überprüfen Sie die folgenden Änderungen. Diese müssen von einem Administrator genehmigt werden.</p>
-			<ul className="details-list" style={{ marginTop: '1rem', marginBottom: '1.5rem' }}>
-				{Object.entries(changes).map(([key, values]) => (
-					<li key={key}>
-						<strong>{changeLabels[key] || key}</strong>
-						<div>
-							<span style={{ textDecoration: 'line-through', color: 'var(--danger-color)', marginRight: '0.5rem' }}>{values.oldVal || 'Nicht gesetzt'}</span>
-							<span>→</span>
-							<strong style={{ color: 'var(--success-color)', marginLeft: '0.5rem' }}>{values.newVal || 'Wird entfernt'}</strong>
-						</div>
-					</li>
-				))}
-			</ul>
-			<div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-				<button type="button" onClick={onClose} className="btn btn-secondary" disabled={isSubmitting}>Abbrechen</button>
-				<button type="button" onClick={onConfirm} className="btn btn-success" disabled={isSubmitting}>
-					{isSubmitting ? 'Wird gesendet...' : 'Bestätigen & Senden'}
-				</button>
-			</div>
+			<Text style={styles.modalText}>Bitte überprüfen Sie die folgenden Änderungen. Diese müssen von einem Administrator genehmigt werden.</Text>
+			{Object.entries(changes).map(([key, values]) => (
+				<View key={key} style={styles.changeRow}>
+					<Text style={styles.changeLabel}>{changeLabels[key] || key}</Text>
+					<View style={styles.changeValues}>
+						<Text style={styles.oldValue}>{values.oldVal || 'Nicht gesetzt'}</Text>
+						<Text> → </Text>
+						<Text style={styles.newValue}>{values.newVal || 'Wird entfernt'}</Text>
+					</View>
+				</View>
+			))}
+			<View style={styles.modalButtons}>
+				<TouchableOpacity onPress={onClose} style={[styles.button, styles.secondaryButton]} disabled={isSubmitting}>
+					<Text style={styles.secondaryButtonText}>Abbrechen</Text>
+				</TouchableOpacity>
+				<TouchableOpacity onPress={onConfirm} style={[styles.button, styles.successButton]} disabled={isSubmitting}>
+					<Text style={styles.buttonText}>{isSubmitting ? 'Wird gesendet...' : 'Bestätigen & Senden'}</Text>
+				</TouchableOpacity>
+			</View>
 		</Modal>
 	);
 };
-
 
 const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 	const [isEditing, setIsEditing] = useState(false);
 	const [formData, setFormData] = useState({
 		email: user.email || '',
-		classYear: user.classYear || '',
+		classYear: user.classYear ? user.classYear.toString() : '',
 		className: user.className || '',
 		profileIconClass: user.profileIconClass || 'fa-user-circle',
 	});
@@ -54,16 +55,10 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 	const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 	const [detectedChanges, setDetectedChanges] = useState({});
 
-	const handleEditToggle = () => setIsEditing(!isEditing);
-
-	const handleChange = (e) => {
-		setFormData({ ...formData, [e.target.name]: e.target.value });
-	};
-
 	const handleCancel = () => {
 		setFormData({
 			email: user.email || '',
-			classYear: user.classYear || '',
+			classYear: user.classYear ? user.classYear.toString() : '',
 			className: user.className || '',
 			profileIconClass: user.profileIconClass || 'fa-user-circle',
 		});
@@ -71,10 +66,7 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 		setError('');
 	};
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
-		setError('');
-
+	const handleSubmit = () => {
 		const changes = {};
 		if (formData.email !== (user.email || '')) {
 			changes.email = { oldVal: user.email, newVal: formData.email };
@@ -91,28 +83,27 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 
 		if (Object.keys(changes).length === 0) {
 			addToast('Keine Änderungen vorgenommen.', 'info');
+			setIsEditing(false);
 			return;
 		}
-
 		setDetectedChanges(changes);
 		setIsConfirmModalOpen(true);
 	};
-
-	const handleConfirmSubmit = async () => {
+    
+    const handleConfirmSubmit = async () => {
 		setIsSubmitting(true);
 		setError('');
-
 		try {
-			// No longer sending form data, just the JSON payload
-			const result = await apiClient.post('/public/profile/request-change', formData);
+			const result = await apiClient.post('/public/profile/request-change', {
+                ...formData,
+                classYear: parseInt(formData.classYear, 10) || null
+            });
 			if (result.success) {
 				addToast('Änderungsantrag erfolgreich eingereicht.', 'success');
 				setIsEditing(false);
 				setIsConfirmModalOpen(false);
 				onUpdate();
-			} else {
-				throw new Error(result.message);
-			}
+			} else { throw new Error(result.message); }
 		} catch (err) {
 			setError(err.message || 'Fehler beim Einreichen der Anfrage.');
 			setIsConfirmModalOpen(false);
@@ -121,88 +112,92 @@ const ProfileDetails = ({ user, hasPendingRequest, onUpdate }) => {
 		}
 	};
 
-
-	const handleColorSubmit = async (e) => {
-		e.preventDefault();
-		const newColor = e.target.elements.chatColor.value;
-		try {
-			const result = await apiClient.put('/public/profile/chat-color', { chatColor: newColor });
-			if (result.success) {
-				addToast('Chat-Farbe gespeichert', 'success');
-				onUpdate();
-			} else {
-				throw new Error(result.message);
-			}
-		} catch (err) {
-			addToast(err.message || 'Fehler beim Speichern', 'error');
-		}
-	}
-
 	return (
 		<>
-			<div className="card" id="profile-details-container">
-				<div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-					<i className={`fas ${user.profileIconClass || 'fa-user-circle'}`} style={{ fontSize: '80px', color: 'var(--text-muted-color)', width: '80px', textAlign: 'center' }}></i>
-					<h2 className="card-title" style={{ border: 'none', padding: 0, margin: 0 }}>Stammdaten</h2>
-				</div>
+			<View style={styles.card}>
+				<View style={styles.header}>
+					<Icon name={formData.profileIconClass.replace('fa-', '')} solid size={60} color="#6c757d" />
+					<Text style={styles.title}>Stammdaten</Text>
+				</View>
 
 				{hasPendingRequest && (
-					<div className="info-message"><i className="fas fa-info-circle"></i> Sie haben eine ausstehende Profiländerung.</div>
+					<View style={styles.infoMessage}><Text>Sie haben eine ausstehende Profiländerung.</Text></View>
 				)}
-				{error && <div className="error-message">{error}</div>}
-				<form onSubmit={handleSubmit}>
-					<ul className="details-list">
-						<li><strong>Benutzername:</strong> <span>{user.username}</span></li>
-						<li><strong>Jahrgang:</strong> <input type="number" name="classYear" value={formData.classYear} onChange={handleChange} readOnly={!isEditing} style={{ border: isEditing ? '' : 'none', background: isEditing ? '' : 'transparent' }} /></li>
-						<li><strong>Klasse:</strong> <input type="text" name="className" value={formData.className} onChange={handleChange} readOnly={!isEditing} style={{ border: isEditing ? '' : 'none', background: isEditing ? '' : 'transparent' }} /></li>
-						<li><strong>E-Mail:</strong> <input type="email" name="email" value={formData.email} onChange={handleChange} readOnly={!isEditing} style={{ border: isEditing ? '' : 'none', background: isEditing ? '' : 'transparent' }} /></li>
-						{isEditing && (
-							<li>
-								<label htmlFor="profileIconClass" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-									<span>
-										<strong>Profil-Icon:</strong>
-										<a href="https://fontawesome.com/search?m=free&s=solid" target="_blank" rel="noopener noreferrer" style={{ marginLeft: '0.5rem', fontSize: '0.8rem', fontWeight: 'normal' }}>
-											<i className="fas fa-search"></i> Icons suchen
-										</a>
-									</span>
-									<input type="text" id="profileIconClass" name="profileIconClass" value={formData.profileIconClass} onChange={handleChange} placeholder="z.B. fa-user-ninja" style={{ maxWidth: '200px' }} />
-								</label>
-							</li>
+				{error && <Text style={styles.errorText}>{error}</Text>}
+				
+                <View style={styles.detailRow}>
+                    <Text style={styles.label}>Benutzername:</Text>
+                    <Text style={styles.value}>{user.username}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                    <Text style={styles.label}>Jahrgang:</Text>
+                    <TextInput style={[styles.input, !isEditing && styles.readOnlyInput]} value={formData.classYear} onChangeText={val => setFormData({...formData, classYear: val})} editable={isEditing} keyboardType="number-pad" />
+                </View>
+                 <View style={styles.detailRow}>
+                    <Text style={styles.label}>Klasse:</Text>
+                    <TextInput style={[styles.input, !isEditing && styles.readOnlyInput]} value={formData.className} onChangeText={val => setFormData({...formData, className: val})} editable={isEditing} />
+                </View>
+                <View style={styles.detailRow}>
+                    <Text style={styles.label}>E-Mail:</Text>
+                    <TextInput style={[styles.input, !isEditing && styles.readOnlyInput]} value={formData.email} onChangeText={val => setFormData({...formData, email: val})} editable={isEditing} keyboardType="email-address" />
+                </View>
+                {isEditing && (
+                     <View style={styles.detailRow}>
+                        <Text style={styles.label}>Profil-Icon:</Text>
+                        <TextInput style={styles.input} value={formData.profileIconClass} onChangeText={val => setFormData({...formData, profileIconClass: val})} placeholder="z.B. user-ninja" />
+                    </View>
+                )}
+				
+				{!hasPendingRequest && (
+					<View style={styles.actionButtons}>
+						{!isEditing ? (
+							<TouchableOpacity onPress={() => setIsEditing(true)} style={[styles.button, styles.secondaryButton]}>
+								<Text style={styles.secondaryButtonText}>Profil bearbeiten</Text>
+							</TouchableOpacity>
+						) : (
+							<>
+								<TouchableOpacity onPress={handleSubmit} style={[styles.button, styles.successButton]} disabled={isSubmitting}>
+									<Text style={styles.buttonText}>Änderungen prüfen</Text>
+								</TouchableOpacity>
+								<TouchableOpacity onPress={handleCancel} style={[styles.button, styles.mutedButton]}>
+									<Text style={styles.buttonText}>Abbrechen</Text>
+								</TouchableOpacity>
+							</>
 						)}
-					</ul>
-					{!hasPendingRequest && (
-						<div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem' }}>
-							{!isEditing ? (
-								<button type="button" onClick={handleEditToggle} className="btn btn-secondary">Profil bearbeiten</button>
-							) : (
-								<>
-									<button type="submit" className="btn btn-success" disabled={isSubmitting}>Änderungen überprüfen</button>
-									<button type="button" onClick={handleCancel} className="btn" style={{ backgroundColor: 'var(--text-muted-color)' }}>Abbrechen</button>
-								</>
-							)}
-						</div>
-					)}
-				</form>
-				<hr style={{ margin: '1.5rem 0' }} />
-				<ul className="details-list">
-					<li style={{ alignItems: 'center', gap: '1rem' }}>
-						<strong>Chat-Farbe:</strong>
-						<form onSubmit={handleColorSubmit} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-							<input type="color" name="chatColor" defaultValue={user.chatColor || '#E9ECEF'} title="Wähle deine Chat-Farbe" />
-							<button type="submit" className="btn btn-small">Speichern</button>
-						</form>
-					</li>
-				</ul>
-			</div>
-			<ConfirmationModal
-				isOpen={isConfirmModalOpen}
-				onClose={() => setIsConfirmModalOpen(false)}
-				onConfirm={handleConfirmSubmit}
-				changes={detectedChanges}
-				isSubmitting={isSubmitting}
-			/>
+					</View>
+				)}
+			</View>
+			<ConfirmationModal isOpen={isConfirmModalOpen} onClose={() => setIsConfirmModalOpen(false)} onConfirm={handleConfirmSubmit} changes={detectedChanges} isSubmitting={isSubmitting} />
 		</>
 	);
 };
+
+const styles = StyleSheet.create({
+    card: { backgroundColor: '#ffffff', borderRadius: 8, padding: 16, margin: 16, borderWidth: 1, borderColor: '#dee2e6' },
+    header: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 16 },
+    title: { fontSize: 20, fontWeight: '600', color: '#002B5B' },
+    infoMessage: { backgroundColor: '#0dcaf0', padding: 12, borderRadius: 6, marginBottom: 12 },
+    errorText: { color: '#dc3545', marginBottom: 12 },
+    detailRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+    label: { fontWeight: 'bold', color: '#6c757d' },
+    value: { color: '#212529' },
+    input: { flex: 1, textAlign: 'right', paddingVertical: 4, color: '#212529' },
+    readOnlyInput: { backgroundColor: 'transparent' },
+    actionButtons: { flexDirection: 'row', gap: 8, marginTop: 16 },
+    button: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 6 },
+    secondaryButton: { borderWidth: 1, borderColor: '#6c757d' },
+    secondaryButtonText: { color: '#6c757d' },
+    successButton: { backgroundColor: '#28a745' },
+    mutedButton: { backgroundColor: '#6c757d' },
+    buttonText: { color: '#fff', fontWeight: '500' },
+    // Modal Styles
+    modalText: { marginBottom: 16, fontSize: 16 },
+    changeRow: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#eee' },
+    changeLabel: { fontWeight: 'bold', marginBottom: 4 },
+    changeValues: { flexDirection: 'row', alignItems: 'center' },
+    oldValue: { textDecorationLine: 'line-through', color: '#dc3545', marginRight: 8 },
+    newValue: { fontWeight: 'bold', color: '#28a745', marginLeft: 8 },
+    modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 24, gap: 8 },
+});
 
 export default ProfileDetails;

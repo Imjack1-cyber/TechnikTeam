@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { View } from 'react-native';
 
 const ErrorTrigger = () => {
 	useEffect(() => {
@@ -6,7 +7,7 @@ const ErrorTrigger = () => {
 		throw new Error("Dies ist ein simulierter Rendering-Fehler zum Testen der 500-Seite.");
 	}, []);
 
-	return <div>You should not see this.</div>;
+	return <View />; // Must return a valid component
 };
 
 export default ErrorTrigger;

@@ -1,178 +1,124 @@
 import React, { useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import StorageItemModal from '../../components/admin/storage/StorageItemModal';
 import Lightbox from '../../components/ui/Lightbox';
-import StatusBadge from '../../components/ui/StatusBadge';
 import { useToast } from '../../context/ToastContext';
 import Modal from '../../components/ui/Modal';
-import QRCode from 'qrcode.react';
+import QRCode from 'react-native-qrcode-svg';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, typography } from '../../styles/theme';
 
 const HealthIndicator = ({ item }) => {
-	let color = 'var(--success-color)';
-	let title = `Verfügbar: ${item.availableQuantity}/${item.maxQuantity}`;
-
-	if (item.defectiveQuantity > 0) {
-		color = 'var(--danger-color)';
-		title += ` | Defekt: ${item.defectiveQuantity}`;
-	} else if (item.maxQuantity > 0 && item.availableQuantity < item.maxQuantity) {
-		color = 'var(--warning-color)';
-	}
-
-	return (
-		<span style={{ color, fontSize: '1.5rem' }} title={title}>●</span>
-	);
+	let color = '#28a745'; // success
+	if (item.defectiveQuantity > 0) color = '#dc3545'; // danger
+	else if (item.maxQuantity > 0 && item.availableQuantity < item.maxQuantity) color = '#ffc107'; // warning
+	return <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }} />;
 };
 
 const AdminStoragePage = () => {
+    const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/storage'), []);
 	const { data: items, loading, error, reload } = useApi(apiCall);
 	const [modalState, setModalState] = useState({ isOpen: false, item: null, mode: 'edit' });
 	const [lightboxSrc, setLightboxSrc] = useState('');
 	const [qrCodeItem, setQrCodeItem] = useState(null);
 	const { addToast } = useToast();
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
 
-	const openModal = (mode, item = null) => {
-		setModalState({ isOpen: true, item, mode });
+	const openModal = (mode, item = null) => setModalState({ isOpen: true, item, mode });
+	const handleSuccess = () => { setModalState({ isOpen: false, item: null, mode: 'edit' }); reload(); };
+
+	const handleDelete = (item) => {
+		Alert.alert(`Artikel "${item.name}" löschen?`, "", [
+			{ text: 'Abbrechen', style: 'cancel' },
+			{ text: 'Löschen', style: 'destructive', onPress: async () => {
+				try {
+					const result = await apiClient.delete(`/storage/${item.id}`);
+					if (result.success) {
+						addToast('Artikel gelöscht.', 'success');
+						reload();
+					} else { throw new Error(result.message); }
+				} catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
+			}},
+		]);
 	};
 
-	const closeModal = () => {
-		setModalState({ isOpen: false, item: null, mode: 'edit' });
-	};
+	const getImagePath = (path) => `/api/v1/public/files/images/${path.split('/').pop()}`;
 
-	const handleSuccess = () => {
-		closeModal();
-		reload();
-	};
-
-	const handleDelete = async (item) => {
-		if (window.confirm(`Artikel '${item.name}' wirklich löschen?`)) {
-			try {
-				const result = await apiClient.delete(`/storage/${item.id}`);
-				if (result.success) {
-					addToast('Artikel gelöscht.', 'success');
-					reload();
-				} else {
-					throw new Error(result.message);
-				}
-			} catch (err) {
-				addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error');
-			}
-		}
-	};
-
-	const getImagePath = (path) => {
-		const filename = path.split('/').pop();
-		return `/api/v1/public/files/images/${filename}`;
-	};
+    const renderItem = ({ item }) => (
+        <View style={styles.card}>
+            <View style={styles.cardHeader}>
+                <HealthIndicator item={item} />
+                <TouchableOpacity onPress={() => navigation.navigate('StorageItemDetails', { itemId: item.id })}>
+                    <Text style={styles.cardTitle}>{item.name}</Text>
+                </TouchableOpacity>
+                {item.imagePath && (
+                    <TouchableOpacity onPress={() => setLightboxSrc(getImagePath(item.imagePath))}>
+                        <Icon name="camera" size={18} color={getThemeColors(theme).textMuted} />
+                    </TouchableOpacity>
+                )}
+            </View>
+            <View style={styles.detailRow}>
+                <Text style={styles.label}>Verfügbar:</Text>
+                <Text style={styles.value}>{item.availableQuantity}/{item.maxQuantity} {item.defectiveQuantity > 0 && `(${item.defectiveQuantity} def.)`}</Text>
+            </View>
+            <View style={styles.cardActions}>
+                <TouchableOpacity style={styles.actionButton} onPress={() => openModal('edit', item)}><Text>Bearbeiten</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.actionButton} onPress={() => openModal('defect', item)}><Text>Defekt</Text></TouchableOpacity>
+                {item.defectiveQuantity > 0 && (
+                    <TouchableOpacity style={styles.actionButton} onPress={() => openModal('repair', item)}><Text>Repariert</Text></TouchableOpacity>
+                )}
+                <TouchableOpacity style={styles.actionButton} onPress={() => setQrCodeItem(item)}><Text>QR</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.actionButton} onPress={() => handleDelete(item)}><Text style={{color: getThemeColors(theme).danger}}>Löschen</Text></TouchableOpacity>
+            </View>
+        </View>
+    );
 
 	return (
-		<div>
-			<h1><i className="fas fa-warehouse"></i> Lagerverwaltung</h1>
-			<div className="table-controls">
-				<button onClick={() => openModal('create')} className="btn btn-success">
-					<i className="fas fa-plus"></i> Neuen Artikel anlegen
-				</button>
-			</div>
+		<View style={styles.container}>
+            <TouchableOpacity style={[styles.button, styles.successButton, {margin: 16}]} onPress={() => openModal('create')}>
+                <Icon name="plus" size={16} color="#fff" />
+                <Text style={styles.buttonText}>Neuen Artikel anlegen</Text>
+            </TouchableOpacity>
 
-			<div className="desktop-table-wrapper">
-				<table className="data-table">
-					<thead>
-						<tr>
-							<th style={{ width: '5%' }}>Health</th>
-							<th>Name</th>
-							<th>Ort</th>
-							<th>Bestand</th>
-							<th>Letzte Aktion</th>
-							<th>Aktionen</th>
-						</tr>
-					</thead>
-					<tbody>
-						{loading && <tr><td colSpan="6">Lade Artikel...</td></tr>}
-						{error && <tr><td colSpan="6" className="error-message">{error}</td></tr>}
-						{items?.map(item => (
-							<tr key={item.id}>
-								<td style={{ textAlign: 'center' }}><HealthIndicator item={item} /></td>
-								<td className="item-name-cell">
-									<Link to={`/lager/details/${item.id}`}>{item.name}</Link>
-									{item.imagePath && (
-										<button className="camera-btn" onClick={() => setLightboxSrc(getImagePath(item.imagePath))}>
-											<i className="fas fa-camera"></i>
-										</button>
-									)}
-								</td>
-								<td>{item.location}</td>
-								<td>
-									{item.availableQuantity}/{item.maxQuantity}
-									{item.defectiveQuantity > 0 && <span className="text-danger"> ({item.defectiveQuantity} def.)</span>}
-								</td>
-								<td>{item.lastTransactionInfo || '-'}</td>
-								<td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-									<button onClick={() => openModal('edit', item)} className="btn btn-small">Bearbeiten</button>
-									<button onClick={() => openModal('defect', item)} className="btn btn-small btn-warning">Defekt</button>
-									{item.defectiveQuantity > 0 && (
-										<button onClick={() => openModal('repair', item)} className="btn btn-small btn-success">Repariert</button>
-									)}
-									<button onClick={() => setQrCodeItem(item)} className="btn btn-small btn-info">QR</button>
-									<button onClick={() => handleDelete(item)} className="btn btn-small btn-danger">Löschen</button>
-								</td>
-							</tr>
-						))}
-					</tbody>
-				</table>
-			</div>
+			{loading && <ActivityIndicator size="large" />}
+			{error && <Text style={styles.errorText}>{error}</Text>}
 
-			<div className="mobile-card-list">
-				{loading && <p>Lade Artikel...</p>}
-				{error && <p className="error-message">{error}</p>}
-				{items?.map(item => (
-					<div key={item.id} className="list-item-card">
-						<h3 className="card-title">
-							<HealthIndicator item={item} /> <Link to={`/lager/details/${item.id}`}>{item.name}</Link>
-							{item.imagePath && (
-								<button className="camera-btn" onClick={() => setLightboxSrc(getImagePath(item.imagePath))}>
-									<i className="fas fa-camera"></i>
-								</button>
-							)}
-						</h3>
-						<div className="card-row"><strong>Verfügbar:</strong> <span>{item.availableQuantity}/{item.maxQuantity}{item.defectiveQuantity > 0 && <span className="text-danger"> ({item.defectiveQuantity} def.)</span>}</span></div>
-						<div className="card-row"><strong>Letzte Aktion:</strong> <span>{item.lastTransactionInfo || '-'}</span></div>
-						<div className="card-actions">
-							<button onClick={() => openModal('edit', item)} className="btn btn-small">Bearbeiten</button>
-							<button onClick={() => openModal('defect', item)} className="btn btn-small btn-warning">Defekt</button>
-							{item.defectiveQuantity > 0 && (
-								<button onClick={() => openModal('repair', item)} className="btn btn-small btn-success">Repariert</button>
-							)}
-							<button onClick={() => setQrCodeItem(item)} className="btn btn-small btn-info">QR</button>
-							<button onClick={() => handleDelete(item)} className="btn btn-small btn-danger">Löschen</button>
-						</div>
-					</div>
-				))}
-			</div>
+			<FlatList
+                data={items}
+                renderItem={renderItem}
+                keyExtractor={item => item.id.toString()}
+                contentContainerStyle={{paddingHorizontal: 16}}
+            />
 
-			{modalState.isOpen && (
-				<StorageItemModal
-					isOpen={modalState.isOpen}
-					onClose={closeModal}
-					onSuccess={handleSuccess}
-					item={modalState.item}
-					initialMode={modalState.mode}
-				/>
-			)}
-
+			{modalState.isOpen && <StorageItemModal isOpen={modalState.isOpen} onClose={() => setModalState({isOpen: false, item: null, mode: 'edit'})} onSuccess={handleSuccess} item={modalState.item} initialMode={modalState.mode} />}
 			{qrCodeItem && (
 				<Modal isOpen={!!qrCodeItem} onClose={() => setQrCodeItem(null)} title={`QR-Code für: ${qrCodeItem.name}`}>
-					<div style={{ textAlign: 'center', padding: '1rem' }}>
-						<QRCode value={`${window.location.origin}/lager/qr-aktion/${qrCodeItem.id}`} size={256} />
-						<p style={{ marginTop: '1rem' }}>Scannen für schnelle Aktionen.</p>
-					</div>
+					<View style={{alignItems: 'center', padding: 16}}>
+						<QRCode value={`http://localhost:8081/TechnikTeam/lager/qr-aktion/${qrCodeItem.id}`} size={256} />
+						<Text style={{marginTop: 16}}>Scannen für schnelle Aktionen.</Text>
+					</View>
 				</Modal>
 			)}
-
 			{lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc('')} />}
-		</div>
+		</View>
 	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+        cardTitle: { fontSize: typography.h4, fontWeight: 'bold' },
+        cardActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12, justifyContent: 'flex-end' },
+        actionButton: { padding: 8, backgroundColor: colors.background, borderRadius: 6 },
+    });
 };
 
 export default AdminStoragePage;

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import apiClient from '../services/apiClient';
 
 /**
  * A custom React hook to manage the state of an API call.
@@ -8,8 +7,6 @@ import apiClient from '../services/apiClient';
  */
 const useApi = (apiCall) => {
 	const [data, setData] = useState(null);
-	// Start in a loading state. This prevents the state transition during the initial render
-	// that causes the "component suspended" error with lazy loading and routing.
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 

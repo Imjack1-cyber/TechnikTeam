@@ -1,20 +1,13 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import React, { useState, useMemo } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Linking } from 'react-native';
 import { useAuthStore } from '../../store/authStore';
 import ThemeSwitcher from '../ui/ThemeSwitcher';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
-const Sidebar = () => {
+// This component is designed to be used as the `drawerContent` for a React Navigation Drawer.
+const Sidebar = ({ navigation }) => {
 	const { user, navigationItems, logout, layout } = useAuthStore();
 	const [searchTerm, setSearchTerm] = useState('');
-	const navigate = useNavigate();
-	const navRef = useRef(null);
-	const [scrollState, setScrollState] = useState({
-		canScrollLeft: false,
-		canScrollRight: false,
-		isOverflowing: false,
-	});
-
-	const isHorizontal = layout.sidebarPosition === 'top' || layout.sidebarPosition === 'bottom';
 
 	const orderedNavItems = useMemo(() => {
 		if (!navigationItems) return [];
@@ -25,154 +18,112 @@ const Sidebar = () => {
 		return [...ordered, ...remaining];
 	}, [navigationItems, layout.navOrder]);
 
-	const checkScroll = useCallback(() => {
-		if (navRef.current) {
-			const { scrollWidth, clientWidth, scrollLeft } = navRef.current;
-			const isOverflowing = scrollWidth > clientWidth;
-			setScrollState({
-				isOverflowing,
-				canScrollLeft: isOverflowing && scrollLeft > 0,
-				canScrollRight: isOverflowing && scrollLeft < scrollWidth - clientWidth - 1,
-			});
-		}
-	}, []);
-
-	useEffect(() => {
-		const navElement = navRef.current;
-		if (!navElement || !isHorizontal) return;
-
-		checkScroll(); // Initial check
-
-		const resizeObserver = new ResizeObserver(checkScroll);
-		resizeObserver.observe(navElement);
-
-		navElement.addEventListener('scroll', checkScroll);
-
-		return () => {
-			resizeObserver.disconnect();
-			navElement.removeEventListener('scroll', checkScroll);
-		};
-	}, [orderedNavItems, isHorizontal, checkScroll]);
-
 	if (!user || !navigationItems) {
 		return null;
 	}
 
-	const handleSearchSubmit = (e) => {
-		e.preventDefault();
+	const handleSearchSubmit = () => {
 		if (searchTerm.trim()) {
-			navigate(`/suche?q=${encodeURIComponent(searchTerm.trim())}`);
+			navigation.navigate('Search', { q: searchTerm.trim() });
 			setSearchTerm('');
 		}
 	};
 
-	const handleScroll = (direction) => {
-		if (navRef.current) {
-			const scrollAmount = navRef.current.clientWidth * 0.7;
-			navRef.current.scrollBy({
-				left: direction === 'left' ? -scrollAmount : scrollAmount,
-				behavior: 'smooth',
-			});
-		}
+	const handleLogout = () => {
+		navigation.closeDrawer();
+		logout();
 	};
 
 	const userNavItems = orderedNavItems.filter(item => item.requiredPermission === null);
 	const adminNavItems = orderedNavItems.filter(item => item.requiredPermission !== null);
 
-	const handleLogout = () => {
-		logout();
-	};
-
 	const renderNavItem = (item) => {
-		const hasBadge = item.url === '/notifications' && user.unseenNotificationsCount > 0;
-
-		// Use a simple startsWith check as the full path might vary
+        const hasBadge = item.url === '/notifications' && user.unseenNotificationsCount > 0;
+        
 		if (item.url.startsWith('/swagger-ui')) {
-			// Construct the correct absolute path including the backend's context path
-			const swaggerUrl = `/TechnikTeam/swagger-ui.html`;
+			const swaggerUrl = `http://10.0.2.2:8081/TechnikTeam/swagger-ui.html`;
 			return (
-				<a href={swaggerUrl} target="_blank" rel="noopener noreferrer">
-					<i className={`fas ${item.icon} fa-fw`}></i> {item.label}
-				</a>
+				<TouchableOpacity style={styles.navLink} onPress={() => Linking.openURL(swaggerUrl)}>
+					<Icon name={item.icon} style={styles.navIcon} />
+					<Text style={styles.navLabel}>{item.label}</Text>
+				</TouchableOpacity>
 			);
 		}
 		return (
-			<NavLink to={item.url} className={({ isActive }) => (isActive ? 'active-nav-link' : '')}>
-				<i className={`fas ${item.icon} fa-fw`}></i>
-				{item.label}
-				{hasBadge && <span className="cart-badge" style={{ position: 'static', marginLeft: 'auto', width: '20px', height: '20px', fontSize: '0.7rem' }}>{user.unseenNotificationsCount}</span>}
-			</NavLink>
+			<TouchableOpacity style={styles.navLink} onPress={() => navigation.navigate(item.label)}>
+				<Icon name={item.icon} style={styles.navIcon} />
+				<Text style={styles.navLabel}>{item.label}</Text>
+                {hasBadge && (
+                    <View style={styles.badge}>
+                        <Text style={styles.badgeText}>{user.unseenNotificationsCount}</Text>
+                    </View>
+                )}
+			</TouchableOpacity>
 		);
 	};
 
 	return (
-		<aside className="sidebar">
-			<header className="sidebar-header">
-				<a href="/home" className="logo">
-					<i className="fas fa-bolt"></i> TechnikTeam
-				</a>
-			</header>
-			<div style={{ padding: '0 1rem', marginBottom: '0.5rem' }}>
-				<form onSubmit={handleSearchSubmit}>
-					<div className="form-group" style={{ position: 'relative', marginBottom: 0 }}>
-						<input
-							type="search"
-							placeholder="Suchen..."
-							value={searchTerm}
-							onChange={(e) => setSearchTerm(e.target.value)}
-							style={{ paddingLeft: '2.5rem' }}
-						/>
-						<i className="fas fa-search" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted-color)' }}></i>
-					</div>
-				</form>
-			</div>
-			<div className={`sidebar-nav-scroller ${scrollState.isOverflowing ? 'is-overflowing' : ''}`}>
-				{isHorizontal && (
-					<button className="scroll-btn left" onClick={() => handleScroll('left')} disabled={!scrollState.canScrollLeft}>
-						<i className="fas fa-chevron-left"></i>
-					</button>
-				)}
-				<nav className="sidebar-nav" ref={navRef}>
-					<ul>
-						{userNavItems.length > 0 && <li className="nav-section-title">Benutzerbereich</li>}
-						{userNavItems.map(item => (
-							<li key={`${item.label}-${item.url}`}>{renderNavItem(item)}</li>
-						))}
+		<View style={styles.container}>
+			<View style={styles.header}>
+				<Icon name="bolt" size={20} color="#007bff" />
+				<Text style={styles.logo}>TechnikTeam</Text>
+			</View>
+			<View style={styles.searchContainer}>
+				<Icon name="search" style={styles.searchIcon} />
+				<TextInput
+					style={styles.searchInput}
+					placeholder="Suchen..."
+					value={searchTerm}
+					onChangeText={setSearchTerm}
+					onSubmitEditing={handleSearchSubmit}
+					returnKeyType="search"
+				/>
+			</View>
+			<ScrollView style={styles.navScroller}>
+				<Text style={styles.navSectionTitle}>Benutzerbereich</Text>
+				{userNavItems.map(item => <View key={`${item.label}-${item.url}`}>{renderNavItem(item)}</View>)}
 
-						{adminNavItems.length > 0 && <li className="nav-section-title">Admin-Bereich</li>}
-						{adminNavItems.map(item => (
-							<li key={`${item.label}-${item.url}`}>{renderNavItem(item)}</li>
-						))}
-					</ul>
-				</nav>
-				{isHorizontal && (
-					<button className="scroll-btn right" onClick={() => handleScroll('right')} disabled={!scrollState.canScrollRight}>
-						<i className="fas fa-chevron-right"></i>
-					</button>
-				)}
-			</div>
-			<div className="user-actions">
-				<div className="user-info">
-					Angemeldet als: <strong>{user.username}</strong>
-				</div>
-				<div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-					<NavLink to="/profil" className="btn btn-secondary btn-small" style={{ flexGrow: 1 }}>Profil</NavLink>
-					<button onClick={handleLogout} className="btn btn-danger-outline btn-small" style={{ flexGrow: 1 }}>Logout</button>
-					{isHorizontal && (
-						<NavLink to="/notifications" className="btn btn-secondary btn-small" title="Benachrichtigungen" style={{ position: 'relative' }}>
-							<i className="fas fa-bell"></i>
-							{user.unseenNotificationsCount > 0 && (
-								<span className="cart-badge" style={{ position: 'absolute', top: '-5px', right: '-5px', width: '18px', height: '18px', fontSize: '0.6rem' }}>
-									{user.unseenNotificationsCount}
-								</span>
-							)}
-						</NavLink>
-					)}
+				{adminNavItems.length > 0 && <Text style={styles.navSectionTitle}>Admin-Bereich</Text>}
+				{adminNavItems.map(item => <View key={`${item.label}-${item.url}`}>{renderNavItem(item)}</View>)}
+			</ScrollView>
+			<View style={styles.footer}>
+				<Text style={styles.userInfo}>Angemeldet als: <Text style={{fontWeight: 'bold'}}>{user.username}</Text></Text>
+				<View style={styles.footerActions}>
+					<TouchableOpacity style={[styles.button, styles.secondaryButton, { flex: 1 }]} onPress={() => navigation.navigate('Profile')}>
+						<Text style={styles.buttonTextSecondary}>Profil</Text>
+					</TouchableOpacity>
+					<TouchableOpacity style={[styles.button, styles.dangerButton, { flex: 1 }]} onPress={handleLogout}>
+						<Text style={styles.buttonText}>Logout</Text>
+					</TouchableOpacity>
 					<ThemeSwitcher />
-				</div>
-			</div>
-		</aside>
+				</View>
+			</View>
+		</View>
 	);
 };
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#ffffff' },
+    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#dee2e6' },
+    logo: { fontSize: 18, fontWeight: '700', color: '#002B5B', marginLeft: 8 },
+    searchContainer: { paddingHorizontal: 16, marginVertical: 8 },
+    searchInput: { backgroundColor: '#f8f9fa', borderRadius: 20, paddingVertical: 8, paddingHorizontal: 16, paddingLeft: 40 },
+    searchIcon: { position: 'absolute', top: 12, left: 30, color: '#6c757d' },
+    navScroller: { flex: 1 },
+    navSectionTitle: { paddingHorizontal: 24, paddingVertical: 8, marginTop: 8, fontSize: 12, fontWeight: '600', textTransform: 'uppercase', color: '#6c757d' },
+    navLink: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 24, gap: 16 },
+    navIcon: { fontSize: 18, color: '#6c757d', width: 24, textAlign: 'center' },
+    navLabel: { fontSize: 16, fontWeight: '500', color: '#343a40' },
+    badge: { backgroundColor: '#dc3545', borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center', marginLeft: 'auto' },
+    badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
+    footer: { padding: 24, borderTopWidth: 1, borderTopColor: '#dee2e6' },
+    userInfo: { fontSize: 14, color: '#6c757d', marginBottom: 16 },
+    footerActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+    button: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6 },
+    secondaryButton: { backgroundColor: '#6c757d' },
+    dangerButton: { backgroundColor: '#dc3545' },
+    buttonText: { color: '#fff', textAlign: 'center' },
+    buttonTextSecondary: { color: '#fff', textAlign: 'center' },
+});
 
 export default Sidebar;

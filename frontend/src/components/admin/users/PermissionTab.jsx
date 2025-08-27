@@ -1,42 +1,68 @@
 import React from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { useAuthStore } from '../../../store/authStore';
+import { getThemeColors, typography, spacing } from '../../../styles/theme';
+import BouncyCheckbox from "react-native-bouncy-checkbox";
 
 const PermissionsTab = ({ groupedPermissions, assignedIds, onPermissionChange, isLoading }) => {
+    const theme = useAuthStore(state => state.theme);
+    const colors = getThemeColors(theme);
+    const styles = pageStyles(theme);
+
 	if (isLoading) {
-		return <p>Lade Berechtigungen...</p>;
+		return <ActivityIndicator />;
 	}
+    
+    // BouncyCheckbox doesn't support a container component well, so we wrap it
+    const renderCheckbox = (p) => (
+        <View key={p.id} style={styles.checkboxContainer}>
+            <BouncyCheckbox
+                size={25}
+                fillColor={colors.primary}
+                unfillColor="#FFFFFF"
+                iconStyle={{ borderColor: colors.border }}
+                innerIconStyle={{ borderWidth: 2 }}
+                isChecked={assignedIds.has(p.id)}
+                onPress={() => onPermissionChange(p.id)}
+            />
+            <View style={{flex: 1}}>
+                <Text style={styles.permissionKey}>{p.permissionKey.replace(p.groupName + '_', '')}</Text>
+                <Text style={styles.permissionDescription}>{p.description}</Text>
+            </View>
+        </View>
+    );
 
 	return (
-		<div>
-			<h4>Individuelle Berechtigungen</h4>
-			<p>Diese Berechtigungen gelten zusätzlich zu denen, die eine Rolle evtl. standardmäßig hat.</p>
-			<div style={{ maxHeight: '40vh', overflowY: 'auto', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius)' }}>
+		<View>
+			<Text style={styles.title}>Individuelle Berechtigungen</Text>
+			<Text style={styles.description}>Diese Berechtigungen gelten zusätzlich zu denen, die eine Rolle evtl. standardmäßig hat.</Text>
+			<ScrollView style={styles.listContainer}>
 				{Object.entries(groupedPermissions).map(([groupName, permissionsInGroup]) => (
-					<details key={groupName} open>
-						<summary style={{ fontWeight: 'bold', cursor: 'pointer', padding: '0.5rem 0' }}>
-							{groupName}
-						</summary>
-						<div style={{ paddingLeft: '1rem' }}>
-							{permissionsInGroup.map(p => (
-								<label key={p.id} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-									<input
-										type="checkbox"
-										value={p.id}
-										checked={assignedIds.has(p.id)}
-										onChange={() => onPermissionChange(p.id)}
-										style={{ marginTop: '5px', marginRight: '10px' }}
-									/>
-									<div>
-										<strong>{p.permissionKey.replace(groupName + '_', '')}</strong>
-										<small style={{ display: 'block', color: 'var(--text-muted-color)' }}>{p.description}</small>
-									</div>
-								</label>
-							))}
-						</div>
-					</details>
+                    // Accordion would be better here, using View for simplicity
+					<View key={groupName}>
+						<Text style={styles.groupName}>{groupName}</Text>
+						<View style={{ paddingLeft: 16 }}>
+							{permissionsInGroup.map(p => renderCheckbox({...p, groupName}))}
+						</View>
+					</View>
 				))}
-			</div>
-		</div>
+			</ScrollView>
+		</View>
 	);
 };
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        title: { fontSize: typography.h4, fontWeight: 'bold', marginBottom: spacing.sm },
+        description: { color: colors.textMuted, marginBottom: spacing.md },
+        listContainer: { maxHeight: '60%', borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: spacing.sm },
+        groupName: { fontWeight: 'bold', fontSize: 16, paddingVertical: 8, marginTop: 8 },
+        checkboxContainer: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 },
+        permissionKey: { fontWeight: 'bold' },
+        permissionDescription: { fontSize: typography.caption, color: colors.textMuted },
+    });
+};
+
 
 export default PermissionsTab;

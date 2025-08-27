@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import apiClient from '../services/apiClient';
+import { storage, setToken, removeToken } from '../lib/storage';
 
 const hasAdminAccess = (roleName) => {
 	// Frontend authorization check based on role.
@@ -22,8 +23,6 @@ const defaultLayout = {
 	},
 };
 
-const AUTH_TOKEN_KEY = 'technikteam-auth-token';
-
 export const useAuthStore = create(
 	persist(
 		(set, get) => ({
@@ -39,15 +38,18 @@ export const useAuthStore = create(
 			login: async (username, password) => {
 				try {
 					const response = await apiClient.post('/auth/login', { username, password });
-					if (response.success && response.data?.session) {
+					if (response.success && response.data) {
+						if (response.message === '2FA_REQUIRED') {
+							return { status: '2FA_REQUIRED', token: response.data.token };
+						}
+						
 						const { session, token } = response.data;
 						const { user, navigation, maintenanceStatus, previousLogin } = session;
 
-						localStorage.setItem(AUTH_TOKEN_KEY, token);
+						await setToken(token);
 						apiClient.setAuthToken(token);
 
 						const newTheme = user.theme || 'light';
-						document.documentElement.setAttribute('data-theme', newTheme);
 
 						set({
 							user: user,
@@ -67,17 +69,20 @@ export const useAuthStore = create(
 					throw error;
 				}
 			},
+			completeLoginWithToken: async (token) => {
+				await setToken(token);
+				apiClient.setAuthToken(token);
+				await get().fetchUserSession();
+			},
 			logout: async () => {
 				try {
 					await apiClient.post('/auth/logout');
 				} catch (error) {
 					console.error("Logout API call failed, clearing state anyway.", error);
 				} finally {
-					localStorage.removeItem(AUTH_TOKEN_KEY);
+					await removeToken();
 					apiClient.setAuthToken(null);
 					set({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, theme: 'light', layout: defaultLayout, lastUpdatedEvent: null, maintenanceStatus: { mode: 'OFF', message: '' }, previousLogin: null });
-					localStorage.removeItem('auth-storage');
-					document.documentElement.setAttribute('data-theme', 'light');
 				}
 			},
 			fetchUserSession: async () => {
@@ -90,7 +95,6 @@ export const useAuthStore = create(
 						let userLayout = defaultLayout;
 						if (user.dashboardLayout) {
 							try {
-								// Deep merge the saved layout with defaults to handle new widgets
 								const savedLayout = JSON.parse(user.dashboardLayout);
 								userLayout = {
 									...defaultLayout,
@@ -114,7 +118,6 @@ export const useAuthStore = create(
 							layout: userLayout,
 							maintenanceStatus: maintenanceStatus || { mode: 'OFF', message: '' },
 						});
-						document.documentElement.setAttribute('data-theme', newTheme);
 					} else {
 						throw new Error(result.message || "Ungültige Sitzungsdaten vom Server.");
 					}
@@ -134,7 +137,6 @@ export const useAuthStore = create(
 							user: updatedUser,
 							theme: updatedUser.theme,
 						});
-						document.documentElement.setAttribute('data-theme', updatedUser.theme);
 					} else {
 						throw new Error(result.message || 'Server konnte das Theme nicht speichern.');
 					}
@@ -191,8 +193,7 @@ export const useAuthStore = create(
 		}),
 		{
 			name: 'auth-storage',
-			storage: createJSONStorage(() => localStorage),
-			// We only persist non-sensitive UI state like theme. User/session data is fetched on load.
+			storage: createJSONStorage(() => storage), // Use our universal storage wrapper
 			partialize: (state) => ({ theme: state.theme }),
 		}
 	)

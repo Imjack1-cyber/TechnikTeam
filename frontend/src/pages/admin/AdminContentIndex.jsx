@@ -1,55 +1,79 @@
 import React from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
-const AdminContentIndex = () => {
+const AdminContentIndex = ({ navigation }) => {
 	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
-	const location = useLocation();
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
 
 	const baseLinks = [
-		{ to: '/admin/content/announcements', label: 'Anschlagbrett', icon: 'fa-thumbtack', perm: 'USER_UPDATE' },
-		{ to: '/admin/content/dateien', label: 'Dateien', icon: 'fa-file-upload', perm: 'FILE_MANAGE' },
-		{ to: '/admin/content/feedback', label: 'Feedback', icon: 'fa-inbox', perm: 'ADMIN_DASHBOARD_ACCESS' },
-		{ to: '/admin/content/benachrichtigungen', label: 'Benachrichtigungen', icon: 'fa-bullhorn', perm: 'NOTIFICATION_SEND' },
-		{ to: '/admin/content/changelogs', label: 'Changelogs', icon: 'fa-history', perm: 'ACCESS_ADMIN_PANEL' },
-		{ to: '/admin/content/documentation', label: 'Seiten-Doku', icon: 'fa-book-open', perm: 'DOCUMENTATION_MANAGE' },
+		{ to: 'AdminAnnouncements', label: 'Anschlagbrett', icon: 'thumbtack', perm: 'USER_UPDATE' },
+		{ to: 'AdminFiles', label: 'Dateien', icon: 'file-upload', perm: 'FILE_MANAGE' },
+		{ to: 'AdminFeedback', label: 'Feedback', icon: 'inbox', perm: 'ADMIN_DASHBOARD_ACCESS' },
+		{ to: 'AdminNotifications', label: 'Benachrichtigungen', icon: 'bullhorn', perm: 'NOTIFICATION_SEND' },
+		{ to: 'AdminChangelogs', label: 'Changelogs', icon: 'history', perm: 'ACCESS_ADMIN_PANEL' },
+		{ to: 'AdminDocumentation', label: 'Seiten-Doku', icon: 'book-open', perm: 'DOCUMENTATION_MANAGE' },
 	];
 
 	const can = (permission) => {
 		return isAdmin || user?.permissions.includes(permission);
 	};
 
-	const isIndexPage = location.pathname === '/admin/content' || location.pathname === '/admin/content/';
-
 	return (
-		<div>
-			{!isIndexPage && (
-				<Link to="/admin/content" className="btn btn-secondary" style={{ marginBottom: '1rem' }}>
-					<i className="fas fa-arrow-left"></i> Zur Inhaltsübersicht
-				</Link>
-			)}
-			<h1><i className="fas fa-desktop"></i> Inhalte &amp; Kommunikation</h1>
-			<p>Verwalten Sie hier die redaktionellen Inhalte und Kommunikationskanäle der Anwendung.</p>
+        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+			<View style={styles.header}>
+				<Icon name="desktop" size={24} style={styles.headerIcon} />
+				<Text style={styles.title}>Inhalte &amp; Kommunikation</Text>
+			</View>
+			<Text style={styles.subtitle}>Verwalten Sie hier die redaktionellen Inhalte und Kommunikationskanäle der Anwendung.</Text>
 
-			{isIndexPage ? (
-				<div className="dashboard-grid">
-					{baseLinks.filter(link => can(link.perm)).map(link => (
-						<Link to={link.to} className="card" key={link.to} style={{ textDecoration: 'none' }}>
-							<div style={{ textAlign: 'center' }}>
-								<i className={`fas ${link.icon}`} style={{ fontSize: '3rem', color: 'var(--primary-color)', marginBottom: '1rem' }}></i>
-								<h2 className="card-title" style={{ border: 'none', padding: 0 }}>{link.label}</h2>
-							</div>
-						</Link>
-					))}
-				</div>
-			) : (
-				<>
-					<hr style={{ margin: '2rem 0' }} />
-					<Outlet />
-				</>
-			)}
-		</div>
+            <View style={styles.grid}>
+                {baseLinks.filter(link => can(link.perm)).map(link => (
+                    <TouchableOpacity key={link.to} style={styles.card} onPress={() => navigation.navigate(link.to)}>
+                        <Icon name={link.icon} size={48} color={styles.cardIcon.color} />
+                        <Text style={styles.cardTitle}>{link.label}</Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+		</ScrollView>
 	);
 };
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        header: { flexDirection: 'row', alignItems: 'center' },
+        headerIcon: { color: colors.heading, marginRight: 12 },
+        grid: {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+        },
+        card: {
+            width: '48%', // Two columns
+            backgroundColor: colors.surface,
+            borderRadius: 8,
+            padding: 24,
+            marginBottom: 16,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 1,
+            borderColor: colors.border,
+        },
+        cardIcon: {
+            color: colors.primary,
+            marginBottom: 16,
+        },
+        cardTitle: {
+            fontSize: 16,
+            fontWeight: 'bold',
+            textAlign: 'center',
+            color: colors.text
+        },
+    });
+}
 
 export default AdminContentIndex;

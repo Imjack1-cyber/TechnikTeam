@@ -1,51 +1,75 @@
 import React from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, typography } from '../../styles/theme';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
-const AdminCoursesIndex = () => {
+const AdminCoursesIndex = ({ navigation }) => {
 	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
-	const location = useLocation();
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
 
 	const baseLinks = [
-		{ to: '/admin/lehrgaenge/courses', label: 'Lehrgangs-Vorlagen', icon: 'fa-book', perm: 'COURSE_READ' },
-		{ to: '/admin/lehrgaenge/matrix', label: 'Qualifikations-Matrix', icon: 'fa-th-list', perm: 'QUALIFICATION_READ' },
+		{ to: 'AdminCourses', label: 'Lehrgangs-Vorlagen', icon: 'book', perm: 'COURSE_READ' },
+		{ to: 'AdminMatrix', label: 'Qualifikations-Matrix', icon: 'th-list', perm: 'QUALIFICATION_READ' },
 	];
 
 	const can = (permission) => {
 		return isAdmin || user?.permissions.includes(permission);
 	};
 
-	const isIndexPage = location.pathname === '/admin/lehrgaenge';
-
 	return (
-		<div>
-			{!isIndexPage && (
-				<Link to="/admin/lehrgaenge" className="btn btn-secondary" style={{ marginBottom: '1rem' }}>
-					<i className="fas fa-arrow-left"></i> Zur Lehrgangs-Übersicht
-				</Link>
-			)}
-			<h1><i className="fas fa-graduation-cap"></i> Lehrgänge &amp; Skills</h1>
-			<p>Verwalten Sie hier die Ausbildungs-Vorlagen und den Qualifikationsstatus der Mitglieder.</p>
+		<ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+			<View style={styles.header}>
+				<Icon name="graduation-cap" size={24} style={styles.headerIcon} />
+				<Text style={styles.title}>Lehrgänge &amp; Skills</Text>
+			</View>
+			<Text style={styles.subtitle}>Verwalten Sie hier die Ausbildungs-Vorlagen und den Qualifikationsstatus der Mitglieder.</Text>
 
-			{isIndexPage ? (
-				<div className="dashboard-grid">
-					{baseLinks.filter(link => can(link.perm)).map(link => (
-						<Link to={link.to} className="card" key={link.to} style={{ textDecoration: 'none' }}>
-							<div style={{ textAlign: 'center' }}>
-								<i className={`fas ${link.icon}`} style={{ fontSize: '3rem', color: 'var(--primary-color)', marginBottom: '1rem' }}></i>
-								<h2 className="card-title" style={{ border: 'none', padding: 0 }}>{link.label}</h2>
-							</div>
-						</Link>
-					))}
-				</div>
-			) : (
-				<>
-					<hr style={{ margin: '2rem 0' }} />
-					<Outlet />
-				</>
-			)}
-		</div>
+            <View style={styles.grid}>
+                {baseLinks.filter(link => can(link.perm)).map(link => (
+                    <TouchableOpacity key={link.to} style={styles.card} onPress={() => navigation.navigate(link.to)}>
+                        <Icon name={link.icon} size={48} color={getThemeColors(theme).primary} />
+                        <Text style={styles.cardTitle}>{link.label}</Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+		</ScrollView>
 	);
 };
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        header: { flexDirection: 'row', alignItems: 'center' },
+        headerIcon: { color: colors.heading, marginRight: 12 },
+        grid: {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            marginTop: 16,
+        },
+        card: {
+            width: '48%',
+            backgroundColor: colors.surface,
+            borderRadius: 8,
+            paddingVertical: 32,
+            paddingHorizontal: 16,
+            marginBottom: 16,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 1,
+            borderColor: colors.border,
+        },
+        cardTitle: {
+            fontSize: 16,
+            fontWeight: 'bold',
+            textAlign: 'center',
+            color: colors.text,
+            marginTop: 16,
+        },
+    });
+}
 
 export default AdminCoursesIndex;

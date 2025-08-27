@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '../context/ToastContext';
 import { useAuthStore } from '../store/authStore';
+import EventSource from 'rn-eventsource';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// In a real app, this would come from an environment config file
+const BASE_URL = 'http://10.0.2.2:8081/TechnikTeam'; // Android emulator default
 
 export const useNotifications = () => {
 	const { addToast } = useToast();
@@ -20,51 +25,64 @@ export const useNotifications = () => {
 			return;
 		}
 
-		const token = localStorage.getItem('technikteam-auth-token');
-		if (!token) {
-			console.warn("[useNotifications] Cannot establish SSE connection: No auth token found.");
-			return;
-		}
+		let events;
 
-		// Construct the correct URL for EventSource with the token as a query parameter
-		const sseUrl = `/TechnikTeam/api/v1/public/notifications/sse?token=${encodeURIComponent(token)}`;
+		const connect = async () => {
+			const token = await AsyncStorage.getItem('technikteam-auth-token');
+			if (!token) {
+				console.warn("[useNotifications] Cannot establish SSE connection: No auth token found.");
+				return;
+			}
 
-		console.log(`[useNotifications] Connecting to SSE at: ${sseUrl}`);
-		const events = new EventSource(sseUrl);
+			const sseUrl = `${BASE_URL}/api/v1/public/notifications/sse?token=${encodeURIComponent(token)}`;
 
-		events.onmessage = (event) => {
-			console.log("Received SSE message:", event.data);
+			console.log(`[useNotifications] Connecting to SSE at: ${sseUrl}`);
+			events = new EventSource(sseUrl);
+
+			events.addEventListener("open", () => {
+				console.log("SSE connection opened.");
+			});
+
+			events.addEventListener("message", (event) => {
+				console.log("Received SSE message:", event.data);
+			});
+
+			events.addEventListener("notification", (event) => {
+				const data = JSON.parse(event.data);
+				incrementUnseenNotificationCount();
+				if (data.level === 'Warning') {
+					setWarningNotification(data);
+				} else {
+					addToast(
+						`${data.title}: ${data.description}`,
+						data.level === 'Important' ? 'error' : 'info',
+						data.url || null
+					);
+				}
+			});
+
+			events.addEventListener("ui_update", (event) => {
+				const data = JSON.parse(event.data);
+				console.log("Received UI update event:", data);
+				if (data.updateType === 'EVENT_UPDATED') {
+					triggerEventUpdate(data.data.eventId);
+				}
+			});
+
+			events.addEventListener("error", (err) => {
+				console.error("EventSource failed:", err);
+				if (events) {
+					events.close();
+				}
+			});
 		};
 
-		events.addEventListener("notification", (event) => {
-			const data = JSON.parse(event.data);
-			incrementUnseenNotificationCount();
-			if (data.level === 'Warning') {
-				setWarningNotification(data);
-			} else {
-				addToast(
-					`${data.title}: ${data.description}`,
-					data.level === 'Important' ? 'error' : 'info',
-					data.url || null // Pass the URL to the toast
-				);
-			}
-		});
-
-		events.addEventListener("ui_update", (event) => {
-			const data = JSON.parse(event.data);
-			console.log("Received UI update event:", data);
-			if (data.updateType === 'EVENT_UPDATED') {
-				triggerEventUpdate(data.data.eventId);
-			}
-		});
-
-		events.onerror = (err) => {
-			console.error("EventSource failed:", err);
-			events.close();
-		};
+		connect();
 
 		return () => {
-			events.close();
+			if (events) {
+				events.close();
+			}
 		};
 	}, [isAuthenticated, addToast, triggerEventUpdate, incrementUnseenNotificationCount]);
 

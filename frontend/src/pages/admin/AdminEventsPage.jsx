@@ -1,14 +1,19 @@
 import React, { useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import useAdminData from '../../hooks/useAdminData';
-import Modal from '../../components/ui/Modal';
-import StatusBadge from '../../components/ui/StatusBadge';
 import EventModal from '../../components/admin/events/EventModal';
+import StatusBadge from '../../components/ui/StatusBadge';
 import { useToast } from '../../context/ToastContext';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, typography, spacing } from '../../styles/theme';
 
 const AdminEventsPage = () => {
+    const navigation = useNavigation();
 	const eventsApiCall = useCallback(() => apiClient.get('/events'), []);
 	const templatesApiCall = useCallback(() => apiClient.get('/admin/checklist-templates'), []);
 
@@ -18,132 +23,97 @@ const AdminEventsPage = () => {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingEvent, setEditingEvent] = useState(null);
 	const { addToast } = useToast();
-	const navigate = useNavigate();
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
 	const openModal = (event = null) => {
 		setEditingEvent(event);
 		setIsModalOpen(true);
 	};
 
-	const closeModal = () => {
-		setEditingEvent(null);
-		setIsModalOpen(false);
+	const handleSuccess = () => { setIsModalOpen(false); setEditingEvent(null); reload(); };
+
+	const handleClone = (event) => {
+        Alert.alert(`Event "${event.name}" klonen?`, "Ein neues Event wird erstellt und Sie werden zur Detailansicht weitergeleitet.", [
+            { text: 'Abbrechen', style: 'cancel'},
+            { text: 'Klonen', onPress: async () => {
+                try {
+                    const result = await apiClient.post(`/events/${event.id}/clone`);
+                    if (result.success) {
+                        addToast('Event erfolgreich geklont.', 'success');
+                        navigation.navigate('EventDetails', { eventId: result.data.id });
+                    } else { throw new Error(result.message); }
+                } catch (err) { addToast(`Klonen fehlgeschlagen: ${err.message}`, 'error'); }
+            }}
+        ]);
 	};
 
-	const handleSuccess = () => {
-		closeModal();
-		reload();
+	const handleDelete = (event) => {
+        Alert.alert(`Event löschen?`, `Event '${event.name}' wirklich löschen?`, [
+            { text: 'Abbrechen', style: 'cancel'},
+            { text: 'Löschen', style: 'destructive', onPress: async () => {
+                try {
+                    const result = await apiClient.delete(`/events/${event.id}`);
+                    if (result.success) {
+                        addToast('Event erfolgreich gelöscht', 'success');
+                        reload();
+                    } else { throw new Error(result.message); }
+                } catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
+            }}
+        ]);
 	};
-
-	const handleDelete = async (event) => {
-		if (window.confirm(`Event '${event.name}' wirklich löschen?`)) {
-			try {
-				const result = await apiClient.delete(`/events/${event.id}`);
-				if (result.success) {
-					addToast('Event erfolgreich gelöscht', 'success');
-					reload();
-				} else {
-					throw new Error(result.message);
-				}
-			} catch (err) {
-				addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error');
-			}
-		}
-	};
-
-	const handleClone = async (event) => {
-		if (window.confirm(`Event '${event.name}' klonen? Ein neues Event wird erstellt und Sie werden zur Bearbeitungs-Ansicht des neuen Events weitergeleitet.`)) {
-			try {
-				const result = await apiClient.post(`/events/${event.id}/clone`);
-				if (result.success) {
-					addToast('Event erfolgreich geklont.', 'success');
-					navigate(`/veranstaltungen/details/${result.data.id}`);
-				} else {
-					throw new Error(result.message);
-				}
-			} catch (err) {
-				addToast(`Klonen fehlgeschlagen: ${err.message}`, 'error');
-			}
-		}
-	};
+    
+    const renderItem = ({ item }) => (
+        <View style={styles.card}>
+            <TouchableOpacity onPress={() => navigation.navigate('EventDetails', { eventId: item.id })}>
+                <Text style={styles.cardTitle}>{item.name}</Text>
+            </TouchableOpacity>
+            <View style={styles.detailRow}><Text style={styles.label}>Datum:</Text><Text style={styles.value}>{new Date(item.eventDateTime).toLocaleString('de-DE')}</Text></View>
+            <View style={styles.detailRow}><Text style={styles.label}>Status:</Text><StatusBadge status={item.status} /></View>
+            <View style={styles.actionsContainer}>
+                <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => openModal(item)}><Text style={styles.buttonText}>Bearbeiten</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.button, {backgroundColor: colors.primaryLight}]} onPress={() => handleClone(item)}><Text style={{color: colors.primary}}>Klonen</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.button, {backgroundColor: colors.info}]} onPress={() => navigation.navigate('EventDetails', { eventId: item.id })}><Text style={styles.buttonText}>Details</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => handleDelete(item)}><Text style={styles.dangerOutlineButtonText}>Löschen</Text></TouchableOpacity>
+            </View>
+        </View>
+    );
 
 	const loading = eventsLoading || adminFormData.loading || templatesLoading;
 
 	return (
-		<div>
-			<h1><i className="fas fa-calendar-plus"></i> Event-Verwaltung</h1>
-			<p>Hier können alle Veranstaltungen geplant, bearbeitet und verwaltet werden.</p>
-			<div className="table-controls">
-				<button onClick={() => openModal()} className="btn btn-success">
-					<i className="fas fa-plus"></i> Neues Event erstellen
-				</button>
-			</div>
-
-			<div className="desktop-table-wrapper">
-				<table className="data-table">
-					<thead>
-						<tr>
-							<th>Event-Name</th>
-							<th>Datum & Uhrzeit</th>
-							<th>Status</th>
-							<th>Aktionen</th>
-						</tr>
-					</thead>
-					<tbody>
-						{loading && <tr><td colSpan="4">Lade Events...</td></tr>}
-						{eventsError && <tr><td colSpan="4" className="error-message">{eventsError}</td></tr>}
-						{events?.map(event => (
-							<tr key={event.id}>
-								<td><Link to={`/veranstaltungen/details/${event.id}`}>{event.name}</Link></td>
-								<td>{new Date(event.eventDateTime).toLocaleString('de-DE')}</td>
-								<td><StatusBadge status={event.status} /></td>
-								<td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-									<button onClick={() => openModal(event)} className="btn btn-small">Bearbeiten</button>
-									<button onClick={() => handleClone(event)} className="btn btn-small btn-secondary">Klonen</button>
-									<Link to={`/veranstaltungen/details/${event.id}`} className="btn btn-small btn-info">
-										Details & Team
-									</Link>
-									<button onClick={() => handleDelete(event)} className="btn btn-small btn-danger">Löschen</button>
-								</td>
-							</tr>
-						))}
-					</tbody>
-				</table>
-			</div>
-
-			<div className="mobile-card-list">
-				{loading && <p>Lade Events...</p>}
-				{eventsError && <p className="error-message">{eventsError}</p>}
-				{events?.map(event => (
-					<div className="list-item-card" key={event.id}>
-						<h3 className="card-title"><Link to={`/veranstaltungen/details/${event.id}`}>{event.name}</Link></h3>
-						<div className="card-row"><strong>Datum:</strong> <span>{new Date(event.eventDateTime).toLocaleString('de-DE')}</span></div>
-						<div className="card-row"><strong>Status:</strong> <StatusBadge status={event.status} /></div>
-						<div className="card-actions">
-							<button onClick={() => openModal(event)} className="btn btn-small">Bearbeiten</button>
-							<button onClick={() => handleClone(event)} className="btn btn-small btn-secondary">Klonen</button>
-							<Link to={`/veranstaltungen/details/${event.id}`} className="btn btn-small btn-info">
-								Details
-							</Link>
-							<button onClick={() => handleDelete(event)} className="btn btn-small btn-danger">Löschen</button>
-						</div>
-					</div>
-				))}
-			</div>
-
-			{/* Prevent modal from rendering before its required data is available */}
+		<View style={styles.container}>
+			<TouchableOpacity style={[styles.button, styles.successButton, {margin: 16}]} onPress={() => openModal()}>
+                <Icon name="plus" size={16} color="#fff" />
+                <Text style={styles.buttonText}>Neues Event erstellen</Text>
+            </TouchableOpacity>
+			{loading && <ActivityIndicator size="large" />}
+			{eventsError && <Text style={styles.errorText}>{eventsError}</Text>}
+			<FlatList
+                data={events}
+                renderItem={renderItem}
+                keyExtractor={item => item.id.toString()}
+                contentContainerStyle={{paddingHorizontal: 16}}
+            />
 			{isModalOpen && !loading && (
-				<EventModal
-					isOpen={isModalOpen}
-					onClose={closeModal}
-					onSuccess={handleSuccess}
-					event={editingEvent}
-					adminFormData={adminFormData}
-					checklistTemplates={templates || []}
-				/>
+				<EventModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} event={editingEvent} adminFormData={adminFormData} checklistTemplates={templates || []} />
 			)}
-		</div>
+		</View>
 	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        actionsContainer: {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: spacing.sm,
+            marginTop: spacing.md,
+            justifyContent: 'flex-end'
+        },
+    });
 };
 
 export default AdminEventsPage;

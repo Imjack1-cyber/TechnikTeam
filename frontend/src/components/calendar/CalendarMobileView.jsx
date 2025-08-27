@@ -1,40 +1,108 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import { useAuthStore } from '../../store/authStore';
+import { getThemeColors, typography, spacing, borders } from '../../styles/theme';
 
 const CalendarMobileView = ({ entries }) => {
+    const navigation = useNavigation();
+    const theme = useAuthStore(state => state.theme);
+    const colors = getThemeColors(theme);
+    const styles = pageStyles(theme);
+
 	if (!entries || entries.length === 0) {
-		return <div className="card"><p>Derzeit sind keine Termine geplant.</p></div>;
+		return <View style={styles.emptyContainer}><Text>Derzeit sind keine Termine geplant.</Text></View>;
 	}
 
 	const sortedEntries = [...entries].sort((a, b) => parseISO(a.start) - parseISO(b.start));
 
+	const renderItem = ({ item }) => {
+        const isEvent = item.type === 'Event';
+        const navigateTo = isEvent ? 'EventDetails' : 'MeetingDetails';
+        const params = isEvent ? { eventId: item.id } : { meetingId: item.id };
+        
+		return (
+            <TouchableOpacity style={styles.itemLink} onPress={() => navigation.navigate(navigateTo, params)}>
+                <View style={styles.dateContainer}>
+                    <Text style={styles.dateDay}>{format(parseISO(item.start), 'dd')}</Text>
+                    <Text style={styles.dateMonth}>{format(parseISO(item.start), 'MMM', { locale: de })}</Text>
+                </View>
+                <View style={styles.detailsContainer}>
+                    <Text style={styles.title}>{item.title}</Text>
+                    <View style={[styles.badge, isEvent ? styles.eventBadge : styles.meetingBadge]}>
+                        <Text style={styles.badgeText}>{item.type}</Text>
+                    </View>
+                </View>
+                <Icon name="chevron-right" size={16} color={colors.textMuted} />
+            </TouchableOpacity>
+        );
+	};
+
 	return (
-		<ul className="termin-list">
-			{sortedEntries.map(entry => (
-				<li key={`${entry.type}-${entry.id}`}>
-					<Link to={entry.url} className="termin-item-link">
-						<div className="termin-item">
-							<div className="termin-date">
-								<span className="termin-date-day">{format(parseISO(entry.start), 'dd')}</span>
-								<span className="termin-date-month">{format(parseISO(entry.start), 'MMM', { locale: de })}</span>
-							</div>
-							<div className="termin-details">
-								<span className="termin-title">{entry.title}</span>
-								<span className={`status-badge ${entry.type === 'Event' ? 'termin-type-event' : 'termin-type-lehrgang'}`}>
-									{entry.type}
-								</span>
-							</div>
-							<div className="termin-arrow">
-								<i className="fas fa-chevron-right"></i>
-							</div>
-						</div>
-					</Link>
-				</li>
-			))}
-		</ul>
+		<FlatList
+			data={sortedEntries}
+			renderItem={renderItem}
+			keyExtractor={item => `${item.type}-${item.id}`}
+		/>
 	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        emptyContainer: { padding: spacing.lg, alignItems: 'center' },
+        itemLink: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: spacing.md,
+            backgroundColor: colors.surface,
+            borderBottomWidth: borders.width,
+            borderBottomColor: colors.border,
+        },
+        dateContainer: {
+            alignItems: 'center',
+            marginRight: spacing.md,
+            width: 60,
+        },
+        dateDay: {
+            fontSize: 28,
+            fontWeight: '600',
+            color: colors.primary,
+        },
+        dateMonth: {
+            fontSize: 14,
+            textTransform: 'uppercase',
+            color: colors.textMuted,
+        },
+        detailsContainer: {
+            flex: 1,
+        },
+        title: {
+            fontWeight: '600',
+            fontSize: typography.body,
+            marginBottom: spacing.xs,
+        },
+        badge: {
+            paddingVertical: 4,
+            paddingHorizontal: 8,
+            borderRadius: 12,
+            alignSelf: 'flex-start',
+        },
+        badgeText: {
+            color: colors.white,
+            fontSize: typography.caption,
+            fontWeight: 'bold',
+        },
+        eventBadge: {
+            backgroundColor: colors.danger,
+        },
+        meetingBadge: {
+            backgroundColor: colors.primary,
+        },
+    });
 };
 
 export default CalendarMobileView;

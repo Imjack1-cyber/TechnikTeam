@@ -1,16 +1,17 @@
 import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
 import Modal from '../ui/Modal';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const RenameSessionModal = ({ isOpen, onClose, onSuccess, session }) => {
     const [deviceName, setDeviceName] = useState(session.deviceName || '');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { addToast } = useToast();
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleSubmit = async () => {
         setIsSubmitting(true);
         try {
             const result = await apiClient.post(`/public/sessions/${session.id}/name`, { deviceName });
@@ -29,19 +30,16 @@ const RenameSessionModal = ({ isOpen, onClose, onSuccess, session }) => {
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Gerät umbenennen">
-            <form onSubmit={handleSubmit}>
-                <div className="form-group">
-                    <label htmlFor="deviceName">Name für diese Sitzung/dieses Gerät</label>
-                    <input id="deviceName" value={deviceName} onChange={e => setDeviceName(e.target.value)} required />
-                </div>
-                <button type="submit" className="btn" disabled={isSubmitting}>
-                    {isSubmitting ? 'Speichern...' : 'Speichern'}
-                </button>
-            </form>
+            <View>
+                <Text style={styles.label}>Name für diese Sitzung/dieses Gerät</Text>
+                <TextInput style={styles.input} value={deviceName} onChangeText={setDeviceName} autoFocus />
+                <TouchableOpacity style={styles.modalButton} onPress={handleSubmit} disabled={isSubmitting}>
+                    <Text style={styles.buttonText}>{isSubmitting ? 'Speichern...' : 'Speichern'}</Text>
+                </TouchableOpacity>
+            </View>
         </Modal>
     );
 };
-
 
 const ProfileActiveSessions = () => {
     const apiCall = useCallback(() => apiClient.get('/public/sessions'), []);
@@ -51,116 +49,91 @@ const ProfileActiveSessions = () => {
 
     const getDeviceIcon = (deviceType) => {
         switch (deviceType?.toLowerCase()) {
-            case 'desktop': return 'fa-desktop';
-            case 'mobile': return 'fa-mobile-alt';
-            case 'tablet': return 'fa-tablet-alt';
-            default: return 'fa-question-circle';
+            case 'desktop': return 'desktop';
+            case 'mobile': return 'mobile-alt';
+            case 'tablet': return 'tablet-alt';
+            default: return 'question-circle';
         }
     };
 
     const handleRevoke = async (session) => {
-        if (window.confirm(`Sitzung auf Gerät "${session.deviceName || 'Unbenannt'}" (${session.ipAddress}) wirklich beenden?`)) {
-            try {
-                const result = await apiClient.post(`/public/sessions/${session.jti}/revoke`);
-                if (result.success) {
-                    addToast('Sitzung wurde beendet.', 'success');
-                    reload();
-                } else {
-                    throw new Error(result.message);
-                }
-            } catch (err) {
-                addToast(`Fehler: ${err.message}`, 'error');
-            }
-        }
+        try {
+            const result = await apiClient.post(`/public/sessions/${session.jti}/revoke`);
+            if (result.success) {
+                addToast('Sitzung wurde beendet.', 'success');
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
     };
-
-    const handleRevokeAll = async () => {
-        if (window.confirm("Möchten Sie wirklich ALLE anderen Sitzungen beenden? Sie bleiben in dieser Sitzung angemeldet.")) {
-            try {
-                const result = await apiClient.post('/public/sessions/revoke-all');
-                if (result.success) {
-                    addToast('Alle anderen Sitzungen wurden beendet.', 'success');
-                    reload();
-                } else {
-                    throw new Error(result.message);
-                }
-            } catch (err) {
-                addToast(`Fehler: ${err.message}`, 'error');
-            }
-        }
-    };
+    
+    const renderItem = ({ item }) => (
+        <View style={styles.card}>
+            <View style={styles.cardHeader}>
+                <Icon name={getDeviceIcon(item.deviceType)} size={20} style={styles.deviceIcon} />
+                <Text style={styles.deviceName}>{item.deviceName || 'Unbenanntes Gerät'}</Text>
+            </View>
+            <View style={styles.detailRow}>
+                <Text style={styles.label}>Standort:</Text>
+                <Text style={styles.value}>{item.countryCode} ({item.ipAddress})</Text>
+            </View>
+             <View style={styles.detailRow}>
+                <Text style={styles.label}>Letzte Aktivität:</Text>
+                <Text style={styles.value}>{new Date(item.timestamp).toLocaleString('de-DE')}</Text>
+            </View>
+            <View style={styles.cardActions}>
+                <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => setRenamingSession(item)}>
+                    <Text style={styles.secondaryButtonText}>Umbenennen</Text>
+                </TouchableOpacity>
+                 <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => handleRevoke(item)}>
+                    <Text style={styles.dangerOutlineButtonText}>Abmelden</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
 
     return (
         <>
-            <div className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h2 className="card-title">Aktive Sitzungen</h2>
-                    <button onClick={handleRevokeAll} className="btn btn-danger-outline" disabled={!sessions || sessions.length <= 1}>
-                        <i className="fas fa-sign-out-alt"></i> Alle Anderen abmelden
-                    </button>
-                </div>
-                <p>Hier sehen Sie alle Geräte, auf denen Sie aktuell angemeldet sind.</p>
-                {loading && <p>Lade Sitzungen...</p>}
-                {error && <p className="error-message">{error}</p>}
-
-                <div className="desktop-table-wrapper">
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th>Gerät</th>
-                                <th>Standort</th>
-                                <th>Letzte Aktivität</th>
-                                <th>Aktion</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sessions?.map(session => (
-                                <tr key={session.id}>
-                                    <td title={session.userAgent}>
-                                        <i className={`fas ${getDeviceIcon(session.deviceType)}`} style={{ marginRight: '0.5rem' }}></i>
-                                        <strong>{session.deviceName || 'Unbenanntes Gerät'}</strong>
-                                        <br />
-                                        <small>{session.deviceType}</small>
-                                    </td>
-                                    <td>{session.countryCode} ({session.ipAddress})</td>
-                                    <td>{new Date(session.timestamp).toLocaleString('de-DE')}</td>
-                                    <td>
-                                        <button onClick={() => setRenamingSession(session)} className="btn btn-small btn-secondary">Umbenennen</button>
-                                        <button onClick={() => handleRevoke(session)} className="btn btn-small btn-danger-outline" style={{ marginLeft: '0.5rem' }}>Abmelden</button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                <div className="mobile-card-list">
-                    {sessions?.map(session => (
-                        <div className="list-item-card" key={session.id}>
-                            <h3 className="card-title" title={session.userAgent}>
-                                <i className={`fas ${getDeviceIcon(session.deviceType)}`}></i> {session.deviceName || 'Unbenanntes Gerät'}
-                            </h3>
-                            <div className="card-row"><strong>Standort:</strong> <span>{session.countryCode} ({session.ipAddress})</span></div>
-                            <div className="card-row"><strong>Letzte Aktivität:</strong> <span>{new Date(session.timestamp).toLocaleString('de-DE')}</span></div>
-                            <div className="card-actions">
-                                <button onClick={() => setRenamingSession(session)} className="btn btn-small btn-secondary">Umbenennen</button>
-                                <button onClick={() => handleRevoke(session)} className="btn btn-small btn-danger-outline">Abmelden</button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {renamingSession && (
-                <RenameSessionModal
-                    isOpen={!!renamingSession}
-                    onClose={() => setRenamingSession(null)}
-                    onSuccess={() => { setRenamingSession(null); reload(); }}
-                    session={renamingSession}
+            <View style={styles.container}>
+                <Text style={styles.title}>Aktive Sitzungen</Text>
+                <Text style={styles.description}>Hier sehen Sie alle Geräte, auf denen Sie aktuell angemeldet sind.</Text>
+                {loading && <ActivityIndicator />}
+                {error && <Text style={styles.errorText}>{error}</Text>}
+                <FlatList
+                    data={sessions}
+                    renderItem={renderItem}
+                    keyExtractor={item => item.id.toString()}
+                    ListEmptyComponent={<Text>Keine aktiven Sitzungen gefunden.</Text>}
                 />
+            </View>
+            {renamingSession && (
+                <RenameSessionModal isOpen={!!renamingSession} onClose={() => setRenamingSession(null)} onSuccess={() => { setRenamingSession(null); reload(); }} session={renamingSession} />
             )}
         </>
     );
 };
+
+const styles = StyleSheet.create({
+    container: { marginHorizontal: 16, marginTop: 16 },
+    title: { fontSize: 20, fontWeight: '600', color: '#002B5B', marginBottom: 8 },
+    description: { color: '#6c757d', marginBottom: 16 },
+    card: { backgroundColor: '#fff', borderRadius: 8, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#dee2e6' },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+    deviceIcon: { marginRight: 8, color: '#6c757d' },
+    deviceName: { fontSize: 16, fontWeight: 'bold' },
+    detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+    label: { color: '#6c757d' },
+    value: { color: '#212529' },
+    cardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 12 },
+    button: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6 },
+    secondaryButton: { borderWidth: 1, borderColor: '#6c757d' },
+    secondaryButtonText: { color: '#6c757d' },
+    dangerOutlineButton: { borderWidth: 1, borderColor: '#dc3545' },
+    dangerOutlineButtonText: { color: '#dc3545' },
+    errorText: { color: 'red' },
+    // Modal Styles
+    input: { width: '100%', height: 48, borderWidth: 1, borderColor: '#dee2e6', borderRadius: 6, paddingHorizontal: 12, marginVertical: 16 },
+    modalButton: { backgroundColor: '#007bff', paddingVertical: 12, borderRadius: 6, alignItems: 'center' },
+    buttonText: { color: '#fff', fontWeight: '500' }
+});
 
 export default ProfileActiveSessions;

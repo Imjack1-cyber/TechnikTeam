@@ -1,25 +1,28 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
-import ReactMarkdown from 'react-markdown';
-import rehypeSanitize from 'rehype-sanitize';
+import MarkdownDisplay from 'react-native-markdown-display';
+import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, typography } from '../../styles/theme';
 
 const AdminFileEditorPage = () => {
-	const { fileId } = useParams();
+	const route = useRoute();
+    const navigation = useNavigation();
+	const { fileId } = route.params;
 	const { addToast } = useToast();
+	const { isAdmin } = useAuthStore();
 	const [content, setContent] = useState('');
-	const [initialContent, setInitialContent] = useState(null); // Track last saved state
-	const [viewMode, setViewMode] = useState('edit'); // 'edit' or 'preview'
-	const [saveStatus, setSaveStatus] = useState('idle'); // 'idle', 'saving', 'saved'
+	const [initialContent, setInitialContent] = useState(null);
+	const [viewMode, setViewMode] = useState('edit');
+	const [saveStatus, setSaveStatus] = useState('idle');
 	const [error, setError] = useState('');
 
-	const contentRef = useRef(content);
-	useEffect(() => {
-		contentRef.current = content;
-	}, [content]);
-
+	const theme = useAuthStore(state => state.theme);
+	const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
 
 	const apiCall = useCallback(() => apiClient.get(`/admin/files/content/${fileId}`), [fileId]);
 	const { data: fileData, loading, error: fetchError } = useApi(apiCall);
@@ -32,90 +35,94 @@ const AdminFileEditorPage = () => {
 	}, [fileData]);
 
 	const handleSave = useCallback(async () => {
-		// Prevent saving if already saving or if there are no changes
-		if (saveStatus === 'saving' || contentRef.current === initialContent) {
-			return;
-		}
+		if (saveStatus === 'saving' || content === initialContent) return;
 
 		setSaveStatus('saving');
 		setError('');
 		try {
-			const result = await apiClient.put(`/admin/files/content/${fileId}`, { content: contentRef.current });
+			const result = await apiClient.put(`/admin/files/content/${fileId}`, { content });
 			if (result.success) {
-				setInitialContent(contentRef.current);
+				setInitialContent(content);
 				setSaveStatus('saved');
 				setTimeout(() => setSaveStatus('idle'), 2000);
-			} else {
-				throw new Error(result.message);
-			}
+			} else { throw new Error(result.message); }
 		} catch (err) {
 			setError(err.message || 'Speichern fehlgeschlagen.');
 			setSaveStatus('idle');
 			addToast(`Fehler beim Speichern: ${err.message}`, 'error');
 		}
-	}, [fileId, initialContent, saveStatus]);
+	}, [fileId, content, initialContent, saveStatus, addToast]);
 
-
-	// Auto-save logic using setInterval (throttling)
-	useEffect(() => {
-		const interval = setInterval(() => {
-			handleSave();
-		}, 2000); // Attempt to save every 2 seconds
-
-		return () => clearInterval(interval); // Cleanup on unmount
+    useEffect(() => {
+		const interval = setInterval(handleSave, 5000);
+		return () => clearInterval(interval);
 	}, [handleSave]);
-
 
 	const getSaveButtonContent = () => {
 		switch (saveStatus) {
-			case 'saving':
-				return <><i className="fas fa-spinner fa-spin"></i> Speichern...</>;
-			case 'saved':
-				return <><i className="fas fa-check"></i> Gespeichert!</>;
-			default:
-				return 'Jetzt Speichern';
+			case 'saving': return <ActivityIndicator color="#fff" />;
+			case 'saved': return <Text style={styles.buttonText}>Gespeichert!</Text>;
+			default: return <Text style={styles.buttonText}>Jetzt Speichern</Text>;
 		}
 	};
 
-	if (loading) return <div>Lade Dateiinhalt...</div>;
-	if (fetchError) return <div className="error-message">{fetchError}</div>;
+	if (loading) return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
+	if (fetchError) return <View style={styles.centered}><Text style={styles.errorText}>{fetchError}</Text></View>;
 
 	return (
-		<div>
-			<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
-				<h1><i className="fas fa-pen-alt"></i> Editor: {fileData?.filename}</h1>
-				<div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-					<div className="modal-tabs">
-						<button className={`modal-tab-button ${viewMode === 'edit' ? 'active' : ''}`} onClick={() => setViewMode('edit')}>
-							<i className="fas fa-edit"></i> Bearbeiten
-						</button>
-						<button className={`modal-tab-button ${viewMode === 'preview' ? 'active' : ''}`} onClick={() => setViewMode('preview')}>
-							<i className="fas fa-eye"></i> Vorschau
-						</button>
-					</div>
-					<Link to="/admin/content/dateien" className="btn btn-secondary">Zurück</Link>
-					<button onClick={handleSave} className={`btn ${saveStatus === 'saved' ? 'btn-success' : ''}`} disabled={saveStatus === 'saving' || content === initialContent}>
-						{getSaveButtonContent()}
-					</button>
-				</div>
-			</div>
-			{error && <p className="error-message">{error}</p>}
-			<div className="card" style={{ height: '70vh', display: 'flex', flexDirection: 'column' }}>
+		<View style={styles.container}>
+            <View style={styles.header}>
+                <Text style={styles.title}>Editor: {fileData?.filename}</Text>
+            </View>
+            <View style={styles.controls}>
+                <View style={styles.tabs}>
+                    <TouchableOpacity style={[styles.tabButton, viewMode === 'edit' && styles.activeTab]} onPress={() => setViewMode('edit')}>
+                        <Text style={[styles.tabText, viewMode === 'edit' && styles.activeTabText]}>Bearbeiten</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.tabButton, viewMode === 'preview' && styles.activeTab]} onPress={() => setViewMode('preview')}>
+                        <Text style={[styles.tabText, viewMode === 'preview' && styles.activeTabText]}>Vorschau</Text>
+                    </TouchableOpacity>
+                </View>
+                <TouchableOpacity style={[styles.button, saveStatus === 'saved' ? styles.successButton : styles.primaryButton]} onPress={handleSave} disabled={saveStatus === 'saving' || content === initialContent}>
+                    {getSaveButtonContent()}
+                </TouchableOpacity>
+            </View>
+            {error && <Text style={styles.errorText}>{error}</Text>}
+
+			<View style={styles.editorContainer}>
 				{viewMode === 'edit' ? (
-					<textarea
+					<TextInput
 						value={content}
-						onChange={(e) => setContent(e.target.value)}
-						style={{ flexGrow: 1, width: '100%', fontFamily: 'monospace', resize: 'none', border: 'none', padding: 0 }}
-						className="form-group"
+						onChangeText={setContent}
+						style={styles.textArea}
+                        multiline
+                        textAlignVertical="top"
 					/>
 				) : (
-					<div className="markdown-content" style={{ flexGrow: 1, overflowY: 'auto' }}>
-						<ReactMarkdown rehypePlugins={[rehypeSanitize]}>{content}</ReactMarkdown>
-					</div>
+					<ScrollView>
+                        <View style={{padding: 10}}>
+						    <MarkdownDisplay>{content}</MarkdownDisplay>
+                        </View>
+					</ScrollView>
 				)}
-			</div>
-		</div>
+			</View>
+		</View>
 	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        header: { padding: 16 },
+        controls: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 16 },
+        tabs: { flexDirection: 'row', borderWidth: 1, borderColor: colors.border, borderRadius: 8 },
+        tabButton: { paddingVertical: 8, paddingHorizontal: 16 },
+        activeTab: { backgroundColor: colors.primary },
+        tabText: { color: colors.text },
+        activeTabText: { color: colors.white },
+        editorContainer: { flex: 1, borderWidth: 1, borderColor: colors.border, margin: 16, borderRadius: 8, backgroundColor: colors.surface },
+        textArea: { flex: 1, padding: 10, fontSize: 14, fontFamily: 'monospace', color: colors.text },
+    });
 };
 
 export default AdminFileEditorPage;

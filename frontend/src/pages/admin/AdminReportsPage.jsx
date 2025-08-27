@@ -1,63 +1,91 @@
 import React, { useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import EventTrendChart from '../../components/admin/dashboard/EventTrendChart';
 import UserActivityChart from '../../components/admin/reports/UserActivityChart';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, typography, spacing } from '../../styles/theme';
 
 const AdminReportsPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/reports/dashboard'), []);
 	const { data: reportData, loading, error } = useApi(apiCall);
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
-	if (loading) return <div>Lade Berichte...</div>;
-	if (error) return <div className="error-message">{error}</div>;
-	if (!reportData) return <div className="card"><p>Keine Berichtsdaten verfügbar.</p></div>;
+	const getCsvLink = (reportType) => `http://10.0.2.2:8081/TechnikTeam/api/v1/reports/${reportType}?export=csv`;
+
+	if (loading) return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
+	if (error) return <View style={styles.centered}><Text style={styles.errorText}>{error}</Text></View>;
+	if (!reportData) return <View style={styles.centered}><Text>Keine Berichtsdaten verfügbar.</Text></View>;
 
 	const { eventTrend, userActivity, totalInventoryValue } = reportData;
 
-	const getCsvLink = (reportType) => `/api/v1/reports/${reportType}?export=csv`;
-
 	return (
-		<div>
-			<h1><i className="fas fa-chart-pie"></i> Berichte & Analysen</h1>
-			<p>Hier finden Sie zusammengefasste Daten und Analysen über die Anwendungsnutzung.</p>
+		<ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+			<View style={styles.headerContainer}>
+                <Icon name="chart-pie" size={24} style={styles.headerIcon} />
+			    <Text style={styles.title}>Berichte & Analysen</Text>
+            </View>
+			<Text style={styles.subtitle}>Hier finden Sie zusammengefasste Daten und Analysen über die Anwendungsnutzung.</Text>
 
-			<div className="dashboard-grid">
-				<div className="card" style={{ gridColumn: '1 / -1' }}>
-					<h2 className="card-title">Event-Trend (Letzte 12 Monate)</h2>
-					<EventTrendChart trendData={eventTrend} />
-				</div>
+			<View style={styles.card}>
+				<Text style={styles.cardTitle}>Event-Trend (Letzte 12 Monate)</Text>
+				<EventTrendChart trendData={eventTrend} />
+			</View>
 
-				<div className="card">
-					<h2 className="card-title">Top 10 Aktivste Benutzer</h2>
-					<UserActivityChart activityData={userActivity} />
-				</div>
+			<View style={styles.card}>
+				<Text style={styles.cardTitle}>Top 10 Aktivste Benutzer</Text>
+				<UserActivityChart activityData={userActivity} />
+			</View>
 
-				<div className="card">
-					<h2 className="card-title">Sonstige Berichte & Exporte</h2>
-					<ul className="details-list">
-						<li>
-							<span>Teilnahme-Zusammenfassung</span>
-							<a href={getCsvLink('event-participation')} className="btn btn-small btn-success"><i className="fas fa-file-csv"></i> Als CSV exportieren</a>
-						</li>
-						<li>
-							<span>Nutzungsfrequenz (Material)</span>
-							<a href={getCsvLink('inventory-usage')} className="btn btn-small btn-success"><i className="fas fa-file-csv"></i> Als CSV exportieren</a>
-						</li>
-						<li>
-							<span>Vollständige Benutzeraktivität</span>
-							<a href={getCsvLink('user-activity')} className="btn btn-small btn-success"><i className="fas fa-file-csv"></i> Als CSV exportieren</a>
-						</li>
-						<li>
-							<span>Gesamtwert des Lagers</span>
-							<span style={{ fontWeight: 'bold' }}>
-								{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(totalInventoryValue)}
-							</span>
-						</li>
-					</ul>
-				</div>
-			</div>
-		</div>
+			<View style={styles.card}>
+				<Text style={styles.cardTitle}>Sonstige Berichte & Exporte</Text>
+                <View style={styles.exportRow}>
+                    <Text style={styles.exportLabel}>Teilnahme-Zusammenfassung</Text>
+                    <TouchableOpacity style={styles.exportButton} onPress={() => Linking.openURL(getCsvLink('event-participation'))}>
+                        <Icon name="file-csv" size={16} color={colors.white} />
+                        <Text style={styles.buttonText}>CSV</Text>
+                    </TouchableOpacity>
+                </View>
+                <View style={styles.exportRow}>
+                    <Text style={styles.exportLabel}>Nutzungsfrequenz (Material)</Text>
+                    <TouchableOpacity style={styles.exportButton} onPress={() => Linking.openURL(getCsvLink('inventory-usage'))}>
+                         <Icon name="file-csv" size={16} color={colors.white} />
+                        <Text style={styles.buttonText}>CSV</Text>
+                    </TouchableOpacity>
+                </View>
+                <View style={styles.exportRow}>
+                    <Text style={styles.exportLabel}>Vollständige Benutzeraktivität</Text>
+                    <TouchableOpacity style={styles.exportButton} onPress={() => Linking.openURL(getCsvLink('user-activity'))}>
+                         <Icon name="file-csv" size={16} color={colors.white} />
+                        <Text style={styles.buttonText}>CSV</Text>
+                    </TouchableOpacity>
+                </View>
+                <View style={styles.exportRow}>
+                    <Text style={styles.exportLabel}>Gesamtwert des Lagers</Text>
+                    <Text style={styles.inventoryValue}>
+                        {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(totalInventoryValue)}
+                    </Text>
+                </View>
+			</View>
+		</ScrollView>
 	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        headerContainer: { flexDirection: 'row', alignItems: 'center' },
+        headerIcon: { color: colors.heading, marginRight: 12 },
+        exportRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 1, borderColor: colors.border },
+        exportLabel: { fontSize: typography.body, color: colors.text },
+        exportButton: { flexDirection: 'row', gap: 8, backgroundColor: colors.success, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6 },
+        inventoryValue: { fontWeight: 'bold', fontSize: typography.body, color: colors.text },
+    });
 };
 
 export default AdminReportsPage;

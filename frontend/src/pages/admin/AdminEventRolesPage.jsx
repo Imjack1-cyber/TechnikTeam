@@ -1,166 +1,115 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, typography, spacing } from '../../styles/theme';
+import RNPickerSelect from 'react-native-picker-select';
 
-const AdminEventRolesPage = () => {
-	const apiCall = useCallback(() => apiClient.get('/admin/event-roles'), []);
-	const { data: roles, loading, error, reload } = useApi(apiCall);
-	const [isModalOpen, setIsModalOpen] = useState(false);
-	const [editingRole, setEditingRole] = useState(null);
-	const { addToast } = useToast();
-
-	const openModal = (role = null) => {
-		setEditingRole(role);
-		setIsModalOpen(true);
-	};
-
-	const closeModal = () => {
-		setEditingRole(null);
-		setIsModalOpen(false);
-	};
-
-	const handleSuccess = () => {
-		closeModal();
-		reload();
-	};
-
-	const handleDelete = async (role) => {
-		if (window.confirm(`Rolle "${role.name}" wirklich löschen? Sie wird von allen aktuellen Zuweisungen entfernt.`)) {
-			try {
-				const result = await apiClient.delete(`/admin/event-roles/${role.id}`);
-				if (result.success) {
-					addToast('Rolle erfolgreich gelöscht', 'success');
-					reload();
-				} else {
-					throw new Error(result.message);
-				}
-			} catch (err) {
-				addToast(`Fehler: ${err.message}`, 'error');
-			}
-		}
-	};
-
+const AchievementKeyDisplay = ({ achievementKey }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = pageStyles(theme);
+	const parts = achievementKey.split('_');
+	const [trigger, action, condition] = parts;
 	return (
-		<div>
-			<h1><i className="fas fa-user-tag"></i> Event-Rollen verwalten</h1>
-			<p>Definieren Sie hier wiederverwendbare Rollen, die Benutzern bei Events zugewiesen werden können.</p>
-			<div className="table-controls">
-				<button onClick={() => openModal()} className="btn btn-success">
-					<i className="fas fa-plus"></i> Neue Rolle
-				</button>
-			</div>
-
-			{loading && <p>Lade Rollen...</p>}
-			{error && <p className="error-message">{error}</p>}
-
-			<div className="desktop-table-wrapper">
-				<table className="data-table">
-					<thead>
-						<tr>
-							<th>Icon</th>
-							<th>Name</th>
-							<th>Beschreibung</th>
-							<th>Aktionen</th>
-						</tr>
-					</thead>
-					<tbody>
-						{roles?.map(role => (
-							<tr key={role.id}>
-								<td><i className={`fas ${role.iconClass}`} style={{ fontSize: '1.5rem' }}></i></td>
-								<td>{role.name}</td>
-								<td>{role.description}</td>
-								<td>
-									<button onClick={() => openModal(role)} className="btn btn-small">Bearbeiten</button>
-									<button onClick={() => handleDelete(role)} className="btn btn-small btn-danger" style={{ marginLeft: '0.5rem' }}>Löschen</button>
-								</td>
-							</tr>
-						))}
-					</tbody>
-				</table>
-			</div>
-
-			<div className="mobile-card-list">
-				{roles?.map(role => (
-					<div className="list-item-card" key={role.id}>
-						<h3 className="card-title"><i className={`fas ${role.iconClass}`}></i> {role.name}</h3>
-						<p style={{ marginTop: '0.5rem' }}>{role.description}</p>
-						<div className="card-actions">
-							<button onClick={() => openModal(role)} className="btn btn-small">Bearbeiten</button>
-							<button onClick={() => handleDelete(role)} className="btn btn-small btn-danger">Löschen</button>
-						</div>
-					</div>
-				))}
-			</div>
-
-			{isModalOpen && (
-				<RoleModal
-					isOpen={isModalOpen}
-					onClose={closeModal}
-					onSuccess={handleSuccess}
-					role={editingRole}
-				/>
-			)}
-		</div>
+		<View style={styles.keyContainer}>
+			<Text style={[styles.keyPart, styles.keyTrigger]}>{trigger}</Text>
+			<Text style={[styles.keyPart, styles.keyAction]}>{action}</Text>
+			{condition && <Text style={[styles.keyPart, styles.keyCondition]}>{condition}</Text>}
+		</View>
 	);
 };
 
-const RoleModal = ({ isOpen, onClose, onSuccess, role }) => {
+const AchievementModal = ({ isOpen, onClose, onSuccess, achievement }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
 	const { addToast } = useToast();
+	const [achievementKey, setAchievementKey] = useState('');
+	const formDataApiCall = useCallback(() => apiClient.get('/form-data/achievements'), []);
+	const { data: formData } = useApi(formDataApiCall);
+	const [keyParts, setKeyParts] = useState({ trigger: 'EVENT', action: '', condition: '' });
+    const [formState, setFormState] = useState({ name: '', description: '', iconClass: '' });
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
+	useEffect(() => {
+		if (isOpen) {
+			if (achievement) {
+                setFormState({ name: achievement.name, description: achievement.description, iconClass: achievement.iconClass });
+				setAchievementKey(achievement.achievementKey);
+				const parts = achievement.achievementKey.split('_');
+				setKeyParts({ trigger: parts[0] || 'EVENT', action: parts[1] || '', condition: parts[2] || '' });
+			} else {
+                setFormState({ name: '', description: '', iconClass: '' });
+				setAchievementKey('EVENT__');
+				setKeyParts({ trigger: 'EVENT', action: '', condition: '' });
+			}
+		}
+	}, [achievement, isOpen]);
+
+	const handleKeyPartChange = (part, value) => {
+		const newKeyParts = { ...keyParts, [part]: value };
+		if (part === 'trigger') newKeyParts.condition = '';
+		setKeyParts(newKeyParts);
+		setAchievementKey(`${newKeyParts.trigger}_${newKeyParts.action}_${newKeyParts.condition}`.toUpperCase());
+	};
+
+	const handleSubmit = async () => {
 		setIsSubmitting(true);
 		setError('');
-		const formData = new FormData(e.target);
-		const data = Object.fromEntries(formData.entries());
-
+		const data = { ...formState, achievementKey };
 		try {
-			const result = role
-				? await apiClient.put(`/admin/event-roles/${role.id}`, data)
-				: await apiClient.post('/admin/event-roles', data);
+			const result = achievement ? await apiClient.put(`/achievements/${achievement.id}`, data) : await apiClient.post('/achievements', data);
 			if (result.success) {
-				addToast(`Rolle erfolgreich ${role ? 'aktualisiert' : 'erstellt'}.`, 'success');
+				addToast(`Abzeichen ${achievement ? 'aktualisiert' : 'erstellt'}.`, 'success');
 				onSuccess();
-			}
-			else throw new Error(result.message);
+			} else { throw new Error(result.message); }
 		} catch (err) {
 			setError(err.message || 'Fehler beim Speichern');
 		} finally {
 			setIsSubmitting(false);
 		}
 	};
+    
+    const courseOptions = formData?.courses?.map(c => ({ label: c.name, value: c.abbreviation })) || [];
 
 	return (
-		<Modal isOpen={isOpen} onClose={onClose} title={role ? 'Rolle bearbeiten' : 'Neue Rolle erstellen'}>
-			<form onSubmit={handleSubmit}>
-				{error && <p className="error-message">{error}</p>}
-				<div className="form-group">
-					<label htmlFor="modal-name">Name der Rolle</label>
-					<input id="modal-name" name="name" defaultValue={role?.name} required />
-				</div>
-				<div className="form-group">
-					<label htmlFor="modal-desc">Beschreibung</label>
-					<textarea id="modal-desc" name="description" defaultValue={role?.description} rows="3"></textarea>
-				</div>
-				<div className="form-group">
-					<label htmlFor="modal-icon">
-						Font Awesome Icon-Klasse
-						<a href="https://fontawesome.com/search?m=free&s=solid" target="_blank" rel="noopener noreferrer" style={{ marginLeft: '0.5rem', fontSize: '0.8rem' }}>
-							<i className="fas fa-search"></i> Icons suchen
-						</a>
-					</label>
-					<input id="modal-icon" name="iconClass" defaultValue={role?.iconClass || 'fa-user-tag'} placeholder="z.B. fa-user-tie" required />
-				</div>
-				<button type="submit" className="btn" disabled={isSubmitting}>
-					{isSubmitting ? 'Speichern...' : 'Speichern'}
-				</button>
-			</form>
+		<Modal isOpen={isOpen} onClose={onClose} title={achievement ? 'Abzeichen bearbeiten' : 'Neues Abzeichen'}>
+			<ScrollView>
+				{error && <Text style={styles.errorText}>{error}</Text>}
+                <Text style={styles.label}>Name</Text><TextInput style={styles.input} value={formState.name} onChangeText={val => setFormState({...formState, name: val})} />
+                <Text style={styles.label}>Schlüssel</Text>
+                <View style={styles.keyBuilder}>
+                    <RNPickerSelect onValueChange={(val) => handleKeyPartChange('trigger', val)} items={[{ label: 'Event', value: 'EVENT' }, { label: 'Qualifikation', value: 'QUALIFICATION' }]} value={keyParts.trigger} style={pickerSelectStyles} />
+                    <RNPickerSelect onValueChange={(val) => handleKeyPartChange('action', val)} items={keyParts.trigger === 'EVENT' ? [{ label: 'Teilnahme', value: 'PARTICIPANT' }, { label: 'Leitung', value: 'LEADER' }] : [{ label: 'Erhalten', value: 'GAINED' }]} value={keyParts.action} style={pickerSelectStyles} placeholder={{ label: 'Aktion...', value: null }} />
+                    {keyParts.trigger === 'EVENT' ? <TextInput style={[styles.input, {flex: 1}]} value={keyParts.condition} onChangeText={val => handleKeyPartChange('condition', val)} keyboardType="number-pad" placeholder="Anzahl" /> : <RNPickerSelect onValueChange={(val) => handleKeyPartChange('condition', val)} items={courseOptions} value={keyParts.condition} style={pickerSelectStyles} placeholder={{ label: 'Kurs...', value: null }} /> }
+                </View>
+                <TextInput style={[styles.input, styles.disabledInput]} value={achievementKey} editable={false} />
+                <Text style={styles.label}>Beschreibung</Text><TextInput style={styles.textArea} value={formState.description} onChangeText={val => setFormState({...formState, description: val})} multiline />
+                <Text style={styles.label}>Font Awesome Icon-Klasse</Text><TextInput style={styles.input} value={formState.iconClass} onChangeText={val => setFormState({...formState, iconClass: val})} placeholder="z.B. fa-star" />
+				<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}><Text style={styles.buttonText}>{isSubmitting ? 'Speichern...' : 'Speichern'}</Text></TouchableOpacity>
+			</ScrollView>
 		</Modal>
 	);
 };
 
-export default AdminEventRolesPage;
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        keyContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+        keyPart: { paddingVertical: 2, paddingHorizontal: 6, borderRadius: 4, borderWidth: 1, overflow: 'hidden'},
+        keyTrigger: { backgroundColor: colors.primaryLight, borderColor: colors.primary, color: colors.primary },
+        keyAction: { backgroundColor: colors.background, borderColor: colors.border },
+        keyCondition: { backgroundColor: colors.background, borderColor: colors.border },
+        keyBuilder: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+    });
+};
+
+const pickerSelectStyles = StyleSheet.create({
+  inputIOS: { height: 48, borderWidth: 1, borderColor: '#dee2e6', borderRadius: 6, paddingHorizontal: 12, justifyContent: 'center', flex: 1 },
+  inputAndroid: { height: 48, borderWidth: 1, borderColor: '#dee2e6', borderRadius: 6, paddingHorizontal: 12, justifyContent: 'center', flex: 1 },
+});

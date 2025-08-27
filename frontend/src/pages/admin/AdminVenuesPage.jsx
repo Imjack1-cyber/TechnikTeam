@@ -1,8 +1,13 @@
 import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
-import Modal from '../../components/ui/Modal';
+import VenueModal from '../../components/admin/venues/VenueModal';
 import { useToast } from '../../context/ToastContext';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, typography, spacing } from '../../styles/theme';
 
 const AdminVenuesPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/admin/venues'), []);
@@ -10,170 +15,89 @@ const AdminVenuesPage = () => {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingVenue, setEditingVenue] = useState(null);
 	const { addToast } = useToast();
+    const theme = useAuthStore(state => state.theme);
+    const commonStyles = getCommonStyles(theme);
+    const styles = { ...commonStyles, ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
 	const openModal = (venue = null) => {
 		setEditingVenue(venue);
 		setIsModalOpen(true);
 	};
+    
+    const handleSuccess = () => {
+        setIsModalOpen(false);
+        setEditingVenue(null);
+        reload();
+    };
 
-	const closeModal = () => {
-		setEditingVenue(null);
-		setIsModalOpen(false);
+	const handleDelete = (venue) => {
+        Alert.alert(`Ort "${venue.name}" löschen?`, "", [
+            { text: 'Abbrechen', style: 'cancel' },
+            { text: 'Löschen', style: 'destructive', onPress: async () => {
+                try {
+                    const result = await apiClient.delete(`/admin/venues/${venue.id}`);
+                    if (result.success) {
+                        addToast('Ort erfolgreich gelöscht', 'success');
+                        reload();
+                    } else { throw new Error(result.message); }
+                } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
+            }}
+        ]);
 	};
-
-	const handleSuccess = () => {
-		closeModal();
-		reload();
-	};
-
-	const handleDelete = async (venue) => {
-		if (window.confirm(`Veranstaltungsort "${venue.name}" wirklich löschen?`)) {
-			try {
-				const result = await apiClient.delete(`/admin/venues/${venue.id}`);
-				if (result.success) {
-					addToast('Ort erfolgreich gelöscht', 'success');
-					reload();
-				} else {
-					throw new Error(result.message);
-				}
-			} catch (err) {
-				addToast(`Fehler: ${err.message}`, 'error');
-			}
-		}
-	};
+    
+    const renderItem = ({ item }) => (
+        <View style={styles.card}>
+            <Text style={styles.cardTitle}>{item.name}</Text>
+            <View style={styles.detailRow}>
+                <Text style={styles.label}>Adresse:</Text>
+                <Text style={styles.value} numberOfLines={1}>{item.address || '-'}</Text>
+            </View>
+            <View style={styles.detailRow}>
+                <Text style={styles.label}>Karte:</Text>
+                <Text style={styles.value}>{item.mapImagePath ? 'Ja' : 'Nein'}</Text>
+            </View>
+             <View style={styles.cardActions}>
+                <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => openModal(item)}><Text style={styles.buttonText}>Bearbeiten</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => handleDelete(item)}><Text style={styles.dangerOutlineButtonText}>Löschen</Text></TouchableOpacity>
+            </View>
+        </View>
+    );
 
 	return (
-		<div>
-			<h1><i className="fas fa-map-marked-alt"></i> Veranstaltungsorte verwalten</h1>
-			<p>Verwalten Sie hier die Orte und die zugehörigen Raumpläne.</p>
-			<div className="table-controls">
-				<button onClick={() => openModal()} className="btn btn-success">
-					<i className="fas fa-plus"></i> Neuer Ort
-				</button>
-			</div>
+		<View style={styles.container}>
+            <View style={styles.headerContainer}>
+                <Icon name="map-marked-alt" size={24} style={styles.headerIcon} />
+			    <Text style={styles.title}>Veranstaltungsorte</Text>
+            </View>
+			<Text style={styles.subtitle}>Verwalten Sie hier die Orte und die zugehörigen Raumpläne.</Text>
+            <TouchableOpacity style={[styles.button, styles.successButton, { alignSelf: 'flex-start' }]} onPress={() => openModal()}>
+                <Icon name="plus" size={16} color="#fff" />
+                <Text style={styles.buttonText}>Neuer Ort</Text>
+            </TouchableOpacity>
 
-			{loading && <p>Lade Orte...</p>}
-			{error && <p className="error-message">{error}</p>}
+			{loading && <ActivityIndicator size="large" />}
+			{error && <Text style={styles.errorText}>{error}</Text>}
 
-			<div className="desktop-table-wrapper">
-				<table className="data-table">
-					<thead>
-						<tr>
-							<th>Name</th>
-							<th>Adresse</th>
-							<th>Kartenbild</th>
-							<th>Aktionen</th>
-						</tr>
-					</thead>
-					<tbody>
-						{venues?.map(venue => (
-							<tr key={venue.id}>
-								<td>{venue.name}</td>
-								<td>{venue.address}</td>
-								<td>{venue.mapImagePath ? 'Ja' : 'Nein'}</td>
-								<td>
-									<button onClick={() => openModal(venue)} className="btn btn-small">Bearbeiten</button>
-									<button onClick={() => handleDelete(venue)} className="btn btn-small btn-danger" style={{ marginLeft: '0.5rem' }}>Löschen</button>
-								</td>
-							</tr>
-						))}
-					</tbody>
-				</table>
-			</div>
-			<div className="mobile-card-list">
-				{venues?.map(venue => (
-					<div className="list-item-card" key={venue.id}>
-						<h3 className="card-title">{venue.name}</h3>
-						<div className="card-row"><strong>Adresse:</strong> <span>{venue.address || '-'}</span></div>
-						<div className="card-row"><strong>Karte:</strong> <span>{venue.mapImagePath ? 'Ja' : 'Nein'}</span></div>
-						<div className="card-actions">
-							<button onClick={() => openModal(venue)} className="btn btn-small">Bearbeiten</button>
-							<button onClick={() => handleDelete(venue)} className="btn btn-small btn-danger">Löschen</button>
-						</div>
-					</div>
-				))}
-			</div>
-			{isModalOpen && (
-				<VenueModal
-					isOpen={isModalOpen}
-					onClose={closeModal}
-					onSuccess={handleSuccess}
-					venue={editingVenue}
-				/>
-			)}
-		</div>
+			<FlatList
+                data={venues}
+                renderItem={renderItem}
+                keyExtractor={item => item.id.toString()}
+            />
+
+			{isModalOpen && <VenueModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} venue={editingVenue} />}
+		</View>
 	);
 };
 
-const VenueModal = ({ isOpen, onClose, onSuccess, venue }) => {
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [error, setError] = useState('');
-	const { addToast } = useToast();
-
-	const handleSubmit = async (e) => {
-		e.preventDefault();
-		setIsSubmitting(true);
-		setError('');
-
-		const formData = new FormData();
-		const venueData = {
-			name: e.target.name.value,
-			address: e.target.address.value,
-			notes: e.target.notes.value,
-			mapImagePath: venue?.mapImagePath // Preserve existing image path
-		};
-		formData.append('venue', new Blob([JSON.stringify(venueData)], { type: 'application/json' }));
-		if (e.target.mapImage.files[0]) {
-			formData.append('mapImage', e.target.mapImage.files[0]);
-		}
-
-		try {
-			const endpoint = venue ? `/admin/venues/${venue.id}` : '/admin/venues';
-			// Since apiClient doesn't have a dedicated `put` for FormData, we use `request`
-			const result = await apiClient.request(endpoint, {
-				method: venue ? 'PUT' : 'POST',
-				body: formData
-			});
-
-			if (result.success) {
-				addToast(`Ort erfolgreich ${venue ? 'aktualisiert' : 'erstellt'}.`, 'success');
-				onSuccess();
-			}
-			else throw new Error(result.message);
-		} catch (err) {
-			setError(err.message || 'Fehler beim Speichern');
-		} finally {
-			setIsSubmitting(false);
-		}
-	};
-
-	return (
-		<Modal isOpen={isOpen} onClose={onClose} title={venue ? 'Ort bearbeiten' : 'Neuen Ort erstellen'}>
-			<form onSubmit={handleSubmit}>
-				{error && <p className="error-message">{error}</p>}
-				<div className="form-group">
-					<label>Name des Ortes</label>
-					<input name="name" defaultValue={venue?.name} required />
-				</div>
-				<div className="form-group">
-					<label>Adresse (optional)</label>
-					<input name="address" defaultValue={venue?.address} />
-				</div>
-				<div className="form-group">
-					<label>Notizen (z.B. Kontaktperson, Besonderheiten)</label>
-					<textarea name="notes" defaultValue={venue?.notes} rows="3"></textarea>
-				</div>
-				<div className="form-group">
-					<label>Raumplan / Kartenbild (optional)</label>
-					<input type="file" name="mapImage" accept="image/*" />
-					{venue?.mapImagePath && <small>Aktuelles Bild wird überschrieben, wenn eine neue Datei ausgewählt wird.</small>}
-				</div>
-				<button type="submit" className="btn" disabled={isSubmitting}>
-					{isSubmitting ? 'Speichern...' : 'Speichern'}
-				</button>
-			</form>
-		</Modal>
-	);
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        container: { flex: 1, padding: spacing.md },
+        headerContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
+        headerIcon: { color: colors.heading, marginRight: 12 },
+        cardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 16 },
+    });
 };
 
 export default AdminVenuesPage;

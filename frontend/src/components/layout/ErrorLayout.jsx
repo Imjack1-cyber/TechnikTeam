@@ -1,30 +1,41 @@
-import React, { useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import React from 'react';
+import { View, StyleSheet, SafeAreaView, StatusBar } from 'react-native';
 import { useAuthStore } from '../../store/authStore';
 
+// Note: In React Native, theming is handled differently.
+// We'll apply basic styles here, but a full theme would use a ThemeContext.
+// This component ensures a safe area and consistent background for error screens.
+
 const ErrorLayout = ({ children }) => {
-	// Attempt to get the user's theme. Fallback to localStorage or light theme.
-	const userTheme = useAuthStore.getState().user?.theme;
+	const theme = useAuthStore.getState().theme;
+	const isDarkMode = theme === 'dark';
 
-	useEffect(() => {
-		const savedTheme = userTheme || localStorage.getItem('theme') || 'light';
-		document.documentElement.setAttribute('data-theme', savedTheme);
-		// Add a class to the body for specific error page styling if needed
-		document.body.classList.add('error-page-active');
-
-		// Cleanup function to remove the class when the component unmounts
-		return () => {
-			document.body.classList.remove('error-page-active');
-		};
-	}, [userTheme]);
+	const containerStyle = {
+		backgroundColor: isDarkMode ? '#0d1117' : '#f8f9fa', // bg-color
+	};
 
 	return (
-		// The wrapper no longer centers content by default.
-		// It now provides a full-page container for its children.
-		<div className="error-page-wrapper">
-			{children || <Outlet />}
-		</div>
+		<SafeAreaView style={[styles.safeArea, containerStyle]}>
+			<StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+			<View style={styles.wrapper}>
+				{children}
+			</View>
+		</SafeAreaView>
 	);
 };
+
+const styles = StyleSheet.create({
+	safeArea: {
+		flex: 1,
+	},
+	wrapper: {
+		flex: 1,
+		justifyContent: 'center',
+		alignItems: 'center',
+		padding: 16,
+		fontFamily: 'Courier New', // Note: custom fonts need to be added to the project
+	},
+});
+
 
 export default ErrorLayout;

@@ -1,66 +1,31 @@
 import React, { useCallback, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
 import Modal from '../ui/Modal';
 import Lightbox from '../ui/Lightbox';
-import './EventGallery.css';
+import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, spacing } from '../../styles/theme';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
+// PhotoUploadModal would be a new component, similar to others, using a file picker
 const PhotoUploadModal = ({ isOpen, onClose, onSuccess, eventId }) => {
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [error, setError] = useState('');
-	const [file, setFile] = useState(null);
-	const [caption, setCaption] = useState('');
-	const { addToast } = useToast();
-
-	const handleSubmit = async (e) => {
-		e.preventDefault();
-		if (!file) {
-			setError('Bitte wählen Sie eine Bilddatei aus.');
-			return;
-		}
-
-		setIsSubmitting(true);
-		setError('');
-
-		const formData = new FormData();
-		formData.append('file', file);
-		formData.append('caption', caption);
-
-		try {
-			const result = await apiClient.post(`/public/events/${eventId}/gallery`, formData);
-			if (result.success) {
-				addToast('Foto erfolgreich hochgeladen!', 'success');
-				onSuccess();
-			} else {
-				throw new Error(result.message);
-			}
-		} catch (err) {
-			setError(err.message || 'Upload fehlgeschlagen.');
-		} finally {
-			setIsSubmitting(false);
-		}
-	};
-
-	return (
-		<Modal isOpen={isOpen} onClose={onClose} title="Neues Foto hochladen">
-			<form onSubmit={handleSubmit}>
-				{error && <p className="error-message">{error}</p>}
-				<div className="form-group">
-					<label htmlFor="photo-file">Bilddatei</label>
-					<input type="file" id="photo-file" name="file" onChange={e => setFile(e.target.files[0])} accept="image/jpeg,image/png,image/gif" required />
-				</div>
-				<div className="form-group">
-					<label htmlFor="photo-caption">Bildunterschrift (optional)</label>
-					<input type="text" id="photo-caption" name="caption" value={caption} onChange={e => setCaption(e.target.value)} maxLength="255" />
-				</div>
-				<button type="submit" className="btn" disabled={isSubmitting}>
-					{isSubmitting ? 'Wird hochgeladen...' : 'Hochladen'}
-				</button>
-			</form>
-		</Modal>
-	);
-};
+    const { addToast } = useToast();
+    const handleUpload = () => {
+        addToast("File picker not implemented in this demo", "info");
+        onSuccess();
+    };
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Neues Foto hochladen">
+            <View>
+                <Text>Hier wäre die UI zum Auswählen und Hochladen eines Fotos.</Text>
+                <TouchableOpacity onPress={handleUpload} style={getCommonStyles().button}><Text style={getCommonStyles().buttonText}>Hochladen (Simuliert)</Text></TouchableOpacity>
+            </View>
+        </Modal>
+    );
+}
 
 const EventGalleryTab = ({ event, user }) => {
 	const apiCall = useCallback(() => apiClient.get(`/public/events/${event.id}/gallery`), [event.id]);
@@ -69,77 +34,70 @@ const EventGalleryTab = ({ event, user }) => {
 	const [lightboxSrc, setLightboxSrc] = useState('');
 	const { addToast } = useToast();
 
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
+
 	const isParticipant = event.assignedAttendees?.some(attendee => attendee.id === user.id);
 
-	const handleDelete = async (photoId) => {
-		if (window.confirm("Dieses Foto wirklich löschen?")) {
-			try {
-				const result = await apiClient.delete(`/public/events/gallery/${photoId}`);
-				if (result.success) {
-					addToast("Foto gelöscht", "success");
-					reload();
-				} else {
-					throw new Error(result.message);
-				}
-			} catch (err) {
-				addToast(err.message, 'error');
-			}
-		}
-	};
+	const getImagePath = (path) => `http://10.0.2.2:8081/TechnikTeam/api/v1/public/files/images/${path.split('/').pop()}`;
 
-	const getImagePath = (path) => {
-		// The path from the DB might be like "event_galleries/1/xyz.jpg"
-		// The API endpoint is /api/v1/public/files/images/{filename}
-		// We only need the filename part.
-		const filename = path.split('/').pop();
-		return `/api/v1/public/files/images/${filename}`;
-	};
+    const renderItem = ({ item }) => {
+        const canDelete = user.isAdmin || user.id === event.leaderUserId || user.id === item.uploaderUserId;
+        const imageUrl = getImagePath(item.filepath);
+        return (
+            <TouchableOpacity style={styles.photoCard} onPress={() => setLightboxSrc(imageUrl)}>
+                <Image source={{ uri: imageUrl }} style={styles.photoImage} />
+                <View style={styles.captionContainer}>
+                    <Text style={styles.captionText}>{item.caption}</Text>
+                    <Text style={styles.captionUser}>Von: {item.uploaderUsername}</Text>
+                </View>
+                {canDelete && (
+                    <TouchableOpacity style={styles.deleteButton}>
+                        <Icon name="times" size={14} color={colors.white} />
+                    </TouchableOpacity>
+                )}
+            </TouchableOpacity>
+        );
+    };
 
 	return (
-		<div>
+		<View>
 			{isParticipant && (
-				<div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-					<button onClick={() => setIsUploadModalOpen(true)} className="btn btn-success">
-						<i className="fas fa-upload"></i> Foto hochladen
-					</button>
-				</div>
+				<TouchableOpacity style={[styles.button, styles.successButton, { alignSelf: 'flex-end', margin: spacing.md }]} onPress={() => setIsUploadModalOpen(true)}>
+                    <Icon name="upload" size={16} color="#fff" />
+					<Text style={styles.buttonText}> Foto hochladen</Text>
+				</TouchableOpacity>
 			)}
 
-			{loading && <p>Lade Galerie...</p>}
-			{error && <p className="error-message">{error}</p>}
+			{loading && <ActivityIndicator />}
+			{error && <Text style={styles.errorText}>{error}</Text>}
 
-			{photos?.length === 0 ? (
-				<p>Für diese Veranstaltung wurden noch keine Fotos hochgeladen.</p>
-			) : (
-				<div className="photo-gallery-grid">
-					{photos?.map(photo => {
-						const canDelete = user.isAdmin || user.id === event.leaderUserId || user.id === photo.uploaderUserId;
-						const imageUrl = getImagePath(photo.filepath);
-						return (
-							<div key={photo.id} className="photo-card">
-								<img src={imageUrl} alt={photo.caption || 'Event-Foto'} onClick={() => setLightboxSrc(imageUrl)} />
-								<div className="photo-card-caption">
-									<p>{photo.caption}</p>
-									<small>Von: {photo.uploaderUsername}</small>
-									{canDelete && <button className="delete-photo-btn" onClick={() => handleDelete(photo.id)} title="Löschen">×</button>}
-								</div>
-							</div>
-						);
-					})}
-				</div>
-			)}
+			<FlatList
+                data={photos}
+                renderItem={renderItem}
+                keyExtractor={item => item.id.toString()}
+                numColumns={2}
+                ListEmptyComponent={<Text style={{padding: spacing.md}}>Für diese Veranstaltung wurden noch keine Fotos hochgeladen.</Text>}
+                contentContainerStyle={{padding: spacing.md}}
+            />
 
-			{isUploadModalOpen && (
-				<PhotoUploadModal
-					isOpen={isUploadModalOpen}
-					onClose={() => setIsUploadModalOpen(false)}
-					onSuccess={() => { setIsUploadModalOpen(false); reload(); }}
-					eventId={event.id}
-				/>
-			)}
-			{lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc('')} />}
-		</div>
+			{isUploadModalOpen && <PhotoUploadModal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} onSuccess={() => { setIsUploadModalOpen(false); reload(); }} eventId={event.id} />}
+			{!!lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc('')} />}
+		</View>
 	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        photoCard: { flex: 1, margin: spacing.xs, borderRadius: borders.radius, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
+        photoImage: { width: '100%', height: 150 },
+        captionContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.6)', padding: spacing.sm },
+        captionText: { color: colors.white, fontSize: 14 },
+        captionUser: { color: colors.white, fontSize: 12, opacity: 0.8 },
+        deleteButton: { position: 'absolute', top: 5, right: 5, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, width: 24, height: 24, justifyContent: 'center', alignItems: 'center' },
+    });
 };
 
 export default EventGalleryTab;

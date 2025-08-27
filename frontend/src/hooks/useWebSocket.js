@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// In a real app, this would come from an environment config file
+const WS_BASE_URL = 'ws://10.0.2.2:8081/TechnikTeam'; // Android emulator default
 
 /**
- * A custom hook to manage a WebSocket connection.
- * @param {string} url - The WebSocket URL to connect to.
+ * A custom hook to manage a WebSocket connection in React Native.
+ * @param {string} url - The WebSocket URL path (e.g., /ws/chat/1).
  * @param {Function} onMessage - Callback function to handle incoming messages.
  * @param {Array} dependencies - An array of dependencies that, when changed, will trigger a reconnect.
  * @returns {object} An object containing the WebSocket ready state and a sendMessage function.
@@ -11,29 +15,25 @@ const useWebSocket = (url, onMessage, dependencies = []) => {
 	const [readyState, setReadyState] = useState(WebSocket.CONNECTING);
 	const socketRef = useRef(null);
 
-	// Memoize onMessage to prevent re-renders from creating new function identities
 	const onMessageCallback = useCallback(onMessage, []);
 
 	useEffect(() => {
-		const token = localStorage.getItem('technikteam-auth-token');
-		if (!url || !token) {
-			if (socketRef.current) {
-				socketRef.current.close(1000, "URL or token changed to null");
-				socketRef.current = null;
+		let reconnectTimeout;
+
+		const connect = async () => {
+			const token = await AsyncStorage.getItem('technikteam-auth-token');
+			if (!url || !token) {
+				if (socketRef.current) {
+					socketRef.current.close(1000, "URL or token changed to null");
+					socketRef.current = null;
+				}
+				setReadyState(WebSocket.CLOSED);
+				return;
 			}
-			setReadyState(WebSocket.CLOSED);
-			return;
-		};
 
-		const connect = () => {
 			const authenticatedUrl = `${url}?token=${encodeURIComponent(token)}`;
-			let finalUrl;
-			// In both prod and dev, construct absolute URL based on current host and context path
-			const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-			const host = window.location.host;
-			finalUrl = `${protocol}//${host}/TechnikTeam${authenticatedUrl}`;
-
-
+			const finalUrl = `${WS_BASE_URL}${authenticatedUrl}`;
+			
 			console.log(`Attempting to connect to WebSocket at: ${finalUrl}`);
 
 			const socket = new WebSocket(finalUrl);
@@ -62,21 +62,22 @@ const useWebSocket = (url, onMessage, dependencies = []) => {
 					console.error('WebSocket-Verbindung aufgrund von Authentifizierungs-/Autorisierungsfehler geschlossen.');
 				} else {
 					console.warn('WebSocket-Verbindung geschlossen. Versuche erneute Verbindung...');
-					setTimeout(connect, 5000);
+					reconnectTimeout = setTimeout(connect, 5000);
 				}
 				setReadyState(WebSocket.CLOSED);
 			};
 
 			socket.onerror = (error) => {
-				console.error('WebSocket-Fehler:', error);
+				console.error('WebSocket-Fehler:', error.message);
 				setReadyState(WebSocket.CLOSED);
-				socket.close();
+				socket.close(); // Ensure it's closed before reconnecting
 			};
 		};
 
 		connect();
 
 		return () => {
+			clearTimeout(reconnectTimeout);
 			if (socketRef.current) {
 				socketRef.current.onclose = null; // Prevent reconnect attempts on component unmount
 				socketRef.current.close();

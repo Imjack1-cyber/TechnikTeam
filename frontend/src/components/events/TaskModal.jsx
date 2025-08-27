@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import Modal from '../ui/Modal';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
+import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { Picker } from '@react-native-picker/picker';
+import { MultipleSelectList } from 'react-native-dropdown-select-list';
 
 const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
 	const isEditMode = !!task;
 	const { addToast } = useToast();
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -17,8 +24,7 @@ const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
 
 	useEffect(() => {
 		if (isOpen) {
-			console.log("[TaskModal] Opening modal. Is edit mode:", isEditMode, "Task data:", task);
-			if (isEditMode) {
+			if (isEditMode && task) {
 				setFormData({
 					description: task.description || '',
 					details: task.details || '',
@@ -26,28 +32,16 @@ const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
 					assignedUserIds: task.assignedUsers?.map(u => u.id) || [],
 				});
 			} else {
-				setFormData({
-					description: '',
-					details: '',
-					status: 'OFFEN',
-					assignedUserIds: [],
-				});
+				setFormData({ description: '', details: '', status: 'OFFEN', assignedUserIds: [] });
 			}
 		}
 	}, [task, isEditMode, isOpen]);
+    
+    const handleChange = (name, value) => {
+        setFormData(prev => ({...prev, [name]: value}));
+    };
 
-	const handleChange = (e) => {
-		setFormData({ ...formData, [e.target.name]: e.target.value });
-	};
-
-	const handleMultiSelectChange = (e) => {
-		const options = [...e.target.selectedOptions];
-		const values = options.map(option => parseInt(option.value, 10));
-		setFormData(prev => ({ ...prev, assignedUserIds: values }));
-	};
-
-	const handleSubmit = async (e) => {
-		e.preventDefault();
+	const handleSubmit = async () => {
 		setIsSubmitting(true);
 		setError('');
 
@@ -56,9 +50,7 @@ const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
 			description: formData.description,
 			details: formData.details,
 			status: formData.status,
-			// The backend expects assignedUsers array, not just IDs
 			assignedUsers: formData.assignedUserIds.map(id => ({ id })),
-			// Stub other fields for now as they are not editable in this modal
 			dependsOn: task?.dependsOn || [],
 			requiredItems: task?.requiredItems || [],
 			requiredKits: task?.requiredKits || [],
@@ -66,59 +58,57 @@ const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
 			displayOrder: task?.displayOrder || 0,
 		};
 
-		console.log('[TaskModal] Submitting task payload to API:', payload);
-
 		try {
 			const result = await apiClient.post(`/events/${event.id}/tasks`, payload);
-			console.log('[TaskModal] API response received:', result);
 			if (result.success) {
-				addToast(`Aufgabe erfolgreich ${isEditMode ? 'aktualisiert' : 'erstellt'}.`, 'success');
+				addToast(`Aufgabe ${isEditMode ? 'aktualisiert' : 'erstellt'}.`, 'success');
 				onSuccess();
-			} else {
-				throw new Error(result.message);
-			}
+			} else { throw new Error(result.message); }
 		} catch (err) {
-			console.error('[TaskModal] Task submission failed:', err);
 			setError(err.message || 'Speichern fehlgeschlagen.');
 		} finally {
 			setIsSubmitting(false);
 		}
 	};
+    
+    const userOptions = allUsers?.map(u => ({ key: u.id, value: u.username })) || [];
 
 	return (
 		<Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? "Aufgabe bearbeiten" : "Neue Aufgabe erstellen"}>
-			<form onSubmit={handleSubmit}>
-				{error && <p className="error-message">{error}</p>}
-				<div className="form-group">
-					<label>Beschreibung (Titel)</label>
-					<input name="description" value={formData.description} onChange={handleChange} required />
-				</div>
-				<div className="form-group">
-					<label>Details (Markdown unterstützt)</label>
-					<textarea name="details" value={formData.details} onChange={handleChange} rows="5" />
-				</div>
-				<div className="form-group">
-					<label>Status</label>
-					<select name="status" value={formData.status} onChange={handleChange}>
-						<option value="OFFEN">Offen</option>
-						<option value="IN_ARBEIT">In Arbeit</option>
-						<option value="ERLEDIGT">Erledigt</option>
-					</select>
-				</div>
-				<div className="form-group">
-					<label>Zugewiesen an (halten Sie Strg/Cmd gedrückt, um mehrere auszuwählen)</label>
-					<select name="assignedUserIds" multiple value={formData.assignedUserIds} onChange={handleMultiSelectChange} style={{ height: '120px' }}>
-						{allUsers?.map(user => (
-							<option key={user.id} value={user.id}>{user.username}</option>
-						))}
-					</select>
-				</div>
-				<button type="submit" className="btn" disabled={isSubmitting}>
-					{isSubmitting ? 'Wird gespeichert...' : 'Aufgabe speichern'}
-				</button>
-			</form>
+			<ScrollView>
+				{error && <Text style={styles.errorText}>{error}</Text>}
+				<Text style={styles.label}>Beschreibung (Titel)</Text>
+				<TextInput style={styles.input} value={formData.description} onChangeText={val => handleChange('description', val)} />
+
+				<Text style={styles.label}>Details (Markdown unterstützt)</Text>
+				<TextInput style={[styles.input, styles.textArea]} value={formData.details} onChangeText={val => handleChange('details', val)} multiline />
+				
+                <Text style={styles.label}>Status</Text>
+				<Picker selectedValue={formData.status} onValueChange={val => handleChange('status', val)}>
+                    <Picker.Item label="Offen" value="OFFEN" />
+                    <Picker.Item label="In Arbeit" value="IN_ARBEIT" />
+                    <Picker.Item label="Erledigt" value="ERLEDIGT" />
+                </Picker>
+                
+                <Text style={styles.label}>Zugewiesen an</Text>
+                <MultipleSelectList 
+                    setSelected={(val) => handleChange('assignedUserIds', val)} 
+                    data={userOptions} 
+                    save="key"
+                    label="Zugewiesene Mitglieder"
+                    placeholder="Mitglieder auswählen"
+                    searchPlaceholder="Suchen"
+                    boxStyles={styles.input}
+                />
+
+				<TouchableOpacity style={[styles.button, styles.primaryButton, {marginTop: 16}]} onPress={handleSubmit} disabled={isSubmitting}>
+					{isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Aufgabe speichern</Text>}
+				</TouchableOpacity>
+			</ScrollView>
 		</Modal>
 	);
 };
+
+const pageStyles = (theme) => StyleSheet.create({});
 
 export default TaskModal;

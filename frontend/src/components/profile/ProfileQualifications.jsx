@@ -1,49 +1,78 @@
 import React from 'react';
+import { View, Text, StyleSheet, FlatList } from 'react-native';
 
 const ProfileQualifications = ({ qualifications }) => {
+
+	const renderItem = ({ item }) => (
+		<View style={styles.row}>
+			<Text style={styles.courseName}>{item.courseName}</Text>
+			<Text style={styles.status}>{item.status}</Text>
+		</View>
+	);
+
 	return (
-		<div className="card" id="profile-qualifications-container">
-			<h2 className="card-title">Meine Qualifikationen</h2>
-			<div className="desktop-table-wrapper">
-				<div className="table-wrapper" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-					<table className="data-table">
-						<thead>
-							<tr>
-								<th>Lehrgang</th>
-								<th>Status</th>
-							</tr>
-						</thead>
-						<tbody>
-							{qualifications.length === 0 ? (
-								<tr><td colSpan="2">Keine Qualifikationen erworben.</td></tr>
-							) : (
-								qualifications.map(qual => (
-									<tr key={qual.courseId}>
-										<td>{qual.courseName}</td>
-										<td>{qual.status}</td>
-									</tr>
-								))
-							)}
-						</tbody>
-					</table>
-				</div>
-			</div>
-			<div className="mobile-card-list">
-				{qualifications.length === 0 ? (
-					<p>Keine Qualifikationen erworben.</p>
-				) : (
-					qualifications.map(qual => (
-						<div className="list-item-card" key={qual.courseId}>
-							<div className="card-row">
-								<strong>{qual.courseName}</strong>
-								<span>{qual.status}</span>
-							</div>
-						</div>
-					))
-				)}
-			</div>
-		</div>
+		<View style={styles.card}>
+			<Text style={styles.title}>Meine Qualifikationen</Text>
+			{qualifications.length === 0 ? (
+				<Text>Keine Qualifikationen erworben.</Text>
+			) : (
+				<FlatList
+					data={qualifications}
+					renderItem={renderItem}
+					keyExtractor={item => item.courseId.toString()}
+					ListHeaderComponent={() => (
+						<View style={[styles.row, styles.headerRow]}>
+							<Text style={styles.headerText}>Lehrgang</Text>
+							<Text style={styles.headerText}>Status</Text>
+						</View>
+					)}
+				/>
+			)}
+		</View>
 	);
 };
+
+const styles = StyleSheet.create({
+	card: {
+		backgroundColor: '#ffffff',
+		borderRadius: 8,
+		padding: 16,
+		marginHorizontal: 16,
+		marginBottom: 16,
+		borderWidth: 1,
+		borderColor: '#dee2e6',
+	},
+	title: {
+		fontSize: 20,
+		fontWeight: '600',
+		color: '#002B5B',
+		marginBottom: 12,
+	},
+	headerRow: {
+		borderBottomWidth: 2,
+		borderBottomColor: '#dee2e6',
+	},
+	headerText: {
+		fontWeight: 'bold',
+		color: '#6c757d',
+		flex: 1,
+	},
+	row: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		paddingVertical: 10,
+		borderBottomWidth: 1,
+		borderBottomColor: '#f0f0f0',
+	},
+	courseName: {
+		flex: 1,
+		color: '#212529',
+	},
+	status: {
+		flex: 1,
+		textAlign: 'right',
+		color: '#212529',
+	},
+});
 
 export default ProfileQualifications;

@@ -1,34 +1,36 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../context/ToastContext';
-import ReactMarkdown from 'react-markdown';
-import rehypeSanitize from 'rehype-sanitize';
+import MarkdownDisplay from 'react-native-markdown-display';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, typography, spacing } from '../../styles/theme';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import { MultipleSelectList } from 'react-native-dropdown-select-list';
 
 const AdminEventDebriefingPage = () => {
-	const { eventId } = useParams();
+	const route = useRoute();
+    const navigation = useNavigation();
+	const { eventId } = route.params;
 	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
 	const { addToast } = useToast();
+    const theme = useAuthStore(state => state.theme);
+    const commonStyles = getCommonStyles(theme);
+    const styles = { ...commonStyles, ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
-	// Fetch event details to get name and assigned crew
 	const eventApiCall = useCallback(() => apiClient.get(`/public/events/${eventId}`), [eventId]);
 	const { data: event, loading: eventLoading, error: eventError } = useApi(eventApiCall);
 
-	// Fetch existing debriefing data
 	const debriefingApiCall = useCallback(() => apiClient.get(`/admin/events/${eventId}/debriefing`), [eventId]);
 	const { data: debriefing, loading: debriefingLoading, error: debriefingError, reload: reloadDebriefing } = useApi(debriefingApiCall);
 
-	const [formData, setFormData] = useState({
-		whatWentWell: '',
-		whatToImprove: '',
-		equipmentNotes: '',
-		standoutCrewMemberIds: [],
-	});
+	const [formData, setFormData] = useState({ whatWentWell: '', whatToImprove: '', equipmentNotes: '', standoutCrewMemberIds: [] });
 	const [isEditing, setIsEditing] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [error, setError] = useState('');
 
 	useEffect(() => {
 		if (debriefing) {
@@ -38,121 +40,97 @@ const AdminEventDebriefingPage = () => {
 				equipmentNotes: debriefing.equipmentNotes || '',
 				standoutCrewMemberIds: debriefing.standoutCrewDetails?.map(u => u.id) || [],
 			});
-			setIsEditing(false); // Default to view mode if data exists
+			setIsEditing(false);
 		} else {
-			setIsEditing(true); // Default to edit mode if no data exists
+			setIsEditing(true);
 		}
 	}, [debriefing]);
 
-	const handleChange = (e) => {
-		const { name, value } = e.target;
-		setFormData(prev => ({ ...prev, [name]: value }));
-	};
-
-	const handleMultiSelectChange = (e) => {
-		const options = [...e.target.selectedOptions];
-		const values = options.map(option => parseInt(option.value, 10));
-		setFormData(prev => ({ ...prev, standoutCrewMemberIds: values }));
-	};
-
-	const handleSubmit = async (e) => {
-		e.preventDefault();
+	const handleSubmit = async () => {
 		setIsSubmitting(true);
-		setError('');
 		try {
 			const result = await apiClient.post(`/admin/events/${eventId}/debriefing`, formData);
 			if (result.success) {
-				addToast('Debriefing erfolgreich gespeichert!', 'success');
+				addToast('Debriefing gespeichert!', 'success');
 				reloadDebriefing();
-			} else {
-				throw new Error(result.message);
-			}
+			} else { throw new Error(result.message); }
 		} catch (err) {
-			setError(err.message || 'Speichern fehlgeschlagen.');
+			addToast(err.message, 'error');
 		} finally {
 			setIsSubmitting(false);
 		}
 	};
 
-	if (eventLoading || debriefingLoading) return <div>Lade Daten...</div>;
-	if (eventError) return <div className="error-message">{eventError}</div>;
-	if (debriefingError) return <div className="error-message">{debriefingError}</div>;
-	if (!event) return <div className="error-message">Event nicht gefunden.</div>;
+	const loading = eventLoading || debriefingLoading;
+	if (loading) return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
+	if (eventError) return <View style={styles.centered}><Text style={styles.errorText}>{eventError}</Text></View>;
+	if (!event) return <View style={styles.centered}><Text>Event nicht gefunden.</Text></View>;
 
 	const canManage = isAdmin || (user.permissions && user.permissions.includes('EVENT_DEBRIEFING_MANAGE')) || user.id === event.leaderUserId;
 
 	if (!isEditing && debriefing) {
 		return (
-			<div>
-				<h1><i className="fas fa-clipboard-check"></i> Debriefing für: {event.name}</h1>
-				<p className="details-subtitle">Eingereicht von {debriefing.authorUsername} am {new Date(debriefing.submittedAt).toLocaleString('de-DE')}</p>
-				{canManage && <button className="btn" onClick={() => setIsEditing(true)}>Bearbeiten</button>}
-				<div className="card" style={{ marginTop: '1.5rem' }}>
-					<h3 className="card-title">Was lief gut?</h3>
-					<div className="markdown-content"><ReactMarkdown rehypePlugins={[rehypeSanitize]}>{debriefing.whatWentWell}</ReactMarkdown></div>
-				</div>
-				<div className="card">
-					<h3 className="card-title">Was kann verbessert werden?</h3>
-					<div className="markdown-content"><ReactMarkdown rehypePlugins={[rehypeSanitize]}>{debriefing.whatToImprove}</ReactMarkdown></div>
-				</div>
-				<div className="card">
-					<h3 className="card-title">Anmerkungen zum Material</h3>
-					<div className="markdown-content"><ReactMarkdown rehypePlugins={[rehypeSanitize]}>{debriefing.equipmentNotes || 'Keine Anmerkungen.'}</ReactMarkdown></div>
-				</div>
-				<div className="card">
-					<h3 className="card-title">Besonders hervorgehobene Mitglieder</h3>
-					{debriefing.standoutCrewDetails?.length > 0 ? (
-						<p>{debriefing.standoutCrewDetails.map(u => u.username).join(', ')}</p>
-					) : <p>Niemand wurde besonders hervorgehoben.</p>}
-				</div>
-				<Link to="/admin/veranstaltungen" className="btn btn-secondary" style={{ marginTop: '1rem' }}>Zurück zur Event-Übersicht</Link>
-			</div>
+			<ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+				<Text style={styles.title}>Debriefing: {event.name}</Text>
+				<Text style={styles.subtitle}>Eingereicht von {debriefing.authorUsername} am {new Date(debriefing.submittedAt).toLocaleString('de-DE')}</Text>
+				{canManage && <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={() => setIsEditing(true)}><Text style={styles.buttonText}>Bearbeiten</Text></TouchableOpacity>}
+				<View style={styles.card}><Text style={styles.cardTitle}>Was lief gut?</Text><MarkdownDisplay>{debriefing.whatWentWell}</MarkdownDisplay></View>
+				<View style={styles.card}><Text style={styles.cardTitle}>Was kann verbessert werden?</Text><MarkdownDisplay>{debriefing.whatToImprove}</MarkdownDisplay></View>
+				<View style={styles.card}><Text style={styles.cardTitle}>Anmerkungen zum Material</Text><MarkdownDisplay>{debriefing.equipmentNotes || 'Keine.'}</MarkdownDisplay></View>
+				<View style={styles.card}><Text style={styles.cardTitle}>Besonders hervorgehobene Mitglieder</Text><Text>{debriefing.standoutCrewDetails?.length > 0 ? debriefing.standoutCrewDetails.map(u => u.username).join(', ') : 'Niemand wurde besonders hervorgehoben.'}</Text></View>
+                <TouchableOpacity style={[styles.button, styles.secondaryButton, {marginTop: 16}]} onPress={() => navigation.goBack()}><Text style={styles.buttonText}>Zurück</Text></TouchableOpacity>
+			</ScrollView>
 		);
 	}
 
-
 	if (!canManage) {
-		return <div className="error-message">Sie haben keine Berechtigung, dieses Debriefing zu bearbeiten.</div>
+		return <View style={styles.centered}><Text style={styles.errorText}>Sie haben keine Berechtigung, dieses Debriefing zu bearbeiten.</Text></View>;
 	}
+    
+    const crewOptions = event.assignedAttendees?.map(m => ({ key: m.id, value: m.username })) || [];
 
 	return (
-		<div>
-			<h1><i className="fas fa-clipboard-check"></i> Debriefing für: {event.name}</h1>
-			<p className="details-subtitle">Fassen Sie die wichtigsten Punkte der Veranstaltung zusammen.</p>
-			{error && <p className="error-message">{error}</p>}
-			<div className="card">
-				<form onSubmit={handleSubmit}>
-					<div className="form-group">
-						<label htmlFor="whatWentWell">Was lief gut?</label>
-						<textarea id="whatWentWell" name="whatWentWell" value={formData.whatWentWell} onChange={handleChange} rows="6" required></textarea>
-					</div>
-					<div className="form-group">
-						<label htmlFor="whatToImprove">Was kann verbessert werden?</label>
-						<textarea id="whatToImprove" name="whatToImprove" value={formData.whatToImprove} onChange={handleChange} rows="6" required></textarea>
-					</div>
-					<div className="form-group">
-						<label htmlFor="equipmentNotes">Anmerkungen zum Material</label>
-						<textarea id="equipmentNotes" name="equipmentNotes" value={formData.equipmentNotes} onChange={handleChange} rows="4"></textarea>
-					</div>
-					<div className="form-group">
-						<label htmlFor="standoutCrewMemberIds">Besonders hervorgehobene Mitglieder (optional)</label>
-						<select id="standoutCrewMemberIds" name="standoutCrewMemberIds" value={formData.standoutCrewMemberIds} onChange={handleMultiSelectChange} multiple style={{ height: '150px' }}>
-							{event.assignedAttendees?.map(member => (
-								<option key={member.id} value={member.id}>{member.username}</option>
-							))}
-						</select>
-						<small>Halten Sie Strg (oder Cmd auf Mac) gedrückt, um mehrere Mitglieder auszuwählen.</small>
-					</div>
-					<div style={{ display: 'flex', gap: '1rem' }}>
-						<button type="submit" className="btn btn-success" disabled={isSubmitting}>
-							{isSubmitting ? 'Speichern...' : 'Debriefing speichern'}
-						</button>
-						{debriefing && <button type="button" className="btn btn-secondary" onClick={() => setIsEditing(false)} disabled={isSubmitting}>Abbrechen</button>}
-					</div>
-				</form>
-			</div>
-		</div>
+		<ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+			<Text style={styles.title}>Debriefing für: {event.name}</Text>
+			<Text style={styles.subtitle}>Fassen Sie die wichtigsten Punkte der Veranstaltung zusammen.</Text>
+			<View style={styles.card}>
+                <Text style={styles.label}>Was lief gut?</Text>
+				<TextInput style={[styles.input, styles.textArea]} value={formData.whatWentWell} onChangeText={val => setFormData({...formData, whatWentWell: val})} multiline required />
+				
+                <Text style={styles.label}>Was kann verbessert werden?</Text>
+				<TextInput style={[styles.input, styles.textArea]} value={formData.whatToImprove} onChangeText={val => setFormData({...formData, whatToImprove: val})} multiline required />
+
+                <Text style={styles.label}>Anmerkungen zum Material</Text>
+				<TextInput style={[styles.input, styles.textArea]} value={formData.equipmentNotes} onChangeText={val => setFormData({...formData, equipmentNotes: val})} multiline />
+
+                <Text style={styles.label}>Besonders hervorgehobene Mitglieder</Text>
+                <MultipleSelectList 
+                    setSelected={(val) => setFormData({...formData, standoutCrewMemberIds: val})} 
+                    data={crewOptions} 
+                    save="key"
+                    label="Mitglieder"
+                    placeholder="Mitglieder auswählen"
+                    searchPlaceholder="Suchen"
+                    boxStyles={styles.input}
+                    defaultOptions={crewOptions.filter(opt => formData.standoutCrewMemberIds.includes(opt.key))}
+                />
+				
+                <View style={styles.actionButtons}>
+					<TouchableOpacity style={[styles.button, styles.successButton]} onPress={handleSubmit} disabled={isSubmitting}>
+						<Text style={styles.buttonText}>{isSubmitting ? 'Speichern...' : 'Debriefing speichern'}</Text>
+					</TouchableOpacity>
+					{debriefing && <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => setIsEditing(false)} disabled={isSubmitting}><Text style={styles.buttonText}>Abbrechen</Text></TouchableOpacity>}
+				</View>
+			</View>
+		</ScrollView>
 	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+       actionButtons: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+    });
 };
 
 export default AdminEventDebriefingPage;

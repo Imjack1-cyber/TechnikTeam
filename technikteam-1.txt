@@ -1,5 +1,478 @@
 ﻿
 ========================================================================
+FILE: frontend\src\pages\admin\AdminEventRolesPage.jsx
+========================================================================
+
+import React, { useState, useCallback } from 'react';
+import useApi from '../../hooks/useApi';
+import apiClient from '../../services/apiClient';
+import Modal from '../../components/ui/Modal';
+import { useToast } from '../../context/ToastContext';
+
+const AdminEventRolesPage = () => {
+	const apiCall = useCallback(() => apiClient.get('/admin/event-roles'), []);
+	const { data: roles, loading, error, reload } = useApi(apiCall);
+	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [editingRole, setEditingRole] = useState(null);
+	const { addToast } = useToast();
+
+	const openModal = (role = null) => {
+		setEditingRole(role);
+		setIsModalOpen(true);
+	};
+
+	const closeModal = () => {
+		setEditingRole(null);
+		setIsModalOpen(false);
+	};
+
+	const handleSuccess = () => {
+		closeModal();
+		reload();
+	};
+
+	const handleDelete = async (role) => {
+		if (window.confirm(`Rolle "${role.name}" wirklich löschen? Sie wird von allen aktuellen Zuweisungen entfernt.`)) {
+			try {
+				const result = await apiClient.delete(`/admin/event-roles/${role.id}`);
+				if (result.success) {
+					addToast('Rolle erfolgreich gelöscht', 'success');
+					reload();
+				} else {
+					throw new Error(result.message);
+				}
+			} catch (err) {
+				addToast(`Fehler: ${err.message}`, 'error');
+			}
+		}
+	};
+
+	return (
+		<div>
+			<h1><i className="fas fa-user-tag"></i> Event-Rollen verwalten</h1>
+			<p>Definieren Sie hier wiederverwendbare Rollen, die Benutzern bei Events zugewiesen werden können.</p>
+			<div className="table-controls">
+				<button onClick={() => openModal()} className="btn btn-success">
+					<i className="fas fa-plus"></i> Neue Rolle
+				</button>
+			</div>
+
+			{loading && <p>Lade Rollen...</p>}
+			{error && <p className="error-message">{error}</p>}
+
+			<div className="desktop-table-wrapper">
+				<table className="data-table">
+					<thead>
+						<tr>
+							<th>Icon</th>
+							<th>Name</th>
+							<th>Beschreibung</th>
+							<th>Aktionen</th>
+						</tr>
+					</thead>
+					<tbody>
+						{roles?.map(role => (
+							<tr key={role.id}>
+								<td><i className={`fas ${role.iconClass}`} style={{ fontSize: '1.5rem' }}></i></td>
+								<td>{role.name}</td>
+								<td>{role.description}</td>
+								<td>
+									<button onClick={() => openModal(role)} className="btn btn-small">Bearbeiten</button>
+									<button onClick={() => handleDelete(role)} className="btn btn-small btn-danger" style={{ marginLeft: '0.5rem' }}>Löschen</button>
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+
+			<div className="mobile-card-list">
+				{roles?.map(role => (
+					<div className="list-item-card" key={role.id}>
+						<h3 className="card-title"><i className={`fas ${role.iconClass}`}></i> {role.name}</h3>
+						<p style={{ marginTop: '0.5rem' }}>{role.description}</p>
+						<div className="card-actions">
+							<button onClick={() => openModal(role)} className="btn btn-small">Bearbeiten</button>
+							<button onClick={() => handleDelete(role)} className="btn btn-small btn-danger">Löschen</button>
+						</div>
+					</div>
+				))}
+			</div>
+
+			{isModalOpen && (
+				<RoleModal
+					isOpen={isModalOpen}
+					onClose={closeModal}
+					onSuccess={handleSuccess}
+					role={editingRole}
+				/>
+			)}
+		</div>
+	);
+};
+
+const RoleModal = ({ isOpen, onClose, onSuccess, role }) => {
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [error, setError] = useState('');
+	const { addToast } = useToast();
+
+	const handleSubmit = async (e) => {
+		e.preventDefault();
+		setIsSubmitting(true);
+		setError('');
+		const formData = new FormData(e.target);
+		const data = Object.fromEntries(formData.entries());
+
+		try {
+			const result = role
+				? await apiClient.put(`/admin/event-roles/${role.id}`, data)
+				: await apiClient.post('/admin/event-roles', data);
+			if (result.success) {
+				addToast(`Rolle erfolgreich ${role ? 'aktualisiert' : 'erstellt'}.`, 'success');
+				onSuccess();
+			}
+			else throw new Error(result.message);
+		} catch (err) {
+			setError(err.message || 'Fehler beim Speichern');
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
+	return (
+		<Modal isOpen={isOpen} onClose={onClose} title={role ? 'Rolle bearbeiten' : 'Neue Rolle erstellen'}>
+			<form onSubmit={handleSubmit}>
+				{error && <p className="error-message">{error}</p>}
+				<div className="form-group">
+					<label htmlFor="modal-name">Name der Rolle</label>
+					<input id="modal-name" name="name" defaultValue={role?.name} required />
+				</div>
+				<div className="form-group">
+					<label htmlFor="modal-desc">Beschreibung</label>
+					<textarea id="modal-desc" name="description" defaultValue={role?.description} rows="3"></textarea>
+				</div>
+				<div className="form-group">
+					<label htmlFor="modal-icon">
+						Font Awesome Icon-Klasse
+						<a href="https://fontawesome.com/search?m=free&s=solid" target="_blank" rel="noopener noreferrer" style={{ marginLeft: '0.5rem', fontSize: '0.8rem' }}>
+							<i className="fas fa-search"></i> Icons suchen
+						</a>
+					</label>
+					<input id="modal-icon" name="iconClass" defaultValue={role?.iconClass || 'fa-user-tag'} placeholder="z.B. fa-user-tie" required />
+				</div>
+				<button type="submit" className="btn" disabled={isSubmitting}>
+					{isSubmitting ? 'Speichern...' : 'Speichern'}
+				</button>
+			</form>
+		</Modal>
+	);
+};
+
+export default AdminEventRolesPage;
+========================================================================
+FILE: frontend\src\pages\admin\AdminEventsIndex.jsx
+========================================================================
+
+import React from 'react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
+import { useAuthStore } from '../../store/authStore';
+
+const AdminEventsIndex = () => {
+	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
+	const location = useLocation();
+
+	const baseLinks = [
+		{ to: '/admin/veranstaltungen/events', label: 'Events Verwalten', icon: 'fa-calendar-plus', perm: 'EVENT_READ' },
+		{ to: '/admin/veranstaltungen/debriefings', label: 'Debriefing-Übersicht', icon: 'fa-clipboard-check', perm: 'EVENT_DEBRIEFING_VIEW' },
+		{ to: '/admin/veranstaltungen/roles', label: 'Event-Rollen', icon: 'fa-user-tag', perm: 'EVENT_CREATE' },
+		{ to: '/admin/veranstaltungen/venues', label: 'Veranstaltungsorte', icon: 'fa-map-marked-alt', perm: 'EVENT_CREATE' },
+		{ to: '/admin/veranstaltungen/checklist-templates', label: 'Checklist-Vorlagen', icon: 'fa-tasks', perm: 'EVENT_MANAGE_TASKS' },
+	];
+
+	const can = (permission) => {
+		return isAdmin || user?.permissions.includes(permission);
+	};
+
+	const isIndexPage = location.pathname === '/admin/veranstaltungen';
+
+	return (
+		<div>
+			{!isIndexPage && (
+				<Link to="/admin/veranstaltungen" className="btn btn-secondary" style={{ marginBottom: '1rem' }}>
+					<i className="fas fa-arrow-left"></i> Zur Event-Übersicht
+				</Link>
+			)}
+			<h1><i className="fas fa-calendar-alt"></i> Event Management</h1>
+			<p>Zentrale Anlaufstelle für die Planung und Verwaltung aller Veranstaltungen.</p>
+
+			{isIndexPage ? (
+				<div className="dashboard-grid">
+					{baseLinks.filter(link => can(link.perm)).map(link => (
+						<Link to={link.to} className="card" key={link.to} style={{ textDecoration: 'none' }}>
+							<div style={{ textAlign: 'center' }}>
+								<i className={`fas ${link.icon}`} style={{ fontSize: '3rem', color: 'var(--primary-color)', marginBottom: '1rem' }}></i>
+								<h2 className="card-title" style={{ border: 'none', padding: 0 }}>{link.label}</h2>
+							</div>
+						</Link>
+					))}
+				</div>
+			) : (
+				<>
+					<hr style={{ margin: '2rem 0' }} />
+					<Outlet />
+				</>
+			)}
+		</div>
+	);
+};
+
+export default AdminEventsIndex;
+========================================================================
+FILE: frontend\src\pages\admin\AdminEventsPage.jsx
+========================================================================
+
+import React, { useState, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import useApi from '../../hooks/useApi';
+import apiClient from '../../services/apiClient';
+import useAdminData from '../../hooks/useAdminData';
+import Modal from '../../components/ui/Modal';
+import StatusBadge from '../../components/ui/StatusBadge';
+import EventModal from '../../components/admin/events/EventModal';
+import { useToast } from '../../context/ToastContext';
+
+const AdminEventsPage = () => {
+	const eventsApiCall = useCallback(() => apiClient.get('/events'), []);
+	const templatesApiCall = useCallback(() => apiClient.get('/admin/checklist-templates'), []);
+
+	const { data: events, loading: eventsLoading, error: eventsError, reload } = useApi(eventsApiCall);
+	const { data: templates, loading: templatesLoading } = useApi(templatesApiCall);
+	const adminFormData = useAdminData();
+	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [editingEvent, setEditingEvent] = useState(null);
+	const { addToast } = useToast();
+	const navigate = useNavigate();
+
+	const openModal = (event = null) => {
+		setEditingEvent(event);
+		setIsModalOpen(true);
+	};
+
+	const closeModal = () => {
+		setEditingEvent(null);
+		setIsModalOpen(false);
+	};
+
+	const handleSuccess = () => {
+		closeModal();
+		reload();
+	};
+
+	const handleDelete = async (event) => {
+		if (window.confirm(`Event '${event.name}' wirklich löschen?`)) {
+			try {
+				const result = await apiClient.delete(`/events/${event.id}`);
+				if (result.success) {
+					addToast('Event erfolgreich gelöscht', 'success');
+					reload();
+				} else {
+					throw new Error(result.message);
+				}
+			} catch (err) {
+				addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error');
+			}
+		}
+	};
+
+	const handleClone = async (event) => {
+		if (window.confirm(`Event '${event.name}' klonen? Ein neues Event wird erstellt und Sie werden zur Bearbeitungs-Ansicht des neuen Events weitergeleitet.`)) {
+			try {
+				const result = await apiClient.post(`/events/${event.id}/clone`);
+				if (result.success) {
+					addToast('Event erfolgreich geklont.', 'success');
+					navigate(`/veranstaltungen/details/${result.data.id}`);
+				} else {
+					throw new Error(result.message);
+				}
+			} catch (err) {
+				addToast(`Klonen fehlgeschlagen: ${err.message}`, 'error');
+			}
+		}
+	};
+
+	const loading = eventsLoading || adminFormData.loading || templatesLoading;
+
+	return (
+		<div>
+			<h1><i className="fas fa-calendar-plus"></i> Event-Verwaltung</h1>
+			<p>Hier können alle Veranstaltungen geplant, bearbeitet und verwaltet werden.</p>
+			<div className="table-controls">
+				<button onClick={() => openModal()} className="btn btn-success">
+					<i className="fas fa-plus"></i> Neues Event erstellen
+				</button>
+			</div>
+
+			<div className="desktop-table-wrapper">
+				<table className="data-table">
+					<thead>
+						<tr>
+							<th>Event-Name</th>
+							<th>Datum & Uhrzeit</th>
+							<th>Status</th>
+							<th>Aktionen</th>
+						</tr>
+					</thead>
+					<tbody>
+						{loading && <tr><td colSpan="4">Lade Events...</td></tr>}
+						{eventsError && <tr><td colSpan="4" className="error-message">{eventsError}</td></tr>}
+						{events?.map(event => (
+							<tr key={event.id}>
+								<td><Link to={`/veranstaltungen/details/${event.id}`}>{event.name}</Link></td>
+								<td>{new Date(event.eventDateTime).toLocaleString('de-DE')}</td>
+								<td><StatusBadge status={event.status} /></td>
+								<td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+									<button onClick={() => openModal(event)} className="btn btn-small">Bearbeiten</button>
+									<button onClick={() => handleClone(event)} className="btn btn-small btn-secondary">Klonen</button>
+									<Link to={`/veranstaltungen/details/${event.id}`} className="btn btn-small btn-info">
+										Details & Team
+									</Link>
+									<button onClick={() => handleDelete(event)} className="btn btn-small btn-danger">Löschen</button>
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+
+			<div className="mobile-card-list">
+				{loading && <p>Lade Events...</p>}
+				{eventsError && <p className="error-message">{eventsError}</p>}
+				{events?.map(event => (
+					<div className="list-item-card" key={event.id}>
+						<h3 className="card-title"><Link to={`/veranstaltungen/details/${event.id}`}>{event.name}</Link></h3>
+						<div className="card-row"><strong>Datum:</strong> <span>{new Date(event.eventDateTime).toLocaleString('de-DE')}</span></div>
+						<div className="card-row"><strong>Status:</strong> <StatusBadge status={event.status} /></div>
+						<div className="card-actions">
+							<button onClick={() => openModal(event)} className="btn btn-small">Bearbeiten</button>
+							<button onClick={() => handleClone(event)} className="btn btn-small btn-secondary">Klonen</button>
+							<Link to={`/veranstaltungen/details/${event.id}`} className="btn btn-small btn-info">
+								Details
+							</Link>
+							<button onClick={() => handleDelete(event)} className="btn btn-small btn-danger">Löschen</button>
+						</div>
+					</div>
+				))}
+			</div>
+
+			{/* Prevent modal from rendering before its required data is available */}
+			{isModalOpen && !loading && (
+				<EventModal
+					isOpen={isModalOpen}
+					onClose={closeModal}
+					onSuccess={handleSuccess}
+					event={editingEvent}
+					adminFormData={adminFormData}
+					checklistTemplates={templates || []}
+				/>
+			)}
+		</div>
+	);
+};
+
+export default AdminEventsPage;
+========================================================================
+FILE: frontend\src\pages\admin\AdminFeedbackPage.jsx
+========================================================================
+
+import React, { useState, useCallback } from 'react';
+import useApi from '../../hooks/useApi';
+import apiClient from '../../services/apiClient';
+import StatusBadge from '../../components/ui/StatusBadge';
+import Modal from '../../components/ui/Modal';
+import { useToast } from '../../context/ToastContext';
+
+const FeedbackColumn = ({ title, submissions, onCardClick }) => (
+	<div className="feedback-column">
+		<h2>{title}</h2>
+		<div className="feedback-list">
+			{submissions.map(sub => (
+				<div key={sub.id} className="feedback-card-item" onClick={() => onCardClick(sub)}>
+					<strong className="subject">{sub.subject}</strong>
+					<p className="content-preview">{sub.content}</p>
+					<div className="meta">
+						<span>Von: {sub.username}</span>
+					</div>
+				</div>
+			))}
+		</div>
+	</div>
+);
+
+const AdminFeedbackPage = () => {
+	const apiCall = useCallback(() => apiClient.get('/feedback'), []);
+	const { data: submissions, loading, error, reload } = useApi(apiCall);
+	const [selectedFeedback, setSelectedFeedback] = useState(null);
+	const { addToast } = useToast();
+
+	const groupedSubmissions = submissions?.reduce((acc, sub) => {
+		(acc[sub.status] = acc[sub.status] || []).push(sub);
+		return acc;
+	}, {}) || {};
+
+	const handleStatusChange = async (newStatus) => {
+		if (!selectedFeedback) return;
+		try {
+			const result = await apiClient.put(`/feedback/${selectedFeedback.id}/status`, { status: newStatus });
+			if (result.success) {
+				addToast('Status erfolgreich aktualisiert', 'success');
+				setSelectedFeedback(null);
+				reload();
+			} else {
+				throw new Error(result.message);
+			}
+		} catch (err) {
+			addToast(`Fehler beim Ändern des Status: ${err.message}`, 'error');
+		}
+	};
+
+	if (loading) return <div>Lade Feedback...</div>;
+	if (error) return <div className="error-message">{error}</div>;
+
+	return (
+		<div>
+			<h1><i className="fas fa-inbox"></i> Feedback-Verwaltung</h1>
+			<p>Verwalten Sie hier alle Benutzereinreichungen. Klicken Sie auf eine Karte, um den Status zu ändern.</p>
+			<div className="feedback-board">
+				<FeedbackColumn title="Neu" submissions={groupedSubmissions['NEW'] || []} onCardClick={setSelectedFeedback} />
+				<FeedbackColumn title="Gesehen" submissions={groupedSubmissions['VIEWED'] || []} onCardClick={setSelectedFeedback} />
+				<FeedbackColumn title="Geplant" submissions={groupedSubmissions['PLANNED'] || []} onCardClick={setSelectedFeedback} />
+				<FeedbackColumn title="Erledigt" submissions={groupedSubmissions['COMPLETED'] || []} onCardClick={setSelectedFeedback} />
+				<FeedbackColumn title="Abgelehnt" submissions={groupedSubmissions['REJECTED'] || []} onCardClick={setSelectedFeedback} />
+			</div>
+
+			{selectedFeedback && (
+				<Modal isOpen={!!selectedFeedback} onClose={() => setSelectedFeedback(null)} title={selectedFeedback.subject}>
+					<p><strong>Von:</strong> {selectedFeedback.username}</p>
+					<p><strong>Eingereicht am:</strong> {new Date(selectedFeedback.submittedAt).toLocaleString('de-DE')}</p>
+					<div className="card" style={{ backgroundColor: 'var(--bg-color)', whiteSpace: 'pre-wrap' }}>{selectedFeedback.content}</div>
+					<div style={{ marginTop: '1.5rem' }}>
+						<h4>Status ändern:</h4>
+						<div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+							{['NEW', 'VIEWED', 'PLANNED', 'COMPLETED', 'REJECTED'].map(status => (
+								<button key={status} onClick={() => handleStatusChange(status)} className="btn btn-small">
+									{status}
+								</button>
+							))}
+						</div>
+					</div>
+				</Modal>
+			)}
+		</div>
+	);
+};
+
+export default AdminFeedbackPage;
+========================================================================
 FILE: frontend\src\pages\admin\AdminFileEditorPage.jsx
 ========================================================================
 
@@ -381,6 +854,127 @@ const AdminFilesPage = () => {
 };
 
 export default AdminFilesPage;
+========================================================================
+FILE: frontend\src\pages\admin\AdminGeoIpPage.jsx
+========================================================================
+
+import React, { useState, useCallback } from 'react';
+import useApi from '../../hooks/useApi';
+import apiClient from '../../services/apiClient';
+import { useToast } from '../../context/ToastContext';
+
+const AdminGeoIpPage = () => {
+    const apiCall = useCallback(() => apiClient.get('/admin/geoip/rules'), []);
+    const { data: rules, loading, error, reload } = useApi(apiCall);
+    const [newRule, setNewRule] = useState({ countryCode: '', ruleType: 'BLOCK' });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const { addToast } = useToast();
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setNewRule(prev => ({ ...prev, [name]: value.toUpperCase() }));
+    };
+
+    const handleAddRule = async (e) => {
+        e.preventDefault();
+        if (newRule.countryCode.length !== 2) {
+            addToast('Ländercode muss genau 2 Zeichen lang sein.', 'error');
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            const result = await apiClient.post('/admin/geoip/rules', newRule);
+            if (result.success) {
+                addToast('Regel erfolgreich gespeichert.', 'success');
+                setNewRule({ countryCode: '', ruleType: 'BLOCK' });
+                reload();
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (err) {
+            addToast(`Fehler: ${err.message}`, 'error');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleDeleteRule = async (countryCode) => {
+        if (window.confirm(`Regel für Ländercode "${countryCode}" wirklich löschen?`)) {
+            try {
+                const result = await apiClient.delete(`/admin/geoip/rules/${countryCode}`);
+                if (result.success) {
+                    addToast('Regel erfolgreich gelöscht.', 'success');
+                    reload();
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (err) {
+                addToast(`Fehler: ${err.message}`, 'error');
+            }
+        }
+    };
+
+    return (
+        <div>
+            <h1><i className="fas fa-globe-americas"></i> GeoIP Filterregeln</h1>
+            <p>Verwalten Sie hier, aus welchen Ländern der Login erlaubt oder blockiert ist.</p>
+
+            <div className="card">
+                <h2 className="card-title">Neue Regel hinzufügen</h2>
+                <form onSubmit={handleAddRule} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+                    <div className="form-group" style={{ flexGrow: 1 }}>
+                        <label htmlFor="countryCode">Ländercode (ISO 3166-1 alpha-2)</label>
+                        <input type="text" id="countryCode" name="countryCode" value={newRule.countryCode} onChange={handleInputChange} maxLength="2" placeholder="z.B. DE, US, CN" required />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="ruleType">Regeltyp</label>
+                        <select id="ruleType" name="ruleType" value={newRule.ruleType} onChange={handleInputChange}>
+                            <option value="BLOCK">Blockieren</option>
+                            <option value="ALLOW">Erlauben</option>
+                        </select>
+                    </div>
+                    <button type="submit" className="btn btn-success" disabled={isSubmitting}>
+                        {isSubmitting ? 'Speichern...' : 'Hinzufügen'}
+                    </button>
+                </form>
+            </div>
+
+            <div className="card">
+                <h2 className="card-title">Bestehende Regeln</h2>
+                {loading && <p>Lade Regeln...</p>}
+                {error && <p className="error-message">{error}</p>}
+                <div className="table-wrapper">
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>Ländercode</th>
+                                <th>Regel</th>
+                                <th>Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rules?.map(rule => (
+                                <tr key={rule.countryCode}>
+                                    <td>{rule.countryCode}</td>
+                                    <td>
+                                        <span className={`status-badge ${rule.ruleType === 'BLOCK' ? 'status-danger' : 'status-ok'}`}>
+                                            {rule.ruleType}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button onClick={() => handleDeleteRule(rule.countryCode)} className="btn btn-small btn-danger-outline">Löschen</button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default AdminGeoIpPage;
 ========================================================================
 FILE: frontend\src\pages\admin\AdminKitsPage.jsx
 ========================================================================
@@ -1785,6 +2379,8 @@ const AdminSystemIndex = () => {
 
 	const baseLinks = [
 		{ to: '/admin/system/status', label: 'System-Status', icon: 'fa-server', perm: 'SYSTEM_READ' },
+		{ to: '/admin/system/auth-log', label: 'Auth Log', icon: 'fa-history', perm: 'LOG_READ' },
+		{ to: '/admin/system/geoip', label: 'GeoIP Filter', icon: 'fa-globe-americas', perm: 'ACCESS_ADMIN_PANEL' },
 		{ to: '/admin/system/wiki', label: 'Technische Wiki', icon: 'fa-book-reader', perm: 'ACCESS_ADMIN_PANEL' },
 		{ to: '/TechnikTeam/swagger-ui.html', label: 'API Docs (Swagger)', icon: 'fa-code', perm: 'ACCESS_ADMIN_PANEL', isExternal: true },
 	];
@@ -1852,21 +2448,34 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
 
-const MaintenanceModeToggle = () => {
+const MaintenanceModeManager = () => {
 	const apiCall = useCallback(() => apiClient.get('/admin/system/maintenance'), []);
 	const { data, loading, error, reload } = useApi(apiCall);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [mode, setMode] = useState('OFF');
+	const [message, setMessage] = useState('');
 	const { addToast } = useToast();
 
-	const isEnabled = data?.isEnabled || false;
+	useEffect(() => {
+		if (data) {
+			setMode(data.mode || 'OFF');
+			setMessage(data.message || '');
+		}
+	}, [data]);
 
-	const handleToggle = async () => {
-		const newState = !isEnabled;
-		const action = newState ? 'aktivieren' : 'deaktivieren';
-		if (window.confirm(`Sind Sie sicher, dass Sie den Wartungsmodus ${action} möchten? Alle nicht-administrativen Benutzer werden ausgesperrt.`)) {
+	const handleSubmit = async (e) => {
+		e.preventDefault();
+		const newStatus = { mode, message };
+		const actionText = {
+			OFF: 'deaktivieren',
+			SOFT: 'aktivieren (Warnung)',
+			HARD: 'aktivieren (Sperre)'
+		}[mode];
+
+		if (window.confirm(`Sind Sie sicher, dass Sie den Wartungsmodus ${actionText} möchten?`)) {
 			setIsSubmitting(true);
 			try {
-				const result = await apiClient.post('/admin/system/maintenance', { isEnabled: newState });
+				const result = await apiClient.post('/admin/system/maintenance', newStatus);
 				if (result.success) {
 					addToast(result.message, 'success');
 					reload();
@@ -1887,15 +2496,30 @@ const MaintenanceModeToggle = () => {
 	return (
 		<div className="card">
 			<h2 className="card-title">Wartungsmodus</h2>
-			<p>Wenn aktiviert, können sich nur Administratoren anmelden. Alle anderen Benutzer sehen eine Wartungsseite.</p>
-			<div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
-				<button onClick={handleToggle} className={`btn ${isEnabled ? 'btn-success' : 'btn-danger'}`} disabled={isSubmitting}>
-					{isSubmitting ? 'Wird geändert...' : (isEnabled ? 'Wartungsmodus Deaktivieren' : 'Wartungsmodus Aktivieren')}
+			<p>Steuern Sie den globalen Zugriffsstatus der Anwendung.</p>
+			<form onSubmit={handleSubmit}>
+				<div className="form-group">
+					<label>Modus</label>
+					<div style={{ display: 'flex', gap: '1.5rem' }}>
+						<label><input type="radio" name="mode" value="OFF" checked={mode === 'OFF'} onChange={e => setMode(e.target.value)} /> Aus</label>
+						<label><input type="radio" name="mode" value="SOFT" checked={mode === 'SOFT'} onChange={e => setMode(e.target.value)} /> Warnung (Banner)</label>
+						<label><input type="radio" name="mode" value="HARD" checked={mode === 'HARD'} onChange={e => setMode(e.target.value)} /> Sperre (Nur Admins)</label>
+					</div>
+				</div>
+				<div className="form-group">
+					<label htmlFor="maintenance-message">Angezeigte Nachricht</label>
+					<textarea
+						id="maintenance-message"
+						value={message}
+						onChange={e => setMessage(e.target.value)}
+						rows="3"
+						placeholder="z.B. Führen gerade Datenbank-Updates durch. Voraussichtlich wieder verfügbar um 15:00 Uhr."
+					/>
+				</div>
+				<button type="submit" className="btn btn-success" disabled={isSubmitting}>
+					{isSubmitting ? 'Wird geändert...' : 'Status aktualisieren'}
 				</button>
-				<span className={`status-badge ${isEnabled ? 'status-danger' : 'status-ok'}`}>
-					{isEnabled ? 'AKTIV' : 'INAKTIV'}
-				</span>
-			</div>
+			</form>
 		</div>
 	);
 };
@@ -1912,7 +2536,7 @@ const AdminSystemPage = () => {
 			<h1><i className="fas fa-server"></i> Systeminformationen</h1>
 			<p>Live-Statistiken über den Zustand des Servers, auf dem die Anwendung läuft.</p>
 
-			<MaintenanceModeToggle />
+			<MaintenanceModeManager />
 
 			{loading && <p>Lade Systemstatistiken...</p>}
 			{error && <p className="error-message">{error}</p>}
@@ -2908,13 +3532,15 @@ FILE: frontend\src\pages\error\MaintenancePage.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-const MaintenancePage = () => {
+const MaintenancePage = ({ message }) => {
+	const displayMessage = message || "Wir führen gerade einige Wartungsarbeiten durch. Die Anwendung ist in Kürze wieder für Sie verfügbar.";
+
 	return (
 		<div style={{ textAlign: 'center', color: 'var(--text-color)', margin: 'auto' }}>
 			<i className="fas fa-tools" style={{ fontSize: '5rem', color: 'var(--primary-color)', marginBottom: '1.5rem' }}></i>
 			<h1 style={{ fontSize: '2.5rem' }}>Anwendung im Wartungsmodus</h1>
 			<p style={{ fontSize: '1.2rem', color: 'var(--text-muted-color)' }}>
-				Wir führen gerade einige Wartungsarbeiten durch. Die Anwendung ist in Kürze wieder für Sie verfügbar.
+				{displayMessage}
 			</p>
 			<p>Vielen Dank für Ihre Geduld!</p>
 			<div style={{ marginTop: '2rem' }}>
@@ -3219,6 +3845,8 @@ const AdminTrainingRequestsPage = lazy(() => import('../pages/admin/AdminTrainin
 const AdminDocumentationPage = lazy(() => import('../pages/admin/AdminDocumentationPage'));
 const AdminReportsIndex = lazy(() => import('../pages/admin/AdminReportsIndex'));
 const AdminSystemIndex = lazy(() => import('../pages/admin/AdminSystemIndex'));
+const AdminAuthLogPage = lazy(() => import('../pages/admin/AdminAuthLogPage'));
+const AdminGeoIpPage = lazy(() => import('../pages/admin/AdminGeoIpPage'));
 
 
 import ErrorTrigger from '../pages/error/ErrorTrigger';
@@ -3321,7 +3949,9 @@ const router = createBrowserRouter([
 					{
 						path: 'system', element: <AdminSystemIndex />, children: [
 							{ path: 'status', element: <AdminSystemPage /> },
+							{ path: 'auth-log', element: <AdminAuthLogPage /> },
 							{ path: 'wiki', element: <AdminWikiPage /> },
+							{ path: 'geoip', element: <AdminGeoIpPage /> },
 						]
 					},
 				],
@@ -3438,6 +4068,7 @@ const pageRoutes = {
 	'/admin/reports/log': 'admin_log',
 	'/admin/system': 'admin_system_index',
 	'/admin/system/status': 'admin_system',
+	'/admin/system/auth-log': 'admin_auth_log',
 	'/admin/system/wiki': 'admin_wiki',
 };
 
@@ -3626,12 +4257,14 @@ export const useAuthStore = create(
 			theme: 'light',
 			layout: defaultLayout,
 			lastUpdatedEvent: null, // { id: eventId, nonce: Math.random() }
+			maintenanceStatus: { mode: 'OFF', message: '' },
+			previousLogin: null,
 			login: async (username, password) => {
 				try {
 					const response = await apiClient.post('/auth/login', { username, password });
 					if (response.success && response.data?.session) {
 						const { session, token } = response.data;
-						const { user, navigation } = session;
+						const { user, navigation, maintenanceStatus, previousLogin } = session;
 
 						localStorage.setItem(AUTH_TOKEN_KEY, token);
 						apiClient.setAuthToken(token);
@@ -3645,8 +4278,10 @@ export const useAuthStore = create(
 							isAuthenticated: true,
 							isAdmin: hasAdminAccess(user.roleName),
 							theme: newTheme,
+							maintenanceStatus: maintenanceStatus || { mode: 'OFF', message: '' },
+							previousLogin: previousLogin,
 						});
-						return true;
+						return { status: 'SUCCESS' };
 					}
 					throw new Error(response.message || 'Anmeldung fehlgeschlagen');
 				} catch (error) {
@@ -3663,7 +4298,7 @@ export const useAuthStore = create(
 				} finally {
 					localStorage.removeItem(AUTH_TOKEN_KEY);
 					apiClient.setAuthToken(null);
-					set({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, theme: 'light', layout: defaultLayout, lastUpdatedEvent: null });
+					set({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, theme: 'light', layout: defaultLayout, lastUpdatedEvent: null, maintenanceStatus: { mode: 'OFF', message: '' }, previousLogin: null });
 					localStorage.removeItem('auth-storage');
 					document.documentElement.setAttribute('data-theme', 'light');
 				}
@@ -3673,7 +4308,7 @@ export const useAuthStore = create(
 					const result = await apiClient.get('/auth/me');
 
 					if (result.success && result.data.user && result.data.navigation) {
-						const user = result.data.user;
+						const { user, navigation, maintenanceStatus } = result.data;
 						const newTheme = user.theme || 'light';
 						let userLayout = defaultLayout;
 						if (user.dashboardLayout) {
@@ -3695,11 +4330,12 @@ export const useAuthStore = create(
 
 						set({
 							user: user,
-							navigationItems: result.data.navigation,
+							navigationItems: navigation,
 							isAuthenticated: true,
 							isAdmin: hasAdminAccess(user.roleName),
 							theme: newTheme,
 							layout: userLayout,
+							maintenanceStatus: maintenanceStatus || { mode: 'OFF', message: '' },
 						});
 						document.documentElement.setAttribute('data-theme', newTheme);
 					} else {
@@ -3771,7 +4407,10 @@ export const useAuthStore = create(
 				set(state => ({
 					user: state.user ? { ...state.user, unseenNotificationsCount: (state.user.unseenNotificationsCount || 0) + 1 } : null
 				}));
-			}
+			},
+			setMaintenanceStatus: (status) => {
+				set({ maintenanceStatus: status });
+			},
 		}),
 		{
 			name: 'auth-storage',
@@ -3942,6 +4581,87 @@ public class AdminAnnouncementResource {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
 				.body(new ApiResponse(false, "Announcement not found.", null));
 	}
+}
+========================================================================
+FILE: src\main\java\de\technikteam\api\v1\AdminAuthLogResource.java
+========================================================================
+
+package de.technikteam.api.v1;
+
+import de.technikteam.dao.AuthenticationLogDAO;
+import de.technikteam.model.ApiResponse;
+import de.technikteam.model.AuthenticationLog;
+import de.technikteam.security.SecurityUser;
+import de.technikteam.service.AdminLogService;
+import de.technikteam.service.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/v1/admin/auth-log")
+@Tag(name = "Admin Authentication Log", description = "Endpoints for viewing authentication history.")
+@SecurityRequirement(name = "bearerAuth")
+public class AdminAuthLogResource {
+
+    private static final Logger logger = LogManager.getLogger(AdminAuthLogResource.class);
+    private final AuthenticationLogDAO authLogDAO;
+    private final AuthService authService;
+    private final AdminLogService adminLogService;
+
+    @Autowired
+    public AdminAuthLogResource(AuthenticationLogDAO authLogDAO, AuthService authService, AdminLogService adminLogService) {
+        this.authLogDAO = authLogDAO;
+        this.authService = authService;
+        this.adminLogService = adminLogService;
+    }
+
+    @GetMapping
+    @Operation(summary = "Get recent authentication logs")
+    public ResponseEntity<ApiResponse> getAuthLogs(@RequestParam(defaultValue = "100") int limit) {
+        logger.debug("Request received to get auth logs with limit: {}", limit);
+        List<AuthenticationLog> logs = authLogDAO.getLogs(limit);
+        logger.debug("Returning {} auth log entries.", logs.size());
+        return ResponseEntity.ok(new ApiResponse(true, "Authentication logs retrieved successfully.", logs));
+    }
+
+    @PostMapping("/revoke-session")
+    @Operation(summary = "Revoke a user session via JWT ID")
+    public ResponseEntity<ApiResponse> revokeSession(@RequestBody Map<String, String> payload,
+            @AuthenticationPrincipal SecurityUser securityUser) {
+        String jti = payload.get("jti");
+        logger.info("Request received from admin '{}' to revoke session with JTI: {}", securityUser.getUsername(), jti);
+        if (jti == null || jti.isBlank()) {
+            logger.warn("Revoke session request failed: JTI is missing.");
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "JWT ID (jti) is required.", null));
+        }
+
+        if (authService.isTokenRevoked(jti)) {
+            logger.warn("Attempted to revoke an already-revoked session with JTI: {}", jti);
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Diese Sitzung wurde bereits widerrufen.", null));
+        }
+
+        AuthenticationLog logToRevoke = authLogDAO.getLogByJti(jti);
+        authService.revokeToken(jti);
+
+        if (logToRevoke != null) {
+            String details = String.format("Session for user '%s' (IP: %s, Login: %s) revoked.",
+                    logToRevoke.getUsername(), logToRevoke.getIpAddress(), logToRevoke.getTimestamp());
+            adminLogService.log(securityUser.getUsername(), "SESSION_REVOKE", details);
+        }
+
+        logger.info("Session with JTI '{}' was successfully added to the blocklist.", jti);
+        return ResponseEntity.ok(new ApiResponse(true, "Session successfully revoked. The user will be logged out on their next action.", null));
+    }
 }
 ========================================================================
 FILE: src\main\java\de\technikteam\api\v1\AdminChangelogResource.java
@@ -4957,6 +5677,79 @@ public class AdminFormDataResource {
 	}
 }
 ========================================================================
+FILE: src\main\java\de\technikteam\api\v1\AdminGeoIpResource.java
+========================================================================
+
+package de.technikteam.api.v1;
+
+import de.technikteam.dao.GeoIpRuleDAO;
+import de.technikteam.model.ApiResponse;
+import de.technikteam.model.GeoIpRule;
+import de.technikteam.security.SecurityUser;
+import de.technikteam.service.AdminLogService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/admin/geoip/rules")
+@Tag(name = "Admin GeoIP", description = "Endpoints for managing GeoIP filtering rules.")
+@PreAuthorize("hasRole('ADMIN')")
+public class AdminGeoIpResource {
+
+    private final GeoIpRuleDAO geoIpRuleDAO;
+    private final AdminLogService adminLogService;
+
+    @Autowired
+    public AdminGeoIpResource(GeoIpRuleDAO geoIpRuleDAO, AdminLogService adminLogService) {
+        this.geoIpRuleDAO = geoIpRuleDAO;
+        this.adminLogService = adminLogService;
+    }
+
+    @GetMapping
+    @Operation(summary = "Get all GeoIP rules")
+    public ResponseEntity<ApiResponse> getAllRules() {
+        List<GeoIpRule> rules = geoIpRuleDAO.findAllRules();
+        return ResponseEntity.ok(new ApiResponse(true, "GeoIP rules retrieved.", rules));
+    }
+
+    @PostMapping
+    @Operation(summary = "Add or update a GeoIP rule")
+    public ResponseEntity<ApiResponse> saveRule(@Valid @RequestBody GeoIpRule rule,
+                                                @AuthenticationPrincipal SecurityUser securityUser) {
+        if (rule.getCountryCode() == null || rule.getCountryCode().length() != 2) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Invalid country code.", null));
+        }
+        if (!"ALLOW".equals(rule.getRuleType()) && !"BLOCK".equals(rule.getRuleType())) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Invalid rule type. Must be ALLOW or BLOCK.", null));
+        }
+
+        geoIpRuleDAO.saveRule(rule);
+        adminLogService.log(securityUser.getUsername(), "GEOIP_RULE_SET",
+                String.format("Set GeoIP rule for country %s to %s", rule.getCountryCode(), rule.getRuleType()));
+        return ResponseEntity.ok(new ApiResponse(true, "GeoIP rule saved.", rule));
+    }
+
+    @DeleteMapping("/{countryCode}")
+    @Operation(summary = "Delete a GeoIP rule")
+    public ResponseEntity<ApiResponse> deleteRule(@PathVariable String countryCode,
+                                                  @AuthenticationPrincipal SecurityUser securityUser) {
+        if (geoIpRuleDAO.deleteRule(countryCode)) {
+            adminLogService.log(securityUser.getUsername(), "GEOIP_RULE_DELETE",
+                    String.format("Deleted GeoIP rule for country %s", countryCode));
+            return ResponseEntity.ok(new ApiResponse(true, "GeoIP rule deleted.", null));
+        }
+        return ResponseEntity.notFound().build();
+    }
+}
+========================================================================
 FILE: src\main\java\de\technikteam\api\v1\AdminKitItemsResource.java
 ========================================================================
 
@@ -5330,6 +6123,7 @@ FILE: src\main\java\de\technikteam\api\v1\AdminSystemResource.java
 
 package de.technikteam.api.v1;
 
+import de.technikteam.api.v1.dto.MaintenanceStatusDTO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.SystemStatsDTO;
 import de.technikteam.security.SecurityUser;
@@ -5374,25 +6168,22 @@ public class AdminSystemResource {
 	@GetMapping("/maintenance")
 	@Operation(summary = "Get maintenance mode status")
 	public ResponseEntity<ApiResponse> getMaintenanceMode() {
-		boolean isEnabled = settingsService.isMaintenanceModeEnabled();
-		return ResponseEntity
-				.ok(new ApiResponse(true, "Wartungsmodus-Status abgerufen.", Map.of("isEnabled", isEnabled)));
+		MaintenanceStatusDTO status = settingsService.getMaintenanceStatus();
+		return ResponseEntity.ok(new ApiResponse(true, "Wartungsmodus-Status abgerufen.", status));
 	}
 
 	@PostMapping("/maintenance")
 	@Operation(summary = "Set maintenance mode status")
-	public ResponseEntity<ApiResponse> setMaintenanceMode(@RequestBody Map<String, Boolean> payload,
+	public ResponseEntity<ApiResponse> setMaintenanceMode(@RequestBody MaintenanceStatusDTO status,
 			@AuthenticationPrincipal SecurityUser securityUser) {
-		Boolean isEnabled = payload.get("isEnabled");
-		if (isEnabled == null) {
+		if (status == null || status.mode() == null) {
 			return ResponseEntity.badRequest()
-					.body(new ApiResponse(false, "Payload must contain 'isEnabled' boolean.", null));
+					.body(new ApiResponse(false, "Payload must contain 'mode'.", null));
 		}
-		settingsService.setMaintenanceMode(isEnabled);
-		adminLogService.log(securityUser.getUser().getUsername(), "MAINTENANCE_MODE_TOGGLE",
-				"Maintenance mode " + (isEnabled ? "enabled" : "disabled"));
-		return ResponseEntity.ok(new ApiResponse(true,
-				"Wartungsmodus erfolgreich " + (isEnabled ? "aktiviert" : "deaktiviert") + ".", null));
+		settingsService.setMaintenanceMode(status);
+		adminLogService.log(securityUser.getUser().getUsername(), "MAINTENANCE_MODE_UPDATE",
+				"Maintenance mode set to " + status.mode() + ". Message: " + status.message());
+		return ResponseEntity.ok(new ApiResponse(true, "Wartungsmodus erfolgreich aktualisiert.", null));
 	}
 }
 ========================================================================
@@ -6839,15 +7630,17 @@ FILE: src\main\java\de\technikteam\api\v1\auth\AuthResource.java
 
 package de.technikteam.api.v1.auth;
 
+import de.technikteam.api.v1.dto.TwoFactorVerificationRequest;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.NavigationItem;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.security.UserSuspendedException;
-import de.technikteam.service.AuthService;
-import de.technikteam.service.LoginAttemptService;
+import de.technikteam.service.*;
+import de.technikteam.dao.TwoFactorAuthDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.util.NavigationRegistry;
+import io.jsonwebtoken.Claims;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -6868,6 +7661,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -6881,12 +7675,27 @@ public class AuthResource {
 	private final UserDAO userDAO;
 	private final AuthService authService;
 	private final LoginAttemptService loginAttemptService;
+	private final AuthenticationLogService authLogService;
+	private final SystemSettingsService settingsService;
+	private final TwoFactorAuthDAO twoFactorAuthDAO;
+	private final TwoFactorAuthService twoFactorAuthService;
+	private final GeoIpService geoIpService;
+	private final UserAgentService userAgentService;
 
 	@Autowired
-	public AuthResource(UserDAO userDAO, AuthService authService, LoginAttemptService loginAttemptService) {
+	public AuthResource(UserDAO userDAO, AuthService authService, LoginAttemptService loginAttemptService,
+			AuthenticationLogService authLogService, SystemSettingsService settingsService,
+			TwoFactorAuthDAO twoFactorAuthDAO, TwoFactorAuthService twoFactorAuthService,
+			GeoIpService geoIpService, UserAgentService userAgentService) {
 		this.userDAO = userDAO;
 		this.authService = authService;
 		this.loginAttemptService = loginAttemptService;
+		this.authLogService = authLogService;
+		this.settingsService = settingsService;
+		this.twoFactorAuthDAO = twoFactorAuthDAO;
+		this.twoFactorAuthService = twoFactorAuthService;
+		this.geoIpService = geoIpService;
+		this.userAgentService = userAgentService;
 	}
 
 	@PostMapping("/login")
@@ -6897,6 +7706,14 @@ public class AuthResource {
 		String username = loginRequest.username();
 		String password = loginRequest.password();
 		String ipAddress = getClientIp(request);
+		String userAgent = request.getHeader("User-Agent");
+		logger.info("Login attempt for user '{}' from IP address: {}", username, ipAddress);
+
+		if (geoIpService.isIpBlocked(ipAddress)) {
+			logger.warn("Blocked login attempt for user '{}' from blocked country. IP: {}", username, ipAddress);
+			return new ResponseEntity<>(new ApiResponse(false, "Zugriff von Ihrem Standort aus verweigert.", null),
+					HttpStatus.FORBIDDEN);
+		}
 
 		if (loginAttemptService.isLockedOut(username, ipAddress)) {
 			logger.warn("Blocked login attempt for locked-out user '{}' from IP {}", username, ipAddress);
@@ -6911,28 +7728,102 @@ public class AuthResource {
 			User user = userDAO.validateUser(username, password);
 			if (user != null) {
 				loginAttemptService.clearLoginAttempts(username);
+
+				// Risk-Based 2FA Check
+				boolean needs2fa = false;
+				if (user.isTotpEnabled()) {
+					boolean isKnownIp = twoFactorAuthDAO.isIpKnownForUser(user.getId(), ipAddress);
+					LocalDateTime lastLoginTime = authLogService.getTimestampOfLastLogin(user.getId());
+
+					if (!isKnownIp) {
+						needs2fa = true;
+						logger.info("2FA required for user '{}': Unrecognized IP subnet.", username);
+					} else if (lastLoginTime != null && lastLoginTime.isBefore(LocalDateTime.now().minusDays(30))) {
+						needs2fa = true;
+						logger.info("2FA required for user '{}': Inactivity period exceeded.", username);
+					}
+				}
+
+				if (needs2fa) {
+					String preAuthToken = authService.generatePreAuthToken(user.getId());
+					return ResponseEntity.ok(new ApiResponse(true, "2FA_REQUIRED", Map.of("token", preAuthToken)));
+				}
+
+				// If no 2FA is needed, proceed with full login
+				twoFactorAuthDAO.addKnownIpForUser(user.getId(), ipAddress);
 				String token = authService.generateToken(user);
-				authService.addJwtCookie(user, response); 
+				authService.addJwtCookie(user, response);
 				logger.info("JWT cookie set successfully for user '{}'", username);
+
+				Claims claims = authService.parseTokenClaims(token);
+				Map<String, String> agentDetails = userAgentService.parseUserAgent(userAgent);
+				String countryCode = geoIpService.getCountryCode(ipAddress);
+				authLogService.logLoginSuccess(user.getId(), username, ipAddress, claims.getId(),
+						claims.getExpiration().toInstant(), userAgent, agentDetails.get("deviceType"), countryCode);
 
 				List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(user);
 				Map<String, Object> sessionData = new HashMap<>();
 				sessionData.put("user", user);
 				sessionData.put("navigation", navigationItems);
+				sessionData.put("previousLogin", authLogService.getPreviousLoginInfo(user.getId()));
+				sessionData.put("maintenanceStatus", settingsService.getMaintenanceStatus());
 
 				Map<String, Object> responseData = new HashMap<>();
 				responseData.put("session", sessionData);
-				responseData.put("token", token); 
+				responseData.put("token", token);
 
 				return ResponseEntity.ok(new ApiResponse(true, "Anmeldung erfolgreich", responseData));
 			} else {
 				loginAttemptService.recordFailedLogin(username, ipAddress);
+				authLogService.logLoginFailure(username, ipAddress);
 				logger.warn("Failed API login attempt for user '{}' from IP {}", username, ipAddress);
 				return new ResponseEntity<>(new ApiResponse(false, "Falscher Benutzername oder Passwort.", null),
 						HttpStatus.UNAUTHORIZED);
 			}
 		} catch (UserSuspendedException e) {
 			return new ResponseEntity<>(new ApiResponse(false, e.getMessage(), null), HttpStatus.FORBIDDEN);
+		}
+	}
+
+	@PostMapping("/verify-2fa")
+	@Operation(summary = "Verify 2FA Token", description = "Verifies a TOTP or backup code to complete a login attempt from an unknown location.")
+	public ResponseEntity<ApiResponse> verifyTwoFactor(@RequestBody TwoFactorVerificationRequest verificationRequest,
+			HttpServletRequest request, HttpServletResponse response) {
+		try {
+			User user = authService.validatePreAuthTokenAndGetUser(verificationRequest.preAuthToken());
+			if (user == null) {
+				return new ResponseEntity<>(new ApiResponse(false, "Invalid or expired pre-authentication token.", null), HttpStatus.FORBIDDEN);
+			}
+			String ipAddress = getClientIp(request);
+			String userAgent = request.getHeader("User-Agent");
+
+			boolean isValid = false;
+			if (verificationRequest.backupCode() != null && !verificationRequest.backupCode().isBlank()) {
+				isValid = twoFactorAuthService.verifyBackupCode(user.getId(), verificationRequest.backupCode());
+			} else if (verificationRequest.token() != null && !verificationRequest.token().isBlank()) {
+				String decryptedSecret = twoFactorAuthService.decrypt(user.getTotpSecret());
+				isValid = twoFactorAuthService.verifyCode(decryptedSecret, verificationRequest.token());
+			}
+
+			if (isValid) {
+				twoFactorAuthDAO.addKnownIpForUser(user.getId(), ipAddress);
+				// Generate final, full-privilege token
+				String finalToken = authService.generateToken(user);
+				authService.addJwtCookie(user, response);
+
+				// Log successful login with all details
+				Claims claims = authService.parseTokenClaims(finalToken);
+				Map<String, String> agentDetails = userAgentService.parseUserAgent(userAgent);
+				String countryCode = geoIpService.getCountryCode(ipAddress);
+				authLogService.logLoginSuccess(user.getId(), user.getUsername(), ipAddress, claims.getId(),
+						claims.getExpiration().toInstant(), userAgent, agentDetails.get("deviceType"), countryCode);
+
+				return ResponseEntity.ok(new ApiResponse(true, "2FA verification successful.", Map.of("token", finalToken)));
+			} else {
+				return new ResponseEntity<>(new ApiResponse(false, "Invalid code.", null), HttpStatus.UNAUTHORIZED);
+			}
+		} catch (Exception e) {
+			return new ResponseEntity<>(new ApiResponse(false, "Verification failed: " + e.getMessage(), null), HttpStatus.FORBIDDEN);
 		}
 	}
 
@@ -6958,15 +7849,23 @@ public class AuthResource {
 					HttpStatus.UNAUTHORIZED);
 		}
 
-		User authenticatedUser = userDAO.getUserById(securityUser.getUser().getId()); 
+		User authenticatedUser = userDAO.getUserById(securityUser.getUser().getId());
 		List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(authenticatedUser);
-		Map<String, Object> responseData = Map.of("user", authenticatedUser, "navigation", navigationItems);
+		Map<String, Object> responseData = new HashMap<>();
+		responseData.put("user", authenticatedUser);
+		responseData.put("navigation", navigationItems);
+		responseData.put("maintenanceStatus", settingsService.getMaintenanceStatus());
+
 		return ResponseEntity.ok(new ApiResponse(true, "Current user session retrieved.", responseData));
 	}
 
 	@PostMapping("/logout")
 	@Operation(summary = "User Logout", description = "Logs out the user by clearing the JWT authentication cookie.")
-	public ResponseEntity<ApiResponse> logout(HttpServletResponse response) {
+	public ResponseEntity<ApiResponse> logout(@AuthenticationPrincipal SecurityUser securityUser,
+			HttpServletRequest request, HttpServletResponse response) {
+		if (securityUser != null) {
+			authLogService.logLogout(securityUser.getUser().getId(), securityUser.getUsername(), getClientIp(request));
+		}
 		authService.clearJwtCookie(response);
 		return ResponseEntity.ok(new ApiResponse(true, "Abmeldung erfolgreich", null));
 	}
@@ -7112,6 +8011,14 @@ public record GeneralFeedbackRequest(
 		@NotBlank(message = "Inhalt darf nicht leer sein") @Schema(description = "The detailed content of the feedback.", required = true) String content) {
 }
 ========================================================================
+FILE: src\main\java\de\technikteam\api\v1\dto\MaintenanceStatusDTO.java
+========================================================================
+
+package de.technikteam.api.v1.dto;
+
+public record MaintenanceStatusDTO(String mode, String message) {
+}
+========================================================================
 FILE: src\main\java\de\technikteam\api\v1\dto\MeetingRequest.java
 ========================================================================
 
@@ -7199,6 +8106,28 @@ public record ProfileChangeRequestDTO(
 		@Schema(description = "The user's new class name.") String className,
 
 		@Schema(description = "The user's new profile icon class (e.g., 'fa-user-ninja').") String profileIconClass) {
+}
+========================================================================
+FILE: src\main\java\de\technikteam\api\v1\dto\TwoFactorSetupDTO.java
+========================================================================
+
+package de.technikteam.api.v1.dto;
+
+public record TwoFactorSetupDTO(String secret, String qrCodeDataUri) {
+}
+========================================================================
+FILE: src\main\java\de\technikteam\api\v1\dto\TwoFactorVerificationRequest.java
+========================================================================
+
+package de.technikteam.api.v1.dto;
+
+import jakarta.validation.constraints.NotBlank;
+
+public record TwoFactorVerificationRequest(
+        @NotBlank String preAuthToken,
+        String token,
+        String backupCode
+) {
 }
 ========================================================================
 FILE: src\main\java\de\technikteam\api\v1\dto\UserCreateRequest.java
@@ -8720,16 +9649,20 @@ package de.technikteam.api.v1.public_api;
 import com.google.gson.Gson;
 import de.technikteam.api.v1.dto.PasswordChangeRequest;
 import de.technikteam.api.v1.dto.ProfileChangeRequestDTO;
+import de.technikteam.api.v1.dto.TwoFactorSetupDTO;
 import de.technikteam.dao.*;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.ProfileRequestService;
+import de.technikteam.service.TwoFactorAuthService;
 import de.technikteam.util.PasswordPolicyValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -8738,6 +9671,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -8745,6 +9679,7 @@ import java.util.Map;
 @Tag(name = "Public Profile", description = "Endpoints for managing the current user's profile.")
 @SecurityRequirement(name = "bearerAuth")
 public class PublicProfileResource {
+    private static final Logger logger = LogManager.getLogger(PublicProfileResource.class);
 
 	private final UserDAO userDAO;
 	private final EventDAO eventDAO;
@@ -8752,29 +9687,32 @@ public class PublicProfileResource {
 	private final AchievementDAO achievementDAO;
 	private final ProfileChangeRequestDAO requestDAO;
 	private final ProfileRequestService profileRequestService;
+	private final TwoFactorAuthService twoFactorAuthService;
 
 	@Autowired
 	public PublicProfileResource(UserDAO userDAO, EventDAO eventDAO, UserQualificationsDAO qualificationsDAO,
 			AchievementDAO achievementDAO, ProfileChangeRequestDAO requestDAO,
-			ProfileRequestService profileRequestService) {
+			ProfileRequestService profileRequestService, TwoFactorAuthService twoFactorAuthService) {
 		this.userDAO = userDAO;
 		this.eventDAO = eventDAO;
 		this.qualificationsDAO = qualificationsDAO;
 		this.achievementDAO = achievementDAO;
 		this.requestDAO = requestDAO;
 		this.profileRequestService = profileRequestService;
+		this.twoFactorAuthService = twoFactorAuthService;
 	}
 
 	@GetMapping
 	@Operation(summary = "Get current user's profile data", description = "Retrieves a comprehensive set of data for the authenticated user's profile page.")
 	public ResponseEntity<ApiResponse> getMyProfile(@AuthenticationPrincipal SecurityUser securityUser) {
-		User user = securityUser.getUser();
+	    logger.debug("Fetching full profile data for user '{}'", securityUser.getUsername());
+		User user = userDAO.getUserById(securityUser.getUser().getId()); // Fetch latest user data
 		Map<String, Object> profileData = new HashMap<>();
 		profileData.put("user", user);
 		profileData.put("eventHistory", eventDAO.getEventHistoryForUser(user.getId()));
 		profileData.put("qualifications", qualificationsDAO.getQualificationsForUser(user.getId()));
 		profileData.put("achievements", achievementDAO.getAchievementsForUser(user.getId()));
-		profileData.put("passkeys", Collections.emptyList()); 
+		profileData.put("passkeys", Collections.emptyList());
 		profileData.put("hasPendingRequest", requestDAO.hasPendingRequest(user.getId()));
 
 		return ResponseEntity.ok(new ApiResponse(true, "Profildaten erfolgreich abgerufen.", profileData));
@@ -8783,6 +9721,7 @@ public class PublicProfileResource {
 	@GetMapping("/{userId}")
 	@Operation(summary = "Get another user's public profile data", description = "Retrieves a public-safe subset of another user's profile data.")
 	public ResponseEntity<ApiResponse> getUserProfile(@PathVariable int userId) {
+        logger.debug("Fetching public profile data for user ID {}", userId);
 		User user = userDAO.getUserById(userId);
 		if (user == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -8790,7 +9729,7 @@ public class PublicProfileResource {
 		}
 
 		Map<String, Object> profileData = new HashMap<>();
-		profileData.put("user", user); 
+		profileData.put("user", user);
 		profileData.put("qualifications", qualificationsDAO.getQualificationsForUser(userId));
 		profileData.put("achievements", achievementDAO.getAchievementsForUser(userId));
 		profileData.put("eventHistory", eventDAO.getEventHistoryForUser(userId));
@@ -8802,10 +9741,12 @@ public class PublicProfileResource {
 	@Operation(summary = "Request a profile data change", description = "Submits a request for an administrator to approve changes to the user's profile data.")
 	public ResponseEntity<ApiResponse> requestProfileChange(@Valid @RequestBody ProfileChangeRequestDTO requestDTO,
 			@AuthenticationPrincipal SecurityUser securityUser) {
+        logger.info("Received profile change request from user '{}' with data: {}", securityUser.getUsername(), requestDTO);
 		try {
 			profileRequestService.createChangeRequest(securityUser.getUser(), requestDTO);
 			return ResponseEntity.ok(new ApiResponse(true, "Änderungsantrag erfolgreich eingereicht.", null));
 		} catch (Exception e) {
+		    logger.error("Error creating profile change request for user '{}'", securityUser.getUsername(), e);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
 					new ApiResponse(false, "Ihr Antrag konnte nicht gespeichert werden: " + e.getMessage(), null));
 		}
@@ -8816,6 +9757,7 @@ public class PublicProfileResource {
 	public ResponseEntity<ApiResponse> registerDevice(@RequestBody Map<String, String> payload,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		String token = payload.get("token");
+		logger.debug("Received request to register FCM token for user '{}'", securityUser.getUsername());
 		if (token == null || token.isBlank()) {
 			return ResponseEntity.badRequest().body(new ApiResponse(false, "Token is required.", null));
 		}
@@ -8831,6 +9773,7 @@ public class PublicProfileResource {
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 		String theme = payload.get("theme");
+        logger.debug("User '{}' requested theme change to '{}'", user.getUsername(), theme);
 		if (theme != null && (theme.equals("light") || theme.equals("dark"))) {
 			if (userDAO.updateUserTheme(user.getId(), theme)) {
 				User updatedUser = userDAO.getUserById(user.getId());
@@ -8846,6 +9789,7 @@ public class PublicProfileResource {
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 		String chatColor = payload.get("chatColor");
+        logger.debug("User '{}' requested chat color change to '{}'", user.getUsername(), chatColor);
 		if (userDAO.updateUserChatColor(user.getId(), chatColor)) {
 			return ResponseEntity.ok(new ApiResponse(true, "Chatfarbe aktualisiert.", null));
 		} else {
@@ -8858,8 +9802,10 @@ public class PublicProfileResource {
 	@Operation(summary = "Change password", description = "Allows the authenticated user to change their own password after verifying their current one.")
 	public ResponseEntity<ApiResponse> updatePassword(@Valid @RequestBody PasswordChangeRequest request,
 			@AuthenticationPrincipal SecurityUser securityUser) {
+        logger.info("Processing password change request for user '{}'", securityUser.getUsername());
 		User user = securityUser.getUser();
 		if (userDAO.validateUser(user.getUsername(), request.currentPassword()) == null) {
+		    logger.warn("Password change failed for user '{}': Incorrect current password provided.", user.getUsername());
 			return ResponseEntity.badRequest()
 					.body(new ApiResponse(false, "Das aktuelle Passwort ist nicht korrekt.", null));
 		}
@@ -8873,6 +9819,7 @@ public class PublicProfileResource {
 			return ResponseEntity.badRequest().body(new ApiResponse(false, validationResult.getMessage(), null));
 		}
 		if (userDAO.changePassword(user.getId(), request.newPassword())) {
+		    logger.info("Successfully changed password for user '{}'", user.getUsername());
 			return ResponseEntity.ok(new ApiResponse(true, "Ihr Passwort wurde erfolgreich geändert.", null));
 		} else {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -8886,12 +9833,63 @@ public class PublicProfileResource {
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 		String layoutJson = new Gson().toJson(layout);
+        logger.debug("Updating layout for user '{}' with JSON: {}", user.getUsername(), layoutJson);
 		if (userDAO.updateDashboardLayout(user.getId(), layoutJson)) {
 			User updatedUser = userDAO.getUserById(user.getId());
 			return ResponseEntity.ok(new ApiResponse(true, "Layout-Einstellungen gespeichert.", updatedUser));
 		}
 		return ResponseEntity.internalServerError()
 				.body(new ApiResponse(false, "Layout konnte nicht gespeichert werden.", null));
+	}
+
+	@PostMapping("/2fa/setup")
+	@Operation(summary = "Start 2FA setup", description = "Generates a new TOTP secret and QR code for the user.")
+	public ResponseEntity<ApiResponse> setup2FA(@AuthenticationPrincipal SecurityUser securityUser) {
+	    logger.info("Initiating 2FA setup for user '{}'", securityUser.getUsername());
+		try {
+			TwoFactorSetupDTO setupData = twoFactorAuthService.generateNewSecretAndQrCode(securityUser.getUser());
+			return ResponseEntity.ok(new ApiResponse(true, "2FA setup data generated.", setupData));
+		} catch (Exception e) {
+		    logger.error("Error during 2FA setup for user '{}'", securityUser.getUsername(), e);
+			return ResponseEntity.internalServerError().body(new ApiResponse(false, e.getMessage(), null));
+		}
+	}
+
+	@PostMapping("/2fa/enable")
+	@Operation(summary = "Verify and enable 2FA", description = "Verifies a TOTP token and enables 2FA for the user, returning backup codes.")
+	public ResponseEntity<ApiResponse> enable2FA(@RequestBody Map<String, String> payload,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		String secret = payload.get("secret");
+		String token = payload.get("token");
+        logger.info("Attempting to enable 2FA for user '{}'", securityUser.getUsername());
+		if (secret == null || token == null) {
+			return ResponseEntity.badRequest().body(new ApiResponse(false, "Secret and token are required.", null));
+		}
+		try {
+			List<String> backupCodes = twoFactorAuthService.enableTotpForUser(securityUser.getUser().getId(), secret, token);
+			return ResponseEntity.ok(new ApiResponse(true, "2FA enabled successfully.", Map.of("backupCodes", backupCodes)));
+		} catch (Exception e) {
+		    logger.error("Failed to enable 2FA for user '{}': {}", securityUser.getUsername(), e.getMessage());
+			return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
+		}
+	}
+
+	@PostMapping("/2fa/disable")
+	@Operation(summary = "Disable 2FA", description = "Disables 2FA for the user after verifying a current TOTP token.")
+	public ResponseEntity<ApiResponse> disable2FA(@RequestBody Map<String, String> payload,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		String token = payload.get("token");
+        logger.info("Attempting to disable 2FA for user '{}'", securityUser.getUsername());
+		if (token == null) {
+			return ResponseEntity.badRequest().body(new ApiResponse(false, "Token is required.", null));
+		}
+		try {
+			twoFactorAuthService.disableTotpForUser(securityUser.getUser().getId(), token);
+			return ResponseEntity.ok(new ApiResponse(true, "2FA disabled successfully.", null));
+		} catch (Exception e) {
+            logger.error("Failed to disable 2FA for user '{}': {}", securityUser.getUsername(), e.getMessage());
+			return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
+		}
 	}
 }
 ========================================================================
@@ -8942,6 +9940,102 @@ public class PublicSearchResource {
 		return ResponseEntity.ok(new ApiResponse(true, "Suchergebnisse erfolgreich abgerufen.",
 				searchService.performSearch(query, user)));
 	}
+}
+========================================================================
+FILE: src\main\java\de\technikteam\api\v1\public_api\PublicSessionResource.java
+========================================================================
+
+package de.technikteam.api.v1.public_api;
+
+import de.technikteam.dao.AuthenticationLogDAO;
+import de.technikteam.dao.TwoFactorAuthDAO;
+import de.technikteam.model.ApiResponse;
+import de.technikteam.model.AuthenticationLog;
+import de.technikteam.security.SecurityUser;
+import de.technikteam.service.AuthService;
+import io.jsonwebtoken.Claims;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/v1/public/sessions")
+@Tag(name = "Public Sessions", description = "Endpoints for managing user sessions.")
+public class PublicSessionResource {
+
+    private final AuthenticationLogDAO authLogDAO;
+    private final TwoFactorAuthDAO twoFactorAuthDAO;
+    private final AuthService authService;
+
+    @Autowired
+    public PublicSessionResource(AuthenticationLogDAO authLogDAO, TwoFactorAuthDAO twoFactorAuthDAO, AuthService authService) {
+        this.authLogDAO = authLogDAO;
+        this.twoFactorAuthDAO = twoFactorAuthDAO;
+        this.authService = authService;
+    }
+
+    @GetMapping
+    @Operation(summary = "Get all active sessions for the current user")
+    public ResponseEntity<ApiResponse> getActiveSessions(@AuthenticationPrincipal SecurityUser securityUser) {
+        List<AuthenticationLog> activeSessions = authLogDAO.getActiveSessionsForUser(securityUser.getUser().getId());
+        return ResponseEntity.ok(new ApiResponse(true, "Active sessions retrieved.", activeSessions));
+    }
+
+    @PostMapping("/{logId}/name")
+    @Operation(summary = "Name a device/session")
+    public ResponseEntity<ApiResponse> nameDevice(@PathVariable long logId, @RequestBody Map<String, String> payload, @AuthenticationPrincipal SecurityUser securityUser) {
+        AuthenticationLog log = authLogDAO.getLogById(logId);
+        if (log == null || !log.getUserId().equals(securityUser.getUser().getId())) {
+            return ResponseEntity.status(403).body(new ApiResponse(false, "Permission denied.", null));
+        }
+
+        String deviceName = payload.get("deviceName");
+        if (deviceName == null || deviceName.isBlank()) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Device name cannot be empty.", null));
+        }
+
+        twoFactorAuthDAO.nameKnownIp(securityUser.getUser().getId(), log.getIpAddress(), deviceName);
+        return ResponseEntity.ok(new ApiResponse(true, "Device named successfully.", null));
+    }
+
+    @PostMapping("/{jti}/revoke")
+    @Operation(summary = "Revoke a specific session")
+    public ResponseEntity<ApiResponse> revokeSession(@PathVariable String jti, @AuthenticationPrincipal SecurityUser securityUser) {
+        AuthenticationLog logToRevoke = authLogDAO.getLogByJti(jti);
+        if (logToRevoke == null || !logToRevoke.getUserId().equals(securityUser.getUser().getId())) {
+            return ResponseEntity.status(403).body(new ApiResponse(false, "Permission denied to revoke this session.", null));
+        }
+        
+        if (authService.isTokenRevoked(jti)) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Diese Sitzung wurde bereits widerrufen.", null));
+        }
+
+        authService.revokeToken(jti);
+        return ResponseEntity.ok(new ApiResponse(true, "Session revoked successfully.", null));
+    }
+
+    @PostMapping("/revoke-all")
+    @Operation(summary = "Revoke all other sessions for the current user")
+    public ResponseEntity<ApiResponse> revokeAllOtherSessions(@AuthenticationPrincipal SecurityUser securityUser) {
+        String currentTokenJti = securityUser.getUser().getJti(); // Assuming JTI is added to SecurityUser
+        List<AuthenticationLog> activeSessions = authLogDAO.getActiveSessionsForUser(securityUser.getUser().getId());
+        
+        int revokedCount = 0;
+        for (AuthenticationLog session : activeSessions) {
+            if (!session.getJti().equals(currentTokenJti)) {
+                authService.revokeToken(session.getJti());
+                revokedCount++;
+            }
+        }
+        
+        return ResponseEntity.ok(new ApiResponse(true, revokedCount + " other sessions have been revoked.", null));
+    }
 }
 ========================================================================
 FILE: src\main\java\de\technikteam\api\v1\public_api\PublicStorageDetailsResource.java
@@ -9336,7 +10430,9 @@ FILE: src\main\java\de\technikteam\config\InitialAdminCreator.java
 package de.technikteam.config;
 
 import de.technikteam.dao.PermissionDAO;
+import de.technikteam.dao.RoleDAO;
 import de.technikteam.dao.UserDAO;
+import de.technikteam.model.Role;
 import de.technikteam.model.User;
 import de.technikteam.service.UserService;
 import org.apache.logging.log4j.LogManager;
@@ -9357,12 +10453,14 @@ public class InitialAdminCreator implements CommandLineRunner {
 	private final UserDAO userDAO;
 	private final UserService userService;
 	private final PermissionDAO permissionDAO;
+	private final RoleDAO roleDAO;
 
 	@Autowired
-	public InitialAdminCreator(UserDAO userDAO, UserService userService, PermissionDAO permissionDAO) {
+	public InitialAdminCreator(UserDAO userDAO, UserService userService, PermissionDAO permissionDAO, RoleDAO roleDAO) {
 		this.userDAO = userDAO;
 		this.userService = userService;
 		this.permissionDAO = permissionDAO;
+		this.roleDAO = roleDAO;
 	}
 
 	@Override
@@ -9375,7 +10473,13 @@ public class InitialAdminCreator implements CommandLineRunner {
 
 			User adminUser = new User();
 			adminUser.setUsername("admin");
-			adminUser.setRoleId(0); 
+
+			// Dynamically find the ADMIN role ID
+			Role adminRole = roleDAO.getAllRoles().stream()
+					.filter(role -> "ADMIN".equalsIgnoreCase(role.getRoleName()))
+					.findFirst()
+					.orElseThrow(() -> new RuntimeException("CRITICAL: 'ADMIN' role not found in database. Cannot create initial admin user."));
+			adminUser.setRoleId(adminRole.getId());
 
 //			String randomPassword = generateRandomPassword(8);
 			String randomPassword = "TechnikTeam1+";
@@ -10067,6 +11171,124 @@ public class AttachmentDAO {
 	}
 }
 ========================================================================
+FILE: src\main\java\de\technikteam\dao\AuthenticationLogDAO.java
+========================================================================
+
+package de.technikteam.dao;
+
+import de.technikteam.model.AuthenticationLog;
+import de.technikteam.util.DaoUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Repository;
+
+import java.sql.Timestamp;
+import java.sql.Types;
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Repository
+public class AuthenticationLogDAO {
+
+    private final JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    public AuthenticationLogDAO(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    private final RowMapper<AuthenticationLog> rowMapper = (rs, rowNum) -> {
+        AuthenticationLog log = new AuthenticationLog();
+        log.setId(rs.getLong("id"));
+        log.setUserId(rs.getObject("user_id", Integer.class));
+        log.setUsername(rs.getString("username"));
+        log.setIpAddress(rs.getString("ip_address"));
+        log.setUserAgent(rs.getString("user_agent"));
+        log.setDeviceType(rs.getString("device_type"));
+        log.setCountryCode(rs.getString("country_code"));
+        log.setEventType(rs.getString("event_type"));
+        log.setTimestamp(rs.getTimestamp("timestamp").toLocalDateTime());
+        log.setJti(rs.getString("jti"));
+        if (rs.getTimestamp("token_expiry") != null) {
+            log.setTokenExpiry(rs.getTimestamp("token_expiry").toLocalDateTime());
+        }
+        if (DaoUtils.hasColumn(rs, "is_revoked")) {
+            log.setRevoked(rs.getBoolean("is_revoked"));
+        }
+        return log;
+    };
+
+    public void createLog(AuthenticationLog log) {
+        String sql = "INSERT INTO authentication_logs (user_id, username, ip_address, event_type, jti, token_expiry, user_agent, device_type, country_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        Object[] args = {
+                log.getUserId(), log.getUsername(), log.getIpAddress(), log.getEventType(), log.getJti(),
+                log.getTokenExpiry() != null ? Timestamp.valueOf(log.getTokenExpiry()) : null,
+                log.getUserAgent(), log.getDeviceType(), log.getCountryCode()
+        };
+        int[] types = {
+                Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
+                Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR
+        };
+        jdbcTemplate.update(sql, args, types);
+    }
+
+    public List<AuthenticationLog> getLogs(int limit) {
+        String sql = "SELECT l.*, (b.jti IS NOT NULL) AS is_revoked " +
+                     "FROM authentication_logs l " +
+                     "LEFT JOIN jwt_blocklist b ON l.jti = b.jti " +
+                     "WHERE l.event_type IN ('LOGIN_SUCCESS', 'LOGOUT') " +
+                     "ORDER BY l.timestamp DESC LIMIT ?";
+        return jdbcTemplate.query(sql, rowMapper, limit);
+    }
+
+    public AuthenticationLog getPreviousLoginInfo(int userId) {
+        String sql = "SELECT * FROM authentication_logs WHERE user_id = ? AND event_type = 'LOGIN_SUCCESS' ORDER BY timestamp DESC LIMIT 1 OFFSET 1";
+        try {
+            return jdbcTemplate.queryForObject(sql, rowMapper, userId);
+        } catch (EmptyResultDataAccessException e) {
+            return null; // This is expected for the first-ever login
+        }
+    }
+
+    public LocalDateTime getTimestampOfLastLogin(int userId) {
+        String sql = "SELECT timestamp FROM authentication_logs WHERE user_id = ? AND event_type = 'LOGIN_SUCCESS' ORDER BY timestamp DESC LIMIT 1";
+        try {
+            return jdbcTemplate.queryForObject(sql, LocalDateTime.class, userId);
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        }
+    }
+    
+    public AuthenticationLog getLogByJti(String jti) {
+        String sql = "SELECT * FROM authentication_logs WHERE jti = ?";
+        try {
+            return jdbcTemplate.queryForObject(sql, rowMapper, jti);
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        }
+    }
+
+    public AuthenticationLog getLogById(long logId) {
+        String sql = "SELECT * FROM authentication_logs WHERE id = ?";
+        try {
+            return jdbcTemplate.queryForObject(sql, rowMapper, logId);
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        }
+    }
+
+    public List<AuthenticationLog> getActiveSessionsForUser(int userId) {
+        String sql = "SELECT l.*, (b.jti IS NOT NULL) AS is_revoked " +
+                     "FROM authentication_logs l " +
+                     "LEFT JOIN jwt_blocklist b ON l.jti = b.jti " +
+                     "WHERE l.user_id = ? AND l.event_type = 'LOGIN_SUCCESS' AND l.token_expiry > NOW() AND b.jti IS NULL " +
+                     "ORDER BY l.timestamp DESC";
+        return jdbcTemplate.query(sql, rowMapper, userId);
+    }
+}
+========================================================================
 FILE: src\main\java\de\technikteam\dao\ChangelogDAO.java
 ========================================================================
 
@@ -10155,1334 +11377,5 @@ public class ChangelogDAO {
 	public boolean delete(int id) {
 		String sql = "DELETE FROM changelogs WHERE id = ?";
 		return jdbcTemplate.update(sql, id) > 0;
-	}
-}
-========================================================================
-FILE: src\main\java\de\technikteam\dao\ChatDAO.java
-========================================================================
-
-package de.technikteam.dao;
-
-import de.technikteam.model.ChatMessage;
-import de.technikteam.model.ChatConversation;
-import de.technikteam.model.User;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
-
-@Repository
-public class ChatDAO {
-
-	private final JdbcTemplate jdbcTemplate;
-	private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
-
-	@Autowired
-	public ChatDAO(JdbcTemplate jdbcTemplate) {
-		this.jdbcTemplate = jdbcTemplate;
-		this.namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
-	}
-
-	private final RowMapper<ChatMessage> chatMessageRowMapper = (rs, rowNum) -> {
-		ChatMessage m = new ChatMessage();
-		m.setId(rs.getLong("id"));
-		m.setConversationId(rs.getInt("conversation_id"));
-		m.setSenderId(rs.getInt("sender_id"));
-		m.setSenderUsername(rs.getString("sender_username"));
-		m.setMessageText(rs.getString("message_text"));
-		m.setStatus(rs.getString("status"));
-		m.setChatColor(rs.getString("chat_color"));
-		m.setEdited(rs.getBoolean("edited"));
-		if (rs.getTimestamp("edited_at") != null) {
-			m.setEditedAt(rs.getTimestamp("edited_at").toLocalDateTime());
-		}
-		m.setDeleted(rs.getBoolean("is_deleted"));
-		if (rs.getTimestamp("deleted_at") != null) {
-			m.setDeletedAt(rs.getTimestamp("deleted_at").toLocalDateTime());
-		}
-		m.setDeletedByUserId(rs.getObject("deleted_by_user_id", Integer.class));
-		m.setDeletedByUsername(rs.getString("deleted_by_username"));
-		m.setSentAt(rs.getTimestamp("sent_at").toLocalDateTime());
-		return m;
-	};
-
-	/**
-	 * Soft-delete a message. This method executes in its own transaction so that
-	 * the deletion is committed immediately and not rolled back by outer
-	 * transactions.
-	 *
-	 * For non-admin deletions, the method first verifies that the deleter is the
-	 * original sender.
-	 *
-	 * @param messageId      id of the message to delete
-	 * @param deletersUserId id of the user requesting the delete
-	 * @param isAdmin        whether the deleter has admin privileges for this
-	 *                       conversation
-	 * @return true if a row was updated (message marked deleted), false otherwise
-	 */
-	@Transactional(propagation = Propagation.REQUIRES_NEW)
-	public boolean deleteMessage(long messageId, int deletersUserId, boolean isAdmin) {
-		User deleter = jdbcTemplate.queryForObject("SELECT id, username FROM users WHERE id = ?", (rs, rowNum) -> {
-			User u = new User();
-			u.setId(rs.getInt("id"));
-			u.setUsername(rs.getString("username"));
-			return u;
-		}, deletersUserId);
-		if (deleter == null)
-			return false;
-
-		String condition = " WHERE id = ? AND is_deleted = FALSE";
-		if (!isAdmin) {
-			condition += " AND sender_id = ?";
-		}
-
-		String deletedMessageText = "Diese Nachricht wurde von " + deleter.getUsername() + " gelöscht!";
-		String sql = "UPDATE chat_messages SET is_deleted = TRUE, message_text = ?, deleted_by_user_id = ?, deleted_at = NOW()"
-				+ condition;
-
-		int updated;
-		if (isAdmin) {
-			updated = jdbcTemplate.update(sql, deletedMessageText, deletersUserId, messageId);
-		} else {
-			updated = jdbcTemplate.update(sql, deletedMessageText, deletersUserId, messageId, deletersUserId);
-		}
-		return updated > 0;
-	}
-
-	public List<ChatMessage> getMessagesForConversation(int conversationId, int limit, int offset) {
-		String sql = """
-				    SELECT cm.*, u.username as sender_username, u.chat_color, u_del.username as deleted_by_username
-				    FROM chat_messages cm
-				    JOIN users u ON cm.sender_id = u.id
-				    LEFT JOIN users u_del ON cm.deleted_by_user_id = u_del.id
-				    WHERE cm.conversation_id = ?
-				    ORDER BY cm.sent_at DESC
-				    LIMIT ? OFFSET ?
-				""";
-		return jdbcTemplate.query(sql, chatMessageRowMapper, conversationId, limit, offset);
-	}
-
-	public ChatMessage getMessageById(long messageId) {
-		try {
-			String sql = """
-					    SELECT cm.*, u.username as sender_username, u.chat_color, u_del.username as deleted_by_username
-					    FROM chat_messages cm
-					    JOIN users u ON cm.sender_id = u.id
-					    LEFT JOIN users u_del ON cm.deleted_by_user_id = u_del.id
-					    WHERE cm.id = ?
-					""";
-			return jdbcTemplate.queryForObject(sql, chatMessageRowMapper, messageId);
-		} catch (Exception e) {
-			return null;
-		}
-	}
-
-	public ChatConversation getConversationById(int conversationId) {
-		String sql = "SELECT * FROM chat_conversations WHERE id = ?";
-		try {
-			return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
-				ChatConversation conv = new ChatConversation();
-				conv.setId(rs.getInt("id"));
-				conv.setName(rs.getString("name"));
-				conv.setGroupChat(rs.getBoolean("is_group_chat"));
-				conv.setCreatorId(rs.getInt("creator_id"));
-				conv.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
-				conv.setParticipants(getParticipantsForConversation(conversationId));
-				return conv;
-			}, conversationId);
-		} catch (EmptyResultDataAccessException e) {
-			return null;
-		}
-	}
-
-	public List<ChatConversation> getConversationsForUser(int userId) {
-		String sql = """
-				    SELECT
-				        c.id, c.name, c.is_group_chat, c.creator_id,
-				        other_p.user_id as other_participant_id,
-				        other_u.username as other_participant_username,
-				        (SELECT cm.message_text FROM chat_messages cm WHERE cm.conversation_id = c.id AND cm.is_deleted = FALSE ORDER BY cm.sent_at DESC LIMIT 1) as last_message,
-				        (SELECT cm.sent_at FROM chat_messages cm WHERE cm.conversation_id = c.id ORDER BY cm.sent_at DESC LIMIT 1) as last_message_timestamp
-				    FROM chat_conversations c
-				    JOIN chat_participants p ON c.id = p.conversation_id
-				    LEFT JOIN chat_participants other_p ON c.id = other_p.conversation_id AND other_p.user_id != ? AND c.is_group_chat = false
-				    LEFT JOIN users other_u ON other_p.user_id = other_u.id
-				    WHERE p.user_id = ?
-				    ORDER BY last_message_timestamp DESC;
-				""";
-		return jdbcTemplate.query(sql, (rs, rowNum) -> {
-			ChatConversation conv = new ChatConversation();
-			conv.setId(rs.getInt("id"));
-			conv.setName(rs.getString("name"));
-			conv.setGroupChat(rs.getBoolean("is_group_chat"));
-			conv.setCreatorId(rs.getInt("creator_id"));
-			conv.setOtherParticipantId(rs.getInt("other_participant_id"));
-			conv.setOtherParticipantUsername(rs.getString("other_participant_username"));
-			conv.setLastMessage(rs.getString("last_message"));
-			if (rs.getTimestamp("last_message_timestamp") != null) {
-				conv.setLastMessageTimestamp(rs.getTimestamp("last_message_timestamp").toLocalDateTime());
-			}
-			return conv;
-		}, userId, userId);
-	}
-
-	public List<User> getParticipantsForConversation(int conversationId) {
-		String sql = "SELECT u.id, u.username FROM users u JOIN chat_participants cp ON u.id = cp.user_id WHERE cp.conversation_id = ?";
-		return jdbcTemplate.query(sql, (rs, rowNum) -> {
-			User user = new User();
-			user.setId(rs.getInt("id"));
-			user.setUsername(rs.getString("username"));
-			return user;
-		}, conversationId);
-	}
-
-	@Transactional
-	public boolean updateMessagesStatusToRead(List<Long> messageIds, int conversationId, int readerId) {
-		if (messageIds == null || messageIds.isEmpty()) {
-			return false;
-		}
-		MapSqlParameterSource parameters = new MapSqlParameterSource();
-		parameters.addValue("ids", messageIds);
-		parameters.addValue("conversationId", conversationId);
-		parameters.addValue("readerId", readerId);
-
-		String sql = "UPDATE chat_messages SET status = 'READ' WHERE id IN (:ids) AND conversation_id = :conversationId AND sender_id != :readerId AND status != 'READ'";
-
-		return namedParameterJdbcTemplate.update(sql, parameters) > 0;
-	}
-
-	public boolean updateMessage(long messageId, int userId, String newText) {
-		String sql = "UPDATE chat_messages SET message_text = ?, edited = TRUE, edited_at = NOW() WHERE id = ? AND sender_id = ? AND is_deleted = FALSE AND sent_at >= NOW() - INTERVAL 24 HOUR";
-		return jdbcTemplate.update(sql, newText, messageId, userId) > 0;
-	}
-
-	@Transactional
-	public ChatMessage createMessage(ChatMessage message) {
-		String sql = "INSERT INTO chat_messages (conversation_id, sender_id, message_text, status) VALUES (?, ?, ?, 'SENT')";
-		GeneratedKeyHolder keyHolder = new GeneratedKeyHolder();
-		jdbcTemplate.update(connection -> {
-			PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-			ps.setInt(1, message.getConversationId());
-			ps.setInt(2, message.getSenderId());
-			ps.setString(3, message.getMessageText());
-			return ps;
-		}, keyHolder);
-		message.setId(Objects.requireNonNull(keyHolder.getKey()).longValue());
-		message.setStatus("SENT");
-		return message;
-	}
-
-	@Transactional
-	public int findOrCreateConversation(int userId1, int userId2) {
-		String findSql = """
-				    SELECT cp1.conversation_id FROM chat_participants cp1
-				    JOIN chat_participants cp2 ON cp1.conversation_id = cp2.conversation_id
-				    JOIN chat_conversations c ON cp1.conversation_id = c.id
-				    WHERE cp1.user_id = ? AND cp2.user_id = ? AND c.is_group_chat = false;
-				""";
-		try {
-			return jdbcTemplate.queryForObject(findSql, Integer.class, userId1, userId2);
-		} catch (EmptyResultDataAccessException e) {
-			String createConvSql = "INSERT INTO chat_conversations (is_group_chat, creator_id) VALUES (false, ?)";
-			GeneratedKeyHolder keyHolder = new GeneratedKeyHolder();
-			jdbcTemplate.update(connection -> {
-				PreparedStatement ps = connection.prepareStatement(createConvSql, Statement.RETURN_GENERATED_KEYS);
-				ps.setInt(1, userId1);
-				return ps;
-			}, keyHolder);
-			int newConversationId = Objects.requireNonNull(keyHolder.getKey()).intValue();
-
-			String addParticipantsSql = "INSERT INTO chat_participants (conversation_id, user_id) VALUES (?, ?)";
-			jdbcTemplate.update(addParticipantsSql, newConversationId, userId1);
-			jdbcTemplate.update(addParticipantsSql, newConversationId, userId2);
-
-			return newConversationId;
-		}
-	}
-
-	@Transactional
-	public int createGroupConversation(String name, int creatorId, List<Integer> participantIds) {
-		String createConvSql = "INSERT INTO chat_conversations (is_group_chat, name, creator_id) VALUES (true, ?, ?)";
-		GeneratedKeyHolder keyHolder = new GeneratedKeyHolder();
-		jdbcTemplate.update(connection -> {
-			PreparedStatement ps = connection.prepareStatement(createConvSql, Statement.RETURN_GENERATED_KEYS);
-			ps.setString(1, name);
-			ps.setInt(2, creatorId);
-			return ps;
-		}, keyHolder);
-		int newConversationId = Objects.requireNonNull(keyHolder.getKey()).intValue();
-
-		String addParticipantsSql = "INSERT INTO chat_participants (conversation_id, user_id) VALUES (?, ?)";
-		if (!participantIds.contains(creatorId)) {
-			participantIds.add(creatorId);
-		}
-		for (Integer participantId : participantIds) {
-			jdbcTemplate.update(addParticipantsSql, newConversationId, participantId);
-		}
-
-		return newConversationId;
-	}
-
-	public boolean isUserInConversation(int conversationId, int userId) {
-		String sql = "SELECT COUNT(*) FROM chat_participants WHERE conversation_id = ? AND user_id = ?";
-		Integer count = jdbcTemplate.queryForObject(sql, Integer.class, conversationId, userId);
-		return count != null && count > 0;
-	}
-
-	@Transactional
-	public void addParticipantsToGroup(int conversationId, List<Integer> userIds) {
-		String sql = "INSERT IGNORE INTO chat_participants (conversation_id, user_id) VALUES (?, ?)";
-		jdbcTemplate.batchUpdate(sql, userIds, 100, (ps, userId) -> {
-			ps.setInt(1, conversationId);
-			ps.setInt(2, userId);
-		});
-	}
-
-	@Transactional
-	public boolean removeParticipant(int conversationId, int userId) {
-		return jdbcTemplate.update("DELETE FROM chat_participants WHERE conversation_id = ? AND user_id = ?",
-				conversationId, userId) > 0;
-	}
-
-	@Transactional
-	public boolean leaveGroup(int conversationId, int userId) {
-		return jdbcTemplate.update("DELETE FROM chat_participants WHERE conversation_id = ? AND user_id = ?",
-				conversationId, userId) > 0;
-	}
-
-	@Transactional
-	public boolean deleteGroup(int conversationId) {
-		return jdbcTemplate.update("DELETE FROM chat_conversations WHERE id = ?", conversationId) > 0;
-	}
-}
-========================================================================
-FILE: src\main\java\de\technikteam\dao\ChecklistDAO.java
-========================================================================
-
-package de.technikteam.dao;
-
-import de.technikteam.model.ChecklistItem;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.stereotype.Repository;
-
-import java.util.List;
-
-@Repository
-public class ChecklistDAO {
-
-	private final JdbcTemplate jdbcTemplate;
-
-	@Autowired
-	public ChecklistDAO(JdbcTemplate jdbcTemplate) {
-		this.jdbcTemplate = jdbcTemplate;
-	}
-
-	private final RowMapper<ChecklistItem> checklistItemRowMapper = (rs, rowNum) -> {
-		ChecklistItem item = new ChecklistItem();
-		item.setId(rs.getInt("id"));
-		item.setEventId(rs.getInt("event_id"));
-		item.setItemId(rs.getInt("item_id"));
-		item.setItemName(rs.getString("item_name"));
-		item.setQuantity(rs.getInt("quantity"));
-		item.setStatus(rs.getString("status"));
-		item.setLastUpdatedByUserId(rs.getObject("last_updated_by_user_id", Integer.class));
-		item.setLastUpdatedByUsername(rs.getString("last_updated_by_username"));
-		item.setLastUpdatedAt(rs.getTimestamp("last_updated_at").toLocalDateTime());
-		return item;
-	};
-
-	public List<ChecklistItem> getChecklistForEvent(int eventId) {
-		String sql = "SELECT ci.*, si.name as item_name, u.username as last_updated_by_username "
-				+ "FROM event_inventory_checklist ci " + "JOIN storage_items si ON ci.item_id = si.id "
-				+ "LEFT JOIN users u ON ci.last_updated_by_user_id = u.id " + "WHERE ci.event_id = ? ORDER BY si.name";
-		return jdbcTemplate.query(sql, checklistItemRowMapper, eventId);
-	}
-
-	public int generateChecklistFromReservations(int eventId) {
-		String sql = "INSERT INTO event_inventory_checklist (event_id, item_id, quantity, status) "
-				+ "SELECT event_id, item_id, reserved_quantity, 'PENDING' FROM event_storage_reservations "
-				+ "WHERE event_id = ? " + "ON DUPLICATE KEY UPDATE quantity = VALUES(quantity)";
-		return jdbcTemplate.update(sql, eventId);
-	}
-
-	public boolean updateChecklistItemStatus(int checklistItemId, String status, int userId) {
-		String sql = "UPDATE event_inventory_checklist SET status = ?, last_updated_by_user_id = ? WHERE id = ?";
-		return jdbcTemplate.update(sql, status, userId, checklistItemId) > 0;
-	}
-
-	public ChecklistItem getChecklistItemById(int checklistItemId) {
-		String sql = "SELECT ci.*, si.name as item_name, u.username as last_updated_by_username "
-				+ "FROM event_inventory_checklist ci " + "JOIN storage_items si ON ci.item_id = si.id "
-				+ "LEFT JOIN users u ON ci.last_updated_by_user_id = u.id " + "WHERE ci.id = ?";
-		try {
-			return jdbcTemplate.queryForObject(sql, checklistItemRowMapper, checklistItemId);
-		} catch (Exception e) {
-			return null;
-		}
-	}
-}
-========================================================================
-FILE: src\main\java\de\technikteam\dao\ChecklistTemplateDAO.java
-========================================================================
-
-package de.technikteam.dao;
-
-import de.technikteam.model.ChecklistTemplate;
-import de.technikteam.model.ChecklistTemplateItem;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Types;
-import java.util.*;
-
-@Repository
-public class ChecklistTemplateDAO {
-
-	private final JdbcTemplate jdbcTemplate;
-
-	@Autowired
-	public ChecklistTemplateDAO(JdbcTemplate jdbcTemplate) {
-		this.jdbcTemplate = jdbcTemplate;
-	}
-
-	@Transactional
-	public ChecklistTemplate save(ChecklistTemplate template) {
-		if (template.getId() > 0) {
-			updateTemplate(template);
-		} else {
-			int newId = createTemplate(template);
-			template.setId(newId);
-		}
-
-		jdbcTemplate.update("DELETE FROM preflight_checklist_items WHERE template_id = ?", template.getId());
-		if (template.getItems() != null && !template.getItems().isEmpty()) {
-			String itemSql = "INSERT INTO preflight_checklist_items (template_id, item_text, storage_item_id, quantity, display_order) VALUES (?, ?, ?, ?, ?)";
-			jdbcTemplate.batchUpdate(itemSql, template.getItems(), 100, (ps, item) -> {
-				ps.setInt(1, template.getId());
-				if (item.getStorageItemId() != null && item.getStorageItemId() > 0) {
-					ps.setNull(2, Types.VARCHAR);
-					ps.setInt(3, item.getStorageItemId());
-					ps.setObject(4, item.getQuantity(), Types.INTEGER);
-				} else {
-					ps.setString(2, item.getItemText());
-					ps.setNull(3, Types.INTEGER);
-					ps.setNull(4, Types.INTEGER);
-				}
-				ps.setInt(5, template.getItems().indexOf(item));
-			});
-		}
-		return template;
-	}
-
-	private int createTemplate(ChecklistTemplate template) {
-		String sql = "INSERT INTO preflight_checklist_templates (name, description) VALUES (?, ?)";
-		GeneratedKeyHolder keyHolder = new GeneratedKeyHolder();
-		jdbcTemplate.update(connection -> {
-			PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-			ps.setString(1, template.getName());
-			ps.setString(2, template.getDescription());
-			return ps;
-		}, keyHolder);
-		return Objects.requireNonNull(keyHolder.getKey()).intValue();
-	}
-
-	private void updateTemplate(ChecklistTemplate template) {
-		String sql = "UPDATE preflight_checklist_templates SET name = ?, description = ? WHERE id = ?";
-		jdbcTemplate.update(sql, template.getName(), template.getDescription(), template.getId());
-	}
-
-	public List<ChecklistTemplate> findAll() {
-		String sql = "SELECT t.id as template_id, t.name, t.description, i.id as item_id, i.item_text, i.display_order, i.storage_item_id, i.quantity, si.name as storage_item_name "
-				+ "FROM preflight_checklist_templates t "
-				+ "LEFT JOIN preflight_checklist_items i ON t.id = i.template_id "
-				+ "LEFT JOIN storage_items si ON i.storage_item_id = si.id " + "ORDER BY t.name, i.display_order";
-
-		Map<Integer, ChecklistTemplate> templateMap = new LinkedHashMap<>();
-		jdbcTemplate.query(sql, (ResultSet rs) -> {
-			int templateId = rs.getInt("template_id");
-			ChecklistTemplate template = templateMap.computeIfAbsent(templateId, id -> {
-				try {
-					ChecklistTemplate newTemplate = new ChecklistTemplate();
-					newTemplate.setId(id);
-					newTemplate.setName(rs.getString("name"));
-					newTemplate.setDescription(rs.getString("description"));
-					newTemplate.setItems(new ArrayList<>());
-					return newTemplate;
-				} catch (SQLException e) {
-					throw new RuntimeException("Failed to map template", e);
-				}
-			});
-
-			if (rs.getObject("item_id") != null) {
-				ChecklistTemplateItem item = new ChecklistTemplateItem();
-				item.setId(rs.getInt("item_id"));
-				item.setTemplateId(templateId);
-				item.setItemText(rs.getString("item_text"));
-				item.setStorageItemId(rs.getObject("storage_item_id", Integer.class));
-				item.setQuantity(rs.getObject("quantity", Integer.class));
-				item.setStorageItemName(rs.getString("storage_item_name"));
-				item.setDisplayOrder(rs.getInt("display_order"));
-				template.getItems().add(item);
-			}
-		});
-		return new ArrayList<>(templateMap.values());
-	}
-
-	public boolean delete(int id) {
-		return jdbcTemplate.update("DELETE FROM preflight_checklist_templates WHERE id = ?", id) > 0;
-	}
-}
-========================================================================
-FILE: src\main\java\de\technikteam\dao\CourseDAO.java
-========================================================================
-
-package de.technikteam.dao;
-
-import de.technikteam.model.Course;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
-import org.springframework.stereotype.Repository;
-
-import java.sql.PreparedStatement;
-import java.sql.Statement;
-import java.util.List;
-import java.util.Objects;
-
-@Repository
-public class CourseDAO {
-	private static final Logger logger = LogManager.getLogger(CourseDAO.class);
-	private final JdbcTemplate jdbcTemplate;
-
-	@Autowired
-	public CourseDAO(JdbcTemplate jdbcTemplate) {
-		this.jdbcTemplate = jdbcTemplate;
-	}
-
-	private final RowMapper<Course> courseRowMapper = (rs, rowNum) -> {
-		Course course = new Course();
-		course.setId(rs.getInt("id"));
-		course.setName(rs.getString("name"));
-		course.setAbbreviation(rs.getString("abbreviation"));
-		course.setDescription(rs.getString("description"));
-		return course;
-	};
-
-	public Course createCourse(Course course) {
-		String sql = "INSERT INTO courses (name, abbreviation, description) VALUES (?, ?, ?)";
-		KeyHolder keyHolder = new GeneratedKeyHolder();
-		try {
-			jdbcTemplate.update(connection -> {
-				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-				ps.setString(1, course.getName());
-				ps.setString(2, course.getAbbreviation());
-				ps.setString(3, course.getDescription());
-				return ps;
-			}, keyHolder);
-			int newId = Objects.requireNonNull(keyHolder.getKey()).intValue();
-			course.setId(newId);
-			return course;
-		} catch (Exception e) {
-			logger.error("Error creating course: {}", course.getName(), e);
-			return null;
-		}
-	}
-
-	public Course getCourseById(int courseId) {
-		String sql = "SELECT * FROM courses WHERE id = ?";
-		try {
-			return jdbcTemplate.queryForObject(sql, courseRowMapper, courseId);
-		} catch (EmptyResultDataAccessException e) {
-			return null;
-		} catch (Exception e) {
-			logger.error("Error fetching course by ID: {}", courseId, e);
-			return null;
-		}
-	}
-
-	public List<Course> getAllCourses() {
-		String sql = "SELECT * FROM courses ORDER BY name ASC";
-		try {
-			return jdbcTemplate.query(sql, courseRowMapper);
-		} catch (Exception e) {
-			logger.error("Error while fetching all courses.", e);
-			return List.of();
-		}
-	}
-
-	public boolean updateCourse(Course course) {
-		String sql = "UPDATE courses SET name = ?, abbreviation = ?, description = ? WHERE id = ?";
-		try {
-			return jdbcTemplate.update(sql, course.getName(), course.getAbbreviation(), course.getDescription(),
-					course.getId()) > 0;
-		} catch (Exception e) {
-			logger.error("Error updating course: {}", course.getName(), e);
-			return false;
-		}
-	}
-
-	public boolean deleteCourse(int courseId) {
-		String sql = "DELETE FROM courses WHERE id = ?";
-		try {
-			jdbcTemplate.update("DELETE FROM event_skill_requirements WHERE required_course_id = ?", courseId);
-			jdbcTemplate.update("DELETE FROM user_qualifications WHERE course_id = ?", courseId);
-			jdbcTemplate.update("DELETE FROM meetings WHERE course_id = ?", courseId);
-
-			return jdbcTemplate.update(sql, courseId) > 0;
-		} catch (Exception e) {
-			logger.error("Error deleting course with ID: {}", courseId, e);
-			return false;
-		}
-	}
-}
-========================================================================
-FILE: src\main\java\de\technikteam\dao\DamageReportDAO.java
-========================================================================
-
-package de.technikteam.dao;
-
-import de.technikteam.model.DamageReport;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.stereotype.Repository;
-
-import java.sql.PreparedStatement;
-import java.sql.Statement;
-import java.sql.Timestamp;
-import java.sql.Types;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-
-@Repository
-public class DamageReportDAO {
-
-	private final JdbcTemplate jdbcTemplate;
-
-	@Autowired
-	public DamageReportDAO(JdbcTemplate jdbcTemplate) {
-		this.jdbcTemplate = jdbcTemplate;
-	}
-
-	private final RowMapper<DamageReport> reportRowMapper = (rs, rowNum) -> {
-		DamageReport report = new DamageReport();
-		report.setId(rs.getInt("id"));
-		report.setItemId(rs.getInt("item_id"));
-		report.setReporterUserId(rs.getInt("reporter_user_id"));
-		report.setReportDescription(rs.getString("report_description"));
-		report.setReportedAt(rs.getTimestamp("reported_at").toLocalDateTime());
-		report.setStatus(rs.getString("status"));
-		report.setReviewedByAdminId(rs.getObject("reviewed_by_admin_id", Integer.class));
-		if (rs.getTimestamp("reviewed_at") != null) {
-			report.setReviewedAt(rs.getTimestamp("reviewed_at").toLocalDateTime());
-		}
-		report.setAdminNotes(rs.getString("admin_notes"));
-		report.setItemName(rs.getString("item_name"));
-		report.setReporterUsername(rs.getString("reporter_username"));
-		return report;
-	};
-
-	public DamageReport createReport(int itemId, int reporterUserId, String description) {
-		String sql = "INSERT INTO damage_reports (item_id, reporter_user_id, report_description) VALUES (?, ?, ?)";
-		GeneratedKeyHolder keyHolder = new GeneratedKeyHolder();
-		jdbcTemplate.update(connection -> {
-			PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-			ps.setInt(1, itemId);
-			ps.setInt(2, reporterUserId);
-			ps.setString(3, description);
-			return ps;
-		}, keyHolder);
-
-		int newId = Objects.requireNonNull(keyHolder.getKey()).intValue();
-		return getReportById(newId).orElse(null);
-	}
-
-	public List<DamageReport> getPendingReports() {
-		String sql = "SELECT dr.*, si.name as item_name, u.username as reporter_username FROM damage_reports dr "
-				+ "JOIN storage_items si ON dr.item_id = si.id " + "JOIN users u ON dr.reporter_user_id = u.id "
-				+ "WHERE dr.status = 'PENDING' ORDER BY dr.reported_at ASC";
-		return jdbcTemplate.query(sql, reportRowMapper);
-	}
-
-	public Optional<DamageReport> getReportById(int id) {
-		String sql = "SELECT dr.*, si.name as item_name, u.username as reporter_username FROM damage_reports dr "
-				+ "JOIN storage_items si ON dr.item_id = si.id " + "JOIN users u ON dr.reporter_user_id = u.id "
-				+ "WHERE dr.id = ?";
-		try {
-			return Optional.ofNullable(jdbcTemplate.queryForObject(sql, reportRowMapper, id));
-		} catch (EmptyResultDataAccessException e) {
-			return Optional.empty();
-		}
-	}
-
-	public boolean updateStatus(int reportId, String status, int adminId, String adminNotes) {
-		String sql = "UPDATE damage_reports SET status = ?, reviewed_by_admin_id = ?, reviewed_at = ?, admin_notes = ? WHERE id = ?";
-		return jdbcTemplate.update(sql, ps -> {
-			ps.setString(1, status);
-			ps.setInt(2, adminId);
-			ps.setTimestamp(3, Timestamp.valueOf(LocalDateTime.now()));
-			if (adminNotes != null) {
-				ps.setString(4, adminNotes);
-			} else {
-				ps.setNull(4, Types.VARCHAR);
-			}
-			ps.setInt(5, reportId);
-		}) > 0;
-	}
-}
-========================================================================
-FILE: src\main\java\de\technikteam\dao\EventChatDAO.java
-========================================================================
-
-package de.technikteam.dao;
-
-import de.technikteam.model.EventChatMessage;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
-import org.springframework.stereotype.Repository;
-
-import java.sql.PreparedStatement;
-import java.sql.Statement;
-import java.util.List;
-import java.util.Objects;
-
-@Repository
-public class EventChatDAO {
-	private static final Logger logger = LogManager.getLogger(EventChatDAO.class);
-	private final JdbcTemplate jdbcTemplate;
-
-	@Autowired
-	public EventChatDAO(JdbcTemplate jdbcTemplate) {
-		this.jdbcTemplate = jdbcTemplate;
-	}
-
-	private final RowMapper<EventChatMessage> chatMessageRowMapper = (rs, rowNum) -> {
-		EventChatMessage message = new EventChatMessage();
-		message.setId(rs.getInt("id"));
-		message.setEventId(rs.getInt("event_id"));
-		message.setUserId(rs.getInt("user_id"));
-		message.setUsername(rs.getString("username"));
-		message.setMessageText(rs.getString("message_text"));
-		message.setEdited(rs.getBoolean("edited"));
-		if (rs.getTimestamp("edited_at") != null) {
-			message.setEditedAt(rs.getTimestamp("edited_at").toLocalDateTime());
-		}
-		message.setDeleted(rs.getBoolean("is_deleted"));
-		message.setDeletedByUserId(rs.getInt("deleted_by_user_id"));
-		message.setDeletedByUsername(rs.getString("deleted_by_username"));
-		message.setChatColor(rs.getString("chat_color"));
-		if (rs.getTimestamp("deleted_at") != null) {
-			message.setDeletedAt(rs.getTimestamp("deleted_at").toLocalDateTime());
-		}
-		message.setSentAt(rs.getTimestamp("sent_at").toLocalDateTime());
-		return message;
-	};
-
-	public EventChatMessage postMessage(EventChatMessage message) {
-		String sql = "INSERT INTO event_chat_messages (event_id, user_id, username, message_text) VALUES (?, ?, ?, ?)";
-		try {
-			KeyHolder keyHolder = new GeneratedKeyHolder();
-			jdbcTemplate.update(connection -> {
-				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-				ps.setInt(1, message.getEventId());
-				ps.setInt(2, message.getUserId());
-				ps.setString(3, message.getUsername());
-				ps.setString(4, message.getMessageText());
-				return ps;
-			}, keyHolder);
-
-			int newId = Objects.requireNonNull(keyHolder.getKey()).intValue();
-			return getMessageById(newId);
-		} catch (Exception e) {
-			logger.error("Error posting chat message for event {}", message.getEventId(), e);
-			return null;
-		}
-	}
-
-	public List<EventChatMessage> getMessagesForEvent(int eventId) {
-		String sql = "SELECT m.*, u_del.username as deleted_by_username, u_orig.chat_color FROM event_chat_messages m LEFT JOIN users u_del ON m.deleted_by_user_id = u_del.id JOIN users u_orig ON m.user_id = u_orig.id WHERE m.event_id = ? ORDER BY m.sent_at ASC";
-		try {
-			return jdbcTemplate.query(sql, chatMessageRowMapper, eventId);
-		} catch (Exception e) {
-			logger.error("Error fetching chat messages for event {}", eventId, e);
-			return List.of();
-		}
-	}
-
-	public EventChatMessage getMessageById(int messageId) {
-		String sql = "SELECT m.*, u_del.username as deleted_by_username, u_orig.chat_color FROM event_chat_messages m LEFT JOIN users u_del ON m.deleted_by_user_id = u_del.id JOIN users u_orig ON m.user_id = u_orig.id WHERE m.id = ?";
-		try {
-			return jdbcTemplate.queryForObject(sql, chatMessageRowMapper, messageId);
-		} catch (Exception e) {
-			logger.error("Error fetching message by ID {}", messageId, e);
-			return null;
-		}
-	}
-
-	public boolean updateMessage(int messageId, int userId, String newText) {
-		String sql = "UPDATE event_chat_messages SET message_text = ?, edited = TRUE, edited_at = NOW() WHERE id = ? AND user_id = ? AND is_deleted = FALSE AND sent_at >= NOW() - INTERVAL 24 HOUR";
-		try {
-			return jdbcTemplate.update(sql, newText, messageId, userId) > 0;
-		} catch (Exception e) {
-			logger.error("Error updating message ID {}", messageId, e);
-			return false;
-		}
-	}
-
-	public boolean deleteMessage(int messageId, int deletersUserId, boolean isAdmin) {
-		String sql = isAdmin
-				? "UPDATE event_chat_messages SET is_deleted = TRUE, message_text = '', deleted_by_user_id = ?, deleted_at = NOW() WHERE id = ?"
-				: "UPDATE event_chat_messages SET is_deleted = TRUE, message_text = '', deleted_by_user_id = ?, deleted_at = NOW() WHERE id = ? AND user_id = ?";
-		try {
-			if (isAdmin) {
-				return jdbcTemplate.update(sql, deletersUserId, messageId) > 0;
-			} else {
-				return jdbcTemplate.update(sql, deletersUserId, messageId, deletersUserId) > 0;
-			}
-		} catch (Exception e) {
-			logger.error("Error soft-deleting message ID {}:", messageId, e);
-			return false;
-		}
-	}
-}
-========================================================================
-FILE: src\main\java\de\technikteam\dao\EventCustomFieldDAO.java
-========================================================================
-
-package de.technikteam.dao;
-
-import de.technikteam.model.EventCustomField;
-import de.technikteam.model.EventCustomFieldResponse;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-
-@Repository
-public class EventCustomFieldDAO {
-	private static final Logger logger = LogManager.getLogger(EventCustomFieldDAO.class);
-	private final JdbcTemplate jdbcTemplate;
-
-	@Autowired
-	public EventCustomFieldDAO(JdbcTemplate jdbcTemplate) {
-		this.jdbcTemplate = jdbcTemplate;
-	}
-
-	@Transactional
-	public void saveCustomFieldsForEvent(int eventId, List<EventCustomField> fields) {
-		try {
-			jdbcTemplate.update("DELETE FROM event_custom_fields WHERE event_id = ?", eventId);
-
-			if (fields != null && !fields.isEmpty()) {
-				String insertSql = "INSERT INTO event_custom_fields (event_id, field_name, field_type, is_required, field_options) VALUES (?, ?, ?, ?, ?)";
-				jdbcTemplate.batchUpdate(insertSql, fields, 100, (ps, field) -> {
-					ps.setInt(1, eventId);
-					ps.setString(2, field.getFieldName());
-					ps.setString(3, field.getFieldType());
-					ps.setBoolean(4, field.isRequired());
-					ps.setString(5, field.getFieldOptions());
-				});
-			}
-		} catch (Exception e) {
-			logger.error("Error in transaction for saving custom fields for event {}", eventId, e);
-			throw new RuntimeException(e);
-		}
-	}
-
-	public List<EventCustomField> getCustomFieldsForEvent(int eventId) {
-		String sql = "SELECT * FROM event_custom_fields WHERE event_id = ? ORDER BY id";
-		try {
-			return jdbcTemplate.query(sql, (rs, rowNum) -> {
-				EventCustomField field = new EventCustomField();
-				field.setId(rs.getInt("id"));
-				field.setEventId(rs.getInt("event_id"));
-				field.setFieldName(rs.getString("field_name"));
-				field.setFieldType(rs.getString("field_type"));
-				field.setRequired(rs.getBoolean("is_required"));
-				field.setFieldOptions(rs.getString("field_options"));
-				return field;
-			}, eventId);
-		} catch (Exception e) {
-			logger.error("Error fetching custom fields for event ID {}", eventId, e);
-			return List.of();
-		}
-	}
-
-	public void saveResponse(EventCustomFieldResponse response) {
-		String sql = "INSERT INTO event_custom_field_responses (field_id, user_id, response_value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE response_value = VALUES(response_value)";
-		try {
-			jdbcTemplate.update(sql, response.getFieldId(), response.getUserId(), response.getResponseValue());
-		} catch (Exception e) {
-			logger.error("Error saving custom field response for field {} and user {}", response.getFieldId(),
-					response.getUserId(), e);
-		}
-	}
-}
-========================================================================
-FILE: src\main\java\de\technikteam\dao\EventDAO.java
-========================================================================
-
-package de.technikteam.dao;
-
-import de.technikteam.api.v1.dto.EventAssignmentDTO;
-import de.technikteam.model.Event;
-import de.technikteam.model.SkillRequirement;
-import de.technikteam.model.StorageItem;
-import de.technikteam.model.User;
-import de.technikteam.util.DaoUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
-import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
-
-@Repository
-public class EventDAO {
-	private static final Logger logger = LogManager.getLogger(EventDAO.class);
-	private final JdbcTemplate jdbcTemplate;
-	private final EventTaskDAO eventTaskDAO;
-
-	@Autowired
-	public EventDAO(JdbcTemplate jdbcTemplate, EventTaskDAO eventTaskDAO) {
-		this.jdbcTemplate = jdbcTemplate;
-		this.eventTaskDAO = eventTaskDAO;
-	}
-
-	private final RowMapper<Event> eventRowMapper = (rs, rowNum) -> {
-		Event event = new Event();
-		event.setId(rs.getInt("id"));
-		event.setName(rs.getString("name"));
-		event.setDescription(rs.getString("description"));
-		event.setLocation(rs.getString("location"));
-		event.setStatus(rs.getString("status"));
-		event.setEventDateTime(rs.getTimestamp("event_datetime").toLocalDateTime());
-		if (rs.getTimestamp("end_datetime") != null) {
-			event.setEndDateTime(rs.getTimestamp("end_datetime").toLocalDateTime());
-		}
-		if (DaoUtils.hasColumn(rs, "leader_user_id")) {
-			event.setLeaderUserId(rs.getInt("leader_user_id"));
-		}
-		if (DaoUtils.hasColumn(rs, "leader_username")) {
-			event.setLeaderUsername(rs.getString("leader_username"));
-		}
-		return event;
-	};
-
-	private final RowMapper<User> simpleUserRowMapper = (rs, rowNum) -> {
-		User user = new User(rs.getInt("id"), rs.getString("username"), rs.getString("role"));
-		user.setAssignedEventRole(rs.getString("assigned_event_role"));
-		user.setAssignedEventRoleId(rs.getObject("assigned_event_role_id", Integer.class));
-		return user;
-	};
-
-	public List<Event> getUpcomingEventsForUser(User user) {
-		String sql = "SELECT e.*, u_leader.username AS leader_username, " + "COALESCE("
-				+ "    (SELECT 'ZUGEWIESEN' FROM event_assignments WHERE event_id = e.id AND user_id = ?), "
-				+ "    (SELECT signup_status FROM event_attendance WHERE event_id = e.id AND user_id = ?), "
-				+ "    'OFFEN'" + ") AS user_attendance_status, " + "(" + "    SELECT COUNT(*) = 0 "
-				+ "    FROM event_skill_requirements esr " + "    WHERE esr.event_id = e.id " + "    AND NOT EXISTS ("
-				+ "        SELECT 1 FROM user_qualifications uq "
-				+ "        WHERE uq.user_id = ? AND uq.course_id = esr.required_course_id AND uq.status = 'BESTANDEN'"
-				+ "    )" + ") AS is_user_qualified " + "FROM events e "
-				+ "LEFT JOIN users u_leader ON e.leader_user_id = u_leader.id "
-				+ "WHERE e.status IN ('GEPLANT', 'LAUFEND') AND e.event_datetime >= NOW() - INTERVAL 1 DAY "
-				+ "ORDER BY e.event_datetime ASC";
-		try {
-			return jdbcTemplate.query(sql, (rs, rowNum) -> {
-				Event event = eventRowMapper.mapRow(rs, rowNum);
-				event.setUserAttendanceStatus(rs.getString("user_attendance_status"));
-				event.setUserQualified(rs.getBoolean("is_user_qualified"));
-				return event;
-			}, user.getId(), user.getId(), user.getId());
-		} catch (Exception e) {
-			logger.error("Error fetching upcoming events for user {}: {}", user.getUsername(), e.getMessage());
-			return List.of();
-		}
-	}
-
-	public List<Event> getPersonalizedEventFeed(int userId, int limit) {
-		String sql = "SELECT e.*, u_leader.username AS leader_username " + "FROM events e "
-				+ "LEFT JOIN users u_leader ON e.leader_user_id = u_leader.id "
-				+ "WHERE e.status = 'GEPLANT' AND e.event_datetime >= NOW() "
-				// User is qualified for ALL requirements
-				+ "AND NOT EXISTS ( " + "    SELECT 1 FROM event_skill_requirements esr "
-				+ "    WHERE esr.event_id = e.id AND NOT EXISTS ( " + "        SELECT 1 FROM user_qualifications uq "
-				+ "        WHERE uq.user_id = ? AND uq.course_id = esr.required_course_id AND uq.status = 'BESTANDEN' "
-				+ "    ) " + ") "
-				// User is NOT already attending
-				+ "AND NOT EXISTS ( " + "    SELECT 1 FROM event_attendance ea "
-				+ "    WHERE ea.event_id = e.id AND ea.user_id = ? AND ea.signup_status = 'ANGEMELDET' " + ") "
-				+ "AND NOT EXISTS ( " + "    SELECT 1 FROM event_assignments eas "
-				+ "    WHERE eas.event_id = e.id AND eas.user_id = ? " + ") " + "ORDER BY e.event_datetime ASC ";
-		if (limit > 0) {
-			sql += "LIMIT ?";
-		}
-		try {
-			if (limit > 0) {
-				return jdbcTemplate.query(sql, eventRowMapper, userId, userId, userId, limit);
-			} else {
-				return jdbcTemplate.query(sql, eventRowMapper, userId, userId, userId);
-			}
-		} catch (Exception e) {
-			logger.error("Error fetching personalized event feed for user {}: {}", userId, e.getMessage());
-			return List.of();
-		}
-	}
-
-	public List<Event> getEventHistoryForUser(int userId) {
-		String sql = "SELECT e.*, COALESCE( (SELECT 'ZUGEWIESEN' FROM event_assignments WHERE event_id = e.id AND user_id = ?), (SELECT signup_status FROM event_attendance WHERE event_id = e.id AND user_id = ?), 'OFFEN' ) AS user_status FROM events e WHERE EXISTS ( SELECT 1 FROM event_attendance WHERE event_id = e.id AND user_id = ? UNION SELECT 1 FROM event_assignments WHERE event_id = e.id AND user_id = ? ) ORDER BY e.event_datetime DESC";
-		try {
-			return jdbcTemplate.query(sql, (rs, rowNum) -> {
-				Event event = eventRowMapper.mapRow(rs, rowNum);
-				event.setUserAttendanceStatus(rs.getString("user_status"));
-				return event;
-			}, userId, userId, userId, userId);
-		} catch (Exception e) {
-			logger.error("Error fetching event history for user {}", userId, e);
-			return List.of();
-		}
-	}
-
-	public Event getEventById(int eventId) {
-		String sql = "SELECT e.*, u.username as leader_username FROM events e LEFT JOIN users u ON e.leader_user_id = u.id WHERE e.id = ?";
-		try {
-			Event event = jdbcTemplate.queryForObject(sql, eventRowMapper, eventId);
-			if (event != null) {
-				event.setEventTasks(eventTaskDAO.getTasksForEvent(eventId));
-				event.setAssignedAttendees(getAssignedUsersForEvent(eventId));
-			}
-			return event;
-		} catch (EmptyResultDataAccessException e) {
-			return null;
-		} catch (Exception e) {
-			logger.error("Error fetching event by ID: {}", eventId, e);
-			return null;
-		}
-	}
-
-	public List<Event> getAllEvents() {
-		String sql = "SELECT e.*, u.username as leader_username FROM events e LEFT JOIN users u ON e.leader_user_id = u.id ORDER BY e.event_datetime DESC";
-		try {
-			return jdbcTemplate.query(sql, eventRowMapper);
-		} catch (Exception e) {
-			logger.error("Error fetching all events.", e);
-			return List.of();
-		}
-	}
-
-	public List<Event> getActiveEvents() {
-		String sql = "SELECT * FROM events WHERE status IN ('GEPLANT', 'KOMPLETT', 'LAUFEND') ORDER BY event_datetime ASC";
-		try {
-			return jdbcTemplate.query(sql, eventRowMapper);
-		} catch (Exception e) {
-			logger.error("Error fetching active events.", e);
-			return List.of();
-		}
-	}
-
-	public int createEvent(Event event) {
-		String sql = "INSERT INTO events (name, event_datetime, end_datetime, description, location, status, leader_user_id) VALUES (?, ?, ?, ?, ?, 'GEPLANT', ?)";
-		KeyHolder keyHolder = new GeneratedKeyHolder();
-		try {
-			jdbcTemplate.update(connection -> {
-				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-				ps.setString(1, event.getName());
-				ps.setTimestamp(2, Timestamp.valueOf(event.getEventDateTime()));
-				if (event.getEndDateTime() != null)
-					ps.setTimestamp(3, Timestamp.valueOf(event.getEndDateTime()));
-				else
-					ps.setNull(3, Types.TIMESTAMP);
-				ps.setString(4, event.getDescription());
-				ps.setString(5, event.getLocation());
-				if (event.getLeaderUserId() > 0)
-					ps.setInt(6, event.getLeaderUserId());
-				else
-					ps.setNull(6, Types.INTEGER);
-				return ps;
-			}, keyHolder);
-			return Objects.requireNonNull(keyHolder.getKey()).intValue();
-		} catch (Exception e) {
-			logger.error("Error creating event {}", event.getName(), e);
-			return 0;
-		}
-	}
-
-	public boolean updateEvent(Event event) {
-		String sql = "UPDATE events SET name = ?, event_datetime = ?, end_datetime = ?, description = ?, location = ?, status = ?, leader_user_id = ? WHERE id = ?";
-		try {
-			return jdbcTemplate.update(sql, event.getName(), Timestamp.valueOf(event.getEventDateTime()),
-					event.getEndDateTime() != null ? Timestamp.valueOf(event.getEndDateTime()) : null,
-					event.getDescription(), event.getLocation(), event.getStatus(),
-					event.getLeaderUserId() > 0 ? event.getLeaderUserId() : null, event.getId()) > 0;
-		} catch (Exception e) {
-			logger.error("Error updating event {}", event.getName(), e);
-			return false;
-		}
-	}
-
-	public boolean deleteEvent(int eventId) {
-		String sql = "DELETE FROM events WHERE id = ?";
-		try {
-			return jdbcTemplate.update(sql, eventId) > 0;
-		} catch (Exception e) {
-			logger.error("Error deleting event with ID: {}", eventId, e);
-			return false;
-		}
-	}
-
-	public void signUpForEvent(int userId, int eventId) {
-		String sql = "INSERT INTO event_attendance (user_id, event_id, signup_status, commitment_status) VALUES (?, ?, 'ANGEMELDET', 'OFFEN') ON DUPLICATE KEY UPDATE signup_status = 'ANGEMELDET'";
-		try {
-			jdbcTemplate.update(sql, userId, eventId);
-		} catch (Exception e) {
-			logger.error("Error during event sign-up for user {} and event {}", userId, eventId, e);
-		}
-	}
-
-	public void signOffFromEvent(int userId, int eventId) {
-		String sql = "UPDATE event_attendance SET signup_status = 'ABGEMELDET', commitment_status = 'OFFEN' WHERE user_id = ? AND event_id = ?";
-		try {
-			jdbcTemplate.update(sql, userId, eventId);
-		} catch (Exception e) {
-			logger.error("Error during event sign-off for user {} and event {}", userId, eventId, e);
-		}
-	}
-
-	@Transactional
-	public void updateTeamAssignments(int eventId, List<EventAssignmentDTO> assignments) {
-		try {
-			jdbcTemplate.update("DELETE FROM event_assignments WHERE event_id = ?", eventId);
-			if (assignments != null && !assignments.isEmpty()) {
-				String insertSql = "INSERT INTO event_assignments (event_id, user_id, role_id) VALUES (?, ?, ?)";
-				jdbcTemplate.batchUpdate(insertSql, assignments, 100, (ps, assignment) -> {
-					ps.setInt(1, eventId);
-					ps.setInt(2, assignment.userId());
-					if (assignment.roleId() != null) {
-						ps.setInt(3, assignment.roleId());
-					} else {
-						ps.setNull(3, Types.INTEGER);
-					}
-				});
-			}
-		} catch (Exception e) {
-			logger.error("Error during team assignment for event ID: {}.", eventId, e);
-			throw new RuntimeException(e); 
-		}
-	}
-
-	public List<SkillRequirement> getSkillRequirementsForEvent(int eventId) {
-		String sql = "SELECT esr.required_course_id, c.name as course_name, esr.required_persons FROM event_skill_requirements esr JOIN courses c ON esr.required_course_id = c.id WHERE esr.event_id = ?";
-		try {
-			return jdbcTemplate.query(sql, (rs, rowNum) -> {
-				SkillRequirement req = new SkillRequirement();
-				req.setRequiredCourseId(rs.getInt("required_course_id"));
-				req.setCourseName(rs.getString("course_name"));
-				req.setRequiredPersons(rs.getInt("required_persons"));
-				return req;
-			}, eventId);
-		} catch (Exception e) {
-			logger.error("Error fetching skill requirements for event ID: {}", eventId, e);
-			return List.of();
-		}
-	}
-
-	public void saveSkillRequirements(int eventId, String[] requiredCourseIds, String[] requiredPersons) {
-		try {
-			jdbcTemplate.update("DELETE FROM event_skill_requirements WHERE event_id = ?", eventId);
-			if (requiredCourseIds != null && requiredPersons != null
-					&& requiredCourseIds.length == requiredPersons.length) {
-				String sql = "INSERT INTO event_skill_requirements (event_id, required_course_id, required_persons) VALUES (?, ?, ?)";
-				jdbcTemplate.batchUpdate(sql, List.of(requiredCourseIds), 100, (ps, courseId) -> {
-					int index = List.of(requiredCourseIds).indexOf(courseId);
-					if (!courseId.isEmpty()) {
-						ps.setInt(1, eventId);
-						ps.setInt(2, Integer.parseInt(courseId));
-						ps.setInt(3, Integer.parseInt(requiredPersons[index]));
-					}
-				});
-			}
-		} catch (Exception e) {
-			logger.error("Error saving skill requirements for event ID: {}.", eventId, e);
-		}
-	}
-
-	public void saveReservations(int eventId, String[] itemIds, String[] quantities) {
-		try {
-			jdbcTemplate.update("DELETE FROM event_storage_reservations WHERE event_id = ?", eventId);
-			if (itemIds != null && quantities != null && itemIds.length == quantities.length) {
-				String sql = "INSERT INTO event_storage_reservations (event_id, item_id, reserved_quantity) VALUES (?, ?, ?)";
-				jdbcTemplate.batchUpdate(sql, List.of(itemIds), 100, (ps, itemIdStr) -> {
-					int index = List.of(itemIds).indexOf(itemIdStr);
-					if (!itemIdStr.isEmpty()) {
-						ps.setInt(1, eventId);
-						ps.setInt(2, Integer.parseInt(itemIdStr));
-						ps.setInt(3, Integer.parseInt(quantities[index]));
-					}
-				});
-			}
-		} catch (Exception e) {
-			logger.error("Error saving reservations for event ID: {}.", eventId, e);
-		}
-	}
-
-	public List<StorageItem> getReservedItemsForEvent(int eventId) {
-		String sql = "SELECT si.id, si.name, esr.reserved_quantity FROM event_storage_reservations esr JOIN storage_items si ON esr.item_id = si.id WHERE esr.event_id = ?";
-		try {
-			return jdbcTemplate.query(sql, (rs, rowNum) -> {
-				StorageItem item = new StorageItem();
-				item.setId(rs.getInt("id"));
-				item.setName(rs.getString("name"));
-				item.setQuantity(rs.getInt("reserved_quantity"));
-				return item;
-			}, eventId);
-		} catch (Exception e) {
-			logger.error("Error fetching reserved items for event ID: {}", eventId, e);
-			return List.of();
-		}
-	}
-
-	public List<Event> getAllActiveAndUpcomingEvents() {
-		String sql = "SELECT * FROM events WHERE status NOT IN ('ABGESCHLOSSEN', 'ABGESAGT') AND event_datetime >= NOW() - INTERVAL 1 DAY ORDER BY event_datetime ASC";
-		try {
-			return jdbcTemplate.query(sql, eventRowMapper);
-		} catch (Exception e) {
-			logger.error("Error fetching active/upcoming events for calendar.", e);
-			return List.of();
-		}
-	}
-
-	public boolean isUserAssociatedWithEvent(int eventId, int userId) {
-		String sql = "SELECT COUNT(*) FROM (SELECT 1 FROM event_attendance WHERE event_id = ? AND user_id = ? AND signup_status = 'ANGEMELDET' UNION ALL SELECT 1 FROM event_assignments WHERE event_id = ? AND user_id = ?) AS combined";
-		try {
-			Integer count = jdbcTemplate.queryForObject(sql, Integer.class, eventId, userId, eventId, userId);
-			return count != null && count > 0;
-		} catch (Exception e) {
-			logger.error("Error checking user association for event {} and user {}", eventId, userId, e);
-			return false;
-		}
-	}
-
-	public String getUserAttendanceStatus(int eventId, int userId) {
-		String sql = "SELECT COALESCE("
-				+ "    (SELECT 'ZUGEWIESEN' FROM event_assignments WHERE event_id = ? AND user_id = ?), "
-				+ "    (SELECT signup_status FROM event_attendance WHERE event_id = ? AND user_id = ?), "
-				+ "    'OFFEN'" + ") AS user_status";
-		try {
-			return jdbcTemplate.queryForObject(sql, String.class, eventId, userId, eventId, userId);
-		} catch (Exception e) {
-			logger.error("Error fetching user attendance status for event {} user {}", eventId, userId, e);
-			return "OFFEN";
-		}
-	}
-
-	public List<User> getAssignedUsersForEvent(int eventId) {
-		String sql = "SELECT u.id, u.username, r.role_name AS role, er.name as assigned_event_role, er.id as assigned_event_role_id FROM users u JOIN event_assignments ea ON u.id = ea.user_id LEFT JOIN roles r ON u.role_id = r.id LEFT JOIN event_roles er ON ea.role_id = er.id WHERE ea.event_id = ? AND u.is_deleted = FALSE ORDER BY er.name, u.username";
-		try {
-			return jdbcTemplate.query(sql, simpleUserRowMapper, eventId);
-		} catch (Exception e) {
-			logger.error("Error fetching assigned users for event ID: {}", eventId, e);
-			return List.of();
-		}
-	}
-
-	public List<Event> getCompletedEventsForUser(int userId) {
-		String sql = "SELECT e.* FROM events e JOIN event_assignments ea ON e.id = ea.event_id WHERE ea.user_id = ? AND e.status = 'ABGESCHLOSSEN' ORDER BY e.event_datetime DESC";
-		try {
-			return jdbcTemplate.query(sql, eventRowMapper, userId);
-		} catch (Exception e) {
-			logger.error("Error fetching completed event history for user {}", userId, e);
-			return List.of();
-		}
-	}
-
-	public List<Event> getAssignedEventsForUser(int userId, int limit) {
-		String sql = "SELECT e.* FROM events e JOIN event_assignments ea ON e.id = ea.event_id WHERE ea.user_id = ? AND e.event_datetime >= NOW() ORDER BY e.event_datetime ASC";
-		if (limit > 0) {
-			sql += " LIMIT ?";
-		}
-		try {
-			if (limit > 0) {
-				return jdbcTemplate.query(sql, eventRowMapper, userId, limit);
-			} else {
-				return jdbcTemplate.query(sql, eventRowMapper, userId);
-			}
-		} catch (Exception e) {
-			logger.error("Error fetching assigned events for user {}", userId, e);
-			return List.of();
-		}
-	}
-
-	public List<Event> getUpcomingEvents(int limit) {
-		String sql = "SELECT * FROM events WHERE event_datetime > NOW() ORDER BY event_datetime ASC LIMIT ?";
-		try {
-			return jdbcTemplate.query(sql, eventRowMapper, limit);
-		} catch (Exception e) {
-			logger.error("Error fetching upcoming events with limit {}", limit, e);
-			return List.of();
-		}
-	}
-
-	public List<Event> search(String query) {
-		String sql = "SELECT * FROM events WHERE name LIKE ? OR description LIKE ? OR location LIKE ? ORDER BY event_datetime DESC LIMIT 20";
-		String searchTerm = "%" + query + "%";
-		try {
-			return jdbcTemplate.query(sql, eventRowMapper, searchTerm, searchTerm, searchTerm);
-		} catch (Exception e) {
-			logger.error("Error searching events for query '{}'", query, e);
-			return List.of();
-		}
 	}
 }

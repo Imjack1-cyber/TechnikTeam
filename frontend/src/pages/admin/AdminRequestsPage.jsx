@@ -1,106 +1,103 @@
 import React, { useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, typography } from '../../styles/theme';
 
 const AdminRequestsPage = () => {
-	// Corrected API endpoint
 	const apiCall = useCallback(() => apiClient.get('/requests/pending'), []);
 	const { data: requests, loading, error, reload } = useApi(apiCall);
 	const { addToast } = useToast();
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
 
-	const handleAction = async (requestId, action) => {
-		// Corrected API endpoint
-		const endpoint = `/requests/${requestId}/${action}`;
-		const confirmationText = action === 'approve'
-			? 'Änderungen wirklich übernehmen?'
-			: 'Antrag wirklich ablehnen?';
-
-		if (window.confirm(confirmationText)) {
-			try {
-				const result = await apiClient.post(endpoint);
-				if (result.success) {
-					addToast(`Antrag erfolgreich ${action === 'approve' ? 'genehmigt' : 'abgelehnt'}.`, 'success');
-					reload();
-				} else {
-					throw new Error(result.message);
-				}
-			} catch (err) {
-				addToast(`Fehler: ${err.message}`, 'error');
-			}
-		}
+	const handleAction = (requestId, action) => {
+		const confirmationText = action === 'approve' ? 'Änderungen wirklich übernehmen?' : 'Antrag wirklich ablehnen?';
+        Alert.alert('Aktion bestätigen', confirmationText, [
+            { text: 'Abbrechen', style: 'cancel' },
+            { text: action === 'approve' ? 'Genehmigen' : 'Ablehnen', style: 'default', onPress: async () => {
+                try {
+                    const result = await apiClient.post(`/requests/${requestId}/${action}`);
+                    if (result.success) {
+                        addToast(`Antrag erfolgreich ${action === 'approve' ? 'genehmigt' : 'abgelehnt'}.`, 'success');
+                        reload();
+                    } else { throw new Error(result.message); }
+                } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
+            }}
+        ]);
 	};
 
 	const renderChanges = (changesJson) => {
 		try {
 			const changes = JSON.parse(changesJson);
 			return (
-				<ul style={{ paddingLeft: '1.5rem', margin: 0, listStyle: 'none' }}>
+				<View>
 					{Object.entries(changes).map(([key, value]) => (
-						<li key={key}><strong>{key}:</strong> {value}</li>
+						<Text key={key} style={styles.changeText}><Text style={{fontWeight: 'bold'}}>{key}:</Text> {value}</Text>
 					))}
-				</ul>
+				</View>
 			);
 		} catch (e) {
-			return <span className="text-danger">Fehler beim Parsen der Änderungen.</span>;
+			return <Text style={styles.errorText}>Fehler beim Parsen der Änderungen.</Text>;
 		}
 	};
+    
+    const renderItem = ({ item }) => (
+        <View style={styles.card}>
+            <Text style={styles.cardTitle}>Antrag von {item.username}</Text>
+            <View style={styles.detailRow}>
+                <Text style={styles.label}>Beantragt am:</Text>
+                <Text style={styles.value}>{new Date(item.requestedAt).toLocaleString('de-DE')}</Text>
+            </View>
+            <View style={{marginTop: 8}}>
+                <Text style={styles.label}>Änderungen:</Text>
+                {renderChanges(item.requestedChanges)}
+            </View>
+            <View style={styles.cardActions}>
+                <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => handleAction(item.id, 'approve')}>
+                    <Text style={styles.buttonText}>Genehmigen</Text>
+                </TouchableOpacity>
+                 <TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={() => handleAction(item.id, 'deny')}>
+                    <Text style={styles.buttonText}>Ablehnen</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
 
 	return (
-		<div>
-			<h1><i className="fas fa-inbox"></i> Offene Anträge</h1>
-			<p>Hier sehen Sie alle von Benutzern beantragten Änderungen an Stammdaten. Genehmigte Änderungen werden sofort wirksam.</p>
+		<View style={styles.container}>
+			<View style={styles.headerContainer}>
+                <Icon name="inbox" size={24} style={styles.headerIcon} />
+			    <Text style={styles.title}>Offene Anträge</Text>
+            </View>
+			<Text style={styles.subtitle}>Hier sehen Sie alle von Benutzern beantragten Änderungen an Stammdaten.</Text>
 
-			<div className="desktop-table-wrapper">
-				<table className="data-table">
-					<thead>
-						<tr>
-							<th>Benutzer</th>
-							<th>Beantragt am</th>
-							<th>Gewünschte Änderungen</th>
-							<th>Aktion</th>
-						</tr>
-					</thead>
-					<tbody>
-						{loading && <tr><td colSpan="4">Lade Anträge...</td></tr>}
-						{error && <tr><td colSpan="4" className="error-message">{error}</td></tr>}
-						{requests?.length === 0 && <tr><td colSpan="4" style={{ textAlign: 'center' }}>Keine offenen Anträge vorhanden.</td></tr>}
-						{requests?.map(req => (
-							<tr key={req.id}>
-								<td>{req.username}</td>
-								<td>{new Date(req.requestedAt).toLocaleString('de-DE')}</td>
-								<td>{renderChanges(req.requestedChanges)}</td>
-								<td style={{ display: 'flex', gap: '0.5rem' }}>
-									<button onClick={() => handleAction(req.id, 'approve')} className="btn btn-small btn-success">Genehmigen</button>
-									<button onClick={() => handleAction(req.id, 'deny')} className="btn btn-small btn-danger">Ablehnen</button>
-								</td>
-							</tr>
-						))}
-					</tbody>
-				</table>
-			</div>
+			{loading && <ActivityIndicator size="large" />}
+			{error && <Text style={styles.errorText}>{error}</Text>}
 
-			<div className="mobile-card-list">
-				{loading && <p>Lade Anträge...</p>}
-				{error && <p className="error-message">{error}</p>}
-				{requests?.length === 0 && <div className="card"><p>Keine offenen Anträge vorhanden.</p></div>}
-				{requests?.map(req => (
-					<div className="list-item-card" key={req.id}>
-						<h3 className="card-title">Antrag von {req.username}</h3>
-						<div className="card-row"><strong>Beantragt am:</strong> <span>{new Date(req.requestedAt).toLocaleString('de-DE')}</span></div>
-						<div style={{ marginTop: '0.5rem' }}>
-							<strong>Änderungen:</strong>
-							{renderChanges(req.requestedChanges)}
-						</div>
-						<div className="card-actions">
-							<button onClick={() => handleAction(req.id, 'approve')} className="btn btn-small btn-success">Genehmigen</button>
-							<button onClick={() => handleAction(req.id, 'deny')} className="btn btn-small btn-danger">Ablehnen</button>
-						</div>
-					</div>
-				))}
-			</div>
-		</div>
+			<FlatList
+                data={requests}
+                renderItem={renderItem}
+                keyExtractor={item => item.id.toString()}
+                contentContainerStyle={styles.contentContainer}
+                ListEmptyComponent={<View style={styles.card}><Text>Keine offenen Anträge vorhanden.</Text></View>}
+            />
+		</View>
 	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        headerContainer: { flexDirection: 'row', alignItems: 'center' },
+        headerIcon: { color: colors.heading, marginRight: 12 },
+        cardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 16 },
+        changeText: { fontSize: typography.body, color: colors.text, marginLeft: 8 }
+    });
 };
 
 export default AdminRequestsPage;

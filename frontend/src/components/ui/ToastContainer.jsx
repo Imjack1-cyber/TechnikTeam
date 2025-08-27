@@ -1,41 +1,63 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { useToast } from '../../context/ToastContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const Toast = ({ message, type, url, onHide }) => {
-	const [visible, setVisible] = React.useState(false);
+	const fadeAnim = useRef(new Animated.Value(0)).current;
+	const navigation = useNavigation();
 
-	React.useEffect(() => {
-		setVisible(true);
+	useEffect(() => {
+		Animated.timing(fadeAnim, {
+			toValue: 1,
+			duration: 300,
+			useNativeDriver: true,
+		}).start();
+
 		const timer = setTimeout(() => {
-			setVisible(false);
-			// Give time for fade out animation before removing from DOM
-			setTimeout(onHide, 400);
+			Animated.timing(fadeAnim, {
+				toValue: 0,
+				duration: 300,
+				useNativeDriver: true,
+			}).start(() => {
+				onHide();
+			});
 		}, 4600);
 		return () => clearTimeout(timer);
-	}, [onHide]);
+	}, [fadeAnim, onHide]);
 
 
-	const getTypeClass = () => {
+	const getToastStyle = () => {
 		switch (type) {
 			case 'success':
-				return 'toast-success';
+				return styles.success;
 			case 'error':
-				return 'toast-danger';
+				return styles.danger;
 			default:
-				return 'toast-info';
+				return styles.info;
+		}
+	};
+
+	const handlePress = () => {
+		if (url) {
+			// Basic URL parsing to navigate
+			// This needs to be more robust in a real app
+			const route = url.startsWith('/') ? url.substring(1) : url;
+			navigation.navigate(route);
 		}
 	};
 
 	const toastContent = (
-		<div className={`toast ${visible ? 'show' : ''} ${getTypeClass()} ${url ? 'clickable' : ''}`}>
-			{message}
-			{url && <i className="fas fa-arrow-right" style={{ marginLeft: 'auto', paddingLeft: '1rem' }}></i>}
-		</div>
+		<Animated.View style={[styles.toast, getToastStyle(), { opacity: fadeAnim }]}>
+			<Text style={styles.toastText}>{message}</Text>
+			{url && <Icon name="arrow-right" size={14} color="#fff" style={styles.icon} />}
+		</Animated.View>
 	);
 
 	if (url) {
-		return <Link to={url} style={{ textDecoration: 'none' }}>{toastContent}</Link>
+		return <TouchableOpacity onPress={handlePress}>{toastContent}</TouchableOpacity>
 	}
 
 	return toastContent;
@@ -44,19 +66,56 @@ const Toast = ({ message, type, url, onHide }) => {
 
 const ToastContainer = () => {
 	const { toasts } = useToast();
-
-	const handleHide = (id) => {
-		// The timeout in ToastProvider already handles removal.
-		// This component just renders what's in the state.
-	};
+	const insets = useSafeAreaInsets();
 
 	return (
-		<div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+		<View style={[styles.container, { bottom: insets.bottom + 20, right: 20, left: 20 }]}>
 			{toasts.map(toast => (
-				<Toast key={toast.id} message={toast.message} type={toast.type} url={toast.url} onHide={() => handleHide(toast.id)} />
+				<Toast key={toast.id} message={toast.message} type={toast.type} url={toast.url} onHide={() => { }} />
 			))}
-		</div>
+		</View>
 	);
 };
+
+const styles = StyleSheet.create({
+	container: {
+		position: 'absolute',
+		zIndex: 9999,
+	},
+	toast: {
+		paddingVertical: 12,
+		paddingHorizontal: 18,
+		borderRadius: 8,
+		shadowColor: "#000",
+		shadowOffset: {
+			width: 0,
+			height: 2,
+		},
+		shadowOpacity: 0.25,
+		shadowRadius: 3.84,
+		elevation: 5,
+		marginBottom: 8,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	success: {
+		backgroundColor: '#28a745',
+	},
+	danger: {
+		backgroundColor: '#dc3545',
+	},
+	info: {
+		backgroundColor: '#0dcaf0',
+	},
+	toastText: {
+		color: '#fff',
+		fontWeight: '500',
+        flex: 1,
+	},
+    icon: {
+        marginLeft: 16,
+    }
+});
 
 export default ToastContainer;

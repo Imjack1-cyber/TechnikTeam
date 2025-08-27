@@ -1,21 +1,27 @@
 import React, { useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, TextInput } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import UserModal from '../../components/admin/users/UserModal';
 import useAdminData from '../../hooks/useAdminData';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
+import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, typography, spacing } from '../../styles/theme';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const SuspendUserModal = ({ isOpen, onClose, user, onSuccess }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = getCommonStyles(theme);
 	const [duration, setDuration] = useState('7d');
 	const [reason, setReason] = useState('');
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
 	const { addToast } = useToast();
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
+	const handleSubmit = async () => {
 		setIsSubmitting(true);
 		setError('');
 		try {
@@ -23,9 +29,7 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuccess }) => {
 			if (result.success) {
 				addToast(`Benutzer ${user.username} wurde gesperrt.`, 'success');
 				onSuccess();
-			} else {
-				throw new Error(result.message);
-			}
+			} else { throw new Error(result.message); }
 		} catch (err) {
 			setError(err.message || 'Sperren fehlgeschlagen.');
 		} finally {
@@ -33,256 +37,115 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuccess }) => {
 		}
 	};
 
-
 	return (
 		<Modal isOpen={isOpen} onClose={onClose} title={`Benutzer sperren: ${user.username}`}>
-			<form onSubmit={handleSubmit}>
-				{error && <p className="error-message">{error}</p>}
-				<div className="form-group">
-					<label htmlFor="duration">Dauer</label>
-					<input type="text" id="duration" value={duration} onChange={e => setDuration(e.target.value)} placeholder="z.B. 1h, 7d, indefinite" />
-					<small>Einheiten: h (Stunden), d (Tage), w (Wochen). Leer lassen für unbegrenzt.</small>
-				</div>
-				<div className="form-group">
-					<label htmlFor="reason">Grund</label>
-					<textarea id="reason" value={reason} onChange={e => setReason(e.target.value)} rows="3"></textarea>
-				</div>
-				<button type="submit" className="btn btn-danger" disabled={isSubmitting}>
-					{isSubmitting ? 'Wird gesperrt...' : 'Benutzer sperren'}
-				</button>
-			</form>
+			<View>
+				{error && <Text style={styles.errorText}>{error}</Text>}
+				<Text style={styles.label}>Dauer (z.B. 1h, 7d, indefinite)</Text>
+				<TextInput style={styles.input} value={duration} onChangeText={setDuration} />
+				<Text style={styles.label}>Grund</Text>
+				<TextInput style={[styles.input, styles.textArea]} value={reason} onChangeText={setReason} multiline/>
+				<TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={handleSubmit} disabled={isSubmitting}>
+                    {isSubmitting ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Benutzer sperren</Text>}
+				</TouchableOpacity>
+			</View>
 		</Modal>
 	);
 };
 
 const AdminUsersPage = () => {
+    const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/users'), []);
 	const { data: users, loading, error, reload } = useApi(apiCall);
 	const adminFormData = useAdminData();
 	const { addToast } = useToast();
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingUser, setEditingUser] = useState(null);
-	const [suspendingUser, setSuspendingUser] = useState(null);
-	const [resetPasswordInfo, setResetPasswordInfo] = useState({ user: null, password: '' });
+    const [suspendingUser, setSuspendingUser] = useState(null);
 
-	const handleOpenNewUserModal = () => {
-		setEditingUser(null);
-		setIsModalOpen(true);
-	};
+	const openModal = (user = null) => { setEditingUser(user); setIsModalOpen(true); };
+	const handleSuccess = () => { setIsModalOpen(false); setEditingUser(null); setSuspendingUser(null); reload(); };
 
-	const handleOpenEditModal = (user) => {
-		setEditingUser(user);
-		setIsModalOpen(true);
+	const handleResetPassword = (user) => {
+        Alert.alert(`Passwort für ${user.username} zurücksetzen?`, "Ein neues, temporäres Passwort wird generiert.", [
+            { text: 'Abbrechen', style: 'cancel' },
+            { text: 'Zurücksetzen', onPress: async () => {
+                try {
+                    const result = await apiClient.post(`/users/${user.id}/reset-password`);
+                    if (result.success) {
+                        Alert.alert('Passwort zurückgesetzt', `Das neue Passwort für ${result.data.username} ist: ${result.data.newPassword}\n\nBitte geben Sie es sicher weiter.`, [{text: 'OK'}]);
+                        addToast('Passwort zurückgesetzt.', 'success');
+                    } else { throw new Error(result.message); }
+                } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
+            }},
+        ]);
 	};
-
-	const handleCloseModal = () => {
-		setIsModalOpen(false);
-		setEditingUser(null);
-		setSuspendingUser(null);
-	};
-
-	const handleClosePasswordModal = () => {
-		setResetPasswordInfo({ user: null, password: '' });
-	};
-
-	const handleSuccess = () => {
-		handleCloseModal();
-		reload();
-	};
-
-	const handleDelete = async (user) => {
-		if (window.confirm(`Benutzer '${user.username}' wirklich löschen?`)) {
-			try {
-				const result = await apiClient.delete(`/users/${user.id}`);
-				if (result.success) {
-					addToast('Benutzer erfolgreich gelöscht.', 'success');
-					reload();
-				} else {
-					throw new Error(result.message);
-				}
-			} catch (err) {
-				addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error');
-			}
-		}
-	};
-
-	const handleResetPassword = async (user) => {
-		if (window.confirm(`Passwort für '${user.username}' wirklich zurücksetzen?`)) {
-			try {
-				const result = await apiClient.post(`/users/${user.id}/reset-password`);
-				if (result.success) {
-					setResetPasswordInfo({ user: user, password: result.data.newPassword });
-					addToast('Passwort zurückgesetzt.', 'success');
-				} else {
-					throw new Error(result.message);
-				}
-			} catch (err) {
-				addToast(`Fehler: ${err.message}`, 'error');
-			}
-		}
-	};
-
-	const handleUnsuspend = async (user) => {
-		if (window.confirm(`Benutzer '${user.username}' wirklich entsperren? Dies hebt auch eine eventuelle Sperre durch zu viele Login-Versuche auf.`)) {
-			try {
-				const result = await apiClient.post(`/admin/users/${user.id}/unsuspend`);
-				if (result.success) {
-					addToast('Benutzer erfolgreich entsperrt.', 'success');
-					reload();
-				} else {
-					throw new Error(result.message);
-				}
-			} catch (err) {
-				addToast(`Entsperren fehlgeschlagen: ${err.message}`, 'error');
-			}
-		}
-	};
-
-	const copyToClipboard = () => {
-		if (navigator.clipboard && window.isSecureContext) {
-			// Modern, secure way
-			navigator.clipboard.writeText(resetPasswordInfo.password)
-				.then(() => addToast('Passwort in die Zwischenablage kopiert.', 'info'))
-				.catch(err => addToast('Kopieren fehlgeschlagen.', 'error'));
-		} else {
-			// Fallback for insecure contexts (like HTTP) or older browsers
-			const textArea = document.createElement("textarea");
-			textArea.value = resetPasswordInfo.password;
-			document.body.appendChild(textArea);
-			textArea.focus();
-			textArea.select();
-			try {
-				document.execCommand('copy');
-				addToast('Passwort in die Zwischenablage kopiert.', 'info');
-			} catch (err) {
-				addToast('Kopieren fehlgeschlagen.', 'error');
-			}
-			document.body.removeChild(textArea);
-		}
-	};
+    
+    const handleUnsuspend = (user) => {
+        Alert.alert(`Benutzer "${user.username}" entsperren?`, "", [
+            { text: 'Abbrechen', style: 'cancel' },
+            { text: 'Entsperren', onPress: async () => {
+                try {
+                    const result = await apiClient.post(`/admin/users/${user.id}/unsuspend`);
+                    if (result.success) {
+                        addToast('Benutzer erfolgreich entsperrt.', 'success');
+                        reload();
+                    } else { throw new Error(result.message); }
+                } catch (err) { addToast(`Entsperren fehlgeschlagen: ${err.message}`, 'error'); }
+            }},
+        ]);
+    }
+    
+    const renderItem = ({ item: user }) => {
+        const isLocked = user.isLocked || user.status === 'SUSPENDED';
+        return (
+            <View style={styles.card}>
+                <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+                    <Text style={styles.cardTitle}>{user.username}</Text>
+                    <Text style={isLocked ? styles.badgeDanger : styles.badgeSuccess}>{isLocked ? 'Gesperrt' : 'Aktiv'}</Text>
+                </View>
+                <Text>ID: {user.id} | Rolle: {user.roleName}</Text>
+                <View style={styles.actionsContainer}>
+                    <TouchableOpacity style={styles.actionButton} onPress={() => openModal(user)}><Text>Bearbeiten</Text></TouchableOpacity>
+                    <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('UserProfile', { userId: user.id })}><Text>Profil</Text></TouchableOpacity>
+                    <TouchableOpacity style={styles.actionButton} onPress={() => handleResetPassword(user)}><Text>Reset PW</Text></TouchableOpacity>
+                    {isLocked ? (
+                        <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.success}]} onPress={() => handleUnsuspend(user)}><Text style={{color: colors.white}}>Entsperren</Text></TouchableOpacity>
+                    ) : (
+                        <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.warning}]} onPress={() => setSuspendingUser(user)} disabled={user.roleName === 'ADMIN'}><Text style={{color: colors.black}}>Sperren</Text></TouchableOpacity>
+                    )}
+                </View>
+            </View>
+        );
+    };
 
 	return (
-		<div>
-			<h1><i className="fas fa-users-cog"></i> Benutzerverwaltung</h1>
-			<p>Verwalten Sie hier alle Benutzerkonten und deren individuelle Berechtigungen.</p>
-
-			<div className="table-controls">
-				<button onClick={handleOpenNewUserModal} className="btn btn-success">
-					<i className="fas fa-user-plus"></i> Neuen Benutzer anlegen
-				</button>
-			</div>
-
-			<div className="desktop-table-wrapper">
-				<table className="data-table">
-					<thead>
-						<tr>
-							<th>ID</th>
-							<th>Benutzername</th>
-							<th>Rolle</th>
-							<th>Status</th>
-							<th>Aktionen</th>
-						</tr>
-					</thead>
-					<tbody>
-						{loading && <tr><td colSpan="5">Lade Benutzer...</td></tr>}
-						{error && <tr><td colSpan="5" className="error-message">{error}</td></tr>}
-						{users?.map(user => {
-							const isLocked = user.isLocked || user.status === 'SUSPENDED';
-							return (
-								<tr key={user.id}>
-									<td>{user.id}</td>
-									<td>{user.username}</td>
-									<td>{user.roleName}</td>
-									<td>
-										{isLocked
-											? <span className="status-badge status-danger">Gesperrt</span>
-											: <span className="status-badge status-ok">Aktiv</span>
-										}
-									</td>
-									<td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-										<button onClick={() => handleOpenEditModal(user)} className="btn btn-small">Bearbeiten</button>
-										<Link to={`/team/${user.id}`} className="btn btn-small btn-info">Profil ansehen</Link>
-										<button onClick={() => handleResetPassword(user)} className="btn btn-small btn-secondary">Passwort Reset</button>
-										{isLocked
-											? <button onClick={() => handleUnsuspend(user)} className="btn btn-small btn-success">Entsperren</button>
-											: <button onClick={() => setSuspendingUser(user)} className="btn btn-small btn-warning" disabled={user.roleName === 'ADMIN'}>Sperren</button>
-										}
-										<button onClick={() => handleDelete(user)} className="btn btn-small btn-danger">Löschen</button>
-									</td>
-								</tr>
-							);
-						})}
-					</tbody>
-				</table>
-			</div>
-
-			<div className="mobile-card-list">
-				{loading && <p>Lade Benutzer...</p>}
-				{error && <p className="error-message">{error}</p>}
-				{users?.map(user => {
-					const isLocked = user.isLocked || user.status === 'SUSPENDED';
-					return (
-						<div key={user.id} className="list-item-card">
-							<h3 className="card-title">{user.username}</h3>
-							<div className="card-row"><strong>ID:</strong> <span>{user.id}</span></div>
-							<div className="card-row"><strong>Rolle:</strong> <span>{user.roleName}</span></div>
-							<div className="card-row"><strong>Status:</strong>
-								{isLocked
-									? <span className="status-badge status-danger">Gesperrt</span>
-									: <span className="status-badge status-ok">Aktiv</span>
-								}
-							</div>
-							<div className="card-actions">
-								<button onClick={() => handleOpenEditModal(user)} className="btn btn-small">Bearbeiten</button>
-								<Link to={`/team/${user.id}`} className="btn btn-small btn-info">Profil</Link>
-								<button onClick={() => handleResetPassword(user)} className="btn btn-small btn-secondary">Reset</button>
-								{isLocked
-									? <button onClick={() => handleUnsuspend(user)} className="btn btn-small btn-success">Entsperren</button>
-									: <button onClick={() => setSuspendingUser(user)} className="btn btn-small btn-warning" disabled={user.roleName === 'ADMIN'}>Sperren</button>
-								}
-								<button onClick={() => handleDelete(user)} className="btn btn-small btn-danger">Löschen</button>
-							</div>
-						</div>
-					);
-				})}
-			</div>
-
-			{isModalOpen && (
-				<UserModal
-					isOpen={isModalOpen}
-					onClose={handleCloseModal}
-					onSuccess={handleSuccess}
-					user={editingUser}
-					roles={adminFormData.roles}
-					groupedPermissions={adminFormData.groupedPermissions}
-					isLoadingData={adminFormData.loading}
-				/>
-			)}
-
-			{suspendingUser && (
-				<SuspendUserModal
-					isOpen={!!suspendingUser}
-					onClose={handleCloseModal}
-					onSuccess={handleSuccess}
-					user={suspendingUser}
-				/>
-			)}
-
-			{resetPasswordInfo.user && (
-				<Modal isOpen={!!resetPasswordInfo.user} onClose={handleClosePasswordModal} title="Passwort wurde zurückgesetzt">
-					<p>Das neue, temporäre Passwort für <strong>{resetPasswordInfo.user.username}</strong> ist:</p>
-					<div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: 'var(--border-radius)', fontFamily: 'monospace', margin: '1rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-						<span>{resetPasswordInfo.password}</span>
-						<button className="btn btn-small" onClick={copyToClipboard} title="In die Zwischenablage kopieren">
-							<i className="fas fa-copy"></i>
-						</button>
-					</div>
-					<p className="text-danger" style={{ fontWeight: 'bold' }}>Dieses Passwort wird nur einmal angezeigt! Bitte geben Sie es sicher an den Benutzer weiter.</p>
-				</Modal>
-			)}
-		</div>
+		<View style={styles.container}>
+			<TouchableOpacity style={[styles.button, styles.successButton, {margin: 16}]} onPress={() => openModal()}>
+                <Icon name="user-plus" size={16} color="#fff" />
+                <Text style={styles.buttonText}>Neuen Benutzer anlegen</Text>
+            </TouchableOpacity>
+			{(loading || adminFormData.loading) && <ActivityIndicator size="large" />}
+			{error && <Text style={styles.errorText}>{error}</Text>}
+			<FlatList data={users} renderItem={renderItem} keyExtractor={item => item.id.toString()} contentContainerStyle={{paddingHorizontal: 16}} />
+			{isModalOpen && !adminFormData.loading && <UserModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} user={editingUser} roles={adminFormData.roles} groupedPermissions={adminFormData.groupedPermissions} />}
+            {suspendingUser && <SuspendUserModal isOpen={!!suspendingUser} onClose={() => setSuspendingUser(null)} onSuccess={handleSuccess} user={suspendingUser} />}
+		</View>
 	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        badgeSuccess: { backgroundColor: colors.success, color: colors.white, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, overflow: 'hidden' },
+        badgeDanger: { backgroundColor: colors.danger, color: colors.white, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, overflow: 'hidden' },
+        actionsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+        actionButton: { backgroundColor: colors.primaryLight, padding: 8, borderRadius: 6 },
+    });
 };
 
 export default AdminUsersPage;

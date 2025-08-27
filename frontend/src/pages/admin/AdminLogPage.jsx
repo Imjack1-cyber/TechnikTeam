@@ -1,130 +1,119 @@
 import React, { useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../context/ToastContext';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, typography } from '../../styles/theme';
 
 const AdminLogPage = () => {
+	const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/logs'), []);
 	const { data: logs, loading, error, reload } = useApi(apiCall);
 	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
 	const { addToast } = useToast();
 
+    const theme = useAuthStore(state => state.theme);
+    const commonStyles = getCommonStyles(theme);
+    const styles = { ...commonStyles, ...pageStyles(theme) };
+
 	const canRevoke = isAdmin || user?.permissions.includes('LOG_REVOKE');
 
-	const handleRevoke = async (log) => {
-		if (window.confirm(`Aktion "${log.actionType}" (ID: ${log.id}) wirklich widerrufen? Dies führt die entsprechende Gegenaktion aus.`)) {
-			try {
-				const result = await apiClient.post(`/logs/${log.id}/revoke`);
-				if (result.success) {
-					addToast('Aktion erfolgreich widerrufen.', 'success');
-					reload();
-				} else {
-					throw new Error(result.message);
-				}
-			} catch (err) {
-				addToast(`Widerrufen fehlgeschlagen: ${err.message}`, 'error');
-			}
-		}
+	const handleRevoke = (log) => {
+        Alert.alert(
+            `Aktion widerrufen?`,
+            `Möchten Sie die Aktion "${log.actionType}" (ID: ${log.id}) wirklich widerrufen? Dies führt die entsprechende Gegenaktion aus.`,
+            [
+                { text: 'Abbrechen', style: 'cancel' },
+                { text: 'Widerrufen', style: 'destructive', onPress: async () => {
+                    try {
+                        const result = await apiClient.post(`/logs/${log.id}/revoke`);
+                        if (result.success) {
+                            addToast('Aktion erfolgreich widerrufen.', 'success');
+                            reload();
+                        } else { throw new Error(result.message); }
+                    } catch (err) { addToast(`Widerrufen fehlgeschlagen: ${err.message}`, 'error'); }
+                }}
+            ]
+        );
 	};
 
+    const renderItem = ({ item: log }) => {
+        let context = {};
+        try {
+            if (log.context) context = JSON.parse(log.context);
+        } catch (e) { /* ignore */ }
+        const isRevocable = canRevoke && log.status === 'ACTIVE' && context.revocable === true;
 
-	const renderTable = () => {
-		if (loading) return <tr><td colSpan={canRevoke ? "6" : "5"}>Lade Logs...</td></tr>;
-		if (error) return <tr><td colSpan={canRevoke ? "6" : "5"} className="error-message">{error}</td></tr>;
-		if (!logs || logs.length === 0) return <tr><td colSpan={canRevoke ? "6" : "5"} style={{ textAlign: 'center' }}>Keine Log-Einträge gefunden.</td></tr>;
-
-		return logs.map(log => {
-			let context = {};
-			try {
-				if (log.context) context = JSON.parse(log.context);
-			} catch (e) { /* ignore parse error */ }
-			const isRevocable = canRevoke && log.status === 'ACTIVE' && context.revocable === true;
-
-			return (
-				<tr key={log.id}>
-					<td>{new Date(log.actionTimestamp).toLocaleString('de-DE')} Uhr</td>
-					<td>{log.adminUserId ? <Link to={`/team/${log.adminUserId}`}>{log.adminUsername}</Link> : log.adminUsername}</td>
-					<td>{log.actionType}</td>
-					<td style={{ whiteSpace: 'normal' }}>{log.details}</td>
-					<td>
-						{log.status === 'REVOKED'
-							? <span className="status-badge status-info" title={`Widerrufen von ${log.revokingAdminUsername} am ${new Date(log.revokedAt).toLocaleString('de-DE')}`}>Widerrufen</span>
-							: <span className="status-badge status-ok">Aktiv</span>}
-					</td>
-					{canRevoke && (
-						<td>
-							<button onClick={() => handleRevoke(log)} className="btn btn-small btn-warning" disabled={!isRevocable} title={isRevocable ? 'Diese Aktion widerrufen' : 'Diese Aktion kann nicht widerrufen werden'}>
-								Widerrufen
-							</button>
-						</td>
-					)}
-				</tr>
-			);
-		});
-	};
-
-	const renderMobileList = () => {
-		if (loading) return <p>Lade Logs...</p>;
-		if (error) return <p className="error-message">{error}</p>;
-		if (!logs || logs.length === 0) return <div className="card"><p>Keine Log-Einträge gefunden.</p></div>;
-
-		return logs.map(log => {
-			let context = {};
-			try {
-				if (log.context) context = JSON.parse(log.context);
-			} catch (e) { /* ignore parse error */ }
-			const isRevocable = canRevoke && log.status === 'ACTIVE' && context.revocable === true;
-
-			return (
-				<div className="list-item-card" key={log.id}>
-					<div style={{ display: 'flex', justifyContent: 'space-between' }}>
-						<h3 className="card-title">{log.actionType}</h3>
-						{log.status === 'REVOKED'
-							? <span className="status-badge status-info" title={`Widerrufen von ${log.revokingAdminUsername} am ${new Date(log.revokedAt).toLocaleString('de-DE')}`}>Widerrufen</span>
-							: <span className="status-badge status-ok">Aktiv</span>}
-					</div>
-					<div className="card-row"><strong>Wer:</strong> <span>{log.adminUserId ? <Link to={`/team/${log.adminUserId}`}>{log.adminUsername}</Link> : log.adminUsername}</span></div>
-					<div className="card-row"><strong>Wann:</strong> <span>{new Date(log.actionTimestamp).toLocaleString('de-DE')}</span></div>
-					<p style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)', whiteSpace: 'normal' }}>{log.details}</p>
-					{canRevoke && (
-						<div className="card-actions">
-							<button onClick={() => handleRevoke(log)} className="btn btn-small btn-warning" disabled={!isRevocable} title={isRevocable ? 'Diese Aktion widerrufen' : 'Diese Aktion kann nicht widerrufen werden'}>
-								Widerrufen
-							</button>
-						</div>
-					)}
-				</div>
-			);
-		});
-	};
+        return (
+            <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                    <Text style={styles.cardTitle}>{log.actionType}</Text>
+                    {log.status === 'REVOKED'
+                        ? <Text style={[styles.badge, styles.infoBadge]}>Widerrufen</Text>
+                        : <Text style={[styles.badge, styles.okBadge]}>Aktiv</Text>
+                    }
+                </View>
+                <View style={styles.detailRow}>
+                    <Text style={styles.label}>Wer:</Text>
+                    <Text style={styles.value} onPress={() => log.adminUserId && navigation.navigate('UserProfile', { userId: log.adminUserId })}>{log.adminUsername}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                    <Text style={styles.label}>Wann:</Text>
+                    <Text style={styles.value}>{new Date(log.actionTimestamp).toLocaleString('de-DE')}</Text>
+                </View>
+                <Text style={styles.detailsText}>{log.details}</Text>
+                {canRevoke && (
+                    <View style={styles.cardActions}>
+                        <TouchableOpacity style={[styles.button, {backgroundColor: getThemeColors(theme).warning}, isRevocable ? {} : styles.disabledButton]} onPress={() => handleRevoke(log)} disabled={!isRevocable}>
+                            <Text style={{color: '#000'}}>Widerrufen</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </View>
+        );
+    };
 
 	return (
-		<div>
-			<h1><i className="fas fa-clipboard-list"></i> Admin Aktions-Protokoll</h1>
-			<div className="desktop-table-wrapper">
-				<table className="data-table">
-					<thead>
-						<tr>
-							<th>Wann</th>
-							<th>Wer</th>
-							<th>Aktionstyp</th>
-							<th>Details</th>
-							<th>Status</th>
-							{canRevoke && <th>Aktion</th>}
-						</tr>
-					</thead>
-					<tbody>
-						{renderTable()}
-					</tbody>
-				</table>
-			</div>
-			<div className="mobile-card-list">
-				{renderMobileList()}
-			</div>
-		</div>
+		<View style={styles.container}>
+			<View style={styles.headerContainer}>
+                <Icon name="clipboard-list" size={24} style={styles.headerIcon} />
+				<Text style={styles.title}>Admin Aktions-Protokoll</Text>
+			</View>
+
+			{loading && <ActivityIndicator size="large" />}
+			{error && <Text style={styles.errorText}>{error}</Text>}
+			
+            <FlatList
+                data={logs}
+                renderItem={renderItem}
+                keyExtractor={item => item.id.toString()}
+                contentContainerStyle={styles.contentContainer}
+                ListEmptyComponent={<View style={styles.card}><Text>Keine Log-Einträge gefunden.</Text></View>}
+            />
+		</View>
 	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        headerContainer: { flexDirection: 'row', alignItems: 'center' },
+        headerIcon: { color: colors.heading, marginRight: 12 },
+        cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
+        cardTitle: { fontSize: typography.h4, fontWeight: 'bold' },
+        badge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 20, fontSize: 12, fontWeight: '600', color: colors.white },
+        infoBadge: { backgroundColor: colors.textMuted },
+        okBadge: { backgroundColor: colors.success },
+        detailRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+        label: { fontWeight: 'bold', color: colors.textMuted },
+        value: { color: colors.primary },
+        detailsText: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderColor: colors.border },
+        cardActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 },
+    });
 };
 
 export default AdminLogPage;

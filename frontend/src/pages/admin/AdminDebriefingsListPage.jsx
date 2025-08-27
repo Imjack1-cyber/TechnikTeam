@@ -1,53 +1,60 @@
 import React, { useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
-import ReactMarkdown from 'react-markdown';
-import rehypeSanitize from 'rehype-sanitize';
+import MarkdownDisplay from 'react-native-markdown-display';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
 
 const AdminDebriefingsListPage = () => {
+    const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/admin/events/debriefings'), []);
 	const { data: debriefings, loading, error } = useApi(apiCall);
+    const theme = useAuthStore(state => state.theme);
+    const styles = getCommonStyles(theme);
 
-	if (loading) return <div>Lade Debriefings...</div>;
-	if (error) return <div className="error-message">{error}</div>;
+    const renderItem = ({ item }) => (
+        <View style={styles.card}>
+            <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+                <TouchableOpacity onPress={() => navigation.navigate('AdminEventDebriefing', { eventId: item.eventId })}>
+                    <Text style={styles.cardTitle}>{item.eventName}</Text>
+                </TouchableOpacity>
+                <Text style={styles.subtitle}>
+                    {item.authorUsername} am {new Date(item.submittedAt).toLocaleDateString('de-DE')}
+                </Text>
+            </View>
+            <View style={{marginTop: 16}}>
+                <Text style={{fontWeight: 'bold', marginBottom: 4}}>Was lief gut?</Text>
+                <MarkdownDisplay>{item.whatWentWell}</MarkdownDisplay>
+            </View>
+             <View style={{marginTop: 16}}>
+                <Text style={{fontWeight: 'bold', marginBottom: 4}}>Was kann verbessert werden?</Text>
+                <MarkdownDisplay>{item.whatToImprove}</MarkdownDisplay>
+            </View>
+        </View>
+    );
 
 	return (
-		<div>
-			<h1><i className="fas fa-clipboard-check"></i> Event-Debriefings</h1>
-			<p>Eine Übersicht aller nachbereiteten Veranstaltungen zur Analyse und Verbesserung.</p>
+		<View style={styles.container}>
+			<View style={{flexDirection: 'row', alignItems: 'center', padding: 16}}>
+                <Icon name="clipboard-check" size={24} style={{color: getThemeColors(theme).heading, marginRight: 12}} />
+			    <Text style={styles.title}>Event-Debriefings</Text>
+            </View>
+			<Text style={styles.subtitle}>Eine Übersicht aller nachbereiteten Veranstaltungen zur Analyse und Verbesserung.</Text>
 
-			{debriefings?.length === 0 ? (
-				<div className="card"><p>Es wurden noch keine Debriefings eingereicht.</p></div>
-			) : (
-				debriefings?.map(debrief => (
-					<div className="card" key={debrief.id}>
-						<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-							<h2 className="card-title" style={{ border: 'none', padding: 0 }}>
-								<Link to={`/admin/veranstaltungen/${debrief.eventId}/debriefing`}>{debrief.eventName}</Link>
-							</h2>
-							<small>Eingereicht von {debrief.authorUsername} am {new Date(debrief.submittedAt).toLocaleDateString('de-DE')}</small>
-						</div>
-						<div className="responsive-dashboard-grid" style={{ alignItems: 'flex-start' }}>
-							<div>
-								<h4>Was lief gut?</h4>
-								<div className="markdown-content"><ReactMarkdown rehypePlugins={[rehypeSanitize]}>{debrief.whatWentWell}</ReactMarkdown></div>
-							</div>
-							<div>
-								<h4>Was kann verbessert werden?</h4>
-								<div className="markdown-content"><ReactMarkdown rehypePlugins={[rehypeSanitize]}>{debrief.whatToImprove}</ReactMarkdown></div>
-							</div>
-						</div>
-						{debrief.standoutCrewDetails?.length > 0 && (
-							<div style={{ marginTop: '1rem' }}>
-								<h4>Besonders hervorgehobene Mitglieder:</h4>
-								<p>{debrief.standoutCrewDetails.map(u => u.username).join(', ')}</p>
-							</div>
-						)}
-					</div>
-				))
-			)}
-		</div>
+			{loading && <ActivityIndicator size="large" />}
+			{error && <Text style={styles.errorText}>{error}</Text>}
+
+			<FlatList
+                data={debriefings}
+                renderItem={renderItem}
+                keyExtractor={item => item.id.toString()}
+                contentContainerStyle={styles.contentContainer}
+                ListEmptyComponent={<View style={styles.card}><Text>Es wurden noch keine Debriefings eingereicht.</Text></View>}
+            />
+		</View>
 	);
 };
 

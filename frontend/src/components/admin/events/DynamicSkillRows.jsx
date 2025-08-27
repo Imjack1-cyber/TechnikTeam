@@ -1,6 +1,16 @@
 import React from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import { useAuthStore } from '../../../store/authStore';
+import { getCommonStyles } from '../../../styles/commonStyles';
+import { getThemeColors, spacing } from '../../../styles/theme';
 
 const DynamicSkillRows = ({ rows, setRows, courses }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
+
 	const handleRowChange = (index, field, value) => {
 		const newRows = [...rows];
 		newRows[index][field] = value;
@@ -16,35 +26,62 @@ const DynamicSkillRows = ({ rows, setRows, courses }) => {
 	};
 
 	return (
-		<div>
+		<View>
 			{rows.map((row, index) => (
-				<div className="dynamic-row" key={index}>
-					<select
-						name="requiredCourseIds"
-						value={row.requiredCourseId}
-						onChange={(e) => handleRowChange(index, 'requiredCourseId', e.target.value)}
-						className="form-group"
-					>
-						<option value="">-- Qualifikation auswählen --</option>
-						{courses.map(course => <option key={course.id} value={course.id}>{course.name}</option>)}
-					</select>
-					<input
-						type="number"
-						name="requiredPersons"
-						value={row.requiredPersons}
-						onChange={(e) => handleRowChange(index, 'requiredPersons', e.target.value)}
-						className="form-group"
-						style={{ maxWidth: '100px' }}
-						min="1"
-					/>
-					<button type="button" className="btn btn-small btn-danger" onClick={() => handleRemoveRow(index)} title="Zeile entfernen">×</button>
-				</div>
+				<View style={styles.rowContainer} key={index}>
+					<View style={styles.pickerContainer}>
+                        <Picker
+                            selectedValue={row.requiredCourseId}
+                            onValueChange={(val) => handleRowChange(index, 'requiredCourseId', val)}
+                        >
+                            <Picker.Item label="-- Qualifikation auswählen --" value="" />
+                            {courses.map(course => <Picker.Item key={course.id} label={course.name} value={course.id} />)}
+                        </Picker>
+                    </View>
+                    <TextInput
+                        style={styles.quantityInput}
+                        value={String(row.requiredPersons)}
+                        onChangeText={(val) => handleRowChange(index, 'requiredPersons', val)}
+                        keyboardType="number-pad"
+                    />
+                    <TouchableOpacity onPress={() => handleRemoveRow(index)}>
+                        <Icon name="times-circle" size={24} color={colors.danger} />
+                    </TouchableOpacity>
+				</View>
 			))}
-			<button type="button" className="btn btn-small" onClick={handleAddRow}>
-				<i className="fas fa-plus"></i> Anforderung hinzufügen
-			</button>
-		</div>
+			<TouchableOpacity style={[styles.button, styles.secondaryButton, {alignSelf: 'flex-start'}]} onPress={handleAddRow}>
+                <Icon name="plus" size={14} color={colors.text} />
+				<Text style={{color: colors.text}}>Anforderung hinzufügen</Text>
+			</TouchableOpacity>
+		</View>
 	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        rowContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+            marginBottom: spacing.sm,
+        },
+        pickerContainer: {
+            flex: 1,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 8,
+        },
+        quantityInput: {
+            width: 70,
+            height: 48,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 8,
+            paddingHorizontal: spacing.sm,
+            textAlign: 'center',
+        },
+    });
 };
 
 export default DynamicSkillRows;

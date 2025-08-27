@@ -1,111 +1,30 @@
 import React, { useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
-
-const AdminDamageReportsPage = () => {
-	const apiCall = useCallback(() => apiClient.get('/admin/damage-reports/pending'), []);
-	const { data: reports, loading, error, reload } = useApi(apiCall);
-	const [selectedReport, setSelectedReport] = useState(null);
-	const [action, setAction] = useState(null); // 'confirm' or 'reject'
-	const { addToast } = useToast();
-
-	const openModal = (report, act) => {
-		setSelectedReport(report);
-		setAction(act);
-	};
-
-	const closeModal = () => {
-		setSelectedReport(null);
-		setAction(null);
-	};
-
-	const handleSuccess = () => {
-		closeModal();
-		reload();
-	};
-
-	return (
-		<div>
-			<h1><i className="fas fa-tools"></i> Offene Schadensmeldungen</h1>
-			<p>Hier sehen Sie alle von Benutzern gemeldeten Schäden, die noch nicht von einem Admin bestätigt wurden.</p>
-
-			{loading && <p>Lade Meldungen...</p>}
-			{error && <p className="error-message">{error}</p>}
-			{!loading && !error && reports?.length === 0 && <div className="card"><p>Keine offenen Meldungen vorhanden.</p></div>}
-
-			<div className="desktop-table-wrapper">
-				<table className="data-table">
-					<thead>
-						<tr>
-							<th>Gemeldet am</th>
-							<th>Artikel</th>
-							<th>Gemeldet von</th>
-							<th>Beschreibung</th>
-							<th>Aktionen</th>
-						</tr>
-					</thead>
-					<tbody>
-						{reports?.map(report => (
-							<tr key={report.id}>
-								<td>{new Date(report.reportedAt).toLocaleString('de-DE')}</td>
-								<td><Link to={`/lager/details/${report.itemId}`}>{report.itemName}</Link></td>
-								<td><Link to={`/team/${report.reporterUserId}`}>{report.reporterUsername}</Link></td>
-								<td style={{ whiteSpace: 'normal' }}>{report.reportDescription}</td>
-								<td style={{ display: 'flex', gap: '0.5rem' }}>
-									<button onClick={() => openModal(report, 'confirm')} className="btn btn-small btn-success">Bestätigen</button>
-									<button onClick={() => openModal(report, 'reject')} className="btn btn-small btn-danger">Ablehnen</button>
-								</td>
-							</tr>
-						))}
-					</tbody>
-				</table>
-			</div>
-
-			<div className="mobile-card-list">
-				{reports?.map(report => (
-					<div className="list-item-card" key={report.id}>
-						<h3 className="card-title"><Link to={`/lager/details/${report.itemId}`}>{report.itemName}</Link></h3>
-						<div className="card-row"><strong>Von:</strong> <span><Link to={`/team/${report.reporterUserId}`}>{report.reporterUsername}</Link></span></div>
-						<div className="card-row"><strong>Am:</strong> <span>{new Date(report.reportedAt).toLocaleString('de-DE')}</span></div>
-						<p style={{ marginTop: '0.5rem' }}><strong>Beschreibung:</strong> {report.reportDescription}</p>
-						<div className="card-actions">
-							<button onClick={() => openModal(report, 'confirm')} className="btn btn-small btn-success">Bestätigen</button>
-							<button onClick={() => openModal(report, 'reject')} className="btn btn-small btn-danger">Ablehnen</button>
-						</div>
-					</div>
-				))}
-			</div>
-
-			{selectedReport && (
-				<ActionModal
-					isOpen={!!selectedReport}
-					onClose={closeModal}
-					onSuccess={handleSuccess}
-					report={selectedReport}
-					action={action}
-				/>
-			)}
-		</div>
-	);
-};
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, typography } from '../../styles/theme';
 
 const ActionModal = ({ isOpen, onClose, onSuccess, report, action }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = getCommonStyles(theme);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState('');
 	const [notes, setNotes] = useState('');
-	const [quantity, setQuantity] = useState(1);
+	const [quantity, setQuantity] = useState('1');
 	const { addToast } = useToast();
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
+	const handleSubmit = async () => {
 		setIsLoading(true);
 		setError('');
 
 		try {
-			const payload = action === 'confirm' ? { quantity } : { adminNotes: notes };
+			const payload = action === 'confirm' ? { quantity: parseInt(quantity, 10) } : { adminNotes: notes };
 			const result = await apiClient.post(`/admin/damage-reports/${report.id}/${action}`, payload);
 
 			if (result.success) {
@@ -123,32 +42,109 @@ const ActionModal = ({ isOpen, onClose, onSuccess, report, action }) => {
 
 	return (
 		<Modal isOpen={isOpen} onClose={onClose} title={`Meldung #${report.id} ${action === 'confirm' ? 'bestätigen' : 'ablehnen'}`}>
-			<p><strong>Artikel:</strong> {report.itemName}</p>
-			<p><strong>Beschreibung des Nutzers:</strong> {report.reportDescription}</p>
-			<form onSubmit={handleSubmit}>
-				{error && <p className="error-message">{error}</p>}
+			<View>
+                <Text>Artikel: {report.itemName}</Text>
+                <Text>Beschreibung des Nutzers: {report.reportDescription}</Text>
+				{error && <Text style={styles.errorText}>{error}</Text>}
 				{action === 'confirm' && (
-					<div className="form-group">
-						<label htmlFor="quantity">Anzahl als defekt markieren</label>
-						<input type="number" id="quantity" value={quantity} onChange={e => setQuantity(parseInt(e.target.value, 10))} min="1" required />
-					</div>
+					<View style={styles.formGroup}>
+						<Text style={styles.label}>Anzahl als defekt markieren</Text>
+						<TextInput style={styles.input} value={quantity} onChangeText={setQuantity} keyboardType="number-pad" />
+					</View>
 				)}
 				{action === 'reject' && (
-					<div className="form-group">
-						<label htmlFor="notes">Grund für die Ablehnung (optional)</label>
-						<textarea id="notes" value={notes} onChange={e => setNotes(e.target.value)} rows="3"></textarea>
-					</div>
+					<View style={styles.formGroup}>
+						<Text style={styles.label}>Grund für die Ablehnung (optional)</Text>
+						<TextInput style={[styles.input, styles.textArea]} value={notes} onChangeText={setNotes} multiline />
+					</View>
 				)}
-				<div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
-					<button type="button" className="btn btn-secondary" onClick={onClose} disabled={isLoading}>Abbrechen</button>
-					<button type="submit" className={`btn ${action === 'confirm' ? 'btn-success' : 'btn-danger'}`} disabled={isLoading}>
-						{isLoading ? 'Wird verarbeitet...' : (action === 'confirm' ? 'Bestätigen' : 'Ablehnen')}
-					</button>
-				</div>
-			</form>
+				<View style={{flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 16}}>
+					<TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={onClose} disabled={isLoading}>
+						<Text style={styles.buttonText}>Abbrechen</Text>
+					</TouchableOpacity>
+					<TouchableOpacity style={[styles.button, action === 'confirm' ? styles.successButton : styles.dangerButton]} onPress={handleSubmit} disabled={isLoading}>
+						<Text style={styles.buttonText}>{action === 'confirm' ? 'Bestätigen' : 'Ablehnen'}</Text>
+					</TouchableOpacity>
+				</View>
+			</View>
 		</Modal>
 	);
 };
 
+const AdminDamageReportsPage = () => {
+    const navigation = useNavigation();
+	const apiCall = useCallback(() => apiClient.get('/admin/damage-reports/pending'), []);
+	const { data: reports, loading, error, reload } = useApi(apiCall);
+	const [selectedReport, setSelectedReport] = useState(null);
+	const [action, setAction] = useState(null);
+    const theme = useAuthStore(state => state.theme);
+    const commonStyles = getCommonStyles(theme);
+    const styles = { ...commonStyles, ...pageStyles(theme) };
+
+	const openModal = (report, act) => {
+		setSelectedReport(report);
+		setAction(act);
+	};
+
+    const renderItem = ({ item }) => (
+        <View style={styles.card}>
+            <TouchableOpacity onPress={() => navigation.navigate('StorageItemDetails', { itemId: item.itemId })}>
+                <Text style={styles.cardTitle}>{item.itemName}</Text>
+            </TouchableOpacity>
+            <View style={styles.detailRow}>
+                <Text style={styles.label}>Von:</Text>
+                <Text style={styles.value} onPress={() => navigation.navigate('UserProfile', { userId: item.reporterUserId })}>{item.reporterUsername}</Text>
+            </View>
+            <View style={styles.detailRow}>
+                <Text style={styles.label}>Am:</Text>
+                <Text style={styles.value}>{new Date(item.reportedAt).toLocaleString('de-DE')}</Text>
+            </View>
+            <Text style={styles.description}>Beschreibung: {item.reportDescription}</Text>
+            <View style={styles.cardActions}>
+                <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => openModal(item, 'confirm')}>
+                    <Text style={styles.buttonText}>Bestätigen</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={() => openModal(item, 'reject')}>
+                    <Text style={styles.buttonText}>Ablehnen</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+
+	return (
+		<View style={styles.container}>
+            <View style={styles.headerContainer}>
+                <Icon name="tools" size={24} style={styles.headerIcon} />
+			    <Text style={styles.title}>Offene Schadensmeldungen</Text>
+            </View>
+			<Text style={styles.subtitle}>Hier sehen Sie alle von Benutzern gemeldeten Schäden, die noch nicht von einem Admin bestätigt wurden.</Text>
+
+			{loading && <ActivityIndicator size="large" style={{marginTop: 20}} />}
+			{error && <Text style={styles.errorText}>{error}</Text>}
+
+			<FlatList
+                data={reports}
+                renderItem={renderItem}
+                keyExtractor={item => item.id.toString()}
+                contentContainerStyle={styles.contentContainer}
+                ListEmptyComponent={<View style={styles.card}><Text>Keine offenen Meldungen vorhanden.</Text></View>}
+            />
+
+			{selectedReport && (
+				<ActionModal isOpen={!!selectedReport} onClose={() => setSelectedReport(null)} onSuccess={() => {setSelectedReport(null); reload();}} report={selectedReport} action={action} />
+			)}
+		</View>
+	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        headerContainer: { flexDirection: 'row', alignItems: 'center' },
+        headerIcon: { color: colors.heading, marginRight: 12 },
+        description: { marginTop: 8, color: colors.text },
+        cardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 16 },
+    });
+};
 
 export default AdminDamageReportsPage;

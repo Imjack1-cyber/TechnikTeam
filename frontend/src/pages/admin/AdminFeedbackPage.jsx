@@ -1,37 +1,44 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
-import StatusBadge from '../../components/ui/StatusBadge';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
+import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, typography, spacing } from '../../styles/theme';
 
-const FeedbackColumn = ({ title, submissions, onCardClick }) => (
-	<div className="feedback-column">
-		<h2>{title}</h2>
-		<div className="feedback-list">
-			{submissions.map(sub => (
-				<div key={sub.id} className="feedback-card-item" onClick={() => onCardClick(sub)}>
-					<strong className="subject">{sub.subject}</strong>
-					<p className="content-preview">{sub.content}</p>
-					<div className="meta">
-						<span>Von: {sub.username}</span>
-					</div>
-				</div>
-			))}
-		</div>
-	</div>
-);
+const FeedbackColumn = ({ title, submissions, onCardClick }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = getCommonStyles(theme);
+	return (
+		<View style={styles.feedbackColumn}>
+			<Text style={styles.columnTitle}>{title}</Text>
+			<ScrollView>
+				{submissions.map(sub => (
+					<TouchableOpacity key={sub.id} style={styles.card} onPress={() => onCardClick(sub)}>
+						<Text style={styles.cardSubject}>{sub.subject}</Text>
+						<Text style={styles.cardPreview} numberOfLines={2}>{sub.content}</Text>
+						<Text style={styles.cardMeta}>Von: {sub.username}</Text>
+					</TouchableOpacity>
+				))}
+			</ScrollView>
+		</View>
+	);
+};
 
 const AdminFeedbackPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/feedback'), []);
 	const { data: submissions, loading, error, reload } = useApi(apiCall);
 	const [selectedFeedback, setSelectedFeedback] = useState(null);
 	const { addToast } = useToast();
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
 
-	const groupedSubmissions = submissions?.reduce((acc, sub) => {
+	const groupedSubmissions = useMemo(() => submissions?.reduce((acc, sub) => {
 		(acc[sub.status] = acc[sub.status] || []).push(sub);
 		return acc;
-	}, {}) || {};
+	}, {}) || {}, [submissions]);
 
 	const handleStatusChange = async (newStatus) => {
 		if (!selectedFeedback) return;
@@ -41,48 +48,61 @@ const AdminFeedbackPage = () => {
 				addToast('Status erfolgreich aktualisiert', 'success');
 				setSelectedFeedback(null);
 				reload();
-			} else {
-				throw new Error(result.message);
-			}
-		} catch (err) {
-			addToast(`Fehler beim Ändern des Status: ${err.message}`, 'error');
-		}
+			} else { throw new Error(result.message); }
+		} catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
 	};
 
-	if (loading) return <div>Lade Feedback...</div>;
-	if (error) return <div className="error-message">{error}</div>;
+	if (loading) return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
+	if (error) return <View style={styles.centered}><Text style={styles.errorText}>{error}</Text></View>;
 
 	return (
-		<div>
-			<h1><i className="fas fa-inbox"></i> Feedback-Verwaltung</h1>
-			<p>Verwalten Sie hier alle Benutzereinreichungen. Klicken Sie auf eine Karte, um den Status zu ändern.</p>
-			<div className="feedback-board">
+		<View style={styles.container}>
+			<Text style={styles.title}>Feedback-Verwaltung</Text>
+			<Text style={styles.subtitle}>Verwalten Sie hier alle Benutzereinreichungen.</Text>
+			<ScrollView horizontal={true} contentContainerStyle={styles.board}>
 				<FeedbackColumn title="Neu" submissions={groupedSubmissions['NEW'] || []} onCardClick={setSelectedFeedback} />
 				<FeedbackColumn title="Gesehen" submissions={groupedSubmissions['VIEWED'] || []} onCardClick={setSelectedFeedback} />
 				<FeedbackColumn title="Geplant" submissions={groupedSubmissions['PLANNED'] || []} onCardClick={setSelectedFeedback} />
 				<FeedbackColumn title="Erledigt" submissions={groupedSubmissions['COMPLETED'] || []} onCardClick={setSelectedFeedback} />
 				<FeedbackColumn title="Abgelehnt" submissions={groupedSubmissions['REJECTED'] || []} onCardClick={setSelectedFeedback} />
-			</div>
+			</ScrollView>
 
 			{selectedFeedback && (
 				<Modal isOpen={!!selectedFeedback} onClose={() => setSelectedFeedback(null)} title={selectedFeedback.subject}>
-					<p><strong>Von:</strong> {selectedFeedback.username}</p>
-					<p><strong>Eingereicht am:</strong> {new Date(selectedFeedback.submittedAt).toLocaleString('de-DE')}</p>
-					<div className="card" style={{ backgroundColor: 'var(--bg-color)', whiteSpace: 'pre-wrap' }}>{selectedFeedback.content}</div>
-					<div style={{ marginTop: '1.5rem' }}>
-						<h4>Status ändern:</h4>
-						<div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+					<ScrollView>
+						<Text>Von: {selectedFeedback.username}</Text>
+						<Text>Eingereicht am: {new Date(selectedFeedback.submittedAt).toLocaleString('de-DE')}</Text>
+                        <View style={styles.contentBox}>
+                            <Text>{selectedFeedback.content}</Text>
+                        </View>
+						<Text style={styles.modalSectionTitle}>Status ändern:</Text>
+						<View style={styles.statusButtons}>
 							{['NEW', 'VIEWED', 'PLANNED', 'COMPLETED', 'REJECTED'].map(status => (
-								<button key={status} onClick={() => handleStatusChange(status)} className="btn btn-small">
-									{status}
-								</button>
+								<TouchableOpacity key={status} onPress={() => handleStatusChange(status)} style={styles.button}>
+									<Text style={styles.buttonText}>{status}</Text>
+								</TouchableOpacity>
 							))}
-						</div>
-					</div>
+						</View>
+					</ScrollView>
 				</Modal>
 			)}
-		</div>
+		</View>
 	);
 };
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        board: { paddingHorizontal: spacing.md, paddingBottom: spacing.md, },
+        feedbackColumn: { width: 300, backgroundColor: colors.background, borderRadius: borders.radius, padding: spacing.sm, marginRight: spacing.md },
+        columnTitle: { fontSize: typography.h4, fontWeight: 'bold', borderBottomWidth: 1, borderColor: colors.border, paddingBottom: spacing.sm, marginBottom: spacing.md },
+        cardSubject: { fontWeight: 'bold', marginBottom: 4 },
+        cardPreview: { fontSize: typography.small, color: colors.textMuted, marginBottom: 8 },
+        cardMeta: { fontSize: typography.caption, color: colors.textMuted },
+        contentBox: { backgroundColor: colors.background, padding: spacing.md, borderRadius: 6, marginVertical: spacing.md },
+        modalSectionTitle: { fontSize: typography.h4, fontWeight: 'bold', marginTop: spacing.lg },
+        statusButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: spacing.sm },
+    });
+}
 
 export default AdminFeedbackPage;

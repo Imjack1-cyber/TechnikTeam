@@ -1,12 +1,39 @@
-# React + Vite
+# React Native Frontend for TechnikTeam
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This directory contains the React Native source code for the TechnikTeam mobile application.
 
-Currently, two official plugins are available:
+## Getting Started
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Follow the "React Native CLI Quickstart" guide for your development OS and target OS (iOS/Android) on the official React Native documentation.
 
-## Expanding the ESLint configuration
+1.  **Prerequisites:** Ensure you have Node.js, Watchman, the React Native CLI, JDK, and either Android Studio or Xcode installed.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+2.  **Install Dependencies:**
+    ```shell
+    npm install
+    ```
+
+3.  **Configure Backend URL:**
+    Open `frontend/src/services/apiClient.js` and `frontend/src/hooks/useWebSocket.js`. Update the `BASE_URL` and `WS_BASE_URL` constants to point to your running Spring Boot backend.
+    - For Android emulators, `http://10.0.2.2:PORT` is typically used to refer to the host machine's localhost.
+    - For physical devices, use your machine's local network IP address.
+
+4.  **Run the Application:**
+
+    **For Android:**
+    ```shell
+    npm run android
+    ```
+
+    **For iOS:**
+    ```shell
+    npm run ios
+    ```
+
+## Key Libraries
+
+-   **Navigation:** React Navigation
+-   **State Management:** Zustand
+-   **API Communication:** Fetch API
+-   **UI Components:** React Native core components, react-native-vector-icons, react-native-calendars, etc.
+-   **Storage:** @react-native-async-storage/async-storage

@@ -1,29 +1,34 @@
 import React from 'react';
+import { View } from 'react-native';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import { useAuthStore } from '../../store/authStore';
+import { getThemeColors } from '../../styles/theme';
 
 const MessageStatus = ({ status, isSentByMe }) => {
+    const theme = useAuthStore(state => state.theme);
+    const colors = getThemeColors(theme);
+
 	if (!isSentByMe) {
 		return null;
 	}
 
-	const statusIcon = () => {
+	const getIcon = () => {
 		switch (status) {
 			case 'SENT':
-				return <i className="fas fa-check" title="Gesendet"></i>;
+				return <Icon name="check" size={12} color="rgba(255, 255, 255, 0.7)" />;
 			case 'DELIVERED':
-				// For simplicity, we'll treat SENT as DELIVERED visually until READ.
-				// A true DELIVERED state would require more complex server-side presence tracking.
-				return <i className="fas fa-check-double" title="Zugestellt"></i>;
+				return <Icon name="check-double" size={12} color="rgba(255, 255, 255, 0.7)" />;
 			case 'READ':
-				return <i className="fas fa-check-double" style={{ color: 'var(--info-color)' }} title="Gelesen"></i>;
+				return <Icon name="check-double" size={12} color={colors.info} />;
 			default:
-				return <i className="fas fa-clock" title="Senden..."></i>;
+				return <Icon name="clock" size={12} color="rgba(255, 255, 255, 0.7)" />;
 		}
 	};
 
 	return (
-		<span className="message-status">
-			{statusIcon()}
-		</span>
+		<View>
+			{getIcon()}
+		</View>
 	);
 };
 

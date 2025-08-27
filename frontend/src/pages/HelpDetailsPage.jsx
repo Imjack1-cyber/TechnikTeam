@@ -1,78 +1,79 @@
 import React, { useCallback, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
-import ReactMarkdown from 'react-markdown';
-import rehypeSanitize from 'rehype-sanitize';
+import MarkdownDisplay from 'react-native-markdown-display';
+import { useAuthStore } from '../store/authStore';
+import { getCommonStyles } from '../styles/commonStyles';
+import { getThemeColors, typography, spacing } from '../styles/theme';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const HelpDetailsPage = () => {
-	const { pageKey } = useParams();
+    const navigation = useNavigation();
+	const route = useRoute();
+	const { pageKey } = route.params;
 	const apiCall = useCallback(() => apiClient.get(`/public/documentation/${pageKey}`), [pageKey]);
 	const { data: doc, loading, error } = useApi(apiCall);
 	const { data: allDocs } = useApi(useCallback(() => apiClient.get('/public/documentation'), []));
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
 	const relatedPageDetails = useMemo(() => {
-		if (!doc || !doc.relatedPages || !allDocs) return [];
+		if (!doc?.relatedPages || !allDocs) return [];
 		try {
 			const relatedKeys = JSON.parse(doc.relatedPages);
-			return relatedKeys
-				.map(key => allDocs.find(d => d.pageKey === key))
-				.filter(Boolean);
-		} catch (e) {
-			return [];
-		}
+			return relatedKeys.map(key => allDocs.find(d => d.pageKey === key)).filter(Boolean);
+		} catch (e) { return []; }
 	}, [doc, allDocs]);
 
-
-	if (loading) return <div>Lade Dokumentation...</div>;
-	if (error) return <div className="error-message">{error}</div>;
-	if (!doc) return <div className="error-message">Dokumentation nicht gefunden.</div>;
+	if (loading) return <View style={styles.centered}><ActivityIndicator size="large"/></View>;
+	if (error) return <View style={styles.centered}><Text style={styles.errorText}>{error}</Text></View>;
+	if (!doc) return <View style={styles.centered}><Text>Dokumentation nicht gefunden.</Text></View>;
 
 	return (
-		<div>
-			<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-				<h1>{doc.title}</h1>
-				<Link to={doc.pagePath} className="btn btn-secondary" target="_blank" rel="noopener noreferrer">
-					<i className="fas fa-external-link-alt"></i> Seite öffnen
-				</Link>
-			</div>
+		<ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+			<View style={styles.header}>
+				<Text style={styles.title}>{doc.title}</Text>
+                {/* External linking to web app version */}
+				<TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => Linking.openURL(`http://localhost:3000${doc.pagePath}`)}>
+					<Icon name="external-link-alt" size={14} color={colors.white} />
+                    <Text style={styles.buttonText}>Seite öffnen</Text>
+				</TouchableOpacity>
+			</View>
 
-			<div className="card">
-				<h2 className="card-title">Features</h2>
-				<div className="markdown-content">
-					<ReactMarkdown rehypePlugins={[rehypeSanitize]}>{doc.features}</ReactMarkdown>
-				</div>
-			</div>
+			<View style={styles.card}>
+				<Text style={styles.cardTitle}>Features</Text>
+				<MarkdownDisplay>{doc.features}</MarkdownDisplay>
+			</View>
+            
+            <View style={styles.card}>
+                <Text style={styles.cardTitle}>Verknüpfte Seiten</Text>
+                {relatedPageDetails.length > 0 ? (
+                    relatedPageDetails.map(p => (
+                        <TouchableOpacity key={p.id} style={styles.detailsListRow} onPress={() => navigation.push('HelpDetails', { pageKey: p.pageKey })}>
+                            <Text style={styles.linkText}>{p.title}</Text>
+                        </TouchableOpacity>
+                    ))
+                ) : <Text>Keine verknüpften Seiten.</Text>}
+            </View>
 
-			<div className="responsive-dashboard-grid">
-				<div className="card">
-					<h2 className="card-title">Verknüpfte Seiten</h2>
-					{relatedPageDetails.length > 0 ? (
-						<ul className="details-list">
-							{relatedPageDetails.map(p => (
-								<li key={p.id}><Link to={`/help/${p.pageKey}`}>{p.title}</Link></li>
-							))}
-						</ul>
-					) : <p>Keine verknüpften Seiten.</p>}
-				</div>
-				<div className="card">
-					<h2 className="card-title">Technische Details</h2>
-					<p>Weitere technische Informationen zu dieser Seite finden Sie in der Admin-Wiki.</p>
-					{doc.wikiLink ? (
-						<a href={doc.wikiLink} className="btn btn-small" target="_blank" rel="noopener noreferrer">
-							Zur Admin-Wiki
-						</a>
-					) : (
-						<p className="text-muted">Für diese Seite ist kein technischer Wiki-Artikel verknüpft.</p>
-					)}
-				</div>
-			</div>
-
-			<Link to="/help" className="btn" style={{ marginTop: '1.5rem' }}>
-				<i className="fas fa-arrow-left"></i> Zurück zur Übersicht
-			</Link>
-		</div>
+            <View style={styles.card}>
+                <Text style={styles.cardTitle}>Technische Details</Text>
+                <Text style={styles.bodyText}>Weitere technische Informationen zu dieser Seite finden Sie in der Admin-Wiki.</Text>
+                {/* Admin-Wiki link is web-only for now */}
+            </View>
+		</ScrollView>
 	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+        linkText: { color: colors.primary, fontSize: typography.body },
+    });
 };
 
 export default HelpDetailsPage;

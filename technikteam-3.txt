@@ -1,5 +1,1151 @@
 ﻿
 ========================================================================
+FILE: src\main\java\de\technikteam\util\NavigationRegistry.java
+========================================================================
+
+package de.technikteam.util;
+
+import de.technikteam.config.Permissions;
+import de.technikteam.model.NavigationItem;
+import de.technikteam.model.User;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * A central registry for all navigation items in the application. This class
+ * provides a single source of truth for the sidebar links and their required
+ * permissions, ensuring consistency and simplifying access control logic.
+ */
+public final class NavigationRegistry {
+
+	private static final List<NavigationItem> ALL_ITEMS = new ArrayList<>();
+	static {
+		// User Section
+		ALL_ITEMS.add(new NavigationItem("Dashboard", "/home", "fa-home", null));
+		ALL_ITEMS.add(new NavigationItem("Anschlagbrett", "/bulletin-board", "fa-thumbtack", null));
+		ALL_ITEMS.add(new NavigationItem("Benachrichtigungen", "/notifications", "fa-bell", null));
+		ALL_ITEMS.add(new NavigationItem("Team", "/team", "fa-users", null));
+		ALL_ITEMS.add(new NavigationItem("Chat", "/chat", "fa-comments", null));
+		ALL_ITEMS.add(new NavigationItem("Lehrgänge", "/lehrgaenge", "fa-graduation-cap", null));
+		ALL_ITEMS.add(new NavigationItem("Veranstaltungen", "/veranstaltungen", "fa-calendar-check", null));
+		ALL_ITEMS.add(new NavigationItem("Lager", "/lager", "fa-boxes", null));
+		ALL_ITEMS.add(new NavigationItem("Dateien", "/dateien", "fa-folder-open", null));
+		ALL_ITEMS.add(new NavigationItem("Kalender", "/kalender", "fa-calendar-alt", null));
+		ALL_ITEMS.add(new NavigationItem("Feedback", "/feedback", "fa-lightbulb", null));
+		ALL_ITEMS.add(new NavigationItem("Changelogs", "/changelogs", "fa-history", null));
+
+		// Admin Section - CONSOLIDATED
+		ALL_ITEMS.add(new NavigationItem("Admin Dashboard", "/admin/dashboard", "fa-tachometer-alt",
+				Permissions.ADMIN_DASHBOARD_ACCESS));
+		ALL_ITEMS.add(new NavigationItem("Benutzer & Anträge", "/admin/mitglieder", "fa-user-friends",
+				Permissions.USER_READ));
+		ALL_ITEMS.add(new NavigationItem("Event Management", "/admin/veranstaltungen", "fa-calendar-alt",
+				Permissions.EVENT_READ));
+		ALL_ITEMS.add(new NavigationItem("Lager & Material", "/admin/lager", "fa-warehouse", Permissions.STORAGE_READ));
+		ALL_ITEMS
+				.add(new NavigationItem("Lehrgänge & Skills", "/admin/lehrgaenge", "fa-book", Permissions.COURSE_READ));
+		ALL_ITEMS.add(
+				new NavigationItem("Inhalte & Kommunikation", "/admin/content", "fa-desktop", Permissions.FILE_MANAGE));
+		ALL_ITEMS.add(new NavigationItem("Berichte", "/admin/reports", "fa-chart-line", Permissions.REPORT_READ));
+		ALL_ITEMS.add(new NavigationItem("System & Entwicklung", "/admin/system", "fa-cogs", Permissions.SYSTEM_READ));
+	}
+
+	private NavigationRegistry() {
+	}
+
+	/**
+	 * Builds a filtered list of navigation items based on the user's permissions.
+	 *
+	 * @param user The current user.
+	 * @return A list of NavigationItem objects the user is allowed to see.
+	 */
+	public static List<NavigationItem> getNavigationItemsForUser(User user) {
+		if (user == null) {
+			return new ArrayList<>();
+		}
+
+		final boolean isAdmin = user.hasAdminAccess();
+		final Set<String> userPermissions = user.getPermissions() != null ? user.getPermissions() : Set.of();
+
+		return ALL_ITEMS.stream().filter(item -> {
+			final String requiredPerm = item.getRequiredPermission();
+
+			// Public items (no permission required) are always visible to any authenticated
+			// user.
+			if (requiredPerm == null) {
+				return true;
+			}
+
+			// For admin links, check if the user is an admin or has the specific permission
+			if (isAdmin) {
+				return true;
+			}
+
+			return userPermissions.contains(requiredPerm);
+		}).collect(Collectors.toList());
+	}
+}
+========================================================================
+FILE: src\main\java\de\technikteam\util\PasswordPolicyValidator.java
+========================================================================
+
+package de.technikteam.util;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
+
+/**
+ * A utility class to enforce a consistent, server-side password policy.
+ */
+public final class PasswordPolicyValidator {
+
+	private static final int MIN_LENGTH = 10;
+	private static final Pattern HAS_UPPERCASE = Pattern.compile("[A-Z]");
+	private static final Pattern HAS_LOWERCASE = Pattern.compile("[a-z]");
+	private static final Pattern HAS_DIGIT = Pattern.compile("[0-9]");
+	private static final Pattern HAS_SPECIAL_CHAR = Pattern.compile("[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?]");
+
+	/**
+	 * Private constructor to prevent instantiation of this utility class.
+	 */
+	private PasswordPolicyValidator() {
+	}
+
+	/**
+	 * A simple record to hold the result of a password validation check.
+	 */
+	public static class ValidationResult {
+		private final boolean isValid;
+		private final String message;
+
+		public ValidationResult(boolean isValid, String message) {
+			this.isValid = isValid;
+			this.message = message;
+		}
+
+		public boolean isValid() {
+			return isValid;
+		}
+
+		public String getMessage() {
+			return message;
+		}
+	}
+
+	/**
+	 * Validates a password against the application's defined security policy.
+	 *
+	 * @param password The password to validate.
+	 * @return A {@link ValidationResult} object containing the result and a
+	 *         descriptive message.
+	 */
+	public static ValidationResult validate(String password) {
+		if (password == null || password.trim().isEmpty()) {
+			return new ValidationResult(false, "Das Passwort darf nicht leer sein.");
+		}
+
+		List<String> errors = new ArrayList<>();
+
+		if (password.length() < MIN_LENGTH) {
+			errors.add("mindestens " + MIN_LENGTH + " Zeichen lang sein");
+		}
+		if (!HAS_UPPERCASE.matcher(password).find()) {
+			errors.add("mindestens einen Großbuchstaben enthalten");
+		}
+		if (!HAS_LOWERCASE.matcher(password).find()) {
+			errors.add("mindestens einen Kleinbuchstaben enthalten");
+		}
+		if (!HAS_DIGIT.matcher(password).find()) {
+			errors.add("mindestens eine Ziffer enthalten");
+		}
+		if (!HAS_SPECIAL_CHAR.matcher(password).find()) {
+			errors.add("mindestens ein Sonderzeichen enthalten");
+		}
+
+		if (errors.isEmpty()) {
+			return new ValidationResult(true, "Passwort ist gültig.");
+		} else {
+			return new ValidationResult(false, "Das Passwort muss " + String.join(", ", errors) + ".");
+		}
+	}
+}
+========================================================================
+FILE: src\main\java\de\technikteam\websocket\ChatSessionManager.java
+========================================================================
+
+package de.technikteam.websocket;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.stereotype.Component;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
+
+import java.io.IOException;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+
+/**
+ * Manages WebSocket sessions for event-specific chat rooms as a thread-safe
+ * Spring Component. It maps event IDs to a set of active sessions, allowing for
+ * targeted broadcasting of messages.
+ */
+@Component
+public class ChatSessionManager {
+	private static final Logger logger = LogManager.getLogger(ChatSessionManager.class);
+
+	private final Map<String, Set<WebSocketSession>> sessionsByEvent = new ConcurrentHashMap<>();
+
+	/**
+	 * Adds a new WebSocket session to a specific event chat room.
+	 *
+	 * @param eventId The ID of the event chat room.
+	 * @param session The WebSocket session to add.
+	 */
+	public void addSession(String eventId, WebSocketSession session) {
+		sessionsByEvent.computeIfAbsent(eventId, k -> new CopyOnWriteArraySet<>()).add(session);
+		logger.info("Session {} registered for event chat [{}].", session.getId(), eventId);
+	}
+
+	/**
+	 * Removes a WebSocket session from an event chat room. If the room becomes
+	 * empty, it is removed from the map to conserve memory.
+	 *
+	 * @param eventId The ID of the event chat room.
+	 * @param session The WebSocket session to remove.
+	 */
+	public void removeSession(String eventId, WebSocketSession session) {
+		Set<WebSocketSession> sessions = sessionsByEvent.get(eventId);
+		if (sessions != null) {
+			sessions.remove(session);
+			logger.info("Session {} removed from event chat [{}].", session.getId(), eventId);
+			if (sessions.isEmpty()) {
+				sessionsByEvent.remove(eventId);
+				logger.info("Event chat room [{}] is now empty and has been removed.", eventId);
+			}
+		}
+	}
+
+	/**
+	 * Broadcasts a message to all open sessions in a specific event chat room.
+	 *
+	 * @param eventId The ID of the event chat room.
+	 * @param message The message to broadcast.
+	 */
+	public void broadcast(String eventId, String message) {
+		Set<WebSocketSession> sessions = sessionsByEvent.get(eventId);
+		if (sessions != null) {
+			logger.debug("Broadcasting to {} sessions in event chat [{}].", sessions.size(), eventId);
+			TextMessage textMessage = new TextMessage(message);
+			for (WebSocketSession session : sessions) {
+				if (session.isOpen()) {
+					try {
+						session.sendMessage(textMessage);
+					} catch (IOException e) {
+						logger.error("Error broadcasting to session {}:", session.getId(), e);
+					}
+				}
+			}
+		}
+	}
+}
+========================================================================
+FILE: src\main\java\de\technikteam\websocket\ChatWebSocketHandler.java
+========================================================================
+
+package de.technikteam.websocket;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
+import com.google.gson.reflect.TypeToken;
+import de.technikteam.config.LocalDateTimeAdapter;
+import de.technikteam.dao.ChatDAO;
+import de.technikteam.model.ChatConversation;
+import de.technikteam.model.ChatMessage;
+import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
+import de.technikteam.service.NotificationService;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Component;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.handler.TextWebSocketHandler;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Component
+public class ChatWebSocketHandler extends TextWebSocketHandler {
+
+	private static final Logger logger = LogManager.getLogger(ChatWebSocketHandler.class);
+	private final ChatDAO chatDAO;
+	private final ChatWebSocketSessionManager sessionManager;
+	private final NotificationService notificationService;
+	private final Gson gson;
+
+	@Autowired
+	public ChatWebSocketHandler(ChatDAO chatDAO, ChatWebSocketSessionManager sessionManager,
+			NotificationService notificationService) {
+		this.chatDAO = chatDAO;
+		this.sessionManager = sessionManager;
+		this.notificationService = notificationService;
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+	}
+
+	@Override
+	public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+		User user = getUserFromSession(session);
+		String conversationId = getConversationId(session);
+
+		if (user == null || conversationId == null) {
+			session.close(CloseStatus.POLICY_VIOLATION.withReason("Missing user or conversation ID."));
+			return;
+		}
+
+		if (!chatDAO.isUserInConversation(Integer.parseInt(conversationId), user.getId())) {
+			session.close(CloseStatus.POLICY_VIOLATION.withReason("Unauthorized for this conversation."));
+			return;
+		}
+
+		session.getAttributes().put("user", user);
+		session.getAttributes().put("conversationId", conversationId);
+		sessionManager.addSession(conversationId, session);
+	}
+
+	@Override
+	protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+		User user = (User) session.getAttributes().get("user");
+		String conversationIdStr = (String) session.getAttributes().get("conversationId");
+		if (user == null || conversationIdStr == null)
+			return;
+		int conversationId = Integer.parseInt(conversationIdStr);
+
+		try {
+			Map<String, Object> payload = gson.fromJson(message.getPayload(), new TypeToken<Map<String, Object>>() {
+			}.getType());
+			String type = (String) payload.get("type");
+			// The actual data might be nested inside a 'payload' object or be at the top
+			// level
+			Map<String, Object> data = (Map<String, Object>) payload.get("payload");
+			if (data == null) {
+				data = payload; // Fallback for messages like `new_message` which might not have a nested
+								// payload
+			}
+
+			switch (type) {
+			case "new_message":
+				handleNewMessage(user, conversationId, (String) data.get("messageText"));
+				break;
+			case "mark_as_read":
+				if (data.get("messageIds") instanceof List) {
+					handleMarkAsRead(user, conversationId, (List<Double>) data.get("messageIds"));
+				}
+				break;
+			case "update_message":
+				handleUpdateMessage(user, conversationId, data);
+				break;
+			case "delete_message":
+				handleDeleteMessage(user, conversationId, data);
+				break;
+			}
+		} catch (JsonSyntaxException | ClassCastException | NullPointerException e) {
+			logger.warn("Bad payload from {}: {}", user.getUsername(), e.getMessage());
+		}
+	}
+
+	private void handleNewMessage(User user, int conversationId, String text) {
+		if (text != null && !text.isBlank()) {
+			ChatMessage chatMessage = new ChatMessage();
+			chatMessage.setConversationId(conversationId);
+			chatMessage.setSenderId(user.getId());
+			chatMessage.setMessageText(text);
+
+			ChatMessage savedMessage = chatDAO.createMessage(chatMessage);
+			ChatMessage fullMessage = chatDAO.getMessageById(savedMessage.getId());
+
+			sessionManager.broadcast(String.valueOf(conversationId),
+					gson.toJson(Map.of("type", "new_message", "payload", fullMessage)));
+			notifyParticipants(fullMessage, user);
+		}
+	}
+
+	private void handleMarkAsRead(User user, int conversationId, List<Double> messageIdsDouble) {
+		if (messageIdsDouble == null || messageIdsDouble.isEmpty())
+			return;
+		List<Long> messageIds = messageIdsDouble.stream().map(Double::longValue).collect(Collectors.toList());
+
+		boolean updated = chatDAO.updateMessagesStatusToRead(messageIds, conversationId, user.getId());
+		if (updated) {
+			Map<String, Object> updatePayload = Map.of("type", "messages_status_updated", "payload",
+					Map.of("messageIds", messageIds, "newStatus", "READ"));
+			sessionManager.broadcast(String.valueOf(conversationId), gson.toJson(updatePayload));
+		}
+	}
+
+	private void handleUpdateMessage(User user, int conversationId, Map<String, Object> data) {
+		if (data == null || !(data.get("messageId") instanceof Number))
+			return;
+		long messageId = ((Number) data.get("messageId")).longValue();
+		String newText = (String) data.get("newText");
+
+		if (chatDAO.updateMessage(messageId, user.getId(), newText)) {
+			ChatMessage updatedMessage = chatDAO.getMessageById(messageId);
+			if (updatedMessage == null)
+				return;
+
+			Map<String, Object> broadcastPayload = Map.of("type", "message_updated", "payload", updatedMessage);
+			sessionManager.broadcast(String.valueOf(conversationId), gson.toJson(broadcastPayload));
+		}
+	}
+
+	private void handleDeleteMessage(User user, int conversationId, Map<String, Object> data) {
+		if (data == null || !(data.get("messageId") instanceof Number))
+			return;
+		long messageId = ((Number) data.get("messageId")).longValue();
+		ChatConversation conversation = chatDAO.getConversationById(conversationId);
+		boolean isAdmin = conversation != null && conversation.isGroupChat() && conversation.getCreatorId() != null
+				&& conversation.getCreatorId() == user.getId();
+
+		if (chatDAO.deleteMessage(messageId, user.getId(), isAdmin)) {
+			ChatMessage deletedMessage = chatDAO.getMessageById(messageId);
+			if (deletedMessage == null)
+				return;
+
+			Map<String, Object> broadcastPayload = Map.of("type", "message_deleted", "payload", deletedMessage);
+			sessionManager.broadcast(String.valueOf(conversationId), gson.toJson(broadcastPayload));
+		}
+	}
+
+	private void notifyParticipants(ChatMessage message, User sender) {
+		ChatConversation conversation = chatDAO.getConversationById(message.getConversationId());
+		if (conversation == null)
+			return;
+
+		List<User> participants = conversation.getParticipants();
+		for (User participant : participants) {
+			if (participant.getId() != sender.getId()) { // Don't notify the sender
+				String messageSnippet = message.getMessageText();
+				if (messageSnippet.length() > 50) {
+					messageSnippet = messageSnippet.substring(0, 47) + "...";
+				}
+
+				String title = conversation.isGroupChat() ? "Neue Nachricht in \"" + conversation.getName() + "\""
+						: "Neue Nachricht von " + sender.getUsername();
+
+				Map<String, Object> payload = Map.of("type", "new_message", "title", title, "description",
+						messageSnippet, "level", "Informational", "url", "/chat/" + message.getConversationId());
+				notificationService.sendNotificationToUser(participant.getId(), payload);
+			}
+		}
+	}
+
+	@Override
+	public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
+		String conversationId = (String) session.getAttributes().get("conversationId");
+		if (conversationId != null) {
+			sessionManager.removeSession(conversationId, session);
+		}
+	}
+
+	private User getUserFromSession(WebSocketSession session) {
+		if (session.getPrincipal() instanceof Authentication auth) {
+			if (auth.getPrincipal() instanceof SecurityUser securityUser) {
+				return securityUser.getUser();
+			}
+		}
+		return null;
+	}
+
+	private String getConversationId(WebSocketSession session) {
+		String path = session.getUri().getPath();
+		String[] parts = path.split("/");
+		if (parts.length > 0) {
+			return parts[parts.length - 1];
+		}
+		return null;
+	}
+}
+========================================================================
+FILE: src\main\java\de\technikteam\websocket\ChatWebSocketSessionManager.java
+========================================================================
+
+package de.technikteam.websocket;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.stereotype.Component;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
+
+import java.io.IOException;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+
+@Component
+public class ChatWebSocketSessionManager {
+	private static final Logger logger = LogManager.getLogger(ChatWebSocketSessionManager.class);
+
+	private final Map<String, Set<WebSocketSession>> sessionsByConversation = new ConcurrentHashMap<>();
+
+	public void addSession(String conversationId, WebSocketSession session) {
+		sessionsByConversation.computeIfAbsent(conversationId, k -> new CopyOnWriteArraySet<>()).add(session);
+		logger.info("Session {} registered for direct message chat [{}].", session.getId(), conversationId);
+	}
+
+	public void removeSession(String conversationId, WebSocketSession session) {
+		Set<WebSocketSession> sessions = sessionsByConversation.get(conversationId);
+		if (sessions != null) {
+			sessions.remove(session);
+			logger.info("Session {} removed from direct message chat [{}].", session.getId(), conversationId);
+			if (sessions.isEmpty()) {
+				sessionsByConversation.remove(conversationId);
+				logger.info("Direct message chat room [{}] is now empty and has been removed.", conversationId);
+			}
+		}
+	}
+
+	public void broadcast(String conversationId, String message) {
+		Set<WebSocketSession> sessions = sessionsByConversation.get(conversationId);
+		if (sessions != null) {
+			logger.debug("Broadcasting to {} sessions in direct message chat [{}].", sessions.size(), conversationId);
+			TextMessage textMessage = new TextMessage(message);
+			for (WebSocketSession session : sessions) {
+				if (session.isOpen()) {
+					try {
+						session.sendMessage(textMessage);
+					} catch (IOException e) {
+						logger.error("Error broadcasting to session {}:", session.getId(), e);
+					}
+				}
+			}
+		}
+	}
+}
+========================================================================
+FILE: src\main\java\de\technikteam\websocket\ChecklistWebSocketHandler.java
+========================================================================
+
+package de.technikteam.websocket;
+
+import de.technikteam.dao.EventDAO;
+import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Component;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.handler.TextWebSocketHandler;
+
+@Component
+public class ChecklistWebSocketHandler extends TextWebSocketHandler {
+
+	private final EventDAO eventDAO;
+	private final ChatSessionManager sessionManager; // Reusing this manager
+
+	@Autowired
+	public ChecklistWebSocketHandler(EventDAO eventDAO, ChatSessionManager sessionManager) {
+		this.eventDAO = eventDAO;
+		this.sessionManager = sessionManager;
+	}
+
+	@Override
+	public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+		User user = getUserFromSession(session);
+		String eventId = getEventId(session);
+
+		if (user == null) {
+			session.close(CloseStatus.POLICY_VIOLATION.withReason("Authentifizierung erforderlich."));
+			return;
+		}
+
+		if (eventId == null || !eventDAO.isUserAssociatedWithEvent(Integer.parseInt(eventId), user.getId())) {
+			session.close(CloseStatus.POLICY_VIOLATION.withReason("Keine Berechtigung für diese Event-Checkliste."));
+			return;
+		}
+
+		session.getAttributes().put("eventId", eventId);
+		sessionManager.addSession(eventId, session);
+	}
+
+	@Override
+	public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
+		String eventId = (String) session.getAttributes().get("eventId");
+		if (eventId != null) {
+			sessionManager.removeSession(eventId, session);
+		}
+	}
+
+	private User getUserFromSession(WebSocketSession session) {
+		if (session.getPrincipal() instanceof Authentication auth) {
+			if (auth.getPrincipal() instanceof SecurityUser securityUser) {
+				return securityUser.getUser();
+			}
+		}
+		return null;
+	}
+
+	private String getEventId(WebSocketSession session) {
+		String path = session.getUri().getPath();
+		String[] parts = path.split("/");
+		if (parts.length > 0) {
+			return parts[parts.length - 1];
+		}
+		return null;
+	}
+}
+========================================================================
+FILE: src\main\java\de\technikteam\websocket\EventChatSocketHandler.java
+========================================================================
+
+package de.technikteam.websocket;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
+import de.technikteam.config.LocalDateTimeAdapter;
+import de.technikteam.config.Permissions;
+import de.technikteam.dao.EventChatDAO;
+import de.technikteam.dao.EventDAO;
+import de.technikteam.dao.UserDAO;
+import de.technikteam.model.Event;
+import de.technikteam.model.EventChatMessage;
+import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
+import de.technikteam.service.AdminLogService;
+import de.technikteam.service.NotificationService;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.owasp.html.PolicyFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Component;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.handler.TextWebSocketHandler;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+@Component
+public class EventChatSocketHandler extends TextWebSocketHandler {
+
+	private static final Logger logger = LogManager.getLogger(EventChatSocketHandler.class);
+	private static final Pattern MENTION_PATTERN = Pattern.compile("@(\\w+)");
+
+	private final EventChatDAO chatDAO;
+	private final EventDAO eventDAO;
+	private final UserDAO userDAO;
+	private final AdminLogService adminLogService;
+	private final NotificationService notificationService;
+	private final ChatSessionManager sessionManager;
+	private final Gson gson;
+	private final PolicyFactory inlineFormattingPolicy;
+
+	@Autowired
+	public EventChatSocketHandler(EventChatDAO chatDAO, EventDAO eventDAO, UserDAO userDAO,
+			AdminLogService adminLogService, NotificationService notificationService, ChatSessionManager sessionManager,
+			@Qualifier("inlineFormattingPolicy") PolicyFactory inlineFormattingPolicy) {
+		this.chatDAO = chatDAO;
+		this.eventDAO = eventDAO;
+		this.userDAO = userDAO;
+		this.adminLogService = adminLogService;
+		this.notificationService = notificationService;
+		this.sessionManager = sessionManager;
+		this.inlineFormattingPolicy = inlineFormattingPolicy;
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+	}
+
+	@Override
+	public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+		User user = getUserFromSession(session);
+		String eventId = getEventId(session);
+
+		if (user == null) {
+			session.close(CloseStatus.POLICY_VIOLATION.withReason("Authentifizierung erforderlich."));
+			return;
+		}
+
+		if (eventId == null || !eventDAO.isUserAssociatedWithEvent(Integer.parseInt(eventId), user.getId())) {
+			session.close(CloseStatus.POLICY_VIOLATION.withReason("Keine Berechtigung für diesen Event-Chat."));
+			return;
+		}
+
+		session.getAttributes().put("user", user);
+		session.getAttributes().put("eventId", eventId);
+		sessionManager.addSession(eventId, session);
+	}
+
+	@Override
+	protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+		User user = (User) session.getAttributes().get("user");
+		String eventId = (String) session.getAttributes().get("eventId");
+		if (user == null || eventId == null)
+			return;
+
+		try {
+			@SuppressWarnings("unchecked")
+			Map<String, Object> messageMap = gson.fromJson(message.getPayload(), Map.class);
+			String type = (String) messageMap.get("type");
+			@SuppressWarnings("unchecked")
+			Map<String, Object> payload = (Map<String, Object>) messageMap.get("payload");
+
+			switch (type) {
+			case "new_message":
+				handleNewMessage(user, eventId, payload);
+				break;
+			case "update_message":
+				handleUpdateMessage(user, eventId, payload);
+				break;
+			case "delete_message":
+				handleDeleteMessage(user, eventId, payload);
+				break;
+			}
+		} catch (JsonSyntaxException e) {
+			logger.error("Error processing message from user '{}'. Invalid JSON format.", user.getUsername(), e);
+		}
+	}
+
+	private void handleNewMessage(User user, String eventId, Map<String, Object> payload) {
+		String messageText = (String) payload.get("messageText");
+		String sanitizedMessage = inlineFormattingPolicy.sanitize(messageText);
+		EventChatMessage newMessage = new EventChatMessage();
+		newMessage.setEventId(Integer.parseInt(eventId));
+		newMessage.setUserId(user.getId());
+		newMessage.setUsername(user.getUsername());
+		newMessage.setMessageText(sanitizedMessage);
+		EventChatMessage savedMessage = chatDAO.postMessage(newMessage);
+		if (savedMessage == null)
+			return;
+		Map<String, Object> broadcastPayload = Map.of("type", "new_message", "payload", savedMessage);
+		sessionManager.broadcast(eventId, gson.toJson(broadcastPayload));
+		handleMentions(user, savedMessage);
+	}
+
+	private void handleUpdateMessage(User user, String eventId, Map<String, Object> payload) {
+		int messageId = ((Double) payload.get("messageId")).intValue();
+		String newText = (String) payload.get("newText");
+		String sanitizedText = inlineFormattingPolicy.sanitize(newText);
+		if (chatDAO.updateMessage(messageId, user.getId(), sanitizedText)) {
+			EventChatMessage updatedMessage = chatDAO.getMessageById(messageId);
+			if (updatedMessage == null)
+				return;
+			Map<String, Object> broadcastPayload = Map.of("type", "message_updated", "payload", updatedMessage);
+			sessionManager.broadcast(eventId, gson.toJson(broadcastPayload));
+		}
+	}
+
+	private void handleDeleteMessage(User user, String eventId, Map<String, Object> payload) {
+		int messageId = ((Double) payload.get("messageId")).intValue();
+		Event event = eventDAO.getEventById(Integer.parseInt(eventId));
+		boolean isEventLeader = event != null && event.getLeaderUserId() == user.getId();
+		boolean canDeleteAsAdmin = user.getPermissions().contains(Permissions.ACCESS_ADMIN_PANEL) || isEventLeader;
+		if (chatDAO.deleteMessage(messageId, user.getId(), canDeleteAsAdmin)) {
+			int originalUserId = ((Double) payload.get("originalUserId")).intValue();
+			if (canDeleteAsAdmin && user.getId() != originalUserId && event != null) {
+				String logDetails = String.format(
+						"Admin '%s' deleted chat message (ID: %d) in event chat for event '%s' (ID: %s).",
+						user.getUsername(), messageId, event.getName(), eventId);
+				adminLogService.log(user.getUsername(), "DELETE_CHAT_MESSAGE", logDetails);
+			}
+			EventChatMessage deletedMessage = chatDAO.getMessageById(messageId);
+			if (deletedMessage == null)
+				return;
+			Map<String, Object> broadcastPayload = Map.of("type", "message_soft_deleted", "payload", deletedMessage);
+			sessionManager.broadcast(eventId, gson.toJson(broadcastPayload));
+		}
+	}
+
+	private void handleMentions(User sender, EventChatMessage message) {
+		Event event = eventDAO.getEventById(message.getEventId());
+		if (event == null)
+			return;
+		Matcher matcher = MENTION_PATTERN.matcher(message.getMessageText());
+		while (matcher.find()) {
+			String mentionedUsername = matcher.group(1);
+			User mentionedUser = userDAO.getUserByUsername(mentionedUsername);
+			if (mentionedUser != null && mentionedUser.getId() != sender.getId()) {
+				String notificationMessage = String.format("%s hat Sie im Chat für '%s' erwähnt.", sender.getUsername(),
+						event.getName());
+				Map<String, Object> notificationPayload = Map.of("type", "mention", "payload",
+						Map.of("message", notificationMessage, "url", "/veranstaltungen/details/" + event.getId()));
+				notificationService.sendNotificationToUser(mentionedUser.getId(), notificationPayload);
+			}
+		}
+	}
+
+	@Override
+	public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+		String eventId = (String) session.getAttributes().get("eventId");
+		if (eventId != null) {
+			sessionManager.removeSession(eventId, session);
+		}
+	}
+
+	private User getUserFromSession(WebSocketSession session) {
+		if (session.getPrincipal() instanceof Authentication) {
+			Authentication auth = (Authentication) session.getPrincipal();
+			if (auth.getPrincipal() instanceof SecurityUser) {
+				return ((SecurityUser) auth.getPrincipal()).getUser();
+			}
+		}
+		return null;
+	}
+
+	private String getEventId(WebSocketSession session) {
+		// URI pattern is /ws/chat/{eventId}
+		String path = session.getUri().getPath();
+		String[] parts = path.split("/");
+		if (parts.length > 0) {
+			return parts[parts.length - 1];
+		}
+		return null;
+	}
+}
+========================================================================
+FILE: src\main\java\de\technikteam\websocket\WebSocketConfig.java
+========================================================================
+
+package de.technikteam.websocket;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.socket.config.annotation.EnableWebSocket;
+import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
+import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
+
+@Configuration
+@EnableWebSocket
+public class WebSocketConfig implements WebSocketConfigurer {
+
+	private final EventChatSocketHandler eventChatSocketHandler;
+	private final ChatWebSocketHandler chatWebSocketHandler;
+	private final ChecklistWebSocketHandler checklistWebSocketHandler;
+
+	@Autowired
+	public WebSocketConfig(EventChatSocketHandler eventChatSocketHandler, ChatWebSocketHandler chatWebSocketHandler,
+			ChecklistWebSocketHandler checklistWebSocketHandler) {
+		this.eventChatSocketHandler = eventChatSocketHandler;
+		this.chatWebSocketHandler = chatWebSocketHandler;
+		this.checklistWebSocketHandler = checklistWebSocketHandler;
+	}
+
+	@Override
+	public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+		registry.addHandler(eventChatSocketHandler, "/ws/chat/{eventId}").setAllowedOrigins("*");
+		registry.addHandler(chatWebSocketHandler, "/ws/dm/{conversationId}").setAllowedOrigins("*");
+		registry.addHandler(checklistWebSocketHandler, "/ws/checklist/{eventId}").setAllowedOrigins("*");
+	}
+}
+========================================================================
+FILE: src\main\resources\log4j2.xml
+========================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+	<Appenders>
+		<!-- Appender 1: Logs to the console in a human-readable format -->
+		<Console name="Console" target="SYSTEM_OUT">
+			<PatternLayout
+				pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n" />
+		</Console>
+
+		<!-- Appender 2: Logs to a file in a structured JSON format -->
+		<RollingFile name="JsonFile"
+			fileName="logs-backend.log"
+			filePattern="logs-backend-%d{yyyy-MM-dd}-%i.log.gz">
+			<!-- This uses your existing JSON template -->
+			<JsonTemplateLayout
+				eventTemplateUri="classpath:Log4j2JsonTemplate.json" />
+			<Policies>
+				<TimeBasedTriggeringPolicy />
+				<SizeBasedTriggeringPolicy size="20 MB" />
+			</Policies>
+			<DefaultRolloverStrategy max="10" />
+		</RollingFile>
+	</Appenders>
+
+	<Loggers>
+		<Root level="info">
+			<!-- The root logger sends all INFO+ logs to BOTH the console and the 
+				file -->
+			<AppenderRef ref="Console" />
+			<AppenderRef ref="JsonFile" />
+		</Root>
+
+		<!-- This logger sends all DEBUG+ logs from your application to BOTH appenders -->
+		<Logger name="de.technikteam" level="debug" additivity="false">
+			<AppenderRef ref="Console" />
+			<AppenderRef ref="JsonFile" />
+		</Logger>
+	</Loggers>
+</Configuration>
+========================================================================
+FILE: src\main\resources\db\migration\V102__Allow_Duplicate_Emails.sql
+========================================================================
+
+-- Flyway migration V102: Remove the unique constraint on the email column in the users table.
+
+-- The name of the unique key constraint is 'email' as defined in V2__Add_keys_and_indexes.sql
+ALTER TABLE `users` DROP INDEX `email`;
+========================================================================
+FILE: src\main\resources\db\migration\V103__Update_documentation_for_icon_links.sql
+========================================================================
+
+-- Flyway migration V103: Update page documentation to mention FontAwesome links.
+
+UPDATE `page_documentation`
+SET `features` = '## Features
+- **Stammdaten:** Verwalte deine persönlichen Daten wie E-Mail, Klasse und dein Profil-Icon. Ein Link hilft bei der Auswahl des Icons aus der FontAwesome-Bibliothek.
+- **Sicherheit:** Ändere dein Passwort.
+- **Qualifikationen:** Sieh eine Liste aller Lehrgänge, die du erfolgreich absolviert hast.
+- **Abzeichen:** Zeigt alle Erfolge an, die du durch deine Teilnahme und dein Engagement freigeschaltet hast.
+- **Event-Historie:** Eine komplette Übersicht aller Events, an denen du teilgenommen hast.
+
+## Use Cases
+- Halte deine Kontaktdaten aktuell.
+- Verfolge deinen Lernfortschritt und deine Erfolge im Team.
+- Gib Feedback für vergangene Events.'
+WHERE `page_key` = 'profile';
+
+UPDATE `page_documentation`
+SET `features` = '## Features
+- **Rollen-Verwaltung:** Erstelle, bearbeite und lösche wiederverwendbare Rollen (z.B. "Tontechnik", "Lichttechnik").
+- **Icon-Zuweisung:** Weise jeder Rolle ein passendes FontAwesome-Icon für eine bessere visuelle Darstellung zu. Ein Link im Editor hilft bei der Suche.
+
+## Use Cases
+- Definiere einen Standardkatalog von Verantwortlichkeiten für Events.
+- Strukturiere die Team-Zuweisung bei der Event-Planung.'
+WHERE `page_key` = 'admin_event_roles';
+
+UPDATE `page_documentation`
+SET `features` = '## Features
+- **Abzeichen verwalten:** Erstelle, bearbeite und lösche alle Abzeichen (Achievements), die Benutzer verdienen können.
+- **System-Schlüssel:** Definiere einen einzigartigen `achievement_key`, über den das System ein Abzeichen programmatisch verleihen kann.
+- **Icon-Auswahl:** Definiere eine FontAwesome-Icon-Klasse für jedes Abzeichen. Ein Link führt direkt zur Icon-Suche.
+
+## Use Cases
+- Erweitere das Gamification-System der Anwendung.
+- Schaffe neue Anreize für Engagement und Teilnahme im Team.'
+WHERE `page_key` = 'admin_achievements';
+========================================================================
+FILE: src\main\resources\db\migration\V104__Add_Meeting_Capacity_And_Signup_Deadline.sql
+========================================================================
+
+-- Flyway migration V104: Add capacity and deadline features to meetings
+
+ALTER TABLE `meetings`
+ADD COLUMN `max_participants` INT NULL DEFAULT NULL AFTER `location`,
+ADD COLUMN `signup_deadline` TIMESTAMP NULL DEFAULT NULL AFTER `max_participants`;
+========================================================================
+FILE: src\main\resources\db\migration\V105__Refactor_Login_Attempts_Table.sql
+========================================================================
+
+-- Flyway migration V105: Refactor login_attempts for IP-based lockout to prevent DoS
+
+-- Drop the old table which was username-based
+DROP TABLE IF EXISTS `login_attempts`;
+
+-- Create a new table that tracks failures by IP address and username
+CREATE TABLE `login_attempts` (
+  `ip_address` VARCHAR(45) NOT NULL,
+  `username` VARCHAR(50) NOT NULL,
+  `attempts` INT NOT NULL DEFAULT 1,
+  `last_attempt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`ip_address`, `username`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+========================================================================
+FILE: src\main\resources\db\migration\V106__Reimplement_passkeys.sql
+========================================================================
+
+-- Flyway migration V106: Re-implement the user_passkeys table for WebAuthn support
+
+CREATE TABLE `user_passkeys` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` INT NOT NULL,
+  `device_name` varchar(255) NOT NULL,
+  `credential_id` varbinary(255) NOT NULL,
+  `public_key` blob NOT NULL,
+  `signature_count` BIGINT NOT NULL,
+  `user_handle` varbinary(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_passkey_credential_id` (`credential_id`(255)),
+  KEY `fk_passkey_user` (`user_id`),
+  CONSTRAINT `fk_passkey_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+========================================================================
+FILE: src\main\resources\db\migration\V107__Remove_passkey_feature.sql
+========================================================================
+
+-- Flyway migration V107: Completely remove the user_passkeys table and all related data.
+
+DROP TABLE IF EXISTS `user_passkeys`;
+========================================================================
+FILE: src\main\resources\db\migration\V109__Create_Auth_Logs_Table.sql
+========================================================================
+
+-- Flyway migration V109: Create table for authentication logs
+
+CREATE TABLE `authentication_logs` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` INT NULL DEFAULT NULL COMMENT 'NULL if login fails for a non-existent user',
+  `username` VARCHAR(255) NOT NULL COMMENT 'The username provided during the attempt',
+  `ip_address` VARCHAR(45) NULL,
+  `event_type` ENUM('LOGIN_SUCCESS', 'LOGIN_FAILURE', 'LOGOUT') NOT NULL,
+  `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  INDEX `idx_auth_log_user_id` (`user_id`),
+  INDEX `idx_auth_log_timestamp` (`timestamp`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+========================================================================
+FILE: src\main\resources\db\migration\V10__Populate_wiki_data_part5.sql
+========================================================================
+
+-- Flyway migration V10, Part 5
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('src/main/java/de/filter/CharacterEncodingFilter.java', '1.  **File Overview & Purpose**\n\n    This is a simple but critical utility filter that ensures all incoming requests and outgoing responses are handled using the UTF-8 character encoding. This is essential for correctly processing and displaying international characters, such as German umlauts (ä, ö, ü), which might be present in user input or database content.\n\n2.  **Architectural Role**\n\n    This class is a low-level infrastructure component in the **Web/Controller Tier**. It should be the first filter in the chain to ensure that character encoding is set before any other filter or servlet attempts to read request parameters or write to the response.\n\n3.  **Key Dependencies & Libraries**\n\n    *   **Jakarta Servlet API (`jakarta.servlet.Filter`)**: The interface it implements.\n\n4.  **In-Depth Breakdown**\n\n    *   **`doFilter(ServletRequest request, ServletResponse response, FilterChain chain)`**:\n        *   **Purpose:** Sets the character encoding for the request and response.\n        *   **Logic:**\n            1.  It calls `request.setCharacterEncoding(\"UTF-8\")`. This must be done *before* any parameters are read from the request.\n            2.  It calls `response.setCharacterEncoding(\"UTF-8\")`. This informs the browser how to interpret the response body.\n            3.  It then calls `chain.doFilter(request, response)` to pass control to the next filter in the chain.'),
+('src/main/java/de/listener/AppContextListener.java', '1.  **File Overview & Purpose**\n\n    This is a Jakarta EE lifecycle listener that executes code when the web application is shut down. Its primary responsibility is to perform critical cleanup of resources that are managed outside the servlet container''s direct control, specifically the MySQL JDBC driver. This prevents memory leaks in long-running application servers like Tomcat.\n\n2.  **Architectural Role**\n\n    This is a core **Configuration** / **Infrastructure** component. It hooks into the servlet container''s lifecycle to ensure a clean shutdown of the application.\n\n3.  **Key Dependencies & Libraries**\n\n    *   **Jakarta Servlet API (`jakarta.servlet.ServletContextListener`)**: The interface it implements to listen for application startup and shutdown events.\n    *   **MySQL Connector/J (`com.mysql.cj.jdbc.AbandonedConnectionCleanupThread`)**: A specific class from the MySQL driver that manages a background thread. This listener explicitly shuts it down.\n    *   **java.sql.DriverManager**: The standard Java class for managing JDBC drivers.\n\n4.  **In-Depth Breakdown**\n\n    *   **`contextInitialized(ServletContextEvent sce)`**: This method is called when the application starts. It currently only logs an informational message.\n\n    *   **`contextDestroyed(ServletContextEvent sce)`**:\n        *   **Purpose:** This method is called by the servlet container just before the application is undeployed or the server is shut down.\n        *   **Logic:**\n            1.  **Shutdown MySQL Cleanup Thread:** It calls `AbandonedConnectionCleanupThread.checkedShutdown()` to gracefully stop a background thread started by the MySQL JDBC driver. This prevents the thread from outliving the application and causing a memory leak.\n            2.  **Deregister JDBC Driver:** It iterates through all registered JDBC drivers using `DriverManager.getDrivers()`. For each driver, it checks if the driver was loaded by the web application''s own classloader. If so, it calls `DriverManager.deregisterDriver()` to remove it. This is the crucial step to allow the classloader and the driver''s classes to be garbage collected, preventing a common source of memory leaks in Java web applications.'),
+('src/main/java/de/listener/ApplicationInitializerListener.java', '1.  **File Overview & Purpose**\n\n    This is a Jakarta EE lifecycle listener that runs once when the application context is first initialized. Its sole responsibility is to set up and execute database migrations using the Flyway library. This ensures that the database schema is at the correct version before the application starts handling requests.\n\n2.  **Architectural Role**\n\n    This is a critical **Configuration** / **Infrastructure** component. It acts as the bootstrap for the **DAO Tier**, ensuring the database schema is consistent with what the application''s code expects. It runs before any servlets or DAOs are instantiated.\n\n3.  **Key Dependencies & Libraries**\n\n    *   **Jakarta Servlet API (`jakarta.servlet.ServletContextListener`)**: The interface it implements.\n    *   **Flyway (`org.flywaydb.core.Flyway`)**: The core library used to manage and apply database migrations.\n    *   `ConfigurationService`: Used to retrieve the database connection details from `config.properties`.\n\n4.  **In-Depth Breakdown**\n\n    *   **`contextInitialized(ServletContextEvent sce)`**:\n        *   **Purpose:** This method is called by the servlet container when the application starts up.\n        *   **Logic:**\n            1.  It instantiates a `ConfigurationService` to load the application''s properties.\n            2.  It configures a `Flyway` instance with the database URL, user, and password from the configuration.\n            3.  `locations(\"classpath:db/migration\")`: It tells Flyway to look for SQL migration scripts on the classpath in the `db/migration` folder.\n            4.  `baselineOnMigrate(true)`: This allows Flyway to automatically create its schema history table if it doesn''t exist, which is useful for the first-time deployment on an empty database.\n            5.  `flyway.migrate()`: This is the command that executes the migration. Flyway connects to the database, checks its history table, and applies any new, unapplied migration scripts in version order.\n            6.  **CORRECTION**: The code was updated to use the `result.migrationsExecuted` getter method instead of direct field access, resolving a compiler warning.\n            7.  It logs the outcome of the migration. If the migration fails (`!result.success`), it throws a `RuntimeException`, which will prevent the application from starting successfully.\n\n    *   **`contextDestroyed(ServletContextEvent sce)`**: This method is called on shutdown and currently only logs an informational message.'),
+('src/main/java/de/listener/SessionListener.java', '1.  **File Overview & Purpose**\n\n    This is a Jakarta EE lifecycle listener that monitors the creation and destruction of `HttpSession` objects. Its purpose is to keep the `SessionManager`''s central registry of active sessions up-to-date.\n\n2.  **Architectural Role**\n\n    This is an infrastructure component in the **Web/Controller Tier**. It provides the mechanism for the `SessionManager` to track all active user sessions across the application.\n\n3.  **Key Dependencies & Libraries**\n\n    *   **Jakarta Servlet API (`jakarta.servlet.http.HttpSessionListener`)**: The interface it implements to receive session lifecycle events.\n    *   `SessionManager`: The singleton class that this listener updates.\n\n4.  **In-Depth Breakdown**\n\n    *   **`sessionCreated(HttpSessionEvent se)`**\n        *   **Method Signature:** `public void sessionCreated(HttpSessionEvent se)`\n        *   **Purpose:** This method is called by the servlet container immediately after a new session is created.\n        *   **Logic:** It retrieves the new `HttpSession` from the event object and passes it to `SessionManager.addSession()` to add it to the central registry.\n        *   **Side Effects:** Adds a session to the `SessionManager`''s concurrent map.\n\n    *   **`sessionDestroyed(HttpSessionEvent se)`**\n        *   **Method Signature:** `public void sessionDestroyed(HttpSessionEvent se)`\n        *   **Purpose:** This method is called by the servlet container just before a session is invalidated (either due to timeout or an explicit `invalidate()` call).\n        *   **Logic:** It retrieves the `HttpSession` being destroyed and passes it to `SessionManager.removeSession()` to remove it from the central registry.\n        *   **Side Effects:** Removes a session from the `SessionManager`''s concurrent map.'),
+('src/main/java/de/model/Achievement.java', '1.  **File Overview & Purpose**\n\n    This is a Plain Old Java Object (POJO) that serves as the data model for an achievement. It represents a record from the `achievements` table and includes fields for its programmatic key, user-facing name, description, and associated FontAwesome icon. A transient field, `earnedAt`, is used to store when a specific user earned the achievement.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is used to transfer achievement data between the `AchievementDAO`, `AchievementService`, and the servlets/JSPs.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `java.time.LocalDateTime`: Used for the `earnedAt` field.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`: The primary key.\n        *   `achievementKey`: A unique, immutable string identifier used programmatically to grant achievements (e.g., \"EVENT_PARTICIPANT_5\").\n        *   `name`: The user-visible name of the achievement (e.g., \"Erfahrener Techniker\").\n        *   `description`: A user-visible description of how to earn the achievement.\n        *   `iconClass`: The FontAwesome CSS class for the achievement''s icon (e.g., \"fa-star\").\n        *   `earnedAt`: A transient field populated when fetching achievements for a specific user, indicating when they received it.\n    *   **`getFormattedEarnedAt()`**: A convenience method that uses the `DateFormatter` utility to provide a display-ready date string for the JSP views.\n    *   **Getters and Setters**: Standard boilerplate methods for accessing and modifying the object''s properties.'),
+('src/main/java/de/model/AdminLog.java', '1.  **File Overview & Purpose**\n\n    This is a POJO representing a single audit log entry from the `admin_logs` table. It models an administrative action, capturing who performed it, what they did, when they did it, and any relevant details.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It''s created by the `AdminLogService` to be persisted by the `AdminLogDAO`, and it''s retrieved by the `AdminLogDAO` to be displayed in the `admin_log.jsp` view.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `DateFormatter`: Used for the `getFormattedActionTimestamp()` convenience method.\n    *   `java.time.LocalDateTime`: Used for the `actionTimestamp` field.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`: The primary key of the log entry.\n        *   `adminUsername`: The username of the administrator who performed the action.\n        *   `actionType`: A short, programmatic string identifying the type of action (e.g., \"CREATE_USER\", \"DELETE_EVENT\").\n        *   `details`: A human-readable text description of the action.\n        *   `actionTimestamp`: The exact date and time the action occurred.\n    *   **`getFormattedActionTimestamp()`**: A view-helper method that provides a pre-formatted string for the timestamp, suitable for direct use in JSPs.\n    *   **Getters and Setters**: Standard methods for property access.'),
+('src/main/java/de/model/ApiResponse.java', '1.  **File Overview & Purpose**\n\n    This is a standard Data Transfer Object (DTO) used to create consistent JSON responses for all API endpoints. It enforces a uniform structure containing a success status, a human-readable message, and an optional data payload, which simplifies client-side handling of AJAX requests.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**, but its primary use is within the **Web/Controller Tier**. Servlets and Action classes create instances of `ApiResponse` to structure their JSON output before serialization with Gson.\n\n3.  **Key Dependencies & Libraries**\n\n    *   None. This is a self-contained POJO.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `success` (boolean): `true` if the operation was successful, `false` otherwise.\n        *   `message` (String): A user-friendly message describing the outcome of the operation (e.g., \"User successfully created.\", \"Invalid password.\").\n        *   `data` (Object): An optional payload containing any relevant data to be sent back to the client (e.g., the newly created User object, a list of items).\n    *   **Static Factory Methods (`success`, `error`)**:\n        *   **Purpose:** These provide a convenient and readable way to construct `ApiResponse` objects without needing to call the constructor directly.\n        *   **Examples:**\n            *   `ApiResponse.success(\"Operation complete.\")`\n            *   `ApiResponse.error(\"Failed to find item.\")`\n            *   `ApiResponse.success(\"User found.\", userObject)'),
+('src/main/java/de/model/Attachment.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a file attachment record from the `attachments` table. It models a polymorphic relationship, linking a physical file to a parent entity (which can be either an ''EVENT'' or a ''MEETING'') and defines the visibility of the attachment based on user roles.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It''s used to transfer attachment metadata between the `AttachmentDAO`, services, and servlets.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `java.time.LocalDateTime`: For the `uploadedAt` timestamp.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`: The primary key of the attachment record.\n        *   `parentType`: An enum-like string (`\"EVENT\"` or `\"MEETING\"`) indicating the type of entity this attachment belongs to.\n        *   `parentId`: The foreign key ID of the parent entity (e.g., the `event.id`).\n        *   `filename`: The original, user-facing name of the file.\n        *   `filepath`: The unique, sanitized path of the file on the server''s filesystem.\n        *   `uploadedAt`: The timestamp of when the file was uploaded.\n        *   `requiredRole`: An enum-like string (`\"NUTZER\"` or `\"ADMIN\"`) that determines the minimum role required to view and download the file.\n    *   **Getters and Setters**: Standard methods for property access.'),
+('src/main/java/de/model/Course.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a \"course template\" from the `courses` table. It defines the general properties of a type of training or qualification, such as \"Grundlehrgang Tontechnik\", but does not represent a specific, schedulable event.\n\n2.  **Architectural Role**\n\n    This class belongs to the **Model Tier**. It is used to transfer data about course templates between the `CourseDAO` and the `AdminCourseServlet` for management purposes.\n\n3.  **Key Dependencies & Libraries**\n\n    *   None. This is a self-contained POJO.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`: The primary key of the course.\n        *   `name`: The full, user-facing name of the course (e.g., \"Grundlehrgang Tontechnik\").\n        *   `abbreviation`: A short abbreviation (e.g., \"TON-GL\") used for display in compact views like the Qualification Matrix.\n        *   `description`: A general description of the course content and goals.\n    *   **Getters and Setters**: Standard methods for property access.'),
+('src/main/java/de/model/DashboardDataDTO.java', '1.  **File Overview & Purpose**\n\n    This is a Data Transfer Object (DTO) designed to aggregate all the necessary information for rendering the dynamic widgets on the admin dashboard. It bundles data from multiple sources into a single object, simplifying the data retrieval process in the `AdminDashboardService` and its delivery to the `AdminDashboardApiServlet`.\n\n2.  **Architectural Role**\n\n    This class belongs to the **Model Tier**. It acts as a data container, facilitating communication between the **Service Tier** (`AdminDashboardService`) and the **Web/Controller Tier** (`AdminDashboardApiServlet`).\n\n3.  **Key Dependencies & Libraries**\n\n    *   `Event`, `StorageItem`, `AdminLog`: The model classes for the data it contains.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `upcomingEvents` (List<Event>): A list of the next few upcoming events.\n        *   `lowStockItems` (List<StorageItem>): A list of inventory items whose available quantity is below a certain threshold.\n        *   `recentLogs` (List<AdminLog>): A list of the most recent administrative actions.\n        *   `eventTrendData` (List<Map<String, Object>>): Time-series data for the event trend chart, with each map representing a month and its event count.\n    *   **Getters and Setters**: Standard methods for property access.'),
+('src/main/java/de/model/Event.java', '1.  **File Overview & Purpose**\n\n    This is a comprehensive model representing a single event from the `events` table. It contains not only the core event data but also serves as an aggregator for all related information, such as assigned users, tasks, skill requirements, and reserved materials. It also includes transient fields for UI logic, like `isUserQualified`.\n\n2.  **Architectural Role**\n\n    This class is a central part of the **Model Tier**. It''s heavily used across all tiers: created and populated by the `EventDAO`, manipulated in the `EventService`, and passed to JSPs in the **View Tier** for detailed display.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `DateFormatter`: Used for convenience methods that provide display-ready date strings.\n    *   `User`, `SkillRequirement`, `EventTask`, etc.: Other model classes that this class aggregates.\n\n4.  **In-Depth Breakdown**\n\n    *   **Core Fields:**\n        *   `id`, `name`, `eventDateTime`, `endDateTime`, `description`, `location`, `status`, `leaderUserId`: These map directly to columns in the `events` table.\n    *   **Aggregated Lists:**\n        *   `skillRequirements`, `assignedAttendees`, `eventTasks`, `chatMessages`, `attachments`, `reservedItems`, `customFields`: These are lists of related objects, populated by the `EventDAO` or `EventDetailsServlet` when a detailed view of the event is required. They are \"transient\" in the sense that they are not columns in the `events` table itself.\n    *   **Transient UI Fields:**\n        *   `userAttendanceStatus`: Stores the current user''s specific status for this event (e.g., \"ANGEMELDET\", \"ZUGEWIESEN\").\n        *   `isUserQualified`: A boolean flag indicating if the current user meets the skill requirements for this event.\n    *   **Convenience Methods:**\n        *   `getFormattedEventDateTime`, `getFormattedEventDateTimeRange`: Use the `DateFormatter` to provide JSP-ready strings for event times, encapsulating the formatting logic within the model.');
+COMMIT;
+========================================================================
+FILE: src\main\resources\db\migration\V110__Add_JTI_To_Auth_Logs.sql
+========================================================================
+
+-- Flyway migration V110: Add JTI and expiry columns for session tracking and create the blocklist table
+
+-- Add JTI and expiry columns to the authentication log to track sessions
+ALTER TABLE `authentication_logs`
+ADD COLUMN `jti` VARCHAR(255) NULL DEFAULT NULL AFTER `event_type`,
+ADD COLUMN `token_expiry` TIMESTAMP NULL DEFAULT NULL AFTER `jti`;
+
+-- Create table for JWT blocklist to handle manual logouts
+CREATE TABLE `jwt_blocklist` (
+  `jti` VARCHAR(255) NOT NULL COMMENT 'The unique JWT ID',
+  `expiry` TIMESTAMP NOT NULL COMMENT 'The original expiry timestamp of the token',
+  PRIMARY KEY (`jti`),
+  INDEX `idx_jwt_blocklist_expiry` (`expiry`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+========================================================================
+FILE: src\main\resources\db\migration\V111__Add_2FA_And_Known_IPs.sql
+========================================================================
+
+-- Flyway migration V111: Add columns and tables for TOTP 2FA and known IPs
+
+-- Add columns to users table for TOTP
+ALTER TABLE `users`
+ADD COLUMN `is_totp_enabled` BOOLEAN NOT NULL DEFAULT FALSE AFTER `fcm_token`,
+ADD COLUMN `totp_secret` VARCHAR(255) NULL DEFAULT NULL AFTER `is_totp_enabled`;
+
+-- Create table to store known IP addresses for users to bypass 2FA
+CREATE TABLE `user_known_ips` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `ip_address` VARCHAR(45) NOT NULL,
+    `last_seen` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_user_ip` (`user_id`, `ip_address`),
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create table to store one-time backup codes
+CREATE TABLE `user_backup_codes` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `code_hash` VARCHAR(255) NOT NULL,
+    `is_used` BOOLEAN NOT NULL DEFAULT FALSE,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_user_backup_codes_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+========================================================================
+FILE: src\main\resources\db\migration\V112__Enhance_Auth_Logs_And_GeoIP.sql
+========================================================================
+
+-- Flyway migration V112: Enhance authentication logs and add GeoIP table
+
+-- Step 1: Add new columns to the authentication_logs table
+ALTER TABLE `authentication_logs`
+ADD COLUMN `user_agent` TEXT NULL DEFAULT NULL AFTER `ip_address`,
+ADD COLUMN `device_type` VARCHAR(50) NULL DEFAULT NULL COMMENT 'e.g., Desktop, Mobile, Tablet' AFTER `user_agent`,
+ADD COLUMN `country_code` VARCHAR(2) NULL DEFAULT NULL COMMENT 'ISO 3166-1 alpha-2 country code' AFTER `device_type`;
+
+-- Step 2: Create a table to manage GeoIP filtering rules
+CREATE TABLE `geoip_rules` (
+  `country_code` VARCHAR(2) NOT NULL COMMENT 'ISO 3166-1 alpha-2 country code',
+  `rule_type` ENUM('ALLOW', 'BLOCK') NOT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`country_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Step 3: Add a user-provided name to a known device/IP combination.
+-- This enhances the existing known IPs table into a known devices table.
+ALTER TABLE `user_known_ips`
+ADD COLUMN `device_name` VARCHAR(100) NULL DEFAULT NULL AFTER `ip_address`;
+========================================================================
+FILE: src\main\resources\db\migration\V11__Populate_wiki_data_part6.sql
+========================================================================
+
+-- Flyway migration V11, Part 6
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('src/main/java/de/model/EventAttendance.java', '1.  **File Overview & Purpose**\n\n    This POJO models a single record from the `event_attendance` table. It represents a user''s sign-up status for a specific event, which is distinct from their final assignment to the event team.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It''s used to transfer data about user sign-ups between the `EventDAO` and servlets that need to check or display this information.\n\n3.  **Key Dependencies & Libraries**\n\n    *   None. This is a self-contained POJO.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `eventId`: Foreign key to the `events` table.\n        *   `userId`: Foreign key to the `users` table.\n        *   `username`: A transient field, populated from a JOIN, for display purposes.\n        *   `signupStatus`: An enum-like string (`\"ANGEMELDET\"` or `\"ABGEMELDET\"`) representing the user''s voluntary status.\n        *   `commitmentStatus`: An enum-like string (`\"BESTÄTIGT\"`, `\"OFFEN\"`, etc.) that an admin could potentially set, though this feature might not be fully implemented.\n    *   **Getters and Setters**: Standard methods for property access.'),
+('src/main/java/de/model/EventChatMessage.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a single message from the `event_chat_messages` table. It contains all the data for a chat message, including the content, sender information, timestamps, and state flags for edits and deletions.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It''s created and managed by the `EventChatDAO` and serialized to JSON by the `EventChatSocket` for real-time communication with the client-side chat interface.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `java.time.LocalDateTime` and `DateTimeFormatter`: Used for handling and formatting timestamps.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`, `eventId`, `userId`, `username`, `messageText`, `sentAt`: Core message data.\n        *   `edited`: A boolean flag that is set to `true` if the message content has been updated.\n        *   `isDeleted`: A boolean flag for soft-deletes.\n        *   `deletedByUserId`, `deletedByUsername`, `deletedAt`: Fields to track who performed a soft delete and when.\n        *   `chatColor`: The sender''s preferred chat color, fetched via a JOIN in the DAO.\n    *   **Formatting Methods (`getFormattedSentAt`, `getFormattedDeletedAt`)**: Convenience methods to provide display-ready time strings for the UI.'),
+('src/main/java/de/model/EventCustomField.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a custom field definition for an event''s sign-up form, corresponding to a record in the `event_custom_fields` table. It defines the properties of a question asked to users during sign-up, such as its name, type (e.g., text, boolean), and whether it''s required.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is used to transfer data about custom field definitions between the `EventCustomFieldDAO`, `EventService`, and the `EventCustomFieldsApiServlet` which provides this data to the frontend.\n\n3.  **Key Dependencies & Libraries**\n\n    *   None. This is a self-contained POJO.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`: The primary key of the custom field.\n        *   `eventId`: A foreign key linking this field to a specific event.\n        *   `fieldName`: The question or label for the field (e.g., \"T-Shirt Größe\").\n        *   `fieldType`: An enum-like string (`\"TEXT\"`, `\"BOOLEAN\"`, etc.) that determines the type of input rendered on the frontend.\n        *   `isRequired`: A boolean flag indicating if the user must provide an answer to sign up.\n        *   `fieldOptions`: A string (potentially JSON) to store options for field types like ''DROPDOWN'' or ''CHECKBOX_GROUP''.\n    *   **Getters and Setters**: Standard methods for property access.'),
+('src/main/java/de/model/EventCustomFieldResponse.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a user''s response to a specific custom field for an event. It corresponds to a record in the `event_custom_field_responses` table, linking a user, a custom field, and their provided answer.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is created by the `EventActionServlet` when a user submits their sign-up form and is passed to the `EventCustomFieldDAO` for persistence.\n\n3.  **Key Dependencies & Libraries**\n\n    *   None. This is a self-contained POJO.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`: The primary key of the response.\n        *   `fieldId`: A foreign key linking this response to a specific `EventCustomField`.\n        *   `userId`: A foreign key linking this response to the user who submitted it.\n        *   `responseValue`: The user''s answer, stored as a string.\n    *   **Getters and Setters**: Standard methods for property access.'),
+('src/main/java/de/model/EventTask.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a single task associated with an event, corresponding to a record in the `event_tasks` table. It contains the task''s description and status, and also serves as an aggregator for related data like assigned users, required items, and kits.\n\n2.  **Architectural Role**\n\n    This class is a central part of the **Model Tier**. It is used to transfer detailed task information between the `EventTaskDAO`, the `EventDetailsServlet`, and the JSP view.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `User`, `StorageItem`, `InventoryKit`: Model classes that this class aggregates in lists.\n\n4.  **In-Depth Breakdown**\n\n    *   **Core Fields:**\n        *   `id`, `eventId`, `description`, `details`, `status`, `displayOrder`, `requiredPersons`: These map directly to columns in the `event_tasks` table.\n    *   **Aggregated Lists:**\n        *   `assignedUsers`: A list of `User` objects directly assigned to this task.\n        *   `requiredItems`: A list of `StorageItem` objects needed for this task.\n        *   `requiredKits`: A list of `InventoryKit` objects needed for this task.\n    *   **Transient UI Fields:**\n        *   `eventName`: The name of the parent event, populated for display on the user dashboard.\n        *   `assignedUsernames`: A transient string field, which is not used. The getter method provides the same functionality dynamically.\n    *   **Convenience Methods:**\n        *   `getAssignedUsernames()`: A view-helper method that generates a comma-separated string of assigned usernames from the `assignedUsers` list, providing a display-ready value for JSPs.'),
+('src/main/java/de/model/FeedbackForm.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a feedback form, corresponding to a record in the `feedback_forms` table. It acts as a container for feedback responses related to a specific event.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is created and retrieved by the `EventFeedbackDAO` and used by the `FeedbackServlet` to manage the event feedback process.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `java.time.LocalDateTime`: For the `createdAt` timestamp.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`: The primary key of the feedback form.\n        *   `eventId`: A foreign key linking this form to a specific `Event`.\n        *   `title`: The title of the feedback form, typically including the event name.\n        *   `createdAt`: The timestamp of when the form record was created.\n    *   **Getters and Setters**: Standard methods for property access.'),
+('src/main/java/de/model/FeedbackResponse.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a user''s submitted feedback for a specific event, corresponding to a record in the `feedback_responses` table. It captures a user''s rating and textual comments for a given feedback form.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is created in the `FeedbackServlet` with data from a user''s form submission and is passed to the `EventFeedbackDAO` to be saved to the database.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `java.time.LocalDateTime`: For the `submittedAt` timestamp.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`: The primary key of the response.\n        *   `formId`: A foreign key linking this response to a `FeedbackForm`.\n        *   `userId`: A foreign key linking this response to the submitting `User`.\n        *   `rating`: An integer representing the user''s rating (e.g., 1-5 stars).\n        *   `comments`: The user''s textual feedback or suggestions.\n        *   `submittedAt`: The timestamp of when the feedback was submitted.\n        *   `username`: A transient field, populated from a JOIN, for display purposes.\n    *   **Getters and Setters**: Standard methods for property access.'),
+('src/main/java/de/model/FeedbackSubmission.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a general feedback submission (e.g., bug report, feature request) from a user, corresponding to a record in the `feedback_submissions` table. It includes details about the submission, its current status in the workflow, and its display order on the admin Kanban board.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is used to transfer feedback data between the `FeedbackSubmissionDAO` and the servlets responsible for handling feedback (`FeedbackServlet`, `MyFeedbackServlet`, `AdminFeedbackServlet`).\n\n3.  **Key Dependencies & Libraries**\n\n    *   `DateFormatter`: Used for the `getFormattedSubmittedAt()` convenience method.\n    *   `java.time.LocalDateTime`: Used for the `submittedAt` field.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`, `userId`, `subject`, `content`, `submittedAt`: Core data of the submission.\n        *   `username`: Transient field for the submitter''s name.\n        *   `displayTitle`: An optional, admin-editable title to clarify the subject.\n        *   `status`: An enum-like string (`\"NEW\"`, `\"VIEWED\"`, `\"PLANNED\"`, etc.) representing its stage in the Kanban workflow.\n        *   `displayOrder`: An integer used to maintain the order of cards within a status column on the Kanban board.\n    *   **`getFormattedSubmittedAt()`**: A view-helper method providing a pre-formatted string for the submission timestamp.\n    *   **Getters and Setters**: Standard methods for property access.'),
+('src/main/java/de/model/File.java', '1.  **File Overview & Purpose**\n\n    This POJO represents the metadata for a single file stored in the system, corresponding to a record in the `files` table. It holds information about the file''s name, its physical location on the server, its category, and access restrictions.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It''s used to transfer file metadata between the `FileDAO` and various servlets that display or manage files.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `DateFormatter`: Used for the `getFormattedUploadedAt()` convenience method.\n    *   `java.time.LocalDateTime`: Used for the `uploadedAt` field.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`, `filename`, `filepath`, `categoryId`, `uploadedAt`: Core metadata mapping to table columns.\n        *   `categoryName`: A transient field, populated by a JOIN, for easy display in views.\n        *   `requiredRole`: An enum-like string (`\"NUTZER\"` or `\"ADMIN\"`) to control access.\n        *   `content`: A transient field used to hold the file''s text content when it is being read for the Markdown editor.\n    *   **`getFormattedUploadedAt()`**: A view-helper method that provides a display-ready timestamp.\n    *   **Getters and Setters**: Standard methods for property access.'),
+('src/main/java/de/model/FileCategory.java', '1.  **File Overview & Purpose**\n\n    This is a simple POJO representing a category for organizing files, corresponding to a record in the `file_categories` table. It provides a way to group related documents in the UI.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is used by the `FileDAO` and passed to the `AdminFileManagementServlet` to display and manage file categories.\n\n3.  **Key Dependencies & Libraries**\n\n    *   None. This is a self-contained POJO.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`: The primary key of the category.\n        *   `name`: The user-visible name of the category.\n    *   **Getters and Setters**: Standard methods for property access.');
+COMMIT;
+========================================================================
+FILE: src\main\resources\db\migration\V12__Populate_wiki_data_part7.sql
+========================================================================
+
+-- Flyway migration V12, Part 7
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('src/main/java/de/model/InventoryKit.java', '1.  **File Overview & Purpose**\n\n    This POJO represents an \"inventory kit\" or a \"case,\" corresponding to a record in the `inventory_kits` table. A kit is a conceptual container that groups a predefined list of `StorageItem`s together, such as \"Audio Kit A\" or \"Lighting Case 1\".\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is used to transfer data about kits between the `InventoryKitDAO` and the `AdminKitServlet` for management, and the `PackKitServlet` for displaying packing lists.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `InventoryKitItem`: The model class representing the items contained within this kit.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`: The primary key of the kit.\n        *   `name`: The user-facing name of the kit (e.g., \"Mics and Stands\").\n        *   `description`: A brief description of the kit''s purpose.\n        *   `location`: The physical storage location of the assembled kit (e.g., \"Lager, Schrank 3\").\n        *   `items` (List<InventoryKitItem>): A list of the items and their quantities that belong to this kit. This is populated by a JOIN query in the DAO.\n    *   **Getters and Setters**: Standard methods for property access.'),
+('src/main/java/de/model/InventoryKitItem.java', '1.  **File Overview & Purpose**\n\n    This POJO represents an entry in the `inventory_kit_items` junction table. It defines the relationship between an `InventoryKit` and a `StorageItem`, specifying the quantity of that item that belongs in the kit.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is primarily used within the `InventoryKit` model to represent the contents of a kit.\n\n3.  **Key Dependencies & Libraries**\n\n    *   None. This is a self-contained POJO.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `kitId`: Foreign key to the `inventory_kits` table.\n        *   `itemId`: Foreign key to the `storage_items` table.\n        *   `quantity`: The number of this specific item that should be in the kit.\n        *   `itemName`: A transient field, populated from a JOIN in the DAO, to display the item''s name without needing to fetch the full `StorageItem` object.\n    *   **Getters and Setters**: Standard methods for property access.'),
+('src/main/java/de/model/MaintenanceLogEntry.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a single record from the `maintenance_log` table. It captures the history of maintenance actions performed on a specific `StorageItem`, including repairs, marking for maintenance, and associated notes or costs.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is created by servlets like `AdminStorageServlet` to be persisted by the `MaintenanceLogDAO`, and is retrieved to be displayed on the `storage_item_details.jsp` page.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `DateFormatter`: Used for the `getFormattedLogDate()` convenience method.\n    *   `java.time.LocalDateTime`: Used for the `logDate` field.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`: The primary key of the log entry.\n        *   `itemId`: Foreign key to the `storage_items` table.\n        *   `userId`: Foreign key to the `users` table, indicating who performed the action.\n        *   `logDate`: The timestamp of the maintenance action.\n        *   `action`: A string describing the action (e.g., \"Marked for Maintenance\", \"Returned to Service\").\n        *   `notes`: Free-text notes from the user about the action.\n        *   `cost`: The cost associated with the maintenance, if any.\n        *   `username`: A transient field, populated by a JOIN, for displaying the user''s name.\n    *   **`getFormattedLogDate()`**: A view-helper method to provide a pre-formatted timestamp string.\n    *   **Getters and Setters**: Standard methods for property access.'),
+('src/main/java/de/model/Meeting.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a specific, schedulable session or \"meeting\" for a course, corresponding to a record in the `meetings` table. Unlike a `Course` which is a template, a `Meeting` has a concrete date, time, and location.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is used to transfer data about scheduled meetings between the `MeetingDAO`, various servlets (e.g., `MeetingServlet`, `AdminMeetingServlet`), and the JSP views.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `DateFormatter`: Used for convenience methods that provide display-ready date and time strings.\n    *   `java.time.LocalDateTime`: Used for the meeting''s start and end times.\n\n4.  **In-Depth Breakdown**\n\n    *   **Core Fields:**\n        *   `id`, `courseId`, `name`, `meetingDateTime`, `endDateTime`, `leaderUserId`, `description`, `location`: These map directly to columns in the `meetings` table.\n    *   **Transient UI Fields:**\n        *   `parentCourseName`: The name of the `Course` this meeting belongs to, populated by a JOIN.\n        *   `leaderUsername`: The name of the user leading the meeting, populated by a JOIN.\n        *   `userAttendanceStatus`: Stores the current logged-in user''s sign-up status for this meeting (`ANGEMELDET`, `ABGEMELDET`, `OFFEN`).\n    *   **Convenience Methods (`getFormatted...`)**: These methods use the `DateFormatter` to provide JSP-ready strings for the meeting''s date and time range, encapsulating formatting logic.'),
+('src/main/java/de/model/MeetingAttendance.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a user''s attendance record for a specific meeting, corresponding to a row in the `meeting_attendance` table. It tracks whether a user was present and allows for optional administrative remarks.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is used to transfer attendance data between the `MeetingAttendanceDAO` and the servlets that manage and display this information, most notably the `MatrixServlet`.\n\n3.  **Key Dependencies & Libraries**\n\n    *   None. This is a self-contained POJO.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `userId`: Foreign key to the `users` table.\n        *   `meetingId`: Foreign key to the `meetings` table.\n        *   `attended`: A boolean flag indicating if the user was present (`true`) or not (`false`).\n        *   `remarks`: An optional string for administrative notes, such as \"excused absence\".\n    *   **Getters and Setters**: Standard methods for property access.'),
+('src/main/java/de/model/NavigationItem.java', '1.  **File Overview & Purpose**\n\n    This is a simple, immutable POJO used to represent a single link in the application''s sidebar navigation. It holds all the necessary data to render a navigation item, including its label, URL, icon, and the permission required to view it.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. Instances of this class are created and managed exclusively by the `NavigationRegistry` utility and are stored in the user''s session to be rendered by the `main_header.jspf` fragment on every page.\n\n3.  **Key Dependencies & Libraries**\n\n    *   None.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields (all `final`):**\n        *   `label`: The user-visible text of the link (e.g., \"Dashboard\").\n        *   `url`: The relative URL for the link (e.g., \"/home\").\n        *   `icon`: The FontAwesome CSS class for the link''s icon (e.g., \"fa-home\").\n        *   `requiredPermission`: The permission key (from the `Permissions` class) that a user must have to see this link. A `null` value indicates the link is visible to all authenticated users.\n    *   **Constructor and Getters**: A standard constructor to initialize the final fields and getters to access their values. There are no setters, making the object immutable.'),
+('src/main/java/de/model/ParticipationHistory.java', '1.  **File Overview & Purpose**\n\n    This is a Data Transfer Object (DTO) designed specifically for reporting purposes. It aggregates data from multiple tables (`users`, `events`, `event_attendance`, `event_assignments`) to create a flattened view of a user''s participation in an event. It does not map to a single database table.\n\n2.  **Architectural Role**\n\n    This class belongs to the **Model Tier**. It is used by the `ReportDAO` to structure the results of complex analytical queries and is then passed to the `AdminReportServlet` for display or export.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `java.time.LocalDateTime`: For the `eventDate` field.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `username`: The name of the user.\n        *   `eventName`: The name of the event.\n        *   `eventDate`: The date and time of the event.\n        *   `status`: The user''s status for that event (e.g., \"ZUGEWIESEN\", \"ANGEMELDET\").\n    *   **Getters and Setters**: Standard methods for property access.'),
+('src/main/java/de/model/PasskeyCredential.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a WebAuthn/Passkey credential stored in the `user_passkeys` table. It holds all the necessary information for a user to perform a passwordless login, including the public key, credential ID, and a signature counter for security.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is used to transfer credential data between the `PasskeyDAO` and the `PasskeyService`.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `java.time.LocalDateTime`: For the `createdAt` timestamp.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`: The internal primary key in the database.\n        *   `userId`: Foreign key linking the credential to a `User`.\n        *   `name`: A user-provided name for the device (e.g., \"My Laptop\").\n        *   `userHandle`: A unique identifier for the user, provided during registration.\n        *   `credentialId`: The globally unique, URL-safe Base64 encoded ID for this credential.\n        *   `publicKey`: The user''s public key, encoded as a string.\n        *   `signatureCount`: A counter that is incremented on each successful authentication to help prevent credential cloning.\n        *   `createdAt`: The timestamp of when the credential was registered.\n    *   **Getters and Setters**: Standard methods for property access.'),
+('src/main/java/de/model/Permission.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a single, defined permission from the `permissions` table. It models a granular action that can be assigned to a user, providing a structured object containing the permission''s unique key and a human-readable description.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is used by the `PermissionDAO` to represent permission data retrieved from the database and is passed to the `AdminUserServlet` to populate the permissions checklist in the user editing modal.\n\n3.  **Key Dependencies & Libraries**\n\n    *   None. This is a self-contained POJO.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`: The primary key of the permission.\n        *   `permissionKey`: The unique string identifier for the permission (e.g., \"USER_CREATE\"). This key is used for programmatic checks.\n        *   `description`: A user-friendly description of what the permission allows (e.g., \"Kann neue Benutzer anlegen.\").\n    *   **Getters and Setters**: Standard methods for property access.'),
+('src/main/java/de/model/ProfileChangeRequest.java', '1.  **File Overview & Purpose**\n\n    This POJO represents a user''s request to modify their own profile data, corresponding to a record in the `profile_change_requests` table. It captures who made the request, what changes they requested (as a JSON string), its current status, and who reviewed it.\n\n2.  **Architectural Role**\n\n    This class is part of the **Model Tier**. It is used to transfer request data between the `ProfileChangeRequestDAO` and the servlets that handle the request workflow (`ProfileServlet` for creation, `AdminChangeRequestServlet` for review).\n\n3.  **Key Dependencies & Libraries**\n\n    *   `java.time.LocalDateTime`: For the `requestedAt` and `reviewedAt` timestamps.\n\n4.  **In-Depth Breakdown**\n\n    *   **Fields:**\n        *   `id`: The primary key of the request.\n        *   `userId`: Foreign key of the user who made the request.\n        *   `username`: Transient field for the requester''s name, for display in the admin UI.\n        *   `requestedChanges`: A JSON string containing a map of the fields to be changed and their new values (e.g., `{\"email\":\"new@email.com\", \"className\":\"11a\"}`).\n        *   `status`: An enum-like string (`\"PENDING\"`, `\"APPROVED\"`, `\"DENIED\"`) indicating the state of the request.\n        *   `requestedAt`: Timestamp of when the request was submitted.\n        *   `reviewedByAdminId`: Foreign key of the admin who reviewed the request.\n        *   `reviewedByAdminName`: Transient field for the admin''s name.\n        *   `reviewedAt`: Timestamp of when the request was reviewed.\n    *   **Getters and Setters**: Standard methods for property access.');
+COMMIT;
+========================================================================
 FILE: src\main\resources\db\migration\V13__Populate_wiki_data_part8.sql
 ========================================================================
 
@@ -4110,1320 +5256,4 @@ This is a **View** component in the frontend application.
 
 - The component''s state (dashboard data, loading, error) is managed by the `useApi` hook.
 - It also reads the current `user` object from the `useAuthStore` to display a personalized welcome message.');
-COMMIT;
-========================================================================
-FILE: src\main\resources\db\migration\V74__Repopulate_wiki_data_part14.sql
-========================================================================
-
--- Flyway migration V74, Part 14: Overhaul Technical Wiki Documentation (Frontend Pages)
-
-INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
-('frontend/src/pages/EventDetailsPage.jsx',
-'## 1. File Overview & Purpose
-
-This is a large, multi-functional React component that renders the detailed view for a single event (`/veranstaltungen/details/:eventId`). It serves as a central hub for all event-related information and real-time interaction.
-
-## 2. Architectural Role
-
-This is a complex **View** component in the frontend application.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to fetch all initial event data from `/api/v1/public/events/:id`.
-- **Tabbed Interface:** Manages the state for switching between different information tabs:
-    - **Tasks:** Displays a list of tasks for the event, including their status and assigned users.
-    - **Inventory Checklist:** Renders the `ChecklistTab` component for managing equipment load-in/load-out.
-    - **Event Chat:** Contains the real-time chat interface for event participants.
-    - **Gallery:** (Visible only for completed events) Renders the `EventGalleryTab` component.
-- **Real-Time Chat:**
-    - Uses the `useWebSocket` hook to connect to the `/ws/chat/:eventId` endpoint.
-    - Manages the state of chat messages, receiving new messages and updates (edits/deletions) via the WebSocket connection.
-    - Handles sending new messages, including text and file uploads.
-- **Authorization:** It reads the `user` object from the `useAuthStore` to determine if the current user has permission to perform actions like deleting chat messages or viewing the admin-only debriefing link.
-
-## 4. State Management
-
-- **Event Data:** Managed by the `useApi` hook.
-- **UI State:** Uses `useState` for managing the `activeTab`, chat input, and other UI-related state.
-- **Chat Messages:** Managed via `useState`, with updates pushed from the `useWebSocket` hook.
-- **Global State:** Accesses the `user` object from `useAuthStore` for permissions.'),
-
-('frontend/src/pages/EventFeedbackPage.jsx',
-'## 1. File Overview & Purpose
-
-This React component renders the dedicated form for submitting post-event feedback (`/feedback/event/:eventId`).
-
-## 2. Architectural Role
-
-This is a **View** component in the frontend application.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to call `/api/v1/public/feedback/forms?eventId=...`. This endpoint provides the event details and checks if the user has already submitted feedback for this event.
-- **Conditional Rendering:** If the user has already submitted feedback, it displays a "Thank You" message instead of the form.
-- **Controlled Form:** Uses `useState` to manage the state of the star rating and the comments textarea.
-- **Submission:** On form submit, it calls the `POST /api/v1/public/feedback/event` endpoint via `apiClient` to save the user''s response.
-
-## 4. State Management
-
-- **Form Data:** Managed via `useState` hooks.
-- **Initial Data:** Fetched using the `useApi` hook.'),
-
-('frontend/src/pages/EventsPage.jsx',
-'## 1. File Overview & Purpose
-
-This React component renders the main **Events** listing page (`/veranstaltungen`). It displays all upcoming events and allows users to sign up or sign off.
-
-## 2. Architectural Role
-
-This is a **View** component in the frontend application.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to call `/api/v1/public/events`, which returns a list of events enriched with the current user''s status (`userAttendanceStatus`) and qualification (`isUserQualified`) for each.
-- **Action Buttons:** Conditionally renders a "Sign Up" or "Sign Off" button based on the `userAttendanceStatus` for each event. The "Sign Up" button is disabled if `isUserQualified` is false.
-- **Sign-Up Modal:**
-    - Before showing the sign-up modal, it makes an API call to `/api/v1/public/events/:id/custom-fields` to fetch any additional questions required for the sign-up.
-    - The modal dynamically renders input fields for these custom questions.
-- **Sign-Off Modal:** Shows a confirmation dialog before the user signs off.
-- **Responsive View:** The component includes both a desktop table view (`desktop-table-wrapper`) and a mobile card view (`mobile-card-list`), with CSS media queries controlling which one is visible.
-
-## 4. State Management
-
-- **Event List:** Managed by the `useApi` hook.
-- **Modal State:** Uses `useState` to control the visibility and content of the sign-up/sign-off modals.'),
-
-('frontend/src/pages/FeedbackPage.jsx',
-'## 1. File Overview & Purpose
-
-This React component renders the **General Feedback** page (`/feedback`). It provides a form for users to submit general suggestions or bug reports and displays a history of their own past submissions.
-
-## 2. Architectural Role
-
-This is a **View** component in the frontend application.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to call `/api/v1/public/feedback/user` to retrieve the list of the current user''s past submissions.
-- **Controlled Form:** The submission form for new feedback is a controlled component managed with `useState`.
-- **Submission:** On submit, it calls `POST /api/v1/public/feedback/general` via `apiClient`.
-- **Submission History:** It maps over the fetched submissions and displays each one with its current status (e.g., "NEW", "PLANNED").
-
-## 4. State Management
-
-- **Submission History:** Managed by the `useApi` hook.
-- **New Feedback Form:** Managed by `useState` hooks.'),
-
-('frontend/src/pages/FilesPage.jsx',
-'## 1. File Overview & Purpose
-
-This React component renders the public **Files & Documents** page (`/dateien`). It fetches and displays a categorized list of all files the current user is permitted to see.
-
-## 2. Architectural Role
-
-This is a **View** component in the frontend application.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to call `/api/v1/public/files`. The backend automatically filters out admin-only files for non-admin users. The data arrives grouped by category.
-- **Rendering:** It iterates over the categories (the keys of the data object) and then iterates over the files within each category, rendering a download link for each file.
-
-## 4. State Management
-
-- The component''s state is managed by the `useApi` hook.'),
-
-('frontend/src/pages/HelpDetailsPage.jsx',
-'## 1. File Overview & Purpose
-
-This component renders the detailed view for a single help article (`/help/:pageKey`). It displays the features, use cases, and links related to a specific page of the application.
-
-## 2. Architectural Role
-
-This is a **View** component in the frontend application.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:**
-    - Uses `useApi` to fetch the specific documentation entry based on the `pageKey` from the URL via `/api/v1/public/documentation/:pageKey`.
-    - Makes a second `useApi` call to fetch *all* documentation entries to resolve the titles for the "Related Pages" links.
-- **Content Rendering:**
-    - Uses `react-markdown` to render the `features` content.
-- **Link Generation:**
-    - Provides a direct link to the actual page being documented.
-    - Provides a link to the associated technical wiki page, if one is defined.
-- **Related Pages:** It parses the JSON array of related page keys and looks them up in the full list of docs to render a navigable list of related topics.
-
-## 4. State Management
-
-- All data is managed by two instances of the `useApi` hook.'),
-
-('frontend/src/pages/HelpListPage.jsx',
-'## 1. File Overview & Purpose
-
-This component renders the main help page (`/help`), which acts as a "link tree" or table of contents for all user-facing documentation.
-
-## 2. Architectural Role
-
-This is a **View** component in the frontend application.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to fetch all available documentation entries from `/api/v1/public/documentation`. The backend automatically filters out admin-only articles for non-admin users.
-- **Grouping:** Uses `useMemo` to group the flat list of documentation pages into a nested object based on their `category` property.
-- **Rendering:** It iterates over the grouped categories, creating a `card` for each category. Inside each card, it lists the links to the individual `HelpDetailsPage` for each article in that category.
-
-## 4. State Management
-
-- The component''s data is managed by the `useApi` hook.');
-COMMIT;
-========================================================================
-FILE: src\main\resources\db\migration\V75__Repopulate_wiki_data_part15.sql
-========================================================================
-
--- Flyway migration V75, Part 15: Overhaul Technical Wiki Documentation (Frontend Pages)
-
-INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
-('frontend/src/pages/LehrgaengePage.jsx',
-'## 1. File Overview & Purpose
-
-This React component renders the main **Courses & Meetings** page (`/lehrgaenge`). It lists upcoming training sessions and allows users to sign up, sign off, or request new training topics.
-
-## 2. Architectural Role
-
-This is a **View** component in the frontend application.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to fetch all upcoming meetings from `/api/v1/public/meetings`. This data is pre-enriched by the backend with the current user''s attendance status.
-- **Actions:** Renders "Anmelden" (Sign Up) or "Abmelden" (Sign Off) buttons based on the user''s status for each meeting. Clicking these buttons calls the `POST /api/v1/public/meetings/:id/:action` endpoint.
-- **Training Request:** Contains a button that opens the `RequestTrainingModal`, allowing users to submit a new training topic via the `POST /api/v1/public/training-requests` endpoint.
-- **Responsive View:** Includes both a desktop table and a mobile card list view.
-
-## 4. State Management
-
-- **Meeting List:** Managed by the `useApi` hook.
-- **Modal State:** Uses `useState` to control the visibility of the training request modal.'),
-
-('frontend/src/pages/LoginPage.jsx',
-'## 1. File Overview & Purpose
-
-This React component renders the **Login** page (`/login`). It provides the form for username/password authentication.
-
-## 2. Architectural Role
-
-This is a **View** component in the frontend application and is the main entry point for unauthenticated users.
-
-## 3. Key Features & Logic
-
-- **Authentication Flow:**
-    1.  The form is a controlled component, with `username` and `password` state managed by `useState`.
-    2.  On submit, it calls the `login` function from the `useAuthStore`.
-    3.  The `authStore.login` function calls the `POST /api/v1/auth/login` endpoint.
-    4.  If successful, the backend sets an HttpOnly JWT cookie, and the `authStore` fetches the full user session.
-    5.  An `useEffect` hook detects the change in `isAuthenticated` state and redirects the user to their dashboard (`/home`) or their originally intended page.
-- **UI Features:** Includes a password visibility toggle.
-- **Error Handling:** Displays error messages returned from the `authStore` if the login fails.
-
-## 4. State Management
-
-- **Form State:** Managed locally with `useState`.
-- **Authentication State:** Interacts with the global `useAuthStore` to trigger the login process and react to authentication changes.'),
-
-('frontend/src/pages/MeetingDetailsPage.jsx',
-'## 1. File Overview & Purpose
-
-This React component renders the detailed view for a single training meeting (`/lehrgaenge/details/:meetingId`).
-
-## 2. Architectural Role
-
-This is a **View** component in the frontend application.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to fetch the meeting''s details and its associated attachments from `/api/v1/public/meetings/:id`.
-- **Content Display:** Renders all details of the meeting, including description (with Markdown support) and a list of downloadable attachments.
-
-## 4. State Management
-
-- The component''s state is managed by the `useApi` hook.'),
-
-('frontend/src/pages/PackKitPage.jsx',
-'## 1. File Overview & Purpose
-
-This React component renders a special, printer-friendly **Packing List** for an inventory kit (`/pack-kit/:kitId`). It is designed to be accessed via QR code.
-
-## 2. Architectural Role
-
-This is a **View** component that uses the `MinimalLayout` to provide a clean, focused UI without the main application sidebar and header.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to get the kit''s details and its item list from `/api/v1/public/kits/:id`.
-- **Printable Checklist:** Renders the list of items with checkboxes, making it easy to use as a physical checklist when packing a case.
-- **Print Styles:** Includes an embedded `<style>` block with `@media print` rules. These rules ensure that when the user prints the page, only the checklist area is visible, and all other UI elements (like the "Print" button) are hidden.
-
-## 4. State Management
-
-- The component''s state is managed by the `useApi` hook.'),
-
-('frontend/src/pages/PasswordPage.jsx',
-'## 1. File Overview & Purpose
-
-This React component renders the dedicated form for a user to change their own password (`/passwort`).
-
-## 2. Architectural Role
-
-This is a **View** component in the frontend application.
-
-## 3. Key Features & Logic
-
-- **Controlled Form:** Manages the state for the current password, new password, and confirmation password fields using `useState`.
-- **Validation:** Performs client-side checks to ensure the new password is at least 10 characters and that the new password and confirmation match.
-- **Submission:** On submit, it calls the `PUT /api/v1/public/profile/password` endpoint with the form data. The backend performs the final, authoritative validation (checking the current password and enforcing the policy).
-
-## 4. State Management
-
-- All form state is managed locally with `useState` hooks.'),
-
-('frontend/src/pages/ProfilePage.jsx',
-'## 1. File Overview & Purpose
-
-This React component renders the user''s main **Profile** page (`/profil`). It acts as a container, aggregating and displaying several sub-components that represent different aspects of the user''s profile.
-
-## 2. Architectural Role
-
-This is a **View** and **Layout** component in the frontend application.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to call the aggregated `/api/v1/public/profile` endpoint, which returns all data needed for the page in a single response.
-- **Component Composition:** It renders several specialized child components, passing the relevant slice of the fetched data to each one:
-    - `ProfileDetails`: For core user data.
-    - `ProfileSecurity`: For password management.
-    - `ProfileQualifications`: For the user''s completed courses.
-    - `ProfileAchievements`: For earned badges.
-    - `ProfileEventHistory`: For a list of past events.
-- **Update Handling:** It provides an `onUpdate` callback function (which simply calls the `reload` function from `useApi`) to its child components. This allows a child component (like `ProfileDetails`) to trigger a full refresh of all profile data after a change is submitted.
-
-## 4. State Management
-
-- All profile data is managed by the `useApi` hook and passed down to child components as props.');
-COMMIT;
-========================================================================
-FILE: src\main\resources\db\migration\V76__Repopulate_wiki_data_part16.sql
-========================================================================
-
--- Flyway migration V76, Part 16: Overhaul Technical Wiki Documentation (Frontend Pages)
-
-INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
-('frontend/src/pages/QrActionPage.jsx',
-'## 1. File Overview & Purpose
-
-This React component renders the specialized **QR Action** page (`/lager/qr-aktion/:itemId`). It provides a highly simplified, mobile-first interface for quickly checking an item in or out of the inventory.
-
-## 2. Architectural Role
-
-This is a **View** component that uses the `MinimalLayout` to provide a focused UI without the main application navigation, as it''s intended to be accessed directly via QR code scan.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** It makes two parallel API calls using `useApi`:
-    1.  `/api/v1/public/storage/:itemId` to get the details of the specific item being acted upon.
-    2.  `/api/v1/public/events` to get a list of active events for the optional "Assign to Event" dropdown.
-- **Transaction Form:** It presents a simple form to specify the quantity, an optional event, and notes.
-- **Submission:** The form has two distinct submit buttons ("Entnehmen" and "Einräumen"). The component captures which button was clicked to set the `type` of the transaction and sends the data to the `POST /api/v1/public/storage/transactions` endpoint.
-
-## 4. State Management
-
-- All data is managed by two instances of the `useApi` hook.'),
-
-('frontend/src/pages/SearchResultsPage.jsx',
-'## 1. File Overview & Purpose
-
-This React component renders the **Search Results** page (`/suche`). It displays the results of a global search query.
-
-## 2. Architectural Role
-
-This is a **View** component in the frontend application.
-
-## 3. Key Features & Logic
-
-- **Query Parsing:** It uses the `useSearchParams` hook from React Router to get the search query (`q=...`) from the URL.
-- **Data Fetching:** It uses the `useApi` hook to call the `/api/v1/public/search` endpoint, passing the query as a parameter.
-- **Result Rendering:** It maps over the array of results returned from the API. For each result, it displays the title, a snippet, the result type (e.g., "Veranstaltung"), and a direct link to the item''s detail page. It also uses a helper function to show a relevant icon for each result type.
-
-## 4. State Management
-
-- The component''s data is managed by the `useApi` hook.'),
-
-('frontend/src/pages/StorageItemDetailsPage.jsx',
-'## 1. File Overview & Purpose
-
-This React component renders the detailed view for a single inventory item (`/lager/details/:itemId`). It provides a comprehensive overview of the item, including its history and future availability.
-
-## 2. Architectural Role
-
-This is a **View** component in the frontend application.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** It makes multiple API calls using `useApi`:
-    - `/api/v1/public/storage/:id` to get the core item details.
-    - `/api/v1/public/storage/:id/history` to get the transaction and maintenance logs.
-    - `/api/v1/public/storage/:id/reservations` to get data for the availability calendar.
-- **Tabbed Interface:** Manages state to switch between different tabs:
-    - **History:** Shows the transaction log.
-    - **Maintenance:** Shows the maintenance log.
-    - **Availability:** Renders the `ReservationCalendar` component to show future bookings.
-    - **Related Items:** Renders the `RelatedItemsTab` to show associated equipment.
-- **Interactive Elements:**
-    - **Lightbox:** Clicking the item''s image opens a full-screen `Lightbox` view.
-    - **Damage Report:** The "Schaden melden" button opens a `DamageReportModal` for submitting a new report.
-
-## 4. State Management
-
-- All data is managed by multiple instances of the `useApi` hook.
-- UI state (active tab, modal visibility) is managed with `useState` hooks.'),
-
-('frontend/src/pages/StoragePage.jsx',
-'## 1. File Overview & Purpose
-
-This React component renders the main **Inventory** page (`/lager`). It displays the entire equipment inventory and provides the primary interface for checking items in and out.
-
-## 2. Architectural Role
-
-This is a key **View** component in the frontend application.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to call the aggregated `/api/v1/public/storage` endpoint, which returns both the inventory items (grouped by location) and the list of active events for the transaction modal.
-- **Interactive Filtering:**
-    - It uses `useState` hooks to manage state for a live search term, a category filter, and a status filter.
-    - A `useMemo` hook is used to efficiently compute the `filteredData` whenever the source data or any filter changes.
-- **Cart System:**
-    - It manages a `cart` array in its `useState`.
-    - "Entnehmen" (Checkout) and "Einräumen" (Checkin) buttons on each item add that item to the cart.
-    - A Floating Action Button (FAB) shows the number of items in the cart and opens the `CartModal`.
-- **Bulk Transactions:** The `CartModal` allows the user to review all items in their cart and submit them as a series of transactions with a single click. The `handleBulkTransactionSubmit` function sends multiple parallel requests to the `POST /api/v1/public/storage/transactions` endpoint.
-- **Responsive View:** It provides both a detailed desktop table and a compact mobile card list view.
-
-## 4. State Management
-
-- **Inventory Data:** Managed by the `useApi` hook.
-- **Filters & Cart:** Managed by `useState` hooks.
-- **Filtered Results:** Derived state computed using `useMemo`.'),
-
-('frontend/src/pages/TeamDirectoryPage.jsx',
-'## 1. File Overview & Purpose
-
-This React component renders the **Team Directory** (`/team`), a searchable list of all team members.
-
-## 2. Architectural Role
-
-This is a **View** component in the frontend application.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to get a list of all users from `/api/v1/users`.
-- **Live Search:** A simple text input allows users to filter the directory by name in real-time.
-- **Crew Card Modal:** Clicking the "Crew-Karte ansehen" button for a user opens a modal.
-    - The `CrewCardModal` component is a separate component that takes a `userId` as a prop.
-    - It then triggers its own `useApi` call to the `/api/v1/public/profile/:userId` endpoint to fetch the specific user''s qualifications and achievements for display.
-
-## 4. State Management
-
-- **User List:** Managed by the `useApi` hook in the main component.
-- **Search Term & Modal State:** Managed by `useState` hooks.
-- **Crew Card Data:** Managed by a separate `useApi` instance within the modal component.');
-COMMIT;
-========================================================================
-FILE: src\main\resources\db\migration\V77__Repopulate_wiki_data_part17.sql
-========================================================================
-
--- Flyway migration V77, Part 17: Overhaul Technical Wiki Documentation (Frontend Admin Pages)
-
-INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
-('frontend/src/pages/admin/AdminAnnouncementsPage.jsx',
-'## 1. File Overview & Purpose
-
-This component renders the administrative page for managing **Announcements** (`/admin/announcements`). It provides a full CRUD interface for the bulletin board.
-
-## 2. Architectural Role
-
-This is an **Admin View** component in the frontend.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to get all announcements from `/api/v1/admin/announcements`.
-- **Modal-Based Editing:**
-    - Clicking "Neue Mitteilung" or "Bearbeiten" opens the `AnnouncementModal`.
-    - The modal contains a controlled form for the title and content.
-    - On submit, it calls either `POST` or `PUT` to the `/api/v1/admin/announcements` endpoint.
-- **Deletion:** The "Löschen" button triggers a confirmation dialog and then calls `DELETE /api/v1/admin/announcements/:id`.
-- **Markdown Preview:** It renders existing announcements using `react-markdown` to show admins what the final post will look like.
-
-## 4. State Management
-
-- **Announcement List:** Managed by the `useApi` hook.
-- **Modal State:** Uses `useState` to control the modal''s visibility and which announcement is being edited.'),
-
-('frontend/src/pages/admin/AdminCoursesPage.jsx',
-'## 1. File Overview & Purpose
-
-This component renders the administrative page for managing **Course Templates** (`/admin/lehrgaenge`). These are the blueprints for training sessions, not the specific dates.
-
-## 2. Architectural Role
-
-This is an **Admin View** component in the frontend.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to get all course templates from `/api/v1/courses`.
-- **CRUD Operations:** Provides a full CRUD interface via a modal (`Modal`).
-    - **Create/Edit:** The modal contains a form for the course name, abbreviation, and description. It calls `POST` or `PUT` to `/api/v1/courses`.
-    - **Delete:** A delete button with a confirmation dialog calls `DELETE /api/v1/courses/:id`.
-- **Navigation:** Provides a "Meetings" button for each course that links to the `AdminMeetingsPage` for that specific course, allowing admins to schedule actual training dates.
-
-## 4. State Management
-
-- **Course List:** Managed by the `useApi` hook.
-- **Modal State:** Managed by `useState`.'),
-
-('frontend/src/pages/admin/AdminDashboardPage.jsx',
-'## 1. File Overview & Purpose
-
-This component renders the main **Admin Dashboard** (`/admin/dashboard`), providing administrators with a high-level overview of the application''s status.
-
-## 2. Architectural Role
-
-This is an **Admin View** component.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to make a single call to the aggregated `/api/v1/admin/dashboard` endpoint.
-- **Widget-Based Layout:** It uses the reusable `Widget` component to display different pieces of information in a grid.
-- **Data Visualization:** It uses the `EventTrendChart` component (which wraps `react-chartjs-2`) to display a line chart of event frequency over the past 12 months.
-- **Quick Links:** The widgets provide direct links to the relevant management pages (e.g., "Alle Events anzeigen").
-
-## 4. State Management
-
-- All dashboard data is managed by the `useApi` hook.'),
-
-('frontend/src/pages/admin/AdminDocumentationPage.jsx',
-'## 1. File Overview & Purpose
-
-This component renders the administrative page for managing the user-facing **Page Documentation** (`/admin/documentation`). It allows admins to create, edit, and delete the help articles that appear on the `/help` pages.
-
-## 2. Architectural Role
-
-This is an **Admin View** component.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** It makes two parallel API calls:
-    1.  `/api/v1/admin/documentation` to get the list of documentation pages to display in the main table.
-    2.  `/api/v1/wiki/list` to get a flat list of all technical wiki articles, which is used to populate the "Technical Wiki Article" dropdown in the modal.
-- **Modal-Based Editing:** All CRUD operations are handled through the `DocumentationModal`.
-    - The modal form allows editing of all fields, including title, content (Markdown), category, and related pages.
-    - A multi-select input is used for linking related help pages.
-    - A dropdown is used for linking a help page to a technical wiki article.
-- **Submission:** The modal calls the appropriate `POST`, `PUT`, or `DELETE` endpoints on `/api/v1/admin/documentation`.
-
-## 4. State Management
-
-- **Doc & Wiki Lists:** Managed by `useApi` hooks.
-- **Modal State:** Managed by `useState`.'),
-
-('frontend/src/pages/admin/AdminEventsPage.jsx',
-'## 1. File Overview & Purpose
-
-This component renders the main administrative page for **Event Management** (`/admin/veranstaltungen`). It provides a full CRUD interface for all events.
-
-## 2. Architectural Role
-
-This is a key **Admin View** component.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:**
-    - Uses `useApi` to get the list of all events from `/api/v1/events`.
-    - It uses the `useAdminData` hook to pre-fetch all data needed for the creation/editing modal (lists of users, courses, and storage items). This prevents the modal from having to make its own data calls.
-- **Modal-Based Editing (`EventModal`):**
-    - The `EventModal` is a large, complex component with a tabbed interface ("General" and "Details & Requirements").
-    - It uses the `DynamicSkillRows` and `DynamicItemRows` components to manage the lists of personnel and material requirements.
-    - On submit, it constructs a `FormData` object to send both the JSON event data and an optional file upload in a single multipart request to the backend.
-- **Actions:** Provides buttons for editing, cloning, deleting, and accessing the debriefing for each event.
-
-## 4. State Management
-
-- **Event List:** Managed by the `useApi` hook.
-- **Form Data for Modal:** The `useAdminData` hook manages fetching this prerequisite data.
-- **Modal State:** `useState` controls the modal''s visibility and which event is being edited.'),
-
-('frontend/src/pages/admin/AdminMeetingsPage.jsx',
-'## 1. File Overview & Purpose
-
-This component renders the administrative page for managing specific **Meeting** dates for a given course (`/admin/lehrgaenge/:courseId/meetings`).
-
-## 2. Architectural Role
-
-This is an **Admin View** component.
-
-## 3. Key Features & Logic
-
-- **Contextual Data Fetching:** It uses the `courseId` from the URL parameters (via `useParams`) to fetch only the meetings for that specific course from `/api/v1/meetings?courseId=...`. It also fetches a list of all users to populate the "Leader" dropdown in the modal.
-- **Modal-Based Editing:** A modal is used for creating and editing meetings.
-- **Actions:** Provides buttons for editing, cloning, and deleting meeting dates.
-
-## 4. State Management
-
-- **Meeting List & User List:** Managed by `useApi` hooks.
-- **Modal State:** Managed by `useState`.');
-COMMIT;
-========================================================================
-FILE: src\main\resources\db\migration\V78__Repopulate_wiki_data_part18.sql
-========================================================================
-
--- Flyway migration V78, Part 18: Overhaul Technical Wiki Documentation (Frontend Admin Pages)
-
-INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
-('frontend/src/pages/admin/AdminStoragePage.jsx',
-'## 1. File Overview & Purpose
-
-This component renders the main administrative page for **Inventory Management** (`/admin/lager`). It provides a full CRUD interface for all `StorageItem` entities.
-
-## 2. Architectural Role
-
-This is a key **Admin View** component.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to get the list of all storage items from `/api/v1/storage`.
-- **Modal-Based Editing (`StorageItemModal`):**
-    - This is a multi-purpose modal that can switch between different "modes" (`create`, `edit`, `defect`, `repair`, `relations`).
-    - The `edit` mode allows changing all core details of an item.
-    - The `defect` and `repair` modes provide specialized forms for managing an item''s defective stock count.
-    - The `relations` mode allows an admin to manage which other items are considered "related" to this one.
-- **Actions:** The main table provides buttons for all actions: Edit, Defect, Repair, QR Code, and Delete.
-- **QR Code Generation:** The "QR" button opens a modal that displays a QR code (generated using the `qrcode.react` library) which links to the public `/lager/qr-aktion/:itemId` page for that item.
-
-## 4. State Management
-
-- **Item List:** Managed by the `useApi` hook.
-- **Modal State:** A single `useState` object manages the modal''s visibility, the item being edited, and the current `mode` of the modal.'),
-
-('frontend/src/pages/admin/AdminSystemPage.jsx',
-'## 1. File Overview & Purpose
-
-This component renders the **System Information** page (`/admin/system`), which displays live statistics about the server''s health.
-
-## 2. Architectural Role
-
-This is an **Admin View** component.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to periodically fetch data from the `/api/v1/system/stats` endpoint.
-- **Data Display:** It displays metrics like CPU load, RAM usage, and disk space in a clean, readable format within `card` elements. Helper functions are used to format byte values into Gigabytes and numbers into percentages.
-
-## 4. State Management
-
-- All system statistics are managed by the `useApi` hook. The hook''s `reload` function could be called on an interval to create a live-updating dashboard.'),
-
-('frontend/src/pages/admin/AdminTrainingRequestsPage.jsx',
-'## 1. File Overview & Purpose
-
-This component renders the administrative page for viewing and managing **User-Initiated Training Requests** (`/admin/training-requests`).
-
-## 2. Architectural Role
-
-This is an **Admin View** component.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to get all training requests from `/api/v1/admin/training-requests`. The backend enriches this data with a count of how many users have registered interest in each topic.
-- **Data Display:** It shows a table of requested topics, who originally requested them, and how many other users are also interested.
-- **Deletion:** Allows an admin to delete a request, for example, after a corresponding course has been created or if the request is deemed irrelevant.
-
-## 4. State Management
-
-- The list of requests is managed by the `useApi` hook.'),
-
-('frontend/src/pages/admin/AdminUsersPage.jsx',
-'## 1. File Overview & Purpose
-
-This component renders the main **User Management** page (`/admin/mitglieder`). It provides a full CRUD interface for all `User` accounts.
-
-## 2. Architectural Role
-
-This is a key **Admin View** component.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:**
-    - Uses `useApi` to get the list of all users from `/api/v1/users`.
-    - Uses the `useAdminData` hook to pre-fetch data needed for the `UserModal` (roles and permissions).
-- **Modal-Based Editing (`UserModal`):**
-    - The `UserModal` is a complex modal with tabs for "General", "Permissions", and "Admin Notes".
-    - The "Permissions" tab uses the `PermissionsTab` component to render a nested, expandable checklist of all available permissions.
-    - On submit, it calls the appropriate `POST` or `PUT` endpoint on `/api/v1/users`.
-- **Password Reset:** The "Passwort Reset" button calls `POST /api/v1/users/:id/reset-password`. It then displays the new, temporary password in a separate modal for the admin to copy and securely transmit to the user.
-
-## 4. State Management
-
-- **User List & Prerequisite Data:** Managed by `useApi` and `useAdminData` hooks.
-- **Modal State:** Managed with `useState` hooks.'),
-
-('frontend/src/pages/admin/AdminVenuesPage.jsx',
-'## 1. File Overview & Purpose
-
-This component renders the administrative page for managing **Venues** (Veranstaltungsorte) at `/admin/venues`.
-
-## 2. Architectural Role
-
-This is an **Admin View** component.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to get all venues from `/api/v1/admin/venues`.
-- **Modal-Based Editing:** Uses a modal to handle creating and editing venues.
-- **File Upload:** The modal form includes a file input for uploading a map image. The `handleSubmit` function constructs a `FormData` object to send both the JSON venue data and the image file in a single multipart request.
-
-## 4. State Management
-
-- **Venue List:** Managed by the `useApi` hook.
-- **Modal State:** Managed by `useState`.'),
-
-('frontend/src/pages/admin/AdminWikiPage.jsx',
-'## 1. File Overview & Purpose
-
-This component renders the administrative interface for the **Technical Wiki** (`/admin/wiki`). It provides a two-pane layout with a file tree navigator and a content editor/viewer.
-
-## 2. Architectural Role
-
-This is a complex **Admin View** component that functions like a small single-page application itself.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to get the hierarchical file tree structure from `/api/v1/wiki`.
-- **File Tree Navigation:** It recursively renders the file tree structure. Clicking a file triggers an API call via `apiClient` to `/api/v1/wiki/:id` to fetch that specific page''s content.
-- **Editing vs. Viewing Mode:**
-    - It uses a local `isEditing` state to toggle between a read-only view and an editing view.
-    - The read-only view uses `react-markdown` to render the content.
-    - The editing view uses a simple `<textarea>` as a controlled component for the Markdown content.
-- **CRUD Operations:**
-    - **Save:** Calls `PUT /api/v1/wiki/:id` to save the content from the editor.
-    - **Delete:** Calls `DELETE /api/v1/wiki/:id` to delete the current page.
-    - **Create:** A "+" button opens a modal (`WikiPageModal`) to create a new page by specifying its filename under a parent path. This calls `POST /api/v1/wiki`.
-
-## 4. State Management
-
-- **File Tree:** Managed by the `useApi` hook.
-- **Currently Selected Page & Content:** Managed by `useState` hooks.
-- **UI State:** `useState` is used for `isEditing` and the new page modal visibility.');
-COMMIT;
-========================================================================
-FILE: src\main\resources\db\migration\V79__Populate_wiki_data_part19.sql
-========================================================================
-
--- Flyway migration V79, Part 19: Overhaul Technical Wiki Documentation (Frontend Misc)
-
-INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
-('frontend/src/App.jsx',
-'## 1. File Overview & Purpose
-
-This is the root component of the authenticated application. It sets up the main layout, including the `Sidebar` and `Header`, and provides the `<Outlet />` for React Router to render the content of the current route. It also manages global UI elements like the `ToastContainer` and the "What''s New" `ChangelogModal`.
-
-## 2. Architectural Role
-
-This is the main **Layout/Root** component for the authenticated part of the frontend application.
-
-## 3. Key Features & Logic
-
-- **Layout Structure:** Defines the primary HTML structure with the sidebar, a mobile header, the main content area, and an overlay for mobile navigation.
-- **Mobile Navigation:** Manages the `isNavOpen` state to toggle the mobile sidebar and the overlay. It includes `useEffect` hooks to add/remove a class to the `<body>` tag and to automatically close the nav on route changes.
-- **Changelog Modal:**
-    - On mount, if the user is authenticated, it calls the `useCallback`-wrapped `fetchChangelog` function.
-    - This function hits the `/api/v1/public/changelog/latest-unseen` endpoint.
-    - If an unseen changelog is returned, it sets the state to display the `ChangelogModal`.
-    - The modal''s close handler calls `POST /api/v1/public/changelog/:id/mark-seen` to ensure the modal doesn''t appear again for that user.
-- **Warning Notifications:** It uses the `useNotifications` hook to listen for real-time "Warning" level notifications and displays the `WarningNotification` component when one is received.
-- **Toast Notifications:** It includes the `ToastContainer` and wraps the entire layout in a `ToastProvider` to make the toast context available to all child components.
-
-## 4. State Management
-
-- **Local State (`useState`)**: Manages `isNavOpen`, `changelog`, and `isChangelogVisible`.
-- **Custom Hooks**: Uses `useNotifications` to manage warning notifications.
-- **Global State (`useAuthStore`)**: Checks `isAuthenticated` before fetching the changelog.
-- **Context (`ToastProvider`)**: Provides the toast notification functionality to the entire app.'),
-
-('frontend/src/main.jsx',
-'## 1. File Overview & Purpose
-
-This is the main entry point for the React application. Its primary responsibilities are to perform initial setup and then render the application into the DOM.
-
-## 2. Architectural Role
-
-This is the **Application Bootstrap** file for the frontend.
-
-## 3. Key Features & Logic
-
-- **`initializeApp()`**: An asynchronous function that runs before the React application is rendered.
-    - **API Client Setup:** It injects the `logout` function from the `authStore` into the `apiClient`. This is a crucial step that allows the `apiClient` to automatically log out the user if it ever receives a 401 Unauthorized response from the backend.
-    - **Session Fetching:** It calls `fetchUserSession()` from the `authStore`. This function makes a request to the `/api/v1/auth/me` endpoint to retrieve the current user''s data. This ensures that if a user refreshes the page, their session is re-established before any components are rendered.
-- **Rendering:** After `initializeApp` completes, it uses `ReactDOM.createRoot().render()` to mount the `RouterProvider` (from React Router) into the `<div id="root"></div>` element in `index.html`.
-
-## 4. State Management
-
-- This file is the primary consumer of the `useAuthStore`. It directly calls `getState()` and `dispatch` actions (`fetchUserSession`) to initialize the application''s authentication state.'),
-
-('frontend/src/pages/error/ErrorPage.jsx',
-'## 1. File Overview & Purpose
-
-This component renders a user-friendly, stylized **500 Internal Server Error** page. It is configured as the `errorElement` for the main application route in `router/index.jsx`, meaning it will be automatically displayed by React Router if an unhandled error occurs during rendering or data loading in any of the child routes.
-
-## 2. Architectural Role
-
-This is a specialized **View** component for error handling.
-
-## 3. Key Features & Logic
-
-- **Error Catching:** Uses the `useRouteError` hook from React Router to catch the error object that was thrown.
-- **Stylized Display:** It renders its content inside a `<div class="terminal">` to create a "hacker terminal" aesthetic, making the error page more engaging than a standard blank page.
-- **Typing Animation:** It uses the `useTypingAnimation` custom hook to display a series of diagnostic messages one character at a time, enhancing the terminal theme. The actual error message from the `useRouteError` hook is dynamically inserted into this animation.
-- **Recovery Action:** Once the typing animation is complete, a "Zum Dashboard" button becomes visible, providing the user with a clear path to navigate away from the error page.
-
-## 4. State Management
-
-- The typing animation and its completion state are managed by the `useTypingAnimation` hook.'),
-
-('frontend/src/pages/error/ForbiddenPage.jsx',
-'## 1. File Overview & Purpose
-
-This component renders a **403 Forbidden** error page (`/forbidden`). It is displayed when an authenticated user tries to access a resource they do not have the necessary permissions for.
-
-## 2. Architectural Role
-
-This is a specialized **View** component for handling authorization errors.
-
-## 3. Key Features & Logic
-
-- **Navigation Target:** The `AdminRoute` component explicitly navigates to this page if a non-admin user attempts to access an admin route.
-- **Stylized Display:** Similar to the `ErrorPage`, it uses a full-screen terminal aesthetic with a typing animation to display a security-themed message, informing the user that their access attempt was denied and logged.
-- **User Personalization:** It retrieves the current user''s username from the `useAuthStore` to include it in the animated text, making the message feel more specific and informative.
-
-## 4. State Management
-
-- The typing animation is managed by the `useTypingAnimation` hook.
-- It reads from the `useAuthStore` to get the current username.'),
-
-('frontend/src/pages/error/NotFoundPage.jsx',
-'## 1. File Overview & Purpose
-
-This component renders a **404 Not Found** error page. It is configured as the wildcard route (`*`) in `router/index.jsx` and is displayed whenever a user navigates to a URL that does not match any other defined route.
-
-## 2. Architectural Role
-
-This is a specialized **View** component for handling routing errors.
-
-## 3. Key Features & Logic
-
-- **Path Awareness:** It uses the `useLocation` hook from React Router to get the incorrect path that the user tried to access.
-- **Stylized Display:** It uses the terminal aesthetic and `useTypingAnimation` hook to display a message that simulates a "file not found" error from a command-line interface, dynamically including the incorrect path in the message.
-- **Recovery Action:** Provides a clear link back to the main dashboard.
-
-## 4. State Management
-
-- The typing animation is managed by the `useTypingAnimation` hook.');
-COMMIT;
-========================================================================
-FILE: src\main\resources\db\migration\V7__Populate_wiki_data_part2.sql
-========================================================================
-
--- Flyway migration V7, Part 2
-
-INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
-('src/main/java/de/dao/AchievementDAO.java', '1.  **File Overview & Purpose**\n\n    This Data Access Object (DAO) is responsible for all database interactions related to achievements. It handles CRUD (Create, Read, Update, Delete) operations on the `achievements` table and manages the relationship between users and achievements in the `user_achievements` junction table.\n\n2.  **Architectural Role**\n\n    This class belongs to the **DAO (Data Access) Tier**. It directly interacts with the database to persist and retrieve achievement data. It is exclusively called by the `AchievementService` and administrative servlets like `AdminAchievementServlet`.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Used to inject the `DatabaseManager` for obtaining database connections.\n    *   `DatabaseManager`: Provides the connection pool for all database operations.\n    *   `Achievement` (Model): The data model object that this DAO creates and populates.\n\n4.  **In-Depth Breakdown**\n\n    *   **`getAllAchievements()`**: Retrieves a list of all defined achievement templates from the `achievements` table.\n    *   **`getAchievementById(int id)`**: Fetches a single achievement template by its primary key.\n    *   **`createAchievement(Achievement achievement)`**: Inserts a new achievement template into the `achievements` table.\n    *   **`updateAchievement(Achievement achievement)`**: Updates an existing achievement template''s name, description, or icon. The `achievement_key` is immutable.\n    *   **`deleteAchievement(int id)`**: Deletes an achievement template from the `achievements` table.\n    *   **`getAchievementsForUser(int userId)`**: Retrieves all achievements that a specific user has earned, joining `achievements` and `user_achievements` tables. It also populates the `earnedAt` timestamp.\n    *   **`grantAchievementToUser(int userId, String achievementKey)`**: Grants an achievement to a user by inserting a record into the `user_achievements` table. It first checks if the user already has the achievement to prevent duplicates.\n    *   **`hasAchievement(int userId, String achievementKey)`**: Checks if a user has already earned a specific achievement.\n    *   **`mapResultSetToAchievement(ResultSet rs)`**: A private helper method to map a row from a `ResultSet` to an `Achievement` model object, reducing code duplication.'),
-('src/main/java/de/dao/AdminLogDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO manages all interactions with the `admin_logs` table. Its sole purpose is to create and retrieve audit log entries, providing a history of administrative actions performed within the application.\n\n2.  **Architectural Role**\n\n    This class is part of the **DAO (Data Access) Tier**. It provides a structured way for the `AdminLogService` to persist audit trails to the database.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `AdminLog` (Model): The data model representing a single log entry.\n\n4.  **In-Depth Breakdown**\n\n    *   **`createLog(AdminLog log)`**\n        *   **Method Signature:** `public void createLog(AdminLog log)`\n        *   **Purpose:** Inserts a new log entry into the `admin_logs` table.\n        *   **Parameters:**\n            *   `log` (AdminLog): The log entry object containing the admin''s username, action type, and details.\n        *   **Returns:** void.\n        *   **Side Effects:** Writes a new record to the database. It includes robust error logging to ensure that a failure to log does not crash the primary operation.\n\n    *   **`getAllLogs()`**\n        *   **Method Signature:** `public List<AdminLog> getAllLogs()`\n        *   **Purpose:** Retrieves all log entries from the database, ordered from newest to oldest.\n        *   **Parameters:** None.\n        *   **Returns:** A `List` of `AdminLog` objects.\n        *   **Side Effects:** Performs a database read.\n\n    *   **`getRecentLogs(int limit)`**\n        *   **Method Signature:** `public List<AdminLog> getRecentLogs(int limit)`\n        *   **Purpose:** Retrieves the most recent log entries up to a specified limit. Used for dashboard widgets.\n        *   **Parameters:**\n            *   `limit` (int): The maximum number of log entries to retrieve.\n        *   **Returns:** A `List` of `AdminLog` objects.\n        *   **Side Effects:** Performs a database read with a `LIMIT` clause.'),
-('src/main/java/de/dao/AttachmentDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO is responsible for managing file attachments associated with parent entities like Events or Meetings. It provides a unified interface for CRUD operations on the `attachments` table, abstracting away the polymorphic relationship defined by the `parent_type` and `parent_id` columns.\n\n2.  **Architectural Role**\n\n    This is a **DAO (Data Access) Tier** class. It is called by services (`EventService`, `MeetingService`) and servlets (`AdminEventServlet`, `AdminMeetingServlet`) that need to manage attachments for their respective entities.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `Attachment` (Model): The data model object this DAO works with.\n\n4.  **In-Depth Breakdown**\n\n    *   **`addAttachment(Attachment attachment, Connection conn)`**: Inserts a new attachment record into the database within an existing transaction.\n    *   **`getAttachmentsForParent(String parentType, int parentId, String userRole)`**: Retrieves all attachments for a specific parent (e.g., all attachments for Event with ID 5). It filters the results based on the user''s role (`ADMIN` or `NUTZER`), ensuring non-admins cannot see admin-only files.\n    *   **`getAttachmentById(int attachmentId)`**: Fetches a single attachment''s metadata by its unique ID. This is used by the `DownloadServlet` to verify existence and get the file path.\n    *   **`deleteAttachment(int attachmentId)`**: Deletes an attachment record from the database. Note: This does not delete the physical file from the disk; that is the responsibility of the calling service or servlet.\n    *   **`mapResultSetToAttachment(ResultSet rs)`**: A private helper method to convert a database row into an `Attachment` object.'),
-('src/main/java/de/dao/MaintenanceLogDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO manages all database interactions with the `maintenance_log` table. Its purpose is to create and retrieve maintenance history for specific inventory items, tracking actions like repairs or marking an item for maintenance.\n\n2.  **Architectural Role**\n\n    This class is part of the **DAO (Data Access) Tier**. It is used by the `StorageService` and `AdminStorageServlet` to log maintenance activities and by the `StorageItemDetailsServlet` to display an item''s maintenance history.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `MaintenanceLogEntry` (Model): The data model representing a single maintenance log entry.\n\n4.  **In-Depth Breakdown**\n\n    *   **`createLog(MaintenanceLogEntry log)`**\n        *   **Method Signature:** `public boolean createLog(MaintenanceLogEntry log)`\n        *   **Purpose:** Inserts a new maintenance record into the `maintenance_log` table.\n        *   **Parameters:**\n            *   `log` (MaintenanceLogEntry): An object containing the item ID, user ID, action taken, notes, and any associated cost.\n        *   **Returns:** `true` on successful insertion, `false` otherwise.\n        *   **Side Effects:** Writes a new record to the database.\n\n    *   **`getHistoryForItem(int itemId)`**\n        *   **Method Signature:** `public List<MaintenanceLogEntry> getHistoryForItem(int itemId)`\n        *   **Purpose:** Retrieves the complete maintenance history for a specific storage item, ordered from newest to oldest. It joins with the `users` table to get the username of the person who performed the action.\n        *   **Parameters:**\n            *   `itemId` (int): The ID of the storage item.\n        *   **Returns:** A `List` of `MaintenanceLogEntry` objects.\n        *   **Side Effects:** Performs a database read.'),
-('src/main/java/de/dao/MeetingAttendanceDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO handles all database interactions for the `meeting_attendance` table. It is responsible for tracking which users have attended specific meetings, which is the basis for granting qualifications.\n\n2.  **Architectural Role**\n\n    This class is part of the **DAO (Data Access) Tier**. It is used by the `AdminAttendanceServlet` and `MatrixServlet` to update and display attendance records.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `MeetingAttendance` (Model): The data model representing a user''s attendance at a meeting.\n\n4.  **In-Depth Breakdown**\n\n    *   **`setAttendance(int userId, int meetingId, boolean attended, String remarks)`**\n        *   **Method Signature:** `public boolean setAttendance(int userId, int meetingId, boolean attended, String remarks)`\n        *   **Purpose:** Sets or updates a user''s attendance status for a meeting. It uses an `INSERT ... ON DUPLICATE KEY UPDATE` SQL statement, which allows this single method to handle both initial registration and subsequent changes without needing to check for a pre-existing record.\n        *   **Parameters:** All parameters correspond to the columns in the `meeting_attendance` table.\n        *   **Returns:** `true` on success, `false` on SQL error.\n        *   **Side Effects:** Writes or updates a record in the database.\n\n    *   **`getAllAttendance()`**\n        *   **Method Signature:** `public List<MeetingAttendance> getAllAttendance()`\n        *   **Purpose:** Retrieves all attendance records from the database. This is used by the `MatrixServlet` to build a comprehensive map of all user attendance for display in the qualification matrix.\n        *   **Parameters:** None.\n        *   **Returns:** A `List` of all `MeetingAttendance` objects.\n        *   **Side Effects:** Performs a database read.\n\n    *   **`mapResultSetToAttendance(ResultSet rs)`**: A private helper method to map a database row to a `MeetingAttendance` object.'),
-('src/main/java/de/dao/MeetingDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO manages all database operations for the `meetings` table. It handles the CRUD lifecycle of individual, schedulable meeting instances, which are always children of a parent `Course`. It also manages user sign-ups for meetings via the `meeting_attendance` table.\n\n2.  **Architectural Role**\n\n    This class belongs to the **DAO (Data Access) Tier**. It is primarily used by the `AdminMeetingServlet` for managing meetings and by public-facing servlets like `MeetingServlet` and `MeetingDetailsServlet` to display meeting information to users.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `Meeting`, `User` (Models): The data models this DAO works with.\n\n4.  **In-Depth Breakdown**\n\n    *   **CRUD Operations (`createMeeting`, `getMeetingById`, `updateMeeting`, `deleteMeeting`)**: Standard methods for managing meeting records. `deleteMeeting` will cascade-delete all associated attendance records.\n    *   **Listing Methods (`getMeetingsForCourse`, `getAllMeetings`, `getAllUpcomingMeetings`)**: Various methods to retrieve lists of meetings, either for a specific course, for all courses, or only upcoming ones for the calendar view. These queries join with `courses` and `users` to enrich the `Meeting` object with the parent course name and leader''s username.\n    *   **User-Specific Queries (`getUpcomingMeetingsForUser`, `isUserAssociatedWithMeeting`)**:\n        *   `getUpcomingMeetingsForUser`: Fetches upcoming meetings for a specific user and calculates their attendance status (`ANGEMELDET`, `ABGEMELDET`, or `OFFEN`) for each.\n        *   `isUserAssociatedWithMeeting`: A simple check to see if a user is signed up for a meeting, used for authorization checks.\n    *   **`mapResultSetToMeeting(ResultSet rs)`**: A private helper to populate a `Meeting` object from a database row, including data from joined tables.'),
-('src/main/java/de/dao/PasskeyDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO is responsible for all database interactions related to WebAuthn/Passkey credentials. It handles the storage, retrieval, and management of public key credentials in the `user_passkeys` table, which enables passwordless authentication for users.\n\n2.  **Architectural Role**\n\n    This class is a critical component of the **DAO (Data Access) Tier**. It provides the persistence layer for the `PasskeyService`, allowing it to manage the lifecycle of user credentials securely.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `PasskeyCredential` (Model): The data model representing a stored credential.\n\n4.  **In-Depth Breakdown**\n\n    *   **`saveCredential(PasskeyCredential credential)`**: Inserts a new passkey record into the database after a user successfully completes the registration ceremony.\n    *   **`getCredentialsByUserId(int userId)`**: Retrieves all passkeys registered by a specific user. This is used during the authentication process where the server can suggest known credentials to the browser.\n    *   **`getCredentialById(String credentialId)`**: Fetches a single credential by its unique `credential_id` (a Base64URL string). This is the primary lookup method during an authentication ceremony to verify a user''s login attempt.\n    *   **`deleteCredential(int credentialDbId, int userId)`**: Removes a passkey from the database. It requires both the internal database ID and the user''s ID to ensure a user can only delete their own credentials.\n    *   **`updateSignatureCount(String credentialId, long newSignatureCount)`**: Updates the signature counter for a credential after a successful authentication. This is a security measure to help detect cloned authenticators.\n    *   **`mapResultSetToCredential(ResultSet rs)`**: A private helper method to map a database row to a `PasskeyCredential` object.'),
-('src/main/java/de/dao/PermissionDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO provides read-only access to the application''s permission system. Its primary responsibilities are to fetch all available permission definitions from the `permissions` table and to retrieve the specific set of permissions granted to an individual user from the `user_permissions` junction table.\n\n2.  **Architectural Role**\n\n    This class is part of the **DAO (Data Access) Tier**. It is used by the `UserDAO` to populate a `User` object with their complete set of permissions upon login, and by the `AdminUserServlet` to display the list of all possible permissions in the user editing modal.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `Permission` (Model): The data model representing a single permission definition.\n\n4.  **In-Depth Breakdown**\n\n    *   **`getAllPermissions()`**\n        *   **Method Signature:** `public List<Permission> getAllPermissions()`\n        *   **Purpose:** Retrieves a complete list of all permissions defined in the system.\n        *   **Parameters:** None.\n        *   **Returns:** A `List` of `Permission` objects.\n        *   **Side Effects:** Performs a database read on the `permissions` table.\n\n    *   **`getPermissionIdsForUser(int userId)`**\n        *   **Method Signature:** `public Set<Integer> getPermissionIdsForUser(int userId)`\n        *   **Purpose:** Fetches the set of primary key IDs for all permissions directly assigned to a specific user.\n        *   **Parameters:**\n            *   `userId` (int): The ID of the user.\n        *   **Returns:** A `Set` of integer permission IDs.\n        *   **Side Effects:** Performs a database read on the `user_permissions` table.'),
-('src/main/java/de/dao/ProfileChangeRequestDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO manages the lifecycle of user profile change requests. It handles all database operations for the `profile_change_requests` table, including creating new requests, fetching pending requests for administrators, and updating their status upon approval or denial.\n\n2.  **Architectural Role**\n\n    This class belongs to the **DAO (Data Access) Tier**. It is used by the `ProfileServlet` when a user submits a change request and by the `AdminChangeRequestServlet` and its associated `Action` classes (`ApproveChangeAction`, `DenyChangeAction`) for processing these requests.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `ProfileChangeRequest` (Model): The data model for a change request.\n\n4.  **In-Depth Breakdown**\n\n    *   **`createRequest(ProfileChangeRequest request)`**: Inserts a new profile change request into the database with a ''PENDING'' status.\n    *   **`getRequestById(int id)`**: Retrieves a single request by its ID, joining with the `users` table to get the requester''s and reviewer''s usernames.\n    *   **`getPendingRequests()`**: Fetches all requests that currently have a ''PENDING'' status, for display on the admin requests page.\n    *   **`hasPendingRequest(int userId)`**: A quick check to determine if a user already has a pending request, used to prevent them from submitting multiple requests.\n    *   **`updateRequestStatus(int requestId, String status, int adminId)`**: Updates a request''s status to ''APPROVED'' or ''DENIED'', and records which admin reviewed it and when.\n    *   **`mapResultSetToRequest(ResultSet rs)`**: A private helper method to map a database row to a `ProfileChangeRequest` object.'),
-('src/main/java/de/dao/ReportDAO.java', '1.  **File Overview & Purpose**\n\n    This is a specialized DAO designed for generating analytical reports and summaries. Unlike other DAOs that focus on CRUD operations for single entities, this class contains complex, aggregate SQL queries that summarize data across multiple tables for administrative dashboards and dedicated report pages.\n\n2.  **Architectural Role**\n\n    This class is part of the **DAO (Data Access) Tier**. It is used by the `AdminReportServlet` and `AdminDashboardService` to fetch data for visualization and export. It encapsulates the most complex SQL logic in the application.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n\n4.  **In-Depth Breakdown**\n\n    *   **`getEventParticipationSummary()`**: Calculates the number of assigned participants for each event.\n    *   **`getUserActivityStats()`**: Aggregates statistics for each user, counting how many events they''ve signed up for and how many meetings they''ve attended.\n    *   **`getInventoryUsageFrequency()`**: Calculates the total number of times each inventory item has been checked out.\n    *   **`getTotalInventoryValue()`**: Calculates the total monetary value of all items in stock by multiplying quantity by price.\n    *   **`getEventCountByMonth(int months)`**: Generates a time-series dataset of how many events occurred each month over a given period, used for the trend chart on the dashboard.\n    *   **`getUserParticipationStats(int limit)`**: Retrieves the top N most active users based on the number of events they have been assigned to.');
-COMMIT;
-========================================================================
-FILE: src\main\resources\db\migration\V80__Repopulate_wiki_data_part20.sql
-========================================================================
-
--- Flyway migration V80, Part 20: Overhaul Technical Wiki Documentation (Frontend Components & Admin Pages)
-
-INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
-('frontend/src/components/admin/dashboard/EventTrendChart.jsx',
-'## 1. File Overview & Purpose
-
-This is a presentational React component responsible for rendering the **Event Trend Chart** on the Admin Dashboard. It uses the `react-chartjs-2` library to create a line chart.
-
-## 2. Architectural Role
-
-This is a **View** sub-component, specifically for data visualization within the `AdminDashboardPage`.
-
-## 3. Key Features & Logic
-
-- **Library Integration:** It imports and registers the necessary components from `chart.js` (like scales, elements, and tooltips).
-- **Data Mapping:** It takes `trendData` (an array of `{ month: string, count: number }`) as a prop and transforms it into the specific `data` and `options` format required by Chart.js.
-- **Rendering:** It renders the `<Line />` component from `react-chartjs-2`, passing the prepared data and options to it.'),
-
-('frontend/src/components/admin/dashboard/Widget.jsx',
-'## 1. File Overview & Purpose
-
-This is a reusable React component that renders a single **Dashboard Widget**. It provides a standardized layout with a title, an icon, a content area, and an optional "View All" link.
-
-## 2. Architectural Role
-
-This is a reusable **UI Component** used throughout the `AdminDashboardPage`.
-
-## 3. Key Features & Logic
-
-- **Props-Based:** It is a purely presentational component that receives all its content via props: `icon`, `title`, `children` (for the main content), `linkTo`, and `linkText`.
-- **Standardized Layout:** It renders its content inside a `<div class="card">`, ensuring a consistent look and feel for all dashboard widgets.'),
-
-('frontend/src/components/admin/events/DynamicItemRows.jsx',
-'## 1. File Overview & Purpose
-
-This is a controlled React component that manages a dynamic list of **inventory item reservations** within a form. It allows an administrator to add, remove, and edit multiple item/quantity pairs.
-
-## 2. Architectural Role
-
-This is a **Form Component** used within the `EventModal`.
-
-## 3. Key Features & Logic
-
-- **Controlled Component:** It does not manage its own state. It receives the list of rows (`rows`) and a setter function (`setRows`) as props from its parent (`EventModal`).
-- **Dynamic Rows:** It maps over the `rows` array to render a row for each item. Each row contains a `<select>` dropdown for the item and an `<input>` for the quantity.
-- **State Manipulation:**
-    - `handleAddRow`: Appends a new, empty item object to the `rows` array via the `setRows` prop.
-    - `handleRemoveRow`: Removes an item from the array at a specific index.
-    - `handleRowChange`: Updates a specific field (itemId or quantity) for an item at a specific index.'),
-
-('frontend/src/components/admin/events/DynamicSkillRows.jsx',
-'## 1. File Overview & Purpose
-
-This is a controlled React component that manages a dynamic list of **skill requirements** for an event. It allows an administrator to add, remove, and edit multiple skill/personnel count pairs.
-
-## 2. Architectural Role
-
-This is a **Form Component** used within the `EventModal`.
-
-## 3. Key Features & Logic
-
-- **Controlled Component:** Like `DynamicItemRows`, it receives its state (`rows`, `setRows`) via props from the `EventModal`.
-- **Functionality:** Its implementation is nearly identical to `DynamicItemRows`, but the inputs are tailored for selecting a `Course` and specifying the number of required persons.'),
-
-('frontend/src/components/admin/events/EventModal.jsx',
-'## 1. File Overview & Purpose
-
-This is a large, stateful React component that provides the **modal dialog for creating and editing events**. It contains the entire form, including the tabbed interface and the dynamic row components.
-
-## 2. Architectural Role
-
-This is a key **UI Container Component** used by the `AdminEventsPage`.
-
-## 3. Key Features & Logic
-
-- **State Management:** It uses `useState` to manage all form data (`formData`), the state of the skill requirement rows (`skillRows`), the item reservation rows (`itemRows`), the selected file for upload, and the active tab.
-- **Edit Mode:** It determines if it''s in "edit" or "create" mode based on whether an `event` prop is passed in. In edit mode, an `useEffect` hook populates the form with the existing event''s data.
-- **Tabbed Interface:** Manages the `activeTab` state to show/hide the "General" and "Details & Bedarf" sections of the form.
-- **Component Composition:** It renders the `DynamicSkillRows` and `DynamicItemRows` components, passing down the relevant state and state setters.
-- **Submission:** The `handleSubmit` function assembles all the data from the various state variables into a `FormData` object. This is necessary to send both the JSON event data and the binary file data in a single multipart request to the backend.'),
-
-('frontend/src/components/admin/events/TaskDependenciesForm.jsx',
-'## 1. File Overview & Purpose
-
-This is a controlled React component that renders a checklist of tasks, allowing an administrator to define **dependencies** for a specific event task (i.e., which other tasks must be completed first).
-
-## 2. Architectural Role
-
-This is a **Form Component** intended for use within a task editing modal (though not fully implemented in the provided code, it is present).
-
-## 3. Key Features & Logic
-
-- **Controlled Component:** It receives the list of selected dependencies (`selectedDependencies`, a `Set`) and an `onDependencyChange` callback function as props.
-- **Rendering:** It receives a list of `allTasks` for the event and renders a checkbox for each one.
-- **State Manipulation:** When a checkbox is toggled, it creates a new `Set` based on the previous selection, adds or deletes the toggled task ID, and calls the `onDependencyChange` prop with the new `Set` to update the parent component''s state.'),
-
-('frontend/src/components/admin/kits/KitItemsForm.jsx',
-'## 1. File Overview & Purpose
-
-This is a stateful React component that provides the form for managing the **items within an inventory kit**. It is displayed within the accordion view on the `AdminKitsPage`.
-
-## 2. Architectural Role
-
-This is a **Form Component**.
-
-## 3. Key Features & Logic
-
-- **Local State:** Unlike the dynamic rows for events, this component manages its own state for the list of `items`. It initializes this state from the `kit.items` prop.
-- **Dynamic Rows:** It provides the standard "add row" and "remove row" functionality for editing the list of items and their quantities.
-- **Submission:** On submit, it calls the `PUT /api/v1/kits/:id/items` endpoint to overwrite the entire list of items for that kit. It then calls the `onUpdateSuccess` prop to trigger a data refresh on the parent page.'),
-
-('frontend/src/components/admin/kits/KitModal.jsx',
-'## 1. File Overview & Purpose
-
-This component provides the **modal dialog for creating and editing the metadata** of an inventory kit (name, description, location).
-
-## 2. Architectural Role
-
-This is a **UI Container Component** used by the `AdminKitsPage`.
-
-## 3. Key Features & Logic
-
-- **State Management:** It is a controlled form that manages its state (`formData`) with `useState`.
-- **Edit vs. Create Mode:** It checks for the presence of a `kit` prop to determine its mode and initialize its state.
-- **Submission:** On submit, it calls either `POST /api/v1/kits` (for create) or `PUT /api/v1/kits/:id` (for edit) and then calls the `onSuccess` prop to close the modal and refresh the parent page.'),
-
-('frontend/src/components/admin/matrix/AttendanceModal.jsx',
-'## 1. File Overview & Purpose
-
-This component provides the **modal dialog for updating a user''s attendance** for a specific training meeting. It is opened when an admin clicks a cell in the Qualification Matrix.
-
-## 2. Architectural Role
-
-This is a **UI Container Component** used by the `AdminMatrixPage`.
-
-## 3. Key Features & Logic
-
-- **State Management:** It is a controlled form that manages the state for the `attended` checkbox and the `remarks` textarea.
-- **Submission:** On submit, it calls the `PUT /api/v1/matrix/attendance` endpoint with the user ID, meeting ID, and the new attendance status. It then calls the `onSuccess` prop to close the modal and refresh the matrix data.'),
-
-('frontend/src/components/admin/reports/UserActivityChart.jsx',
-'## 1. File Overview & Purpose
-
-This is a presentational React component that renders a **horizontal bar chart** showing user activity (e.g., event participations).
-
-## 2. Architectural Role
-
-This is a **View** sub-component for data visualization, used within the `AdminReportsPage`.
-
-## 3. Key Features & Logic
-
-- **Library Integration:** It uses `react-chartjs-2` to render a `<Bar />` chart.
-- **Data Mapping:** It takes `activityData` as a prop and transforms it into the data format required by Chart.js.
-- **Configuration:** It sets the `indexAxis: ''y''` option to make the bar chart horizontal, which is often better for displaying lists of names.'),
-
-('frontend/src/components/admin/storage/StorageItemModal.jsx',
-'## 1. File Overview & Purpose
-
-This is a highly versatile, stateful React component that provides the **modal dialog for all administrative actions on a storage item**. It can switch between multiple modes to show different forms.
-
-## 2. Architectural Role
-
-This is a key **UI Container Component** used by `AdminStoragePage` and `AdminDefectivePage`.
-
-## 3. Key Features & Logic
-
-- **Mode Management:** It uses a local `mode` state, initialized by the `initialMode` prop, to control which form is rendered. The available modes are `create`, `edit`, `defect`, `repair`, and `relations`.
-- **Multi-Functional Rendering:** A `renderContent()` function contains a `switch` statement that returns the correct form JSX based on the current `mode`.
-- **Component Composition:** In `relations` mode, it renders the `RelatedItemsManager` component to handle that specific functionality.
-- **Data Fetching:** It uses the `useApi` hook to fetch a list of all storage items, which is needed by the `RelatedItemsManager`.
-- **Submission Logic:** It contains multiple separate submission handlers (`handleSubmit`, `handleDefectSubmit`, `handleRepairSubmit`) for each of its primary functions, each calling a different backend API endpoint.'),
-
-('frontend/src/components/admin/users/PermissionTab.jsx',
-'## 1. File Overview & Purpose
-
-This is a controlled, presentational React component that renders the **nested checklist of permissions** inside the `UserModal`.
-
-## 2. Architectural Role
-
-This is a **Form Component**.
-
-## 3. Key Features & Logic
-
-- **Controlled Component:** It receives the `groupedPermissions` object, a `Set` of `assignedIds`, and an `onPermissionChange` callback function as props.
-- **Rendering Logic:**
-    - It iterates over the keys of the `groupedPermissions` object to create a `<details>` section for each permission group (e.g., "USER", "EVENT").
-    - Within each group, it maps over the permissions to render a checkbox and label for each.
-    - The `checked` status of each checkbox is determined by checking if its ID exists in the `assignedIds` `Set`.
-- **State Manipulation:** When a checkbox is clicked, it calls the `onPermissionChange` prop with the permission''s ID, allowing the parent `UserModal` to update its state.'),
-
-('frontend/src/components/admin/users/UserModal.jsx',
-'## 1. File Overview & Purpose
-
-This is a large, stateful React component that provides the **modal dialog for creating and editing users**. It contains the entire form, including the tabbed interface for general details, permissions, and admin notes.
-
-## 2. Architectural Role
-
-This is a key **UI Container Component** used by the `AdminUsersPage`.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** When in edit mode, it makes an API call via `apiClient` to `/api/v1/users/:id` to fetch the full user object, including their currently assigned permissions.
-- **State Management:**
-    - `useState` is used to manage the `formData` object, which contains all user details and a `Set` of `permissionIds`.
-    - It also manages the `activeTab` state.
-- **Component Composition:** It renders the `PermissionsTab` component, passing down the `groupedPermissions` (received from `AdminUsersPage`), the `formData.permissionIds` set, and the `handlePermissionChange` callback.
-- **Permission Handling:** The `handlePermissionChange` function is responsible for updating the `permissionIds` `Set` in the component''s state when a checkbox is toggled in the child component.
-- **Submission:** On submit, it converts the `permissionIds` `Set` back into an array and sends the complete payload to the backend.');
-COMMIT;
-========================================================================
-FILE: src\main\resources\db\migration\V81__Repopulate_wiki_data_part21.sql
-========================================================================
-
--- Flyway migration V81, Part 21: Overhaul Technical Wiki Documentation (Frontend Components)
-
-INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
-('frontend/src/components/calendar/CalendarDesktopView.jsx',
-'## 1. File Overview & Purpose
-
-This component renders a traditional, grid-based **monthly calendar view** for desktop screens.
-
-## 2. Architectural Role
-
-This is a **View** sub-component, used by `CalendarPage`.
-
-## 3. Key Features & Logic
-
-- **Date Calculation (`date-fns`):** It heavily uses the `date-fns` library to perform all necessary date calculations:
-    - `startOfMonth`, `endOfMonth`: To find the boundaries of the current month.
-    - `startOfWeek`, `endOfWeek`: To find the start and end of the visible grid, ensuring full weeks are always displayed.
-    - `eachDayOfInterval`: To generate an array of all `Date` objects to be rendered in the grid.
-- **Data Grouping:** It uses `useMemo` to transform the flat list of `entries` (from props) into a `Map` where keys are date strings (`"yyyy-MM-dd"`) and values are arrays of events for that day. This is an efficient way to look up events for each day cell.
-- **Rendering:** It maps over the `daysInGrid` array. For each day, it looks up the events in the memoized map and renders them. Days not in the current month are visually greyed out.'),
-
-('frontend/src/components/calendar/CalendarMobileView.jsx',
-'## 1. File Overview & Purpose
-
-This component renders a simple, **chronological list of upcoming events and meetings**, optimized for mobile screens.
-
-## 2. Architectural Role
-
-This is a **View** sub-component, used by `CalendarPage`.
-
-## 3. Key Features & Logic
-
-- **Sorting:** It first sorts the incoming `entries` array by date to ensure they are displayed in chronological order.
-- **Rendering:** It maps over the sorted array and renders each entry as a list item (`termin-item`). Each item displays the day, month, title, and type of the entry, and links to the respective details page.'),
-
-('frontend/src/components/chat/ConversationList.jsx',
-'## 1. File Overview & Purpose
-
-This component renders the **list of conversations** on the left side of the `ChatPage`. It displays all of the user''s 1-on-1 and group chats and provides controls for starting new ones.
-
-## 2. Architectural Role
-
-This is a **View** sub-component.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to fetch the user''s conversation list from `/api/v1/public/chat/conversations`.
-- **Starting New Chats:**
-    - The "New Direct Message" button opens a `UserSearchModal`. When a user is selected, it calls `POST /api/v1/public/chat/conversations` to find or create a conversation and then navigates to the new chat URL.
-    - The "New Group" button opens the `GroupChatModal`, which handles the creation of a new group conversation.
-- **Active State:** It compares the `selectedConversationId` prop (from the URL) with each conversation''s ID to apply an "active" CSS class to the currently viewed chat.'),
-
-('frontend/src/components/chat/GroupChatModal.jsx',
-'## 1. File Overview & Purpose
-
-This component provides the **modal dialog for creating a new group chat**.
-
-## 2. Architectural Role
-
-This is a **UI Container Component**.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to fetch a list of all users from `/api/v1/users` to populate the member selection checklist.
-- **State Management:** Uses `useState` to manage the `groupName` input and a `Set` of `selectedUsers`.
-- **Submission:** The "Create Group" button calls the `onCreateGroup` prop (passed from `ConversationList`), providing the group name and the array of selected user IDs.'),
-
-('frontend/src/components/chat/ManageParticipantsModal.jsx',
-'## 1. File Overview & Purpose
-
-This component provides the **modal dialog for adding new members to an existing group chat**.
-
-## 2. Architectural Role
-
-This is a **UI Container Component**.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to get a list of all users.
-- **Filtering:** It filters the list of all users to show only those who are *not* already in the current conversation.
-- **Submission:** The "Add" button calls the `onAddUsers` prop (passed from `MessageView`), providing the array of newly selected user IDs.'),
-
-('frontend/src/components/chat/MessageStatus.jsx',
-'## 1. File Overview & Purpose
-
-This is a small, presentational component that displays the **read receipt status** (Sent, Delivered, Read) for a chat message.
-
-## 2. Architectural Role
-
-This is a **View** sub-component, used within `MessageView`.
-
-## 3. Key Features & Logic
-
-- **Conditional Rendering:** It only renders if the message was sent by the current user (`isSentByMe` prop is true).
-- **Icon Logic:** It uses a `switch` statement on the `status` prop to determine which FontAwesome icon to display (`fa-check`, `fa-check-double`) and whether to apply a different color for the "Read" status.'),
-
-('frontend/src/components/chat/MessageView.jsx',
-'## 1. File Overview & Purpose
-
-This is a large, complex component that renders the **main message view** for a single conversation on the `ChatPage`. It handles displaying message history, real-time message updates, and the message input form.
-
-## 2. Architectural Role
-
-This is a key **View** component.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to fetch the initial message history from `/api/v1/public/chat/conversations/:id/messages`.
-- **Real-Time Updates:** Uses the `useWebSocket` hook to connect to `/ws/dm/:conversationId`. The `handleWebSocketMessage` callback handles incoming messages (`new_message`, `message_updated`, `message_deleted`, `messages_status_updated`) and updates the local `messages` state accordingly.
-- **Read Receipts:** An `useEffect` hook monitors the `messages` state. If it detects unread messages received from another user, it sends a `mark_as_read` event over the WebSocket to inform the server and other clients.
-- **Message Rendering:** It maps over the `messages` array, rendering each one as a "bubble". It handles different styles for sent vs. received messages, displays sender info for group chats, and renders message content (including file links) via the `renderMessageContent` helper.
-- **Message Actions:** It provides options for editing and deleting messages, which send `update_message` and `delete_message` events over the WebSocket.
-- **Input Form:** Provides a controlled form for typing new messages and uploading files.
-
-## 4. State Management
-
-- **Message History:** Managed by `useState`, initialized by `useApi` and updated by `useWebSocket`.
-- **Conversation Details:** Managed by a separate `useApi` hook.
-- **UI State:** Uses `useState` for the message input, editing state, and modal visibility.');
-COMMIT;
-========================================================================
-FILE: src\main\resources\db\migration\V82__Repopulate_wiki_data_part22.sql
-========================================================================
-
--- Flyway migration V82, Part 22: Overhaul Technical Wiki Documentation (Frontend Components)
-
-INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
-('frontend/src/components/events/ChecklistTab.jsx',
-'## 1. File Overview & Purpose
-
-This component renders the **Inventory Checklist** tab on the `EventDetailsPage`. It provides an interactive checklist for tracking equipment during event load-in and load-out.
-
-## 2. Architectural Role
-
-This is a **View** sub-component.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to fetch the initial checklist items for the event from `/api/v1/events/:id/checklist`.
-- **Real-Time Updates:** Uses the `useWebSocket` hook to connect to `/ws/checklist/:id`. It listens for `checklist_update` events and updates the local state in real-time when another user changes an item''s status.
-- **Status Changes:** When the user changes the status of an item in the dropdown, it sends a `PUT` request to `/api/v1/events/:id/checklist/:itemId/status`. The component''s state is then updated by the incoming WebSocket broadcast, ensuring consistency across all clients.
-- **Generate from Reservations:** Provides a button that calls `POST /api/v1/events/:id/checklist/generate` to populate the checklist from the event''s material reservations.'),
-
-('frontend/src/components/events/EventGalleryTab.jsx',
-'## 1. File Overview & Purpose
-
-This component renders the **Photo Gallery** tab on the `EventDetailsPage` for completed events. It displays uploaded photos and provides an interface for participants to upload new ones.
-
-## 2. Architectural Role
-
-This is a **View** sub-component.
-
-## 3. Key Features & Logic
-
-- **Data Fetching:** Uses `useApi` to fetch all photo metadata for the event from `/api/v1/public/events/:id/gallery`.
-- **Photo Upload:**
-    - It conditionally renders an "Upload Photo" button only if the current user was a participant in the event.
-    - The button opens a `PhotoUploadModal` which handles the file selection and submission to `POST /api/v1/public/events/:id/gallery`.
-- **Photo Deletion:** It renders a delete button on each photo. This button is only visible if the current user is the uploader, an admin, or the event leader.
-- **Lightbox:** Clicking on any photo opens it in a full-screen `Lightbox` view.
-
-## 4. State Management
-
-- **Photo List & Modals:** Managed by `useApi` and `useState` hooks.'),
-
-('frontend/src/components/layout/ErrorLayout.jsx',
-'## 1. File Overview & Purpose
-
-This is a specialized **Layout Component** used by React Router to wrap all error pages (403, 404, 500). Its primary purpose is to apply a consistent, minimal theme and layout to these pages, ensuring they match the user''s selected theme even if the full application fails to render.
-
-## 2. Architectural Role
-
-This is a **Layout** component.
-
-## 3. Key Features & Logic
-
-- **Theme Application:** It directly accesses the `authStore` state via `getState()` to retrieve the user''s theme. It then sets the `data-theme` attribute on the `<html>` element. This is crucial because error pages render outside the main `<App />` component, so they don''t have access to the normal theme context.
-- **Styling:** It wraps the error page content (rendered via `<Outlet />` or `children`) in a `<div class="error-page-wrapper">` which provides the necessary styling for the terminal-themed error pages.'),
-
-('frontend/src/components/layout/Header.jsx',
-'## 1. File Overview & Purpose
-
-This component renders the **mobile-only header** that appears at the top of the screen on small viewports.
-
-## 2. Architectural Role
-
-This is a **Layout** component, part of the main `App` layout.
-
-## 3. Key Features & Logic
-
-- **Hamburger Menu:** It contains the hamburger menu button (`mobile-nav-toggle`). Clicking this button calls the `onNavToggle` function passed down from the `App` component, which manages the mobile sidebar''s open/closed state.
-- **Logo & Profile Link:** It displays the application logo (which links home) and a link to the user''s profile page, showing their selected profile icon.'),
-
-('frontend/src/components/layout/MinimalLayout.jsx',
-'## 1. File Overview & Purpose
-
-This is a specialized **Layout Component** for pages that should be displayed without the main application sidebar and header, such as the printable `PackKitPage` or the mobile-focused `QrActionPage`.
-
-## 2. Architectural Role
-
-This is a **Layout** component.
-
-## 3. Key Features & Logic
-
-- **Simplicity:** It simply renders the child route''s content (via `<Outlet />`) inside a basic, centered content wrapper. This provides a clean slate for pages that need a unique, uncluttered layout.'),
-
-('frontend/src/components/layout/Sidebar.jsx',
-'## 1. File Overview & Purpose
-
-This component renders the main **sidebar navigation** for the application.
-
-## 2. Architectural Role
-
-This is a key **Layout** component, part of the main `App` layout.
-
-## 3. Key Features & Logic
-
-- **Data Source:** It reads the `user` object and the `navigationItems` array directly from the global `useAuthStore`. The `navigationItems` array is pre-filtered by the backend to only contain links the user is authorized to see.
-- **Rendering:** It iterates through the `navigationItems` list and renders a `NavLink` for each. It separates the links into "User" and "Admin" sections.
-- **Active Link Styling:** It uses the `isActive` property provided by `NavLink` to apply the `active-nav-link` class to the currently active route.
-- **Global Search:** It includes the site-wide search bar. On submit, it navigates the user to the `/suche` page with the search term as a query parameter.
-- **User Actions:** It displays the logged-in user''s name, a link to their profile, the logout button, and the `ThemeSwitcher` component.'),
-
-('frontend/src/components/profile/ProfileAchievements.jsx',
-'## 1. File Overview & Purpose
-
-This is a presentational component that displays the **user''s earned achievements** on their profile page.
-
-## 2. Architectural Role
-
-This is a **View** sub-component, used within `ProfilePage`.
-
-## 3. Key Features & Logic
-
-- **Props-Based:** It receives the `achievements` array as a prop.
-- **Rendering:** It maps over the array and displays each achievement in its own card, showing the icon, name, description, and the date it was earned.'),
-
-('frontend/src/components/profile/ProfileDetails.jsx',
-'## 1. File Overview & Purpose
-
-This is a stateful component that manages the display and editing of a user''s **core profile data** on their profile page.
-
-## 2. Architectural Role
-
-This is a **View** and **Form** sub-component, used within `ProfilePage`.
-
-## 3. Key Features & Logic
-
-- **Controlled Form:** It manages the form data for email, class year, etc., in its local `useState`.
-- **Change Request Flow:**
-    1.  When the user clicks "Save," it doesn''t submit directly. Instead, it compares the current form data with the original `user` prop to detect what has changed.
-    2.  It then opens a `ConfirmationModal`, showing the user a summary of their requested changes.
-    3.  Only after the user confirms in this modal does it send the `POST` request to `/api/v1/public/profile/request-change`.
-- **Update Propagation:** After a successful submission, it calls the `onUpdate` function (passed down from `ProfilePage`) to trigger a full refresh of the profile data.
-- **Chat Color:** It also contains a separate, simple form for updating the user''s chat color, which calls the `PUT /api/v1/public/profile/chat-color` endpoint directly.');
 COMMIT;

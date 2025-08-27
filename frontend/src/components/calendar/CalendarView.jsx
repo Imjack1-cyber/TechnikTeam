@@ -1,0 +1,95 @@
+import React, { useState, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Calendar } from 'react-native-calendars';
+import { useNavigation } from '@react-navigation/native';
+import { format, parseISO } from 'date-fns';
+import { de } from 'date-fns/locale';
+import { useAuthStore } from '../../store/authStore';
+import { getThemeColors, typography, spacing, borders } from '../../styles/theme';
+
+const CalendarView = ({ entries }) => {
+    const navigation = useNavigation();
+    const [currentDate, setCurrentDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+    const theme = useAuthStore(state => state.theme);
+    const colors = getThemeColors(theme);
+    const styles = pageStyles(theme);
+
+    const markedDates = useMemo(() => {
+        const markings = {};
+        entries.forEach(entry => {
+            const startDate = parseISO(entry.start);
+            const endDate = entry.end ? parseISO(entry.end) : startDate;
+
+            for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                const dateString = format(d, 'yyyy-MM-dd');
+                markings[dateString] = {
+                    selected: true,
+                    selectedColor: entry.type === 'Event' ? colors.danger : colors.primary,
+                    dotColor: colors.white,
+                    marked: true,
+                    // Store entry data for onPress
+                    entryData: entry
+                };
+            }
+        });
+        return markings;
+    }, [entries, colors]);
+
+    const onDayPress = (day) => {
+        const dateString = day.dateString;
+        if (markedDates[dateString] && markedDates[dateString].entryData) {
+            const entry = markedDates[dateString].entryData;
+            const routeName = entry.type === 'Event' ? 'EventDetails' : 'MeetingDetails';
+            const params = entry.type === 'Event' ? { eventId: entry.id } : { meetingId: entry.id };
+            navigation.navigate(routeName, params);
+        }
+    };
+
+    return (
+        <View style={styles.calendarContainer}>
+            <Calendar
+                current={currentDate}
+                onDayPress={onDayPress}
+                markedDates={markedDates}
+                enableSwipeMonths={true}
+                theme={{
+                    calendarBackground: colors.surface,
+                    textSectionTitleColor: colors.textMuted,
+                    todayTextColor: colors.primary,
+                    dayTextColor: colors.text,
+                    monthTextColor: colors.heading,
+                    textDayFontWeight: '300',
+                    textMonthFontWeight: 'bold',
+                    textDayHeaderFontWeight: '500',
+                    textDayFontSize: typography.body,
+                    textMonthFontSize: typography.h3,
+                    textDayHeaderFontSize: typography.small,
+                    arrowColor: colors.primary,
+                    'stylesheet.calendar.header': {
+                        week: {
+                            marginTop: 5,
+                            flexDirection: 'row',
+                            justifyContent: 'space-around'
+                        }
+                    }
+                }}
+            />
+        </View>
+    );
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        calendarContainer: {
+            marginHorizontal: spacing.md,
+            marginBottom: spacing.md,
+            borderWidth: borders.width,
+            borderColor: colors.border,
+            borderRadius: borders.radius,
+            overflow: 'hidden', // Ensure borderRadius is applied
+        },
+    });
+};
+
+export default CalendarView;

@@ -1,5 +1,1321 @@
 ﻿
 ========================================================================
+FILE: src\main\resources\db\migration\V74__Repopulate_wiki_data_part14.sql
+========================================================================
+
+-- Flyway migration V74, Part 14: Overhaul Technical Wiki Documentation (Frontend Pages)
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('frontend/src/pages/EventDetailsPage.jsx',
+'## 1. File Overview & Purpose
+
+This is a large, multi-functional React component that renders the detailed view for a single event (`/veranstaltungen/details/:eventId`). It serves as a central hub for all event-related information and real-time interaction.
+
+## 2. Architectural Role
+
+This is a complex **View** component in the frontend application.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to fetch all initial event data from `/api/v1/public/events/:id`.
+- **Tabbed Interface:** Manages the state for switching between different information tabs:
+    - **Tasks:** Displays a list of tasks for the event, including their status and assigned users.
+    - **Inventory Checklist:** Renders the `ChecklistTab` component for managing equipment load-in/load-out.
+    - **Event Chat:** Contains the real-time chat interface for event participants.
+    - **Gallery:** (Visible only for completed events) Renders the `EventGalleryTab` component.
+- **Real-Time Chat:**
+    - Uses the `useWebSocket` hook to connect to the `/ws/chat/:eventId` endpoint.
+    - Manages the state of chat messages, receiving new messages and updates (edits/deletions) via the WebSocket connection.
+    - Handles sending new messages, including text and file uploads.
+- **Authorization:** It reads the `user` object from the `useAuthStore` to determine if the current user has permission to perform actions like deleting chat messages or viewing the admin-only debriefing link.
+
+## 4. State Management
+
+- **Event Data:** Managed by the `useApi` hook.
+- **UI State:** Uses `useState` for managing the `activeTab`, chat input, and other UI-related state.
+- **Chat Messages:** Managed via `useState`, with updates pushed from the `useWebSocket` hook.
+- **Global State:** Accesses the `user` object from `useAuthStore` for permissions.'),
+
+('frontend/src/pages/EventFeedbackPage.jsx',
+'## 1. File Overview & Purpose
+
+This React component renders the dedicated form for submitting post-event feedback (`/feedback/event/:eventId`).
+
+## 2. Architectural Role
+
+This is a **View** component in the frontend application.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to call `/api/v1/public/feedback/forms?eventId=...`. This endpoint provides the event details and checks if the user has already submitted feedback for this event.
+- **Conditional Rendering:** If the user has already submitted feedback, it displays a "Thank You" message instead of the form.
+- **Controlled Form:** Uses `useState` to manage the state of the star rating and the comments textarea.
+- **Submission:** On form submit, it calls the `POST /api/v1/public/feedback/event` endpoint via `apiClient` to save the user''s response.
+
+## 4. State Management
+
+- **Form Data:** Managed via `useState` hooks.
+- **Initial Data:** Fetched using the `useApi` hook.'),
+
+('frontend/src/pages/EventsPage.jsx',
+'## 1. File Overview & Purpose
+
+This React component renders the main **Events** listing page (`/veranstaltungen`). It displays all upcoming events and allows users to sign up or sign off.
+
+## 2. Architectural Role
+
+This is a **View** component in the frontend application.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to call `/api/v1/public/events`, which returns a list of events enriched with the current user''s status (`userAttendanceStatus`) and qualification (`isUserQualified`) for each.
+- **Action Buttons:** Conditionally renders a "Sign Up" or "Sign Off" button based on the `userAttendanceStatus` for each event. The "Sign Up" button is disabled if `isUserQualified` is false.
+- **Sign-Up Modal:**
+    - Before showing the sign-up modal, it makes an API call to `/api/v1/public/events/:id/custom-fields` to fetch any additional questions required for the sign-up.
+    - The modal dynamically renders input fields for these custom questions.
+- **Sign-Off Modal:** Shows a confirmation dialog before the user signs off.
+- **Responsive View:** The component includes both a desktop table view (`desktop-table-wrapper`) and a mobile card view (`mobile-card-list`), with CSS media queries controlling which one is visible.
+
+## 4. State Management
+
+- **Event List:** Managed by the `useApi` hook.
+- **Modal State:** Uses `useState` to control the visibility and content of the sign-up/sign-off modals.'),
+
+('frontend/src/pages/FeedbackPage.jsx',
+'## 1. File Overview & Purpose
+
+This React component renders the **General Feedback** page (`/feedback`). It provides a form for users to submit general suggestions or bug reports and displays a history of their own past submissions.
+
+## 2. Architectural Role
+
+This is a **View** component in the frontend application.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to call `/api/v1/public/feedback/user` to retrieve the list of the current user''s past submissions.
+- **Controlled Form:** The submission form for new feedback is a controlled component managed with `useState`.
+- **Submission:** On submit, it calls `POST /api/v1/public/feedback/general` via `apiClient`.
+- **Submission History:** It maps over the fetched submissions and displays each one with its current status (e.g., "NEW", "PLANNED").
+
+## 4. State Management
+
+- **Submission History:** Managed by the `useApi` hook.
+- **New Feedback Form:** Managed by `useState` hooks.'),
+
+('frontend/src/pages/FilesPage.jsx',
+'## 1. File Overview & Purpose
+
+This React component renders the public **Files & Documents** page (`/dateien`). It fetches and displays a categorized list of all files the current user is permitted to see.
+
+## 2. Architectural Role
+
+This is a **View** component in the frontend application.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to call `/api/v1/public/files`. The backend automatically filters out admin-only files for non-admin users. The data arrives grouped by category.
+- **Rendering:** It iterates over the categories (the keys of the data object) and then iterates over the files within each category, rendering a download link for each file.
+
+## 4. State Management
+
+- The component''s state is managed by the `useApi` hook.'),
+
+('frontend/src/pages/HelpDetailsPage.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the detailed view for a single help article (`/help/:pageKey`). It displays the features, use cases, and links related to a specific page of the application.
+
+## 2. Architectural Role
+
+This is a **View** component in the frontend application.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:**
+    - Uses `useApi` to fetch the specific documentation entry based on the `pageKey` from the URL via `/api/v1/public/documentation/:pageKey`.
+    - Makes a second `useApi` call to fetch *all* documentation entries to resolve the titles for the "Related Pages" links.
+- **Content Rendering:**
+    - Uses `react-markdown` to render the `features` content.
+- **Link Generation:**
+    - Provides a direct link to the actual page being documented.
+    - Provides a link to the associated technical wiki page, if one is defined.
+- **Related Pages:** It parses the JSON array of related page keys and looks them up in the full list of docs to render a navigable list of related topics.
+
+## 4. State Management
+
+- All data is managed by two instances of the `useApi` hook.'),
+
+('frontend/src/pages/HelpListPage.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the main help page (`/help`), which acts as a "link tree" or table of contents for all user-facing documentation.
+
+## 2. Architectural Role
+
+This is a **View** component in the frontend application.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to fetch all available documentation entries from `/api/v1/public/documentation`. The backend automatically filters out admin-only articles for non-admin users.
+- **Grouping:** Uses `useMemo` to group the flat list of documentation pages into a nested object based on their `category` property.
+- **Rendering:** It iterates over the grouped categories, creating a `card` for each category. Inside each card, it lists the links to the individual `HelpDetailsPage` for each article in that category.
+
+## 4. State Management
+
+- The component''s data is managed by the `useApi` hook.');
+COMMIT;
+========================================================================
+FILE: src\main\resources\db\migration\V75__Repopulate_wiki_data_part15.sql
+========================================================================
+
+-- Flyway migration V75, Part 15: Overhaul Technical Wiki Documentation (Frontend Pages)
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('frontend/src/pages/LehrgaengePage.jsx',
+'## 1. File Overview & Purpose
+
+This React component renders the main **Courses & Meetings** page (`/lehrgaenge`). It lists upcoming training sessions and allows users to sign up, sign off, or request new training topics.
+
+## 2. Architectural Role
+
+This is a **View** component in the frontend application.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to fetch all upcoming meetings from `/api/v1/public/meetings`. This data is pre-enriched by the backend with the current user''s attendance status.
+- **Actions:** Renders "Anmelden" (Sign Up) or "Abmelden" (Sign Off) buttons based on the user''s status for each meeting. Clicking these buttons calls the `POST /api/v1/public/meetings/:id/:action` endpoint.
+- **Training Request:** Contains a button that opens the `RequestTrainingModal`, allowing users to submit a new training topic via the `POST /api/v1/public/training-requests` endpoint.
+- **Responsive View:** Includes both a desktop table and a mobile card list view.
+
+## 4. State Management
+
+- **Meeting List:** Managed by the `useApi` hook.
+- **Modal State:** Uses `useState` to control the visibility of the training request modal.'),
+
+('frontend/src/pages/LoginPage.jsx',
+'## 1. File Overview & Purpose
+
+This React component renders the **Login** page (`/login`). It provides the form for username/password authentication.
+
+## 2. Architectural Role
+
+This is a **View** component in the frontend application and is the main entry point for unauthenticated users.
+
+## 3. Key Features & Logic
+
+- **Authentication Flow:**
+    1.  The form is a controlled component, with `username` and `password` state managed by `useState`.
+    2.  On submit, it calls the `login` function from the `useAuthStore`.
+    3.  The `authStore.login` function calls the `POST /api/v1/auth/login` endpoint.
+    4.  If successful, the backend sets an HttpOnly JWT cookie, and the `authStore` fetches the full user session.
+    5.  An `useEffect` hook detects the change in `isAuthenticated` state and redirects the user to their dashboard (`/home`) or their originally intended page.
+- **UI Features:** Includes a password visibility toggle.
+- **Error Handling:** Displays error messages returned from the `authStore` if the login fails.
+
+## 4. State Management
+
+- **Form State:** Managed locally with `useState`.
+- **Authentication State:** Interacts with the global `useAuthStore` to trigger the login process and react to authentication changes.'),
+
+('frontend/src/pages/MeetingDetailsPage.jsx',
+'## 1. File Overview & Purpose
+
+This React component renders the detailed view for a single training meeting (`/lehrgaenge/details/:meetingId`).
+
+## 2. Architectural Role
+
+This is a **View** component in the frontend application.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to fetch the meeting''s details and its associated attachments from `/api/v1/public/meetings/:id`.
+- **Content Display:** Renders all details of the meeting, including description (with Markdown support) and a list of downloadable attachments.
+
+## 4. State Management
+
+- The component''s state is managed by the `useApi` hook.'),
+
+('frontend/src/pages/PackKitPage.jsx',
+'## 1. File Overview & Purpose
+
+This React component renders a special, printer-friendly **Packing List** for an inventory kit (`/pack-kit/:kitId`). It is designed to be accessed via QR code.
+
+## 2. Architectural Role
+
+This is a **View** component that uses the `MinimalLayout` to provide a clean, focused UI without the main application sidebar and header.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to get the kit''s details and its item list from `/api/v1/public/kits/:id`.
+- **Printable Checklist:** Renders the list of items with checkboxes, making it easy to use as a physical checklist when packing a case.
+- **Print Styles:** Includes an embedded `<style>` block with `@media print` rules. These rules ensure that when the user prints the page, only the checklist area is visible, and all other UI elements (like the "Print" button) are hidden.
+
+## 4. State Management
+
+- The component''s state is managed by the `useApi` hook.'),
+
+('frontend/src/pages/PasswordPage.jsx',
+'## 1. File Overview & Purpose
+
+This React component renders the dedicated form for a user to change their own password (`/passwort`).
+
+## 2. Architectural Role
+
+This is a **View** component in the frontend application.
+
+## 3. Key Features & Logic
+
+- **Controlled Form:** Manages the state for the current password, new password, and confirmation password fields using `useState`.
+- **Validation:** Performs client-side checks to ensure the new password is at least 10 characters and that the new password and confirmation match.
+- **Submission:** On submit, it calls the `PUT /api/v1/public/profile/password` endpoint with the form data. The backend performs the final, authoritative validation (checking the current password and enforcing the policy).
+
+## 4. State Management
+
+- All form state is managed locally with `useState` hooks.'),
+
+('frontend/src/pages/ProfilePage.jsx',
+'## 1. File Overview & Purpose
+
+This React component renders the user''s main **Profile** page (`/profil`). It acts as a container, aggregating and displaying several sub-components that represent different aspects of the user''s profile.
+
+## 2. Architectural Role
+
+This is a **View** and **Layout** component in the frontend application.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to call the aggregated `/api/v1/public/profile` endpoint, which returns all data needed for the page in a single response.
+- **Component Composition:** It renders several specialized child components, passing the relevant slice of the fetched data to each one:
+    - `ProfileDetails`: For core user data.
+    - `ProfileSecurity`: For password management.
+    - `ProfileQualifications`: For the user''s completed courses.
+    - `ProfileAchievements`: For earned badges.
+    - `ProfileEventHistory`: For a list of past events.
+- **Update Handling:** It provides an `onUpdate` callback function (which simply calls the `reload` function from `useApi`) to its child components. This allows a child component (like `ProfileDetails`) to trigger a full refresh of all profile data after a change is submitted.
+
+## 4. State Management
+
+- All profile data is managed by the `useApi` hook and passed down to child components as props.');
+COMMIT;
+========================================================================
+FILE: src\main\resources\db\migration\V76__Repopulate_wiki_data_part16.sql
+========================================================================
+
+-- Flyway migration V76, Part 16: Overhaul Technical Wiki Documentation (Frontend Pages)
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('frontend/src/pages/QrActionPage.jsx',
+'## 1. File Overview & Purpose
+
+This React component renders the specialized **QR Action** page (`/lager/qr-aktion/:itemId`). It provides a highly simplified, mobile-first interface for quickly checking an item in or out of the inventory.
+
+## 2. Architectural Role
+
+This is a **View** component that uses the `MinimalLayout` to provide a focused UI without the main application navigation, as it''s intended to be accessed directly via QR code scan.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** It makes two parallel API calls using `useApi`:
+    1.  `/api/v1/public/storage/:itemId` to get the details of the specific item being acted upon.
+    2.  `/api/v1/public/events` to get a list of active events for the optional "Assign to Event" dropdown.
+- **Transaction Form:** It presents a simple form to specify the quantity, an optional event, and notes.
+- **Submission:** The form has two distinct submit buttons ("Entnehmen" and "Einräumen"). The component captures which button was clicked to set the `type` of the transaction and sends the data to the `POST /api/v1/public/storage/transactions` endpoint.
+
+## 4. State Management
+
+- All data is managed by two instances of the `useApi` hook.'),
+
+('frontend/src/pages/SearchResultsPage.jsx',
+'## 1. File Overview & Purpose
+
+This React component renders the **Search Results** page (`/suche`). It displays the results of a global search query.
+
+## 2. Architectural Role
+
+This is a **View** component in the frontend application.
+
+## 3. Key Features & Logic
+
+- **Query Parsing:** It uses the `useSearchParams` hook from React Router to get the search query (`q=...`) from the URL.
+- **Data Fetching:** It uses the `useApi` hook to call the `/api/v1/public/search` endpoint, passing the query as a parameter.
+- **Result Rendering:** It maps over the array of results returned from the API. For each result, it displays the title, a snippet, the result type (e.g., "Veranstaltung"), and a direct link to the item''s detail page. It also uses a helper function to show a relevant icon for each result type.
+
+## 4. State Management
+
+- The component''s data is managed by the `useApi` hook.'),
+
+('frontend/src/pages/StorageItemDetailsPage.jsx',
+'## 1. File Overview & Purpose
+
+This React component renders the detailed view for a single inventory item (`/lager/details/:itemId`). It provides a comprehensive overview of the item, including its history and future availability.
+
+## 2. Architectural Role
+
+This is a **View** component in the frontend application.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** It makes multiple API calls using `useApi`:
+    - `/api/v1/public/storage/:id` to get the core item details.
+    - `/api/v1/public/storage/:id/history` to get the transaction and maintenance logs.
+    - `/api/v1/public/storage/:id/reservations` to get data for the availability calendar.
+- **Tabbed Interface:** Manages state to switch between different tabs:
+    - **History:** Shows the transaction log.
+    - **Maintenance:** Shows the maintenance log.
+    - **Availability:** Renders the `ReservationCalendar` component to show future bookings.
+    - **Related Items:** Renders the `RelatedItemsTab` to show associated equipment.
+- **Interactive Elements:**
+    - **Lightbox:** Clicking the item''s image opens a full-screen `Lightbox` view.
+    - **Damage Report:** The "Schaden melden" button opens a `DamageReportModal` for submitting a new report.
+
+## 4. State Management
+
+- All data is managed by multiple instances of the `useApi` hook.
+- UI state (active tab, modal visibility) is managed with `useState` hooks.'),
+
+('frontend/src/pages/StoragePage.jsx',
+'## 1. File Overview & Purpose
+
+This React component renders the main **Inventory** page (`/lager`). It displays the entire equipment inventory and provides the primary interface for checking items in and out.
+
+## 2. Architectural Role
+
+This is a key **View** component in the frontend application.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to call the aggregated `/api/v1/public/storage` endpoint, which returns both the inventory items (grouped by location) and the list of active events for the transaction modal.
+- **Interactive Filtering:**
+    - It uses `useState` hooks to manage state for a live search term, a category filter, and a status filter.
+    - A `useMemo` hook is used to efficiently compute the `filteredData` whenever the source data or any filter changes.
+- **Cart System:**
+    - It manages a `cart` array in its `useState`.
+    - "Entnehmen" (Checkout) and "Einräumen" (Checkin) buttons on each item add that item to the cart.
+    - A Floating Action Button (FAB) shows the number of items in the cart and opens the `CartModal`.
+- **Bulk Transactions:** The `CartModal` allows the user to review all items in their cart and submit them as a series of transactions with a single click. The `handleBulkTransactionSubmit` function sends multiple parallel requests to the `POST /api/v1/public/storage/transactions` endpoint.
+- **Responsive View:** It provides both a detailed desktop table and a compact mobile card list view.
+
+## 4. State Management
+
+- **Inventory Data:** Managed by the `useApi` hook.
+- **Filters & Cart:** Managed by `useState` hooks.
+- **Filtered Results:** Derived state computed using `useMemo`.'),
+
+('frontend/src/pages/TeamDirectoryPage.jsx',
+'## 1. File Overview & Purpose
+
+This React component renders the **Team Directory** (`/team`), a searchable list of all team members.
+
+## 2. Architectural Role
+
+This is a **View** component in the frontend application.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to get a list of all users from `/api/v1/users`.
+- **Live Search:** A simple text input allows users to filter the directory by name in real-time.
+- **Crew Card Modal:** Clicking the "Crew-Karte ansehen" button for a user opens a modal.
+    - The `CrewCardModal` component is a separate component that takes a `userId` as a prop.
+    - It then triggers its own `useApi` call to the `/api/v1/public/profile/:userId` endpoint to fetch the specific user''s qualifications and achievements for display.
+
+## 4. State Management
+
+- **User List:** Managed by the `useApi` hook in the main component.
+- **Search Term & Modal State:** Managed by `useState` hooks.
+- **Crew Card Data:** Managed by a separate `useApi` instance within the modal component.');
+COMMIT;
+========================================================================
+FILE: src\main\resources\db\migration\V77__Repopulate_wiki_data_part17.sql
+========================================================================
+
+-- Flyway migration V77, Part 17: Overhaul Technical Wiki Documentation (Frontend Admin Pages)
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('frontend/src/pages/admin/AdminAnnouncementsPage.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the administrative page for managing **Announcements** (`/admin/announcements`). It provides a full CRUD interface for the bulletin board.
+
+## 2. Architectural Role
+
+This is an **Admin View** component in the frontend.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to get all announcements from `/api/v1/admin/announcements`.
+- **Modal-Based Editing:**
+    - Clicking "Neue Mitteilung" or "Bearbeiten" opens the `AnnouncementModal`.
+    - The modal contains a controlled form for the title and content.
+    - On submit, it calls either `POST` or `PUT` to the `/api/v1/admin/announcements` endpoint.
+- **Deletion:** The "Löschen" button triggers a confirmation dialog and then calls `DELETE /api/v1/admin/announcements/:id`.
+- **Markdown Preview:** It renders existing announcements using `react-markdown` to show admins what the final post will look like.
+
+## 4. State Management
+
+- **Announcement List:** Managed by the `useApi` hook.
+- **Modal State:** Uses `useState` to control the modal''s visibility and which announcement is being edited.'),
+
+('frontend/src/pages/admin/AdminCoursesPage.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the administrative page for managing **Course Templates** (`/admin/lehrgaenge`). These are the blueprints for training sessions, not the specific dates.
+
+## 2. Architectural Role
+
+This is an **Admin View** component in the frontend.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to get all course templates from `/api/v1/courses`.
+- **CRUD Operations:** Provides a full CRUD interface via a modal (`Modal`).
+    - **Create/Edit:** The modal contains a form for the course name, abbreviation, and description. It calls `POST` or `PUT` to `/api/v1/courses`.
+    - **Delete:** A delete button with a confirmation dialog calls `DELETE /api/v1/courses/:id`.
+- **Navigation:** Provides a "Meetings" button for each course that links to the `AdminMeetingsPage` for that specific course, allowing admins to schedule actual training dates.
+
+## 4. State Management
+
+- **Course List:** Managed by the `useApi` hook.
+- **Modal State:** Managed by `useState`.'),
+
+('frontend/src/pages/admin/AdminDashboardPage.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the main **Admin Dashboard** (`/admin/dashboard`), providing administrators with a high-level overview of the application''s status.
+
+## 2. Architectural Role
+
+This is an **Admin View** component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to make a single call to the aggregated `/api/v1/admin/dashboard` endpoint.
+- **Widget-Based Layout:** It uses the reusable `Widget` component to display different pieces of information in a grid.
+- **Data Visualization:** It uses the `EventTrendChart` component (which wraps `react-chartjs-2`) to display a line chart of event frequency over the past 12 months.
+- **Quick Links:** The widgets provide direct links to the relevant management pages (e.g., "Alle Events anzeigen").
+
+## 4. State Management
+
+- All dashboard data is managed by the `useApi` hook.'),
+
+('frontend/src/pages/admin/AdminDocumentationPage.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the administrative page for managing the user-facing **Page Documentation** (`/admin/documentation`). It allows admins to create, edit, and delete the help articles that appear on the `/help` pages.
+
+## 2. Architectural Role
+
+This is an **Admin View** component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** It makes two parallel API calls:
+    1.  `/api/v1/admin/documentation` to get the list of documentation pages to display in the main table.
+    2.  `/api/v1/wiki/list` to get a flat list of all technical wiki articles, which is used to populate the "Technical Wiki Article" dropdown in the modal.
+- **Modal-Based Editing:** All CRUD operations are handled through the `DocumentationModal`.
+    - The modal form allows editing of all fields, including title, content (Markdown), category, and related pages.
+    - A multi-select input is used for linking related help pages.
+    - A dropdown is used for linking a help page to a technical wiki article.
+- **Submission:** The modal calls the appropriate `POST`, `PUT`, or `DELETE` endpoints on `/api/v1/admin/documentation`.
+
+## 4. State Management
+
+- **Doc & Wiki Lists:** Managed by `useApi` hooks.
+- **Modal State:** Managed by `useState`.'),
+
+('frontend/src/pages/admin/AdminEventsPage.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the main administrative page for **Event Management** (`/admin/veranstaltungen`). It provides a full CRUD interface for all events.
+
+## 2. Architectural Role
+
+This is a key **Admin View** component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:**
+    - Uses `useApi` to get the list of all events from `/api/v1/events`.
+    - It uses the `useAdminData` hook to pre-fetch all data needed for the creation/editing modal (lists of users, courses, and storage items). This prevents the modal from having to make its own data calls.
+- **Modal-Based Editing (`EventModal`):**
+    - The `EventModal` is a large, complex component with a tabbed interface ("General" and "Details & Requirements").
+    - It uses the `DynamicSkillRows` and `DynamicItemRows` components to manage the lists of personnel and material requirements.
+    - On submit, it constructs a `FormData` object to send both the JSON event data and an optional file upload in a single multipart request to the backend.
+- **Actions:** Provides buttons for editing, cloning, deleting, and accessing the debriefing for each event.
+
+## 4. State Management
+
+- **Event List:** Managed by the `useApi` hook.
+- **Form Data for Modal:** The `useAdminData` hook manages fetching this prerequisite data.
+- **Modal State:** `useState` controls the modal''s visibility and which event is being edited.'),
+
+('frontend/src/pages/admin/AdminMeetingsPage.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the administrative page for managing specific **Meeting** dates for a given course (`/admin/lehrgaenge/:courseId/meetings`).
+
+## 2. Architectural Role
+
+This is an **Admin View** component.
+
+## 3. Key Features & Logic
+
+- **Contextual Data Fetching:** It uses the `courseId` from the URL parameters (via `useParams`) to fetch only the meetings for that specific course from `/api/v1/meetings?courseId=...`. It also fetches a list of all users to populate the "Leader" dropdown in the modal.
+- **Modal-Based Editing:** A modal is used for creating and editing meetings.
+- **Actions:** Provides buttons for editing, cloning, and deleting meeting dates.
+
+## 4. State Management
+
+- **Meeting List & User List:** Managed by `useApi` hooks.
+- **Modal State:** Managed by `useState`.');
+COMMIT;
+========================================================================
+FILE: src\main\resources\db\migration\V78__Repopulate_wiki_data_part18.sql
+========================================================================
+
+-- Flyway migration V78, Part 18: Overhaul Technical Wiki Documentation (Frontend Admin Pages)
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('frontend/src/pages/admin/AdminStoragePage.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the main administrative page for **Inventory Management** (`/admin/lager`). It provides a full CRUD interface for all `StorageItem` entities.
+
+## 2. Architectural Role
+
+This is a key **Admin View** component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to get the list of all storage items from `/api/v1/storage`.
+- **Modal-Based Editing (`StorageItemModal`):**
+    - This is a multi-purpose modal that can switch between different "modes" (`create`, `edit`, `defect`, `repair`, `relations`).
+    - The `edit` mode allows changing all core details of an item.
+    - The `defect` and `repair` modes provide specialized forms for managing an item''s defective stock count.
+    - The `relations` mode allows an admin to manage which other items are considered "related" to this one.
+- **Actions:** The main table provides buttons for all actions: Edit, Defect, Repair, QR Code, and Delete.
+- **QR Code Generation:** The "QR" button opens a modal that displays a QR code (generated using the `qrcode.react` library) which links to the public `/lager/qr-aktion/:itemId` page for that item.
+
+## 4. State Management
+
+- **Item List:** Managed by the `useApi` hook.
+- **Modal State:** A single `useState` object manages the modal''s visibility, the item being edited, and the current `mode` of the modal.'),
+
+('frontend/src/pages/admin/AdminSystemPage.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the **System Information** page (`/admin/system`), which displays live statistics about the server''s health.
+
+## 2. Architectural Role
+
+This is an **Admin View** component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to periodically fetch data from the `/api/v1/system/stats` endpoint.
+- **Data Display:** It displays metrics like CPU load, RAM usage, and disk space in a clean, readable format within `card` elements. Helper functions are used to format byte values into Gigabytes and numbers into percentages.
+
+## 4. State Management
+
+- All system statistics are managed by the `useApi` hook. The hook''s `reload` function could be called on an interval to create a live-updating dashboard.'),
+
+('frontend/src/pages/admin/AdminTrainingRequestsPage.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the administrative page for viewing and managing **User-Initiated Training Requests** (`/admin/training-requests`).
+
+## 2. Architectural Role
+
+This is an **Admin View** component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to get all training requests from `/api/v1/admin/training-requests`. The backend enriches this data with a count of how many users have registered interest in each topic.
+- **Data Display:** It shows a table of requested topics, who originally requested them, and how many other users are also interested.
+- **Deletion:** Allows an admin to delete a request, for example, after a corresponding course has been created or if the request is deemed irrelevant.
+
+## 4. State Management
+
+- The list of requests is managed by the `useApi` hook.'),
+
+('frontend/src/pages/admin/AdminUsersPage.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the main **User Management** page (`/admin/mitglieder`). It provides a full CRUD interface for all `User` accounts.
+
+## 2. Architectural Role
+
+This is a key **Admin View** component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:**
+    - Uses `useApi` to get the list of all users from `/api/v1/users`.
+    - Uses the `useAdminData` hook to pre-fetch data needed for the `UserModal` (roles and permissions).
+- **Modal-Based Editing (`UserModal`):**
+    - The `UserModal` is a complex modal with tabs for "General", "Permissions", and "Admin Notes".
+    - The "Permissions" tab uses the `PermissionsTab` component to render a nested, expandable checklist of all available permissions.
+    - On submit, it calls the appropriate `POST` or `PUT` endpoint on `/api/v1/users`.
+- **Password Reset:** The "Passwort Reset" button calls `POST /api/v1/users/:id/reset-password`. It then displays the new, temporary password in a separate modal for the admin to copy and securely transmit to the user.
+
+## 4. State Management
+
+- **User List & Prerequisite Data:** Managed by `useApi` and `useAdminData` hooks.
+- **Modal State:** Managed with `useState` hooks.'),
+
+('frontend/src/pages/admin/AdminVenuesPage.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the administrative page for managing **Venues** (Veranstaltungsorte) at `/admin/venues`.
+
+## 2. Architectural Role
+
+This is an **Admin View** component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to get all venues from `/api/v1/admin/venues`.
+- **Modal-Based Editing:** Uses a modal to handle creating and editing venues.
+- **File Upload:** The modal form includes a file input for uploading a map image. The `handleSubmit` function constructs a `FormData` object to send both the JSON venue data and the image file in a single multipart request.
+
+## 4. State Management
+
+- **Venue List:** Managed by the `useApi` hook.
+- **Modal State:** Managed by `useState`.'),
+
+('frontend/src/pages/admin/AdminWikiPage.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the administrative interface for the **Technical Wiki** (`/admin/wiki`). It provides a two-pane layout with a file tree navigator and a content editor/viewer.
+
+## 2. Architectural Role
+
+This is a complex **Admin View** component that functions like a small single-page application itself.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to get the hierarchical file tree structure from `/api/v1/wiki`.
+- **File Tree Navigation:** It recursively renders the file tree structure. Clicking a file triggers an API call via `apiClient` to `/api/v1/wiki/:id` to fetch that specific page''s content.
+- **Editing vs. Viewing Mode:**
+    - It uses a local `isEditing` state to toggle between a read-only view and an editing view.
+    - The read-only view uses `react-markdown` to render the content.
+    - The editing view uses a simple `<textarea>` as a controlled component for the Markdown content.
+- **CRUD Operations:**
+    - **Save:** Calls `PUT /api/v1/wiki/:id` to save the content from the editor.
+    - **Delete:** Calls `DELETE /api/v1/wiki/:id` to delete the current page.
+    - **Create:** A "+" button opens a modal (`WikiPageModal`) to create a new page by specifying its filename under a parent path. This calls `POST /api/v1/wiki`.
+
+## 4. State Management
+
+- **File Tree:** Managed by the `useApi` hook.
+- **Currently Selected Page & Content:** Managed by `useState` hooks.
+- **UI State:** `useState` is used for `isEditing` and the new page modal visibility.');
+COMMIT;
+========================================================================
+FILE: src\main\resources\db\migration\V79__Populate_wiki_data_part19.sql
+========================================================================
+
+-- Flyway migration V79, Part 19: Overhaul Technical Wiki Documentation (Frontend Misc)
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('frontend/src/App.jsx',
+'## 1. File Overview & Purpose
+
+This is the root component of the authenticated application. It sets up the main layout, including the `Sidebar` and `Header`, and provides the `<Outlet />` for React Router to render the content of the current route. It also manages global UI elements like the `ToastContainer` and the "What''s New" `ChangelogModal`.
+
+## 2. Architectural Role
+
+This is the main **Layout/Root** component for the authenticated part of the frontend application.
+
+## 3. Key Features & Logic
+
+- **Layout Structure:** Defines the primary HTML structure with the sidebar, a mobile header, the main content area, and an overlay for mobile navigation.
+- **Mobile Navigation:** Manages the `isNavOpen` state to toggle the mobile sidebar and the overlay. It includes `useEffect` hooks to add/remove a class to the `<body>` tag and to automatically close the nav on route changes.
+- **Changelog Modal:**
+    - On mount, if the user is authenticated, it calls the `useCallback`-wrapped `fetchChangelog` function.
+    - This function hits the `/api/v1/public/changelog/latest-unseen` endpoint.
+    - If an unseen changelog is returned, it sets the state to display the `ChangelogModal`.
+    - The modal''s close handler calls `POST /api/v1/public/changelog/:id/mark-seen` to ensure the modal doesn''t appear again for that user.
+- **Warning Notifications:** It uses the `useNotifications` hook to listen for real-time "Warning" level notifications and displays the `WarningNotification` component when one is received.
+- **Toast Notifications:** It includes the `ToastContainer` and wraps the entire layout in a `ToastProvider` to make the toast context available to all child components.
+
+## 4. State Management
+
+- **Local State (`useState`)**: Manages `isNavOpen`, `changelog`, and `isChangelogVisible`.
+- **Custom Hooks**: Uses `useNotifications` to manage warning notifications.
+- **Global State (`useAuthStore`)**: Checks `isAuthenticated` before fetching the changelog.
+- **Context (`ToastProvider`)**: Provides the toast notification functionality to the entire app.'),
+
+('frontend/src/main.jsx',
+'## 1. File Overview & Purpose
+
+This is the main entry point for the React application. Its primary responsibilities are to perform initial setup and then render the application into the DOM.
+
+## 2. Architectural Role
+
+This is the **Application Bootstrap** file for the frontend.
+
+## 3. Key Features & Logic
+
+- **`initializeApp()`**: An asynchronous function that runs before the React application is rendered.
+    - **API Client Setup:** It injects the `logout` function from the `authStore` into the `apiClient`. This is a crucial step that allows the `apiClient` to automatically log out the user if it ever receives a 401 Unauthorized response from the backend.
+    - **Session Fetching:** It calls `fetchUserSession()` from the `authStore`. This function makes a request to the `/api/v1/auth/me` endpoint to retrieve the current user''s data. This ensures that if a user refreshes the page, their session is re-established before any components are rendered.
+- **Rendering:** After `initializeApp` completes, it uses `ReactDOM.createRoot().render()` to mount the `RouterProvider` (from React Router) into the `<div id="root"></div>` element in `index.html`.
+
+## 4. State Management
+
+- This file is the primary consumer of the `useAuthStore`. It directly calls `getState()` and `dispatch` actions (`fetchUserSession`) to initialize the application''s authentication state.'),
+
+('frontend/src/pages/error/ErrorPage.jsx',
+'## 1. File Overview & Purpose
+
+This component renders a user-friendly, stylized **500 Internal Server Error** page. It is configured as the `errorElement` for the main application route in `router/index.jsx`, meaning it will be automatically displayed by React Router if an unhandled error occurs during rendering or data loading in any of the child routes.
+
+## 2. Architectural Role
+
+This is a specialized **View** component for error handling.
+
+## 3. Key Features & Logic
+
+- **Error Catching:** Uses the `useRouteError` hook from React Router to catch the error object that was thrown.
+- **Stylized Display:** It renders its content inside a `<div class="terminal">` to create a "hacker terminal" aesthetic, making the error page more engaging than a standard blank page.
+- **Typing Animation:** It uses the `useTypingAnimation` custom hook to display a series of diagnostic messages one character at a time, enhancing the terminal theme. The actual error message from the `useRouteError` hook is dynamically inserted into this animation.
+- **Recovery Action:** Once the typing animation is complete, a "Zum Dashboard" button becomes visible, providing the user with a clear path to navigate away from the error page.
+
+## 4. State Management
+
+- The typing animation and its completion state are managed by the `useTypingAnimation` hook.'),
+
+('frontend/src/pages/error/ForbiddenPage.jsx',
+'## 1. File Overview & Purpose
+
+This component renders a **403 Forbidden** error page (`/forbidden`). It is displayed when an authenticated user tries to access a resource they do not have the necessary permissions for.
+
+## 2. Architectural Role
+
+This is a specialized **View** component for handling authorization errors.
+
+## 3. Key Features & Logic
+
+- **Navigation Target:** The `AdminRoute` component explicitly navigates to this page if a non-admin user attempts to access an admin route.
+- **Stylized Display:** Similar to the `ErrorPage`, it uses a full-screen terminal aesthetic with a typing animation to display a security-themed message, informing the user that their access attempt was denied and logged.
+- **User Personalization:** It retrieves the current user''s username from the `useAuthStore` to include it in the animated text, making the message feel more specific and informative.
+
+## 4. State Management
+
+- The typing animation is managed by the `useTypingAnimation` hook.
+- It reads from the `useAuthStore` to get the current username.'),
+
+('frontend/src/pages/error/NotFoundPage.jsx',
+'## 1. File Overview & Purpose
+
+This component renders a **404 Not Found** error page. It is configured as the wildcard route (`*`) in `router/index.jsx` and is displayed whenever a user navigates to a URL that does not match any other defined route.
+
+## 2. Architectural Role
+
+This is a specialized **View** component for handling routing errors.
+
+## 3. Key Features & Logic
+
+- **Path Awareness:** It uses the `useLocation` hook from React Router to get the incorrect path that the user tried to access.
+- **Stylized Display:** It uses the terminal aesthetic and `useTypingAnimation` hook to display a message that simulates a "file not found" error from a command-line interface, dynamically including the incorrect path in the message.
+- **Recovery Action:** Provides a clear link back to the main dashboard.
+
+## 4. State Management
+
+- The typing animation is managed by the `useTypingAnimation` hook.');
+COMMIT;
+========================================================================
+FILE: src\main\resources\db\migration\V7__Populate_wiki_data_part2.sql
+========================================================================
+
+-- Flyway migration V7, Part 2
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('src/main/java/de/dao/AchievementDAO.java', '1.  **File Overview & Purpose**\n\n    This Data Access Object (DAO) is responsible for all database interactions related to achievements. It handles CRUD (Create, Read, Update, Delete) operations on the `achievements` table and manages the relationship between users and achievements in the `user_achievements` junction table.\n\n2.  **Architectural Role**\n\n    This class belongs to the **DAO (Data Access) Tier**. It directly interacts with the database to persist and retrieve achievement data. It is exclusively called by the `AchievementService` and administrative servlets like `AdminAchievementServlet`.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Used to inject the `DatabaseManager` for obtaining database connections.\n    *   `DatabaseManager`: Provides the connection pool for all database operations.\n    *   `Achievement` (Model): The data model object that this DAO creates and populates.\n\n4.  **In-Depth Breakdown**\n\n    *   **`getAllAchievements()`**: Retrieves a list of all defined achievement templates from the `achievements` table.\n    *   **`getAchievementById(int id)`**: Fetches a single achievement template by its primary key.\n    *   **`createAchievement(Achievement achievement)`**: Inserts a new achievement template into the `achievements` table.\n    *   **`updateAchievement(Achievement achievement)`**: Updates an existing achievement template''s name, description, or icon. The `achievement_key` is immutable.\n    *   **`deleteAchievement(int id)`**: Deletes an achievement template from the `achievements` table.\n    *   **`getAchievementsForUser(int userId)`**: Retrieves all achievements that a specific user has earned, joining `achievements` and `user_achievements` tables. It also populates the `earnedAt` timestamp.\n    *   **`grantAchievementToUser(int userId, String achievementKey)`**: Grants an achievement to a user by inserting a record into the `user_achievements` table. It first checks if the user already has the achievement to prevent duplicates.\n    *   **`hasAchievement(int userId, String achievementKey)`**: Checks if a user has already earned a specific achievement.\n    *   **`mapResultSetToAchievement(ResultSet rs)`**: A private helper method to map a row from a `ResultSet` to an `Achievement` model object, reducing code duplication.'),
+('src/main/java/de/dao/AdminLogDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO manages all interactions with the `admin_logs` table. Its sole purpose is to create and retrieve audit log entries, providing a history of administrative actions performed within the application.\n\n2.  **Architectural Role**\n\n    This class is part of the **DAO (Data Access) Tier**. It provides a structured way for the `AdminLogService` to persist audit trails to the database.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `AdminLog` (Model): The data model representing a single log entry.\n\n4.  **In-Depth Breakdown**\n\n    *   **`createLog(AdminLog log)`**\n        *   **Method Signature:** `public void createLog(AdminLog log)`\n        *   **Purpose:** Inserts a new log entry into the `admin_logs` table.\n        *   **Parameters:**\n            *   `log` (AdminLog): The log entry object containing the admin''s username, action type, and details.\n        *   **Returns:** void.\n        *   **Side Effects:** Writes a new record to the database. It includes robust error logging to ensure that a failure to log does not crash the primary operation.\n\n    *   **`getAllLogs()`**\n        *   **Method Signature:** `public List<AdminLog> getAllLogs()`\n        *   **Purpose:** Retrieves all log entries from the database, ordered from newest to oldest.\n        *   **Parameters:** None.\n        *   **Returns:** A `List` of `AdminLog` objects.\n        *   **Side Effects:** Performs a database read.\n\n    *   **`getRecentLogs(int limit)`**\n        *   **Method Signature:** `public List<AdminLog> getRecentLogs(int limit)`\n        *   **Purpose:** Retrieves the most recent log entries up to a specified limit. Used for dashboard widgets.\n        *   **Parameters:**\n            *   `limit` (int): The maximum number of log entries to retrieve.\n        *   **Returns:** A `List` of `AdminLog` objects.\n        *   **Side Effects:** Performs a database read with a `LIMIT` clause.'),
+('src/main/java/de/dao/AttachmentDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO is responsible for managing file attachments associated with parent entities like Events or Meetings. It provides a unified interface for CRUD operations on the `attachments` table, abstracting away the polymorphic relationship defined by the `parent_type` and `parent_id` columns.\n\n2.  **Architectural Role**\n\n    This is a **DAO (Data Access) Tier** class. It is called by services (`EventService`, `MeetingService`) and servlets (`AdminEventServlet`, `AdminMeetingServlet`) that need to manage attachments for their respective entities.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `Attachment` (Model): The data model object this DAO works with.\n\n4.  **In-Depth Breakdown**\n\n    *   **`addAttachment(Attachment attachment, Connection conn)`**: Inserts a new attachment record into the database within an existing transaction.\n    *   **`getAttachmentsForParent(String parentType, int parentId, String userRole)`**: Retrieves all attachments for a specific parent (e.g., all attachments for Event with ID 5). It filters the results based on the user''s role (`ADMIN` or `NUTZER`), ensuring non-admins cannot see admin-only files.\n    *   **`getAttachmentById(int attachmentId)`**: Fetches a single attachment''s metadata by its unique ID. This is used by the `DownloadServlet` to verify existence and get the file path.\n    *   **`deleteAttachment(int attachmentId)`**: Deletes an attachment record from the database. Note: This does not delete the physical file from the disk; that is the responsibility of the calling service or servlet.\n    *   **`mapResultSetToAttachment(ResultSet rs)`**: A private helper method to convert a database row into an `Attachment` object.'),
+('src/main/java/de/dao/MaintenanceLogDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO manages all database interactions with the `maintenance_log` table. Its purpose is to create and retrieve maintenance history for specific inventory items, tracking actions like repairs or marking an item for maintenance.\n\n2.  **Architectural Role**\n\n    This class is part of the **DAO (Data Access) Tier**. It is used by the `StorageService` and `AdminStorageServlet` to log maintenance activities and by the `StorageItemDetailsServlet` to display an item''s maintenance history.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `MaintenanceLogEntry` (Model): The data model representing a single maintenance log entry.\n\n4.  **In-Depth Breakdown**\n\n    *   **`createLog(MaintenanceLogEntry log)`**\n        *   **Method Signature:** `public boolean createLog(MaintenanceLogEntry log)`\n        *   **Purpose:** Inserts a new maintenance record into the `maintenance_log` table.\n        *   **Parameters:**\n            *   `log` (MaintenanceLogEntry): An object containing the item ID, user ID, action taken, notes, and any associated cost.\n        *   **Returns:** `true` on successful insertion, `false` otherwise.\n        *   **Side Effects:** Writes a new record to the database.\n\n    *   **`getHistoryForItem(int itemId)`**\n        *   **Method Signature:** `public List<MaintenanceLogEntry> getHistoryForItem(int itemId)`\n        *   **Purpose:** Retrieves the complete maintenance history for a specific storage item, ordered from newest to oldest. It joins with the `users` table to get the username of the person who performed the action.\n        *   **Parameters:**\n            *   `itemId` (int): The ID of the storage item.\n        *   **Returns:** A `List` of `MaintenanceLogEntry` objects.\n        *   **Side Effects:** Performs a database read.'),
+('src/main/java/de/dao/MeetingAttendanceDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO handles all database interactions for the `meeting_attendance` table. It is responsible for tracking which users have attended specific meetings, which is the basis for granting qualifications.\n\n2.  **Architectural Role**\n\n    This class is part of the **DAO (Data Access) Tier**. It is used by the `AdminAttendanceServlet` and `MatrixServlet` to update and display attendance records.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `MeetingAttendance` (Model): The data model representing a user''s attendance at a meeting.\n\n4.  **In-Depth Breakdown**\n\n    *   **`setAttendance(int userId, int meetingId, boolean attended, String remarks)`**\n        *   **Method Signature:** `public boolean setAttendance(int userId, int meetingId, boolean attended, String remarks)`\n        *   **Purpose:** Sets or updates a user''s attendance status for a meeting. It uses an `INSERT ... ON DUPLICATE KEY UPDATE` SQL statement, which allows this single method to handle both initial registration and subsequent changes without needing to check for a pre-existing record.\n        *   **Parameters:** All parameters correspond to the columns in the `meeting_attendance` table.\n        *   **Returns:** `true` on success, `false` on SQL error.\n        *   **Side Effects:** Writes or updates a record in the database.\n\n    *   **`getAllAttendance()`**\n        *   **Method Signature:** `public List<MeetingAttendance> getAllAttendance()`\n        *   **Purpose:** Retrieves all attendance records from the database. This is used by the `MatrixServlet` to build a comprehensive map of all user attendance for display in the qualification matrix.\n        *   **Parameters:** None.\n        *   **Returns:** A `List` of all `MeetingAttendance` objects.\n        *   **Side Effects:** Performs a database read.\n\n    *   **`mapResultSetToAttendance(ResultSet rs)`**: A private helper method to map a database row to a `MeetingAttendance` object.'),
+('src/main/java/de/dao/MeetingDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO manages all database operations for the `meetings` table. It handles the CRUD lifecycle of individual, schedulable meeting instances, which are always children of a parent `Course`. It also manages user sign-ups for meetings via the `meeting_attendance` table.\n\n2.  **Architectural Role**\n\n    This class belongs to the **DAO (Data Access) Tier**. It is primarily used by the `AdminMeetingServlet` for managing meetings and by public-facing servlets like `MeetingServlet` and `MeetingDetailsServlet` to display meeting information to users.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `Meeting`, `User` (Models): The data models this DAO works with.\n\n4.  **In-Depth Breakdown**\n\n    *   **CRUD Operations (`createMeeting`, `getMeetingById`, `updateMeeting`, `deleteMeeting`)**: Standard methods for managing meeting records. `deleteMeeting` will cascade-delete all associated attendance records.\n    *   **Listing Methods (`getMeetingsForCourse`, `getAllMeetings`, `getAllUpcomingMeetings`)**: Various methods to retrieve lists of meetings, either for a specific course, for all courses, or only upcoming ones for the calendar view. These queries join with `courses` and `users` to enrich the `Meeting` object with the parent course name and leader''s username.\n    *   **User-Specific Queries (`getUpcomingMeetingsForUser`, `isUserAssociatedWithMeeting`)**:\n        *   `getUpcomingMeetingsForUser`: Fetches upcoming meetings for a specific user and calculates their attendance status (`ANGEMELDET`, `ABGEMELDET`, or `OFFEN`) for each.\n        *   `isUserAssociatedWithMeeting`: A simple check to see if a user is signed up for a meeting, used for authorization checks.\n    *   **`mapResultSetToMeeting(ResultSet rs)`**: A private helper to populate a `Meeting` object from a database row, including data from joined tables.'),
+('src/main/java/de/dao/PasskeyDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO is responsible for all database interactions related to WebAuthn/Passkey credentials. It handles the storage, retrieval, and management of public key credentials in the `user_passkeys` table, which enables passwordless authentication for users.\n\n2.  **Architectural Role**\n\n    This class is a critical component of the **DAO (Data Access) Tier**. It provides the persistence layer for the `PasskeyService`, allowing it to manage the lifecycle of user credentials securely.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `PasskeyCredential` (Model): The data model representing a stored credential.\n\n4.  **In-Depth Breakdown**\n\n    *   **`saveCredential(PasskeyCredential credential)`**: Inserts a new passkey record into the database after a user successfully completes the registration ceremony.\n    *   **`getCredentialsByUserId(int userId)`**: Retrieves all passkeys registered by a specific user. This is used during the authentication process where the server can suggest known credentials to the browser.\n    *   **`getCredentialById(String credentialId)`**: Fetches a single credential by its unique `credential_id` (a Base64URL string). This is the primary lookup method during an authentication ceremony to verify a user''s login attempt.\n    *   **`deleteCredential(int credentialDbId, int userId)`**: Removes a passkey from the database. It requires both the internal database ID and the user''s ID to ensure a user can only delete their own credentials.\n    *   **`updateSignatureCount(String credentialId, long newSignatureCount)`**: Updates the signature counter for a credential after a successful authentication. This is a security measure to help detect cloned authenticators.\n    *   **`mapResultSetToCredential(ResultSet rs)`**: A private helper method to map a database row to a `PasskeyCredential` object.'),
+('src/main/java/de/dao/PermissionDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO provides read-only access to the application''s permission system. Its primary responsibilities are to fetch all available permission definitions from the `permissions` table and to retrieve the specific set of permissions granted to an individual user from the `user_permissions` junction table.\n\n2.  **Architectural Role**\n\n    This class is part of the **DAO (Data Access) Tier**. It is used by the `UserDAO` to populate a `User` object with their complete set of permissions upon login, and by the `AdminUserServlet` to display the list of all possible permissions in the user editing modal.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `Permission` (Model): The data model representing a single permission definition.\n\n4.  **In-Depth Breakdown**\n\n    *   **`getAllPermissions()`**\n        *   **Method Signature:** `public List<Permission> getAllPermissions()`\n        *   **Purpose:** Retrieves a complete list of all permissions defined in the system.\n        *   **Parameters:** None.\n        *   **Returns:** A `List` of `Permission` objects.\n        *   **Side Effects:** Performs a database read on the `permissions` table.\n\n    *   **`getPermissionIdsForUser(int userId)`**\n        *   **Method Signature:** `public Set<Integer> getPermissionIdsForUser(int userId)`\n        *   **Purpose:** Fetches the set of primary key IDs for all permissions directly assigned to a specific user.\n        *   **Parameters:**\n            *   `userId` (int): The ID of the user.\n        *   **Returns:** A `Set` of integer permission IDs.\n        *   **Side Effects:** Performs a database read on the `user_permissions` table.'),
+('src/main/java/de/dao/ProfileChangeRequestDAO.java', '1.  **File Overview & Purpose**\n\n    This DAO manages the lifecycle of user profile change requests. It handles all database operations for the `profile_change_requests` table, including creating new requests, fetching pending requests for administrators, and updating their status upon approval or denial.\n\n2.  **Architectural Role**\n\n    This class belongs to the **DAO (Data Access) Tier**. It is used by the `ProfileServlet` when a user submits a change request and by the `AdminChangeRequestServlet` and its associated `Action` classes (`ApproveChangeAction`, `DenyChangeAction`) for processing these requests.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n    *   `ProfileChangeRequest` (Model): The data model for a change request.\n\n4.  **In-Depth Breakdown**\n\n    *   **`createRequest(ProfileChangeRequest request)`**: Inserts a new profile change request into the database with a ''PENDING'' status.\n    *   **`getRequestById(int id)`**: Retrieves a single request by its ID, joining with the `users` table to get the requester''s and reviewer''s usernames.\n    *   **`getPendingRequests()`**: Fetches all requests that currently have a ''PENDING'' status, for display on the admin requests page.\n    *   **`hasPendingRequest(int userId)`**: A quick check to determine if a user already has a pending request, used to prevent them from submitting multiple requests.\n    *   **`updateRequestStatus(int requestId, String status, int adminId)`**: Updates a request''s status to ''APPROVED'' or ''DENIED'', and records which admin reviewed it and when.\n    *   **`mapResultSetToRequest(ResultSet rs)`**: A private helper method to map a database row to a `ProfileChangeRequest` object.'),
+('src/main/java/de/dao/ReportDAO.java', '1.  **File Overview & Purpose**\n\n    This is a specialized DAO designed for generating analytical reports and summaries. Unlike other DAOs that focus on CRUD operations for single entities, this class contains complex, aggregate SQL queries that summarize data across multiple tables for administrative dashboards and dedicated report pages.\n\n2.  **Architectural Role**\n\n    This class is part of the **DAO (Data Access) Tier**. It is used by the `AdminReportServlet` and `AdminDashboardService` to fetch data for visualization and export. It encapsulates the most complex SQL logic in the application.\n\n3.  **Key Dependencies & Libraries**\n\n    *   `@Inject`: Injects the `DatabaseManager`.\n    *   `DatabaseManager`: Provides database connections.\n\n4.  **In-Depth Breakdown**\n\n    *   **`getEventParticipationSummary()`**: Calculates the number of assigned participants for each event.\n    *   **`getUserActivityStats()`**: Aggregates statistics for each user, counting how many events they''ve signed up for and how many meetings they''ve attended.\n    *   **`getInventoryUsageFrequency()`**: Calculates the total number of times each inventory item has been checked out.\n    *   **`getTotalInventoryValue()`**: Calculates the total monetary value of all items in stock by multiplying quantity by price.\n    *   **`getEventCountByMonth(int months)`**: Generates a time-series dataset of how many events occurred each month over a given period, used for the trend chart on the dashboard.\n    *   **`getUserParticipationStats(int limit)`**: Retrieves the top N most active users based on the number of events they have been assigned to.');
+COMMIT;
+========================================================================
+FILE: src\main\resources\db\migration\V80__Repopulate_wiki_data_part20.sql
+========================================================================
+
+-- Flyway migration V80, Part 20: Overhaul Technical Wiki Documentation (Frontend Components & Admin Pages)
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('frontend/src/components/admin/dashboard/EventTrendChart.jsx',
+'## 1. File Overview & Purpose
+
+This is a presentational React component responsible for rendering the **Event Trend Chart** on the Admin Dashboard. It uses the `react-chartjs-2` library to create a line chart.
+
+## 2. Architectural Role
+
+This is a **View** sub-component, specifically for data visualization within the `AdminDashboardPage`.
+
+## 3. Key Features & Logic
+
+- **Library Integration:** It imports and registers the necessary components from `chart.js` (like scales, elements, and tooltips).
+- **Data Mapping:** It takes `trendData` (an array of `{ month: string, count: number }`) as a prop and transforms it into the specific `data` and `options` format required by Chart.js.
+- **Rendering:** It renders the `<Line />` component from `react-chartjs-2`, passing the prepared data and options to it.'),
+
+('frontend/src/components/admin/dashboard/Widget.jsx',
+'## 1. File Overview & Purpose
+
+This is a reusable React component that renders a single **Dashboard Widget**. It provides a standardized layout with a title, an icon, a content area, and an optional "View All" link.
+
+## 2. Architectural Role
+
+This is a reusable **UI Component** used throughout the `AdminDashboardPage`.
+
+## 3. Key Features & Logic
+
+- **Props-Based:** It is a purely presentational component that receives all its content via props: `icon`, `title`, `children` (for the main content), `linkTo`, and `linkText`.
+- **Standardized Layout:** It renders its content inside a `<div class="card">`, ensuring a consistent look and feel for all dashboard widgets.'),
+
+('frontend/src/components/admin/events/DynamicItemRows.jsx',
+'## 1. File Overview & Purpose
+
+This is a controlled React component that manages a dynamic list of **inventory item reservations** within a form. It allows an administrator to add, remove, and edit multiple item/quantity pairs.
+
+## 2. Architectural Role
+
+This is a **Form Component** used within the `EventModal`.
+
+## 3. Key Features & Logic
+
+- **Controlled Component:** It does not manage its own state. It receives the list of rows (`rows`) and a setter function (`setRows`) as props from its parent (`EventModal`).
+- **Dynamic Rows:** It maps over the `rows` array to render a row for each item. Each row contains a `<select>` dropdown for the item and an `<input>` for the quantity.
+- **State Manipulation:**
+    - `handleAddRow`: Appends a new, empty item object to the `rows` array via the `setRows` prop.
+    - `handleRemoveRow`: Removes an item from the array at a specific index.
+    - `handleRowChange`: Updates a specific field (itemId or quantity) for an item at a specific index.'),
+
+('frontend/src/components/admin/events/DynamicSkillRows.jsx',
+'## 1. File Overview & Purpose
+
+This is a controlled React component that manages a dynamic list of **skill requirements** for an event. It allows an administrator to add, remove, and edit multiple skill/personnel count pairs.
+
+## 2. Architectural Role
+
+This is a **Form Component** used within the `EventModal`.
+
+## 3. Key Features & Logic
+
+- **Controlled Component:** Like `DynamicItemRows`, it receives its state (`rows`, `setRows`) via props from the `EventModal`.
+- **Functionality:** Its implementation is nearly identical to `DynamicItemRows`, but the inputs are tailored for selecting a `Course` and specifying the number of required persons.'),
+
+('frontend/src/components/admin/events/EventModal.jsx',
+'## 1. File Overview & Purpose
+
+This is a large, stateful React component that provides the **modal dialog for creating and editing events**. It contains the entire form, including the tabbed interface and the dynamic row components.
+
+## 2. Architectural Role
+
+This is a key **UI Container Component** used by the `AdminEventsPage`.
+
+## 3. Key Features & Logic
+
+- **State Management:** It uses `useState` to manage all form data (`formData`), the state of the skill requirement rows (`skillRows`), the item reservation rows (`itemRows`), the selected file for upload, and the active tab.
+- **Edit Mode:** It determines if it''s in "edit" or "create" mode based on whether an `event` prop is passed in. In edit mode, an `useEffect` hook populates the form with the existing event''s data.
+- **Tabbed Interface:** Manages the `activeTab` state to show/hide the "General" and "Details & Bedarf" sections of the form.
+- **Component Composition:** It renders the `DynamicSkillRows` and `DynamicItemRows` components, passing down the relevant state and state setters.
+- **Submission:** The `handleSubmit` function assembles all the data from the various state variables into a `FormData` object. This is necessary to send both the JSON event data and the binary file data in a single multipart request to the backend.'),
+
+('frontend/src/components/admin/events/TaskDependenciesForm.jsx',
+'## 1. File Overview & Purpose
+
+This is a controlled React component that renders a checklist of tasks, allowing an administrator to define **dependencies** for a specific event task (i.e., which other tasks must be completed first).
+
+## 2. Architectural Role
+
+This is a **Form Component** intended for use within a task editing modal (though not fully implemented in the provided code, it is present).
+
+## 3. Key Features & Logic
+
+- **Controlled Component:** It receives the list of selected dependencies (`selectedDependencies`, a `Set`) and an `onDependencyChange` callback function as props.
+- **Rendering:** It receives a list of `allTasks` for the event and renders a checkbox for each one.
+- **State Manipulation:** When a checkbox is toggled, it creates a new `Set` based on the previous selection, adds or deletes the toggled task ID, and calls the `onDependencyChange` prop with the new `Set` to update the parent component''s state.'),
+
+('frontend/src/components/admin/kits/KitItemsForm.jsx',
+'## 1. File Overview & Purpose
+
+This is a stateful React component that provides the form for managing the **items within an inventory kit**. It is displayed within the accordion view on the `AdminKitsPage`.
+
+## 2. Architectural Role
+
+This is a **Form Component**.
+
+## 3. Key Features & Logic
+
+- **Local State:** Unlike the dynamic rows for events, this component manages its own state for the list of `items`. It initializes this state from the `kit.items` prop.
+- **Dynamic Rows:** It provides the standard "add row" and "remove row" functionality for editing the list of items and their quantities.
+- **Submission:** On submit, it calls the `PUT /api/v1/kits/:id/items` endpoint to overwrite the entire list of items for that kit. It then calls the `onUpdateSuccess` prop to trigger a data refresh on the parent page.'),
+
+('frontend/src/components/admin/kits/KitModal.jsx',
+'## 1. File Overview & Purpose
+
+This component provides the **modal dialog for creating and editing the metadata** of an inventory kit (name, description, location).
+
+## 2. Architectural Role
+
+This is a **UI Container Component** used by the `AdminKitsPage`.
+
+## 3. Key Features & Logic
+
+- **State Management:** It is a controlled form that manages its state (`formData`) with `useState`.
+- **Edit vs. Create Mode:** It checks for the presence of a `kit` prop to determine its mode and initialize its state.
+- **Submission:** On submit, it calls either `POST /api/v1/kits` (for create) or `PUT /api/v1/kits/:id` (for edit) and then calls the `onSuccess` prop to close the modal and refresh the parent page.'),
+
+('frontend/src/components/admin/matrix/AttendanceModal.jsx',
+'## 1. File Overview & Purpose
+
+This component provides the **modal dialog for updating a user''s attendance** for a specific training meeting. It is opened when an admin clicks a cell in the Qualification Matrix.
+
+## 2. Architectural Role
+
+This is a **UI Container Component** used by the `AdminMatrixPage`.
+
+## 3. Key Features & Logic
+
+- **State Management:** It is a controlled form that manages the state for the `attended` checkbox and the `remarks` textarea.
+- **Submission:** On submit, it calls the `PUT /api/v1/matrix/attendance` endpoint with the user ID, meeting ID, and the new attendance status. It then calls the `onSuccess` prop to close the modal and refresh the matrix data.'),
+
+('frontend/src/components/admin/reports/UserActivityChart.jsx',
+'## 1. File Overview & Purpose
+
+This is a presentational React component that renders a **horizontal bar chart** showing user activity (e.g., event participations).
+
+## 2. Architectural Role
+
+This is a **View** sub-component for data visualization, used within the `AdminReportsPage`.
+
+## 3. Key Features & Logic
+
+- **Library Integration:** It uses `react-chartjs-2` to render a `<Bar />` chart.
+- **Data Mapping:** It takes `activityData` as a prop and transforms it into the data format required by Chart.js.
+- **Configuration:** It sets the `indexAxis: ''y''` option to make the bar chart horizontal, which is often better for displaying lists of names.'),
+
+('frontend/src/components/admin/storage/StorageItemModal.jsx',
+'## 1. File Overview & Purpose
+
+This is a highly versatile, stateful React component that provides the **modal dialog for all administrative actions on a storage item**. It can switch between multiple modes to show different forms.
+
+## 2. Architectural Role
+
+This is a key **UI Container Component** used by `AdminStoragePage` and `AdminDefectivePage`.
+
+## 3. Key Features & Logic
+
+- **Mode Management:** It uses a local `mode` state, initialized by the `initialMode` prop, to control which form is rendered. The available modes are `create`, `edit`, `defect`, `repair`, and `relations`.
+- **Multi-Functional Rendering:** A `renderContent()` function contains a `switch` statement that returns the correct form JSX based on the current `mode`.
+- **Component Composition:** In `relations` mode, it renders the `RelatedItemsManager` component to handle that specific functionality.
+- **Data Fetching:** It uses the `useApi` hook to fetch a list of all storage items, which is needed by the `RelatedItemsManager`.
+- **Submission Logic:** It contains multiple separate submission handlers (`handleSubmit`, `handleDefectSubmit`, `handleRepairSubmit`) for each of its primary functions, each calling a different backend API endpoint.'),
+
+('frontend/src/components/admin/users/PermissionTab.jsx',
+'## 1. File Overview & Purpose
+
+This is a controlled, presentational React component that renders the **nested checklist of permissions** inside the `UserModal`.
+
+## 2. Architectural Role
+
+This is a **Form Component**.
+
+## 3. Key Features & Logic
+
+- **Controlled Component:** It receives the `groupedPermissions` object, a `Set` of `assignedIds`, and an `onPermissionChange` callback function as props.
+- **Rendering Logic:**
+    - It iterates over the keys of the `groupedPermissions` object to create a `<details>` section for each permission group (e.g., "USER", "EVENT").
+    - Within each group, it maps over the permissions to render a checkbox and label for each.
+    - The `checked` status of each checkbox is determined by checking if its ID exists in the `assignedIds` `Set`.
+- **State Manipulation:** When a checkbox is clicked, it calls the `onPermissionChange` prop with the permission''s ID, allowing the parent `UserModal` to update its state.'),
+
+('frontend/src/components/admin/users/UserModal.jsx',
+'## 1. File Overview & Purpose
+
+This is a large, stateful React component that provides the **modal dialog for creating and editing users**. It contains the entire form, including the tabbed interface for general details, permissions, and admin notes.
+
+## 2. Architectural Role
+
+This is a key **UI Container Component** used by the `AdminUsersPage`.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** When in edit mode, it makes an API call via `apiClient` to `/api/v1/users/:id` to fetch the full user object, including their currently assigned permissions.
+- **State Management:**
+    - `useState` is used to manage the `formData` object, which contains all user details and a `Set` of `permissionIds`.
+    - It also manages the `activeTab` state.
+- **Component Composition:** It renders the `PermissionsTab` component, passing down the `groupedPermissions` (received from `AdminUsersPage`), the `formData.permissionIds` set, and the `handlePermissionChange` callback.
+- **Permission Handling:** The `handlePermissionChange` function is responsible for updating the `permissionIds` `Set` in the component''s state when a checkbox is toggled in the child component.
+- **Submission:** On submit, it converts the `permissionIds` `Set` back into an array and sends the complete payload to the backend.');
+COMMIT;
+========================================================================
+FILE: src\main\resources\db\migration\V81__Repopulate_wiki_data_part21.sql
+========================================================================
+
+-- Flyway migration V81, Part 21: Overhaul Technical Wiki Documentation (Frontend Components)
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('frontend/src/components/calendar/CalendarDesktopView.jsx',
+'## 1. File Overview & Purpose
+
+This component renders a traditional, grid-based **monthly calendar view** for desktop screens.
+
+## 2. Architectural Role
+
+This is a **View** sub-component, used by `CalendarPage`.
+
+## 3. Key Features & Logic
+
+- **Date Calculation (`date-fns`):** It heavily uses the `date-fns` library to perform all necessary date calculations:
+    - `startOfMonth`, `endOfMonth`: To find the boundaries of the current month.
+    - `startOfWeek`, `endOfWeek`: To find the start and end of the visible grid, ensuring full weeks are always displayed.
+    - `eachDayOfInterval`: To generate an array of all `Date` objects to be rendered in the grid.
+- **Data Grouping:** It uses `useMemo` to transform the flat list of `entries` (from props) into a `Map` where keys are date strings (`"yyyy-MM-dd"`) and values are arrays of events for that day. This is an efficient way to look up events for each day cell.
+- **Rendering:** It maps over the `daysInGrid` array. For each day, it looks up the events in the memoized map and renders them. Days not in the current month are visually greyed out.'),
+
+('frontend/src/components/calendar/CalendarMobileView.jsx',
+'## 1. File Overview & Purpose
+
+This component renders a simple, **chronological list of upcoming events and meetings**, optimized for mobile screens.
+
+## 2. Architectural Role
+
+This is a **View** sub-component, used by `CalendarPage`.
+
+## 3. Key Features & Logic
+
+- **Sorting:** It first sorts the incoming `entries` array by date to ensure they are displayed in chronological order.
+- **Rendering:** It maps over the sorted array and renders each entry as a list item (`termin-item`). Each item displays the day, month, title, and type of the entry, and links to the respective details page.'),
+
+('frontend/src/components/chat/ConversationList.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the **list of conversations** on the left side of the `ChatPage`. It displays all of the user''s 1-on-1 and group chats and provides controls for starting new ones.
+
+## 2. Architectural Role
+
+This is a **View** sub-component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to fetch the user''s conversation list from `/api/v1/public/chat/conversations`.
+- **Starting New Chats:**
+    - The "New Direct Message" button opens a `UserSearchModal`. When a user is selected, it calls `POST /api/v1/public/chat/conversations` to find or create a conversation and then navigates to the new chat URL.
+    - The "New Group" button opens the `GroupChatModal`, which handles the creation of a new group conversation.
+- **Active State:** It compares the `selectedConversationId` prop (from the URL) with each conversation''s ID to apply an "active" CSS class to the currently viewed chat.'),
+
+('frontend/src/components/chat/GroupChatModal.jsx',
+'## 1. File Overview & Purpose
+
+This component provides the **modal dialog for creating a new group chat**.
+
+## 2. Architectural Role
+
+This is a **UI Container Component**.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to fetch a list of all users from `/api/v1/users` to populate the member selection checklist.
+- **State Management:** Uses `useState` to manage the `groupName` input and a `Set` of `selectedUsers`.
+- **Submission:** The "Create Group" button calls the `onCreateGroup` prop (passed from `ConversationList`), providing the group name and the array of selected user IDs.'),
+
+('frontend/src/components/chat/ManageParticipantsModal.jsx',
+'## 1. File Overview & Purpose
+
+This component provides the **modal dialog for adding new members to an existing group chat**.
+
+## 2. Architectural Role
+
+This is a **UI Container Component**.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to get a list of all users.
+- **Filtering:** It filters the list of all users to show only those who are *not* already in the current conversation.
+- **Submission:** The "Add" button calls the `onAddUsers` prop (passed from `MessageView`), providing the array of newly selected user IDs.'),
+
+('frontend/src/components/chat/MessageStatus.jsx',
+'## 1. File Overview & Purpose
+
+This is a small, presentational component that displays the **read receipt status** (Sent, Delivered, Read) for a chat message.
+
+## 2. Architectural Role
+
+This is a **View** sub-component, used within `MessageView`.
+
+## 3. Key Features & Logic
+
+- **Conditional Rendering:** It only renders if the message was sent by the current user (`isSentByMe` prop is true).
+- **Icon Logic:** It uses a `switch` statement on the `status` prop to determine which FontAwesome icon to display (`fa-check`, `fa-check-double`) and whether to apply a different color for the "Read" status.'),
+
+('frontend/src/components/chat/MessageView.jsx',
+'## 1. File Overview & Purpose
+
+This is a large, complex component that renders the **main message view** for a single conversation on the `ChatPage`. It handles displaying message history, real-time message updates, and the message input form.
+
+## 2. Architectural Role
+
+This is a key **View** component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to fetch the initial message history from `/api/v1/public/chat/conversations/:id/messages`.
+- **Real-Time Updates:** Uses the `useWebSocket` hook to connect to `/ws/dm/:conversationId`. The `handleWebSocketMessage` callback handles incoming messages (`new_message`, `message_updated`, `message_deleted`, `messages_status_updated`) and updates the local `messages` state accordingly.
+- **Read Receipts:** An `useEffect` hook monitors the `messages` state. If it detects unread messages received from another user, it sends a `mark_as_read` event over the WebSocket to inform the server and other clients.
+- **Message Rendering:** It maps over the `messages` array, rendering each one as a "bubble". It handles different styles for sent vs. received messages, displays sender info for group chats, and renders message content (including file links) via the `renderMessageContent` helper.
+- **Message Actions:** It provides options for editing and deleting messages, which send `update_message` and `delete_message` events over the WebSocket.
+- **Input Form:** Provides a controlled form for typing new messages and uploading files.
+
+## 4. State Management
+
+- **Message History:** Managed by `useState`, initialized by `useApi` and updated by `useWebSocket`.
+- **Conversation Details:** Managed by a separate `useApi` hook.
+- **UI State:** Uses `useState` for the message input, editing state, and modal visibility.');
+COMMIT;
+========================================================================
+FILE: src\main\resources\db\migration\V82__Repopulate_wiki_data_part22.sql
+========================================================================
+
+-- Flyway migration V82, Part 22: Overhaul Technical Wiki Documentation (Frontend Components)
+
+INSERT INTO `wiki_documentation` (`file_path`, `content`) VALUES
+('frontend/src/components/events/ChecklistTab.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the **Inventory Checklist** tab on the `EventDetailsPage`. It provides an interactive checklist for tracking equipment during event load-in and load-out.
+
+## 2. Architectural Role
+
+This is a **View** sub-component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to fetch the initial checklist items for the event from `/api/v1/events/:id/checklist`.
+- **Real-Time Updates:** Uses the `useWebSocket` hook to connect to `/ws/checklist/:id`. It listens for `checklist_update` events and updates the local state in real-time when another user changes an item''s status.
+- **Status Changes:** When the user changes the status of an item in the dropdown, it sends a `PUT` request to `/api/v1/events/:id/checklist/:itemId/status`. The component''s state is then updated by the incoming WebSocket broadcast, ensuring consistency across all clients.
+- **Generate from Reservations:** Provides a button that calls `POST /api/v1/events/:id/checklist/generate` to populate the checklist from the event''s material reservations.'),
+
+('frontend/src/components/events/EventGalleryTab.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the **Photo Gallery** tab on the `EventDetailsPage` for completed events. It displays uploaded photos and provides an interface for participants to upload new ones.
+
+## 2. Architectural Role
+
+This is a **View** sub-component.
+
+## 3. Key Features & Logic
+
+- **Data Fetching:** Uses `useApi` to fetch all photo metadata for the event from `/api/v1/public/events/:id/gallery`.
+- **Photo Upload:**
+    - It conditionally renders an "Upload Photo" button only if the current user was a participant in the event.
+    - The button opens a `PhotoUploadModal` which handles the file selection and submission to `POST /api/v1/public/events/:id/gallery`.
+- **Photo Deletion:** It renders a delete button on each photo. This button is only visible if the current user is the uploader, an admin, or the event leader.
+- **Lightbox:** Clicking on any photo opens it in a full-screen `Lightbox` view.
+
+## 4. State Management
+
+- **Photo List & Modals:** Managed by `useApi` and `useState` hooks.'),
+
+('frontend/src/components/layout/ErrorLayout.jsx',
+'## 1. File Overview & Purpose
+
+This is a specialized **Layout Component** used by React Router to wrap all error pages (403, 404, 500). Its primary purpose is to apply a consistent, minimal theme and layout to these pages, ensuring they match the user''s selected theme even if the full application fails to render.
+
+## 2. Architectural Role
+
+This is a **Layout** component.
+
+## 3. Key Features & Logic
+
+- **Theme Application:** It directly accesses the `authStore` state via `getState()` to retrieve the user''s theme. It then sets the `data-theme` attribute on the `<html>` element. This is crucial because error pages render outside the main `<App />` component, so they don''t have access to the normal theme context.
+- **Styling:** It wraps the error page content (rendered via `<Outlet />` or `children`) in a `<div class="error-page-wrapper">` which provides the necessary styling for the terminal-themed error pages.'),
+
+('frontend/src/components/layout/Header.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the **mobile-only header** that appears at the top of the screen on small viewports.
+
+## 2. Architectural Role
+
+This is a **Layout** component, part of the main `App` layout.
+
+## 3. Key Features & Logic
+
+- **Hamburger Menu:** It contains the hamburger menu button (`mobile-nav-toggle`). Clicking this button calls the `onNavToggle` function passed down from the `App` component, which manages the mobile sidebar''s open/closed state.
+- **Logo & Profile Link:** It displays the application logo (which links home) and a link to the user''s profile page, showing their selected profile icon.'),
+
+('frontend/src/components/layout/MinimalLayout.jsx',
+'## 1. File Overview & Purpose
+
+This is a specialized **Layout Component** for pages that should be displayed without the main application sidebar and header, such as the printable `PackKitPage` or the mobile-focused `QrActionPage`.
+
+## 2. Architectural Role
+
+This is a **Layout** component.
+
+## 3. Key Features & Logic
+
+- **Simplicity:** It simply renders the child route''s content (via `<Outlet />`) inside a basic, centered content wrapper. This provides a clean slate for pages that need a unique, uncluttered layout.'),
+
+('frontend/src/components/layout/Sidebar.jsx',
+'## 1. File Overview & Purpose
+
+This component renders the main **sidebar navigation** for the application.
+
+## 2. Architectural Role
+
+This is a key **Layout** component, part of the main `App` layout.
+
+## 3. Key Features & Logic
+
+- **Data Source:** It reads the `user` object and the `navigationItems` array directly from the global `useAuthStore`. The `navigationItems` array is pre-filtered by the backend to only contain links the user is authorized to see.
+- **Rendering:** It iterates through the `navigationItems` list and renders a `NavLink` for each. It separates the links into "User" and "Admin" sections.
+- **Active Link Styling:** It uses the `isActive` property provided by `NavLink` to apply the `active-nav-link` class to the currently active route.
+- **Global Search:** It includes the site-wide search bar. On submit, it navigates the user to the `/suche` page with the search term as a query parameter.
+- **User Actions:** It displays the logged-in user''s name, a link to their profile, the logout button, and the `ThemeSwitcher` component.'),
+
+('frontend/src/components/profile/ProfileAchievements.jsx',
+'## 1. File Overview & Purpose
+
+This is a presentational component that displays the **user''s earned achievements** on their profile page.
+
+## 2. Architectural Role
+
+This is a **View** sub-component, used within `ProfilePage`.
+
+## 3. Key Features & Logic
+
+- **Props-Based:** It receives the `achievements` array as a prop.
+- **Rendering:** It maps over the array and displays each achievement in its own card, showing the icon, name, description, and the date it was earned.'),
+
+('frontend/src/components/profile/ProfileDetails.jsx',
+'## 1. File Overview & Purpose
+
+This is a stateful component that manages the display and editing of a user''s **core profile data** on their profile page.
+
+## 2. Architectural Role
+
+This is a **View** and **Form** sub-component, used within `ProfilePage`.
+
+## 3. Key Features & Logic
+
+- **Controlled Form:** It manages the form data for email, class year, etc., in its local `useState`.
+- **Change Request Flow:**
+    1.  When the user clicks "Save," it doesn''t submit directly. Instead, it compares the current form data with the original `user` prop to detect what has changed.
+    2.  It then opens a `ConfirmationModal`, showing the user a summary of their requested changes.
+    3.  Only after the user confirms in this modal does it send the `POST` request to `/api/v1/public/profile/request-change`.
+- **Update Propagation:** After a successful submission, it calls the `onUpdate` function (passed down from `ProfilePage`) to trigger a full refresh of the profile data.
+- **Chat Color:** It also contains a separate, simple form for updating the user''s chat color, which calls the `PUT /api/v1/public/profile/chat-color` endpoint directly.');
+COMMIT;
+========================================================================
 FILE: src\main\resources\db\migration\V83__Repopulate_wiki_data_part23.sql
 ========================================================================
 

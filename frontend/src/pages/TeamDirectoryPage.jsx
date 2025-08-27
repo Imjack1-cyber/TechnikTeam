@@ -1,9 +1,12 @@
 import React, { useCallback, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const TeamDirectoryPage = () => {
+	const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/users'), []);
 	const { data: users, loading, error } = useApi(apiCall);
 	const [searchTerm, setSearchTerm] = useState('');
@@ -12,41 +15,94 @@ const TeamDirectoryPage = () => {
 		user.username.toLowerCase().includes(searchTerm.toLowerCase())
 	);
 
+	const renderUserCard = ({ item }) => (
+		<View style={styles.card}>
+			<Icon name={item.profileIconClass?.replace('fa-', '') || 'user-circle'} solid size={60} color="#6c757d" />
+			<Text style={styles.userName}>{item.username}</Text>
+			<Text style={styles.userRole}>{item.roleName}</Text>
+			<TouchableOpacity
+				style={styles.button}
+				onPress={() => navigation.navigate('UserProfile', { userId: item.id })}
+			>
+				<Text style={styles.buttonText}>Profil ansehen</Text>
+			</TouchableOpacity>
+		</View>
+	);
+
 	return (
-		<div>
-			<h1><i className="fas fa-users"></i> Team-Verzeichnis</h1>
-			<p>Hier finden Sie eine Übersicht aller Mitglieder des Technik-Teams.</p>
+		<View style={styles.container}>
+			<View style={styles.header}>
+				<Icon name="users" size={24} style={styles.headerIcon} />
+				<Text style={styles.title}>Team-Verzeichnis</Text>
+			</View>
+			<Text style={styles.description}>Hier finden Sie eine Übersicht aller Mitglieder des Technik-Teams.</Text>
 
-			<div className="card">
-				<div className="form-group">
-					<label htmlFor="user-search">Mitglied suchen</label>
-					<input
-						type="search"
-						id="user-search"
-						value={searchTerm}
-						onChange={(e) => setSearchTerm(e.target.value)}
-						placeholder="Name eingeben..."
-					/>
-				</div>
-			</div>
+			<View style={styles.searchCard}>
+				<TextInput
+					style={styles.searchInput}
+					value={searchTerm}
+					onChangeText={setSearchTerm}
+					placeholder="Mitglied suchen..."
+				/>
+			</View>
 
-			{loading && <p>Lade Mitgliederliste...</p>}
-			{error && <p className="error-message">{error}</p>}
+			{loading && <ActivityIndicator size="large" color="#007bff" style={{ marginTop: 20 }} />}
+			{error && <Text style={styles.errorText}>{error}</Text>}
 
-			<div className="responsive-dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
-				{filteredUsers?.map(user => (
-					<div className="card" key={user.id} style={{ textAlign: 'center' }}>
-						<i className={`fas ${user.profileIconClass || 'fa-user-circle'}`} style={{ fontSize: '4rem', color: 'var(--text-muted-color)' }}></i>
-						<h3 style={{ margin: '1rem 0 0.5rem 0' }}>{user.username}</h3>
-						<p className="details-subtitle">{user.roleName}</p>
-						<Link to={`/team/${user.id}`} className="btn btn-small">
-							Profil ansehen
-						</Link>
-					</div>
-				))}
-			</div>
-		</div>
+			<FlatList
+				data={filteredUsers}
+				renderItem={renderUserCard}
+				keyExtractor={item => item.id.toString()}
+				numColumns={2}
+				columnWrapperStyle={{ gap: 16 }}
+				contentContainerStyle={{ gap: 16, padding: 16 }}
+			/>
+		</View>
 	);
 };
+
+const styles = StyleSheet.create({
+	container: { flex: 1, backgroundColor: '#f8f9fa' },
+    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16 },
+    headerIcon: { color: '#002B5B', marginRight: 12 },
+	title: { fontSize: 24, fontWeight: '700', color: '#002B5B' },
+	description: { fontSize: 16, color: '#6c757d', paddingHorizontal: 16, marginVertical: 8 },
+	searchCard: { backgroundColor: '#ffffff', borderRadius: 8, marginHorizontal: 16, padding: 8, borderWidth: 1, borderColor: '#dee2e6' },
+	searchInput: { height: 40, fontSize: 16 },
+	card: {
+		flex: 1,
+		backgroundColor: '#ffffff',
+		borderRadius: 8,
+		padding: 16,
+		alignItems: 'center',
+		borderWidth: 1,
+		borderColor: '#dee2e6',
+	},
+	userName: {
+		fontSize: 18,
+		fontWeight: 'bold',
+		marginTop: 16,
+		marginBottom: 4,
+	},
+	userRole: {
+		color: '#6c757d',
+		marginBottom: 16,
+	},
+	button: {
+		backgroundColor: '#007bff',
+		paddingVertical: 8,
+		paddingHorizontal: 16,
+		borderRadius: 6,
+	},
+	buttonText: {
+		color: '#fff',
+		fontWeight: '500',
+	},
+	errorText: {
+		color: '#dc3545',
+		textAlign: 'center',
+		marginTop: 20,
+	},
+});
 
 export default TeamDirectoryPage;

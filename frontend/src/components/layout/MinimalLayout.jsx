@@ -1,16 +1,33 @@
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { SafeAreaView, StyleSheet, View } from 'react-native';
 
 /**
- * A minimal layout component for pages that should not have the main sidebar and header,
+ * A minimal layout component for pages that should not have the main navigation,
  * such as printable views or QR code landing pages.
  */
-const MinimalLayout = () => {
+const MinimalLayout = ({ children }) => {
 	return (
-		<div className="main-content" style={{ maxWidth: '800px', margin: '2rem auto' }}>
-			<Outlet />
-		</div>
+		<SafeAreaView style={styles.safeArea}>
+			<View style={styles.container}>
+				{children}
+			</View>
+		</SafeAreaView>
 	);
 };
+
+const styles = StyleSheet.create({
+	safeArea: {
+		flex: 1,
+		backgroundColor: '#f8f9fa', // bg-color
+	},
+	container: {
+		flex: 1,
+		padding: 24,
+		maxWidth: 800,
+		alignSelf: 'center',
+		width: '100%',
+	},
+});
+
 
 export default MinimalLayout;

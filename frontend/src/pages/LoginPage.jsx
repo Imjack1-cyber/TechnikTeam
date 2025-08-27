@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, StatusBar } from 'react-native';
 import { useAuthStore } from '../store/authStore';
-import apiClient from '../services/apiClient';
 import { useToast } from '../context/ToastContext';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const TwoFactorAuthForm = ({ username, preAuthToken, onAuthSuccess }) => {
 	const [token, setToken] = useState('');
 	const [backupCode, setBackupCode] = useState('');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState('');
+	const { addToast } = useToast();
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
+	const handleSubmit = async () => {
 		setIsLoading(true);
 		setError('');
 
@@ -30,169 +30,142 @@ const TwoFactorAuthForm = ({ username, preAuthToken, onAuthSuccess }) => {
 	};
 
 	return (
-		<div>
-			<h3>Zwei-Faktor-Authentifizierung</h3>
-			<p>Login für <strong>{username}</strong> von einem neuen Standort. Bitte geben Sie Ihren Code ein.</p>
-			{error && <p className="error-message">{error}</p>}
-			<form onSubmit={handleSubmit}>
-				<div className="form-group">
-					<label htmlFor="2fa-token">Authenticator-Code</label>
-					<input
-						type="text"
-						id="2fa-token"
-						value={token}
-						onChange={(e) => setToken(e.target.value)}
-						placeholder="6-stelliger Code"
-						autoFocus
-					/>
-				</div>
-				<div className="form-group">
-					<label htmlFor="2fa-backup">oder Backup-Code</label>
-					<input
-						type="text"
-						id="2fa-backup"
-						value={backupCode}
-						onChange={(e) => setBackupCode(e.target.value)}
-						placeholder="8-stelliger Code"
-					/>
-				</div>
-				<button type="submit" className="btn" style={{ width: '100%' }} disabled={isLoading}>
-					{isLoading ? 'Wird geprüft...' : 'Bestätigen'}
-				</button>
-			</form>
-		</div>
+		<View>
+			<Text style={styles.title}>Zwei-Faktor-Authentifizierung</Text>
+			<Text style={styles.subtitle}>Login für <Text style={{fontWeight: 'bold'}}>{username}</Text> von einem neuen Standort. Bitte geben Sie Ihren Code ein.</Text>
+			{error && <Text style={styles.errorText}>{error}</Text>}
+			
+			<Text style={styles.label}>Authenticator-Code</Text>
+			<TextInput
+				style={styles.input}
+				value={token}
+				onChangeText={setToken}
+				placeholder="6-stelliger Code"
+				keyboardType="number-pad"
+				maxLength={6}
+				autoFocus
+			/>
+			
+			<Text style={styles.label}>oder Backup-Code</Text>
+			<TextInput
+				style={styles.input}
+				value={backupCode}
+				onChangeText={setBackupCode}
+				placeholder="8-stelliger Code"
+			/>
+
+			<TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={isLoading}>
+				{isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Bestätigen</Text>}
+			</TouchableOpacity>
+		</View>
 	);
 };
 
-const LoginPage = () => {
+
+const LoginPage = ({ navigation }) => {
 	const [username, setUsername] = useState('');
 	const [password, setPassword] = useState('');
 	const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState('');
-	const navigate = useNavigate();
-	const location = useLocation();
 
-	// State for 2FA flow
 	const [preAuthToken, setPreAuthToken] = useState(null);
 
-	const { login, isAuthenticated, completeLoginWithToken } = useAuthStore();
+	const { login } = useAuthStore();
 	const { addToast } = useToast();
 
-	useEffect(() => {
-		if (isAuthenticated) {
-			const from = location.state?.from?.pathname || '/home';
-			navigate(from, { replace: true });
-		}
-	}, [isAuthenticated, navigate, location.state]);
-
 	const handleAuthSuccess = async (finalToken) => {
+        // In RN, login is fully handled in the store now after 2FA
+		const { completeLoginWithToken } = useAuthStore.getState();
 		await completeLoginWithToken(finalToken);
 		addToast('Erfolgreich angemeldet!', 'success');
+        // The navigator will automatically switch screens because `isAuthenticated` will be true
 	};
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
+	const handleSubmit = async () => {
 		setIsLoading(true);
 		setError('');
 		try {
 			const result = await login(username, password);
 			if (result.status === '2FA_REQUIRED') {
 				setPreAuthToken(result.token);
-			}
+			} else if (result.status === 'SUCCESS') {
+                addToast('Erfolgreich angemeldet!', 'success');
+                // Navigator will handle the switch
+            }
 		} catch (err) {
-			console.error(err);
 			setError(err.message || 'Login fehlgeschlagen. Bitte überprüfen Sie Ihre Eingaben.');
 		} finally {
 			setIsLoading(false);
 		}
 	};
 
-	const togglePasswordVisibility = () => {
-		setIsPasswordVisible(!isPasswordVisible);
-	};
-
 	if (preAuthToken) {
 		return (
-			<div className="login-page-container">
-				<div className="login-box">
+			<SafeAreaView style={styles.container}>
+				<View style={styles.loginBox}>
 					<TwoFactorAuthForm
 						username={username}
 						preAuthToken={preAuthToken}
 						onAuthSuccess={handleAuthSuccess}
 					/>
-				</div>
-			</div>
+				</View>
+			</SafeAreaView>
 		);
 	}
 
 	return (
-		<div className="login-page-container">
-			<div className="login-box">
-				<h1>
-					<i className="fas fa-bolt"></i> TechnikTeam
-				</h1>
-				{error && <p className="error-message">{error}</p>}
-				<form id="login-form" onSubmit={handleSubmit}>
-					<div className="form-group">
-						<label htmlFor="username">Benutzername</label>
-						<input
-							type="text"
-							id="username"
-							name="username"
-							value={username}
-							onChange={(e) => setUsername(e.target.value)}
-							required
-							autoComplete="username"
-							autoFocus
-							disabled={isLoading}
+		<SafeAreaView style={styles.container}>
+            <StatusBar barStyle="dark-content" />
+			<View style={styles.loginBox}>
+				<Icon name="bolt" size={40} color="#007bff" style={{ alignSelf: 'center', marginBottom: 8 }} />
+				<Text style={styles.title}>TechnikTeam</Text>
+				{error && <Text style={styles.errorText}>{error}</Text>}
+				<View>
+					<Text style={styles.label}>Benutzername</Text>
+					<TextInput
+						style={styles.input}
+						value={username}
+						onChangeText={setUsername}
+						autoCapitalize="none"
+						autoComplete="username"
+						editable={!isLoading}
+					/>
+					<Text style={styles.label}>Passwort</Text>
+					<View style={styles.passwordContainer}>
+						<TextInput
+							style={styles.input}
+							value={password}
+							onChangeText={setPassword}
+							secureTextEntry={!isPasswordVisible}
+							autoComplete="password"
+							editable={!isLoading}
 						/>
-					</div>
-					<div className="form-group">
-						<label htmlFor="password">Passwort</label>
-						<div className="password-input-wrapper">
-							<input
-								type={isPasswordVisible ? 'text' : 'password'}
-								id="password"
-								name="password"
-								value={password}
-								onChange={(e) => setPassword(e.target.value)}
-								required
-								autoComplete="current-password"
-								disabled={isLoading}
-							/>
-							<span className="password-toggle-icon" onClick={togglePasswordVisibility} title="Passwort anzeigen/verbergen">
-								<i className={`fas ${isPasswordVisible ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-							</span>
-						</div>
-					</div>
-					<button
-						type="submit"
-						className="btn"
-						style={{ width: '100%', marginBottom: '0.75rem' }}
-						disabled={isLoading}
-					>
-						{isLoading ? (
-							<>
-								<i className="fas fa-spinner fa-spin"></i> Anmelden...
-							</>
-						) : (
-							'Anmelden'
-						)}
-					</button>
-					<button
-						type="button"
-						className="btn btn-secondary"
-						style={{ width: '100%' }}
-						disabled={true}
-						title="Dieses Feature ist in Kürze verfügbar."
-					>
-						<i className="fas fa-fingerprint"></i> Mit Passkey anmelden (in Kürze)
-					</button>
-				</form>
-			</div>
-		</div>
+						<TouchableOpacity onPress={() => setIsPasswordVisible(!isPasswordVisible)} style={styles.eyeIcon}>
+							<Icon name={isPasswordVisible ? 'eye-slash' : 'eye'} size={18} color="#6c757d" />
+						</TouchableOpacity>
+					</View>
+					<TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={isLoading}>
+						{isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Anmelden</Text>}
+					</TouchableOpacity>
+				</View>
+			</View>
+		</SafeAreaView>
 	);
 };
+
+const styles = StyleSheet.create({
+    container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16, backgroundColor: '#f8f9fa' },
+    loginBox: { width: '100%', maxWidth: 400, padding: 24, backgroundColor: '#ffffff', borderRadius: 8, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 5 },
+    title: { fontSize: 24, fontWeight: '700', textAlign: 'center', marginBottom: 24, color: '#002B5B' },
+    subtitle: { fontSize: 16, textAlign: 'center', marginBottom: 16, color: '#6c757d' },
+    errorText: { color: '#dc3545', marginBottom: 16, textAlign: 'center' },
+    label: { marginBottom: 8, fontWeight: '500', color: '#6c757d' },
+    input: { width: '100%', height: 48, borderWidth: 1, borderColor: '#dee2e6', borderRadius: 6, paddingHorizontal: 12, marginBottom: 16, backgroundColor: '#fff' },
+    passwordContainer: { position: 'relative', justifyContent: 'center' },
+    eyeIcon: { position: 'absolute', right: 12, padding: 4 },
+    button: { backgroundColor: '#007bff', paddingVertical: 12, borderRadius: 6, alignItems: 'center', justifyContent: 'center', height: 48 },
+    buttonText: { color: '#fff', fontWeight: '500', fontSize: 16 }
+});
 
 export default LoginPage;

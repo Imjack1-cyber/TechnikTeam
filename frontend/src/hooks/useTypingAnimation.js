@@ -34,10 +34,13 @@ const useTypingAnimation = (lines) => {
 					};
 					return newLines;
 				});
-
-				if (containerRef.current) {
-					containerRef.current.scrollTop = containerRef.current.scrollHeight;
+				
+				// In React Native, the component using this hook should attach
+				// this ref to a ScrollView and call .scrollToEnd()
+				if (containerRef.current?.scrollToEnd) {
+					containerRef.current.scrollToEnd({ animated: true });
 				}
+
 
 				if (charIndex < currentLine.text.length - 1) {
 					charIndex++;

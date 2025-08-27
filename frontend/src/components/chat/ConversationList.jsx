@@ -1,52 +1,42 @@
 import React, { useCallback, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
-import './ConversationList.css';
 import Modal from '../ui/Modal';
 import GroupChatModal from './GroupChatModal';
 import { useToast } from '../../context/ToastContext';
 import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, typography, spacing, borders } from '../../styles/theme';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import UserSearchModal from './UserSearchModal';
 
-const UserSearchModal = ({ isOpen, onClose, onSelectUser }) => {
-	const { data: users, loading } = useApi(useCallback(() => apiClient.get('/users'), []));
-
-	return (
-		<Modal isOpen={isOpen} onClose={onClose} title="Neues Gespräch starten">
-			<div className="user-search-list">
-				{loading && <p>Lade Benutzer...</p>}
-				{users?.map(user => (
-					<div key={user.id} className="user-search-item" onClick={() => onSelectUser(user.id)}>
-						{user.username}
-					</div>
-				))}
-			</div>
-		</Modal>
-	);
-};
-
-
-const ConversationList = ({ selectedConversationId }) => {
+const ConversationList = () => {
 	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
+	const navigation = useNavigation();
+    const route = useRoute(); // Access route to get current conversationId if any
+    const selectedConversationId = route.params?.conversationId;
+
 	const apiCall = useCallback(() => apiClient.get('/public/chat/conversations'), []);
 	const { data: conversations, loading, error, reload } = useApi(apiCall);
 	const [isUserSearchModalOpen, setIsUserSearchModalOpen] = useState(false);
 	const [isGroupChatModalOpen, setIsGroupChatModalOpen] = useState(false);
-	const navigate = useNavigate();
 	const { addToast } = useToast();
+
+    const theme = useAuthStore(state => state.theme);
+    const commonStyles = getCommonStyles(theme);
+    const styles = { ...commonStyles, ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
 	const handleSelectUser = async (userId) => {
 		setIsUserSearchModalOpen(false);
 		try {
 			const result = await apiClient.post('/public/chat/conversations', { userId });
 			if (result.success && result.data.conversationId) {
-				navigate(`/chat/${result.data.conversationId}`);
-			} else {
-				throw new Error(result.message || 'Gespräch konnte nicht gestartet werden.');
-			}
-		} catch (err) {
-			addToast(err.message, 'error');
-		}
+				navigation.navigate('MessageView', { conversationId: result.data.conversationId });
+			} else { throw new Error(result.message || 'Gespräch konnte nicht gestartet werden.'); }
+		} catch (err) { addToast(err.message, 'error'); }
 	};
 
 	const handleCreateGroup = async (name, participantIds) => {
@@ -56,79 +46,93 @@ const ConversationList = ({ selectedConversationId }) => {
 			if (result.success && result.data.conversationId) {
 				addToast('Gruppe erfolgreich erstellt!', 'success');
 				reload();
-				navigate(`/chat/${result.data.conversationId}`);
-			} else {
-				throw new Error(result.message || 'Gruppe konnte nicht erstellt werden.');
-			}
-		} catch (err) {
-			addToast(err.message, 'error');
-		}
+				navigation.navigate('MessageView', { conversationId: result.data.conversationId });
+			} else { throw new Error(result.message || 'Gruppe konnte nicht erstellt werden.'); }
+		} catch (err) { addToast(err.message, 'error'); }
 	};
 
-	const handleDeleteGroup = async (e, conv) => {
-		e.preventDefault();
-		e.stopPropagation();
-		if (window.confirm(`Möchten Sie die Gruppe "${conv.name}" wirklich löschen? Dies kann nicht rückgängig gemacht werden.`)) {
-			try {
-				const result = await apiClient.delete(`/public/chat/conversations/${conv.id}`);
-				if (result.success) {
-					addToast('Gruppe wurde gelöscht.', 'success');
-					if (selectedConversationId === conv.id.toString()) {
-						navigate('/chat');
-					}
-					reload();
-				} else {
-					throw new Error(result.message);
-				}
-			} catch (err) {
-				addToast(err.message, 'error');
-			}
-		}
+	const handleDeleteGroup = (conv) => {
+		Alert.alert(`Gruppe "${conv.name}" löschen?`, "Dies kann nicht rückgängig gemacht werden.", [
+			{ text: 'Abbrechen', style: 'cancel' },
+			{ text: 'Löschen', style: 'destructive', onPress: async () => {
+				try {
+					const result = await apiClient.delete(`/public/chat/conversations/${conv.id}`);
+					if (result.success) {
+						addToast('Gruppe wurde gelöscht.', 'success');
+						if (selectedConversationId === conv.id) {
+							navigation.navigate('ConversationList'); // Go back to list if deleted current chat
+						}
+						reload();
+					} else { throw new Error(result.message); }
+				} catch (err) { addToast(err.message, 'error'); }
+			}},
+		]);
 	};
+    
+    const renderConversationItem = ({ item: conv }) => (
+        <TouchableOpacity 
+            style={[styles.conversationItem, conv.id === selectedConversationId && styles.activeConversationItem]} 
+            onPress={() => navigation.navigate('MessageView', { conversationId: conv.id })}
+        >
+            <Icon name={conv.groupChat ? 'users' : 'user'} size={24} color={styles.conversationIcon.color} />
+            <View style={styles.conversationDetails}>
+                <Text style={styles.conversationUsername}>{conv.groupChat ? conv.name : conv.otherParticipantUsername}</Text>
+                <Text style={styles.conversationSnippet} numberOfLines={1}>{conv.lastMessage}</Text>
+            </View>
+            {conv.groupChat && (conv.creatorId === user.id || isAdmin) && (
+                <TouchableOpacity onPress={() => handleDeleteGroup(conv)}>
+                    <Icon name="trash" size={18} color={colors.danger} />
+                </TouchableOpacity>
+            )}
+        </TouchableOpacity>
+    );
 
 	return (
-		<div className="conversation-list-container">
-			<div className="conversation-list-header">
-				<h3>Gespräche</h3>
-				<div className="conversation-actions">
-					<button onClick={() => setIsUserSearchModalOpen(true)} className="btn btn-small" title="Neues Einzelgespräch">
-						<i className="fas fa-user-plus"></i>
-					</button>
-					<button onClick={() => setIsGroupChatModalOpen(true)} className="btn btn-small" title="Neue Gruppe">
-						<i className="fas fa-users"></i>
-					</button>
-				</div>
-			</div>
-			<div className="conversation-list">
-				{loading && <p className="loading-text">Lade Gespräche...</p>}
-				{error && <p className="error-message">{error}</p>}
-				{!loading && conversations?.length === 0 && (
-					<div className="empty-conversations-message">
-						<p>Keine Gespräche vorhanden.</p>
-						<p>Starte ein neues Gespräch oder eine neue Gruppe!</p>
-					</div>
-				)}
-				{conversations?.map(conv => (
-					<Link to={`/chat/${conv.id}`} key={conv.id} className={`conversation-item ${conv.id.toString() === selectedConversationId ? 'active' : ''}`}>
-						<div className="conversation-icon">
-							<i className={`fas ${conv.groupChat ? 'fa-users' : 'fa-user'}`}></i>
-						</div>
-						<div className="conversation-details">
-							<span className="conversation-username">{conv.groupChat ? conv.name : conv.otherParticipantUsername}</span>
-							<span className="conversation-snippet">{conv.lastMessage}</span>
-						</div>
-						{conv.groupChat && (conv.creatorId === user.id || isAdmin) && (
-							<button onClick={(e) => handleDeleteGroup(e, conv)} className="btn btn-small btn-danger-outline" title="Gruppe löschen">
-								<i className="fas fa-trash"></i>
-							</button>
-						)}
-					</Link>
-				))}
-			</div>
-			{isUserSearchModalOpen && <UserSearchModal isOpen={isUserSearchModalOpen} onClose={() => setIsUserSearchModalOpen(false)} onSelectUser={handleSelectUser} />}
-			{isGroupChatModalOpen && <GroupChatModal isOpen={isGroupChatModalOpen} onClose={() => setIsGroupChatModalOpen(false)} onCreateGroup={handleCreateGroup} />}
-		</div>
+		<View style={styles.container}>
+			<View style={styles.header}>
+				<Text style={styles.headerTitle}>Gespräche</Text>
+				<View style={styles.actions}>
+					<TouchableOpacity style={styles.button} onPress={() => setIsUserSearchModalOpen(true)}>
+						<Icon name="user-plus" size={16} color={colors.white} />
+					</TouchableOpacity>
+					<TouchableOpacity style={styles.button} onPress={() => setIsGroupChatModalOpen(true)}>
+						<Icon name="users" size={16} color={colors.white} />
+					</TouchableOpacity>
+				</View>
+			</View>
+			<View style={styles.listContainer}>
+				{loading && <ActivityIndicator size="large" />}
+				{error && <Text style={styles.errorText}>{error}</Text>}
+				<FlatList
+                    data={conversations}
+                    renderItem={renderConversationItem}
+                    keyExtractor={item => item.id.toString()}
+                    ListEmptyComponent={<Text style={styles.emptyListText}>Keine Gespräche vorhanden.</Text>}
+                />
+			</View>
+			<UserSearchModal isOpen={isUserSearchModalOpen} onClose={() => setIsUserSearchModalOpen(false)} onSelectUser={handleSelectUser} />
+			<GroupChatModal isOpen={isGroupChatModalOpen} onClose={() => setIsGroupChatModalOpen(false)} onCreateGroup={handleCreateGroup} />
+		</View>
 	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        container: { flex: 1, backgroundColor: colors.surface },
+        header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, borderBottomWidth: 1, borderColor: colors.border },
+        headerTitle: { fontSize: typography.h3, fontWeight: 'bold' },
+        actions: { flexDirection: 'row', gap: spacing.sm },
+        button: { padding: spacing.sm, backgroundColor: colors.primary, borderRadius: borders.radius },
+        listContainer: { flex: 1 },
+        conversationItem: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderBottomWidth: 1, borderColor: colors.border },
+        activeConversationItem: { backgroundColor: colors.primaryLight, borderRightWidth: 3, borderRightColor: colors.primary },
+        conversationIcon: { color: colors.textMuted, marginRight: spacing.md },
+        conversationDetails: { flex: 1 },
+        conversationUsername: { fontWeight: 'bold', fontSize: typography.body },
+        conversationSnippet: { fontSize: typography.small, color: colors.textMuted },
+        emptyListText: { padding: spacing.md, textAlign: 'center', color: colors.textMuted },
+    });
 };
 
 export default ConversationList;

@@ -1,18 +1,18 @@
 import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import ForbiddenPage from '../pages/error/ForbiddenPage';
 
-const AdminRoute = () => {
+const AdminRoute = ({ children }) => {
 	const isAdmin = useAuthStore((state) => state.isAdmin);
 
-	// Check for authentication is handled by ProtectedRoute, this just checks for admin role.
+	// In React Navigation, we render the component directly
+	// instead of using a Navigate component. The navigator
+	// will handle displaying this screen.
 	if (!isAdmin) {
-		// Instead of rendering a component directly, we navigate to a dedicated route for 403.
-		// This keeps the URL consistent with the error being shown.
-		return <Navigate to="/forbidden" replace />;
+		return <ForbiddenPage />;
 	}
 
-	return <Outlet />;
+	return children;
 };
 
 export default AdminRoute;

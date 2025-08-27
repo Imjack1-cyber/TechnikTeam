@@ -1,48 +1,43 @@
-import React, { Suspense } from 'react';
-import ReactDOM from 'react-dom/client';
-import { RouterProvider } from 'react-router-dom';
-import router from './router';
+import { AppRegistry } from 'react-native';
+import App from './App';
+import { name as appName } from '../app.json';
 import { useAuthStore } from './store/authStore';
-import apiClient from './services/apiClient'; // Import apiClient here
-import { ToastProvider } from './context/ToastContext';
+import apiClient from './services/apiClient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { NavigationContainerRef } from '@react-navigation/native';
+import * as React from 'react';
 
-const AUTH_TOKEN_KEY = 'technikteam-auth-token';
+// This is a conceptual migration. The actual logic runs inside App.js or a custom bootstrap file.
+// In React Native, there isn't a pre-render async function like this.
+// Instead, this logic would be placed in a loading screen component or in the App.js useEffect hook.
+
+export const navigationRef = React.createRef();
 
 const initializeApp = async () => {
-	// If we are on the maintenance page, do nothing. This prevents a redirect loop.
-	if (window.location.pathname === '/maintenance') {
-		return;
-	}
+    // Inject the logout and maintenance navigation callbacks into the apiClient
+    apiClient.setup({ 
+        onUnauthorized: useAuthStore.getState().logout,
+        onMaintenance: () => {
+            if (navigationRef.current) {
+                navigationRef.current.navigate('Maintenance');
+            }
+        }
+    });
 
-	// Inject the logout function into the apiClient
-	apiClient.setup({ onUnauthorized: useAuthStore.getState().logout });
-
-	// Check for a token in local storage to restore session on page load
-	const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    const token = await AsyncStorage.getItem('technikteam-auth-token');
 	if (token) {
 		apiClient.setAuthToken(token);
 		try {
 			await useAuthStore.getState().fetchUserSession();
 		} catch (error) {
 			console.log("Session token from storage is invalid. Clearing.");
-			// The error handler in fetchUserSession will call logout(), which clears everything.
 		}
 	} else {
-		// This is also a valid state for a first-time visitor.
-		// We can try to get the CSRF token for the login form if needed.
-		// For now, we do nothing and let ProtectedRoute handle redirection.
 		console.log("No auth token found in storage.");
 	}
 };
 
-initializeApp().then(() => {
-	ReactDOM.createRoot(document.getElementById('root')).render(
-		<React.StrictMode>
-			<ToastProvider>
-				<Suspense fallback={<div className="loading-fullscreen">Lade Anwendung...</div>}>
-					<RouterProvider router={router} />
-				</Suspense>
-			</ToastProvider>
-		</React.StrictMode>
-	);
-});
+// Run initialization logic before registering the main component
+initializeApp();
+
+AppRegistry.registerComponent(appName, () => App);

@@ -1,245 +1,136 @@
-import React, { lazy, Suspense } from 'react';
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 
-// Layouts and Core Components
-import App from '../App';
-import MinimalLayout from '../components/layout/MinimalLayout';
-import ErrorLayout from '../components/layout/ErrorLayout';
-import ProtectedRoute from './ProtectedRoute';
-import AdminRoute from './AdminRoute';
-import { ToastProvider } from '../context/ToastContext';
+import { useAuthStore } from '../store/authStore';
 
-// Eagerly load the LoginPage, Error Pages, and the new ChatPage
+// Custom Sidebar Component
+import Sidebar from '../components/layout/Sidebar';
+
+// Screens
 import LoginPage from '../pages/LoginPage';
-import ErrorPage from '../pages/error/ErrorPage';
-import NotFoundPage from '../pages/error/NotFoundPage';
-import ChatPage from '../pages/ChatPage'; // Eagerly load ChatPage
-import MaintenancePage from '../pages/error/MaintenancePage';
+import DashboardPage from '../pages/DashboardPage';
+import AnnouncementsPage from '../pages/AnnouncementsPage';
+import NotificationsPage from '../pages/NotificationsPage';
+import TeamDirectoryPage from '../pages/TeamDirectoryPage';
+import UserProfilePage from '../pages/UserProfilePage';
+import ChatPage from '../pages/ChatPage';
+import LehrgaengePage from '../pages/LehrgaengePage';
+import MeetingDetailsPage from '../pages/MeetingDetailsPage';
+import EventsPage from '../pages/EventsPage';
+import EventDetailsPage from '../pages/EventDetailsPage';
+import StoragePage from '../pages/StoragePage';
+import StorageItemDetailsPage from '../pages/StorageItemDetailsPage';
+import FilesPage from '../pages/FilesPage';
+import CalendarPage from '../pages/CalendarPage';
+import FeedbackPage from '../pages/FeedbackPage';
+import ChangelogPage from '../pages/ChangelogPage';
+import ProfilePage from '../pages/ProfilePage';
+import SettingsPage from '../pages/SettingsPage';
+import PasswordPage from '../pages/PasswordPage';
+import SearchResultsPage from '../pages/SearchResultsPage';
+import HelpListPage from '../pages/HelpListPage';
+import HelpDetailsPage from '../pages/HelpDetailsPage';
 
-// Lazy load all other pages
-const DashboardPage = lazy(() => import('../pages/DashboardPage'));
-const StoragePage = lazy(() => import('../pages/StoragePage'));
-const StorageItemDetailsPage = lazy(() => import('../pages/StorageItemDetailsPage'));
-const QrActionPage = lazy(() => import('../pages/QrActionPage'));
-const EventsPage = lazy(() => import('../pages/EventsPage'));
-const EventDetailsPage = lazy(() => import('../pages/EventDetailsPage'));
-const LehrgaengePage = lazy(() => import('../pages/LehrgaengePage'));
-const MeetingDetailsPage = lazy(() => import('../pages/MeetingDetailsPage'));
-const ProfilePage = lazy(() => import('../pages/ProfilePage'));
-const PasswordPage = lazy(() => import('../pages/PasswordPage'));
-const FilesPage = lazy(() => import('../pages/FilesPage'));
-const FileEditorPage = lazy(() => import('../pages/files/FileEditorPage'));
-const FeedbackPage = lazy(() => import('../pages/FeedbackPage'));
-const EventFeedbackPage = lazy(() => import('../pages/EventFeedbackPage'));
-const CalendarPage = lazy(() => import('../pages/CalendarPage'));
-const PackKitPage = lazy(() => import('../pages/PackKitPage'));
-const SearchResultsPage = lazy(() => import('../pages/SearchResultsPage'));
-const ChangelogPage = lazy(() => import('../pages/ChangelogPage'));
-const TeamDirectoryPage = lazy(() => import('../pages/TeamDirectoryPage'));
-const UserProfilePage = lazy(() => import('../pages/UserProfilePage'));
-const AnnouncementsPage = lazy(() => import('../pages/AnnouncementsPage'));
-const HelpListPage = lazy(() => import('../pages/HelpListPage'));
-const HelpDetailsPage = lazy(() => import('../pages/HelpDetailsPage'));
-const SettingsPage = lazy(() => import('../pages/SettingsPage'));
-const NotificationsPage = lazy(() => import('../pages/NotificationsPage'));
+// Admin Screens (Grouped)
+import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
+import AdminUsersIndex from '../pages/admin/AdminUsersIndex';
+import AdminEventsIndex from '../pages/admin/AdminEventsIndex';
+// ... import all other admin screens
 
-// Admin Pages
-const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage'));
-const AdminUsersIndex = lazy(() => import('../pages/admin/AdminUsersIndex'));
-const AdminUsersPage = lazy(() => import('../pages/admin/AdminUsersPage'));
-const AdminRequestsPage = lazy(() => import('../pages/admin/AdminRequestsPage'));
-const AdminEventsIndex = lazy(() => import('../pages/admin/AdminEventsIndex'));
-const AdminEventsPage = lazy(() => import('../pages/admin/AdminEventsPage'));
-const AdminEventDebriefingPage = lazy(() => import('../pages/admin/AdminEventDebriefingPage'));
-const AdminDebriefingsListPage = lazy(() => import('../pages/admin/AdminDebriefingsListPage'));
-const AdminEventRolesPage = lazy(() => import('../pages/admin/AdminEventRolesPage'));
-const AdminCoursesIndex = lazy(() => import('../pages/admin/AdminCoursesIndex'));
-const AdminCoursesPage = lazy(() => import('../pages/admin/AdminCoursesPage'));
-const AdminMeetingsPage = lazy(() => import('../pages/admin/AdminMeetingsPage'));
-const AdminStorageIndex = lazy(() => import('../pages/admin/AdminStorageIndex'));
-const AdminStoragePage = lazy(() => import('../pages/admin/AdminStoragePage'));
-const AdminDefectivePage = lazy(() => import('../pages/admin/AdminDefectivePage'));
-const AdminDamageReportsPage = lazy(() => import('../pages/admin/AdminDamageReportsPage'));
-const AdminLogPage = lazy(() => import('../pages/admin/AdminLogPage'));
-const AdminKitsPage = lazy(() => import('../pages/admin/AdminKitsPage'));
-const AdminMatrixPage = lazy(() => import('../pages/admin/AdminMatrixPage'));
-const AdminReportsPage = lazy(() => import('../pages/admin/AdminReportsPage'));
-const AdminSystemPage = lazy(() => import('../pages/admin/AdminSystemPage'));
-const AdminContentIndex = lazy(() => import('../pages/admin/AdminContentIndex'));
-const AdminFilesPage = lazy(() => import('../pages/admin/AdminFilesPage'));
-const AdminFeedbackPage = lazy(() => import('../pages/admin/AdminFeedbackPage'));
-const AdminAchievementsPage = lazy(() => import('../pages/admin/AdminAchievementsPage'));
-const AdminWikiPage = lazy(() => import('../pages/admin/AdminWikiPage'));
-const AdminNotificationsPage = lazy(() => import('../pages/admin/AdminNotificationsPage'));
-const AdminVenuesPage = lazy(() => import('../pages/admin/AdminVenuesPage'));
-const AdminChecklistTemplatesPage = lazy(() => import('../pages/admin/AdminChecklistTemplatesPage'));
-const AdminChangelogPage = lazy(() => import('../pages/admin/AdminChangelogPage'));
-const AdminAnnouncementsPage = lazy(() => import('../pages/admin/AdminAnnouncementsPage'));
-const AdminTrainingRequestsPage = lazy(() => import('../pages/admin/AdminTrainingRequestsPage'));
-const AdminDocumentationPage = lazy(() => import('../pages/admin/AdminDocumentationPage'));
-const AdminReportsIndex = lazy(() => import('../pages/admin/AdminReportsIndex'));
-const AdminSystemIndex = lazy(() => import('../pages/admin/AdminSystemIndex'));
-const AdminAuthLogPage = lazy(() => import('../pages/admin/AdminAuthLogPage'));
-const AdminGeoIpPage = lazy(() => import('../pages/admin/AdminGeoIpPage'));
+// Minimal Layout Screens
+import PackKitPage from '../pages/PackKitPage';
+import QrActionPage from '../pages/QrActionPage';
 
-
-import ErrorTrigger from '../pages/error/ErrorTrigger';
+// Error Screens
 import ForbiddenPage from '../pages/error/ForbiddenPage';
+import MaintenancePage from '../pages/error/MaintenancePage';
+import NotFoundPage from '../pages/error/NotFoundPage';
 
-const router = createBrowserRouter([
-	{
-		path: '/',
-		element: (
-			<ProtectedRoute>
-				<App />
-			</ProtectedRoute>
-		),
-		errorElement: <ErrorLayout><ErrorPage /></ErrorLayout>,
-		children: [
-			{ index: true, element: <Navigate to="/home" replace /> },
-			{ path: 'home', element: <DashboardPage /> },
-			{ path: 'lager', element: <StoragePage /> },
-			{ path: 'lager/details/:itemId', element: <StorageItemDetailsPage /> },
-			{ path: 'veranstaltungen', element: <EventsPage /> },
-			{ path: 'veranstaltungen/details/:eventId', element: <EventDetailsPage /> },
-			{ path: 'lehrgaenge', element: <LehrgaengePage /> },
-			{ path: 'lehrgaenge/details/:meetingId', element: <MeetingDetailsPage /> },
-			{ path: 'profil', element: <ProfilePage /> },
-			{ path: 'profil/einstellungen', element: <SettingsPage /> },
-			{ path: 'passwort', element: <PasswordPage /> },
-			{ path: 'dateien', element: <FilesPage /> },
-			{ path: 'dateien/edit/:fileId', element: <FileEditorPage /> },
-			{ path: 'feedback', element: <FeedbackPage /> },
-			{ path: 'feedback/event/:eventId', element: <EventFeedbackPage /> },
-			{ path: 'kalender', element: <CalendarPage /> },
-			{ path: 'suche', element: <SearchResultsPage /> },
-			{ path: 'changelogs', element: <ChangelogPage /> },
-			{ path: 'team', element: <TeamDirectoryPage /> },
-			{ path: 'team/:userId', element: <UserProfilePage /> },
-			{ path: 'bulletin-board', element: <AnnouncementsPage /> },
-			{ path: 'help', element: <HelpListPage /> },
-			{ path: 'help/:pageKey', element: <HelpDetailsPage /> },
-			{ path: 'chat', element: <ChatPage /> },
-			{ path: 'chat/:conversationId', element: <ChatPage /> },
-			{ path: 'notifications', element: <NotificationsPage /> },
-			{ path: 'test-500', element: <ErrorTrigger /> },
 
-			{
-				path: 'admin',
-				element: <AdminRoute />,
-				children: [
-					{ index: true, element: <Navigate to="/admin/dashboard" replace /> },
-					{ path: 'dashboard', element: <AdminDashboardPage /> },
-					{
-						path: 'mitglieder', element: <AdminUsersIndex />, children: [
-							{ path: 'users', element: <AdminUsersPage /> },
-							{ path: 'requests', element: <AdminRequestsPage /> },
-							{ path: 'training-requests', element: <AdminTrainingRequestsPage /> },
-							{ path: 'achievements', element: <AdminAchievementsPage /> },
-						]
-					},
-					{
-						path: 'veranstaltungen', element: <AdminEventsIndex />, children: [
-							{ path: 'events', element: <AdminEventsPage /> },
-							{ path: 'debriefings', element: <AdminDebriefingsListPage /> },
-							{ path: 'roles', element: <AdminEventRolesPage /> },
-							{ path: 'venues', element: <AdminVenuesPage /> },
-							{ path: 'checklist-templates', element: <AdminChecklistTemplatesPage /> },
-						]
-					},
-					{ path: 'veranstaltungen/:eventId/debriefing', element: <AdminEventDebriefingPage /> },
-					{
-						path: 'lehrgaenge', element: <AdminCoursesIndex />, children: [
-							{ path: 'courses', element: <AdminCoursesPage /> },
-							{ path: 'matrix', element: <AdminMatrixPage /> },
-							{ path: 'meetings/:courseId', element: <AdminMeetingsPage /> },
-						]
-					},
-					{
-						path: 'lager', element: <AdminStorageIndex />, children: [
-							{ path: 'items', element: <AdminStoragePage /> },
-							{ path: 'kits', element: <AdminKitsPage /> },
-							{ path: 'defekte', element: <AdminDefectivePage /> },
-							{ path: 'damage-reports', element: <AdminDamageReportsPage /> },
-						]
-					},
-					{
-						path: 'content', element: <AdminContentIndex />, children: [
-							{ path: 'announcements', element: <AdminAnnouncementsPage /> },
-							{ path: 'dateien', element: <AdminFilesPage /> },
-							{ path: 'dateien/edit/:fileId', element: <FileEditorPage /> },
-							{ path: 'feedback', element: <AdminFeedbackPage /> },
-							{ path: 'changelogs', element: <AdminChangelogPage /> },
-							{ path: 'documentation', element: <AdminDocumentationPage /> },
-							{ path: 'benachrichtigungen', element: <AdminNotificationsPage /> },
-						]
-					},
-					{
-						path: 'reports', element: <AdminReportsIndex />, children: [
-							{ path: 'analysis', element: <AdminReportsPage /> },
-							{ path: 'log', element: <AdminLogPage /> },
-						]
-					},
-					{
-						path: 'system', element: <AdminSystemIndex />, children: [
-							{ path: 'status', element: <AdminSystemPage /> },
-							{ path: 'auth-log', element: <AdminAuthLogPage /> },
-							{ path: 'wiki', element: <AdminWikiPage /> },
-							{ path: 'geoip', element: <AdminGeoIpPage /> },
-						]
-					},
-				],
-			},
-		],
-	},
-	{
-		path: '/pack-kit/:kitId',
-		element: (
-			<ProtectedRoute>
-				<ToastProvider>
-					<MinimalLayout />
-				</ToastProvider>
-			</ProtectedRoute>
-		),
-		children: [
-			{
-				index: true,
-				element: <PackKitPage />
-			}
-		]
-	},
-	{
-		path: '/lager/qr-aktion/:itemId',
-		element: (
-			<ProtectedRoute>
-				<ToastProvider>
-					<MinimalLayout />
-				</ToastProvider>
-			</ProtectedRoute>
-		),
-		children: [
-			{
-				index: true,
-				element: <QrActionPage />
-			}
-		]
-	},
-	{
-		path: '/login',
-		element: <Suspense fallback={<div>Laden...</div>}><LoginPage /></Suspense>,
-	},
-	{
-		path: '/forbidden',
-		element: <ErrorLayout><ForbiddenPage /></ErrorLayout>,
-	},
-	{
-		path: '/maintenance',
-		element: <ErrorLayout><MaintenancePage /></ErrorLayout>,
-	},
-	{
-		path: '*',
-		element: <ErrorLayout><NotFoundPage /></ErrorLayout>,
-	}
-]);
+const Drawer = createDrawerNavigator();
+const Stack = createStackNavigator();
 
-export default router;
+const MainDrawerNavigator = () => {
+    return (
+        <Drawer.Navigator
+            drawerContent={(props) => <Sidebar {...props} />}
+            screenOptions={{ headerShown: false }} // Custom header is used inside pages
+        >
+            <Drawer.Screen name="Dashboard" component={DashboardPage} />
+            <Drawer.Screen name="Anschlagbrett" component={AnnouncementsPage} />
+            <Drawer.Screen name="Benachrichtigungen" component={NotificationsPage} />
+            <Drawer.Screen name="Team" component={TeamDirectoryPage} />
+            <Drawer.Screen name="Chat" component={ChatPage} />
+            <Drawer.Screen name="Lehrgänge" component={LehrgaengePage} />
+            <Drawer.Screen name="Veranstaltungen" component={EventsPage} />
+            <Drawer.Screen name="Lager" component={StoragePage} />
+            <Drawer.Screen name="Dateien" component={FilesPage} />
+            <Drawer.Screen name="Kalender" component={CalendarPage} />
+            <Drawer.Screen name="Feedback" component={FeedbackPage} />
+            <Drawer.Screen name="Changelogs" component={ChangelogPage} />
+            
+            {/* Admin Screens would be added here conditionally based on user role */}
+            <Drawer.Screen name="Admin Dashboard" component={AdminDashboardPage} />
+            <Drawer.Screen name="Benutzer & Anträge" component={AdminUsersIndex} />
+            <Drawer.Screen name="Event Management" component={AdminEventsIndex} />
+            {/* ... other admin index screens */}
+        </Drawer.Navigator>
+    );
+};
+
+const AppStack = () => {
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="MainDrawer" component={MainDrawerNavigator} />
+            {/* Detail screens that should not have the drawer */}
+            <Stack.Screen name="UserProfile" component={UserProfilePage} />
+            <Stack.Screen name="MeetingDetails" component={MeetingDetailsPage} />
+            <Stack.Screen name="EventDetails" component={EventDetailsPage} />
+            <Stack.Screen name="StorageItemDetails" component={StorageItemDetailsPage} />
+            <Stack.Screen name="Profile" component={ProfilePage} />
+            <Stack.Screen name="Settings" component={SettingsPage} />
+            <Stack.Screen name="PasswordChange" component={PasswordPage} />
+            <Stack.Screen name="Search" component={SearchResultsPage} />
+            <Stack.Screen name="HelpList" component={HelpListPage} />
+            <Stack.Screen name="HelpDetails" component={HelpDetailsPage} />
+            
+            {/* Admin Detail Screens */}
+            {/* e.g., <Stack.Screen name="AdminUsers" component={AdminUsersPage} /> */}
+            
+            {/* Minimal Layout Screens */}
+            <Stack.Screen name="PackKit" component={PackKitPage} />
+            <Stack.Screen name="QrAction" component={QrActionPage} />
+        </Stack.Navigator>
+    );
+};
+
+const AuthStack = () => {
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="Login" component={LoginPage} />
+        </Stack.Navigator>
+    );
+};
+
+const RootNavigator = () => {
+	const { isAuthenticated, maintenanceStatus, isAdmin } = useAuthStore();
+
+    if (maintenanceStatus.mode === 'HARD' && !isAdmin) {
+        return (
+            <Stack.Navigator screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="Maintenance" component={MaintenancePage} />
+                 <Stack.Screen name="Login" component={LoginPage} />
+            </Stack.Navigator>
+        );
+    }
+
+	return (
+		<NavigationContainer>
+			{isAuthenticated ? <AppStack /> : <AuthStack />}
+		</NavigationContainer>
+	);
+};
+
+export default RootNavigator;

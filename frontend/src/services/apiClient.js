@@ -1,13 +1,15 @@
-// In development, all requests go to the proxy.
-// In production, they go to the same origin, but under the /TechnikTeam context path.
-const BASE_URL = '/TechnikTeam/api/v1';
+import { AppState } from 'react-native';
+// In a real app, this would come from an environment config file
+const BASE_URL = 'http://10.0.2.2:8081/TechnikTeam/api/v1'; // Android emulator default
 
 let onUnauthorizedCallback = () => { }; // Placeholder for the logout function
 let authToken = null; // Module-level variable to hold the token
+let onMaintenanceCallback = () => { }; // Placeholder for navigation to maintenance screen
 
 const apiClient = {
 	setup: function(callbacks) {
 		onUnauthorizedCallback = callbacks.onUnauthorized;
+		onMaintenanceCallback = callbacks.onMaintenance;
 	},
 
 	setAuthToken: function(token) {
@@ -32,14 +34,15 @@ const apiClient = {
 			const response = await fetch(`${BASE_URL}${endpoint}`, {
 				...options,
 				headers: headers,
-				credentials: 'include'
+				// credentials: 'include' is a browser-specific concept for cookies, not needed for token auth
 			});
 
 			const contentType = response.headers.get("content-type");
 			const isJson = contentType && contentType.includes("application/json");
 
 			if (response.status === 503) {
-				window.location.href = '/maintenance';
+				// In React Native, we can't redirect. We trigger a callback to handle navigation.
+				onMaintenanceCallback();
 				throw new Error('Die Anwendung befindet sich im Wartungsmodus.');
 			}
 
@@ -87,7 +90,7 @@ const apiClient = {
 			return result;
 
 		} catch (error) {
-			if (error instanceof TypeError && error.message === 'Failed to fetch') {
+			if (error instanceof TypeError && error.message.includes('Network request failed')) {
 				console.error(`API Client Network Error: ${options.method || 'GET'} ${BASE_URL}${endpoint}`, error);
 				throw new Error('Netzwerkfehler: Das Backend ist nicht erreichbar. Bitte überprüfen Sie, ob der Server läuft.');
 			}
