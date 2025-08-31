@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import apiClient from '../../../services/apiClient';
+import { useAuthStore } from '../../../store/authStore';
+import { getCommonStyles } from '../../../styles/commonStyles';
+import { getThemeColors, spacing } from '../../../styles/theme';
+import { Picker } from '@react-native-picker/picker';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 	const [items, setItems] = useState([]);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
@@ -36,15 +45,13 @@ const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
 		setItems(newItems);
 	};
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
+	const handleSubmit = async () => {
 		setIsSubmitting(true);
 		setError('');
 
 		const validItems = items.filter(item => item.itemId && item.quantity > 0)
 			.map(item => ({ itemId: parseInt(item.itemId), quantity: parseInt(item.quantity) }));
 
-		// Check for duplicate items before submitting
 		const itemIds = validItems.map(item => item.itemId);
 		if (new Set(itemIds).size !== itemIds.length) {
 			setError('Jeder Artikel darf nur einmal pro Kit hinzugefügt werden.');
@@ -67,52 +74,84 @@ const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
 	};
 
 	return (
-		<form onSubmit={handleSubmit}>
-			<h4>Inhalt bearbeiten</h4>
-			{error && <p className="error-message">{error}</p>}
-			<div id={`kit-items-container-${kit.id}`} className="kit-items-container">
-				{items.length === 0 && <p className="no-items-message">Dieses Kit ist leer. Fügen Sie einen Artikel hinzu.</p>}
+		<View>
+			<Text style={styles.cardTitle}>Inhalt bearbeiten</Text>
+			{error && <Text style={styles.errorText}>{error}</Text>}
+			<View>
+				{items.length === 0 && <Text>Dieses Kit ist leer. Fügen Sie einen Artikel hinzu.</Text>}
 				{items.map((item, index) => {
 					const selectedStorageItem = allStorageItems.find(si => si.id === parseInt(item.itemId));
 					return (
-						<div className="dynamic-row" key={index}>
-							<select
-								name="itemIds"
-								className="form-group"
-								value={item.itemId}
-								onChange={(e) => handleItemChange(index, 'itemId', e.target.value)}
-								required
-							>
-								<option value="">-- Artikel auswählen --</option>
-								{allStorageItems.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-							</select>
-							<input
-								type="number"
-								name="quantities"
-								value={item.quantity}
-								onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-								min="1"
-								max={selectedStorageItem?.maxQuantity}
-								title={`Maximal im Bestand: ${selectedStorageItem?.maxQuantity || 'N/A'}`}
-								className="form-group"
-								style={{ maxWidth: '100px' }}
-								required
+						<View style={styles.rowContainer} key={index}>
+                            <View style={styles.pickerContainer}>
+                                <Picker
+                                    selectedValue={item.itemId}
+                                    onValueChange={(val) => handleItemChange(index, 'itemId', val)}
+                                >
+                                    <Picker.Item label="-- Artikel auswählen --" value="" />
+                                    {allStorageItems.map(i => <Picker.Item key={i.id} label={i.name} value={i.id} />)}
+                                </Picker>
+                            </View>
+							<TextInput
+								value={String(item.quantity)}
+								onChangeText={(val) => handleItemChange(index, 'quantity', val)}
+								keyboardType="number-pad"
+								style={styles.quantityInput}
 							/>
-							<button type="button" className="btn btn-small btn-danger" onClick={() => handleRemoveItem(index)} title="Zeile entfernen">×</button>
-						</div>
+							<TouchableOpacity onPress={() => handleRemoveItem(index)}>
+                                <Icon name="times-circle" size={24} color={colors.danger} />
+                            </TouchableOpacity>
+						</View>
 					);
 				})}
-			</div>
-			<div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-				<button type="button" className="btn btn-small" onClick={handleAddItem}>
-					<i className="fas fa-plus"></i> Zeile hinzufügen
-				</button>
-				<button type="submit" className="btn btn-success" disabled={isSubmitting}>
-					{isSubmitting ? 'Speichern...' : <><i className="fas fa-save"></i> Kit-Inhalt speichern</>}
-				</button>
-			</div>
-		</form>
+			</View>
+			<View style={styles.actionsContainer}>
+				<TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={handleAddItem}>
+					<Icon name="plus" size={14} />
+                    <Text> Zeile hinzufügen</Text>
+				</TouchableOpacity>
+				<TouchableOpacity style={[styles.button, styles.successButton]} onPress={handleSubmit} disabled={isSubmitting}>
+					<Icon name="save" size={14} color="#fff" />
+                    <Text style={styles.buttonText}>{isSubmitting ? 'Speichern...' : ' Kit-Inhalt speichern'}</Text>
+				</TouchableOpacity>
+			</View>
+		</View>
 	);
 };
+
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        rowContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+            marginBottom: spacing.sm,
+        },
+        pickerContainer: {
+            flex: 1,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 8,
+        },
+        quantityInput: {
+            width: 70,
+            height: 48,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 8,
+            paddingHorizontal: spacing.sm,
+            textAlign: 'center',
+        },
+        actionsContainer: {
+            marginTop: spacing.md,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+        }
+    });
+};
+
 
 export default KitItemsForm;

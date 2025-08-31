@@ -1,13 +1,18 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import RNPickerSelect from 'react-native-picker-select';
+import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, typography, spacing } from '../../styles/theme';
 
 const AchievementKeyDisplay = ({ achievementKey }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = pageStyles(theme);
 	const parts = achievementKey.split('_');
 	const [trigger, action, condition] = parts;
 
@@ -21,6 +26,8 @@ const AchievementKeyDisplay = ({ achievementKey }) => {
 };
 
 const AchievementModal = ({ isOpen, onClose, onSuccess, achievement }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
 	const { addToast } = useToast();
@@ -96,12 +103,12 @@ const AchievementModal = ({ isOpen, onClose, onSuccess, achievement }) => {
                 <TextInput style={[styles.input, styles.disabledInput]} value={achievementKey} editable={false} />
 
                 <Text style={styles.label}>Beschreibung</Text>
-				<TextInput style={styles.textArea} value={formState.description} onChangeText={val => setFormState({...formState, description: val})} multiline />
+				<TextInput style={[styles.input, styles.textArea]} value={formState.description} onChangeText={val => setFormState({...formState, description: val})} multiline />
 
                 <Text style={styles.label}>Font Awesome Icon-Klasse</Text>
 				<TextInput style={styles.input} value={formState.iconClass} onChangeText={val => setFormState({...formState, iconClass: val})} placeholder="z.B. fa-star" />
 
-				<TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={isSubmitting}>
+				<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}>
 					<Text style={styles.buttonText}>{isSubmitting ? 'Speichern...' : 'Speichern'}</Text>
 				</TouchableOpacity>
 			</ScrollView>
@@ -114,6 +121,9 @@ const AdminAchievementsPage = () => {
 	const { data: achievements, loading, error, reload } = useApi(apiCall);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingAchievement, setEditingAchievement] = useState(null);
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
 	const openModal = (achievement = null) => {
 		setEditingAchievement(achievement);
@@ -133,7 +143,7 @@ const AdminAchievementsPage = () => {
             <Text style={styles.cardDescription}>{item.description}</Text>
             <View style={styles.cardActions}>
                 <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => openModal(item)}>
-                    <Text style={styles.secondaryButtonText}>Bearbeiten</Text>
+                    <Text style={styles.buttonText}>Bearbeiten</Text>
                 </TouchableOpacity>
                 {/* Deletion would need a confirmation prompt */}
             </View>
@@ -146,7 +156,7 @@ const AdminAchievementsPage = () => {
                 <Icon name="award" size={24} style={styles.headerIcon} />
 				<Text style={styles.title}>Abzeichen verwalten</Text>
 			</View>
-            <TouchableOpacity style={styles.createButton} onPress={() => openModal()}>
+            <TouchableOpacity style={[styles.button, styles.successButton, { marginHorizontal: 16, marginBottom: 16, alignSelf: 'flex-start'}]} onPress={() => openModal()}>
                 <Icon name="plus" size={16} color="#fff" />
                 <Text style={styles.buttonText}>Neues Abzeichen</Text>
             </TouchableOpacity>
@@ -158,7 +168,7 @@ const AdminAchievementsPage = () => {
                 data={achievements}
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
-                contentContainerStyle={{ padding: 16 }}
+                contentContainerStyle={{ paddingHorizontal: 16 }}
             />
 			{isModalOpen && (
 				<AchievementModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); reload(); }} achievement={editingAchievement} />
@@ -167,36 +177,31 @@ const AdminAchievementsPage = () => {
 	);
 };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8f9fa' },
-    header: { flexDirection: 'row', alignItems: 'center', padding: 16 },
-    headerIcon: { color: '#002B5B', marginRight: 12 },
-    title: { fontSize: 24, fontWeight: '700', color: '#002B5B' },
-    createButton: { flexDirection: 'row', backgroundColor: '#28a745', padding: 12, borderRadius: 6, marginHorizontal: 16, alignItems: 'center', justifyContent: 'center', gap: 8 },
-    card: { backgroundColor: '#fff', borderRadius: 8, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#dee2e6' },
-    cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-    cardIcon: { marginRight: 8, color: '#007bff' },
-    cardTitle: { fontSize: 18, fontWeight: 'bold' },
-    detailRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 4 },
-    label: { fontWeight: 'bold', color: '#6c757d', marginRight: 8 },
-    cardDescription: { marginTop: 8, color: '#212529' },
-    cardActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 },
-    button: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 6, alignItems: 'center' },
-    buttonText: { color: '#fff', fontWeight: '500' },
-    secondaryButton: { backgroundColor: '#6c757d' },
-    secondaryButtonText: { color: '#fff' },
-    errorText: { color: 'red', padding: 16 },
-    keyContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
-    keyPart: { paddingVertical: 2, paddingHorizontal: 6, borderRadius: 4, borderWidth: 1 },
-    keyTrigger: { backgroundColor: 'rgba(0, 123, 255, 0.1)', borderColor: '#007bff', color: '#007bff' },
-    keyAction: { backgroundColor: '#f8f9fa', borderColor: '#dee2e6' },
-    keyCondition: { backgroundColor: '#f8f9fa', borderColor: '#dee2e6' },
-    // Modal Styles
-    input: { height: 48, borderWidth: 1, borderColor: '#dee2e6', borderRadius: 6, paddingHorizontal: 12, marginBottom: 16, backgroundColor: '#fff' },
-    disabledInput: { backgroundColor: '#e9ecef' },
-    textArea: { minHeight: 100, textAlignVertical: 'top', borderWidth: 1, borderColor: '#dee2e6', borderRadius: 6, padding: 12, marginBottom: 16 },
-    keyBuilder: { flexDirection: 'row', gap: 8, marginBottom: 8 }
-});
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        container: { flex: 1, backgroundColor: colors.background },
+        header: { flexDirection: 'row', alignItems: 'center', padding: 16 },
+        headerIcon: { color: colors.heading, marginRight: 12 },
+        card: { backgroundColor: colors.surface, borderRadius: 8, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: colors.border },
+        cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+        cardIcon: { marginRight: 8, color: colors.primary },
+        cardTitle: { fontSize: 18, fontWeight: 'bold' },
+        detailRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 4 },
+        cardDescription: { marginTop: 8, color: colors.text },
+        cardActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 },
+        buttonText: { color: '#fff' },
+        secondaryButtonText: { color: '#fff' },
+        keyContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+        keyPart: { paddingVertical: 2, paddingHorizontal: 6, borderRadius: 4, borderWidth: 1, overflow: 'hidden'},
+        keyTrigger: { backgroundColor: colors.primaryLight, borderColor: colors.primary, color: colors.primary },
+        keyAction: { backgroundColor: colors.background, borderColor: colors.border, color: colors.text },
+        keyCondition: { backgroundColor: colors.background, borderColor: colors.border, color: colors.text },
+        // Modal Styles
+        keyBuilder: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+        disabledInput: { backgroundColor: '#e9ecef' },
+    });
+};
 
 const pickerSelectStyles = StyleSheet.create({
   inputIOS: { height: 48, borderWidth: 1, borderColor: '#dee2e6', borderRadius: 6, paddingHorizontal: 12, justifyContent: 'center', flex: 1 },

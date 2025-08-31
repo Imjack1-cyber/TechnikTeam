@@ -16,12 +16,13 @@ export const ToastProvider = ({ children }) => {
 	const addToast = useCallback((message, type = 'info', url = null) => {
 		const id = Date.now() + Math.random();
 		setToasts(prevToasts => [...prevToasts, { id, message, type, url }]);
-		setTimeout(() => {
-			setToasts(prevToasts => prevToasts.filter(toast => toast.id !== id));
-		}, 5000);
 	}, []);
+    
+    const removeToast = useCallback((id) => {
+        setToasts(prevToasts => prevToasts.filter(toast => toast.id !== id));
+    }, []);
 
-	const value = { toasts, addToast };
+	const value = { toasts, addToast, removeToast };
 
 	return (
 		<ToastContext.Provider value={value}>

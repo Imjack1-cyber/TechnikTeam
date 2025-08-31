@@ -11,6 +11,7 @@ const Widget = ({ icon, title, children, linkTo, linkText }) => {
     const theme = useAuthStore(state => state.theme);
     const colors = getThemeColors(theme);
     const commonStyles = getCommonStyles(theme);
+    const styles = pageStyles(theme);
 
 	return (
 		<View style={commonStyles.card}>
@@ -50,8 +51,5 @@ const pageStyles = (theme) => {
         },
     });
 };
-
-// Memoize styles to avoid recreation on re-renders
-const styles = pageStyles();
 
 export default Widget;

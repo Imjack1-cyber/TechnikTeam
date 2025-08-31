@@ -1,13 +1,22 @@
 import React, { useState, useCallback } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import { useToast } from '../context/ToastContext';
+import { useAuthStore } from '../store/authStore';
+import { getCommonStyles } from '../styles/commonStyles';
+import { getThemeColors, spacing } from '../styles/theme';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const EventFeedbackPage = () => {
-	const { eventId } = useParams();
-	const navigate = useNavigate();
+	const route = useRoute();
+	const navigation = useNavigation();
+	const { eventId } = route.params;
 	const { addToast } = useToast();
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
 	const [rating, setRating] = useState(0);
 	const [comments, setComments] = useState('');
@@ -17,8 +26,7 @@ const EventFeedbackPage = () => {
 	const apiCall = useCallback(() => apiClient.get(`/public/feedback/forms?eventId=${eventId}`), [eventId]);
 	const { data, loading, error: fetchError } = useApi(apiCall);
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
+	const handleSubmit = async () => {
 		if (rating === 0) {
 			setError('Bitte wählen Sie eine Sternebewertung aus.');
 			return;
@@ -27,17 +35,11 @@ const EventFeedbackPage = () => {
 		setError('');
 
 		try {
-			const result = await apiClient.post('/public/feedback/event', {
-				formId: data.form.id,
-				rating,
-				comments
-			});
+			const result = await apiClient.post('/public/feedback/event', { formId: data.form.id, rating, comments });
 			if (result.success) {
 				addToast('Vielen Dank für dein Feedback!', 'success');
-				navigate('/profil');
-			} else {
-				throw new Error(result.message);
-			}
+				navigation.navigate('Profile');
+			} else { throw new Error(result.message); }
 		} catch (err) {
 			setError(err.message || 'Feedback konnte nicht übermittelt werden.');
 		} finally {
@@ -45,49 +47,64 @@ const EventFeedbackPage = () => {
 		}
 	};
 
-	if (loading) return <div>Lade Feedback-Formular...</div>;
-	if (fetchError) return <div className="error-message">{fetchError}</div>;
-	if (!data) return <div className="error-message">Formulardaten nicht gefunden.</div>;
+	if (loading) return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
+	if (fetchError) return <View style={styles.centered}><Text style={styles.errorText}>{fetchError}</Text></View>;
+	if (!data) return <View style={styles.centered}><Text style={styles.errorText}>Formulardaten nicht gefunden.</Text></View>;
 
 	if (data.alreadySubmitted) {
 		return (
-			<div className="card" style={{ maxWidth: '700px', margin: 'auto' }}>
-				<h1>Feedback bereits abgegeben</h1>
-				<p className="info-message">Vielen Dank, du hast bereits Feedback für das Event "{data.event.name}" abgegeben.</p>
-				<Link to="/profil" className="btn">Zurück zum Profil</Link>
-			</div>
+			<View style={styles.container}>
+				<View style={styles.card}>
+					<Text style={styles.title}>Feedback bereits abgegeben</Text>
+					<Text style={styles.bodyText}>Vielen Dank, du hast bereits Feedback für das Event "{data.event.name}" abgegeben.</Text>
+					<TouchableOpacity style={[styles.button, styles.primaryButton, {marginTop: 16}]} onPress={() => navigation.navigate('Profile')}>
+                        <Text style={styles.buttonText}>Zurück zum Profil</Text>
+                    </TouchableOpacity>
+				</View>
+			</View>
 		);
 	}
 
 	return (
-		<div style={{ maxWidth: '700px', margin: 'auto' }}>
-			<div className="card">
-				<h1>Feedback für: {data.event.name}</h1>
-				<p>Dein Feedback hilft uns, zukünftige Events zu verbessern.</p>
-				{error && <p className="error-message">{error}</p>}
-				<form onSubmit={handleSubmit}>
-					<div className="form-group">
-						<label>Gesamteindruck (1 = schlecht, 5 = super)</label>
-						<div className="star-rating">
-							{[5, 4, 3, 2, 1].map(star => (
-								<React.Fragment key={star}>
-									<input type="radio" id={`star${star}`} name="rating" value={star} onChange={() => setRating(star)} checked={rating === star} />
-									<label htmlFor={`star${star}`} title={`${star} Sterne`}></label>
-								</React.Fragment>
-							))}
-						</div>
-					</div>
-					<div className="form-group">
-						<label htmlFor="comments">Kommentare & Verbesserungsvorschläge</label>
-						<textarea id="comments" name="comments" value={comments} onChange={(e) => setComments(e.target.value)} rows="5"></textarea>
-					</div>
-					<button type="submit" className="btn" disabled={isSubmitting}>
-						{isSubmitting ? 'Wird gesendet...' : 'Feedback absenden'}
-					</button>
-				</form>
-			</div>
-		</div>
+		<ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+			<View style={styles.card}>
+				<Text style={styles.title}>Feedback für: {data.event.name}</Text>
+				<Text style={styles.subtitle}>Dein Feedback hilft uns, zukünftige Events zu verbessern.</Text>
+				{error && <Text style={styles.errorText}>{error}</Text>}
+				
+                <View style={styles.formGroup}>
+                    <Text style={styles.label}>Gesamteindruck (1 = schlecht, 5 = super)</Text>
+                    <View style={styles.starContainer}>
+                        {[1, 2, 3, 4, 5].map(star => (
+                            <TouchableOpacity key={star} onPress={() => setRating(star)}>
+                                <Icon name="star" solid size={40} color={star <= rating ? colors.warning : colors.border} />
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+                
+                <View style={styles.formGroup}>
+                    <Text style={styles.label}>Kommentare & Verbesserungsvorschläge</Text>
+                    <TextInput style={[styles.input, styles.textArea]} value={comments} onChangeText={setComments} multiline />
+                </View>
+
+				<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}>
+					{isSubmitting ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Feedback absenden</Text>}
+				</TouchableOpacity>
+			</View>
+		</ScrollView>
 	);
+};
+
+const pageStyles = (theme) => {
+    return StyleSheet.create({
+        starContainer: {
+            flexDirection: 'row',
+            justifyContent: 'center',
+            marginVertical: spacing.md,
+            gap: spacing.md,
+        },
+    });
 };
 
 export default EventFeedbackPage;

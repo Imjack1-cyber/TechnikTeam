@@ -3,9 +3,7 @@ package de.technikteam.security;
 import de.technikteam.dao.UserDAO;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -18,9 +16,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @Configuration
 @EnableWebSecurity
@@ -37,17 +32,28 @@ public class SecurityConfig {
 
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-		http.headers(headers -> headers.contentTypeOptions(Customizer.withDefaults()))
-				.csrf(AbstractHttpConfigurer::disable) // CSRF is disabled for stateless API
+        // Define a Content Security Policy that allows Expo for Web's development behavior.
+        String csp = "default-src 'self'; " +
+                     "script-src 'self' 'unsafe-eval'; " + // Required for Expo Web dev builds
+                     "style-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; " + // Allow FontAwesome and inline styles from JS
+                     "img-src 'self' data:; " +
+                     "font-src 'self' https://cdnjs.cloudflare.com; " +
+                     "connect-src 'self'; " + // Allow API calls and WebSockets to the same origin
+                     "frame-ancestors 'none'; " +
+                     "form-action 'self'; " +
+                     "base-uri 'self';";
+
+		http.headers(headers -> headers
+                    .contentSecurityPolicy(cspConfig -> cspConfig.policyDirectives(csp))
+                )
+				.csrf(AbstractHttpConfigurer::disable)
 				.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
-						// Whitelist public and authentication endpoints first
-						.requestMatchers("/api/v1/auth/**", "/ws/**", "/swagger-ui.html", "/swagger-ui/**",
-								"/v3/api-docs/**", "/favicon.ico", "/actuator/health", "/api/v1/public/notifications/sse")
+						.requestMatchers("/", "/index.html", "/favicon.ico", "/*.js", "/*.css", "/assets/**", "/theme-loader.js",
+                                 "/api/v1/auth/**", "/ws/**", "/swagger-ui.html", "/swagger-ui/**",
+								 "/v3/api-docs/**", "/actuator/health", "/api/v1/public/notifications/sse")
 						.permitAll()
-						// Secure all admin paths. Granular control is done with @PreAuthorize
-						.requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-						// Secure all other API endpoints for any authenticated user
+						.requestMatchers("/admin/**", "/api/v1/admin/**").hasRole("ADMIN")
 						.anyRequest().authenticated())
 				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

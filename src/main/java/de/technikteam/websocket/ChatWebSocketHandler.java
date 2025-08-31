@@ -65,6 +65,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
 		User user = (User) session.getAttributes().get("user");
 		String conversationIdStr = (String) session.getAttributes().get("conversationId");
@@ -76,12 +77,9 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 			Map<String, Object> payload = gson.fromJson(message.getPayload(), new TypeToken<Map<String, Object>>() {
 			}.getType());
 			String type = (String) payload.get("type");
-			// The actual data might be nested inside a 'payload' object or be at the top
-			// level
 			Map<String, Object> data = (Map<String, Object>) payload.get("payload");
 			if (data == null) {
-				data = payload; // Fallback for messages like `new_message` which might not have a nested
-								// payload
+				data = payload;
 			}
 
 			switch (type) {
@@ -175,7 +173,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
 		List<User> participants = conversation.getParticipants();
 		for (User participant : participants) {
-			if (participant.getId() != sender.getId()) { // Don't notify the sender
+			if (participant.getId() != sender.getId()) {
 				String messageSnippet = message.getMessageText();
 				if (messageSnippet.length() > 50) {
 					messageSnippet = messageSnippet.substring(0, 47) + "...";

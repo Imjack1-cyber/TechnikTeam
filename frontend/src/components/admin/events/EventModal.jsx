@@ -7,6 +7,7 @@ import DynamicSkillRows from './DynamicSkillRows';
 import DynamicItemRows from './DynamicItemRows';
 import { useAuthStore } from '../../../store/authStore';
 import { getCommonStyles } from '../../../styles/commonStyles';
+import { getThemeColors } from '../../../styles/theme';
 import { Picker } from '@react-native-picker/picker';
 
 const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklistTemplates }) => {

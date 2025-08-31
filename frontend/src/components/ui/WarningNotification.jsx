@@ -1,18 +1,33 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Animated, Platform } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome5';
-// NOTE: Audio playback requires an external library like 'react-native-sound' or 'expo-av'.
-// The audio logic is commented out as it's an external dependency.
+// TODO: To enable sound, the 'expo-av' package must be installed.
+// Run 'npx expo install expo-av' in the /frontend directory.
+// Then, uncomment the line below and the audio-related code in the useEffect hook.
+// import { Audio } from 'expo-av';
 
 const WarningNotification = ({ notification, onDismiss }) => {
 	const flashAnimation = useRef(new Animated.Value(0)).current;
+    // const soundObject = useRef(new Audio.Sound()); // UNCOMMENT AFTER INSTALL
 
 	useEffect(() => {
-		// Play sound (requires a library)
-		// const sound = new Sound('attention.mp3', Sound.MAIN_BUNDLE, (error) => {
-		//   if (error) { console.log('failed to load the sound', error); return; }
-		//   sound.setNumberOfLoops(-1).play();
-		// });
+        let isMounted = true;
+        /* UNCOMMENT THIS BLOCK AFTER INSTALLING expo-av
+        const loadAndPlaySound = async () => {
+            try {
+                await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+                await soundObject.current.loadAsync(require('../../../assets/audio/attention.mp3'));
+                await soundObject.current.setIsLoopingAsync(true);
+                if(isMounted) {
+                    await soundObject.current.playAsync();
+                }
+            } catch (error) {
+                console.error("Failed to load and play sound for warning notification:", error);
+            }
+        };
+
+		loadAndPlaySound();
+        */
 
 		Animated.loop(
 			Animated.sequence([
@@ -22,7 +37,8 @@ const WarningNotification = ({ notification, onDismiss }) => {
 		).start();
 
 		return () => {
-			// sound.stop().release();
+            isMounted = false;
+			// soundObject.current.unloadAsync(); // UNCOMMENT AFTER INSTALL
 			flashAnimation.stopAnimation();
 		};
 	}, [flashAnimation]);

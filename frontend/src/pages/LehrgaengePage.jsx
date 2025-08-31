@@ -1,187 +1,111 @@
 import React, { useCallback, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/ui/Modal';
+import { getCommonStyles } from '../styles/commonStyles';
+import { getThemeColors, typography, spacing } from '../styles/theme';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import { useAuthStore } from '../store/authStore';
 
-const RequestTrainingModal = ({ isOpen, onClose, onSuccess }) => {
-	const [topic, setTopic] = useState('');
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [error, setError] = useState('');
-	const { addToast } = useToast();
-
-	const handleSubmit = async (e) => {
-		e.preventDefault();
-		setIsSubmitting(true);
-		setError('');
-		try {
-			const result = await apiClient.post('/public/training-requests', { topic });
-			if (result.success) {
-				addToast('Lehrgangswunsch erfolgreich eingereicht!', 'success');
-				onSuccess();
-			} else {
-				throw new Error(result.message);
-			}
-		} catch (err) {
-			setError(err.message || 'Einreichen fehlgeschlagen.');
-		} finally {
-			setIsSubmitting(false);
-		}
-	};
-
+const CourseAccordion = ({ course, onAction, onToggle, isOpen, styles, colors }) => {
+    const navigation = useNavigation();
+	
 	return (
-		<Modal isOpen={isOpen} onClose={onClose} title="Neuen Lehrgang anfragen">
-			<form onSubmit={handleSubmit}>
-				{error && <p className="error-message">{error}</p>}
-				<p>Welches Thema oder welche Fähigkeit würdest du gerne lernen?</p>
-				<div className="form-group">
-					<label htmlFor="topic">Thema des Lehrgangs</label>
-					<input
-						type="text"
-						id="topic"
-						value={topic}
-						onChange={(e) => setTopic(e.target.value)}
-						placeholder="z.B. Fortgeschrittene Videomischung"
-						required
-					/>
-				</div>
-				<button type="submit" className="btn" disabled={isSubmitting}>
-					{isSubmitting ? 'Wird eingereicht...' : 'Wunsch einreichen'}
-				</button>
-			</form>
-		</Modal>
-	);
-};
-
-const CourseAccordion = ({ course, onAction }) => {
-	const [isOpen, setIsOpen] = useState(false);
-
-	const getCourseStatusBadge = (status) => {
-		switch (status) {
-			case 'QUALIFIZIERT': return <span className="status-badge status-ok">Qualifiziert</span>;
-			case 'IN_BEARBEITUNG': return <span className="status-badge status-warn">In Bearbeitung</span>;
-			case 'VERFÜGBAR': return <span className="status-badge status-info">Verfügbar</span>;
-			default: return null;
-		}
-	};
-
-	const getMeetingStatusBadge = (meeting) => {
-		let text = meeting.userAttendanceStatus;
-		if (meeting.isWaitlisted) text = 'Warteliste';
-		return <span className={`status-badge ${meeting.userAttendanceStatus === 'ANGEMELDET' ? 'status-ok' : 'status-info'}`}>{text}</span>;
-	};
-
-	return (
-		<div className="card" style={{ marginBottom: '1rem' }}>
-			<div onClick={() => setIsOpen(!isOpen)} style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-				<div>
-					<h2 className="card-title" style={{ border: 'none', padding: 0, margin: 0, display: 'inline-block' }}>
-						{course.name} ({course.abbreviation})
-					</h2>
-					<div style={{ marginLeft: '1rem', display: 'inline-block' }}>
-						{getCourseStatusBadge(course.userCourseStatus)}
-					</div>
-				</div>
-				<i className={`fas fa-chevron-down`} style={{ transition: 'transform 0.2s', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}></i>
-			</div>
+		<View style={styles.card}>
+			<TouchableOpacity onPress={onToggle} style={styles.accordionHeader}>
+				<View style={{flex: 1}}>
+					<Text style={styles.cardTitle}>{course.name} ({course.abbreviation})</Text>
+				</View>
+				<Icon name={isOpen ? 'chevron-down' : 'chevron-right'} size={16} />
+			</TouchableOpacity>
 
 			{isOpen && (
-				<div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-					<p>{course.description}</p>
-					<h4 style={{ marginTop: '1.5rem' }}>Anstehende Termine:</h4>
+				<View style={styles.accordionContent}>
+					<Text>{course.description}</Text>
+					<Text style={styles.subHeader}>Anstehende Termine:</Text>
 					{course.upcomingMeetings.length === 0 ? (
-						<p>Für diesen Lehrgang sind derzeit keine Termine geplant.</p>
+						<Text>Keine Termine geplant.</Text>
 					) : (
-						<div className="table-wrapper">
-							<table className="data-table">
-								<thead><tr><th>Name</th><th>Datum</th><th>Teilnehmer</th><th>Status</th><th>Aktion</th></tr></thead>
-								<tbody>
-									{course.upcomingMeetings.map(meeting => {
-										const isFull = meeting.maxParticipants && meeting.participantCount >= meeting.maxParticipants;
-										const isPastDeadline = meeting.signupDeadline && new Date(meeting.signupDeadline) < new Date();
-										return (
-											<tr key={meeting.id}>
-												<td><Link to={`/lehrgaenge/details/${meeting.id}`}>{meeting.name}</Link></td>
-												<td>{new Date(meeting.meetingDateTime).toLocaleString('de-DE')}</td>
-												<td>{meeting.participantCount} / {meeting.maxParticipants || '∞'}</td>
-												<td>{getMeetingStatusBadge(meeting)}</td>
-												<td>
-													{meeting.userAttendanceStatus === 'ANGEMELDET' ?
-														<button onClick={() => onAction(meeting.id, 'signoff')} className="btn btn-small btn-danger" disabled={isPastDeadline}>Abmelden</button> :
-														<button onClick={() => onAction(meeting.id, 'signup')} className="btn btn-small btn-success" disabled={isPastDeadline}>
-															{isFull ? 'Warteliste' : 'Anmelden'}
-														</button>
-													}
-												</td>
-											</tr>
-										);
-									})}
-								</tbody>
-							</table>
-						</div>
+						course.upcomingMeetings.map(meeting => (
+                            <View key={meeting.id} style={styles.meetingRow}>
+                                <TouchableOpacity onPress={() => navigation.navigate('MeetingDetails', { meetingId: meeting.id })}>
+                                    <Text style={{color: colors.primary}}>{meeting.name}</Text>
+                                </TouchableOpacity>
+                                <Text>{new Date(meeting.meetingDateTime).toLocaleDateString()}</Text>
+                                <TouchableOpacity style={[styles.button, meeting.userAttendanceStatus === 'ANGEMELDET' ? styles.dangerButton : styles.successButton]} onPress={() => onAction(meeting.id, meeting.userAttendanceStatus === 'ANGEMELDET' ? 'signoff' : 'signup')}>
+                                    <Text style={styles.buttonText}>{meeting.userAttendanceStatus === 'ANGEMELDET' ? 'Abmelden' : 'Anmelden'}</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ))
 					)}
-				</div>
+				</View>
 			)}
-		</div>
+		</View>
 	);
 };
 
 const LehrgaengePage = () => {
+    const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/public/meetings'), []);
 	const { data: courses, loading, error, reload } = useApi(apiCall);
 	const { addToast } = useToast();
-	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [openCourseId, setOpenCourseId] = useState(null);
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
 	const handleAction = async (meetingId, action) => {
-		const endpoint = `/public/meetings/${meetingId}/${action}`;
-
-		if (action === 'signup') {
-			const meeting = courses.flatMap(c => c.upcomingMeetings).find(m => m.id === meetingId);
-			if (meeting?.parentMeetingId > 0 && courses.find(c => c.id === meeting.courseId)?.userCourseStatus === 'QUALIFIZIERT') {
-				if (!window.confirm("Du bist bereits für diesen Lehrgang qualifiziert. Möchtest du dich auf die Warteliste für diesen Wiederholungstermin setzen lassen?")) {
-					return;
-				}
-			}
-		}
-
-		try {
-			const result = await apiClient.post(endpoint, {});
+        try {
+			const result = await apiClient.post(`/public/meetings/${meetingId}/${action}`, {});
 			if (result.success) {
 				addToast(result.message, 'success');
 				reload();
-			} else {
-				throw new Error(result.message);
-			}
-		} catch (err) {
-			addToast(err.message || 'Aktion fehlgeschlagen.', 'error');
-		}
+			} else { throw new Error(result.message); }
+		} catch (err) { addToast(err.message || 'Aktion fehlgeschlagen.', 'error'); }
 	};
 
-	if (loading) return <div>Lade Lehrgänge...</div>;
-	if (error) return <div className="error-message">{error}</div>;
+	if (loading) return <View style={styles.centered}><ActivityIndicator size="large"/></View>;
+	if (error) return <View style={styles.centered}><Text style={styles.errorText}>{error}</Text></View>;
 
 	return (
-		<div>
-			<h1><i className="fas fa-graduation-cap"></i> Lehrgangs-Hub</h1>
-			<div className="table-controls">
-				<p>Hier finden Sie eine Übersicht aller Lehrgänge. Klappen Sie einen Lehrgang auf, um die anstehenden Termine zu sehen und sich anzumelden.</p>
-				<button onClick={() => setIsModalOpen(true)} className="btn btn-secondary">
-					<i className="fas fa-question-circle"></i> Neuen Lehrgang anfragen
-				</button>
-			</div>
-
-			<div>
-				{courses?.map(course => (
-					<CourseAccordion key={course.id} course={course} onAction={handleAction} />
-				))}
-			</div>
-
-			{isModalOpen && (
-				<RequestTrainingModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => setIsModalOpen(false)} />
-			)}
-		</div>
+        <View style={styles.container}>
+            <View style={styles.headerContainer}>
+                <Icon name="graduation-cap" size={24} style={styles.headerIcon}/>
+                <Text style={styles.title}>Lehrgangs-Hub</Text>
+            </View>
+            <FlatList
+                data={courses}
+                keyExtractor={item => item.id.toString()}
+                renderItem={({item}) => (
+                    <CourseAccordion
+                        course={item}
+                        onAction={handleAction}
+                        isOpen={openCourseId === item.id}
+                        onToggle={() => setOpenCourseId(openCourseId === item.id ? null : item.id)}
+                        styles={styles}
+                        colors={colors}
+                    />
+                )}
+                contentContainerStyle={styles.contentContainer}
+            />
+        </View>
 	);
 };
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        headerContainer: { padding: spacing.md, flexDirection: 'row', alignItems: 'center' },
+        headerIcon: { color: colors.heading, marginRight: spacing.sm },
+        accordionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+        accordionContent: { marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderColor: colors.border },
+        subHeader: { fontSize: typography.h4, fontWeight: 'bold', marginTop: spacing.md },
+        meetingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm },
+    });
+};
+
 
 export default LehrgaengePage;

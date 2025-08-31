@@ -7,6 +7,7 @@ import MarkdownDisplay from 'react-native-markdown-display';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors } from '../../styles/theme';
 
 const AdminDebriefingsListPage = () => {
     const navigation = useNavigation();
@@ -51,7 +52,7 @@ const AdminDebriefingsListPage = () => {
                 data={debriefings}
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
-                contentContainerStyle={styles.contentContainer}
+                contentContainerStyle={{paddingHorizontal: 16}}
                 ListEmptyComponent={<View style={styles.card}><Text>Es wurden noch keine Debriefings eingereicht.</Text></View>}
             />
 		</View>

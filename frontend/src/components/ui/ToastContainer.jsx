@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform } from 'react-native';
 import { useToast } from '../../context/ToastContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -13,14 +13,14 @@ const Toast = ({ message, type, url, onHide }) => {
 		Animated.timing(fadeAnim, {
 			toValue: 1,
 			duration: 300,
-			useNativeDriver: true,
+			useNativeDriver: Platform.OS !== 'web',
 		}).start();
 
 		const timer = setTimeout(() => {
 			Animated.timing(fadeAnim, {
 				toValue: 0,
 				duration: 300,
-				useNativeDriver: true,
+				useNativeDriver: Platform.OS !== 'web',
 			}).start(() => {
 				onHide();
 			});
@@ -65,13 +65,13 @@ const Toast = ({ message, type, url, onHide }) => {
 
 
 const ToastContainer = () => {
-	const { toasts } = useToast();
+	const { toasts, removeToast } = useToast();
 	const insets = useSafeAreaInsets();
 
 	return (
 		<View style={[styles.container, { bottom: insets.bottom + 20, right: 20, left: 20 }]}>
 			{toasts.map(toast => (
-				<Toast key={toast.id} message={toast.message} type={toast.type} url={toast.url} onHide={() => { }} />
+				<Toast key={toast.id} message={toast.message} type={toast.type} url={toast.url} onHide={() => removeToast(toast.id)} />
 			))}
 		</View>
 	);

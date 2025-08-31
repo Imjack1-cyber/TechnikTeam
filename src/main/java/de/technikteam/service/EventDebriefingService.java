@@ -1,6 +1,7 @@
 package de.technikteam.service;
 
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import de.technikteam.api.v1.dto.EventDebriefingDTO;
 import de.technikteam.config.Permissions;
 import de.technikteam.dao.EventDAO;
@@ -16,6 +17,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -71,16 +73,12 @@ public class EventDebriefingService {
 		adminLogService.log(author.getUsername(), "SUBMIT_DEBRIEFING",
 				"Debriefing for event '" + event.getName() + "' submitted/updated.");
 
-		// Placeholder for achievement logic based on being a "standout crew member"
-		// for (Integer userId : dto.standoutCrewMemberIds()) { ... }
-
-		// Notify admins with permission that a new debriefing is available
 		List<Integer> adminIds = userDAO.findUserIdsByPermission(Permissions.EVENT_DEBRIEFING_VIEW);
 		String title = "Neues Event-Debriefing";
 		String description = String.format("Ein Debriefing für das Event '%s' wurde von %s eingereicht.",
 				event.getName(), author.getUsername());
 		for (Integer adminId : adminIds) {
-			if (adminId != author.getId()) { // Don't notify the author
+			if (adminId != author.getId()) {
 				Map<String, Object> payload = Map.of("title", title, "description", description, "level",
 						"Informational", "url", "/admin/debriefings");
 				notificationService.sendNotificationToUser(adminId, payload);
@@ -93,8 +91,11 @@ public class EventDebriefingService {
 		if (debriefing == null)
 			return null;
 		if (debriefing.getStandoutCrewMembers() != null && !debriefing.getStandoutCrewMembers().isBlank()) {
-			List<Integer> userIds = gson.fromJson(debriefing.getStandoutCrewMembers(), List.class);
-			List<User> userDetails = userIds.stream().map(id -> userDAO.getUserById(id.intValue()))
+            Type listType = new TypeToken<List<Double>>() {}.getType();
+			List<Double> userIdsDouble = gson.fromJson(debriefing.getStandoutCrewMembers(), listType);
+            List<Integer> userIds = userIdsDouble.stream().map(Double::intValue).collect(Collectors.toList());
+
+			List<User> userDetails = userIds.stream().map(userDAO::getUserById)
 					.filter(java.util.Objects::nonNull).collect(Collectors.toList());
 			debriefing.setStandoutCrewDetails(userDetails);
 		}

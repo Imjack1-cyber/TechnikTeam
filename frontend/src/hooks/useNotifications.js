@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Platform } from 'react-native';
 import { useToast } from '../context/ToastContext';
 import { useAuthStore } from '../store/authStore';
-import EventSource from 'rn-eventsource';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import RNEventSource from 'react-native-sse';
+import { getToken } from '../lib/storage';
 
-// In a real app, this would come from an environment config file
-const BASE_URL = 'http://10.0.2.2:8081/TechnikTeam'; // Android emulator default
+const ANDROID_SSE_URL = 'http://10.0.2.2:8081/TechnikTeam';
+const WEB_SSE_URL = ''; // For web, it's relative to the current host
+
+const BASE_URL = Platform.OS === 'web' ? WEB_SSE_URL : ANDROID_SSE_URL;
 
 export const useNotifications = () => {
 	const { addToast } = useToast();
@@ -25,29 +28,31 @@ export const useNotifications = () => {
 			return;
 		}
 
-		let events;
+		let es;
 
 		const connect = async () => {
-			const token = await AsyncStorage.getItem('technikteam-auth-token');
+			const token = await getToken();
 			if (!token) {
 				console.warn("[useNotifications] Cannot establish SSE connection: No auth token found.");
 				return;
 			}
 
-			const sseUrl = `${BASE_URL}/api/v1/public/notifications/sse?token=${encodeURIComponent(token)}`;
+			// For web, the browser constructs the full URL including protocol and host.
+			const sseUrl = `${BASE_URL}/TechnikTeam/api/v1/public/notifications/sse?token=${encodeURIComponent(token)}`;
 
 			console.log(`[useNotifications] Connecting to SSE at: ${sseUrl}`);
-			events = new EventSource(sseUrl);
+			// react-native-sse polyfills EventSource for native, and uses the browser's native one on web.
+			es = new RNEventSource(sseUrl);
 
-			events.addEventListener("open", () => {
+			es.addEventListener("open", () => {
 				console.log("SSE connection opened.");
 			});
 
-			events.addEventListener("message", (event) => {
+			es.addEventListener("message", (event) => {
 				console.log("Received SSE message:", event.data);
 			});
 
-			events.addEventListener("notification", (event) => {
+			es.addEventListener("notification", (event) => {
 				const data = JSON.parse(event.data);
 				incrementUnseenNotificationCount();
 				if (data.level === 'Warning') {
@@ -61,7 +66,7 @@ export const useNotifications = () => {
 				}
 			});
 
-			events.addEventListener("ui_update", (event) => {
+			es.addEventListener("ui_update", (event) => {
 				const data = JSON.parse(event.data);
 				console.log("Received UI update event:", data);
 				if (data.updateType === 'EVENT_UPDATED') {
@@ -69,10 +74,10 @@ export const useNotifications = () => {
 				}
 			});
 
-			events.addEventListener("error", (err) => {
+			es.addEventListener("error", (err) => {
 				console.error("EventSource failed:", err);
-				if (events) {
-					events.close();
+				if (es) {
+					es.close();
 				}
 			});
 		};
@@ -80,8 +85,8 @@ export const useNotifications = () => {
 		connect();
 
 		return () => {
-			if (events) {
-				events.close();
+			if (es) {
+				es.close();
 			}
 		};
 	}, [isAuthenticated, addToast, triggerEventUpdate, incrementUnseenNotificationCount]);

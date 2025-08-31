@@ -53,12 +53,38 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuccess }) => {
 	);
 };
 
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        badgeSuccess: { backgroundColor: colors.success, color: colors.white, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, overflow: 'hidden' },
+        badgeDanger: { backgroundColor: colors.danger, color: colors.white, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, overflow: 'hidden' },
+        actionsContainer: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 },
+        actionButton: { 
+            backgroundColor: colors.primaryLight, 
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: 6, 
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 8,
+            marginBottom: 8,
+        },
+        actionButtonText: { 
+            color: colors.text,
+            marginLeft: 6,
+            fontWeight: '500'
+        },
+    });
+};
+
 const AdminUsersPage = () => {
     const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/users'), []);
 	const { data: users, loading, error, reload } = useApi(apiCall);
 	const adminFormData = useAdminData();
 	const { addToast } = useToast();
+    const currentUser = useAuthStore(state => state.user);
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
@@ -71,6 +97,7 @@ const AdminUsersPage = () => {
 	const handleSuccess = () => { setIsModalOpen(false); setEditingUser(null); setSuspendingUser(null); reload(); };
 
 	const handleResetPassword = (user) => {
+        console.log("Reset Password button pressed for user:", user.username);
         Alert.alert(`Passwort für ${user.username} zurücksetzen?`, "Ein neues, temporäres Passwort wird generiert.", [
             { text: 'Abbrechen', style: 'cancel' },
             { text: 'Zurücksetzen', onPress: async () => {
@@ -86,6 +113,7 @@ const AdminUsersPage = () => {
 	};
     
     const handleUnsuspend = (user) => {
+        console.log("Unsuspend button pressed for user:", user.username);
         Alert.alert(`Benutzer "${user.username}" entsperren?`, "", [
             { text: 'Abbrechen', style: 'cancel' },
             { text: 'Entsperren', onPress: async () => {
@@ -98,10 +126,28 @@ const AdminUsersPage = () => {
                 } catch (err) { addToast(`Entsperren fehlgeschlagen: ${err.message}`, 'error'); }
             }},
         ]);
-    }
+    };
+
+    const handleDelete = (userToDelete) => {
+        console.log("Delete button pressed for user:", userToDelete.username);
+        Alert.alert(`Benutzer "${userToDelete.username}" löschen?`, "Diese Aktion kann nicht rückgängig gemacht werden.", [
+            { text: 'Abbrechen', style: 'cancel' },
+            { text: 'Löschen', style: 'destructive', onPress: async () => {
+                try {
+                    const result = await apiClient.delete(`/users/${userToDelete.id}`);
+                    if (result.success) {
+                        addToast('Benutzer erfolgreich gelöscht.', 'success');
+                        reload();
+                    } else { throw new Error(result.message); }
+                } catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
+            }},
+        ]);
+    };
     
     const renderItem = ({ item: user }) => {
         const isLocked = user.isLocked || user.status === 'SUSPENDED';
+        const canDelete = currentUser?.id === 1 ? (user.id !== 1) : (user.roleName !== 'ADMIN');
+
         return (
             <View style={styles.card}>
                 <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
@@ -110,13 +156,34 @@ const AdminUsersPage = () => {
                 </View>
                 <Text>ID: {user.id} | Rolle: {user.roleName}</Text>
                 <View style={styles.actionsContainer}>
-                    <TouchableOpacity style={styles.actionButton} onPress={() => openModal(user)}><Text>Bearbeiten</Text></TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('UserProfile', { userId: user.id })}><Text>Profil</Text></TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton} onPress={() => handleResetPassword(user)}><Text>Reset PW</Text></TouchableOpacity>
+                    <TouchableOpacity style={styles.actionButton} onPress={() => openModal(user)}>
+                        <Icon name="edit" size={14} color={colors.text} />
+                        <Text style={styles.actionButtonText}>Bearbeiten</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('UserProfile', { userId: user.id })}>
+                        <Icon name="id-card" size={14} color={colors.text} />
+                        <Text style={styles.actionButtonText}>Profil</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionButton} onPress={() => handleResetPassword(user)}>
+                        <Icon name="key" size={14} color={colors.text} />
+                        <Text style={styles.actionButtonText}>Reset PW</Text>
+                    </TouchableOpacity>
                     {isLocked ? (
-                        <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.success}]} onPress={() => handleUnsuspend(user)}><Text style={{color: colors.white}}>Entsperren</Text></TouchableOpacity>
+                        <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.success}]} onPress={() => handleUnsuspend(user)}>
+                            <Icon name="unlock" size={14} color={colors.white} />
+                            <Text style={[styles.actionButtonText, {color: colors.white}]}>Entsperren</Text>
+                        </TouchableOpacity>
                     ) : (
-                        <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.warning}]} onPress={() => setSuspendingUser(user)} disabled={user.roleName === 'ADMIN'}><Text style={{color: colors.black}}>Sperren</Text></TouchableOpacity>
+                        <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.warning}]} onPress={() => setSuspendingUser(user)} disabled={user.roleName === 'ADMIN'}>
+                            <Icon name="user-lock" size={14} color={colors.black} />
+                            <Text style={[styles.actionButtonText, {color: colors.black}]}>Sperren</Text>
+                        </TouchableOpacity>
+                    )}
+                    {canDelete && (
+                         <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.danger}]} onPress={() => handleDelete(user)}>
+                            <Icon name="trash" size={14} color="#fff" />
+                            <Text style={[styles.actionButtonText, {color: '#fff'}]}>Löschen</Text>
+                         </TouchableOpacity>
                     )}
                 </View>
             </View>
@@ -136,16 +203,6 @@ const AdminUsersPage = () => {
             {suspendingUser && <SuspendUserModal isOpen={!!suspendingUser} onClose={() => setSuspendingUser(null)} onSuccess={handleSuccess} user={suspendingUser} />}
 		</View>
 	);
-};
-
-const pageStyles = (theme) => {
-    const colors = getThemeColors(theme);
-    return StyleSheet.create({
-        badgeSuccess: { backgroundColor: colors.success, color: colors.white, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, overflow: 'hidden' },
-        badgeDanger: { backgroundColor: colors.danger, color: colors.white, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, overflow: 'hidden' },
-        actionsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
-        actionButton: { backgroundColor: colors.primaryLight, padding: 8, borderRadius: 6 },
-    });
 };
 
 export default AdminUsersPage;

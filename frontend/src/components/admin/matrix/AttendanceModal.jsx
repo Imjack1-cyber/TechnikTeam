@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import Modal from '../../ui/Modal';
 import apiClient from '../../../services/apiClient';
 import { useToast } from '../../../context/ToastContext';
+import { useAuthStore } from '../../../store/authStore';
+import { getCommonStyles } from '../../../styles/commonStyles';
+import BouncyCheckbox from "react-native-bouncy-checkbox";
+import { Picker } from '@react-native-picker/picker';
 
 const AttendanceModal = ({ isOpen, onClose, onSuccess, cellData }) => {
-	// State for meeting attendance part
+    const theme = useAuthStore(state => state.theme);
+    const styles = getCommonStyles(theme);
 	const [attended, setAttended] = useState(cellData.attended);
-	const [meetingRemarks, setMeetingRemarks] = useState(cellData.remarks);
+	const [meetingRemarks, setMeetingRemarks] = useState(cellData.remarks || '');
 	const [isSubmittingMeeting, setIsSubmittingMeeting] = useState(false);
 	const [meetingError, setMeetingError] = useState('');
 
-	// State for overall course qualification part
 	const [qualStatus, setQualStatus] = useState(cellData.qualification?.status || 'BESUCHT');
 	const [qualDate, setQualDate] = useState(cellData.qualification?.completionDate || new Date().toISOString().split('T')[0]);
 	const [qualRemarks, setQualRemarks] = useState(cellData.qualification?.remarks || '');
@@ -22,7 +27,7 @@ const AttendanceModal = ({ isOpen, onClose, onSuccess, cellData }) => {
 	useEffect(() => {
 		if (isOpen) {
 			setAttended(cellData.attended);
-			setMeetingRemarks(cellData.remarks);
+			setMeetingRemarks(cellData.remarks || '');
 			setQualStatus(cellData.qualification?.status || 'BESUCHT');
 			setQualDate(cellData.qualification?.completionDate || new Date().toISOString().split('T')[0]);
 			setQualRemarks(cellData.qualification?.remarks || '');
@@ -32,8 +37,7 @@ const AttendanceModal = ({ isOpen, onClose, onSuccess, cellData }) => {
 	}, [isOpen, cellData]);
 
 
-	const handleMeetingSubmit = async (e) => {
-		e.preventDefault();
+	const handleMeetingSubmit = async () => {
 		setIsSubmittingMeeting(true);
 		setMeetingError('');
 
@@ -59,8 +63,7 @@ const AttendanceModal = ({ isOpen, onClose, onSuccess, cellData }) => {
 		}
 	};
 
-	const handleQualificationSubmit = async (e) => {
-		e.preventDefault();
+	const handleQualificationSubmit = async () => {
 		setIsSubmittingQual(true);
 		setQualError('');
 
@@ -93,76 +96,38 @@ const AttendanceModal = ({ isOpen, onClose, onSuccess, cellData }) => {
 			onClose={onClose}
 			title={`Eintrag bearbeiten für: ${cellData.userName}`}
 		>
-			<div className="card">
-				<h4 className="card-title">Teilnahme am Meeting: "{cellData.meetingName}"</h4>
-				<form onSubmit={handleMeetingSubmit}>
-					{meetingError && <p className="error-message">{meetingError}</p>}
-					<div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-						<input
-							type="checkbox"
-							id="modal-attended"
-							name="attended"
-							checked={attended}
-							onChange={(e) => setAttended(e.target.checked)}
-							style={{ width: '1.5rem', height: '1.5rem' }}
-						/>
-						<label htmlFor="modal-attended" style={{ marginBottom: 0 }}>
-							Hat am Meeting teilgenommen
-						</label>
-					</div>
-					<div className="form-group">
-						<label htmlFor="modal-remarks">Anmerkungen zum Meeting</label>
-						<textarea
-							id="modal-remarks"
-							name="remarks"
-							value={meetingRemarks}
-							onChange={(e) => setMeetingRemarks(e.target.value)}
-							rows="2"
-						></textarea>
-					</div>
-					<button type="submit" className="btn" disabled={isSubmittingMeeting}>
-						{isSubmittingMeeting ? 'Speichern...' : 'Meeting-Teilnahme speichern'}
-					</button>
-				</form>
-			</div>
+            <ScrollView>
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>Teilnahme am Meeting: "{cellData.meetingName}"</Text>
+                    {meetingError && <Text style={styles.errorText}>{meetingError}</Text>}
+                    <View style={{flexDirection: 'row', alignItems: 'center', marginVertical: 16}}>
+                        <BouncyCheckbox isChecked={attended} onPress={(isChecked) => setAttended(isChecked)} />
+                        <Text>Hat am Meeting teilgenommen</Text>
+                    </View>
+                    <Text style={styles.label}>Anmerkungen zum Meeting</Text>
+                    <TextInput style={[styles.input, styles.textArea]} value={meetingRemarks} onChangeText={setMeetingRemarks} multiline/>
+                    <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleMeetingSubmit} disabled={isSubmittingMeeting}>
+                        {isSubmittingMeeting ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Meeting-Teilnahme speichern</Text>}
+                    </TouchableOpacity>
+                </View>
 
-			<div className="card" style={{ marginTop: '1.5rem' }}>
-				<h4 className="card-title">Gesamt-Qualifikation für Kurs: "{cellData.courseName}"</h4>
-				{!cellData.hasAttendedAllMeetings && (
-					<p className="info-message" style={{ background: 'var(--warning-color)' }}>
-						<i className="fas fa-exclamation-triangle"></i>
-						Hinweis: Der Benutzer hat nicht alle Termine dieses Lehrgangs besucht.
-					</p>
-				)}
-				<form onSubmit={handleQualificationSubmit}>
-					{qualError && <p className="error-message">{qualError}</p>}
-					<div className="form-group">
-						<label htmlFor="qual-status">Status</label>
-						<select id="qual-status" value={qualStatus} onChange={e => setQualStatus(e.target.value)}>
-							<option value="BESUCHT">Besucht</option>
-							<option value="ABSOLVIERT">Absolviert</option>
-							<option value="BESTANDEN">Bestanden (Qualifiziert)</option>
-							<option value="NICHT BESUCHT">Nicht Besucht (Eintrag entfernen)</option>
-						</select>
-					</div>
-					<div className="form-group">
-						<label htmlFor="qual-date">Abschlussdatum</label>
-						<input type="date" id="qual-date" value={qualDate} onChange={e => setQualDate(e.target.value)} />
-					</div>
-					<div className="form-group">
-						<label htmlFor="qual-remarks">Anmerkungen zur Qualifikation</label>
-						<textarea
-							id="qual-remarks"
-							value={qualRemarks}
-							onChange={(e) => setQualRemarks(e.target.value)}
-							rows="2"
-						></textarea>
-					</div>
-					<button type="submit" className="btn btn-success" disabled={isSubmittingQual}>
-						{isSubmittingQual ? 'Speichern...' : 'Qualifikation speichern'}
-					</button>
-				</form>
-			</div>
+                <View style={[styles.card, {marginTop: 16}]}>
+                    <Text style={styles.cardTitle}>Gesamt-Qualifikation für Kurs: "{cellData.courseName}"</Text>
+                    {qualError && <Text style={styles.errorText}>{qualError}</Text>}
+                    <Text style={styles.label}>Status</Text>
+                    <Picker selectedValue={qualStatus} onValueChange={setQualStatus}>
+                        <Picker.Item label="Besucht" value="BESUCHT" />
+                        <Picker.Item label="Absolviert" value="ABSOLVIERT" />
+                        <Picker.Item label="Bestanden (Qualifiziert)" value="BESTANDEN" />
+                        <Picker.Item label="Nicht Besucht (Eintrag entfernen)" value="NICHT BESUCHT" />
+                    </Picker>
+                    <Text style={styles.label}>Anmerkungen zur Qualifikation</Text>
+                    <TextInput style={[styles.input, styles.textArea]} value={qualRemarks} onChangeText={setQualRemarks} multiline/>
+                    <TouchableOpacity style={[styles.button, styles.successButton]} onPress={handleQualificationSubmit} disabled={isSubmittingQual}>
+                        {isSubmittingQual ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Qualifikation speichern</Text>}
+                    </TouchableOpacity>
+                </View>
+            </ScrollView>
 		</Modal>
 	);
 };

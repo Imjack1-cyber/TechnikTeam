@@ -54,17 +54,22 @@ const VenueModal = ({ isOpen, onClose, onSuccess, venue }) => {
 			mapImagePath: venue?.mapImagePath // Preserve existing image path
 		};
         
-		data.append('venue', new Blob([JSON.stringify(venueData)], { type: 'application/json' }));
+		data.append('venue', JSON.stringify(venueData));
+
 		if (mapImage) {
-			data.append('mapImage', mapImage);
+			// FormData in React Native requires the file object to have uri, name, and type
+			data.append('mapImage', {
+                uri: mapImage.uri,
+                name: mapImage.name,
+                type: mapImage.type,
+            });
 		}
 
 		try {
 			const endpoint = venue ? `/admin/venues/${venue.id}` : '/admin/venues';
-			const result = await apiClient.request(endpoint, {
-				method: venue ? 'PUT' : 'POST',
-				body: data
-			});
+            // Use PUT for updates. A POST with FormData might not work as expected for updates in some frameworks.
+			const method = venue ? 'PUT' : 'POST';
+			const result = await apiClient.request(endpoint, { method, body: data, headers: { 'Content-Type': 'multipart/form-data' } });
 
 			if (result.success) {
 				addToast(`Ort erfolgreich ${venue ? 'aktualisiert' : 'erstellt'}.`, 'success');

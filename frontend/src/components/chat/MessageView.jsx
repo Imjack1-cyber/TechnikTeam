@@ -1,30 +1,34 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, ActivityIndicator, Alert, Linking } from 'react-native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import useWebSocket from '../../hooks/useWebSocket';
 import apiClient from '../../services/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import ManageParticipantsModal from './ManageParticipantsModal';
 import MessageStatus from './MessageStatus';
-import './MessageView.css';
 import { useToast } from '../../context/ToastContext';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, spacing, typography, borders } from '../../styles/theme';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import MarkdownDisplay from 'react-native-markdown-display';
 
-const MessageView = ({ conversationId }) => {
+const MessageView = () => {
+    const route = useRoute();
+    const navigation = useNavigation();
+    const { conversationId } = route.params;
 	const user = useAuthStore(state => state.user);
-	const messagesEndRef = useRef(null);
 	const fileInputRef = useRef(null);
-	const longPressTimer = useRef();
-	const navigate = useNavigate();
 	const [newMessage, setNewMessage] = useState('');
 	const [messages, setMessages] = useState([]);
 	const [conversation, setConversation] = useState(null);
 	const [isManageModalOpen, setIsManageModalOpen] = useState(false);
-	const [isUploading, setIsUploading] = useState(false);
 	const [editingMessageId, setEditingMessageId] = useState(null);
 	const [editingText, setEditingText] = useState('');
-	const [activeOptionsMessageId, setActiveOptionsMessageId] = useState(null);
 	const { addToast } = useToast();
-
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
 	const messagesApiCall = useCallback(() => apiClient.get(`/public/chat/conversations/${conversationId}/messages`), [conversationId]);
 	const { data: initialMessages, loading: messagesLoading, error: messagesError, reload: reloadMessages } = useApi(messagesApiCall);
@@ -33,307 +37,102 @@ const MessageView = ({ conversationId }) => {
 	const { data: currentConversation, reload: reloadConversation } = useApi(conversationApiCall);
 
 	useEffect(() => {
-		if (currentConversation) {
-			setConversation(currentConversation);
-		}
+		if (currentConversation) setConversation(currentConversation);
 	}, [currentConversation]);
 
 	const handleWebSocketMessage = useCallback((message) => {
-		if (message.type === 'new_message') {
-			setMessages(prev => [message.payload, ...prev]);
-		} else if (message.type === 'messages_status_updated') {
-			const { messageIds, newStatus } = message.payload;
-			setMessages(prev => prev.map(msg =>
-				messageIds.includes(msg.id) ? { ...msg, status: newStatus } : msg
-			));
-		} else if (message.type === 'message_updated' || message.type === 'message_deleted') {
-			setMessages(prev => prev.map(msg =>
-				msg.id === message.payload.id ? message.payload : msg
-			));
-		}
+		if (message.type === 'new_message') setMessages(prev => [message.payload, ...prev]);
+		else if (message.type === 'messages_status_updated') setMessages(prev => prev.map(msg => message.payload.messageIds.includes(msg.id) ? { ...msg, status: message.payload.newStatus } : msg));
+		else if (message.type === 'message_updated' || message.type === 'message_deleted') setMessages(prev => prev.map(msg => msg.id === message.payload.id ? message.payload : msg));
 	}, []);
 
-	const websocketUrl = `/ws/dm/${conversationId}`;
-	const { sendMessage } = useWebSocket(websocketUrl, handleWebSocketMessage);
+	const { sendMessage } = useWebSocket(`/ws/dm/${conversationId}`, handleWebSocketMessage);
+
+	useEffect(() => { if (initialMessages) setMessages(initialMessages); }, [initialMessages]);
 
 	useEffect(() => {
-		if (initialMessages) {
-			setMessages(initialMessages);
-		}
-	}, [initialMessages]);
-
-	useEffect(() => {
-		// When messages load or a new one arrives, check for unread messages to mark as read
-		const unreadMessageIds = messages
-			.filter(msg => msg.senderId !== user.id && msg.status !== 'READ')
-			.map(msg => msg.id);
-
-		if (unreadMessageIds.length > 0) {
-			sendMessage({ type: 'mark_as_read', payload: { messageIds: unreadMessageIds } });
-		}
+		const unreadMessageIds = messages.filter(msg => msg.senderId !== user.id && msg.status !== 'READ').map(msg => msg.id);
+		if (unreadMessageIds.length > 0) sendMessage({ type: 'mark_as_read', payload: { messageIds: unreadMessageIds } });
 	}, [messages, user.id, sendMessage]);
 
-	useEffect(() => {
-		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-	}, [messages]);
-
-	const handleSubmit = (e) => {
-		e.preventDefault();
+	const handleSubmit = () => {
 		if (newMessage.trim()) {
 			sendMessage({ type: 'new_message', messageText: newMessage });
 			setNewMessage('');
 		}
 	};
-
-	const handleFileUpload = async (event) => {
-		const file = event.target.files[0];
-		if (!file) return;
-
-		setIsUploading(true);
-		const formData = new FormData();
-		formData.append('file', file);
-
-		try {
-			const result = await apiClient.post('/public/chat/upload', formData);
-			if (result.success) {
-				const fileUrl = `/api/v1/public/files/download/${result.data.id}`;
-				const messageText = `Datei hochgeladen: [${result.data.filename}](${fileUrl})`;
-				sendMessage({ type: 'new_message', messageText });
-			} else {
-				throw new Error(result.message);
-			}
-		} catch (err) {
-			addToast(err.message || 'Datei-Upload fehlgeschlagen.', 'error');
-		} finally {
-			setIsUploading(false);
-		}
-	};
-
-	const renderMessageContent = (msg) => {
-		const text = msg.messageText;
+    
+    const renderMessageContent = (msg) => {
 		const isSentByMe = msg.senderId === user.id;
-
-		if (msg.isDeleted) {
-			return <em style={{ opacity: 0.7 }}>{text}</em>;
-		}
-
-		const imageRegex = /\[(.*?)\]\((.*?)\.(png|jpg|jpeg|gif)\)/i;
-		const match = text.match(imageRegex);
-
-		if (match) {
-			const altText = match[1];
-			const imageUrl = match[2] + '.' + match[3];
-			return <img src={imageUrl} alt={altText} style={{ maxWidth: '100%', borderRadius: '12px' }} />;
-		}
-
 		const fileRegex = /\[(.*?)\]\((.*?)\)/;
-		const fileMatch = text.match(fileRegex);
-
+		const fileMatch = msg.messageText.match(fileRegex);
 		if (fileMatch) {
 			const fileName = fileMatch[1];
 			const fileUrl = fileMatch[2];
-			return <a href={fileUrl} target="_blank" rel="noopener noreferrer" style={{ color: isSentByMe ? '#fff' : '#000' }}><i className="fas fa-file-alt"></i> {fileName}</a>;
+			return <TouchableOpacity onPress={() => Linking.openURL(fileUrl)}><Text style={{ color: isSentByMe ? colors.white : colors.text }}><Icon name="file-alt" /> {fileName}</Text></TouchableOpacity>;
 		}
-
-		return text;
-	};
-
-	const handleEditClick = (msg) => {
-		setEditingMessageId(msg.id);
-		setEditingText(msg.messageText);
-	};
-
-	const handleCancelEdit = () => {
-		setEditingMessageId(null);
-		setEditingText('');
-	};
-
-	const handleEditSubmit = () => {
-		if (editingText.trim()) {
-			sendMessage({
-				type: 'update_message',
-				payload: { messageId: editingMessageId, newText: editingText }
-			});
-			handleCancelEdit();
-		}
-	};
-
-	const handleDeleteClick = (msg) => {
-		if (window.confirm('Nachricht wirklich löschen?')) {
-			sendMessage({
-				type: 'delete_message',
-				payload: { messageId: msg.id }
-			});
-		}
-	};
-
-	const handleTouchStart = (messageId) => {
-		longPressTimer.current = setTimeout(() => {
-			setActiveOptionsMessageId(messageId);
-		}, 500); // 500ms for a long press
-	};
-
-	const handleTouchEnd = () => {
-		clearTimeout(longPressTimer.current);
-	};
-
-	const handleTouchMove = () => {
-		clearTimeout(longPressTimer.current);
-	};
-
-	const handleLeaveGroup = async () => {
-		if (window.confirm(`Möchten Sie die Gruppe "${conversation.name}" wirklich verlassen?`)) {
-			try {
-				const result = await apiClient.post(`/public/chat/conversations/${conversationId}/leave`);
-				if (result.success) {
-					addToast('Sie haben die Gruppe verlassen.', 'success');
-					navigate('/chat');
-				} else {
-					throw new Error(result.message);
-				}
-			} catch (err) {
-				addToast(err.message, 'error');
-			}
-		}
-	};
-
-	const handleAddUsers = async (userIds) => {
-		setIsManageModalOpen(false);
-		try {
-			const result = await apiClient.post(`/public/chat/conversations/${conversationId}/participants`, { userIds });
-			if (result.success) {
-				addToast('Mitglieder erfolgreich hinzugefügt.', 'success');
-				reloadConversation();
-			} else {
-				throw new Error(result.message);
-			}
-		} catch (err) {
-			addToast(err.message, 'error');
-		}
-	};
-
-	const handleRemoveUser = () => {
-		reloadConversation();
+		return <MarkdownDisplay style={{body: {color: isSentByMe ? colors.white : colors.text}}}>{msg.messageText}</MarkdownDisplay>;
 	};
 
 	const getHeaderText = () => {
 		if (!conversation) return 'Lade...';
 		if (conversation.groupChat) return conversation.name;
-
-		// Find the other participant in a 1-on-1 chat
-		const otherParticipant = conversation.participants?.find(p => p.id !== user.id);
-		return otherParticipant ? otherParticipant.username : 'Unbekannt';
+		const other = conversation.participants?.find(p => p.id !== user.id);
+		return other ? other.username : 'Unbekannt';
 	};
 
 	return (
-		<div className="message-view-container" onClick={() => setActiveOptionsMessageId(null)}>
-			<div className="message-view-header">
-				<Link to="/chat" className="back-button">
-					<i className="fas fa-arrow-left"></i>
-				</Link>
-				<h3>{getHeaderText()}</h3>
-				{conversation?.groupChat && conversation.creatorId === user.id && (
-					<button onClick={() => setIsManageModalOpen(true)} className="btn btn-small manage-members-btn" title="Mitglieder verwalten">
-						<i className="fas fa-user-plus"></i>
-					</button>
-				)}
-				{conversation?.groupChat && (
-					<button onClick={handleLeaveGroup} className="btn btn-small btn-danger-outline" title="Gruppe verlassen">
-						<i className="fas fa-sign-out-alt"></i>
-					</button>
-				)}
-			</div>
-			<div className="message-list">
-				{messagesLoading && <p>Lade Nachrichten...</p>}
-				{messagesError && <p className="error-message">{messagesError}</p>}
-				{[...messages].reverse().map(msg => {
-					const isSentByMe = msg.senderId === user.id;
-					const isMessageEditable = () => {
-						if (!msg.sentAt) return false;
-						const sentAt = new Date(msg.sentAt);
-						const now = new Date();
-						return (now - sentAt) < 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-					};
-					const canEdit = !msg.isDeleted && isSentByMe && isMessageEditable();
-					const canDelete = !msg.isDeleted && (isSentByMe || (conversation?.groupChat && conversation.creatorId === user.id));
-					const isEditing = editingMessageId === msg.id;
-					return (
-						<div
-							key={msg.id}
-							className={`message-bubble-container ${isSentByMe ? 'sent' : 'received'} ${activeOptionsMessageId === msg.id ? 'options-visible' : ''}`}
-							onTouchStart={() => handleTouchStart(msg.id)}
-							onTouchEnd={handleTouchEnd}
-							onTouchMove={handleTouchMove}
-							onClick={(e) => { if (activeOptionsMessageId) e.stopPropagation() }}
-						>
-							<div
-								className="message-bubble"
-								style={!isSentByMe ? { backgroundColor: msg.chatColor } : {}}
-							>
-								{!isSentByMe && !msg.isDeleted && <div className="message-sender">{msg.senderUsername}</div>}
-								{isEditing ? (
-									<div>
-										<textarea value={editingText} onChange={(e) => setEditingText(e.target.value)} className="chat-edit-input" autoFocus />
-										<div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
-											<button onClick={handleEditSubmit} className="btn btn-small btn-success">Speichern</button>
-											<button onClick={handleCancelEdit} className="btn btn-small btn-secondary">Abbrechen</button>
-										</div>
-									</div>
-								) : (
-									<>
-										{renderMessageContent(msg)}
-										<div className="message-meta">
-											{!msg.isDeleted && <span>{new Date(msg.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</span>}
-											{msg.edited && <em style={{ opacity: 0.8 }} title={`Bearbeitet am ${new Date(msg.editedAt).toLocaleString('de-DE')}`}>(bearbeitet)</em>}
-											{!msg.isDeleted && <MessageStatus status={msg.status} isSentByMe={isSentByMe} />}
-										</div>
-									</>
-								)}
-							</div>
-							{!msg.isDeleted && !isEditing && (canEdit || canDelete) && (
-								<div className="chat-options">
-									{canEdit && <button onClick={() => handleEditClick(msg)} className="chat-option-btn" title="Bearbeiten"><i className="fas fa-pencil-alt"></i></button>}
-									{canDelete && <button onClick={() => handleDeleteClick(msg)} className="chat-option-btn" title="Löschen"><i className="fas fa-trash"></i></button>}
-								</div>
-							)}
-						</div>
-					)
-				})}
-				<div ref={messagesEndRef} />
-			</div>
-			<div className="message-input-container">
-				<form onSubmit={handleSubmit} className="message-input-form">
-					<input
-						type="file"
-						ref={fileInputRef}
-						onChange={handleFileUpload}
-						style={{ display: 'none' }}
-						accept="image/*,application/pdf"
-					/>
-					<button type="button" className="btn" onClick={() => fileInputRef.current.click()} disabled={isUploading} title="Datei anhängen">
-						{isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-paperclip"></i>}
-					</button>
-					<input
-						type="text"
-						value={newMessage}
-						onChange={(e) => setNewMessage(e.target.value)}
-						placeholder="Nachricht schreiben..."
-						className="message-input"
-					/>
-					<button type="submit" className="btn">Senden</button>
-				</form>
-			</div>
-			{isManageModalOpen && conversation && (
-				<ManageParticipantsModal
-					isOpen={isManageModalOpen}
-					onClose={() => setIsManageModalOpen(false)}
-					onAddUsers={handleAddUsers}
-					onRemoveUser={handleRemoveUser}
-					conversation={conversation}
-				/>
-			)}
-		</div>
+		<View style={styles.container}>
+			<View style={styles.header}>
+				<TouchableOpacity onPress={() => navigation.goBack()}><Icon name="arrow-left" size={20} /></TouchableOpacity>
+				<Text style={styles.headerTitle}>{getHeaderText()}</Text>
+                {conversation?.groupChat && conversation.creatorId === user.id && <TouchableOpacity onPress={() => setIsManageModalOpen(true)}><Icon name="user-plus" size={20} /></TouchableOpacity>}
+			</View>
+			<FlatList
+                data={messages}
+                inverted
+                keyExtractor={item => item.id.toString()}
+                renderItem={({ item: msg }) => {
+                    const isSentByMe = msg.senderId === user.id;
+                    return (
+                        <View style={[styles.bubbleContainer, isSentByMe ? styles.sent : styles.received]}>
+                             <View style={[styles.bubble, isSentByMe ? {backgroundColor: colors.primary} : {backgroundColor: msg.chatColor || colors.background}]}>
+                                {!isSentByMe && <Text style={[styles.sender, {color: colors.primary}]}>{msg.senderUsername}</Text>}
+                                {renderMessageContent(msg)}
+                                <View style={styles.metaContainer}>
+                                    <Text style={[styles.timestamp, isSentByMe && {color: 'rgba(255,255,255,0.7)'}]}>{new Date(msg.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</Text>
+                                    <MessageStatus status={msg.status} isSentByMe={isSentByMe} />
+                                </View>
+                            </View>
+                        </View>
+                    )
+                }}
+                contentContainerStyle={{padding: spacing.md}}
+            />
+			<View style={styles.inputContainer}>
+				<TextInput style={styles.input} value={newMessage} onChangeText={setNewMessage} placeholder="Nachricht schreiben..." />
+				<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit}><Text style={styles.buttonText}>Senden</Text></TouchableOpacity>
+			</View>
+            {isManageModalOpen && conversation && <ManageParticipantsModal isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} onAddUsers={() => {}} onRemoveUser={() => {}} conversation={conversation}/>}
+		</View>
 	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        header: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderBottomWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+        headerTitle: { flex: 1, fontSize: typography.h4, fontWeight: 'bold', textAlign: 'center' },
+        bubbleContainer: { flexDirection: 'row', maxWidth: '80%', marginVertical: spacing.xs },
+        sent: { alignSelf: 'flex-end', justifyContent: 'flex-end' },
+        received: { alignSelf: 'flex-start', justifyContent: 'flex-start' },
+        bubble: { padding: spacing.sm, borderRadius: 18 },
+        sender: { fontWeight: 'bold', fontSize: typography.small, marginBottom: 2 },
+        metaContainer: { flexDirection: 'row', alignSelf: 'flex-end', alignItems: 'center', gap: spacing.xs, marginTop: 4 },
+        timestamp: { fontSize: typography.caption, color: colors.textMuted },
+        inputContainer: { flexDirection: 'row', padding: spacing.sm, borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, gap: spacing.sm },
+        input: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: spacing.md, backgroundColor: colors.background }
+    });
 };
 
 export default MessageView;

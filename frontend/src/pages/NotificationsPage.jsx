@@ -1,56 +1,81 @@
 import React, { useCallback, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import { useAuthStore } from '../store/authStore';
+import { getCommonStyles } from '../styles/commonStyles';
+import { getThemeColors, typography, spacing } from '../styles/theme';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
-const NotificationItem = ({ notification }) => {
+const NotificationItem = ({ notification, styles, colors }) => {
+    const navigation = useNavigation();
+
 	const getIcon = (level) => {
 		switch (level) {
-			case 'Warning': return 'fa-exclamation-triangle';
-			case 'Important': return 'fa-exclamation-circle';
-			default: return 'fa-info-circle';
+			case 'Warning': return 'exclamation-triangle';
+			case 'Important': return 'exclamation-circle';
+			default: return 'info-circle';
 		}
 	};
 
 	const getIconColor = (level) => {
 		switch (level) {
-			case 'Warning': return 'var(--danger-color)';
-			case 'Important': return 'var(--warning-color)';
-			default: return 'var(--info-color)';
+			case 'Warning': return colors.danger;
+			case 'Important': return colors.warning;
+			default: return colors.info;
 		}
 	};
+    
+    const handlePress = () => {
+        if (notification.url) {
+            // Very basic URL parsing for this app's routes
+            // This needs to be more robust in a real app
+            const parts = notification.url.split('/').filter(Boolean);
+            if (parts.length >= 2) {
+                const routeName = parts[0].charAt(0).toUpperCase() + parts[0].slice(1); // e.g., 'veranstaltungen' -> 'Veranstaltungen'
+                const detailRoute = `${routeName}Details`; // e.g., 'VeranstaltungenDetails'
+                const paramName = `${parts[1]}Id`; // e.g., 'detailsId' -> simplified to 'eventId'
+                const id = parts[2];
+                // This is a simplified navigation logic
+                // A real app would have a more robust URL parsing service
+                if (routeName === 'Veranstaltungen') {
+                    navigation.navigate('EventDetails', { eventId: id });
+                }
+            }
+        }
+    };
 
 	const content = (
-		<div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>
-			<i className={`fas ${getIcon(notification.level)}`} style={{ fontSize: '1.5rem', color: getIconColor(notification.level), marginTop: '0.25rem' }}></i>
-			<div style={{ flex: 1 }}>
-				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-					<h4 style={{ margin: 0 }}>{notification.title}</h4>
-					<small style={{ color: 'var(--text-muted-color)' }}>{new Date(notification.createdAt).toLocaleString('de-DE')}</small>
-				</div>
-				<p style={{ margin: '0.25rem 0 0 0' }}>{notification.description}</p>
-			</div>
-		</div>
+		<View style={[styles.itemContainer, !notification.seen && styles.unseenItem]}>
+			<Icon name={getIcon(notification.level)} size={24} style={{ color: getIconColor(notification.level), marginRight: spacing.md }} />
+			<View style={{ flex: 1 }}>
+				<View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+					<Text style={styles.itemTitle}>{notification.title}</Text>
+					<Text style={styles.itemDate}>{new Date(notification.createdAt).toLocaleString('de-DE')}</Text>
+				</View>
+				<Text style={styles.itemDescription}>{notification.description}</Text>
+			</View>
+		</View>
 	);
 
-	return notification.url ? <Link to={notification.url} style={{ textDecoration: 'none', color: 'inherit' }}>{content}</Link> : content;
+	return notification.url ? <TouchableOpacity onPress={handlePress}>{content}</TouchableOpacity> : content;
 };
-
 
 const NotificationsPage = () => {
 	const setUnseenCount = useAuthStore(state => state.setUnseenNotificationCount);
 	const apiCall = useCallback(() => apiClient.get('/public/notifications'), []);
-	const { data: notifications, loading, error, reload } = useApi(apiCall);
+	const { data: notifications, loading, error } = useApi(apiCall);
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
 	useEffect(() => {
 		const markAsSeen = async () => {
 			try {
 				await apiClient.post('/public/notifications/mark-all-seen');
 				setUnseenCount(0);
-			} catch (err) {
-				console.error("Failed to mark notifications as seen", err);
-			}
+			} catch (err) { console.error("Failed to mark notifications as seen", err); }
 		};
 		markAsSeen();
 	}, [setUnseenCount]);
@@ -58,42 +83,37 @@ const NotificationsPage = () => {
 	const unseenNotifications = notifications?.filter(n => !n.seen) || [];
 	const seenNotifications = notifications?.filter(n => n.seen) || [];
 
-	// Custom sort for unseen notifications
-	const levelOrder = { 'Warning': 1, 'Important': 2, 'Informational': 3 };
-	unseenNotifications.sort((a, b) => {
-		const levelCompare = (levelOrder[a.level] || 99) - (levelOrder[b.level] || 99);
-		if (levelCompare !== 0) return levelCompare;
-		return new Date(b.createdAt) - new Date(a.createdAt);
-	});
-
-
 	return (
-		<div>
-			<h1><i className="fas fa-bell"></i> Benachrichtigungen</h1>
-			<p>Hier sehen Sie eine Übersicht aller an Sie gesendeten Benachrichtigungen.</p>
+		<View style={styles.container}>
+			<Text style={styles.title}>Benachrichtigungen</Text>
 
-			{loading && <p>Lade Benachrichtigungen...</p>}
-			{error && <p className="error-message">{error}</p>}
+			{loading && <ActivityIndicator size="large" />}
+			{error && <Text style={styles.errorText}>{error}</Text>}
 
-			<div className="card">
-				<h2 className="card-title">Ungelesene Benachrichtigungen</h2>
-				{unseenNotifications.length > 0 ? (
-					unseenNotifications.map(n => <NotificationItem key={n.id} notification={n} />)
-				) : (
-					<p style={{ padding: '1rem' }}>Keine ungelesenen Benachrichtigungen.</p>
-				)}
-			</div>
-
-			<div className="card" style={{ marginTop: '1.5rem' }}>
-				<h2 className="card-title">Gelesene Benachrichtigungen</h2>
-				{seenNotifications.length > 0 ? (
-					seenNotifications.map(n => <NotificationItem key={n.id} notification={n} />)
-				) : (
-					<p style={{ padding: '1rem' }}>Keine gelesenen Benachrichtigungen.</p>
-				)}
-			</div>
-		</div>
+			<FlatList
+                data={[...unseenNotifications, ...seenNotifications]}
+                keyExtractor={item => item.id.toString()}
+                renderItem={({item}) => <NotificationItem notification={item} styles={styles} colors={colors} />}
+                ListHeaderComponent={
+                    <Text style={styles.sectionHeader}>
+                        {unseenNotifications.length > 0 ? 'Ungelesen' : 'Keine neuen Benachrichtigungen'}
+                    </Text>
+                }
+            />
+		</View>
 	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        itemContainer: { flexDirection: 'row', alignItems: 'flex-start', padding: spacing.md, borderBottomWidth: 1, borderColor: colors.border },
+        unseenItem: { backgroundColor: colors.primaryLight },
+        itemTitle: { fontWeight: 'bold', fontSize: typography.body, color: colors.text, flex: 1 },
+        itemDate: { fontSize: typography.caption, color: colors.textMuted },
+        itemDescription: { marginTop: spacing.xs, color: colors.text },
+        sectionHeader: { fontSize: typography.h4, fontWeight: 'bold', padding: spacing.md, backgroundColor: colors.background }
+    });
 };
 
 export default NotificationsPage;

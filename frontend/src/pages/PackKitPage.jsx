@@ -1,81 +1,85 @@
 import React, { useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
+import { useAuthStore } from '../store/authStore';
+import { getCommonStyles } from '../styles/commonStyles';
+import { getThemeColors, spacing } from '../styles/theme';
+import BouncyCheckbox from "react-native-bouncy-checkbox";
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const PackKitPage = () => {
-	const { kitId } = useParams();
+    const navigation = useNavigation();
+	const route = useRoute();
+	const { kitId } = route.params;
 	const apiCall = useCallback(() => apiClient.get(`/public/kits/${kitId}`), [kitId]);
 	const { data: kit, loading, error } = useApi(apiCall);
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
-	if (loading) return <div>Lade Packliste...</div>;
-	if (error) return <div className="error-message">{error}</div>;
-	if (!kit) return <div className="error-message">Kit nicht gefunden.</div>;
+	const handlePrint = () => {
+        // Printing in React Native requires a dedicated library like 'react-native-print'.
+        Alert.alert("Drucken", "Die Druckfunktion ist in der mobilen App nicht verfügbar.");
+    };
+
+	if (loading) return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
+	if (error) return <View style={styles.centered}><Text style={styles.errorText}>{error}</Text></View>;
+	if (!kit) return <View style={styles.centered}><Text style={styles.errorText}>Kit nicht gefunden.</Text></View>;
 
 	return (
-		<div className="card">
-			<style>{`
-                @media print {
-                    body * {
-                        visibility: hidden;
-                    }
-                    .printable-area, .printable-area * {
-                        visibility: visible;
-                    }
-                    .printable-area {
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                        width: 100%;
-                    }
-                    .no-print {
-                        display: none !important;
-                    }
-                }
-            `}</style>
-			<div className="printable-area">
-				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-					<div>
-						<h1>Packliste: {kit.name}</h1>
-						<p className="details-subtitle" style={{ marginTop: '-1rem' }}>
-							{kit.description}
-						</p>
-					</div>
-					<button className="btn no-print" onClick={() => window.print()}>
-						<i className="fas fa-print"></i> Drucken
-					</button>
-				</div>
+		<ScrollView style={styles.container}>
+			<View style={styles.card}>
+				<View style={styles.header}>
+					<View style={{flex: 1}}>
+						<Text style={styles.title}>Packliste: {kit.name}</Text>
+						<Text style={styles.subtitle}>{kit.description}</Text>
+					</View>
+					<TouchableOpacity style={styles.printButton} onPress={handlePrint}>
+						<Icon name="print" size={20} color={colors.text} />
+					</TouchableOpacity>
+				</View>
 
 				{kit.location && (
-					<div className="card" style={{ backgroundColor: 'var(--bg-color)' }}>
-						<h3 className="card-title" style={{ border: 'none', padding: 0 }}>Standort</h3>
-						<p style={{ fontSize: '1.2rem', fontWeight: '500' }}>{kit.location}</p>
-					</div>
+					<View style={[styles.card, {backgroundColor: colors.background}]}>
+						<Text style={styles.cardTitle}>Standort</Text>
+						<Text style={styles.locationText}>{kit.location}</Text>
+					</View>
 				)}
 
-				<h3 style={{ marginTop: '2rem' }}>Inhalt zum Einpacken</h3>
-				<ul className="details-list">
-					{!kit.items || kit.items.length === 0 ? (
-						<li>Dieses Kit hat keinen definierten Inhalt.</li>
-					) : (
-						kit.items.map(item => (
-							<li key={item.itemId}>
-								<label style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer', width: '100%' }}>
-									<input type="checkbox" style={{ width: '1.5rem', height: '1.5rem', flexShrink: 0 }} />
-									<span>
-										<strong>{item.quantity}x</strong> {item.itemName}
-									</span>
-								</label>
-							</li>
-						))
-					)}
-				</ul>
-			</div>
-			<div className="no-print" style={{ marginTop: '2rem', textAlign: 'center' }}>
-				<Link to="/lager" className="btn btn-secondary">Zurück zur Lagerübersicht</Link>
-			</div>
-		</div>
+				<Text style={styles.contentHeader}>Inhalt zum Einpacken</Text>
+				{!kit.items || kit.items.length === 0 ? (
+					<Text>Dieses Kit hat keinen definierten Inhalt.</Text>
+				) : (
+					kit.items.map(item => (
+						<BouncyCheckbox
+                            key={item.itemId}
+                            style={{paddingVertical: 8}}
+                            text={`${item.quantity}x ${item.itemName}`}
+                            textStyle={{ color: colors.text, textDecorationLine: 'none', fontSize: 16 }}
+                            fillColor={colors.primary}
+                            innerIconStyle={{ borderWidth: 2 }}
+                        />
+					))
+				)}
+			</View>
+			<TouchableOpacity style={[styles.button, styles.secondaryButton, {marginTop: 24}]} onPress={() => navigation.navigate('Lager')}>
+				<Text style={styles.buttonText}>Zurück zur Lagerübersicht</Text>
+			</TouchableOpacity>
+		</ScrollView>
 	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        container: { flex: 1, backgroundColor: colors.background, padding: spacing.md },
+        header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+        printButton: { padding: spacing.sm },
+        locationText: { fontSize: 18, fontWeight: '500' },
+        contentHeader: { fontSize: 18, fontWeight: 'bold', marginTop: spacing.lg, marginBottom: spacing.sm },
+    });
 };
 
 export default PackKitPage;

@@ -19,7 +19,7 @@ const FileLink = ({ file, navigation }) => {
 
 	const handleConfirmDownload = () => {
 		setIsModalOpen(false);
-		const downloadUrl = `${apiClient.getBaseUrl()}/public/files/download/${file.id}`;
+		const downloadUrl = `${apiClient.getBaseUrl()}/api/v1/public/files/download/${file.id}`;
 		Linking.openURL(downloadUrl).catch(err => console.error("Couldn't load page", err));
 	};
 

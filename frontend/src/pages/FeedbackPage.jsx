@@ -1,10 +1,18 @@
 import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, FlatList, StyleSheet } from 'react-native';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import StatusBadge from '../components/ui/StatusBadge';
 import { useToast } from '../context/ToastContext';
+import { useAuthStore } from '../store/authStore';
+import { getCommonStyles } from '../styles/commonStyles';
+import { getThemeColors, spacing } from '../styles/theme';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const FeedbackPage = () => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+
 	const apiCall = useCallback(() => apiClient.get('/public/feedback/user'), []);
 	const { data: submissions, loading, error, reload } = useApi(apiCall);
 	const [subject, setSubject] = useState('');
@@ -13,8 +21,7 @@ const FeedbackPage = () => {
 	const [submitError, setSubmitError] = useState('');
 	const { addToast } = useToast();
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
+	const handleSubmit = async () => {
 		setIsSubmitting(true);
 		setSubmitError('');
 
@@ -35,55 +42,62 @@ const FeedbackPage = () => {
 		}
 	};
 
+    const renderSubmission = ({ item }) => (
+        <View style={styles.card}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Text style={styles.cardTitle}>{item.subject}</Text>
+                <StatusBadge status={item.status} />
+            </View>
+            <Text style={styles.subtitle}>
+                Eingereicht am {new Date(item.submittedAt).toLocaleString('de-DE')}
+            </Text>
+            <Text style={styles.bodyText}>{item.content}</Text>
+        </View>
+    );
+
 	return (
-		<div>
-			<h1><i className="fas fa-lightbulb"></i> Feedback & Wünsche</h1>
-			<div className="responsive-dashboard-grid">
-				<div className="card">
-					<h2 className="card-title">Neues Feedback einreichen</h2>
-					<p>Hast du eine Idee, einen Verbesserungsvorschlag oder ist dir ein Fehler aufgefallen?</p>
+		<ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+			<View style={styles.headerContainer}>
+                <Icon name="lightbulb" size={24} style={styles.headerIcon} />
+			    <Text style={styles.title}>Feedback & Wünsche</Text>
+            </View>
+            <View style={styles.card}>
+                <Text style={styles.cardTitle}>Neues Feedback einreichen</Text>
+                <Text style={styles.subtitle}>Hast du eine Idee, einen Verbesserungsvorschlag oder ist dir ein Fehler aufgefallen?</Text>
+                {submitError && <Text style={styles.errorText}>{submitError}</Text>}
+                
+                <Text style={styles.label}>Betreff</Text>
+                <TextInput style={styles.input} value={subject} onChangeText={setSubject} placeholder="z.B. Feature-Wunsch: Dunkelmodus" />
 
-					{submitError && <p className="error-message">{submitError}</p>}
+                <Text style={styles.label}>Deine Nachricht</Text>
+                <TextInput style={[styles.input, styles.textArea]} value={content} onChangeText={setContent} multiline placeholder="Bitte beschreibe deine Idee oder das Problem..." />
 
-					<form onSubmit={handleSubmit}>
-						<div className="form-group">
-							<label htmlFor="subject">Betreff</label>
-							<input type="text" id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} required maxLength="255" placeholder="z.B. Feature-Wunsch: Dunkelmodus" />
-						</div>
-						<div className="form-group">
-							<label htmlFor="content">Deine Nachricht</label>
-							<textarea id="content" value={content} onChange={(e) => setContent(e.target.value)} rows="8" required placeholder="Bitte beschreibe deine Idee oder das Problem..."></textarea>
-						</div>
-						<button type="submit" className="btn btn-success" disabled={isSubmitting}>
-							{isSubmitting ? <><i className="fas fa-spinner fa-spin"></i> Senden...</> : <><i className="fas fa-paper-plane"></i> Feedback absenden</>}
-						</button>
-					</form>
-				</div>
-				<div className="card">
-					<h2 className="card-title">Mein eingereichtes Feedback</h2>
-					{loading && <p>Lade Feedback...</p>}
-					{error && <p className="error-message">{error}</p>}
-					{submissions && submissions.length === 0 && <p>Sie haben noch kein Feedback eingereicht.</p>}
-					{submissions && submissions.length > 0 && (
-						<div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-							{submissions.map(sub => (
-								<div className="list-item-card" key={sub.id} style={{ marginBottom: '1rem' }}>
-									<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-										<h3 className="card-title" style={{ border: 'none', padding: 0 }}>{sub.subject}</h3>
-										<StatusBadge status={sub.status} />
-									</div>
-									<p style={{ color: 'var(--text-muted-color)', marginTop: '-0.75rem', marginBottom: '1rem' }}>
-										Eingereicht am {new Date(sub.submittedAt).toLocaleString('de-DE')}
-									</p>
-									<p>{sub.content}</p>
-								</div>
-							))}
-						</div>
-					)}
-				</div>
-			</div>
-		</div>
+                <TouchableOpacity style={[styles.button, styles.successButton]} onPress={handleSubmit} disabled={isSubmitting}>
+                    {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Feedback absenden</Text>}
+                </TouchableOpacity>
+            </View>
+
+            <View style={styles.card}>
+                <Text style={styles.cardTitle}>Mein eingereichtes Feedback</Text>
+                {loading && <ActivityIndicator />}
+                {error && <Text style={styles.errorText}>{error}</Text>}
+                <FlatList
+                    data={submissions}
+                    renderItem={renderSubmission}
+                    keyExtractor={item => item.id.toString()}
+                    ListEmptyComponent={<Text>Du hast noch kein Feedback eingereicht.</Text>}
+                />
+            </View>
+		</ScrollView>
 	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        headerContainer: { flexDirection: 'row', alignItems: 'center' },
+        headerIcon: { color: colors.heading, marginRight: 12 },
+    });
 };
 
 export default FeedbackPage;

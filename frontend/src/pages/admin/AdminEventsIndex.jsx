@@ -9,11 +9,12 @@ const AdminEventsIndex = ({ navigation }) => {
 	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
 	const baseLinks = [
 		{ to: 'AdminEvents', label: 'Events Verwalten', icon: 'calendar-plus', perm: 'EVENT_READ' },
 		{ to: 'AdminDebriefingsList', label: 'Debriefing-Übersicht', icon: 'clipboard-check', perm: 'EVENT_DEBRIEFING_VIEW' },
-		{ to: 'AdminEventRoles', label: 'Event-Rollen', icon: 'user-tag', perm: 'EVENT_CREATE' },
+		// { to: 'AdminEventRoles', label: 'Event-Rollen', icon: 'user-tag', perm: 'EVENT_CREATE' }, // TODO: Re-enable when AdminEventRolesPage.jsx is created/fixed
 		{ to: 'AdminVenues', label: 'Veranstaltungsorte', icon: 'map-marked-alt', perm: 'EVENT_CREATE' },
 		{ to: 'AdminChecklistTemplates', label: 'Checklist-Vorlagen', icon: 'tasks', perm: 'EVENT_MANAGE_TASKS' },
 	];
@@ -33,7 +34,7 @@ const AdminEventsIndex = ({ navigation }) => {
             <View style={styles.grid}>
                 {baseLinks.filter(link => can(link.perm)).map(link => (
                     <TouchableOpacity key={link.to} style={styles.card} onPress={() => navigation.navigate(link.to)}>
-                        <Icon name={link.icon} size={48} color={getThemeColors(theme).primary} />
+                        <Icon name={link.icon} size={48} color={colors.primary} />
                         <Text style={styles.cardTitle}>{link.label}</Text>
                     </TouchableOpacity>
                 ))}

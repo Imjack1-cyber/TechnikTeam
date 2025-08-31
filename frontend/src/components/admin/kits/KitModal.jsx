@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Modal from '../../ui/Modal';
 import apiClient from '../../../services/apiClient';
 import { useToast } from '../../../context/ToastContext';
+import { useAuthStore } from '../../../store/authStore';
+import { getCommonStyles } from '../../../styles/commonStyles';
 
 const KitModal = ({ isOpen, onClose, onSuccess, kit }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = getCommonStyles(theme);
 	const isEditMode = !!kit;
 	const [formData, setFormData] = useState({
 		name: kit?.name || '',
@@ -14,12 +19,11 @@ const KitModal = ({ isOpen, onClose, onSuccess, kit }) => {
 	const [error, setError] = useState('');
 	const { addToast } = useToast();
 
-	const handleChange = (e) => {
-		setFormData({ ...formData, [e.target.name]: e.target.value });
+	const handleChange = (name, value) => {
+		setFormData({ ...formData, [name]: value });
 	};
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
+	const handleSubmit = async () => {
 		setIsSubmitting(true);
 		setError('');
 
@@ -43,24 +47,24 @@ const KitModal = ({ isOpen, onClose, onSuccess, kit }) => {
 
 	return (
 		<Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? "Kit bearbeiten" : "Neues Kit anlegen"}>
-			<form onSubmit={handleSubmit}>
-				{error && <p className="error-message">{error}</p>}
-				<div className="form-group">
-					<label htmlFor="name-modal">Name des Kits</label>
-					<input type="text" id="name-modal" name="name" value={formData.name} onChange={handleChange} required />
-				</div>
-				<div className="form-group">
-					<label htmlFor="description-modal">Beschreibung</label>
-					<textarea id="description-modal" name="description" value={formData.description} onChange={handleChange} rows="3"></textarea>
-				</div>
-				<div className="form-group">
-					<label htmlFor="location-modal">Physischer Standort des Kits</label>
-					<input type="text" id="location-modal" name="location" value={formData.location} onChange={handleChange} placeholder="z.B. Lager, Schrank 3, Fach A" />
-				</div>
-				<button type="submit" className="btn" disabled={isSubmitting}>
-					{isSubmitting ? 'Wird gespeichert...' : 'Speichern'}
-				</button>
-			</form>
+			<View>
+				{error && <Text style={styles.errorText}>{error}</Text>}
+				<View style={styles.formGroup}>
+					<Text style={styles.label}>Name des Kits</Text>
+					<TextInput style={styles.input} value={formData.name} onChangeText={(val) => handleChange('name', val)} />
+				</View>
+				<View style={styles.formGroup}>
+					<Text style={styles.label}>Beschreibung</Text>
+					<TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={(val) => handleChange('description', val)} multiline />
+				</View>
+				<View style={styles.formGroup}>
+					<Text style={styles.label}>Physischer Standort des Kits</Text>
+					<TextInput style={styles.input} value={formData.location} onChangeText={(val) => handleChange('location', val)} placeholder="z.B. Lager, Schrank 3, Fach A" />
+				</View>
+				<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}>
+					{isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Speichern</Text>}
+				</TouchableOpacity>
+			</View>
 		</Modal>
 	);
 };

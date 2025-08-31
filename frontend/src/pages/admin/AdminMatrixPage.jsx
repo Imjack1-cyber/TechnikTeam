@@ -37,6 +37,7 @@ const AdminMatrixPage = () => {
 
 	if (loading) return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
 	if (error) return <View style={styles.centered}><Text style={styles.errorText}>{error}</Text></View>;
+    if (!data) return <View style={styles.centered}><Text>Matrixdaten konnten nicht geladen werden.</Text></View>;
 
     const allMeetings = courses?.flatMap(course => meetingsByCourse[course.id] || [{id: `${course.id}-placeholder`, name: '-', courseId: course.id}]) || [];
 
@@ -90,7 +91,20 @@ const AdminMatrixPage = () => {
                                              const attendance = attendanceMap[`${user.id}-${meeting.id}`];
                                              const attended = attendance ? attendance.attended : false;
                                              return (
-                                                 <TouchableOpacity key={meeting.id} style={[styles.cell, {width: CELL_WIDTH}]} onPress={() => openModal({userId: user.id, meetingId: meeting.id /*... more data needed */})}>
+                                                 <TouchableOpacity 
+                                                    key={meeting.id} 
+                                                    style={[styles.cell, {width: CELL_WIDTH}]} 
+                                                    onPress={() => openModal({
+                                                        userId: user.id,
+                                                        userName: user.username,
+                                                        meetingId: meeting.id,
+                                                        meetingName: meeting.name,
+                                                        courseId: course.id,
+                                                        courseName: course.name,
+                                                        attended: attended,
+                                                        remarks: attendance?.remarks || '',
+                                                        qualification: allQualifications?.find(q => q.userId === user.id && q.courseId === course.id)
+                                                    })}>
                                                      {attended ? <Icon name="check" size={20} color={colors.success} /> : <Text style={{color: colors.textMuted}}>-</Text>}
                                                  </TouchableOpacity>
                                              );

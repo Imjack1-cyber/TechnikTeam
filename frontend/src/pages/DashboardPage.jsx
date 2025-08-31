@@ -1,10 +1,11 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { ScrollView, View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import { useAuthStore } from '../store/authStore';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Widget from '../components/admin/dashboard/Widget';
+import { getCommonStyles } from '../styles/commonStyles';
 
 const DashboardPage = () => {
 	const { user, layout } = useAuthStore(state => ({
@@ -14,120 +15,48 @@ const DashboardPage = () => {
 	const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/public/dashboard'), []);
 	const { data: dashboardData, loading, error } = useApi(apiCall);
+    const theme = useAuthStore(state => state.theme);
+    const styles = getCommonStyles(theme);
 
-	const widgets = layout.dashboardWidgets || {
-		recommendedEvents: true,
-		assignedEvents: true,
-		openTasks: true,
-		upcomingEvents: true,
-		recentConversations: true,
-		upcomingMeetings: true,
-		lowStockItems: false,
+	const widgets = layout.dashboardWidgets || {};
+
+    const renderItem = (item, type) => {
+        const handlePress = () => {
+            if (type === 'event') navigation.navigate('EventDetails', { eventId: item.id });
+            if (type === 'task') navigation.navigate('EventDetails', { eventId: item.eventId });
+            if (type === 'meeting') navigation.navigate('MeetingDetails', { meetingId: item.id });
+            if (type === 'conversation') navigation.navigate('Chat', { screen: 'MessageView', params: { conversationId: item.id } });
+            if (type === 'item') navigation.navigate('StorageItemDetails', { itemId: item.id });
+        };
+        return (
+            <TouchableOpacity style={styles.detailsListRow} key={item.id} onPress={handlePress}>
+                <Text style={styles.detailsListLabel} numberOfLines={1}>{item.name || item.description || (item.groupChat ? item.name : item.otherParticipantUsername)}</Text>
+                <Text style={styles.detailsListValue}>{item.eventDateTime ? new Date(item.eventDateTime).toLocaleDateString('de-DE') : ''}</Text>
+            </TouchableOpacity>
+        );
+    };
+
+	const renderWidgetContent = (data, type, emptyMessage) => {
+		if (!data || data.length === 0) return <Text style={styles.bodyText}>{emptyMessage}</Text>;
+		return <View>{data.map(item => renderItem(item, type))}</View>;
 	};
-    
-    if (loading) {
-		return (
-			<View style={styles.container}>
-				<Text style={styles.title}>Willkommen zurück, {user?.username}!</Text>
-                <ActivityIndicator size="large" color="#007bff" />
-			</View>
-		);
-	}
 
-	if (error) {
-		return <View style={styles.container}><Text style={styles.errorText}>{error}</Text></View>;
-	}
+	if (loading) return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
+	if (error) return <View style={styles.centered}><Text style={styles.errorText}>{error}</Text></View>;
 
 	return (
-		<ScrollView style={styles.container}>
-			<Text style={styles.title}>Willkommen zurück, {user?.username}!</Text>
+		<ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+			<Text style={styles.title}>Willkommen, {user?.username}!</Text>
 			
-            {widgets.recommendedEvents && dashboardData?.recommendedEvents?.length > 0 && (
-                <View style={[styles.card, styles.recommendedCard]}>
-                    <Text style={styles.cardTitle}><Icon name="star" color="#ffc107" /> Für Dich empfohlen</Text>
-                    <Text style={styles.cardDescription}>Hier sind einige Events, für die du qualifiziert bist:</Text>
-                    {dashboardData.recommendedEvents.map(event => (
-                        <TouchableOpacity key={event.id} style={styles.listItem} onPress={() => navigation.navigate('EventDetails', { eventId: event.id })}>
-                            <Text style={styles.listItemText}>{event.name}</Text>
-                            <Text style={styles.listItemSubText}>{new Date(event.eventDateTime).toLocaleString('de-DE')}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-            )}
-
-            {widgets.assignedEvents && (
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Meine nächsten Einsätze</Text>
-                    {dashboardData?.assignedEvents?.length > 0 ? (
-                         dashboardData.assignedEvents.map(event => (
-                            <TouchableOpacity key={event.id} style={styles.listItem} onPress={() => navigation.navigate('EventDetails', { eventId: event.id })}>
-                                <Text style={styles.listItemText}>{event.name}</Text>
-                                <Text style={styles.listItemSubText}>{new Date(event.eventDateTime).toLocaleString('de-DE')}</Text>
-                            </TouchableOpacity>
-                        ))
-                    ) : (
-                        <Text>Du bist derzeit für keine kommenden Events fest eingeteilt.</Text>
-                    )}
-                </View>
-            )}
-
-             {/* Other widgets would follow a similar pattern */}
-
+            {widgets.recommendedEvents && <Widget icon="fa-star" title="Für Dich empfohlen">{renderWidgetContent(dashboardData.recommendedEvents, 'event', 'Keine Empfehlungen.')}</Widget>}
+            {widgets.assignedEvents && <Widget icon="fa-calendar-check" title="Meine nächsten Einsätze">{renderWidgetContent(dashboardData.assignedEvents, 'event', 'Keine Einsätze.')}</Widget>}
+            {widgets.openTasks && <Widget icon="fa-tasks" title="Meine offenen Aufgaben">{renderWidgetContent(dashboardData.openTasks, 'task', 'Keine offenen Aufgaben.')}</Widget>}
+            {widgets.upcomingMeetings && <Widget icon="fa-graduation-cap" title="Meine nächsten Lehrgänge">{renderWidgetContent(dashboardData.upcomingMeetings, 'meeting', 'Keine Lehrgänge.')}</Widget>}
+            {widgets.recentConversations && <Widget icon="fa-comments" title="Letzte Gespräche">{renderWidgetContent(dashboardData.recentConversations, 'conversation', 'Keine Gespräche.')}</Widget>}
+            {widgets.upcomingEvents && <Widget icon="fa-calendar-alt" title="Weitere anstehende Events">{renderWidgetContent(dashboardData.upcomingEvents, 'event', 'Keine weiteren Events.')}</Widget>}
+            {widgets.lowStockItems && <Widget icon="fa-box-open" title="Niedriger Lagerbestand">{renderWidgetContent(dashboardData.lowStockItems, 'item', 'Alle Artikel ausreichend vorhanden.')}</Widget>}
 		</ScrollView>
 	);
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f8f9fa', // bg-color
-        padding: 16,
-    },
-    title: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#002B5B', // heading-color
-        marginBottom: 16,
-    },
-    card: {
-		backgroundColor: '#ffffff',
-		borderRadius: 8,
-		padding: 16,
-		marginBottom: 16,
-		borderWidth: 1,
-		borderColor: '#dee2e6',
-	},
-    recommendedCard: {
-        backgroundColor: 'rgba(0, 123, 255, 0.1)', // primary-color-light
-    },
-    cardTitle: {
-		fontSize: 18,
-		fontWeight: '600',
-		color: '#002B5B',
-        marginBottom: 8,
-    },
-    cardDescription: {
-        marginBottom: 8,
-        color: '#212529'
-    },
-    listItem: {
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#dee2e6',
-    },
-    listItemText: {
-        fontSize: 16,
-        color: '#007bff' // primary-color
-    },
-    listItemSubText: {
-        fontSize: 12,
-        color: '#6c757d'
-    },
-    errorText: {
-		color: '#dc3545',
-		textAlign: 'center',
-	}
-});
-
 
 export default DashboardPage;

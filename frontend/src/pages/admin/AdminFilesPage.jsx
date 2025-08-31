@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, SectionList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 // NOTE: File picking requires a native library.
 // import DocumentPicker from 'react-native-document-picker';
@@ -19,6 +19,7 @@ const AdminFilesPage = ({ navigation }) => {
     const theme = useAuthStore(state => state.theme);
     const commonStyles = getCommonStyles(theme);
     const styles = { ...commonStyles, ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
 	const sections = useMemo(() => {
 		if (!fileApiResponse?.grouped) return [];
@@ -110,9 +111,9 @@ const pageStyles = (theme) => {
         folderIcon: { marginRight: 8, color: colors.textMuted },
         sectionTitle: { fontSize: typography.h4, fontWeight: 'bold', color: colors.heading },
         fileRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: colors.surface, borderBottomWidth: 1, borderColor: colors.border },
-        fileInfo: { flex: 1 },
+        fileInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
         fileIcon: { color: colors.primary },
-        fileName: { fontSize: typography.body, color: colors.text, marginLeft: 8 },
+        fileName: { fontSize: typography.body, color: colors.text, flexShrink: 1 },
         fileMeta: { fontSize: typography.caption, color: colors.textMuted, marginLeft: 8, marginTop: 4 },
         fileActions: { flexDirection: 'row', gap: 24, alignItems: 'center' },
     });

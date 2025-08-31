@@ -1,16 +1,27 @@
 import React, { useCallback, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import { useToast } from '../context/ToastContext';
+import { useAuthStore } from '../store/authStore';
+import { getCommonStyles } from '../styles/commonStyles';
+import { Picker } from '@react-native-picker/picker';
 
 const QrActionPage = () => {
-	const { itemId } = useParams();
+    const navigation = useNavigation();
+	const route = useRoute();
+	const { itemId } = route.params;
 	const { addToast } = useToast();
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState('');
-	const [quantity, setQuantity] = useState(1);
-	const [activeAction, setActiveAction] = useState(null); // 'checkout' or 'checkin'
+	const [quantity, setQuantity] = useState('1');
+	const [activeAction, setActiveAction] = useState(null);
+    const [notes, setNotes] = useState('');
+    const [eventId, setEventId] = useState('');
+
+    const theme = useAuthStore(state => state.theme);
+    const styles = getCommonStyles(theme);
 
 	const itemApiCall = useCallback(() => apiClient.get(`/public/storage/${itemId}`), [itemId]);
 	const eventsApiCall = useCallback(() => apiClient.get('/public/events'), []);
@@ -18,37 +29,25 @@ const QrActionPage = () => {
 	const { data: item, loading: itemLoading, error: itemError, reload: reloadItem } = useApi(itemApiCall);
 	const { data: activeEvents, loading: eventsLoading, error: eventsError } = useApi(eventsApiCall);
 
-	const handleQuantityChange = (e) => {
-		let value = parseInt(e.target.value, 10) || 1;
-		setQuantity(value);
-	};
-
-	const handleSubmit = async (e) => {
-		e.preventDefault();
+	const handleSubmit = async () => {
 		if (!activeAction) return;
-
 		setIsLoading(true);
 		setError('');
-
-		const formData = new FormData(e.target);
 		const payload = {
 			itemId: parseInt(itemId, 10),
-			quantity: quantity,
+			quantity: parseInt(quantity, 10),
 			type: activeAction,
-			eventId: formData.get('eventId') ? parseInt(formData.get('eventId'), 10) : null,
-			notes: formData.get('notes'),
+			eventId: eventId ? parseInt(eventId, 10) : null,
+			notes: notes,
 		};
-
 		try {
 			const result = await apiClient.post('/public/storage/transactions', payload);
 			if (result.success) {
 				addToast(result.message, 'success');
-				setQuantity(1); // Reset quantity
+				setQuantity('1');
 				setActiveAction(null);
-				reloadItem(); // Reload item data to show updated quantities
-			} else {
-				throw new Error(result.message);
-			}
+				reloadItem();
+			} else { throw new Error(result.message); }
 		} catch (err) {
 			setError(err.message || `Aktion '${activeAction}' fehlgeschlagen.`);
 		} finally {
@@ -56,83 +55,45 @@ const QrActionPage = () => {
 		}
 	};
 
-
-	if (itemLoading || eventsLoading) return <div>Lade...</div>;
-	if (itemError) return <div className="error-message">{itemError}</div>;
-	if (eventsError) return <div className="error-message">{eventsError}</div>;
-	if (!item) return <div className="error-message">Artikel nicht gefunden.</div>;
-
-	const maxCheckout = item.availableQuantity;
-	const maxCheckin = item.maxQuantity > 0 ? item.maxQuantity - item.quantity : Infinity;
-
+	if (itemLoading || eventsLoading) return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
+	if (itemError) return <View style={styles.centered}><Text style={styles.errorText}>{itemError}</Text></View>;
+	if (!item) return <View style={styles.centered}><Text style={styles.errorText}>Artikel nicht gefunden.</Text></View>;
 
 	return (
-		<div className="qr-action-body">
-			<div className="card qr-action-container">
-				<h1>Aktion für:</h1>
-				<h2 className="qr-action-item-name">{item.name}</h2>
-				<p>Verfügbar: <strong>{item.availableQuantity}</strong> / {item.quantity}</p>
+		<ScrollView contentContainerStyle={styles.centered}>
+			<View style={[styles.card, {width: '90%'}]}>
+				<Text style={styles.title}>Aktion für:</Text>
+				<Text style={[styles.cardTitle, {textAlign: 'center'}]}>{item.name}</Text>
+				<Text style={{textAlign: 'center', marginBottom: 16}}>Verfügbar: {item.availableQuantity} / {item.quantity}</Text>
 
-				{error && <p className="error-message">{error}</p>}
+				{error && <Text style={styles.errorText}>{error}</Text>}
 
-				<form onSubmit={handleSubmit}>
-					<div className="form-group">
-						<label htmlFor="quantity">Anzahl</label>
-						<input
-							type="number"
-							id="quantity"
-							name="quantity"
-							value={quantity}
-							onChange={handleQuantityChange}
-							min="1"
-							max={activeAction === 'checkout' ? maxCheckout : (maxCheckin === Infinity ? undefined : maxCheckin)}
-							required
-						/>
-						{activeAction === 'checkout' && <small>Maximal {maxCheckout} entnehmbar.</small>}
-						{activeAction === 'checkin' && maxCheckin !== Infinity && <small>Maximal {maxCheckin} einräumbar.</small>}
-					</div>
-					<div className="form-group">
-						<label htmlFor="eventId">Event (optional)</label>
-						<select id="eventId" name="eventId">
-							<option value="">Kein Event</option>
-							{activeEvents?.map(event => (
-								<option key={event.id} value={event.id}>{event.name}</option>
-							))}
-						</select>
-					</div>
-					<div className="form-group">
-						<label htmlFor="notes">Notiz (optional)</label>
-						<input type="text" id="notes" name="notes" />
-					</div>
-					<div className="qr-action-buttons">
-						<button
-							type="submit"
-							name="type"
-							value="checkout"
-							className="btn qr-action-btn btn-danger"
-							disabled={isLoading || maxCheckout <= 0}
-							onClick={() => setActiveAction('checkout')}
-						>
-							{isLoading && activeAction === 'checkout' ? '...' : 'Entnehmen'}
-						</button>
-						<button
-							type="submit"
-							name="type"
-							value="checkin"
-							className="btn qr-action-btn btn-success"
-							disabled={isLoading || maxCheckin <= 0}
-							onClick={() => setActiveAction('checkin')}
-						>
-							{isLoading && activeAction === 'checkin' ? '...' : 'Einräumen'}
-						</button>
-					</div>
-				</form>
+                <Text style={styles.label}>Anzahl</Text>
+                <TextInput style={styles.input} value={quantity} onChangeText={setQuantity} keyboardType="number-pad" />
+                
+                <Text style={styles.label}>Event (optional)</Text>
+                <Picker selectedValue={eventId} onValueChange={setEventId}>
+                    <Picker.Item label="Kein Event" value="" />
+                    {activeEvents?.map(event => <Picker.Item key={event.id} label={event.name} value={event.id} />)}
+                </Picker>
+                
+                <Text style={styles.label}>Notiz (optional)</Text>
+                <TextInput style={styles.input} value={notes} onChangeText={setNotes} />
 
-				<div style={{ marginTop: '2rem' }}>
-					<Link to="/lager">Zurück zur Lagerübersicht</Link>
-				</div>
-			</div>
-		</div>
+                <View style={{flexDirection: 'row', gap: 8, marginTop: 16}}>
+                    <TouchableOpacity style={[styles.button, styles.dangerButton, {flex: 1}]} onPress={() => { setActiveAction('checkout'); handleSubmit(); }} disabled={isLoading}>
+                        <Text style={styles.buttonText}>Entnehmen</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.button, styles.successButton, {flex: 1}]} onPress={() => { setActiveAction('checkin'); handleSubmit(); }} disabled={isLoading}>
+                        <Text style={styles.buttonText}>Einräumen</Text>
+                    </TouchableOpacity>
+                </View>
+
+				<TouchableOpacity onPress={() => navigation.navigate('Storage')}>
+                    <Text style={{color: getThemeColors(theme).primary, textAlign: 'center', marginTop: 24}}>Zurück zur Lagerübersicht</Text>
+                </TouchableOpacity>
+			</View>
+		</ScrollView>
 	);
 };
 

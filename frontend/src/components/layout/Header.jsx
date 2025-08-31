@@ -1,26 +1,24 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useAuthStore } from '../../store/authStore';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const Header = ({ onNavToggle }) => {
-	const navigation = useNavigation();
+const Header = ({ navigation }) => {
 	const user = useAuthStore(state => state.user);
 	const unseenCount = user?.unseenNotificationsCount || 0;
     const insets = useSafeAreaInsets();
 
 	return (
-		<View style={[styles.header, { paddingTop: insets.top }]}>
-			<TouchableOpacity onPress={onNavToggle} style={styles.toggleButton}>
+		<View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? insets.top : 10, height: (Platform.OS === 'ios' ? insets.top : 10) + 54 }]}>
+			<TouchableOpacity style={styles.toggleButton} onPress={() => navigation.toggleDrawer()}>
 				<Icon name="bars" size={24} color="#212529" />
 			</TouchableOpacity>
-			<TouchableOpacity onPress={() => navigation.navigate('Home')}>
+			<TouchableOpacity onPress={() => navigation.navigate('Dashboard')}>
 				<Text style={styles.logo}>TechnikTeam</Text>
 			</TouchableOpacity>
 			<View style={styles.rightContainer}>
-				<TouchableOpacity onPress={() => navigation.navigate('Notifications')} style={styles.iconButton}>
+				<TouchableOpacity onPress={() => navigation.navigate('Benachrichtigungen')} style={styles.iconButton}>
 					<Icon name="bell" solid size={24} color="#212529" />
 					{unseenCount > 0 && (
 						<View style={styles.badge}>
@@ -29,7 +27,7 @@ const Header = ({ onNavToggle }) => {
 					)}
 				</TouchableOpacity>
 				<TouchableOpacity onPress={() => navigation.navigate('Profile')} style={styles.iconButton}>
-					<Icon name={user?.profileIconClass || 'user-circle'} solid size={24} color="#212529" />
+					<Icon name={user?.profileIconClass?.replace('fa-', '') || 'user-circle'} solid size={24} color="#212529" />
 				</TouchableOpacity>
 			</View>
 		</View>
@@ -38,12 +36,12 @@ const Header = ({ onNavToggle }) => {
 
 const styles = StyleSheet.create({
 	header: {
-		height: 64,
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'space-between',
 		backgroundColor: '#ffffff', // surface-color
 		paddingHorizontal: 16,
+		paddingBottom: 10,
 		borderBottomWidth: 1,
 		borderBottomColor: '#dee2e6', // border-color
 	},
@@ -82,6 +80,5 @@ const styles = StyleSheet.create({
 		fontWeight: 'bold',
 	},
 });
-
 
 export default Header;

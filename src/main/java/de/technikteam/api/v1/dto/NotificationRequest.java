@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+@SuppressWarnings("deprecation") // Suppress warning for Schema on record components, which is a known issue
 public record NotificationRequest(
 		@NotBlank(message = "Titel darf nicht leer sein") @Size(max = 100, message = "Titel darf 100 Zeichen nicht überschreiten") @Schema(description = "The title of the notification.", required = true) String title,
 

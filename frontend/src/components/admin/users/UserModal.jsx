@@ -6,6 +6,7 @@ import apiClient from '../../../services/apiClient';
 import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../store/authStore';
 import { getCommonStyles } from '../../../styles/commonStyles';
+import { getThemeColors } from '../../../styles/theme';
 import { Picker } from '@react-native-picker/picker';
 
 const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions, isLoadingData }) => {
