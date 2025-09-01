@@ -101,6 +101,7 @@ public class AuthService {
 
 			// Pre-auth tokens are not valid for general API access
 			if ("PRE_AUTH_2FA".equals(claims.get("auth_level", String.class))) {
+				logger.warn("Attempted to use a PRE_AUTH_2FA token for a general API request. Denying.");
 				return null;
 			}
 
@@ -131,6 +132,9 @@ public class AuthService {
 
 	public User validatePreAuthTokenAndGetUser(String token) {
 		try {
+            if (token == null || token.isBlank()) {
+                throw new IllegalArgumentException("Pre-authentication token cannot be null or empty.");
+            }
 			Claims claims = parseTokenClaims(token);
 			if (!"PRE_AUTH_2FA".equals(claims.get("auth_level", String.class))) {
 				throw new SecurityException("Not a valid 2FA pre-authentication token.");

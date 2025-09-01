@@ -62,6 +62,11 @@ public class TwoFactorAuthDAO {
         jdbcTemplate.update(sql, userId, ipAddress, deviceName, Timestamp.valueOf(LocalDateTime.now()));
     }
 
+    public boolean forgetIp(int userId, String ipAddress) {
+        String sql = "DELETE FROM user_known_ips WHERE user_id = ? AND ip_address = ?";
+        return jdbcTemplate.update(sql, userId, ipAddress) > 0;
+    }
+
     @Transactional
     public void setTotpSecretForUser(int userId, String encryptedSecret) {
         jdbcTemplate.update("UPDATE users SET totp_secret = ? WHERE id = ?", encryptedSecret, userId);

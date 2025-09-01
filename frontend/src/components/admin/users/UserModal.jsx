@@ -17,11 +17,14 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
 	const isEditMode = !!user;
 
 	useEffect(() => {
         if (!isOpen) return;
+        console.log(`UserModal opened. Mode: ${user ? 'Edit' : 'Create'}. Editing user: ${user?.username || 'N/A'}`);
+
 		const fetchUserData = async () => {
 			if (isEditMode) {
 				try {

@@ -1,77 +1,139 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Modal from '../ui/Modal';
+import apiClient from '../../services/apiClient';
+import { useToast } from '../../context/ToastContext';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { useAuthStore } from '../../store/authStore';
+import { getThemeColors, spacing } from '../../styles/theme';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import { Picker } from '@react-native-picker/picker';
 
-const CartModal = ({ isOpen, onClose, cart, onUpdateQuantity, onRemove, onSwitchType, onSubmit, activeEvents, transactionError, isSubmitting }) => {
+const CartModal = ({ isOpen, onClose, cart, onUpdateQuantity, onRemove, onSwitchType, onSubmit, activeEvents, onSuccess }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
+    const { addToast } = useToast();
+
+    const [notes, setNotes] = useState('');
+    const [eventId, setEventId] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [transactionError, setTransactionError] = useState('');
+
+    const handleBulkSubmit = async () => {
+        setIsSubmitting(true);
+        setTransactionError('');
+
+        const transactions = cart.map(item => ({
+            itemId: item.id,
+            quantity: item.cartQuantity,
+            type: item.type,
+            notes,
+            eventId: eventId ? parseInt(eventId, 10) : null,
+        }));
+
+        try {
+            const promises = transactions.map(tx => apiClient.post('/public/storage/transactions', tx));
+            const results = await Promise.all(promises);
+            const failed = results.filter(r => !r.success);
+
+            if (failed.length > 0) {
+                throw new Error(`${failed.length} von ${cart.length} Transaktionen fehlgeschlagen.`);
+            }
+
+            addToast('Alle Transaktionen erfolgreich verbucht!', 'success');
+            onSuccess();
+        } catch (err) {
+            setTransactionError(err.message || 'Ein Fehler ist aufgetreten.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
 	const renderCartSection = (title, items, type) => {
 		if (items.length === 0) return null;
 		return (
-			<div style={{ marginBottom: '1.5rem' }}>
-				<h4>{title}</h4>
+			<View style={{ marginBottom: 24 }}>
+				<Text style={styles.cardTitle}>{title}</Text>
 				{items.map(item => {
-					// Use original item properties (quantity, maxQuantity) for calculation
 					const maxQuantity = type === 'checkout'
 						? item.availableQuantity
 						: (item.maxQuantity > 0 ? item.maxQuantity - item.quantity : Infinity);
 
 					return (
-						<div className="dynamic-row" key={`${item.id}-${type}`}>
-							<button
-								type="button"
-								onClick={() => onSwitchType(item.id, type)}
-								className={`btn btn-small ${type === 'checkout' ? 'btn-danger-outline' : 'btn-success'}`}
-								title={`Zu '${type === 'checkout' ? 'Einräumen' : 'Entnehmen'}' wechseln`}
-								style={{ minWidth: '40px' }}
-							>
-								<i className={`fas ${type === 'checkout' ? 'fa-arrow-down' : 'fa-arrow-up'}`}></i>
-							</button>
-							<span style={{ flexGrow: 1 }}>{item.name}</span>
-							<input
-								type="number"
-								value={item.cartQuantity} // Use the specific cart quantity state
-								onChange={e => onUpdateQuantity(item.id, type, parseInt(e.target.value, 10))}
-								min="1"
-								max={maxQuantity === Infinity ? undefined : maxQuantity}
-								title={maxQuantity !== Infinity ? `Maximal: ${maxQuantity}` : ''}
-								className="form-group"
-								style={{ maxWidth: '80px' }}
+						<View style={styles.rowContainer} key={`${item.id}-${type}`}>
+							<TouchableOpacity onPress={() => onSwitchType(item.id, type)}>
+                                <Icon name={type === 'checkout' ? 'arrow-down' : 'arrow-up'} size={20} color={type === 'checkout' ? colors.danger : colors.success} />
+                            </TouchableOpacity>
+							<Text style={{ flex: 1 }}>{item.name}</Text>
+							<TextInput
+								value={String(item.cartQuantity)}
+								onChangeText={val => onUpdateQuantity(item.id, type, parseInt(val, 10) || 1)}
+                                keyboardType="number-pad"
+								style={styles.quantityInput}
 							/>
-							<button type="button" className="btn btn-small btn-danger" onClick={() => onRemove(item.id, type)}>×</button>
-						</div>
+							<TouchableOpacity onPress={() => onRemove(item.id, type)}>
+                                <Icon name="times-circle" size={24} color={colors.danger} />
+                            </TouchableOpacity>
+						</View>
 					);
 				})}
-			</div>
+			</View>
 		);
 	};
 
 	return (
 		<Modal isOpen={isOpen} onClose={onClose} title={`Warenkorb (${cart.length} Artikel)`}>
-			<form onSubmit={onSubmit}>
-				{transactionError && <p className="error-message">{transactionError}</p>}
+			<ScrollView>
+				{transactionError && <Text style={styles.errorText}>{transactionError}</Text>}
 
 				{renderCartSection('Zu Entnehmen', cart.filter(i => i.type === 'checkout'), 'checkout')}
 				{renderCartSection('Einzuräumen', cart.filter(i => i.type === 'checkin'), 'checkin')}
 
-				<div className="form-group" style={{ marginTop: '1.5rem' }}>
-					<label htmlFor="transaction-notes">Notiz (optional, gilt für alle Artikel)</label>
-					<input type="text" name="notes" id="transaction-notes" placeholder="z.B. für Event XYZ" />
-				</div>
-				<div className="form-group">
-					<label htmlFor="transaction-eventId">Zuweisen zu Event (optional, gilt für alle Artikel)</label>
-					<select name="eventId" id="transaction-eventId">
-						<option value="">Kein Event</option>
+				<View style={styles.formGroup}>
+					<Text style={styles.label}>Notiz (optional, gilt für alle Artikel)</Text>
+					<TextInput style={styles.input} value={notes} onChangeText={setNotes} placeholder="z.B. für Event XYZ" />
+				</View>
+				<View style={styles.formGroup}>
+					<Text style={styles.label}>Zuweisen zu Event (optional, gilt für alle Artikel)</Text>
+					<Picker selectedValue={eventId} onValueChange={setEventId}>
+						<Picker.Item label="Kein Event" value="" />
 						{activeEvents.map(event => (
-							<option key={event.id} value={event.id}>{event.name}</option>
+							<Picker.Item key={event.id} label={event.name} value={event.id} />
 						))}
-					</select>
-				</div>
+					</Picker>
+				</View>
 
-				<button type="submit" className="btn btn-success" style={{ width: '100%' }} disabled={isSubmitting || cart.length === 0}>
-					{isSubmitting ? 'Wird verbucht...' : `Alle ${cart.length} Transaktionen ausführen`}
-				</button>
-			</form>
+				<TouchableOpacity style={[styles.button, styles.successButton]} onPress={handleBulkSubmit} disabled={isSubmitting || cart.length === 0}>
+					{isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{`Alle ${cart.length} Transaktionen ausführen`}</Text>}
+				</TouchableOpacity>
+			</ScrollView>
 		</Modal>
 	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        rowContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+            marginBottom: spacing.sm,
+            paddingVertical: spacing.sm,
+            borderBottomWidth: 1,
+            borderColor: colors.border,
+        },
+        quantityInput: {
+            width: 70,
+            height: 48,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 8,
+            paddingHorizontal: spacing.sm,
+            textAlign: 'center',
+        },
+    });
 };
 
 export default CartModal;

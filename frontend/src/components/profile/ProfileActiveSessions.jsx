@@ -1,139 +1,92 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
-import useApi from '../../hooks/useApi';
-import apiClient from '../../services/apiClient';
-import { useToast } from '../../context/ToastContext';
-import Modal from '../ui/Modal';
+import React from 'react';
+import { View, Text, StyleSheet, FlatList } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome5';
+import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, typography, spacing } from '../../styles/theme';
 
-const RenameSessionModal = ({ isOpen, onClose, onSuccess, session }) => {
-    const [deviceName, setDeviceName] = useState(session.deviceName || '');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const { addToast } = useToast();
+const ProfileAchievements = ({ achievements }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
-    const handleSubmit = async () => {
-        setIsSubmitting(true);
-        try {
-            const result = await apiClient.post(`/public/sessions/${session.id}/name`, { deviceName });
-            if (result.success) {
-                addToast('Gerät erfolgreich umbenannt.', 'success');
-                onSuccess();
-            } else {
-                throw new Error(result.message);
-            }
-        } catch (err) {
-            addToast(`Fehler: ${err.message}`, 'error');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+	const renderItem = ({ item }) => (
+		<View style={styles.achievementCard}>
+			<Icon name={item.iconClass.replace('fa-', '')} size={48} color={colors.primary} style={styles.icon} />
+			<Text style={styles.name}>{item.name}</Text>
+			<Text style={styles.description}>{item.description}</Text>
+			<Text style={styles.earnedDate}>Verdient am: {new Date(item.earnedAt).toLocaleDateString('de-DE')}</Text>
+		</View>
+	);
 
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Gerät umbenennen">
-            <View>
-                <Text style={styles.label}>Name für diese Sitzung/dieses Gerät</Text>
-                <TextInput style={styles.input} value={deviceName} onChangeText={setDeviceName} autoFocus />
-                <TouchableOpacity style={styles.modalButton} onPress={handleSubmit} disabled={isSubmitting}>
-                    <Text style={styles.buttonText}>{isSubmitting ? 'Speichern...' : 'Speichern'}</Text>
-                </TouchableOpacity>
-            </View>
-        </Modal>
-    );
+	return (
+		<View style={styles.container}>
+			<Text style={styles.title}>Meine Abzeichen</Text>
+			{!achievements || achievements.length === 0 ? (
+				<View style={[styles.card, styles.emptyCard]}>
+					<Text>Du hast noch keine Abzeichen verdient. Nimm an Events teil, um sie freizuschalten!</Text>
+				</View>
+			) : (
+				<FlatList
+					data={achievements}
+					renderItem={renderItem}
+					keyExtractor={item => item.id.toString()}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+					contentContainerStyle={{ paddingHorizontal: spacing.md }}
+				/>
+			)}
+		</View>
+	);
 };
 
-const ProfileActiveSessions = () => {
-    const apiCall = useCallback(() => apiClient.get('/public/sessions'), []);
-    const { data: sessions, loading, error, reload } = useApi(apiCall);
-    const { addToast } = useToast();
-    const [renamingSession, setRenamingSession] = useState(null);
-
-    const getDeviceIcon = (deviceType) => {
-        switch (deviceType?.toLowerCase()) {
-            case 'desktop': return 'desktop';
-            case 'mobile': return 'mobile-alt';
-            case 'tablet': return 'tablet-alt';
-            default: return 'question-circle';
-        }
-    };
-
-    const handleRevoke = async (session) => {
-        try {
-            const result = await apiClient.post(`/public/sessions/${session.jti}/revoke`);
-            if (result.success) {
-                addToast('Sitzung wurde beendet.', 'success');
-                reload();
-            } else { throw new Error(result.message); }
-        } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
-    };
-    
-    const renderItem = ({ item }) => (
-        <View style={styles.card}>
-            <View style={styles.cardHeader}>
-                <Icon name={getDeviceIcon(item.deviceType)} size={20} style={styles.deviceIcon} />
-                <Text style={styles.deviceName}>{item.deviceName || 'Unbenanntes Gerät'}</Text>
-            </View>
-            <View style={styles.detailRow}>
-                <Text style={styles.label}>Standort:</Text>
-                <Text style={styles.value}>{item.countryCode} ({item.ipAddress})</Text>
-            </View>
-             <View style={styles.detailRow}>
-                <Text style={styles.label}>Letzte Aktivität:</Text>
-                <Text style={styles.value}>{new Date(item.timestamp).toLocaleString('de-DE')}</Text>
-            </View>
-            <View style={styles.cardActions}>
-                <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => setRenamingSession(item)}>
-                    <Text style={styles.secondaryButtonText}>Umbenennen</Text>
-                </TouchableOpacity>
-                 <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => handleRevoke(item)}>
-                    <Text style={styles.dangerOutlineButtonText}>Abmelden</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
-
-    return (
-        <>
-            <View style={styles.container}>
-                <Text style={styles.title}>Aktive Sitzungen</Text>
-                <Text style={styles.description}>Hier sehen Sie alle Geräte, auf denen Sie aktuell angemeldet sind.</Text>
-                {loading && <ActivityIndicator />}
-                {error && <Text style={styles.errorText}>{error}</Text>}
-                <FlatList
-                    data={sessions}
-                    renderItem={renderItem}
-                    keyExtractor={item => item.id.toString()}
-                    ListEmptyComponent={<Text>Keine aktiven Sitzungen gefunden.</Text>}
-                />
-            </View>
-            {renamingSession && (
-                <RenameSessionModal isOpen={!!renamingSession} onClose={() => setRenamingSession(null)} onSuccess={() => { setRenamingSession(null); reload(); }} session={renamingSession} />
-            )}
-        </>
-    );
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        container: {
+            marginTop: spacing.md,
+        },
+        title: {
+            fontSize: typography.h3,
+            fontWeight: '600',
+            color: colors.heading,
+            marginBottom: spacing.md,
+            paddingHorizontal: spacing.md,
+        },
+        achievementCard: {
+            backgroundColor: colors.surface,
+            borderRadius: 8,
+            padding: spacing.md,
+            alignItems: 'center',
+            borderWidth: 1,
+            borderColor: colors.border,
+            width: 200,
+            marginRight: spacing.md,
+        },
+        emptyCard: {
+            marginHorizontal: spacing.md,
+        },
+        icon: {
+            marginBottom: spacing.md,
+        },
+        name: {
+            fontSize: typography.body,
+            fontWeight: 'bold',
+            textAlign: 'center',
+        },
+        description: {
+            color: colors.textMuted,
+            fontSize: typography.small,
+            textAlign: 'center',
+            marginVertical: 4,
+            minHeight: 40,
+        },
+        earnedDate: {
+            fontSize: typography.caption,
+            color: colors.textMuted,
+            marginTop: 8,
+        },
+    });
 };
 
-const styles = StyleSheet.create({
-    container: { marginHorizontal: 16, marginTop: 16 },
-    title: { fontSize: 20, fontWeight: '600', color: '#002B5B', marginBottom: 8 },
-    description: { color: '#6c757d', marginBottom: 16 },
-    card: { backgroundColor: '#fff', borderRadius: 8, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#dee2e6' },
-    cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-    deviceIcon: { marginRight: 8, color: '#6c757d' },
-    deviceName: { fontSize: 16, fontWeight: 'bold' },
-    detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
-    label: { color: '#6c757d' },
-    value: { color: '#212529' },
-    cardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 12 },
-    button: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6 },
-    secondaryButton: { borderWidth: 1, borderColor: '#6c757d' },
-    secondaryButtonText: { color: '#6c757d' },
-    dangerOutlineButton: { borderWidth: 1, borderColor: '#dc3545' },
-    dangerOutlineButtonText: { color: '#dc3545' },
-    errorText: { color: 'red' },
-    // Modal Styles
-    input: { width: '100%', height: 48, borderWidth: 1, borderColor: '#dee2e6', borderRadius: 6, paddingHorizontal: 12, marginVertical: 16 },
-    modalButton: { backgroundColor: '#007bff', paddingVertical: 12, borderRadius: 6, alignItems: 'center' },
-    buttonText: { color: '#fff', fontWeight: '500' }
-});
-
-export default ProfileActiveSessions;
+export default ProfileAchievements;

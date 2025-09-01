@@ -7,7 +7,7 @@ import { useToast } from '../../context/ToastContext';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
-import BouncyCheckbox from "react-native-bouncy-checkbox";
+import { RadioButton } from 'react-native-paper';
 
 const AdminAuthLogPage = () => {
     const apiCall = useCallback(() => apiClient.get('/admin/auth-log'), []);
@@ -75,7 +75,13 @@ const AdminAuthLogPage = () => {
 			<View style={styles.filterContainer}>
                 <TextInput style={styles.input} placeholder="Benutzer filtern..." value={userFilter} onChangeText={setUserFilter} />
                 <TextInput style={styles.input} placeholder="IP filtern..." value={ipFilter} onChangeText={setIpFilter} />
-                {/* Status filter would use a Picker or Radio buttons */}
+                <RadioButton.Group onValueChange={newValue => setShowFilter(newValue)} value={showFilter}>
+                    <View style={{flexDirection: 'row', justifyContent: 'space-around'}}>
+                        <View style={styles.radioRow}><RadioButton value="ALL" /><Text>Alle</Text></View>
+                        <View style={styles.radioRow}><RadioButton value="ACTIVE" /><Text>Nur Aktive</Text></View>
+                        <View style={styles.radioRow}><RadioButton value="INACTIVE" /><Text>Nur Inaktive</Text></View>
+                    </View>
+                </RadioButton.Group>
             </View>
 
 			{loading && <ActivityIndicator size="large" />}
@@ -97,6 +103,7 @@ const pageStyles = (theme) => {
         headerContainer: { flexDirection: 'row', alignItems: 'center', padding: 16 },
         headerIcon: { color: colors.heading, marginRight: 12 },
         filterContainer: { paddingHorizontal: 16, marginBottom: 16, gap: 8 },
+        radioRow: { flexDirection: 'row', alignItems: 'center' }
     });
 };
 

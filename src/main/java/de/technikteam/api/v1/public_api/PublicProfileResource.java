@@ -42,11 +42,14 @@ public class PublicProfileResource {
 	private final ProfileChangeRequestDAO requestDAO;
 	private final ProfileRequestService profileRequestService;
 	private final TwoFactorAuthService twoFactorAuthService;
+    private final AuthenticationLogDAO authLogDAO;
+    private final TwoFactorAuthDAO twoFactorAuthDAO;
 
 	@Autowired
 	public PublicProfileResource(UserDAO userDAO, EventDAO eventDAO, UserQualificationsDAO qualificationsDAO,
 			AchievementDAO achievementDAO, ProfileChangeRequestDAO requestDAO,
-			ProfileRequestService profileRequestService, TwoFactorAuthService twoFactorAuthService) {
+			ProfileRequestService profileRequestService, TwoFactorAuthService twoFactorAuthService,
+            AuthenticationLogDAO authLogDAO, TwoFactorAuthDAO twoFactorAuthDAO) {
 		this.userDAO = userDAO;
 		this.eventDAO = eventDAO;
 		this.qualificationsDAO = qualificationsDAO;
@@ -54,6 +57,8 @@ public class PublicProfileResource {
 		this.requestDAO = requestDAO;
 		this.profileRequestService = profileRequestService;
 		this.twoFactorAuthService = twoFactorAuthService;
+        this.authLogDAO = authLogDAO;
+        this.twoFactorAuthDAO = twoFactorAuthDAO;
 	}
 
 	@GetMapping
@@ -68,6 +73,7 @@ public class PublicProfileResource {
 		profileData.put("achievements", achievementDAO.getAchievementsForUser(user.getId()));
 		profileData.put("passkeys", Collections.emptyList());
 		profileData.put("hasPendingRequest", requestDAO.hasPendingRequest(user.getId()));
+        profileData.put("loginHistory", authLogDAO.getLoginIpsForUser(user.getId()));
 
 		return ResponseEntity.ok(new ApiResponse(true, "Profildaten erfolgreich abgerufen.", profileData));
 	}
@@ -245,4 +251,17 @@ public class PublicProfileResource {
 			return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
 		}
 	}
+
+    @PostMapping("/known-ips/forget")
+    @Operation(summary = "Forget a known IP address", description = "Removes an IP address from the user's list of known IPs, forcing a 2FA challenge on the next login from that location.")
+    public ResponseEntity<ApiResponse> forgetIp(@RequestBody Map<String, String> payload, @AuthenticationPrincipal SecurityUser securityUser) {
+        String ipAddress = payload.get("ipAddress");
+        if (ipAddress == null || ipAddress.isBlank()) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "IP address is required.", null));
+        }
+        if (twoFactorAuthDAO.forgetIp(securityUser.getUser().getId(), ipAddress)) {
+            return ResponseEntity.ok(new ApiResponse(true, "IP address forgotten. 2FA will be required on next login from this location.", null));
+        }
+        return ResponseEntity.internalServerError().body(new ApiResponse(false, "Could not forget IP address.", null));
+    }
 }

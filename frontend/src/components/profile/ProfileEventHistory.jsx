@@ -2,37 +2,41 @@ import React from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome5';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { useAuthStore } from '../../store/authStore';
 
 const ProfileEventHistory = ({ eventHistory }) => {
 	const navigation = useNavigation();
+    const theme = useAuthStore(state => state.theme);
+    const styles = getCommonStyles(theme);
 
 	const formatDate = (dateString) => {
 		if (!dateString) return '';
 		return new Date(dateString).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 	};
 
-	const renderItem = ({ item }) => {
+	const renderItem = (item) => {
 		const canGiveFeedback = item.status === 'ABGESCHLOSSEN' && item.userAttendanceStatus === 'ZUGEWIESEN';
 		return (
-			<View style={styles.card}>
+			<View style={[styles.card, {marginBottom: 12}]} key={item.id}>
 				<TouchableOpacity onPress={() => navigation.navigate('EventDetails', { eventId: item.id })}>
-					<Text style={styles.eventName}>{item.name}</Text>
+					<Text style={styles.cardTitle}>{item.name}</Text>
 				</TouchableOpacity>
-				<View style={styles.row}>
-					<Text style={styles.label}>Datum:</Text>
-					<Text style={styles.value}>{formatDate(item.eventDateTime)} Uhr</Text>
+				<View style={styles.detailsListRow}>
+					<Text style={styles.detailsListLabel}>Datum:</Text>
+					<Text style={styles.detailsListValue}>{formatDate(item.eventDateTime)} Uhr</Text>
 				</View>
-				<View style={styles.row}>
-					<Text style={styles.label}>Dein Status:</Text>
-					<Text style={styles.value}>{item.userAttendanceStatus}</Text>
+				<View style={styles.detailsListRow}>
+					<Text style={styles.detailsListLabel}>Dein Status:</Text>
+					<Text style={styles.detailsListValue}>{item.userAttendanceStatus}</Text>
 				</View>
 				{canGiveFeedback && (
 					<TouchableOpacity
-						style={styles.feedbackButton}
+						style={[styles.button, styles.primaryButton, {marginTop: 16}]}
 						onPress={() => navigation.navigate('EventFeedback', { eventId: item.id })}
 					>
 						<Icon name="star" solid color="#fff" size={14} />
-						<Text style={styles.feedbackButtonText}>Feedback geben</Text>
+						<Text style={styles.buttonText}>Feedback geben</Text>
 					</TouchableOpacity>
 				)}
 			</View>
@@ -40,76 +44,16 @@ const ProfileEventHistory = ({ eventHistory }) => {
 	};
 
 	return (
-		<View style={styles.container}>
-			<Text style={styles.title}>Meine Event-Historie</Text>
-			{eventHistory.length === 0 ? (
-				<View style={styles.card}>
-					<Text>Keine Event-Historie vorhanden.</Text>
-				</View>
+		<View style={styles.card}>
+			<Text style={styles.cardTitle}>Meine Event-Historie</Text>
+			{eventHistory && eventHistory.length > 0 ? (
+                // Using map instead of FlatList as it's not the main scroll view
+                eventHistory.map(item => renderItem(item))
 			) : (
-				<FlatList
-					data={eventHistory}
-					renderItem={renderItem}
-					keyExtractor={item => item.id.toString()}
-					contentContainerStyle={{ paddingBottom: 20 }}
-				/>
-			)}
+                <Text>Keine Event-Historie vorhanden.</Text>
+            )}
 		</View>
 	);
 };
-
-const styles = StyleSheet.create({
-	container: {
-		flex: 1,
-	},
-	title: {
-		fontSize: 20,
-		fontWeight: '600',
-		color: '#002B5B',
-		marginBottom: 16,
-		paddingHorizontal: 16,
-	},
-	card: {
-		backgroundColor: '#ffffff',
-		borderRadius: 8,
-		padding: 16,
-		marginHorizontal: 16,
-		marginBottom: 12,
-		borderWidth: 1,
-		borderColor: '#dee2e6',
-	},
-	eventName: {
-		fontSize: 16,
-		fontWeight: 'bold',
-		color: '#007bff',
-		marginBottom: 8,
-	},
-	row: {
-		flexDirection: 'row',
-		justifyContent: 'space-between',
-		paddingVertical: 4,
-	},
-	label: {
-		color: '#6c757d',
-		fontWeight: 'bold',
-	},
-	value: {
-		color: '#212529',
-	},
-	feedbackButton: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'center',
-		gap: 8,
-		backgroundColor: '#007bff',
-		paddingVertical: 8,
-		borderRadius: 6,
-		marginTop: 12,
-	},
-	feedbackButtonText: {
-		color: '#fff',
-		fontWeight: '500',
-	},
-});
 
 export default ProfileEventHistory;

@@ -59,7 +59,8 @@ public class TwoFactorAuthService {
 
     public TwoFactorSetupDTO generateNewSecretAndQrCode(User user) throws Exception {
         String secret = generateSecretKey();
-        String qrCodeUri = getGoogleAuthenticatorBarCode(secret, user.getEmail(), "TechnikTeam");
+        String accountName = user.getEmail() != null && !user.getEmail().isBlank() ? user.getEmail() : user.getUsername();
+        String qrCodeUri = getGoogleAuthenticatorBarCode(secret, accountName, "TechnikTeam");
         String qrCodeDataUri = createQRCode(qrCodeUri);
         return new TwoFactorSetupDTO(secret, qrCodeDataUri);
     }
@@ -95,12 +96,25 @@ public class TwoFactorAuthService {
         if (code == null || !code.matches("\\d{6}")) {
             return false;
         }
-        String hexKey = Hex.encodeHexString(new Base32().decode(secret));
+        // The TOTP library requires a hex-encoded key, but Google Authenticator uses Base32.
+        // We must decode the Base32 secret first, then hex-encode the resulting bytes.
+        Base32 base32 = new Base32();
+        byte[] bytes = base32.decode(secret);
+        String hexKey = Hex.encodeHexString(bytes);
+        
+        // TOTP.getOTP() generates the current code.
         String totp = TOTP.getOTP(hexKey);
+        
+        // Log for debugging purposes
+        logger.debug("Verifying TOTP. Provided: {}, Generated: {}", code, totp);
+
         return totp.equals(code);
     }
 
     public boolean verifyBackupCode(int userId, String code) {
+        if (code == null || code.isBlank()) {
+            return false;
+        }
         List<UserBackupCode> unusedCodes = twoFactorAuthDAO.getUnusedBackupCodesForUser(userId);
         for (UserBackupCode backupCode : unusedCodes) {
             if (passwordEncoder.matches(code, backupCode.getCodeHash())) {

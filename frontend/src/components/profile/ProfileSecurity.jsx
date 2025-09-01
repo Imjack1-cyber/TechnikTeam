@@ -1,24 +1,67 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useToast } from '../../context/ToastContext';
 import { useAuthStore } from '../../store/authStore';
 import apiClient from '../../services/apiClient';
 import Modal from '../ui/Modal';
 import TwoFactorAuthSetup from './TwoFactorAuthSetup';
-import ProfileActiveSessions from './ProfileActiveSessions';
+import { getCommonStyles } from '../../styles/commonStyles';
 
-const ProfileSecurity = ({ onUpdate }) => {
+const Disable2FAModal = ({ isOpen, onClose, onSuccess }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = getCommonStyles(theme);
+    const [verificationCode, setVerificationCode] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState('');
+    const { addToast } = useToast();
+
+    const handleSubmit = async () => {
+        setIsSubmitting(true);
+        setError('');
+        try {
+            const result = await apiClient.post('/public/profile/2fa/disable', { token: verificationCode });
+            if (result.success) {
+                addToast('Zwei-Faktor-Authentifizierung erfolgreich deaktiviert.', 'success');
+                onSuccess();
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (err) {
+            setError(err.message || 'Deaktivierung fehlgeschlagen. Ungültiger Code?');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="2FA Deaktivieren Bestätigen">
+            <View>
+                <Text style={styles.bodyText}>Um 2FA zu deaktivieren, geben Sie bitte einen aktuellen Code aus Ihrer Authenticator-App ein.</Text>
+                {error && <Text style={styles.errorText}>{error}</Text>}
+                <Text style={styles.label}>Verifizierungscode</Text>
+                <TextInput
+                    style={[styles.input, { textAlign: 'center', fontSize: 20, letterSpacing: 5 }]}
+                    value={verificationCode}
+                    onChangeText={setVerificationCode}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    placeholder="------"
+                />
+                <TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={handleSubmit} disabled={isSubmitting}>
+                    {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>2FA Deaktivieren</Text>}
+                </TouchableOpacity>
+            </View>
+        </Modal>
+    );
+};
+
+const ProfileSecurity = ({ user, onUpdate }) => {
 	const navigation = useNavigation();
-	const user = useAuthStore(state => state.user);
-	const { addToast } = useToast();
 	const [is2faModalOpen, setIs2faModalOpen] = useState(false);
-
-	const handleDisable2FA = async () => {
-		// In a real app, you would use a dedicated prompt component, not the browser's `prompt`.
-		// This is a placeholder for the logic.
-		addToast('Diese Funktion erfordert eine native UI für die Code-Eingabe.', 'info');
-	};
+    const [isDisableModalOpen, setIsDisableModalOpen] = useState(false);
+    const theme = useAuthStore(state => state.theme);
+    const styles = getCommonStyles(theme);
 
 	const handleSetupComplete = () => {
 		setIs2faModalOpen(false);
@@ -28,16 +71,16 @@ const ProfileSecurity = ({ onUpdate }) => {
 	return (
 		<>
 			<View style={styles.card}>
-				<Text style={styles.title}>Sicherheit</Text>
+				<Text style={styles.cardTitle}>Sicherheit</Text>
 
-				<TouchableOpacity style={styles.listItem} onPress={() => navigation.navigate('PasswordChange')}>
-					<Text style={styles.listItemText}>Passwort ändern</Text>
+				<TouchableOpacity style={styles.detailsListRow} onPress={() => navigation.navigate('PasswordChange')}>
+					<Text style={styles.detailsListLabel}>Passwort ändern</Text>
 				</TouchableOpacity>
 
-				<View style={styles.listItem}>
-					<Text style={styles.listItemText}>Zwei-Faktor-Authentifizierung (2FA)</Text>
-					{user.totpEnabled ? (
-						<TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={handleDisable2FA}>
+				<View style={styles.detailsListRow}>
+					<Text style={styles.detailsListLabel}>Zwei-Faktor-Authentifizierung (2FA)</Text>
+					{user.isTotpEnabled ? (
+						<TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => setIsDisableModalOpen(true)}>
 							<Text style={styles.dangerOutlineButtonText}>Deaktivieren</Text>
 						</TouchableOpacity>
 					) : (
@@ -47,17 +90,17 @@ const ProfileSecurity = ({ onUpdate }) => {
 					)}
 				</View>
 
-				<Text style={styles.passkeyTitle}>Passkeys (Passwortloser Login)</Text>
-				<Text style={styles.passkeyDescription}>
-					Dieses Feature wird zurzeit überarbeitet und ist in Kürze wieder verfügbar.
-				</Text>
-				<TouchableOpacity style={[styles.button, styles.successButton, styles.disabledButton]} disabled={true}>
-					<Text style={styles.buttonText}>Neues Gerät registrieren</Text>
-				</TouchableOpacity>
+				<View style={[styles.detailsListRow, {borderBottomWidth: 0}]}>
+                    <View>
+                        <Text style={styles.detailsListLabel}>Passkeys (Passwortloser Login)</Text>
+                        <Text style={styles.subtitle}>Dieses Feature wird zurzeit überarbeitet.</Text>
+                    </View>
+                    <TouchableOpacity style={[styles.button, styles.successButton, styles.disabledButton]} disabled={true}>
+                        <Text style={styles.buttonText}>Registrieren</Text>
+                    </TouchableOpacity>
+                </View>
 			</View>
 			
-			<ProfileActiveSessions />
-
 			<Modal
 				isOpen={is2faModalOpen}
 				onClose={() => setIs2faModalOpen(false)}
@@ -65,73 +108,18 @@ const ProfileSecurity = ({ onUpdate }) => {
 			>
 				<TwoFactorAuthSetup onSetupComplete={handleSetupComplete} />
 			</Modal>
+
+            <Disable2FAModal
+                isOpen={isDisableModalOpen}
+                onClose={() => setIsDisableModalOpen(false)}
+                onSuccess={() => {
+                    setIsDisableModalOpen(false);
+                    onUpdate();
+                }}
+            />
 		</>
 	);
 };
-
-const styles = StyleSheet.create({
-	card: {
-		backgroundColor: '#ffffff',
-		borderRadius: 8,
-		padding: 16,
-		marginHorizontal: 16,
-		marginBottom: 16,
-		borderWidth: 1,
-		borderColor: '#dee2e6',
-	},
-	title: {
-		fontSize: 20,
-		fontWeight: '600',
-		color: '#002B5B',
-		marginBottom: 12,
-	},
-	listItem: {
-		flexDirection: 'row',
-		justifyContent: 'space-between',
-		alignItems: 'center',
-		paddingVertical: 12,
-		borderBottomWidth: 1,
-		borderBottomColor: '#f0f0f0',
-	},
-	listItemText: {
-		fontSize: 16,
-		color: '#212529',
-	},
-	button: {
-		paddingVertical: 8,
-		paddingHorizontal: 12,
-		borderRadius: 6,
-	},
-	buttonText: {
-		color: '#fff',
-		fontWeight: '500',
-	},
-	successButton: {
-		backgroundColor: '#28a745',
-	},
-	dangerOutlineButton: {
-		backgroundColor: 'transparent',
-		borderWidth: 1,
-		borderColor: '#dc3545',
-	},
-	dangerOutlineButtonText: {
-		color: '#dc3545',
-		fontWeight: '500',
-	},
-	passkeyTitle: {
-		fontSize: 18,
-		fontWeight: '600',
-		marginTop: 24,
-		marginBottom: 8,
-	},
-	passkeyDescription: {
-		color: '#6c757d',
-		marginBottom: 16,
-	},
-	disabledButton: {
-		opacity: 0.5,
-	},
-});
 
 
 export default ProfileSecurity;

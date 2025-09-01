@@ -7,7 +7,7 @@ import { useToast } from '../../context/ToastContext';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
-import { getThemeColors, typography, spacing } from '../../styles/theme';
+import { getThemeColors } from '../../styles/theme';
 
 const RoleModal = ({ isOpen, onClose, onSuccess, role }) => {
     const theme = useAuthStore(state => state.theme);

@@ -32,14 +32,26 @@ const HelpDetailsPage = () => {
 	if (error) return <View style={styles.centered}><Text style={styles.errorText}>{error}</Text></View>;
 	if (!doc) return <View style={styles.centered}><Text>Dokumentation nicht gefunden.</Text></View>;
 
+    const handleOpenPage = () => {
+        // This is a simplified example. A robust solution would map pagePath to navigation routes.
+        const routeName = doc.pagePath.split('/')[1]; // e.g., /home -> home
+        if (routeName) {
+            const capitalizedRoute = routeName.charAt(0).toUpperCase() + routeName.slice(1);
+            if (navigation.getState().routeNames.includes(capitalizedRoute)) {
+                navigation.navigate(capitalizedRoute);
+            } else {
+                 addToast("Navigation zu dieser Seite wird noch nicht unterstützt.", "info");
+            }
+        }
+    };
+    
 	return (
 		<ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
 			<View style={styles.header}>
 				<Text style={styles.title}>{doc.title}</Text>
-                {/* External linking to web app version */}
-				<TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => Linking.openURL(`http://localhost:3000${doc.pagePath}`)}>
-					<Icon name="external-link-alt" size={14} color={colors.white} />
-                    <Text style={styles.buttonText}>Seite öffnen</Text>
+				<TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={handleOpenPage}>
+					<Icon name="external-link-alt" size={14} color={colors.text} />
+                    <Text style={{color: colors.text}}>Seite öffnen</Text>
 				</TouchableOpacity>
 			</View>
 
@@ -57,12 +69,6 @@ const HelpDetailsPage = () => {
                         </TouchableOpacity>
                     ))
                 ) : <Text>Keine verknüpften Seiten.</Text>}
-            </View>
-
-            <View style={styles.card}>
-                <Text style={styles.cardTitle}>Technische Details</Text>
-                <Text style={styles.bodyText}>Weitere technische Informationen zu dieser Seite finden Sie in der Admin-Wiki.</Text>
-                {/* Admin-Wiki link is web-only for now */}
             </View>
 		</ScrollView>
 	);

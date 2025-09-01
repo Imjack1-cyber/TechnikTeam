@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,7 +72,7 @@ public class AuthResource {
 	@PostMapping("/login")
 	@Operation(summary = "User Login", description = "Authenticates a user with username and password. On success, it sets an HttpOnly cookie with the JWT and returns user session data.", requestBody = @RequestBody(description = "User credentials for login.", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginRequest.class))))
 	public ResponseEntity<ApiResponse> login(
-			@org.springframework.web.bind.annotation.RequestBody LoginRequest loginRequest, HttpServletRequest request,
+			@Valid @org.springframework.web.bind.annotation.RequestBody LoginRequest loginRequest, HttpServletRequest request,
 			HttpServletResponse response) {
 		String username = loginRequest.username();
 		String password = loginRequest.password();
@@ -157,7 +158,7 @@ public class AuthResource {
 
 	@PostMapping("/verify-2fa")
 	@Operation(summary = "Verify 2FA Token", description = "Verifies a TOTP or backup code to complete a login attempt from an unknown location.")
-	public ResponseEntity<ApiResponse> verifyTwoFactor(@RequestBody TwoFactorVerificationRequest verificationRequest,
+	public ResponseEntity<ApiResponse> verifyTwoFactor(@Valid @org.springframework.web.bind.annotation.RequestBody TwoFactorVerificationRequest verificationRequest,
 			HttpServletRequest request, HttpServletResponse response) {
 		try {
 			User user = authService.validatePreAuthTokenAndGetUser(verificationRequest.preAuthToken());

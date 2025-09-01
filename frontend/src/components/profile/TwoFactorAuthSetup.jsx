@@ -81,6 +81,10 @@ const TwoFactorAuthSetup = ({ onSetupComplete }) => {
                 <View style={styles.qrContainer}>
                     <Image source={{ uri: setupData.qrCodeDataUri }} style={styles.qrCode} />
                 </View>
+                 <TouchableOpacity onPress={() => { Clipboard.setString(setupData.secret); addToast('Secret copied!', 'success'); }}>
+                    <Text style={styles.stepText}>Oder geben Sie diesen Schlüssel manuell ein:</Text>
+                    <Text style={styles.secretText}>{setupData.secret}</Text>
+                </TouchableOpacity>
                 <Text style={styles.stepText}>2. Geben Sie den 6-stelligen Code aus Ihrer App ein.</Text>
                 <Text style={styles.label}>Verifizierungscode</Text>
                 <TextInput
@@ -109,6 +113,7 @@ const styles = StyleSheet.create({
     stepText: { fontSize: 16, marginBottom: 8 },
     qrContainer: { alignItems: 'center', marginVertical: 16 },
     qrCode: { width: 250, height: 250 },
+    secretText: { fontFamily: 'monospace', backgroundColor: '#e9ecef', padding: 8, borderRadius: 4, textAlign: 'center', marginBottom: 16 },
     label: { fontWeight: '500', color: '#6c757d', marginBottom: 8 },
     input: { borderWidth: 1, borderColor: '#dee2e6', borderRadius: 6, padding: 12, fontSize: 18, textAlign: 'center', letterSpacing: 5 },
     button: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 6, alignItems: 'center', marginTop: 16 },

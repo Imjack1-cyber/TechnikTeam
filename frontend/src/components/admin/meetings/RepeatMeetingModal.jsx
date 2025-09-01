@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Modal from '../../ui/Modal';
 import apiClient from '../../../services/apiClient';
 import { useToast } from '../../../context/ToastContext';
+import { useAuthStore } from '../../../store/authStore';
+import { getCommonStyles } from '../../../styles/commonStyles';
 
 const RepeatMeetingModal = ({ isOpen, onClose, onSuccess, meeting }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = getCommonStyles(theme);
 	const [datetime, setDatetime] = useState('');
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
 	const { addToast } = useToast();
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
+	const handleSubmit = async () => {
 		setIsSubmitting(true);
 		setError('');
 		try {
@@ -32,23 +36,22 @@ const RepeatMeetingModal = ({ isOpen, onClose, onSuccess, meeting }) => {
 
 	return (
 		<Modal isOpen={isOpen} onClose={onClose} title={`"${meeting.name}" wiederholen`}>
-			<form onSubmit={handleSubmit}>
-				{error && <p className="error-message">{error}</p>}
-				<p>Geben Sie das neue Datum und die Uhrzeit für dieses wiederholte Meeting an.</p>
-				<div className="form-group">
-					<label htmlFor="repeat-datetime">Neues Datum & Uhrzeit</label>
-					<input
-						type="datetime-local"
-						id="repeat-datetime"
+			<View>
+				{error && <Text style={styles.errorText}>{error}</Text>}
+				<Text style={styles.bodyText}>Geben Sie das neue Datum und die Uhrzeit für dieses wiederholte Meeting an.</Text>
+				<View style={styles.formGroup}>
+					<Text style={styles.label}>Neues Datum & Uhrzeit</Text>
+					<TextInput
+						style={styles.input}
 						value={datetime}
-						onChange={(e) => setDatetime(e.target.value)}
-						required
+                        placeholder="JJJJ-MM-TTTHH:MM"
+						onChangeText={setDatetime}
 					/>
-				</div>
-				<button type="submit" className="btn" disabled={isSubmitting}>
-					{isSubmitting ? 'Wird erstellt...' : 'Wiederholung erstellen'}
-				</button>
-			</form>
+				</View>
+				<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}>
+					{isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Wiederholung erstellen</Text>}
+				</TouchableOpacity>
+			</View>
 		</Modal>
 	);
 };

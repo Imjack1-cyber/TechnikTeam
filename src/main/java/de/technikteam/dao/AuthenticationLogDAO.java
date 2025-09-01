@@ -1,6 +1,7 @@
 package de.technikteam.dao;
 
 import de.technikteam.model.AuthenticationLog;
+import de.technikteam.model.dto.LoginIpInfo;
 import de.technikteam.util.DaoUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -110,5 +111,19 @@ public class AuthenticationLogDAO {
                      "WHERE l.user_id = ? AND l.event_type = 'LOGIN_SUCCESS' AND l.token_expiry > NOW() AND b.jti IS NULL " +
                      "ORDER BY l.timestamp DESC";
         return jdbcTemplate.query(sql, rowMapper, userId);
+    }
+
+    public List<LoginIpInfo> getLoginIpsForUser(int userId) {
+        String sql = "SELECT ip_address, country_code, device_type, MAX(timestamp) as last_seen " +
+                     "FROM authentication_logs " +
+                     "WHERE user_id = ? AND event_type = 'LOGIN_SUCCESS' " +
+                     "GROUP BY ip_address, country_code, device_type " +
+                     "ORDER BY last_seen DESC";
+        return jdbcTemplate.query(sql, (rs, rowNum) -> new LoginIpInfo(
+                rs.getString("ip_address"),
+                rs.getString("country_code"),
+                rs.getString("device_type"),
+                rs.getTimestamp("last_seen").toLocalDateTime()
+        ), userId);
     }
 }

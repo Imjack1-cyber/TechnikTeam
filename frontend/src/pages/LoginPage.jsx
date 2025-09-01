@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
 import { useAuthStore } from '../store/authStore';
 import { useToast } from '../context/ToastContext';
 import Icon from 'react-native-vector-icons/FontAwesome5';
+import apiClient from '../services/apiClient';
 
 const TwoFactorAuthForm = ({ username, preAuthToken, onAuthSuccess }) => {
 	const [token, setToken] = useState('');
@@ -10,13 +11,20 @@ const TwoFactorAuthForm = ({ username, preAuthToken, onAuthSuccess }) => {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState('');
 	const { addToast } = useToast();
+    const [showRecovery, setShowRecovery] = useState(false);
 
 	const handleSubmit = async () => {
 		setIsLoading(true);
 		setError('');
 
 		try {
-			const result = await apiClient.post('/auth/verify-2fa', { preAuthToken, token, backupCode });
+            // Ensure only one code is sent
+            const payload = { 
+                preAuthToken, 
+                token: token.trim() || null, 
+                backupCode: backupCode.trim() || null 
+            };
+			const result = await apiClient.post('/auth/verify-2fa', payload);
 			if (result.success && result.data.token) {
 				onAuthSuccess(result.data.token);
 			} else {
@@ -39,24 +47,38 @@ const TwoFactorAuthForm = ({ username, preAuthToken, onAuthSuccess }) => {
 			<TextInput
 				style={styles.input}
 				value={token}
-				onChangeText={setToken}
+				onChangeText={(val) => { setToken(val); setBackupCode(''); }}
 				placeholder="6-stelliger Code"
 				keyboardType="number-pad"
 				maxLength={6}
 				autoFocus
 			/>
 			
-			<Text style={styles.label}>oder Backup-Code</Text>
-			<TextInput
-				style={styles.input}
-				value={backupCode}
-				onChangeText={setBackupCode}
-				placeholder="8-stelliger Code"
-			/>
+            {showRecovery && (
+                <>
+                    <Text style={[styles.label, {marginTop: 16}]}>oder Backup-Code</Text>
+                    <TextInput
+                        style={styles.input}
+                        value={backupCode}
+                        onChangeText={(val) => { setBackupCode(val); setToken(''); }}
+                        placeholder="8-stelliger Code"
+                    />
+                </>
+            )}
 
-			<TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={isLoading}>
+			<TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={isLoading || (!token && !backupCode)}>
 				{isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Bestätigen</Text>}
 			</TouchableOpacity>
+            
+            <TouchableOpacity onPress={() => setShowRecovery(!showRecovery)} style={{marginTop: 16}}>
+                <Text style={{color: '#007bff', textAlign: 'center'}}>{showRecovery ? 'Verberge Wiederherstellungsoptionen' : 'Hilfe benötigt?'}</Text>
+            </TouchableOpacity>
+
+            {showRecovery && (
+                <View style={styles.recoveryInfo}>
+                    <Text style={styles.subtitle}>Wenn Sie den Zugriff auf Ihre Authenticator-App verloren haben, verwenden Sie einen Ihrer Backup-Codes oder kontaktieren Sie einen Administrator zur manuellen Zurücksetzung.</Text>
+                </View>
+            )}
 		</View>
 	);
 };
@@ -165,7 +187,13 @@ const styles = StyleSheet.create({
     passwordContainer: { position: 'relative', justifyContent: 'center' },
     eyeIcon: { position: 'absolute', right: 12, padding: 4 },
     button: { backgroundColor: '#007bff', paddingVertical: 12, borderRadius: 6, alignItems: 'center', justifyContent: 'center', height: 48 },
-    buttonText: { color: '#fff', fontWeight: '500', fontSize: 16 }
+    buttonText: { color: '#fff', fontWeight: '500', fontSize: 16 },
+    recoveryInfo: {
+        marginTop: 16,
+        padding: 12,
+        backgroundColor: '#f8f9fa',
+        borderRadius: 6,
+    }
 });
 
 export default LoginPage;

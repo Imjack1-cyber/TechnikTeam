@@ -4,19 +4,22 @@ import { useAuthStore } from '../../store/authStore';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const Header = ({ navigation }) => {
+const Header = ({ navigation, route, options }) => {
 	const user = useAuthStore(state => state.user);
 	const unseenCount = user?.unseenNotificationsCount || 0;
     const insets = useSafeAreaInsets();
 
+    const canGoBack = navigation.canGoBack();
+    const title = options?.title ?? route.name;
+
 	return (
 		<View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? insets.top : 10, height: (Platform.OS === 'ios' ? insets.top : 10) + 54 }]}>
-			<TouchableOpacity style={styles.toggleButton} onPress={() => navigation.toggleDrawer()}>
-				<Icon name="bars" size={24} color="#212529" />
+			<TouchableOpacity style={styles.toggleButton} onPress={canGoBack ? () => navigation.goBack() : () => navigation.toggleDrawer()}>
+				<Icon name={canGoBack ? 'arrow-left' : 'bars'} size={24} color="#212529" />
 			</TouchableOpacity>
-			<TouchableOpacity onPress={() => navigation.navigate('Dashboard')}>
-				<Text style={styles.logo}>TechnikTeam</Text>
-			</TouchableOpacity>
+			<View>
+				<Text style={styles.logo}>{title}</Text>
+			</View>
 			<View style={styles.rightContainer}>
 				<TouchableOpacity onPress={() => navigation.navigate('Benachrichtigungen')} style={styles.iconButton}>
 					<Icon name="bell" solid size={24} color="#212529" />

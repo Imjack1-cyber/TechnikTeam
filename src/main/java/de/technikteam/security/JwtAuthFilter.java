@@ -44,6 +44,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 	protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
 			@NonNull FilterChain filterChain) throws ServletException, IOException {
 
+        final String requestUri = request.getRequestURI();
+        final String contextPath = request.getContextPath();
+
+        // Immediately allow all public auth endpoints to pass through without token validation.
+        if (requestUri.startsWith(contextPath + "/api/v1/auth/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
 		String token = null;
 
 		// 1. Try to get token from Authorization header (for mobile clients)
@@ -88,7 +97,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 			MaintenanceStatusDTO status = settingsService.getMaintenanceStatus();
 			User currentUser = ((SecurityUser) userDetails).getUser();
 
-			if ("HARD".equals(status.mode()) && !currentUser.hasAdminAccess() && !MAINTENANCE_WHITELIST.contains(request.getRequestURI())) {
+			if ("HARD".equals(status.mode()) && !currentUser.hasAdminAccess() && !isMaintenanceWhitelisted(requestUri, contextPath)) {
 				response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
 				response.setContentType("application/json");
 				response.getWriter().write(
@@ -99,4 +108,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
 		filterChain.doFilter(request, response);
 	}
+    
+    private boolean isMaintenanceWhitelisted(String requestUri, String contextPath) {
+        return MAINTENANCE_WHITELIST.stream()
+                .anyMatch(whitelistedPath -> requestUri.equals(contextPath + whitelistedPath));
+    }
 }

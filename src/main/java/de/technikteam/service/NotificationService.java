@@ -86,7 +86,7 @@ public class NotificationService {
 		// Send a confirmation event
 		try {
 			emitter.send(SseEmitter.event().name("connected").data("Verbindung hergestellt"));
-		} catch (IOException e) {
+		} catch (Exception e) {
 			logger.error("Fehler beim Senden der Verbindungsbestätigung an Benutzer {}", userId, e);
 			emitter.complete();
 		}

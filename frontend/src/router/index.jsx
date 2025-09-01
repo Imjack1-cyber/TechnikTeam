@@ -117,7 +117,6 @@ const MainDrawerNavigator = () => {
                 headerShown: true
             }}
         >
-            {/* User Screens */}
             <Drawer.Screen name="Dashboard" component={DashboardPage} />
             <Drawer.Screen name="Anschlagbrett" component={AnnouncementsPage} />
             <Drawer.Screen name="Benachrichtigungen" component={NotificationsPage} />
@@ -130,8 +129,8 @@ const MainDrawerNavigator = () => {
             <Drawer.Screen name="Kalender" component={CalendarPage} />
             <Drawer.Screen name="Feedback" component={FeedbackPage} />
             <Drawer.Screen name="Changelogs" component={ChangelogPage} />
+            <Drawer.Screen name="Profile" component={ProfilePage} />
 
-            {/* Admin Index Screens that point to Stacks */}
             <Drawer.Screen name="Admin Dashboard" component={AdminDashboardPage} />
             <Drawer.Screen name="Benutzer & Anträge" component={AdminUsersStack} />
             <Drawer.Screen name="Event Management" component={AdminEventsStack} />
@@ -146,15 +145,17 @@ const MainDrawerNavigator = () => {
 
 const AppStack = () => {
     return (
-        <Stack.Navigator>
+        <Stack.Navigator
+            screenOptions={{
+                header: (props) => <Header {...props} />,
+            }}
+        >
             <Stack.Screen name="MainDrawer" component={MainDrawerNavigator} options={{ headerShown: false }}/>
             
-            {/* Detail screens that should have their own header (or no header) */}
             <Stack.Screen name="UserProfile" component={UserProfilePage} options={{ title: 'Benutzerprofil' }} />
             <Stack.Screen name="MeetingDetails" component={MeetingDetailsPage} options={{ title: 'Meeting-Details' }}/>
             <Stack.Screen name="EventDetails" component={EventDetailsPage} options={{ title: 'Event-Details' }}/>
             <Stack.Screen name="StorageItemDetails" component={StorageItemDetailsPage} options={{ title: 'Lagerartikel-Details' }} />
-            <Stack.Screen name="Profile" component={ProfilePage} options={{ title: 'Mein Profil' }} />
             <Stack.Screen name="Settings" component={SettingsPage} options={{ title: 'Einstellungen' }} />
             <Stack.Screen name="PasswordChange" component={PasswordPage} options={{ title: 'Passwort ändern' }} />
             <Stack.Screen name="Search" component={SearchResultsPage} options={{ title: 'Suchergebnisse' }} />

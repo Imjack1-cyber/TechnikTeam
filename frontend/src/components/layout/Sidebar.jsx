@@ -3,11 +3,14 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Linkin
 import { useAuthStore } from '../../store/authStore';
 import ThemeSwitcher from '../ui/ThemeSwitcher';
 import Icon from 'react-native-vector-icons/FontAwesome5';
+import { getThemeColors } from '../../styles/theme';
 
 // This component is designed to be used as the `drawerContent` for a React Navigation Drawer.
 const Sidebar = ({ navigation }) => {
-	const { user, navigationItems, logout, layout } = useAuthStore();
+	const { user, navigationItems, logout, layout, theme } = useAuthStore();
 	const [searchTerm, setSearchTerm] = useState('');
+    const colors = getThemeColors(theme);
+    const styles = pageStyles(theme);
 
 	const orderedNavItems = useMemo(() => {
 		if (!navigationItems) return [];
@@ -44,14 +47,14 @@ const Sidebar = ({ navigation }) => {
 			const swaggerUrl = `http://10.0.2.2:8081/TechnikTeam/swagger-ui.html`;
 			return (
 				<TouchableOpacity style={styles.navLink} onPress={() => Linking.openURL(swaggerUrl)}>
-					<Icon name={item.icon} style={styles.navIcon} />
+					<Icon name={item.icon.replace('fa-', '')} style={styles.navIcon} />
 					<Text style={styles.navLabel}>{item.label}</Text>
 				</TouchableOpacity>
 			);
 		}
 		return (
 			<TouchableOpacity style={styles.navLink} onPress={() => navigation.navigate(item.label)}>
-				<Icon name={item.icon} style={styles.navIcon} />
+				<Icon name={item.icon.replace('fa-', '')} style={styles.navIcon} />
 				<Text style={styles.navLabel}>{item.label}</Text>
                 {hasBadge && (
                     <View style={styles.badge}>
@@ -65,7 +68,7 @@ const Sidebar = ({ navigation }) => {
 	return (
 		<View style={styles.container}>
 			<View style={styles.header}>
-				<Icon name="bolt" size={20} color="#007bff" />
+				<Icon name="bolt" size={20} color={colors.primary} />
 				<Text style={styles.logo}>TechnikTeam</Text>
 			</View>
 			<View style={styles.searchContainer}>
@@ -102,28 +105,32 @@ const Sidebar = ({ navigation }) => {
 	);
 };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#ffffff' },
-    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#dee2e6' },
-    logo: { fontSize: 18, fontWeight: '700', color: '#002B5B', marginLeft: 8 },
-    searchContainer: { paddingHorizontal: 16, marginVertical: 8 },
-    searchInput: { backgroundColor: '#f8f9fa', borderRadius: 20, paddingVertical: 8, paddingHorizontal: 16, paddingLeft: 40 },
-    searchIcon: { position: 'absolute', top: 12, left: 30, color: '#6c757d' },
-    navScroller: { flex: 1 },
-    navSectionTitle: { paddingHorizontal: 24, paddingVertical: 8, marginTop: 8, fontSize: 12, fontWeight: '600', textTransform: 'uppercase', color: '#6c757d' },
-    navLink: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 24, gap: 16 },
-    navIcon: { fontSize: 18, color: '#6c757d', width: 24, textAlign: 'center' },
-    navLabel: { fontSize: 16, fontWeight: '500', color: '#343a40' },
-    badge: { backgroundColor: '#dc3545', borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center', marginLeft: 'auto' },
-    badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
-    footer: { padding: 24, borderTopWidth: 1, borderTopColor: '#dee2e6' },
-    userInfo: { fontSize: 14, color: '#6c757d', marginBottom: 16 },
-    footerActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-    button: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6 },
-    secondaryButton: { backgroundColor: '#6c757d' },
-    dangerButton: { backgroundColor: '#dc3545' },
-    buttonText: { color: '#fff', textAlign: 'center' },
-    buttonTextSecondary: { color: '#fff', textAlign: 'center' },
-});
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        container: { flex: 1, backgroundColor: colors.surface },
+        header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
+        logo: { fontSize: 18, fontWeight: '700', color: colors.heading, marginLeft: 8 },
+        searchContainer: { paddingHorizontal: 16, marginVertical: 8 },
+        searchInput: { backgroundColor: colors.background, borderRadius: 20, paddingVertical: 8, paddingHorizontal: 16, paddingLeft: 40, color: colors.text },
+        searchIcon: { position: 'absolute', top: 12, left: 30, color: colors.textMuted },
+        navScroller: { flex: 1 },
+        navSectionTitle: { paddingHorizontal: 24, paddingVertical: 8, marginTop: 8, fontSize: 12, fontWeight: '600', textTransform: 'uppercase', color: colors.textMuted },
+        navLink: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 24, gap: 16 },
+        navIcon: { fontSize: 18, color: colors.textMuted, width: 24, textAlign: 'center' },
+        navLabel: { fontSize: 16, fontWeight: '500', color: colors.text },
+        badge: { backgroundColor: colors.danger, borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center', marginLeft: 'auto' },
+        badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
+        footer: { padding: 24, borderTopWidth: 1, borderTopColor: colors.border },
+        userInfo: { fontSize: 14, color: colors.textMuted, marginBottom: 16 },
+        footerActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+        button: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6 },
+        secondaryButton: { backgroundColor: colors.textMuted },
+        dangerButton: { backgroundColor: colors.danger },
+        buttonText: { color: '#fff', textAlign: 'center' },
+        buttonTextSecondary: { color: '#fff', textAlign: 'center' },
+    });
+};
+
 
 export default Sidebar;

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, TextInput, Platform, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
@@ -20,6 +20,12 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuccess }) => {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
 	const { addToast } = useToast();
+
+    useEffect(() => {
+        if(isOpen) {
+            console.log(`SuspendUserModal opened for user: ${user?.username}`);
+        }
+    }, [isOpen, user]);
 
 	const handleSubmit = async () => {
 		setIsSubmitting(true);
@@ -96,57 +102,101 @@ const AdminUsersPage = () => {
 	const openModal = (user = null) => { setEditingUser(user); setIsModalOpen(true); };
 	const handleSuccess = () => { setIsModalOpen(false); setEditingUser(null); setSuspendingUser(null); reload(); };
 
+    const performResetPassword = async (user) => {
+        try {
+            const result = await apiClient.post(`/users/${user.id}/reset-password`);
+            if (result.success) {
+                const message = `Das neue Passwort für ${result.data.username} ist: ${result.data.newPassword}\n\nBitte geben Sie es sicher weiter.`;
+                if (Platform.OS === 'web') {
+                    alert(message);
+                } else {
+                    Alert.alert('Passwort zurückgesetzt', message, [{ text: 'OK' }]);
+                }
+                addToast('Passwort zurückgesetzt.', 'success');
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
+    };
+
 	const handleResetPassword = (user) => {
         console.log("Reset Password button pressed for user:", user.username);
-        Alert.alert(`Passwort für ${user.username} zurücksetzen?`, "Ein neues, temporäres Passwort wird generiert.", [
-            { text: 'Abbrechen', style: 'cancel' },
-            { text: 'Zurücksetzen', onPress: async () => {
-                try {
-                    const result = await apiClient.post(`/users/${user.id}/reset-password`);
-                    if (result.success) {
-                        Alert.alert('Passwort zurückgesetzt', `Das neue Passwort für ${result.data.username} ist: ${result.data.newPassword}\n\nBitte geben Sie es sicher weiter.`, [{text: 'OK'}]);
-                        addToast('Passwort zurückgesetzt.', 'success');
-                    } else { throw new Error(result.message); }
-                } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
-            }},
-        ]);
+        const title = `Passwort für ${user.username} zurücksetzen?`;
+        const message = "Ein neues, temporäres Passwort wird generiert.";
+        
+        if (Platform.OS === 'web') {
+            if (window.confirm(`${title}\n\n${message}`)) {
+                performResetPassword(user);
+            }
+        } else {
+            Alert.alert(title, message, [
+                { text: 'Abbrechen', style: 'cancel' },
+                { text: 'Zurücksetzen', onPress: () => performResetPassword(user) },
+            ]);
+        }
 	};
     
+    const performUnsuspend = async (user) => {
+        try {
+            const result = await apiClient.post(`/admin/users/${user.id}/unsuspend`);
+            if (result.success) {
+                addToast('Benutzer erfolgreich entsperrt.', 'success');
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Entsperren fehlgeschlagen: ${err.message}`, 'error'); }
+    };
+
     const handleUnsuspend = (user) => {
         console.log("Unsuspend button pressed for user:", user.username);
-        Alert.alert(`Benutzer "${user.username}" entsperren?`, "", [
-            { text: 'Abbrechen', style: 'cancel' },
-            { text: 'Entsperren', onPress: async () => {
-                try {
-                    const result = await apiClient.post(`/admin/users/${user.id}/unsuspend`);
-                    if (result.success) {
-                        addToast('Benutzer erfolgreich entsperrt.', 'success');
-                        reload();
-                    } else { throw new Error(result.message); }
-                } catch (err) { addToast(`Entsperren fehlgeschlagen: ${err.message}`, 'error'); }
-            }},
-        ]);
+        const title = `Benutzer "${user.username}" entsperren?`;
+        const message = "Die Sperre des Benutzers wird aufgehoben und alle Anmeldeversuche werden zurückgesetzt.";
+
+        if (Platform.OS === 'web') {
+            if(window.confirm(`${title}\n\n${message}`)) {
+                performUnsuspend(user);
+            }
+        } else {
+            Alert.alert(title, message, [
+                { text: 'Abbrechen', style: 'cancel' },
+                { text: 'Entsperren', onPress: () => performUnsuspend(user) },
+            ]);
+        }
+    };
+
+    const performDelete = async (userToDelete) => {
+        try {
+            const result = await apiClient.delete(`/users/${userToDelete.id}`);
+            if (result.success) {
+                addToast('Benutzer erfolgreich gelöscht.', 'success');
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
     };
 
     const handleDelete = (userToDelete) => {
         console.log("Delete button pressed for user:", userToDelete.username);
-        Alert.alert(`Benutzer "${userToDelete.username}" löschen?`, "Diese Aktion kann nicht rückgängig gemacht werden.", [
-            { text: 'Abbrechen', style: 'cancel' },
-            { text: 'Löschen', style: 'destructive', onPress: async () => {
-                try {
-                    const result = await apiClient.delete(`/users/${userToDelete.id}`);
-                    if (result.success) {
-                        addToast('Benutzer erfolgreich gelöscht.', 'success');
-                        reload();
-                    } else { throw new Error(result.message); }
-                } catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
-            }},
-        ]);
+        const title = `Benutzer "${userToDelete.username}" löschen?`;
+        const message = "Diese Aktion kann nicht rückgängig gemacht werden.";
+
+        if (Platform.OS === 'web') {
+            if (window.confirm(`${title}\n\n${message}`)) {
+                performDelete(userToDelete);
+            }
+        } else {
+            Alert.alert(title, message, [
+                { text: 'Abbrechen', style: 'cancel' },
+                { text: 'Löschen', style: 'destructive', onPress: () => performDelete(userToDelete) },
+            ]);
+        }
+    };
+
+    const handleSuspend = (user) => {
+        console.log("Suspend button pressed for user:", user.username);
+        setSuspendingUser(user);
     };
     
     const renderItem = ({ item: user }) => {
         const isLocked = user.isLocked || user.status === 'SUSPENDED';
         const canDelete = currentUser?.id === 1 ? (user.id !== 1) : (user.roleName !== 'ADMIN');
+        const canSuspend = currentUser?.id === 1 ? user.id !== 1 : user.roleName !== 'ADMIN';
 
         return (
             <View style={styles.card}>
@@ -174,7 +224,7 @@ const AdminUsersPage = () => {
                             <Text style={[styles.actionButtonText, {color: colors.white}]}>Entsperren</Text>
                         </TouchableOpacity>
                     ) : (
-                        <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.warning}]} onPress={() => setSuspendingUser(user)} disabled={user.roleName === 'ADMIN'}>
+                        <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.warning}, !canSuspend && styles.disabledButton]} onPress={() => handleSuspend(user)} disabled={!canSuspend}>
                             <Icon name="user-lock" size={14} color={colors.black} />
                             <Text style={[styles.actionButtonText, {color: colors.black}]}>Sperren</Text>
                         </TouchableOpacity>

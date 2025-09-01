@@ -9,6 +9,7 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography } from '../../styles/theme';
+import DocumentationModal from '../../components/admin/documentation/DocumentationModal';
 
 const AdminDocumentationPage = () => {
     const navigation = useNavigation();
@@ -26,6 +27,12 @@ const AdminDocumentationPage = () => {
 		setEditingDoc(doc);
 		setIsModalOpen(true);
 	};
+    
+    const handleSuccess = () => {
+        setIsModalOpen(false);
+        setEditingDoc(null);
+        reload();
+    };
 
 	const handleDelete = (doc) => {
         Alert.alert(`Doku löschen?`, `"${doc.title}" wirklich löschen?`, [
@@ -74,8 +81,7 @@ const AdminDocumentationPage = () => {
                 contentContainerStyle={{paddingHorizontal: 16}}
             />
 
-            {/* Modal for editing would be a separate component */}
-            {/* <DocumentationModal isOpen={isModalOpen} ... /> */}
+            <DocumentationModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} doc={editingDoc} allDocs={docs || []} />
 		</View>
 	);
 };

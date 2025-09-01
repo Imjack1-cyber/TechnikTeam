@@ -2,12 +2,14 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors } from '../../styles/theme';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const AdminContentIndex = ({ navigation }) => {
 	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
 	const baseLinks = [
 		{ to: 'AdminAnnouncements', label: 'Anschlagbrett', icon: 'thumbtack', perm: 'USER_UPDATE' },
@@ -33,7 +35,7 @@ const AdminContentIndex = ({ navigation }) => {
             <View style={styles.grid}>
                 {baseLinks.filter(link => can(link.perm)).map(link => (
                     <TouchableOpacity key={link.to} style={styles.card} onPress={() => navigation.navigate(link.to)}>
-                        <Icon name={link.icon} size={48} color={styles.cardIcon.color} />
+                        <Icon name={link.icon} size={48} color={colors.primary} />
                         <Text style={styles.cardTitle}>{link.label}</Text>
                     </TouchableOpacity>
                 ))}
@@ -63,15 +65,12 @@ const pageStyles = (theme) => {
             borderWidth: 1,
             borderColor: colors.border,
         },
-        cardIcon: {
-            color: colors.primary,
-            marginBottom: 16,
-        },
         cardTitle: {
             fontSize: 16,
             fontWeight: 'bold',
             textAlign: 'center',
-            color: colors.text
+            color: colors.text,
+            marginTop: 16
         },
     });
 }

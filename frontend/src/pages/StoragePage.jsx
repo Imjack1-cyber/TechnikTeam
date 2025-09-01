@@ -34,6 +34,7 @@ const StoragePage = () => {
 	const [cart, setCart] = useState([]);
 	const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 	const [lightboxSrc, setLightboxSrc] = useState('');
+    const [isCartOpen, setIsCartOpen] = useState(false);
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
@@ -43,6 +44,23 @@ const StoragePage = () => {
 		setCart(prev => [...prev, { ...item, cartQuantity: 1, type }]);
 		addToast(`${item.name} zum Warenkorb hinzugefügt.`, 'success');
 	};
+
+    const handleUpdateCartQuantity = (itemId, type, newQuantity) => {
+        setCart(prev => prev.map(item =>
+            item.id === itemId && item.type === type ? { ...item, cartQuantity: newQuantity } : item
+        ));
+    };
+
+    const handleRemoveFromCart = (itemId, type) => {
+        setCart(prev => prev.filter(item => !(item.id === itemId && item.type === type)));
+    };
+
+    const handleSwitchCartItemType = (itemId, oldType) => {
+        setCart(prev => prev.map(item =>
+            item.id === itemId && item.type === oldType ? { ...item, type: oldType === 'checkout' ? 'checkin' : 'checkout' } : item
+        ));
+    };
+
 
 	const getImagePath = (path) => `http://10.0.2.2:8081/TechnikTeam/api/v1/public/files/images/${path.split('/').pop()}`;
 
@@ -84,7 +102,7 @@ const StoragePage = () => {
                 data={allItems}
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
-                contentContainerStyle={{padding: spacing.md}}
+                contentContainerStyle={{padding: spacing.md, paddingBottom: 80}} // Add padding for FAB
                 ListHeaderComponent={
                     <>
                         <Text style={styles.title}>Lagerübersicht</Text>
@@ -92,8 +110,29 @@ const StoragePage = () => {
                     </>
                 }
             />
+            {cart.length > 0 && (
+                <TouchableOpacity style={styles.fab} onPress={() => setIsCartOpen(true)}>
+                    <Icon name="shopping-cart" size={24} color="#fff" />
+                    <View style={styles.fabBadge}>
+                        <Text style={styles.fabBadgeText}>{cart.length}</Text>
+                    </View>
+                </TouchableOpacity>
+            )}
 			{isLightboxOpen && <Lightbox src={lightboxSrc} onClose={() => setIsLightboxOpen(false)} />}
-            {/* CartModal would need to be implemented */}
+            <CartModal
+                isOpen={isCartOpen}
+                onClose={() => setIsCartOpen(false)}
+                cart={cart}
+                onUpdateQuantity={handleUpdateCartQuantity}
+                onRemove={handleRemoveFromCart}
+                onSwitchType={handleSwitchCartItemType}
+                activeEvents={data?.activeEvents || []}
+                onSuccess={() => {
+                    setIsCartOpen(false);
+                    setCart([]);
+                    reload();
+                }}
+            />
 		</>
 	);
 };
@@ -104,6 +143,35 @@ const pageStyles = (theme) => {
         itemImage: { width: 50, height: 50, borderRadius: 8 },
         quantityText: { fontSize: typography.small, color: colors.textMuted, marginTop: spacing.xs },
         cardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm, marginTop: spacing.md },
+        fab: {
+            position: 'absolute',
+            margin: 16,
+            right: 0,
+            bottom: 0,
+            backgroundColor: colors.primary,
+            width: 60,
+            height: 60,
+            borderRadius: 30,
+            justifyContent: 'center',
+            alignItems: 'center',
+            elevation: 8,
+        },
+        fabBadge: {
+            position: 'absolute',
+            right: -2,
+            top: -2,
+            backgroundColor: colors.danger,
+            borderRadius: 10,
+            width: 20,
+            height: 20,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        fabBadgeText: {
+            color: 'white',
+            fontSize: 10,
+            fontWeight: 'bold',
+        },
     });
 };
 

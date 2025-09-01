@@ -121,6 +121,7 @@ const AdminAchievementsPage = () => {
 	const { data: achievements, loading, error, reload } = useApi(apiCall);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingAchievement, setEditingAchievement] = useState(null);
+    const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
@@ -129,6 +130,21 @@ const AdminAchievementsPage = () => {
 		setEditingAchievement(achievement);
 		setIsModalOpen(true);
 	};
+    
+    const handleDelete = (achievement) => {
+        Alert.alert(`Abzeichen "${achievement.name}" löschen?`, "Diese Aktion kann nicht rückgängig gemacht werden.", [
+            { text: 'Abbrechen', style: 'cancel' },
+            { text: 'Löschen', style: 'destructive', onPress: async () => {
+                try {
+                    const result = await apiClient.delete(`/achievements/${achievement.id}`);
+                    if (result.success) {
+                        addToast('Abzeichen gelöscht', 'success');
+                        reload();
+                    } else { throw new Error(result.message); }
+                } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
+            }},
+        ]);
+    };
     
     const renderItem = ({ item }) => (
         <View style={styles.card}>
@@ -145,7 +161,9 @@ const AdminAchievementsPage = () => {
                 <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => openModal(item)}>
                     <Text style={styles.buttonText}>Bearbeiten</Text>
                 </TouchableOpacity>
-                {/* Deletion would need a confirmation prompt */}
+                 <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => handleDelete(item)}>
+                    <Text style={styles.dangerOutlineButtonText}>Löschen</Text>
+                </TouchableOpacity>
             </View>
         </View>
     );
@@ -189,9 +207,10 @@ const pageStyles = (theme) => {
         cardTitle: { fontSize: 18, fontWeight: 'bold' },
         detailRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 4 },
         cardDescription: { marginTop: 8, color: colors.text },
-        cardActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 },
+        cardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 16 },
         buttonText: { color: '#fff' },
         secondaryButtonText: { color: '#fff' },
+        dangerOutlineButtonText: { color: colors.danger },
         keyContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
         keyPart: { paddingVertical: 2, paddingHorizontal: 6, borderRadius: 4, borderWidth: 1, overflow: 'hidden'},
         keyTrigger: { backgroundColor: colors.primaryLight, borderColor: colors.primary, color: colors.primary },

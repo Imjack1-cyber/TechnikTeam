@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, SectionList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-// NOTE: File picking requires a native library.
-// import DocumentPicker from 'react-native-document-picker';
+// NOTE: File picking requires a native library like expo-document-picker
+import * as DocumentPicker from 'expo-document-picker';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
@@ -44,6 +44,36 @@ const AdminFilesPage = ({ navigation }) => {
 		]);
 	};
 
+    const handleUpload = async () => {
+        try {
+            const docRes = await DocumentPicker.getDocumentAsync({});
+            if (!docRes.canceled) {
+                const file = docRes.assets[0];
+                const formData = new FormData();
+                formData.append('file', {
+                    uri: file.uri,
+                    name: file.name,
+                    type: file.mimeType,
+                });
+                formData.append('requiredRole', 'NUTZER'); // Default role
+                
+                // You would typically have a modal here to select category, role etc.
+                // For simplicity, using defaults.
+                
+                addToast('Datei wird hochgeladen...', 'info');
+                const result = await apiClient.post('/admin/files', formData);
+                if(result.success) {
+                    addToast('Datei erfolgreich hochgeladen!', 'success');
+                    reloadFiles();
+                } else {
+                    throw new Error(result.message);
+                }
+            }
+        } catch (err) {
+            addToast(`Upload fehlgeschlagen: ${err.message}`, 'error');
+        }
+    };
+
     const renderItem = ({ item }) => {
         const isMarkdown = item.filename.toLowerCase().endsWith('.md');
         return (
@@ -82,8 +112,7 @@ const AdminFilesPage = ({ navigation }) => {
 			</View>
             <Text style={styles.subtitle}>Hier können Sie alle zentralen Dokumente und Vorlagen verwalten.</Text>
             
-            {/* NOTE: File upload requires a native module and would open a modal */}
-            <TouchableOpacity style={[styles.button, styles.successButton, { marginHorizontal: 16, marginBottom: 16}]}>
+            <TouchableOpacity style={[styles.button, styles.successButton, { marginHorizontal: 16, marginBottom: 16}]} onPress={handleUpload}>
                 <Icon name="upload" size={16} color="#fff" />
                 <Text style={styles.buttonText}>Neue Datei hochladen</Text>
             </TouchableOpacity>

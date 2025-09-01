@@ -37,9 +37,16 @@ public class AdminUserManagementService {
 		if (userToSuspend == null) {
 			throw new IllegalArgumentException("Benutzer nicht gefunden.");
 		}
-		if ("ADMIN".equals(userToSuspend.getRoleName())) {
+		
+		// The root admin (ID 1) can suspend anyone except themselves.
+		// Other admins cannot suspend other admins.
+		if (adminUser.getId() != 1 && "ADMIN".equals(userToSuspend.getRoleName())) {
 			throw new AccessDeniedException("Administratoren können nicht gesperrt werden.");
 		}
+        if (userToSuspend.getId() == adminUser.getId()) {
+            throw new AccessDeniedException("Sie können sich nicht selbst sperren.");
+        }
+
 
 		LocalDateTime suspendedUntil = null;
 
