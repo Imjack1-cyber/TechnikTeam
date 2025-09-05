@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getThemeColors } from '../../styles/theme';
 

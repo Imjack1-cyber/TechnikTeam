@@ -8,6 +8,7 @@ import { getCommonStyles } from '../../../styles/commonStyles';
 import { Picker } from '@react-native-picker/picker';
 import BouncyCheckbox from "react-native-bouncy-checkbox";
 import { MultipleSelectList } from 'react-native-dropdown-select-list';
+import pageRoutes from '../../../router/pageRoutes';
 
 const DocumentationModal = ({ isOpen, onClose, onSuccess, doc, allDocs }) => {
     const theme = useAuthStore(state => state.theme);
@@ -15,9 +16,18 @@ const DocumentationModal = ({ isOpen, onClose, onSuccess, doc, allDocs }) => {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
 	const { addToast } = useToast();
+    const [newCategory, setNewCategory] = useState('');
     const [formData, setFormData] = useState({
         pageKey: '', title: '', category: '', pagePath: '', features: '', relatedPages: '[]', adminOnly: false,
     });
+
+    const categories = useMemo(() => {
+        const existing = [...new Set(allDocs.map(d => d.category).filter(Boolean))];
+        return ['Allgemein', ...existing.filter(c => c !== 'Allgemein'), 'NEW_CATEGORY'];
+    }, [allDocs]);
+
+    const pageKeyOptions = useMemo(() => Object.entries(pageRoutes).map(([key, value]) => ({ label: `${key} (${value})`, value })), []);
+
 
     useEffect(() => {
         if (doc) {
@@ -33,6 +43,7 @@ const DocumentationModal = ({ isOpen, onClose, onSuccess, doc, allDocs }) => {
         } else {
             setFormData({ pageKey: '', title: '', category: 'Allgemein', pagePath: '/', features: '', relatedPages: '[]', adminOnly: false });
         }
+        setNewCategory('');
     }, [doc]);
 
     const handleChange = (name, value) => {
@@ -47,9 +58,14 @@ const DocumentationModal = ({ isOpen, onClose, onSuccess, doc, allDocs }) => {
         setIsSubmitting(true);
         setError('');
         try {
+            const finalCategory = formData.category === 'NEW_CATEGORY' ? newCategory : formData.category;
+            const finalPagePath = pageRoutes[formData.pageKey] ? `/${pageRoutes[formData.pageKey]}` : '/';
+
+            const payload = { ...formData, category: finalCategory, pagePath: finalPagePath };
+
             const result = doc
-                ? await apiClient.put(`/admin/documentation/${doc.id}`, formData)
-                : await apiClient.post('/admin/documentation', formData);
+                ? await apiClient.put(`/admin/documentation/${doc.id}`, payload)
+                : await apiClient.post('/admin/documentation', payload);
             if (result.success) {
                 addToast('Dokumentation gespeichert.', 'success');
                 onSuccess();
@@ -72,12 +88,25 @@ const DocumentationModal = ({ isOpen, onClose, onSuccess, doc, allDocs }) => {
                 {error && <Text style={styles.errorText}>{error}</Text>}
                 <Text style={styles.label}>Titel</Text>
                 <TextInput style={styles.input} value={formData.title} onChangeText={val => handleChange('title', val)} />
+                
                 <Text style={styles.label}>Seiten-Schlüssel (pageKey)</Text>
-                <TextInput style={styles.input} value={formData.pageKey} onChangeText={val => handleChange('pageKey', val)} autoCapitalize="none" />
+                <Picker selectedValue={formData.pageKey} onValueChange={val => handleChange('pageKey', val)}>
+                    <Picker.Item label="-- Route auswählen --" value="" />
+                    {pageKeyOptions.map(opt => <Picker.Item key={opt.value} label={opt.label} value={opt.value} />)}
+                </Picker>
+                
                 <Text style={styles.label}>Kategorie</Text>
-                <TextInput style={styles.input} value={formData.category} onChangeText={val => handleChange('category', val)} />
+                <Picker selectedValue={formData.category} onValueChange={val => handleChange('category', val)}>
+                    {categories.map(cat => <Picker.Item key={cat} label={cat === 'NEW_CATEGORY' ? 'Neue Kategorie erstellen...' : cat} value={cat} />)}
+                </Picker>
+
+                {formData.category === 'NEW_CATEGORY' && (
+                    <TextInput style={styles.input} value={newCategory} onChangeText={setNewCategory} placeholder="Name der neuen Kategorie" />
+                )}
+
                 <Text style={styles.label}>Features (Markdown)</Text>
                 <TextInput style={[styles.input, styles.textArea]} value={formData.features} onChangeText={val => handleChange('features', val)} multiline />
+                
                 <Text style={styles.label}>Verwandte Seiten</Text>
                 <MultipleSelectList 
                     setSelected={handleRelatedPagesChange} 

@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors } from '../../styles/theme';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 
 const AdminStorageIndex = ({ navigation }) => {
 	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));

@@ -4,7 +4,7 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
@@ -81,8 +81,8 @@ const TemplateModal = ({ isOpen, onClose, onSuccess, template, allStorageItems }
                     </View>
                 ))}
                 <View style={styles.actionButtons}>
-                    <TouchableOpacity style={styles.button} onPress={handleAddTextItem}><Text style={styles.buttonText}>Textpunkt</Text></TouchableOpacity>
-                    <TouchableOpacity style={styles.button} onPress={handleAddStorageItem}><Text style={styles.buttonText}>Lagerartikel</Text></TouchableOpacity>
+                    <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={handleAddTextItem}><Text style={styles.buttonText}>Textpunkt</Text></TouchableOpacity>
+                    <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={handleAddStorageItem}><Text style={styles.buttonText}>Lagerartikel</Text></TouchableOpacity>
                 </View>
 				<TouchableOpacity style={[styles.button, styles.primaryButton, {marginTop: 16}]} onPress={handleSubmit} disabled={isSubmitting}><Text style={styles.buttonText}>Speichern</Text></TouchableOpacity>
 			</ScrollView>
@@ -167,6 +167,12 @@ const pageStyles = (theme) => {
         description: { color: colors.textMuted, marginVertical: 8 },
         itemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
         quantityInput: { width: 70, height: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: spacing.sm, textAlign: 'center' },
+        actionButtons: {
+            flexDirection: 'row',
+            gap: spacing.sm,
+            marginTop: spacing.sm,
+            marginBottom: spacing.md
+        }
     });
 };
 

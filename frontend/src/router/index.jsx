@@ -179,7 +179,7 @@ const AuthStack = () => {
     );
 };
 
-const RootNavigator = ({navigation}) => {
+const RootNavigator = () => {
 	const { isAuthenticated, maintenanceStatus, isAdmin } = useAuthStore();
 
     if (maintenanceStatus.mode === 'HARD' && !isAdmin) {
@@ -192,7 +192,7 @@ const RootNavigator = ({navigation}) => {
     }
 
 	return (
-        <ErrorBoundary navigation={navigation}>
+        <ErrorBoundary>
             {isAuthenticated ? <AppStack /> : <AuthStack />}
         </ErrorBoundary>
     );

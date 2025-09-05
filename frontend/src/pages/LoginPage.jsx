@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, StatusBar } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, StatusBar, Alert } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { useToast } from '../context/ToastContext';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import apiClient from '../services/apiClient';
+import { getThemeColors } from '../styles/theme';
 
 const TwoFactorAuthForm = ({ username, preAuthToken, onAuthSuccess }) => {
 	const [token, setToken] = useState('');
@@ -25,8 +26,8 @@ const TwoFactorAuthForm = ({ username, preAuthToken, onAuthSuccess }) => {
                 backupCode: backupCode.trim() || null 
             };
 			const result = await apiClient.post('/auth/verify-2fa', payload);
-			if (result.success && result.data.token) {
-				onAuthSuccess(result.data.token);
+			if (result.success && result.data.token && result.data.session) {
+				onAuthSuccess(result.data);
 			} else {
 				throw new Error(result.message || 'Verifizierung fehlgeschlagen.');
 			}
@@ -93,15 +94,13 @@ const LoginPage = ({ navigation }) => {
 
 	const [preAuthToken, setPreAuthToken] = useState(null);
 
-	const { login } = useAuthStore();
+	const { login, backendMode, setBackendMode } = useAuthStore();
 	const { addToast } = useToast();
 
-	const handleAuthSuccess = async (finalToken) => {
-        // In RN, login is fully handled in the store now after 2FA
-		const { completeLoginWithToken } = useAuthStore.getState();
-		await completeLoginWithToken(finalToken);
+	const handleAuthSuccess = async (loginData) => {
+		const { completeLogin } = useAuthStore.getState();
+		await completeLogin(loginData);
 		addToast('Erfolgreich angemeldet!', 'success');
-        // The navigator will automatically switch screens because `isAuthenticated` will be true
 	};
 
 	const handleSubmit = async () => {
@@ -121,6 +120,18 @@ const LoginPage = ({ navigation }) => {
 			setIsLoading(false);
 		}
 	};
+    
+    const handleSwitchBackend = () => {
+        Alert.alert(
+            'Backend wechseln',
+            'Wählen Sie die Zielumgebung aus. Sie werden abgemeldet.',
+            [
+                { text: 'Abbrechen', style: 'cancel' },
+                { text: 'Development', onPress: () => setBackendMode('dev') },
+                { text: 'Production', onPress: () => setBackendMode('prod') },
+            ]
+        );
+    };
 
 	if (preAuthToken) {
 		return (
@@ -172,6 +183,14 @@ const LoginPage = ({ navigation }) => {
 					</TouchableOpacity>
 				</View>
 			</View>
+            <View style={styles.backendSwitcher}>
+                <Text style={styles.backendText}>
+                    Verbunden mit: <Text style={{ fontWeight: 'bold' }}>{backendMode === 'dev' ? 'Development' : 'Production'}</Text>
+                </Text>
+                <TouchableOpacity onPress={handleSwitchBackend}>
+                    <Text style={styles.backendSwitchLink}>Wechseln</Text>
+                </TouchableOpacity>
+            </View>
 		</SafeAreaView>
 	);
 };
@@ -193,7 +212,24 @@ const styles = StyleSheet.create({
         padding: 12,
         backgroundColor: '#f8f9fa',
         borderRadius: 6,
-    }
+    },
+    backendSwitcher: {
+        position: 'absolute',
+        bottom: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        padding: 8,
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        borderRadius: 6,
+    },
+    backendText: {
+        color: '#6c757d',
+    },
+    backendSwitchLink: {
+        color: '#007bff',
+        fontWeight: 'bold',
+    },
 });
 
 export default LoginPage;

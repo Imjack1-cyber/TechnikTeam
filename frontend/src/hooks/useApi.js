@@ -28,6 +28,10 @@ const useApi = (apiCall) => {
 				throw new Error(result.message);
 			}
 		} catch (err) {
+            // If it's our special auth error, do nothing. The logout process has taken over.
+            if (err.isAuthError) {
+                return; // Suppress setting the error state for this component
+            }
 			setError(err.message || 'Ein unerwarteter Fehler ist aufgetreten.');
 		} finally {
 			setLoading(false);

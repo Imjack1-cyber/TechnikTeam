@@ -13,7 +13,7 @@ import TaskModal from '../components/events/TaskModal';
 import AdminEventTeamTab from '../components/admin/events/AdminEventTeamTab';
 import { getCommonStyles } from '../styles/commonStyles';
 import { getThemeColors, spacing } from '../styles/theme';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 
 // TaskList sub-component adapted for React Native
 const TaskList = ({ title, tasks, onToggle, isCollapsed, event, user, canManageTasks, isParticipant, onOpenModal, onAction }) => {

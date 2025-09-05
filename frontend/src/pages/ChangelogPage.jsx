@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-nat
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import MarkdownDisplay from 'react-native-markdown-display';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 
 const ChangelogPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/public/changelog'), []);

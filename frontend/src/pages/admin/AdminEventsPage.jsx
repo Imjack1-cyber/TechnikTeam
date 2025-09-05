@@ -7,7 +7,7 @@ import useAdminData from '../../hooks/useAdminData';
 import EventModal from '../../components/admin/events/EventModal';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { useToast } from '../../context/ToastContext';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';

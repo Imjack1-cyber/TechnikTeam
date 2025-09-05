@@ -8,7 +8,7 @@ import { useToast } from '../../context/ToastContext';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import BouncyCheckbox from "react-native-bouncy-checkbox";
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 
 const ManageParticipantsModal = ({ isOpen, onClose, onAddUsers, onRemoveUser, conversation }) => {
 	const user = useAuthStore(state => state.user);

@@ -5,7 +5,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { getCommonStyles } from '../../../styles/commonStyles';
 import { getThemeColors, spacing } from '../../../styles/theme';
 import { Picker } from '@react-native-picker/picker';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 
 const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
     const theme = useAuthStore(state => state.theme);

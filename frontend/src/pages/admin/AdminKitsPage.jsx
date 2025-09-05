@@ -8,14 +8,15 @@ import KitItemsForm from '../../components/admin/kits/KitItemsForm';
 import Modal from '../../components/ui/Modal';
 import QRCode from 'react-native-qrcode-svg';
 import { useToast } from '../../context/ToastContext';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors } from '../../styles/theme';
 
 const KitAccordion = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems, storageReady }) => {
 	const [isOpen, setIsOpen] = useState(false);
 	const [isQrModalOpen, setIsQrModalOpen] = useState(false);
-	const packKitUrl = `http://localhost:8081/TechnikTeam/pack-kit/${kit.id}`; // Hardcoded for native
+	const packKitUrl = `${apiClient.getRootUrl()}/pack-kit/${kit.id}`;
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
 

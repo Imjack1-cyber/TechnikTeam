@@ -10,7 +10,7 @@ import MessageStatus from './MessageStatus';
 import { useToast } from '../../context/ToastContext';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, spacing, typography, borders } from '../../styles/theme';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import MarkdownDisplay from 'react-native-markdown-display';
 
 const MessageView = () => {

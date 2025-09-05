@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native
 import { useNavigation } from '@react-navigation/native';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getThemeColors, typography, spacing, borders } from '../../styles/theme';
 

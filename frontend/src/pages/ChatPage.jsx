@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import ConversationList from '../components/chat/ConversationList';
 import MessageView from '../components/chat/MessageView';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 
 const Stack = createStackNavigator();
 

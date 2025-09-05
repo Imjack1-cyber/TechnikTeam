@@ -8,7 +8,7 @@ import { useToast } from '../../context/ToastContext';
 import MarkdownDisplay from 'react-native-markdown-display';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { MultipleSelectList } from 'react-native-dropdown-select-list';
 
 const AdminEventDebriefingPage = () => {

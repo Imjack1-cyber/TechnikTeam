@@ -3,6 +3,7 @@ package de.technikteam.security;
 import de.technikteam.dao.UserDAO;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -50,9 +51,10 @@ public class SecurityConfig {
 				.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/", "/index.html", "/favicon.ico", "/*.js", "/*.css", "/assets/**", "/theme-loader.js",
-                                 "/api/v1/auth/**", "/ws/**", "/swagger-ui.html", "/swagger-ui/**",
-								 "/v3/api-docs/**", "/actuator/health", "/api/v1/public/notifications/sse")
+                                 "/api/v1/auth/**", "/ws/**", "/actuator/health", "/api/v1/public/notifications/sse")
 						.permitAll()
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/admin/venues/*").hasRole("ADMIN") // Allow PUT for updates with multipart
 						.requestMatchers("/admin/**", "/api/v1/admin/**").hasRole("ADMIN")
 						.anyRequest().authenticated())
 				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

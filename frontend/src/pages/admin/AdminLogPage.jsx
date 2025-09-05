@@ -5,7 +5,7 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../context/ToastContext';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography } from '../../styles/theme';
 

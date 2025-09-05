@@ -7,7 +7,7 @@ import { useAuthStore } from '../store/authStore';
 import { getCommonStyles } from '../styles/commonStyles';
 import { getThemeColors, spacing } from '../styles/theme';
 import BouncyCheckbox from "react-native-bouncy-checkbox";
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 
 const PackKitPage = () => {
     const navigation = useNavigation();

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, spacing, typography } from '../../styles/theme';
 import { useAuthStore } from '../../store/authStore';

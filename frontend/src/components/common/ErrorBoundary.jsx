@@ -23,7 +23,7 @@ class ErrorBoundary extends React.Component {
             // You can render any custom fallback UI
             return (
                 <View style={styles.container}>
-                    <ErrorPage navigation={this.props.navigation} error={this.state.error} />
+                    <ErrorPage error={this.state.error} />
                 </View>
             );
         }

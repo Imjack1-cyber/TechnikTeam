@@ -6,7 +6,7 @@ import { useToast } from '../../context/ToastContext';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { useAuthStore } from '../../store/authStore';
 import { getThemeColors, spacing } from '../../styles/theme';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { Picker } from '@react-native-picker/picker';
 
 const CartModal = ({ isOpen, onClose, cart, onUpdateQuantity, onRemove, onSwitchType, onSubmit, activeEvents, onSuccess }) => {

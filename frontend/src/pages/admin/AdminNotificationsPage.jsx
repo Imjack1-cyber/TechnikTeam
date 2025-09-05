@@ -7,7 +7,7 @@ import { Picker } from '@react-native-picker/picker';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { RadioButton } from 'react-native-paper';
 
 const AdminNotificationsPage = () => {

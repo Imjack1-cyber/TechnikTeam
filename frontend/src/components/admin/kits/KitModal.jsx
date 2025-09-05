@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import Modal from '../../ui/Modal';
 import apiClient from '../../../services/apiClient';
 import { useToast } from '../../../context/ToastContext';
@@ -47,7 +47,7 @@ const KitModal = ({ isOpen, onClose, onSuccess, kit }) => {
 
 	return (
 		<Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? "Kit bearbeiten" : "Neues Kit anlegen"}>
-			<View>
+			<ScrollView>
 				{error && <Text style={styles.errorText}>{error}</Text>}
 				<View style={styles.formGroup}>
 					<Text style={styles.label}>Name des Kits</Text>
@@ -64,7 +64,7 @@ const KitModal = ({ isOpen, onClose, onSuccess, kit }) => {
 				<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}>
 					{isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Speichern</Text>}
 				</TouchableOpacity>
-			</View>
+			</ScrollView>
 		</Modal>
 	);
 };

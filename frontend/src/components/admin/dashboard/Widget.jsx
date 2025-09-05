@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../../store/authStore';
 import { getThemeColors, typography, spacing } from '../../../styles/theme';
 import { getCommonStyles } from '../../../styles/commonStyles';

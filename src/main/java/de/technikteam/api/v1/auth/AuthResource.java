@@ -188,8 +188,20 @@ public class AuthResource {
 				String countryCode = geoIpService.getCountryCode(ipAddress);
 				authLogService.logLoginSuccess(user.getId(), user.getUsername(), ipAddress, claims.getId(),
 						claims.getExpiration().toInstant(), userAgent, agentDetails.get("deviceType"), countryCode);
+                
+                // Return full session data, same as non-2FA login path
+                List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(user);
+				Map<String, Object> sessionData = new HashMap<>();
+				sessionData.put("user", user);
+				sessionData.put("navigation", navigationItems);
+				sessionData.put("previousLogin", authLogService.getPreviousLoginInfo(user.getId()));
+				sessionData.put("maintenanceStatus", settingsService.getMaintenanceStatus());
 
-				return ResponseEntity.ok(new ApiResponse(true, "2FA verification successful.", Map.of("token", finalToken)));
+				Map<String, Object> responseData = new HashMap<>();
+				responseData.put("session", sessionData);
+				responseData.put("token", finalToken);
+
+				return ResponseEntity.ok(new ApiResponse(true, "2FA verification successful.", responseData));
 			} else {
 				return new ResponseEntity<>(new ApiResponse(false, "Invalid code.", null), HttpStatus.UNAUTHORIZED);
 			}

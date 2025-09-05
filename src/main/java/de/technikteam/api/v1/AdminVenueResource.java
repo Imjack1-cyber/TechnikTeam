@@ -15,6 +15,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.google.gson.Gson;
+
 
 import java.io.IOException;
 import java.util.List;
@@ -29,6 +31,7 @@ public class AdminVenueResource {
 	private final VenueDAO venueDAO;
 	private final FileService fileService;
 	private final AdminLogService adminLogService;
+    private final Gson gson = new Gson();
 
 	@Autowired
 	public AdminVenueResource(VenueDAO venueDAO, FileService fileService, AdminLogService adminLogService) {
@@ -46,9 +49,10 @@ public class AdminVenueResource {
 
 	@PostMapping
 	@Operation(summary = "Create a new venue")
-	public ResponseEntity<ApiResponse> createVenue(@RequestPart("venue") Venue venue,
+	public ResponseEntity<ApiResponse> createVenue(@RequestPart("venue") String venueJson,
 			@RequestPart(value = "mapImage", required = false) MultipartFile mapImage,
 			@AuthenticationPrincipal SecurityUser securityUser) throws IOException {
+        Venue venue = gson.fromJson(venueJson, Venue.class);
 		if (mapImage != null && !mapImage.isEmpty()) {
 			de.technikteam.model.File savedFile = fileService.storeFile(mapImage, null, "NUTZER",
 					securityUser.getUser(), "venues");
@@ -63,17 +67,24 @@ public class AdminVenueResource {
 
 	@PutMapping("/{id}")
 	@Operation(summary = "Update a venue")
-	public ResponseEntity<ApiResponse> updateVenue(@PathVariable int id, @RequestPart("venue") Venue venue,
+	public ResponseEntity<ApiResponse> updateVenue(@PathVariable int id, @RequestPart("venue") String venueJson,
 			@RequestPart(value = "mapImage", required = false) MultipartFile mapImage,
 			@AuthenticationPrincipal SecurityUser securityUser) throws IOException {
+        Venue venue = gson.fromJson(venueJson, Venue.class);
 		venue.setId(id);
+        
 		if (mapImage != null && !mapImage.isEmpty()) {
 			de.technikteam.model.File savedFile = fileService.storeFile(mapImage, null, "NUTZER",
 					securityUser.getUser(), "venues");
 			venue.setMapImagePath(savedFile.getFilepath());
-		} else if (venue.getMapImagePath() == null) {
-			Optional<Venue> existingVenue = venueDAO.findById(id);
-			existingVenue.ifPresent(v -> venue.setMapImagePath(v.getMapImagePath()));
+		} else {
+            // If no new image is sent, keep the old one.
+            // The DTO from frontend might not have it, so we fetch it from DB.
+            venueDAO.findById(id).ifPresent(existingVenue -> {
+                if (venue.getMapImagePath() == null) {
+                    venue.setMapImagePath(existingVenue.getMapImagePath());
+                }
+            });
 		}
 
 		if (venueDAO.update(venue)) {

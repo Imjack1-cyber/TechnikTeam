@@ -1,10 +1,23 @@
 import { Platform } from 'react-native';
+import { useAuthStore } from '../store/authStore';
 
-const ANDROID_API_URL = 'http://10.0.2.2:8081/TechnikTeam/api/v1';
-// For web, we use a relative path. The browser will handle the host and protocol (HTTPS).
-const WEB_API_URL = '/TechnikTeam/api/v1';
+const getApiBaseUrl = () => {
+    const mode = useAuthStore.getState().backendMode;
+    if (Platform.OS === 'web') {
+        return '/TechnikTeam/api/v1';
+    }
+    const host = mode === 'dev' ? 'technikteamdev.duckdns.org' : 'technikteam.duckdns.org';
+    return `https://${host}/TechnikTeam/api/v1`;
+};
 
-const BASE_URL = Platform.OS === 'web' ? WEB_API_URL : ANDROID_API_URL;
+const getRootUrl = () => {
+    const mode = useAuthStore.getState().backendMode;
+    if (Platform.OS === 'web') {
+        return '';
+    }
+    const host = mode === 'dev' ? 'technikteamdev.duckdns.org' : 'technikteam.duckdns.org';
+    return `https://${host}/TechnikTeam`;
+};
 
 let onUnauthorizedCallback = () => {};
 let onMaintenanceCallback = () => {};
@@ -18,9 +31,7 @@ const apiClient = {
 	setAuthToken: function(token) {
 		authToken = token;
 	},
-    getBaseUrl: function() {
-        return Platform.OS === 'web' ? '' : 'http://10.0.2.2:8081/TechnikTeam';
-    },
+    getRootUrl: getRootUrl,
 	request: async function(endpoint, options = {}) {
 		const headers = { ...options.headers };
 		if (authToken) {
@@ -30,7 +41,8 @@ const apiClient = {
 			headers['Content-Type'] = 'application/json';
 		}
 		try {
-			const response = await fetch(`${BASE_URL}${endpoint}`, {
+            const baseUrl = getApiBaseUrl();
+			const response = await fetch(`${baseUrl}${endpoint}`, {
 				...options,
 				headers: headers,
 			});
@@ -41,12 +53,10 @@ const apiClient = {
 				throw new Error('Die Anwendung befindet sich im Wartungsmodus.');
 			}
 			if (response.status === 401) {
-				if (isJson) {
-					const errorResult = await response.json();
-					if (errorResult.message) throw new Error(errorResult.message);
-				}
-				onUnauthorizedCallback();
-				throw new Error('Nicht autorisiert. Ihre Sitzung ist möglicherweise abgelaufen.');
+                await onUnauthorizedCallback();
+                const authError = new Error('Session expired and user logged out.');
+                authError.isAuthError = true;
+                throw authError;
 			}
 			if (response.status === 403) {
 				if (isJson) {
@@ -72,11 +82,15 @@ const apiClient = {
 			}
 			return result;
 		} catch (error) {
+			if (error.isAuthError) {
+                throw error;
+            }
+            const baseUrl = getApiBaseUrl();
 			if (error.message.includes('Network request failed') || error.message.includes('Failed to fetch')) {
-				console.error(`API Client Network Error: ${options.method || 'GET'} ${BASE_URL}${endpoint}`, error);
+				console.error(`API Client Network Error: ${options.method || 'GET'} ${baseUrl}${endpoint}`, error);
 				throw new Error('Netzwerkfehler: Das Backend ist nicht erreichbar.');
 			}
-			console.error(`API Client Error: ${options.method || 'GET'} ${BASE_URL}${endpoint}`, error);
+			console.error(`API Client Error: ${options.method || 'GET'} ${baseUrl}${endpoint}`, error);
 			throw error;
 		}
 	},

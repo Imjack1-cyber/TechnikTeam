@@ -18,8 +18,9 @@ const AdminDashboardPage = () => {
 
 	const renderWidgetItem = (item, type) => {
 		const handlePress = () => {
-			if (type === 'event') navigation.navigate('EventDetails', { eventId: item.id });
-			if (type === 'item') navigation.navigate('StorageItemDetails', { itemId: item.id });
+			if (type === 'event') navigation.navigate('Event Management', { screen: 'AdminEvents' });
+			if (type === 'item') navigation.navigate('Lager & Material', { screen: 'AdminStorage' });
+            if (type === 'log') navigation.navigate('Berichte', { screen: 'AdminLog' });
 		};
 
 		return (
@@ -45,13 +46,13 @@ const AdminDashboardPage = () => {
 			<Text style={styles.title}>Willkommen, {user?.username}!</Text>
 			<Text style={styles.subtitle}>Wählen Sie eine Option aus der Navigation oder nutzen Sie den Schnellzugriff.</Text>
 
-			<Widget icon="calendar-alt" title="Anstehende Events" linkTo="AdminEventsIndex" linkText="Alle Events anzeigen">
+			<Widget icon="fa-calendar-alt" title="Anstehende Events" linkTo="Event Management" linkText="Alle Events anzeigen">
 				{renderWidgetContent(dashboardData?.upcomingEvents, 'event', 'Keine anstehenden Events.')}
 			</Widget>
-			<Widget icon="box-open" title="Niedriger Lagerbestand" linkTo="AdminStorageIndex" linkText="Lager verwalten">
+			<Widget icon="fa-box-open" title="Niedriger Lagerbestand" linkTo="Lager & Material" linkText="Lager verwalten">
 				{renderWidgetContent(dashboardData?.lowStockItems, 'item', 'Alle Artikel sind ausreichend vorhanden.')}
 			</Widget>
-			<Widget icon="history" title="Letzte Aktionen" linkTo="AdminLog" linkText="Alle Logs anzeigen">
+			<Widget icon="fa-history" title="Letzte Aktionen" linkTo="Berichte" linkText="Alle Logs anzeigen">
 				{renderWidgetContent(dashboardData?.recentLogs, 'log', 'Keine Aktionen protokolliert.')}
 			</Widget>
             <View style={styles.card}>

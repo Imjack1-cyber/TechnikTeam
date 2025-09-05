@@ -3,7 +3,7 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Platfo
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
 import Modal from '../ui/Modal';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';

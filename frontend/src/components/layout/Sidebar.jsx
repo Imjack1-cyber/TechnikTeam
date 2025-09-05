@@ -2,8 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Linking } from 'react-native';
 import { useAuthStore } from '../../store/authStore';
 import ThemeSwitcher from '../ui/ThemeSwitcher';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { getThemeColors } from '../../styles/theme';
+import apiClient from '../../services/apiClient';
 
 // This component is designed to be used as the `drawerContent` for a React Navigation Drawer.
 const Sidebar = ({ navigation }) => {
@@ -44,7 +45,7 @@ const Sidebar = ({ navigation }) => {
         const hasBadge = item.url === '/notifications' && user.unseenNotificationsCount > 0;
         
 		if (item.url.startsWith('/swagger-ui')) {
-			const swaggerUrl = `http://10.0.2.2:8081/TechnikTeam/swagger-ui.html`;
+			const swaggerUrl = `${apiClient.getRootUrl()}/swagger-ui.html`;
 			return (
 				<TouchableOpacity style={styles.navLink} onPress={() => Linking.openURL(swaggerUrl)}>
 					<Icon name={item.icon.replace('fa-', '')} style={styles.navIcon} />

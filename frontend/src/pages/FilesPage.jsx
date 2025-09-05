@@ -1,13 +1,18 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Linking, Platform } from 'react-native';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import DownloadWarningModal from '../components/ui/DownloadWarningModal';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import { getToken } from '../lib/storage';
+import { useToast } from '../context/ToastContext';
 
 const FileLink = ({ file, navigation }) => {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const isMarkdown = file.filename.toLowerCase().endsWith('.md');
+    const { addToast } = useToast();
 
 	const handleDownloadClick = () => {
 		if (file.needsWarning) {
@@ -17,11 +22,48 @@ const FileLink = ({ file, navigation }) => {
 		}
 	};
 
-	const handleConfirmDownload = () => {
-		setIsModalOpen(false);
-		const downloadUrl = `${apiClient.getBaseUrl()}/api/v1/public/files/download/${file.id}`;
-		Linking.openURL(downloadUrl).catch(err => console.error("Couldn't load page", err));
-	};
+	const handleConfirmDownload = async () => {
+        setIsModalOpen(false);
+        addToast('Download wird gestartet...', 'info');
+        const downloadUrl = `${apiClient.getBaseUrl()}/api/v1/public/files/download/${file.id}`;
+        const token = await getToken();
+
+        try {
+            if (Platform.OS === 'web') {
+                const response = await fetch(downloadUrl, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Fehler beim Herunterladen der Datei.');
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = file.filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                addToast('Download abgeschlossen!', 'success');
+            } else {
+                // Native logic
+                const fileUri = FileSystem.documentDirectory + file.filename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+                const { uri } = await FileSystem.downloadAsync(
+                    downloadUrl,
+                    fileUri,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                addToast('Download abgeschlossen!', 'success');
+                if (await Sharing.isAvailableAsync()) {
+                    await Sharing.shareAsync(uri, { dialogTitle: file.filename });
+                } else {
+                    addToast('Datei heruntergeladen. Siehe Download-Ordner.', 'info');
+                }
+            }
+        } catch (error) {
+            console.error('Download error:', error);
+            addToast('Download fehlgeschlagen.', 'error');
+        }
+    };
 
 	return (
 		<>

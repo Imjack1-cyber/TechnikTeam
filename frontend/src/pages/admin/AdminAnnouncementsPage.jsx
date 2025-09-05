@@ -1,12 +1,12 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, ScrollView, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import MarkdownDisplay from 'react-native-markdown-display';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
@@ -62,7 +62,7 @@ const AnnouncementModal = ({ isOpen, onClose, onSuccess, announcement }) => {
 				<TextInput style={styles.input} value={title} onChangeText={setTitle} />
 				<Text style={styles.label}>Inhalt (Markdown unterstützt)</Text>
 				<TextInput style={[styles.input, styles.textArea]} value={content} onChangeText={setContent} multiline />
-				<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}>
+				<TouchableOpacity style={[styles.button, styles.primaryButton, { marginTop: 16 }]} onPress={handleSubmit} disabled={isSubmitting}>
 					{isSubmitting ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Speichern</Text>}
 				</TouchableOpacity>
 			</ScrollView>

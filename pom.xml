@@ -199,7 +199,7 @@
             <plugin>
                 <groupId>org.flywaydb</groupId>
                 <artifactId>flyway-maven-plugin</artifactId>
-                <!-- This global configuration is now empty, as it's defined in profiles -->
+                <!-- Global config is empty, but we add executions in profiles -->
             </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>

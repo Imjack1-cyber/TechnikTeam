@@ -45,10 +45,24 @@ public class AdminFileResource {
 	@PostMapping
 	@Operation(summary = "Upload a new file")
 	public ResponseEntity<ApiResponse> uploadFile(@RequestParam("file") MultipartFile file,
-			@RequestParam(required = false) Integer categoryId, @RequestParam String requiredRole,
+			@RequestParam(required = false) Integer categoryId, 
+            @RequestParam(required = false) String newCategoryName,
+            @RequestParam String requiredRole,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
-			de.technikteam.model.File savedFile = fileService.storeFile(file, categoryId, requiredRole,
+            Integer finalCategoryId = categoryId;
+            if (newCategoryName != null && !newCategoryName.isBlank()) {
+                // This is a simplified approach. A real app might have a dedicated CategoryService.
+                if (fileDAO.createCategory(newCategoryName)) {
+                    // This is inefficient but acceptable for this context. A better DAO would return the new ID.
+                    finalCategoryId = fileDAO.getAllCategories().stream()
+                        .filter(c -> newCategoryName.equals(c.getName()))
+                        .map(FileCategory::getId)
+                        .findFirst()
+                        .orElse(categoryId);
+                }
+            }
+			de.technikteam.model.File savedFile = fileService.storeFile(file, finalCategoryId, requiredRole,
 					securityUser.getUser(), "docs");
 			return new ResponseEntity<>(new ApiResponse(true, "Datei erfolgreich hochgeladen.", savedFile),
 					HttpStatus.CREATED);

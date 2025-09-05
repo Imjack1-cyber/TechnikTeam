@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/authStore';
 import { useToast } from '../context/ToastContext';
 import { getCommonStyles } from '../styles/commonStyles';
 import { getThemeColors, typography, spacing, borders } from '../styles/theme';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 
 // NOTE: Draggable list requires a library like 'react-native-draggable-flatlist'
 // This implementation will use simple up/down arrows for reordering.

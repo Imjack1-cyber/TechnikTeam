@@ -3,7 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Linking } from 'r
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors } from '../../styles/theme';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
+import apiClient from '../../services/apiClient';
 
 const AdminSystemIndex = ({ navigation }) => {
 	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
@@ -12,11 +13,11 @@ const AdminSystemIndex = ({ navigation }) => {
     const colors = getThemeColors(theme);
 
 	const baseLinks = [
-		{ to: 'AdminSystemStatus', label: 'System-Status', icon: 'server', perm: 'SYSTEM_READ' },
+		{ to: 'AdminSystemPage', label: 'System-Status', icon: 'server', perm: 'SYSTEM_READ' },
 		{ to: 'AdminAuthLog', label: 'Auth Log', icon: 'history', perm: 'LOG_READ' },
 		{ to: 'AdminGeoIp', label: 'GeoIP Filter', icon: 'globe-americas', perm: 'ACCESS_ADMIN_PANEL' },
 		{ to: 'AdminWiki', label: 'Technische Wiki', icon: 'book-reader', perm: 'ACCESS_ADMIN_PANEL' },
-		{ to: 'http://10.0.2.2:8081/TechnikTeam/swagger-ui.html', label: 'API Docs (Swagger)', icon: 'code', perm: 'ACCESS_ADMIN_PANEL', isExternal: true },
+		{ to: `${apiClient.getRootUrl()}/swagger-ui.html`, label: 'API Docs (Swagger)', icon: 'code', perm: 'ACCESS_ADMIN_PANEL', isExternal: true },
 	];
 
 	const can = (permission) => {

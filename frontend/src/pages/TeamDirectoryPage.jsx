@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, Activity
 import { useNavigation } from '@react-navigation/native';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 
 const TeamDirectoryPage = () => {
 	const navigation = useNavigation();

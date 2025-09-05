@@ -4,6 +4,7 @@ import { ToastProvider } from './src/context/ToastContext';
 import ToastContainer from './src/components/ui/ToastContainer';
 import WarningNotification from './src/components/ui/WarningNotification';
 import { useNotifications } from './src/hooks/useNotifications';
+import { usePushNotifications } from './src/hooks/usePushNotifications';
 import RootNavigator from './src/router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import apiClient from './src/services/apiClient';
@@ -143,6 +144,7 @@ const linking = {
 
 const AppContent = () => {
     const { warningNotification, dismissWarning } = useNotifications();
+    usePushNotifications(); // Initialize push notification handling
     return (
         <SafeAreaProvider>
             <NavigationContainer ref={navigationRef} linking={linking} fallback={<SplashScreen />}>
@@ -160,7 +162,9 @@ export default function App() {
     useEffect(() => {
         const initializeApp = async () => {
             apiClient.setup({
-                onUnauthorized: useAuthStore.getState().logout,
+                onUnauthorized: async () => {
+                    await useAuthStore.getState().logout();
+                },
                 onMaintenance: () => {
                     if (navigationRef.current?.isReady()) {
                         navigationRef.current.navigate('Maintenance');

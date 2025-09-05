@@ -5,7 +5,7 @@ import { useAuthStore } from '../store/authStore';
 import RNEventSource from 'react-native-sse';
 import { getToken } from '../lib/storage';
 
-const ANDROID_SSE_URL = 'http://10.0.2.2:8081/TechnikTeam';
+const ANDROID_SSE_URL = 'https://technikteam.duckdns.org/TechnikTeam';
 const WEB_SSE_URL = ''; // For web, it's relative to the current host
 
 const BASE_URL = Platform.OS === 'web' ? WEB_SSE_URL : ANDROID_SSE_URL;
@@ -38,7 +38,7 @@ export const useNotifications = () => {
 			}
 
 			// For web, the browser constructs the full URL including protocol and host.
-			const sseUrl = `${BASE_URL}/TechnikTeam/api/v1/public/notifications/sse?token=${encodeURIComponent(token)}`;
+			const sseUrl = `${BASE_URL}/api/v1/public/notifications/sse?token=${encodeURIComponent(token)}`;
 
 			console.log(`[useNotifications] Connecting to SSE at: ${sseUrl}`);
 			// react-native-sse polyfills EventSource for native, and uses the browser's native one on web.

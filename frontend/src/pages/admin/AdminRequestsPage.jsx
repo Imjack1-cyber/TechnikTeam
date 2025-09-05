@@ -1,9 +1,9 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography } from '../../styles/theme';
@@ -15,20 +15,30 @@ const AdminRequestsPage = () => {
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
 
+    const performAction = async (requestId, action) => {
+        try {
+            const result = await apiClient.post(`/requests/${requestId}/${action}`);
+            if (result.success) {
+                addToast(`Antrag erfolgreich ${action === 'approve' ? 'genehmigt' : 'abgelehnt'}.`, 'success');
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
+    };
+
 	const handleAction = (requestId, action) => {
 		const confirmationText = action === 'approve' ? 'Änderungen wirklich übernehmen?' : 'Antrag wirklich ablehnen?';
-        Alert.alert('Aktion bestätigen', confirmationText, [
-            { text: 'Abbrechen', style: 'cancel' },
-            { text: action === 'approve' ? 'Genehmigen' : 'Ablehnen', style: 'default', onPress: async () => {
-                try {
-                    const result = await apiClient.post(`/requests/${requestId}/${action}`);
-                    if (result.success) {
-                        addToast(`Antrag erfolgreich ${action === 'approve' ? 'genehmigt' : 'abgelehnt'}.`, 'success');
-                        reload();
-                    } else { throw new Error(result.message); }
-                } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
-            }}
-        ]);
+        const title = 'Aktion bestätigen';
+
+        if (Platform.OS === 'web') {
+            if (window.confirm(`${title}\n\n${confirmationText}`)) {
+                performAction(requestId, action);
+            }
+        } else {
+            Alert.alert(title, confirmationText, [
+                { text: 'Abbrechen', style: 'cancel' },
+                { text: action === 'approve' ? 'Genehmigen' : 'Ablehnen', style: 'default', onPress: () => performAction(requestId, action) }
+            ]);
+        }
 	};
 
 	const renderChanges = (changesJson) => {

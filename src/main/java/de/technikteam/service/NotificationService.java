@@ -1,5 +1,12 @@
 package de.technikteam.service;
 
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.FirebaseOptions;
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.FirebaseMessagingException;
+import com.google.firebase.messaging.Message;
+import com.google.firebase.messaging.Notification;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import de.technikteam.api.v1.dto.MaintenanceStatusDTO;
@@ -11,6 +18,7 @@ import de.technikteam.dao.UserDAO;
 import de.technikteam.dao.UserNotificationDAO;
 import de.technikteam.model.User;
 import de.technikteam.model.UserNotification;
+import org.apache.catalina.connector.ClientAbortException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -45,6 +53,23 @@ public class NotificationService {
 		this.adminLogService = adminLogService;
 		this.userNotificationDAO = userNotificationDAO;
 		new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
+
+        try {
+            // Check if credentials are provided either via environment variable or default gcloud login
+            if (System.getenv("GOOGLE_APPLICATION_CREDENTIALS") != null || GoogleCredentials.getApplicationDefault() != null) {
+                if (FirebaseApp.getApps().isEmpty()) {
+                    FirebaseOptions options = FirebaseOptions.builder()
+                        .setCredentials(GoogleCredentials.getApplicationDefault())
+                        .build();
+                    FirebaseApp.initializeApp(options);
+                    logger.info("Firebase Admin SDK initialized successfully.");
+                }
+            } else {
+                 logger.warn("GOOGLE_APPLICATION_CREDENTIALS environment variable not set and Application Default Credentials not found. Firebase Admin SDK will not be initialized. Push notifications will be disabled.");
+            }
+        } catch (IOException e) {
+            logger.error("Failed to initialize Firebase Admin SDK. Push notifications will be disabled.", e);
+        }
 	}
 
 	public SseEmitter register(User user) {
@@ -100,7 +125,13 @@ public class NotificationService {
 		emittersByUser.values().forEach(emitterList -> emitterList.forEach(emitter -> {
 			try {
 				emitter.send(heartbeatEvent);
-			} catch (Exception e) {
+			} catch (IOException e) {
+                if (e instanceof ClientAbortException) {
+                    logger.debug("Heartbeat failed for a client (ClientAbortException), it has likely disconnected. Emitter will be removed by its onCompletion handler.");
+                } else {
+                    logger.warn("Heartbeat failed for a client, it has likely disconnected. Error: {}", e.getMessage());
+                }
+            } catch (Exception e) {
 				logger.debug(
 						"Heartbeat failed for a client, it has likely disconnected. Emitter will be removed by its onCompletion handler.");
 			}
@@ -153,7 +184,49 @@ public class NotificationService {
 			logger.debug("Keine aktiven SSE-Clients für Benutzer-ID {} gefunden, um Benachrichtigung zu senden.",
 					userId);
 		}
+        // 3. Send FCM Push Notification if token exists
+        User user = userDAO.getUserById(userId);
+        if (user != null) {
+            sendFcmNotification(user, payload);
+        }
 	}
+
+	private void sendFcmNotification(User user, Map<String, Object> payload) {
+        if (user.getFcmToken() == null || user.getFcmToken().isBlank()) {
+            return; // No token, nothing to do
+        }
+        if (FirebaseApp.getApps().isEmpty()) {
+            logger.warn("Firebase not initialized, skipping push notification for user {}", user.getUsername());
+            return;
+        }
+
+        String title = (String) payload.get("title");
+        String description = (String) payload.get("description");
+        String url = (String) payload.get("url");
+
+        Message message = Message.builder()
+            .setNotification(Notification.builder()
+                .setTitle(title)
+                .setBody(description)
+                .build())
+            .setToken(user.getFcmToken())
+            .putData("url", url != null ? url : "")
+            .build();
+
+        try {
+            String response = FirebaseMessaging.getInstance().send(message);
+            logger.info("Successfully sent FCM message to user {}: {}", user.getUsername(), response);
+        } catch (FirebaseMessagingException e) {
+            logger.error("Failed to send FCM message to user {}: {}", user.getUsername(), e.getMessage());
+            // Handle potential invalid token error
+            if (e.getMessagingErrorCode() == com.google.firebase.messaging.MessagingErrorCode.UNREGISTERED ||
+                e.getMessagingErrorCode() == com.google.firebase.messaging.MessagingErrorCode.INVALID_ARGUMENT) {
+                logger.warn("FCM token for user {} seems invalid. Clearing it from database.", user.getUsername());
+                userDAO.updateFcmToken(user.getId(), null);
+            }
+        }
+    }
+
 
 	public int sendBroadcastNotification(NotificationRequest request, User adminUser) {
 		List<User> targetUsers;

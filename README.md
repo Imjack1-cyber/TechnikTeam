@@ -55,6 +55,7 @@ Follow these steps to get a local instance of the application running for develo
 *   Apache Maven 3.8+
 *   Node.js 20+ (with npm)
 *   MySQL Server 8.0+ or MariaDB 10.6+
+*   [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) (optional, for local development push notifications)
 
 ### 2. Database Setup
 1.  Create a new database in your database server:
@@ -68,11 +69,23 @@ Follow these steps to get a local instance of the application running for develo
 2.  **CRITICAL SECURITY STEP:** The JWT secret key must be provided as an environment variable. Create or edit your system's environment variables to add a new variable:
     *   **Variable name:** `JWT_SECRET`
     *   **Variable value:** A strong, unique, randomly-generated string of at least 32 characters.
-3.  Open `src/main/resources/application.properties`.
-4.  Update the `spring.datasource.*` properties to match your database connection details.
-5.  Set the `upload.directory` to an absolute path on your local machine. This directory must exist and be writable by the application.
-6.  Set the `app.base-url` to the full public URL where your application will be hosted (e.g., `http://localhost:8080/TechnikTeam` for local development).
-7.  The application uses Flyway for database migrations. The necessary tables will be created automatically when the application starts for the first time.
+3.  **Firebase Setup (for Push Notifications):**
+    1.  Create a new project on the [Firebase Console](https://console.firebase.google.com/).
+    2.  Go to **Project Settings > Service accounts**.
+    3.  Click **"Generate new private key"** to download a service account JSON file.
+    4.  **Choose ONE of the following methods for backend authentication:**
+        *   **A) Production / Server Deployment (Recommended):**
+            1.  Place the downloaded JSON file in a secure, non-public directory on your server.
+            2.  Create an environment variable named `GOOGLE_APPLICATION_CREDENTIALS` and set its value to the full, absolute path of the JSON file. The Spring Boot application will automatically detect this.
+        *   **B) Local Development (Convenient):**
+            1.  Install the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install).
+            2.  Run the following command in your terminal: `gcloud auth application-default login`
+            3.  This will open a browser window for you to log in with your Google account. After authenticating, the Spring Boot application will automatically find these credentials when running on your local machine, without needing the environment variable.
+4.  Open `src/main/resources/application.properties`.
+5.  Update the `spring.datasource.*` properties to match your database connection details.
+6.  Set the `upload.directory` to an absolute path on your local machine. This directory must exist and be writable by the application.
+7.  Set the `app.base-url` to the full public URL where your application will be hosted (e.g., `http://localhost:8080/TechnikTeam` for local development).
+8.  The application uses Flyway for database migrations. The necessary tables will be created automatically when the application starts for the first time.
 
 **First-time Setup Note:** The application includes a component (`InitialAdminCreator.java`) that checks if an 'admin' user exists on first startup. If not, it creates a default `admin` user with full permissions and a strong, random password. This password is printed to the console **only once** on the very first startup. Please copy this password immediately and store it securely.
 
@@ -94,15 +107,30 @@ Follow these steps to get a local instance of the application running for develo
     VITE_API_TARGET_URL=http://localhost:8081
     ```
     Change the port if your backend runs on a different one.
-3.  Install the required Node.js dependencies:
+3.  **Firebase Setup (for Push Notifications on Native):**
+    - **Android:** In your Firebase project, add an Android app with the package name `de.technikteam`. Download the `google-services.json` file and place it in the `frontend` directory.
+    - **iOS:** Add an iOS app with the bundle identifier `de.technikteam`. Download the `GoogleService-Info.plist` file and place it in the `frontend` directory.
+4.  Install the required Node.js dependencies:
     ```shell
     npm install
     ```
-4.  Start the Vite development server:
+5.  Start the Vite development server:
     ```shell
     npm run dev
     ```
-5.  The frontend will be available at `http://localhost:3000`. The Vite server is configured to proxy all API (`/api`) and WebSocket (`/ws`) requests to the Spring Boot backend defined in your `.env.local` file.
+6.  The frontend will be available at `http://localhost:3000`. The Vite server is configured to proxy all API (`/api`) and WebSocket (`/ws`) requests to the Spring Boot backend defined in your `.env.local` file.
+
+## Troubleshooting
+
+### Failed Flyway Migration
+If the backend fails to start with an error message like `Migrations have failed validation. Detected failed migration to version X`, it means your local database is in a failed migration state. To fix this:
+
+1.  Open a terminal in the project's root directory.
+2.  Run the Flyway repair command for your active profile. For development:
+    ```shell
+    mvn flyway:repair -Pdev
+    ```
+3.  After the command completes successfully, you can start the backend again.
 
 ## Production Deployment
 

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
@@ -8,7 +8,7 @@ import Lightbox from '../../components/ui/Lightbox';
 import { useToast } from '../../context/ToastContext';
 import Modal from '../../components/ui/Modal';
 import QRCode from 'react-native-qrcode-svg';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography } from '../../styles/theme';
@@ -35,21 +35,32 @@ const AdminStoragePage = () => {
 	const handleSuccess = () => { setModalState({ isOpen: false, item: null, mode: 'edit' }); reload(); };
 
 	const handleDelete = (item) => {
-		Alert.alert(`Artikel "${item.name}" löschen?`, "", [
-			{ text: 'Abbrechen', style: 'cancel' },
-			{ text: 'Löschen', style: 'destructive', onPress: async () => {
-				try {
-					const result = await apiClient.delete(`/storage/${item.id}`);
-					if (result.success) {
-						addToast('Artikel gelöscht.', 'success');
-						reload();
-					} else { throw new Error(result.message); }
-				} catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
-			}},
-		]);
+        const title = `Artikel "${item.name}" löschen?`;
+        const message = "Diese Aktion kann nicht rückgängig gemacht werden.";
+
+        const performDelete = async () => {
+            try {
+                const result = await apiClient.delete(`/storage/${item.id}`);
+                if (result.success) {
+                    addToast('Artikel gelöscht.', 'success');
+                    reload();
+                } else { throw new Error(result.message); }
+            } catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
+        };
+
+        if (Platform.OS === 'web') {
+            if (window.confirm(`${title}\n\n${message}`)) {
+                performDelete();
+            }
+        } else {
+            Alert.alert(title, message, [
+                { text: 'Abbrechen', style: 'cancel' },
+                { text: 'Löschen', style: 'destructive', onPress: performDelete },
+            ]);
+        }
 	};
 
-	const getImagePath = (path) => `/api/v1/public/files/images/${path.split('/').pop()}`;
+	const getImagePath = (path) => `${apiClient.getRootUrl()}/api/v1/public/files/images/${path.split('/').pop()}`;
 
     const renderItem = ({ item }) => (
         <View style={styles.card}>
@@ -101,7 +112,7 @@ const AdminStoragePage = () => {
 			{qrCodeItem && (
 				<Modal isOpen={!!qrCodeItem} onClose={() => setQrCodeItem(null)} title={`QR-Code für: ${qrCodeItem.name}`}>
 					<View style={{alignItems: 'center', padding: 16}}>
-						<QRCode value={`http://localhost:8081/TechnikTeam/lager/qr-aktion/${qrCodeItem.id}`} size={256} />
+						<QRCode value={`${apiClient.getRootUrl()}/lager/qr-aktion/${qrCodeItem.id}`} size={256} />
 						<Text style={{marginTop: 16}}>Scannen für schnelle Aktionen.</Text>
 					</View>
 				</Modal>

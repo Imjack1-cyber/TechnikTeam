@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Animated, Platform } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 // TODO: To enable sound, the 'expo-av' package must be installed.
 // Run 'npx expo install expo-av' in the /frontend directory.
 // Then, uncomment the line below and the audio-related code in the useEffect hook.

@@ -5,7 +5,7 @@ import apiClient from '../../services/apiClient';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import MarkdownDisplay from 'react-native-markdown-display';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
@@ -61,7 +61,7 @@ const ChangelogModal = ({ isOpen, onClose, onSuccess, changelog }) => {
 				<TextInput style={styles.input} value={formData.releaseDate} onChangeText={val => setFormData({...formData, releaseDate: val})} />
 				<Text style={styles.label}>Anmerkungen (Markdown)</Text>
 				<TextInput style={[styles.input, styles.textArea]} value={formData.notes} onChangeText={val => setFormData({...formData, notes: val})} multiline />
-				<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}>
+				<TouchableOpacity style={[styles.button, styles.primaryButton, { marginTop: 16 }]} onPress={handleSubmit} disabled={isSubmitting}>
 					{isSubmitting ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Speichern</Text>}
 				</TouchableOpacity>
 			</ScrollView>

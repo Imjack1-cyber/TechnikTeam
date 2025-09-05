@@ -8,7 +8,7 @@ import ProfileAchievements from '../components/profile/ProfileAchievements';
 import ProfileEventHistory from '../components/profile/ProfileEventHistory';
 import { useAuthStore } from '../store/authStore';
 import { getCommonStyles } from '../styles/commonStyles';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 
 const UserProfilePage = () => {
     const navigation = useNavigation();

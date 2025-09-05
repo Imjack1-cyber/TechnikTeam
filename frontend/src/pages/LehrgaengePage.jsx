@@ -7,7 +7,7 @@ import { useToast } from '../context/ToastContext';
 import Modal from '../components/ui/Modal';
 import { getCommonStyles } from '../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../styles/theme';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../store/authStore';
 
 const CourseAccordion = ({ course, onAction, onToggle, isOpen, styles, colors }) => {
@@ -90,6 +90,11 @@ const LehrgaengePage = () => {
                     />
                 )}
                 contentContainerStyle={styles.contentContainer}
+                ListEmptyComponent={
+                    <View style={styles.card}>
+                        <Text style={styles.bodyText}>Aktuell sind keine Lehrgänge oder Termine geplant.</Text>
+                    </View>
+                }
             />
         </View>
 	);

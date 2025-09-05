@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform } from 're
 import { useToast } from '../../context/ToastContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 
 const Toast = ({ message, type, url, onHide }) => {
 	const fadeAnim = useRef(new Animated.Value(0)).current;

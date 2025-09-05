@@ -1,15 +1,15 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, StyleSheet } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import useApi from '../hooks/useApi';
-import apiClient from '../services/apiClient';
-import Lightbox from '../components/ui/Lightbox';
-import DamageReportModal from '../components/storage/DamageReportModal';
-import ReservationCalendar from '../components/storage/ReservationCalendar';
-import { useToast } from '../context/ToastContext';
-import { useAuthStore } from '../store/authStore';
-import { getCommonStyles } from '../styles/commonStyles';
-import { getThemeColors, typography, spacing } from '../styles/theme';
+import useApi from '../../hooks/useApi';
+import apiClient from '../../services/apiClient';
+import Lightbox from '../ui/Lightbox';
+import DamageReportModal from '../storage/DamageReportModal';
+import ReservationCalendar from '../storage/ReservationCalendar';
+import { useToast } from '../../context/ToastContext';
+import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, typography, spacing } from '../../styles/theme';
 
 const StorageItemDetailsPage = () => {
     const theme = useAuthStore(state => state.theme);

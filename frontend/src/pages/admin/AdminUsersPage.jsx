@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, TextInput, Platform, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
@@ -10,7 +10,7 @@ import { useToast } from '../../context/ToastContext';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 
 const SuspendUserModal = ({ isOpen, onClose, user, onSuccess }) => {
     const theme = useAuthStore(state => state.theme);
@@ -241,17 +241,17 @@ const AdminUsersPage = () => {
     };
 
 	return (
-		<View style={styles.container}>
+		<ScrollView style={styles.container}>
 			<TouchableOpacity style={[styles.button, styles.successButton, {margin: 16}]} onPress={() => openModal()}>
                 <Icon name="user-plus" size={16} color="#fff" />
                 <Text style={styles.buttonText}>Neuen Benutzer anlegen</Text>
             </TouchableOpacity>
 			{(loading || adminFormData.loading) && <ActivityIndicator size="large" />}
 			{error && <Text style={styles.errorText}>{error}</Text>}
-			<FlatList data={users} renderItem={renderItem} keyExtractor={item => item.id.toString()} contentContainerStyle={{paddingHorizontal: 16}} />
+			{users?.map(user => renderItem({item: user}))}
 			{isModalOpen && !adminFormData.loading && <UserModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} user={editingUser} roles={adminFormData.roles} groupedPermissions={adminFormData.groupedPermissions} />}
             {suspendingUser && <SuspendUserModal isOpen={!!suspendingUser} onClose={() => setSuspendingUser(null)} onSuccess={handleSuccess} user={suspendingUser} />}
-		</View>
+		</ScrollView>
 	);
 };
 

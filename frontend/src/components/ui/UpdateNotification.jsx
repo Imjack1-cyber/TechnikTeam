@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useToast } from '../../context/ToastContext';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 
 const UpdateNotification = ({ onUpdate }) => {
 	const { addToast } = useToast();

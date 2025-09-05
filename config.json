@@ -8,7 +8,11 @@
                                 "C:\\dev\\eclipse\\workspace\\TechnikTeam\\frontend\\dist",
                                 "C:\\dev\\eclipse\\workspace\\TechnikTeam\\frontend\\node_modules",
                                 "C:\\dev\\eclipse\\workspace\\TechnikTeam\\resources",
-                                "C:\\dev\\eclipse\\workspace\\TechnikTeam\\target"
+                                "C:\\dev\\eclipse\\workspace\\TechnikTeam\\target",
+                                "C:\\dev\\eclipse\\workspace\\TechnikTeam\\frontend\\.expo",
+                                "C:\\dev\\eclipse\\workspace\\TechnikTeam\\frontend\\.idea",
+                                "C:\\dev\\eclipse\\workspace\\TechnikTeam\\frontend\\android",
+                                "C:\\dev\\eclipse\\workspace\\TechnikTeam\\frontend\\assets"
                             ],
     "ExcludedFiles":  [
                           "C:\\dev\\eclipse\\workspace\\TechnikTeam\\dependency-tree.txt",

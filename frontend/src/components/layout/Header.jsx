@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useAuthStore } from '../../store/authStore';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const Header = ({ navigation, route, options }) => {

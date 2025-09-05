@@ -19,6 +19,8 @@ public class Event {
 	private String location;
 	private String status;
 	private int leaderUserId;
+	private Integer venueId;
+	private Integer preflightTemplateId;
 	private String userAttendanceStatus;
 
 	private List<SkillRequirement> skillRequirements;
@@ -100,12 +102,20 @@ public class Event {
 		this.leaderUserId = leaderUserId;
 	}
 
-	public String getLeaderUsername() {
-		return leaderUsername;
+	public Integer getVenueId() {
+		return venueId;
 	}
 
-	public void setLeaderUsername(String leaderUsername) {
-		this.leaderUsername = leaderUsername;
+	public void setVenueId(Integer venueId) {
+		this.venueId = venueId;
+	}
+
+	public Integer getPreflightTemplateId() {
+		return preflightTemplateId;
+	}
+
+	public void setPreflightTemplateId(Integer preflightTemplateId) {
+		this.preflightTemplateId = preflightTemplateId;
 	}
 
 	public String getUserAttendanceStatus() {
@@ -162,6 +172,14 @@ public class Event {
 
 	public void setReservedItems(List<StorageItem> reservedItems) {
 		this.reservedItems = reservedItems;
+	}
+
+	public String getLeaderUsername() {
+		return leaderUsername;
+	}
+
+	public void setLeaderUsername(String leaderUsername) {
+		this.leaderUsername = leaderUsername;
 	}
 
 	public List<EventCustomField> getCustomFields() {

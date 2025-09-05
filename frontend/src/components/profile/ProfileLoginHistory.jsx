@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Alert, Platform, TouchableOpacity, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { useAuthStore } from '../../store/authStore';
 import apiClient from '../../services/apiClient';

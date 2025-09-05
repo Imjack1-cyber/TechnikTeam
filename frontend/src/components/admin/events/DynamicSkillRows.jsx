@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../../store/authStore';
 import { getCommonStyles } from '../../../styles/commonStyles';
 import { getThemeColors, spacing } from '../../../styles/theme';

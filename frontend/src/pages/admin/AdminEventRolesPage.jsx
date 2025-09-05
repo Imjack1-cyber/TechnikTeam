@@ -4,7 +4,7 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors } from '../../styles/theme';

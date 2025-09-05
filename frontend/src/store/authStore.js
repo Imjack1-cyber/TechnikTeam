@@ -31,10 +31,47 @@ export const useAuthStore = create(
 			isAuthenticated: false,
 			isAdmin: false,
 			theme: 'light',
+            backendMode: 'prod', // 'prod' or 'dev'
 			layout: defaultLayout,
 			lastUpdatedEvent: null, // { id: eventId, nonce: Math.random() }
 			maintenanceStatus: { mode: 'OFF', message: '' },
 			previousLogin: null,
+            completeLogin: async (loginData) => {
+                const { session, token } = loginData;
+                const { user, navigation, maintenanceStatus, previousLogin } = session;
+
+                await setToken(token);
+                apiClient.setAuthToken(token);
+
+                const newTheme = user.theme || 'light';
+				let userLayout = defaultLayout;
+				if (user.dashboardLayout) {
+					try {
+						const savedLayout = JSON.parse(user.dashboardLayout);
+						userLayout = {
+							...defaultLayout,
+							...savedLayout,
+							dashboardWidgets: {
+								...defaultLayout.dashboardWidgets,
+								...(savedLayout.dashboardWidgets || {})
+							}
+						};
+					} catch (e) {
+						console.error("Failed to parse user layout JSON on login", e);
+					}
+				}
+
+                set({
+                    user: user,
+                    navigationItems: navigation,
+                    isAuthenticated: true,
+                    isAdmin: hasAdminAccess(user.roleName),
+                    theme: newTheme,
+					layout: userLayout,
+                    maintenanceStatus: maintenanceStatus || { mode: 'OFF', message: '' },
+                    previousLogin: previousLogin,
+                });
+            },
 			login: async (username, password) => {
 				try {
 					const response = await apiClient.post('/auth/login', { username, password });
@@ -43,23 +80,7 @@ export const useAuthStore = create(
 							return { status: '2FA_REQUIRED', token: response.data.token };
 						}
 						
-						const { session, token } = response.data;
-						const { user, navigation, maintenanceStatus, previousLogin } = session;
-
-						await setToken(token);
-						apiClient.setAuthToken(token);
-
-						const newTheme = user.theme || 'light';
-
-						set({
-							user: user,
-							navigationItems: navigation,
-							isAuthenticated: true,
-							isAdmin: hasAdminAccess(user.roleName),
-							theme: newTheme,
-							maintenanceStatus: maintenanceStatus || { mode: 'OFF', message: '' },
-							previousLogin: previousLogin,
-						});
+                        await get().completeLogin(response.data);
 						return { status: 'SUCCESS' };
 					}
 					throw new Error(response.message || 'Anmeldung fehlgeschlagen');
@@ -69,11 +90,6 @@ export const useAuthStore = create(
 					throw error;
 				}
 			},
-			completeLoginWithToken: async (token) => {
-				await setToken(token);
-				apiClient.setAuthToken(token);
-				await get().fetchUserSession();
-			},
 			logout: async () => {
 				try {
 					await apiClient.post('/auth/logout');
@@ -82,7 +98,8 @@ export const useAuthStore = create(
 				} finally {
 					await removeToken();
 					apiClient.setAuthToken(null);
-					set({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, theme: 'light', layout: defaultLayout, lastUpdatedEvent: null, maintenanceStatus: { mode: 'OFF', message: '' }, previousLogin: null });
+                    // Preserve theme and backendMode on logout
+					set(state => ({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, layout: defaultLayout, lastUpdatedEvent: null, maintenanceStatus: { mode: 'OFF', message: '' }, previousLogin: null, theme: state.theme, backendMode: state.backendMode }));
 				}
 			},
 			fetchUserSession: async () => {
@@ -128,6 +145,14 @@ export const useAuthStore = create(
 					throw error;
 				}
 			},
+            setBackendMode: (mode) => {
+                const currentMode = get().backendMode;
+                if (mode !== currentMode) {
+                    console.log(`Switching backend from ${currentMode} to ${mode}`);
+                    get().logout(); // Logout to clear session from old environment
+                    set({ backendMode: mode });
+                }
+            },
 			setTheme: async (newTheme) => {
 				try {
 					const result = await apiClient.put('/public/profile/theme', { theme: newTheme });
@@ -194,7 +219,7 @@ export const useAuthStore = create(
 		{
 			name: 'auth-storage',
 			storage: createJSONStorage(() => storage), // Use our universal storage wrapper
-			partialize: (state) => ({ theme: state.theme }),
+			partialize: (state) => ({ theme: state.theme, backendMode: state.backendMode }),
 		}
 	)
 );

@@ -10,6 +10,7 @@ import de.technikteam.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -45,7 +46,7 @@ public class AdminEventResource {
 
 	@PostMapping
 	@Operation(summary = "Create a new event", description = "Creates a new event with attachments, skill requirements, and item reservations.")
-	public ResponseEntity<ApiResponse> createEvent(@RequestPart("eventData") EventUpdateRequest eventData,
+	public ResponseEntity<ApiResponse> createEvent(@Valid @RequestPart("eventData") EventUpdateRequest eventData,
 			@RequestPart(value = "file", required = false) MultipartFile file,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
@@ -70,7 +71,7 @@ public class AdminEventResource {
 	@PostMapping("/{id}")
 	@Operation(summary = "Update an event", description = "Updates an existing event with attachments, skill requirements, and item reservations.")
 	public ResponseEntity<ApiResponse> updateEvent(@PathVariable int id,
-			@RequestPart("eventData") EventUpdateRequest eventData,
+			@Valid @RequestPart("eventData") EventUpdateRequest eventData,
 			@RequestPart(value = "file", required = false) MultipartFile file,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
@@ -140,7 +141,8 @@ public class AdminEventResource {
 		event.setEventDateTime(dto.eventDateTime());
 		event.setEndDateTime(dto.endDateTime());
 		event.setDescription(dto.description());
-		event.setLocation(dto.location());
+		event.setVenueId(dto.venueId());
+		event.setPreflightTemplateId(dto.preflightTemplateId());
 		event.setStatus(dto.status());
 		event.setLeaderUserId(dto.leaderUserId() != null && dto.leaderUserId() != 0 ? dto.leaderUserId() : 0);
 	}

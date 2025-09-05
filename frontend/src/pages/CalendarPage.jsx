@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import CalendarView from '../components/calendar/CalendarView'; // Now using the universal calendar view
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../store/authStore';
 import { getCommonStyles } from '../styles/commonStyles';
 import { getThemeColors } from '../styles/theme';
@@ -17,7 +17,7 @@ const CalendarPage = () => {
     const colors = getThemeColors(theme);
 
 	const handleSubscribe = () => {
-		const icsUrl = `http://10.0.2.2:8081/TechnikTeam/api/v1/public/calendar.ics`; // Use absolute URL for RN
+		const icsUrl = `${apiClient.getRootUrl()}/api/v1/public/calendar.ics`;
 		Linking.openURL(icsUrl).catch(err => console.error("Couldn't load page", err));
 	};
 

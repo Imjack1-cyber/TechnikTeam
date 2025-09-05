@@ -6,7 +6,8 @@ import apiClient from '../services/apiClient';
 import { useAuthStore } from '../store/authStore';
 import { getCommonStyles } from '../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../styles/theme';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
+import { navigateFromUrl } from '../router/navigationHelper';
 
 const NotificationItem = ({ notification, styles, colors }) => {
     const navigation = useNavigation();
@@ -29,20 +30,7 @@ const NotificationItem = ({ notification, styles, colors }) => {
     
     const handlePress = () => {
         if (notification.url) {
-            // Very basic URL parsing for this app's routes
-            // This needs to be more robust in a real app
-            const parts = notification.url.split('/').filter(Boolean);
-            if (parts.length >= 2) {
-                const routeName = parts[0].charAt(0).toUpperCase() + parts[0].slice(1); // e.g., 'veranstaltungen' -> 'Veranstaltungen'
-                const detailRoute = `${routeName}Details`; // e.g., 'VeranstaltungenDetails'
-                const paramName = `${parts[1]}Id`; // e.g., 'detailsId' -> simplified to 'eventId'
-                const id = parts[2];
-                // This is a simplified navigation logic
-                // A real app would have a more robust URL parsing service
-                if (routeName === 'Veranstaltungen') {
-                    navigation.navigate('EventDetails', { eventId: id });
-                }
-            }
+            navigateFromUrl(notification.url);
         }
     };
 

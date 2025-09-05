@@ -3,9 +3,10 @@ import { View, Text, TextInput, StyleSheet, FlatList, TouchableOpacity, Alert, A
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors } from '../../styles/theme';
 import { Picker } from '@react-native-picker/picker';
 
 const AdminGeoIpPage = () => {
@@ -16,6 +17,7 @@ const AdminGeoIpPage = () => {
     const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
 
     const handleAddRule = async () => {
         if (newRule.countryCode.length !== 2) {
@@ -55,9 +57,9 @@ const AdminGeoIpPage = () => {
     const renderItem = ({ item }) => (
         <View style={styles.detailsListRow}>
             <Text style={styles.detailsListLabel}>{item.countryCode}</Text>
-            <Text style={item.ruleType === 'BLOCK' ? {color: getThemeColors(theme).danger} : {color: getThemeColors(theme).success}}>{item.ruleType}</Text>
+            <Text style={item.ruleType === 'BLOCK' ? {color: colors.danger} : {color: colors.success}}>{item.ruleType}</Text>
             <TouchableOpacity onPress={() => handleDeleteRule(item.countryCode)}>
-                <Icon name="trash" size={18} color={getThemeColors(theme).danger} />
+                <Icon name="trash" size={18} color={colors.danger} />
             </TouchableOpacity>
         </View>
     );

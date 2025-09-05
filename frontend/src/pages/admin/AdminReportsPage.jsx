@@ -4,7 +4,7 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import EventTrendChart from '../../components/admin/dashboard/EventTrendChart';
 import UserActivityChart from '../../components/admin/reports/UserActivityChart';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
@@ -16,7 +16,7 @@ const AdminReportsPage = () => {
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
 
-	const getCsvLink = (reportType) => `http://10.0.2.2:8081/TechnikTeam/api/v1/reports/${reportType}?export=csv`;
+	const getCsvLink = (reportType) => `${apiClient.getRootUrl()}/api/v1/reports/${reportType}?export=csv`;
 
 	if (loading) return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
 	if (error) return <View style={styles.centered}><Text style={styles.errorText}>{error}</Text></View>;

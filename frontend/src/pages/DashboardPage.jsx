@@ -6,6 +6,7 @@ import apiClient from '../services/apiClient';
 import { useAuthStore } from '../store/authStore';
 import Widget from '../components/admin/dashboard/Widget';
 import { getCommonStyles } from '../styles/commonStyles';
+import { navigateFromUrl } from '../router/navigationHelper';
 
 const DashboardPage = () => {
 	const { user, layout } = useAuthStore(state => ({
@@ -18,15 +19,18 @@ const DashboardPage = () => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
 
-	const widgets = layout.dashboardWidgets || {};
+	const { dashboardWidgets: widgets = {} } = layout || {};
 
     const renderItem = (item, type) => {
         const handlePress = () => {
-            if (type === 'event') navigation.navigate('EventDetails', { eventId: item.id });
-            if (type === 'task') navigation.navigate('EventDetails', { eventId: item.eventId });
-            if (type === 'meeting') navigation.navigate('MeetingDetails', { meetingId: item.id });
-            if (type === 'conversation') navigation.navigate('Chat', { screen: 'MessageView', params: { conversationId: item.id } });
-            if (type === 'item') navigation.navigate('StorageItemDetails', { itemId: item.id });
+            if (item.url) {
+                navigateFromUrl(item.url);
+            } else {
+                // Fallback for items without a direct URL, like tasks
+                if (type === 'task' && item.eventId) {
+                    navigation.navigate('EventDetails', { eventId: item.eventId });
+                }
+            }
         };
         return (
             <TouchableOpacity style={styles.detailsListRow} key={item.id} onPress={handlePress}>

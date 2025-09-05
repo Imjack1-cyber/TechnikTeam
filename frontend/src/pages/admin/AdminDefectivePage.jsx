@@ -1,13 +1,14 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import StorageItemModal from '../../components/admin/storage/StorageItemModal';
 import { useToast } from '../../context/ToastContext';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors } from '../../styles/theme';
 
 const AdminDefectivePage = () => {
     const navigation = useNavigation();
@@ -18,6 +19,7 @@ const AdminDefectivePage = () => {
     
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
 
 	const defectiveItems = useMemo(() => allItems?.filter(item => item.defectiveQuantity > 0) || [], [allItems]);
 
@@ -48,7 +50,7 @@ const AdminDefectivePage = () => {
                 <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => openModal('repair', item)}>
                     <Text style={styles.buttonText}>Repariert</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.button, {backgroundColor: getThemeColors(theme).warning}]} onPress={() => openModal('defect', item)}>
+                <TouchableOpacity style={[styles.button, {backgroundColor: colors.warning}]} onPress={() => openModal('defect', item)}>
                     <Text style={{color: '#000', fontWeight: '500'}}>Status</Text>
                 </TouchableOpacity>
             </View>

@@ -86,7 +86,7 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 		switch (mode) {
 			case 'defect':
 				return (
-					<View>
+					<ScrollView>
 						<Text style={styles.label}>Status</Text>
 						<Picker selectedValue={formData.status || 'DEFECT'} onValueChange={val => handleChange('status', val)}>
 							<Picker.Item label="Defekt melden" value="DEFECT" />
@@ -97,17 +97,17 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 						<Text style={styles.label}>Grund</Text>
 						<TextInput style={[styles.input, styles.textArea]} value={formData.defect_reason_change} onChangeText={val => handleChange('defect_reason_change', val)} multiline/>
 						<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleStatusUpdateSubmit} disabled={isSubmitting}><Text style={styles.buttonText}>Speichern</Text></TouchableOpacity>
-					</View>
+					</ScrollView>
 				);
 			case 'repair':
 				return (
-                    <View>
+                    <ScrollView>
                         <Text style={styles.label}>Anzahl reparierter Artikel</Text>
                         <TextInput style={styles.input} value={formData.repaired_quantity} onChangeText={val => handleChange('repaired_quantity', val)} keyboardType="number-pad"/>
                         <Text style={styles.label}>Notiz</Text>
                         <TextInput style={[styles.input, styles.textArea]} value={formData.repair_notes} onChangeText={val => handleChange('repair_notes', val)} multiline/>
                         <TouchableOpacity style={[styles.button, styles.successButton]} onPress={handleStatusUpdateSubmit} disabled={isSubmitting}><Text style={styles.buttonText}>Als repariert buchen</Text></TouchableOpacity>
-                    </View>
+                    </ScrollView>
                 );
 			case 'relations':
 				return <RelatedItemsManager item={item} allItems={allItems || []} onSave={onSuccess} onCancel={onClose} />;

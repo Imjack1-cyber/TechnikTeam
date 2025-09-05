@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Platform } from 'react-native';
 import { getToken } from '../lib/storage';
-
-const ANDROID_WS_URL = 'ws://10.0.2.2:8081/TechnikTeam';
+import { useAuthStore } from '../store/authStore';
 
 const useWebSocket = (url, onMessage, dependencies = []) => {
 	const [readyState, setReadyState] = useState(WebSocket.CONNECTING);
@@ -12,6 +11,9 @@ const useWebSocket = (url, onMessage, dependencies = []) => {
 	useEffect(() => {
 		let reconnectTimeout;
 		const connect = async () => {
+            const backendMode = useAuthStore.getState().backendMode;
+            const host = backendMode === 'dev' ? 'technikteamdev.duckdns.org' : 'technikteam.duckdns.org';
+
 			const token = await getToken();
 			if (!url || !token) {
 				if (socketRef.current) socketRef.current.close(1000, "URL or token changed to null");
@@ -23,10 +25,10 @@ const useWebSocket = (url, onMessage, dependencies = []) => {
 
 			if (Platform.OS === 'web') {
 				const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-				const host = window.location.host;
-				finalUrl = `${protocol}//${host}/TechnikTeam${authenticatedUrl}`;
+				const webHost = window.location.host;
+				finalUrl = `${protocol}//${webHost}${authenticatedUrl}`;
 			} else {
-				finalUrl = `${ANDROID_WS_URL}${authenticatedUrl}`;
+				finalUrl = `wss://${host}${authenticatedUrl}`;
 			}
 
 			console.log(`Attempting to connect to WebSocket at: ${finalUrl}`);

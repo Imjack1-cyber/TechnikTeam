@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Modal from './Modal';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 
 const DownloadWarningModal = ({ isOpen, onClose, onConfirm, file }) => {
 	if (!isOpen || !file) return null;

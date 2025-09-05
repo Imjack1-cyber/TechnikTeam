@@ -53,6 +53,12 @@ public class EventDAO {
 		if (DaoUtils.hasColumn(rs, "leader_username")) {
 			event.setLeaderUsername(rs.getString("leader_username"));
 		}
+		if (DaoUtils.hasColumn(rs, "venue_id")) {
+			event.setVenueId(rs.getObject("venue_id", Integer.class));
+		}
+		if (DaoUtils.hasColumn(rs, "preflight_template_id")) {
+			event.setPreflightTemplateId(rs.getObject("preflight_template_id", Integer.class));
+		}
 		return event;
 	};
 
@@ -169,23 +175,38 @@ public class EventDAO {
 	}
 
 	public int createEvent(Event event) {
-		String sql = "INSERT INTO events (name, event_datetime, end_datetime, description, location, status, leader_user_id) VALUES (?, ?, ?, ?, ?, 'GEPLANT', ?)";
+		String sql = "INSERT INTO events (name, event_datetime, end_datetime, description, status, leader_user_id, venue_id, preflight_template_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 		KeyHolder keyHolder = new GeneratedKeyHolder();
 		try {
 			jdbcTemplate.update(connection -> {
 				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
 				ps.setString(1, event.getName());
+
+				if (event.getEventDateTime() == null) {
+					throw new IllegalArgumentException("Event start time cannot be null.");
+				}
 				ps.setTimestamp(2, Timestamp.valueOf(event.getEventDateTime()));
+
 				if (event.getEndDateTime() != null)
 					ps.setTimestamp(3, Timestamp.valueOf(event.getEndDateTime()));
 				else
 					ps.setNull(3, Types.TIMESTAMP);
 				ps.setString(4, event.getDescription());
-				ps.setString(5, event.getLocation());
+				ps.setString(5, "GEPLANT");
 				if (event.getLeaderUserId() > 0)
 					ps.setInt(6, event.getLeaderUserId());
 				else
 					ps.setNull(6, Types.INTEGER);
+				if (event.getVenueId() != null && event.getVenueId() > 0) {
+					ps.setInt(7, event.getVenueId());
+				} else {
+					ps.setNull(7, Types.INTEGER);
+				}
+				if (event.getPreflightTemplateId() != null && event.getPreflightTemplateId() > 0) {
+					ps.setInt(8, event.getPreflightTemplateId());
+				} else {
+					ps.setNull(8, Types.INTEGER);
+				}
 				return ps;
 			}, keyHolder);
 			return Objects.requireNonNull(keyHolder.getKey()).intValue();
@@ -196,12 +217,15 @@ public class EventDAO {
 	}
 
 	public boolean updateEvent(Event event) {
-		String sql = "UPDATE events SET name = ?, event_datetime = ?, end_datetime = ?, description = ?, location = ?, status = ?, leader_user_id = ? WHERE id = ?";
+		String sql = "UPDATE events SET name = ?, event_datetime = ?, end_datetime = ?, description = ?, status = ?, leader_user_id = ?, venue_id = ?, preflight_template_id = ? WHERE id = ?";
 		try {
 			return jdbcTemplate.update(sql, event.getName(), Timestamp.valueOf(event.getEventDateTime()),
 					event.getEndDateTime() != null ? Timestamp.valueOf(event.getEndDateTime()) : null,
-					event.getDescription(), event.getLocation(), event.getStatus(),
-					event.getLeaderUserId() > 0 ? event.getLeaderUserId() : null, event.getId()) > 0;
+					event.getDescription(), event.getStatus(),
+					event.getLeaderUserId() > 0 ? event.getLeaderUserId() : null,
+					event.getVenueId() != null && event.getVenueId() > 0 ? event.getVenueId() : null,
+					event.getPreflightTemplateId() != null && event.getPreflightTemplateId() > 0 ? event.getPreflightTemplateId() : null,
+					event.getId()) > 0;
 		} catch (Exception e) {
 			logger.error("Error updating event {}", event.getName(), e);
 			return false;

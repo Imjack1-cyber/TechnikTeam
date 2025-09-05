@@ -9,7 +9,7 @@ import Modal from '../../components/ui/Modal';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 
 const AdminFilesPage = ({ navigation }) => {
 	const filesApiCall = useCallback(() => apiClient.get('/admin/files'), []);

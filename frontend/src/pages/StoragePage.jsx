@@ -9,7 +9,7 @@ import CartModal from '../components/storage/CartModal';
 import { useAuthStore } from '../store/authStore';
 import { getCommonStyles } from '../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../styles/theme';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 
 const AvailabilityBar = ({ available, max }) => {
     const theme = useAuthStore(state => state.theme);
@@ -62,7 +62,7 @@ const StoragePage = () => {
     };
 
 
-	const getImagePath = (path) => `http://10.0.2.2:8081/TechnikTeam/api/v1/public/files/images/${path.split('/').pop()}`;
+	const getImagePath = (path) => `${apiClient.getRootUrl()}/api/v1/public/files/images/${path.split('/').pop()}`;
 
     const renderItem = ({ item }) => (
         <View style={styles.card}>

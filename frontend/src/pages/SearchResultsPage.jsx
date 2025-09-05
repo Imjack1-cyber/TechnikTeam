@@ -3,10 +3,11 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator }
 import { useRoute, useNavigation } from '@react-navigation/native';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../store/authStore';
 import { getCommonStyles } from '../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../styles/theme';
+import { navigateFromUrl } from '../router/navigationHelper';
 
 const SearchResultsPage = () => {
     const navigation = useNavigation();
@@ -34,11 +35,7 @@ const SearchResultsPage = () => {
 	};
     
     const handlePress = (result) => {
-        // This logic needs to be more robust based on the URL structure
-        if (result.url.includes('/veranstaltungen/details/')) {
-            navigation.navigate('EventDetails', { eventId: result.url.split('/').pop() });
-        }
-        // Add other navigation cases here
+        navigateFromUrl(result.url);
     };
 
     const renderItem = ({ item }) => (
