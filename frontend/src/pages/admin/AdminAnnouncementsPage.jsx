@@ -6,7 +6,7 @@ import apiClient from '../../services/apiClient';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import MarkdownDisplay from 'react-native-markdown-display';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
@@ -56,16 +56,20 @@ const AnnouncementModal = ({ isOpen, onClose, onSuccess, announcement }) => {
 
 	return (
 		<Modal isOpen={isOpen} onClose={onClose} title={announcement ? "Mitteilung bearbeiten" : "Neue Mitteilung erstellen"}>
-			<ScrollView>
-				{error && <Text style={styles.errorText}>{error}</Text>}
-				<Text style={styles.label}>Titel</Text>
-				<TextInput style={styles.input} value={title} onChangeText={setTitle} />
-				<Text style={styles.label}>Inhalt (Markdown unterstützt)</Text>
-				<TextInput style={[styles.input, styles.textArea]} value={content} onChangeText={setContent} multiline />
-				<TouchableOpacity style={[styles.button, styles.primaryButton, { marginTop: 16 }]} onPress={handleSubmit} disabled={isSubmitting}>
-					{isSubmitting ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Speichern</Text>}
-				</TouchableOpacity>
-			</ScrollView>
+			<View style={{ flex: 1 }}>
+				<ScrollView>
+					{error && <Text style={styles.errorText}>{error}</Text>}
+					<Text style={styles.label}>Titel</Text>
+					<TextInput style={styles.input} value={title} onChangeText={setTitle} />
+					<Text style={styles.label}>Inhalt (Markdown unterstützt)</Text>
+					<TextInput style={[styles.input, styles.textArea]} value={content} onChangeText={setContent} multiline />
+				</ScrollView>
+				<View style={styles.modalFooter}>
+                    <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}>
+                        {isSubmitting ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Speichern</Text>}
+                    </TouchableOpacity>
+                </View>
+			</View>
 		</Modal>
 	);
 };

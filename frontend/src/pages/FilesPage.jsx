@@ -1,78 +1,63 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import DownloadWarningModal from '../components/ui/DownloadWarningModal';
-import Icon from '@expo/vector-icons/FontAwesome5';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
-import { getToken } from '../lib/storage';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useToast } from '../context/ToastContext';
+import ProgressBar from '../components/ui/ProgressBar';
 
 const FileLink = ({ file, navigation }) => {
 	const [isModalOpen, setIsModalOpen] = useState(false);
-	const isMarkdown = file.filename.toLowerCase().endsWith('.md');
-    const { addToast } = useToast();
+	const [isDownloading, setIsDownloading] = useState(false);
+	const [downloadProgress, setDownloadProgress] = useState(0);
+	const { addToast } = useToast();
 
-	const handleDownloadClick = () => {
-		if (file.needsWarning) {
-			setIsModalOpen(true);
-		} else {
-			handleConfirmDownload();
+	const isMarkdown = file.filename.toLowerCase().endsWith('.md');
+
+	const handleDownload = async () => {
+		setIsDownloading(true);
+		setDownloadProgress(0);
+		addToast(`Download für "${file.filename}" wird gestartet...`, 'info');
+
+		try {
+			await apiClient.downloadFile(file.id, file.filename, (progress) => {
+				const currentProgress = progress.totalBytesWritten / progress.totalBytesExpectedToWrite;
+				setDownloadProgress(currentProgress);
+			});
+			addToast(`"${file.filename}" erfolgreich heruntergeladen.`, 'success');
+		} catch (error) {
+			console.error('Download error:', error);
+			addToast(`Download fehlgeschlagen: ${error.message}`, 'error');
+		} finally {
+			setIsDownloading(false);
 		}
 	};
 
-	const handleConfirmDownload = async () => {
-        setIsModalOpen(false);
-        addToast('Download wird gestartet...', 'info');
-        const downloadUrl = `${apiClient.getBaseUrl()}/api/v1/public/files/download/${file.id}`;
-        const token = await getToken();
-
-        try {
-            if (Platform.OS === 'web') {
-                const response = await fetch(downloadUrl, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!response.ok) throw new Error('Fehler beim Herunterladen der Datei.');
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = file.filename;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                window.URL.revokeObjectURL(url);
-                addToast('Download abgeschlossen!', 'success');
-            } else {
-                // Native logic
-                const fileUri = FileSystem.documentDirectory + file.filename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-                const { uri } = await FileSystem.downloadAsync(
-                    downloadUrl,
-                    fileUri,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
-                addToast('Download abgeschlossen!', 'success');
-                if (await Sharing.isAvailableAsync()) {
-                    await Sharing.shareAsync(uri, { dialogTitle: file.filename });
-                } else {
-                    addToast('Datei heruntergeladen. Siehe Download-Ordner.', 'info');
-                }
-            }
-        } catch (error) {
-            console.error('Download error:', error);
-            addToast('Download fehlgeschlagen.', 'error');
-        }
-    };
+	const handlePress = () => {
+		if (isDownloading) return;
+		if (file.needsWarning) {
+			setIsModalOpen(true);
+		} else {
+			handleDownload();
+		}
+	};
 
 	return (
 		<>
 			<View style={styles.fileRow}>
-				<TouchableOpacity style={styles.fileLink} onPress={handleDownloadClick}>
-					<Icon name="download" size={16} color="#007bff" />
-					<Text style={styles.fileName}>{file.filename}</Text>
+				<TouchableOpacity style={styles.fileLink} onPress={handlePress} disabled={isDownloading}>
+					<Icon name="download" size={16} color={isDownloading ? "#ccc" : "#007bff"} />
+					<View style={{ flex: 1 }}>
+						<Text style={[styles.fileName, isDownloading && { color: "#ccc" }]}>{file.filename}</Text>
+						{isDownloading && (
+							<View style={{ marginTop: 4 }}>
+								<ProgressBar progress={downloadProgress} />
+							</View>
+						)}
+					</View>
 				</TouchableOpacity>
-				{isMarkdown && (
+				{isMarkdown && !isDownloading && (
 					<TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('FileEditor', { fileId: file.id })}>
 						<Icon name="pen-alt" size={12} color="#fff" />
 						<Text style={styles.editButtonText}>Bearbeiten</Text>
@@ -82,7 +67,10 @@ const FileLink = ({ file, navigation }) => {
 			<DownloadWarningModal
 				isOpen={isModalOpen}
 				onClose={() => setIsModalOpen(false)}
-				onConfirm={handleConfirmDownload}
+				onConfirm={() => {
+					setIsModalOpen(false);
+					handleDownload();
+				}}
 				file={file}
 			/>
 		</>

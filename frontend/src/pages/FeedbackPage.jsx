@@ -7,43 +7,43 @@ import { useToast } from '../context/ToastContext';
 import { useAuthStore } from '../store/authStore';
 import { getCommonStyles } from '../styles/commonStyles';
 import { getThemeColors, spacing } from '../styles/theme';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const FeedbackPage = () => {
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
 
-	const apiCall = useCallback(() => apiClient.get('/public/feedback/user'), []);
-	const { data: submissions, loading, error, reload } = useApi(apiCall);
-	const [subject, setSubject] = useState('');
-	const [content, setContent] = useState('');
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [submitError, setSubmitError] = useState('');
-	const { addToast } = useToast();
+    const apiCall = useCallback(() => apiClient.get('/public/feedback/user'), []);
+    const { data: submissions, loading, error, reload } = useApi(apiCall);
+    const [subject, setSubject] = useState('');
+    const [content, setContent] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState('');
+    const { addToast } = useToast();
 
-	const handleSubmit = async () => {
-		setIsSubmitting(true);
-		setSubmitError('');
+    const handleSubmit = async () => {
+        setIsSubmitting(true);
+        setSubmitError('');
 
-		try {
-			const result = await apiClient.post('/public/feedback/general', { subject, content });
-			if (result.success) {
-				addToast('Vielen Dank! Dein Feedback wurde erfolgreich übermittelt.', 'success');
-				setSubject('');
-				setContent('');
-				reload();
-			} else {
-				throw new Error(result.message);
-			}
-		} catch (err) {
-			setSubmitError(err.message || 'Senden fehlgeschlagen.');
-		} finally {
-			setIsSubmitting(false);
-		}
-	};
+        try {
+            const result = await apiClient.post('/public/feedback/general', { subject, content });
+            if (result.success) {
+                addToast('Vielen Dank! Dein Feedback wurde erfolgreich übermittelt.', 'success');
+                setSubject('');
+                setContent('');
+                reload();
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (err) {
+            setSubmitError(err.message || 'Senden fehlgeschlagen.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
-    const renderSubmission = ({ item }) => (
-        <View style={styles.card}>
+    const renderSubmission = (item) => (
+        <View style={styles.card} key={item.id}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Text style={styles.cardTitle}>{item.subject}</Text>
                 <StatusBadge status={item.status} />
@@ -55,17 +55,17 @@ const FeedbackPage = () => {
         </View>
     );
 
-	return (
-		<ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-			<View style={styles.headerContainer}>
+    return (
+        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+            <View style={styles.headerContainer}>
                 <Icon name="lightbulb" size={24} style={styles.headerIcon} />
-			    <Text style={styles.title}>Feedback & Wünsche</Text>
+                <Text style={styles.title}>Feedback & Wünsche</Text>
             </View>
             <View style={styles.card}>
                 <Text style={styles.cardTitle}>Neues Feedback einreichen</Text>
                 <Text style={styles.subtitle}>Hast du eine Idee, einen Verbesserungsvorschlag oder ist dir ein Fehler aufgefallen?</Text>
                 {submitError && <Text style={styles.errorText}>{submitError}</Text>}
-                
+
                 <Text style={styles.label}>Betreff</Text>
                 <TextInput style={styles.input} value={subject} onChangeText={setSubject} placeholder="z.B. Feature-Wunsch: Dunkelmodus" />
 
@@ -81,15 +81,15 @@ const FeedbackPage = () => {
                 <Text style={styles.cardTitle}>Mein eingereichtes Feedback</Text>
                 {loading && <ActivityIndicator />}
                 {error && <Text style={styles.errorText}>{error}</Text>}
-                <FlatList
-                    data={submissions}
-                    renderItem={renderSubmission}
-                    keyExtractor={item => item.id.toString()}
-                    ListEmptyComponent={<Text>Du hast noch kein Feedback eingereicht.</Text>}
-                />
+
+                {submissions && submissions.length > 0 ? (
+                    submissions.map(item => renderSubmission(item))
+                ) : (
+                    <Text>Du hast noch kein Feedback eingereicht.</Text>
+                )}
             </View>
-		</ScrollView>
-	);
+        </ScrollView>
+    );
 };
 
 const pageStyles = (theme) => {

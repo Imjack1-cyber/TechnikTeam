@@ -1,9 +1,9 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Alert } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
@@ -53,9 +53,11 @@ const MaintenanceModeManager = () => {
 			<Text style={styles.subtitle}>Steuern Sie den globalen Zugriffsstatus der Anwendung.</Text>
             
             <RadioButton.Group onValueChange={newValue => setMode(newValue)} value={mode}>
-                <View style={styles.radioRow}><RadioButton value="OFF" /><Text>Aus</Text></View>
-                <View style={styles.radioRow}><RadioButton value="SOFT" /><Text>Warnung (Banner)</Text></View>
-                <View style={styles.radioRow}><RadioButton value="HARD" /><Text>Sperre (Nur Admins)</Text></View>
+                <View>
+                    <View style={pageStyles(theme).radioRow}><RadioButton value="OFF" /><Text>Aus</Text></View>
+                    <View style={pageStyles(theme).radioRow}><RadioButton value="SOFT" /><Text>Warnung (Banner)</Text></View>
+                    <View style={pageStyles(theme).radioRow}><RadioButton value="HARD" /><Text>Sperre (Nur Admins)</Text></View>
+                </View>
             </RadioButton.Group>
 			
             <Text style={styles.label}>Angezeigte Nachricht</Text>
@@ -78,36 +80,38 @@ const AdminSystemPage = () => {
 	const formatGB = (value) => `${value.toFixed(2)} GB`;
 
 	return (
-		<ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-			<View style={styles.headerContainer}>
-                <Icon name="server" size={24} style={styles.headerIcon} />
-			    <Text style={styles.title}>Systeminformationen</Text>
-            </View>
-			<Text style={styles.subtitle}>Live-Statistiken über den Zustand des Servers.</Text>
+		<View style={styles.container}>
+			<ScrollView contentContainerStyle={styles.contentContainer}>
+				<View style={styles.headerContainer}>
+					<Icon name="server" size={24} style={styles.headerIcon} />
+					<Text style={styles.title}>Systeminformationen</Text>
+				</View>
+				<Text style={styles.subtitle}>Live-Statistiken über den Zustand des Servers.</Text>
 
-			<MaintenanceModeManager />
+				<MaintenanceModeManager />
 
-			{loading && <ActivityIndicator size="large" />}
-			{error && <Text style={styles.errorText}>{error}</Text>}
-			{stats && (
-				<>
-                    <View style={styles.card}>
-                        <Text style={styles.cardTitle}>CPU & Speicher</Text>
-                        <View style={styles.detailRow}><Text style={styles.label}>CPU-Auslastung:</Text><Text style={styles.value}>{stats.cpuLoad > 0 ? formatPercent(stats.cpuLoad) : 'Wird geladen...'}</Text></View>
-                        <View style={styles.detailRow}><Text style={styles.label}>RAM-Nutzung:</Text><Text style={styles.value}>{formatGB(stats.usedMemory)} / {formatGB(stats.totalMemory)}</Text></View>
-                    </View>
-                    <View style={styles.card}>
-                        <Text style={styles.cardTitle}>Festplattenspeicher</Text>
-                        <View style={styles.detailRow}><Text style={styles.label}>Speichernutzung:</Text><Text style={styles.value}>{formatGB(stats.usedDiskSpace)} / {formatGB(stats.totalDiskSpace)}</Text></View>
-                    </View>
-                    <View style={styles.card}>
-                        <Text style={styles.cardTitle}>Laufzeit & Energie</Text>
-                        <View style={styles.detailRow}><Text style={styles.label}>Server-Laufzeit:</Text><Text style={styles.value}>{stats.uptime}</Text></View>
-                        <View style={styles.detailRow}><Text style={styles.label}>Batteriestatus:</Text><Text style={styles.value}>{stats.batteryPercentage >= 0 ? `${stats.batteryPercentage}%` : 'Nicht verfügbar'}</Text></View>
-                    </View>
-				</>
-			)}
-		</ScrollView>
+				{loading && <ActivityIndicator size="large" />}
+				{error && <Text style={styles.errorText}>{error}</Text>}
+				{stats && (
+					<>
+						<View style={styles.card}>
+							<Text style={styles.cardTitle}>CPU & Speicher</Text>
+							<View style={styles.detailRow}><Text style={styles.label}>CPU-Auslastung:</Text><Text style={styles.value}>{stats.cpuLoad > 0 ? formatPercent(stats.cpuLoad) : 'Wird geladen...'}</Text></View>
+							<View style={styles.detailRow}><Text style={styles.label}>RAM-Nutzung:</Text><Text style={styles.value}>{formatGB(stats.usedMemory)} / {formatGB(stats.totalMemory)}</Text></View>
+						</View>
+						<View style={styles.card}>
+							<Text style={styles.cardTitle}>Festplattenspeicher</Text>
+							<View style={styles.detailRow}><Text style={styles.label}>Speichernutzung:</Text><Text style={styles.value}>{formatGB(stats.usedDiskSpace)} / {formatGB(stats.totalDiskSpace)}</Text></View>
+						</View>
+						<View style={styles.card}>
+							<Text style={styles.cardTitle}>Laufzeit & Energie</Text>
+							<View style={styles.detailRow}><Text style={styles.label}>Server-Laufzeit:</Text><Text style={styles.value}>{stats.uptime}</Text></View>
+							<View style={styles.detailRow}><Text style={styles.label}>Batteriestatus:</Text><Text style={styles.value}>{stats.batteryPercentage >= 0 ? `${stats.batteryPercentage}%` : 'Nicht verfügbar'}</Text></View>
+						</View>
+					</>
+				)}
+			</ScrollView>
+		</View>
 	);
 };
 

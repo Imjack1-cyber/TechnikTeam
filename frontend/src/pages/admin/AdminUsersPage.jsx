@@ -10,7 +10,7 @@ import { useToast } from '../../context/ToastContext';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const SuspendUserModal = ({ isOpen, onClose, user, onSuccess }) => {
     const theme = useAuthStore(state => state.theme);
@@ -45,7 +45,7 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuccess }) => {
 
 	return (
 		<Modal isOpen={isOpen} onClose={onClose} title={`Benutzer sperren: ${user.username}`}>
-			<View>
+			<ScrollView>
 				{error && <Text style={styles.errorText}>{error}</Text>}
 				<Text style={styles.label}>Dauer (z.B. 1h, 7d, indefinite)</Text>
 				<TextInput style={styles.input} value={duration} onChangeText={setDuration} />
@@ -54,7 +54,7 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuccess }) => {
 				<TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={handleSubmit} disabled={isSubmitting}>
                     {isSubmitting ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Benutzer sperren</Text>}
 				</TouchableOpacity>
-			</View>
+			</ScrollView>
 		</Modal>
 	);
 };

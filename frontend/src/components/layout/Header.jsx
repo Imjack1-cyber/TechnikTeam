@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useAuthStore } from '../../store/authStore';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DrawerActions } from '@react-navigation/native';
 
 const Header = ({ navigation, route, options }) => {
 	const user = useAuthStore(state => state.user);
@@ -14,7 +15,7 @@ const Header = ({ navigation, route, options }) => {
 
 	return (
 		<View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? insets.top : 10, height: (Platform.OS === 'ios' ? insets.top : 10) + 54 }]}>
-			<TouchableOpacity style={styles.toggleButton} onPress={canGoBack ? () => navigation.goBack() : () => navigation.toggleDrawer()}>
+			<TouchableOpacity style={styles.toggleButton} onPress={canGoBack ? () => navigation.goBack() : () => navigation.dispatch(DrawerActions.toggleDrawer()) }>
 				<Icon name={canGoBack ? 'arrow-left' : 'bars'} size={24} color="#212529" />
 			</TouchableOpacity>
 			<View>

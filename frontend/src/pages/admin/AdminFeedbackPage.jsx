@@ -6,20 +6,20 @@ import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
-import { getThemeColors, typography, spacing } from '../../styles/theme';
+import { getThemeColors, typography, spacing, borders } from '../../styles/theme';
 
 const FeedbackColumn = ({ title, submissions, onCardClick }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
 	return (
-		<View style={styles.feedbackColumn}>
-			<Text style={styles.columnTitle}>{title}</Text>
+		<View style={pageStyles(theme).feedbackColumn}>
+			<Text style={pageStyles(theme).columnTitle}>{title}</Text>
 			<ScrollView>
 				{submissions.map(sub => (
 					<TouchableOpacity key={sub.id} style={styles.card} onPress={() => onCardClick(sub)}>
-						<Text style={styles.cardSubject}>{sub.subject}</Text>
-						<Text style={styles.cardPreview} numberOfLines={2}>{sub.content}</Text>
-						<Text style={styles.cardMeta}>Von: {sub.username}</Text>
+						<Text style={pageStyles(theme).cardSubject}>{sub.subject}</Text>
+						<Text style={pageStyles(theme).cardPreview} numberOfLines={2}>{sub.content}</Text>
+						<Text style={pageStyles(theme).cardMeta}>Von: {sub.username}</Text>
 					</TouchableOpacity>
 				))}
 			</ScrollView>
@@ -69,21 +69,25 @@ const AdminFeedbackPage = () => {
 
 			{selectedFeedback && (
 				<Modal isOpen={!!selectedFeedback} onClose={() => setSelectedFeedback(null)} title={selectedFeedback.subject}>
-					<ScrollView>
-						<Text>Von: {selectedFeedback.username}</Text>
-						<Text>Eingereicht am: {new Date(selectedFeedback.submittedAt).toLocaleString('de-DE')}</Text>
-                        <View style={styles.contentBox}>
-                            <Text>{selectedFeedback.content}</Text>
+					<View style={{ flex: 1 }}>
+                        <ScrollView>
+                            <Text>Von: {selectedFeedback.username}</Text>
+                            <Text>Eingereicht am: {new Date(selectedFeedback.submittedAt).toLocaleString('de-DE')}</Text>
+                            <View style={styles.contentBox}>
+                                <Text>{selectedFeedback.content}</Text>
+                            </View>
+                        </ScrollView>
+                        <View style={styles.modalFooter}>
+                            <Text style={styles.modalSectionTitle}>Status ändern:</Text>
+                            <View style={styles.statusButtons}>
+                                {['NEW', 'VIEWED', 'PLANNED', 'COMPLETED', 'REJECTED'].map(status => (
+                                    <TouchableOpacity key={status} onPress={() => handleStatusChange(status)} style={styles.button}>
+                                        <Text style={styles.buttonText}>{status}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
                         </View>
-						<Text style={styles.modalSectionTitle}>Status ändern:</Text>
-						<View style={styles.statusButtons}>
-							{['NEW', 'VIEWED', 'PLANNED', 'COMPLETED', 'REJECTED'].map(status => (
-								<TouchableOpacity key={status} onPress={() => handleStatusChange(status)} style={styles.button}>
-									<Text style={styles.buttonText}>{status}</Text>
-								</TouchableOpacity>
-							))}
-						</View>
-					</ScrollView>
+                    </View>
 				</Modal>
 			)}
 		</View>

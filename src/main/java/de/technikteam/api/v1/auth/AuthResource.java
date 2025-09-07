@@ -76,9 +76,10 @@ public class AuthResource {
 			HttpServletResponse response) {
 		String username = loginRequest.username();
 		String password = loginRequest.password();
+        String clientType = loginRequest.clientType() != null ? loginRequest.clientType() : "web";
 		String ipAddress = getClientIp(request);
 		String userAgent = request.getHeader("User-Agent");
-		logger.info("Login attempt for user '{}' from IP address: {}", username, ipAddress);
+		logger.info("Login attempt for user '{}' from IP address: {} (Client: {})", username, ipAddress, clientType);
 
 		if (geoIpService.isIpBlocked(ipAddress)) {
 			logger.warn("Blocked login attempt for user '{}' from blocked country. IP: {}", username, ipAddress);
@@ -122,9 +123,13 @@ public class AuthResource {
 
 				// If no 2FA is needed, proceed with full login
 				twoFactorAuthDAO.addKnownIpForUser(user.getId(), ipAddress);
-				String token = authService.generateToken(user);
-				authService.addJwtCookie(user, response);
-				logger.info("JWT cookie set successfully for user '{}'", username);
+                long tokenLifetime = "native".equalsIgnoreCase(clientType) ? (336 * 60 * 60) : (8 * 60 * 60);
+				String token = authService.generateToken(user, tokenLifetime);
+                
+                if ("web".equalsIgnoreCase(clientType)) {
+				    authService.addJwtCookie(user, response);
+				    logger.info("JWT cookie set successfully for user '{}'", username);
+                }
 
 				Claims claims = authService.parseTokenClaims(token);
 				Map<String, String> agentDetails = userAgentService.parseUserAgent(userAgent);

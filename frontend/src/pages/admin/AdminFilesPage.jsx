@@ -1,20 +1,20 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, SectionList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-// NOTE: File picking requires a native library like expo-document-picker
-import * as DocumentPicker from 'expo-document-picker';
+import { View, Text, StyleSheet, SectionList, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
+import UploadFileModal from '../../components/admin/files/UploadFileModal';
 import { useToast } from '../../context/ToastContext';
-import Modal from '../../components/ui/Modal';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
-import Icon from '@expo/vector-icons/FontAwesome5';
 
 const AdminFilesPage = ({ navigation }) => {
 	const filesApiCall = useCallback(() => apiClient.get('/admin/files'), []);
 	const { data: fileApiResponse, loading, error, reload: reloadFiles } = useApi(filesApiCall);
     const { addToast } = useToast();
+    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
     const theme = useAuthStore(state => state.theme);
     const commonStyles = getCommonStyles(theme);
@@ -44,34 +44,9 @@ const AdminFilesPage = ({ navigation }) => {
 		]);
 	};
 
-    const handleUpload = async () => {
-        try {
-            const docRes = await DocumentPicker.getDocumentAsync({});
-            if (!docRes.canceled) {
-                const file = docRes.assets[0];
-                const formData = new FormData();
-                formData.append('file', {
-                    uri: file.uri,
-                    name: file.name,
-                    type: file.mimeType,
-                });
-                formData.append('requiredRole', 'NUTZER'); // Default role
-                
-                // You would typically have a modal here to select category, role etc.
-                // For simplicity, using defaults.
-                
-                addToast('Datei wird hochgeladen...', 'info');
-                const result = await apiClient.post('/admin/files', formData);
-                if(result.success) {
-                    addToast('Datei erfolgreich hochgeladen!', 'success');
-                    reloadFiles();
-                } else {
-                    throw new Error(result.message);
-                }
-            }
-        } catch (err) {
-            addToast(`Upload fehlgeschlagen: ${err.message}`, 'error');
-        }
+    const handleUploadSuccess = () => {
+        setIsUploadModalOpen(false);
+        reloadFiles();
     };
 
     const renderItem = ({ item }) => {
@@ -79,7 +54,7 @@ const AdminFilesPage = ({ navigation }) => {
         return (
             <View style={styles.fileRow}>
                 <View style={styles.fileInfo}>
-                    <Icon name="download" size={16} color={styles.fileIcon.color} />
+                    <Icon name="download" size={16} style={styles.fileIcon} />
                     <Text style={styles.fileName}>{item.filename}</Text>
                     <Text style={styles.fileMeta}>Sichtbarkeit: {item.requiredRole}</Text>
                 </View>
@@ -112,7 +87,7 @@ const AdminFilesPage = ({ navigation }) => {
 			</View>
             <Text style={styles.subtitle}>Hier können Sie alle zentralen Dokumente und Vorlagen verwalten.</Text>
             
-            <TouchableOpacity style={[styles.button, styles.successButton, { marginHorizontal: 16, marginBottom: 16}]} onPress={handleUpload}>
+            <TouchableOpacity style={[styles.button, styles.successButton, { marginHorizontal: 16, marginBottom: 16}]} onPress={() => setIsUploadModalOpen(true)}>
                 <Icon name="upload" size={16} color="#fff" />
                 <Text style={styles.buttonText}>Neue Datei hochladen</Text>
             </TouchableOpacity>
@@ -126,6 +101,12 @@ const AdminFilesPage = ({ navigation }) => {
                 renderItem={renderItem}
                 renderSectionHeader={renderSectionHeader}
                 ListEmptyComponent={<View style={styles.card}><Text>Keine Dateien gefunden.</Text></View>}
+            />
+            
+            <UploadFileModal
+                isOpen={isUploadModalOpen}
+                onClose={() => setIsUploadModalOpen(false)}
+                onSuccess={handleUploadSuccess}
             />
 		</View>
 	);

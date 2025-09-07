@@ -96,15 +96,15 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
     );
 
     const renderNotesTab = () => (
-        <View>
+        <View style={{ flex: 1 }}>
             <Text style={styles.label}>Interne Notizen</Text>
-            <TextInput style={[styles.input, styles.textArea]} value={formData.adminNotes || ''} onChangeText={val => handleChange('adminNotes', val)} multiline/>
+            <TextInput style={[styles.input, styles.textArea, { flex: 1 }]} value={formData.adminNotes || ''} onChangeText={val => handleChange('adminNotes', val)} multiline/>
         </View>
     );
 
 	return (
 		<Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? `Benutzer: ${user.username}` : 'Neuen Benutzer anlegen'}>
-			<ScrollView>
+			<View style={{ flex: 1 }}>
                 <View style={styles.tabs}>
                     <TouchableOpacity style={[styles.tabButton, activeTab === 'general' && styles.activeTab]} onPress={() => setActiveTab('general')}><Text>Allgemein</Text></TouchableOpacity>
                     <TouchableOpacity style={[styles.tabButton, activeTab === 'permissions' && styles.activeTab]} onPress={() => setActiveTab('permissions')}><Text>Berechtigungen</Text></TouchableOpacity>
@@ -113,14 +113,18 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
 
 				{error && <Text style={styles.errorText}>{error}</Text>}
 				
-                {activeTab === 'general' && renderGeneralTab()}
-                {activeTab === 'permissions' && <PermissionsTab groupedPermissions={groupedPermissions} assignedIds={formData.permissionIds || new Set()} onPermissionChange={handlePermissionChange} isLoading={isLoadingData} />}
-                {activeTab === 'notes' && isEditMode && renderNotesTab()}
+                <View style={{ flex: 1 }}>
+                    {activeTab === 'general' && renderGeneralTab()}
+                    {activeTab === 'permissions' && <PermissionsTab groupedPermissions={groupedPermissions} assignedIds={formData.permissionIds || new Set()} onPermissionChange={handlePermissionChange} isLoading={isLoadingData} />}
+                    {activeTab === 'notes' && isEditMode && renderNotesTab()}
+                </View>
 
-				<TouchableOpacity style={[styles.button, styles.primaryButton, {marginTop: 16}]} onPress={handleSubmit} disabled={isSubmitting}>
-					{isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Benutzer speichern</Text>}
-				</TouchableOpacity>
-			</ScrollView>
+				<View style={styles.modalFooter}>
+                    <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}>
+                        {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Benutzer speichern</Text>}
+                    </TouchableOpacity>
+                </View>
+			</View>
 		</Modal>
 	);
 };

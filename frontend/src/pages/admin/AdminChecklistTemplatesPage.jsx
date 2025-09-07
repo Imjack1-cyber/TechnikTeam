@@ -4,7 +4,7 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
@@ -31,8 +31,31 @@ const TemplateModal = ({ isOpen, onClose, onSuccess, template, allStorageItems }
 	const handleItemChange = (index, field, value) => {
 		const newItems = [...items];
 		let currentItem = { ...newItems[index], [field]: value };
-		if (field === 'storageItemId') currentItem.itemText = null;
-		if (field === 'itemText') { currentItem.storageItemId = null; currentItem.quantity = 1; }
+
+		if (field === 'storageItemId') {
+			currentItem.itemText = null;
+			const selectedItem = allStorageItems.find(si => si.id === parseInt(value));
+			if (selectedItem && selectedItem.maxQuantity > 0 && currentItem.quantity > selectedItem.maxQuantity) {
+				currentItem.quantity = 1;
+			}
+		}
+		if (field === 'itemText') {
+			currentItem.storageItemId = null;
+			currentItem.quantity = 1;
+		}
+		if (field === 'quantity') {
+			const selectedItem = allStorageItems.find(si => si.id === parseInt(currentItem.storageItemId));
+			let numValue = parseInt(value, 10);
+			if (isNaN(numValue) || numValue < 1) {
+				numValue = 1;
+			}
+			if (selectedItem && selectedItem.maxQuantity > 0) {
+				currentItem.quantity = Math.min(numValue, selectedItem.maxQuantity);
+			} else {
+				currentItem.quantity = numValue;
+			}
+		}
+
 		newItems[index] = currentItem;
 		setItems(newItems);
 	};
@@ -149,6 +172,7 @@ const AdminChecklistTemplatesPage = () => {
                 data={templates}
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
+                contentContainerStyle={{paddingHorizontal: 16}}
             />
 
 			{isModalOpen && !itemsLoading && (

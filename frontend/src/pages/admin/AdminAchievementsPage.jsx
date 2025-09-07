@@ -1,10 +1,10 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import RNPickerSelect from 'react-native-picker-select';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
@@ -31,7 +31,6 @@ const AchievementModal = ({ isOpen, onClose, onSuccess, achievement }) => {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
 	const { addToast } = useToast();
-	const [achievementKey, setAchievementKey] = useState('');
 
 	const formDataApiCall = useCallback(() => apiClient.get('/form-data/achievements'), []);
 	const { data: formData, loading } = useApi(formDataApiCall);
@@ -46,21 +45,25 @@ const AchievementModal = ({ isOpen, onClose, onSuccess, achievement }) => {
 				const parts = achievement.achievementKey.split('_');
 				const newKeyParts = { trigger: parts[0] || 'EVENT', action: parts[1] || '', condition: parts[2] || '' };
 				setKeyParts(newKeyParts);
-				setAchievementKey(achievement.achievementKey);
 			} else {
                 setFormState({ name: '', description: '', iconClass: '' });
 				setKeyParts({ trigger: 'EVENT', action: '', condition: '' });
-				setAchievementKey('EVENT__');
 			}
 		}
 	}, [achievement, isOpen]);
 
+    const achievementKey = useMemo(() => {
+        const { trigger, action, condition } = keyParts;
+        return `${trigger}_${action}_${condition || ''}`.toUpperCase();
+    }, [keyParts]);
+
 	const handleKeyPartChange = (part, value) => {
 		const newKeyParts = { ...keyParts, [part]: value };
-		if (part === 'trigger') newKeyParts.condition = ''; // Reset
+		if (part === 'trigger') {
+            newKeyParts.action = '';
+            newKeyParts.condition = ''; 
+        };
 		setKeyParts(newKeyParts);
-		const { trigger, action, condition } = newKeyParts;
-		setAchievementKey(`${trigger}_${action}_${condition}`.toUpperCase());
 	};
 
 	const handleSubmit = async () => {
@@ -86,32 +89,35 @@ const AchievementModal = ({ isOpen, onClose, onSuccess, achievement }) => {
 
 	return (
 		<Modal isOpen={isOpen} onClose={onClose} title={achievement ? 'Abzeichen bearbeiten' : 'Neues Abzeichen'}>
-			<ScrollView>
-				{error && <Text style={styles.errorText}>{error}</Text>}
-                <Text style={styles.label}>Name</Text>
-				<TextInput style={styles.input} value={formState.name} onChangeText={val => setFormState({...formState, name: val})} />
-                
-                <Text style={styles.label}>Schlüssel</Text>
-                <View style={styles.keyBuilder}>
-                    <RNPickerSelect onValueChange={(val) => handleKeyPartChange('trigger', val)} items={[{ label: 'Event', value: 'EVENT' }, { label: 'Qualifikation', value: 'QUALIFICATION' }]} value={keyParts.trigger} style={pickerSelectStyles} placeholder={{}} />
-                    <RNPickerSelect onValueChange={(val) => handleKeyPartChange('action', val)} items={keyParts.trigger === 'EVENT' ? [{ label: 'Teilnahme', value: 'PARTICIPANT' }, { label: 'Leitung', value: 'LEADER' }] : [{ label: 'Erhalten', value: 'GAINED' }]} value={keyParts.action} style={pickerSelectStyles} placeholder={{ label: 'Aktion...', value: null }} />
-                    {keyParts.trigger === 'EVENT' ? 
-                        <TextInput style={[styles.input, {flex: 1}]} value={keyParts.condition} onChangeText={val => handleKeyPartChange('condition', val)} keyboardType="number-pad" placeholder="Anzahl" /> :
-                        <RNPickerSelect onValueChange={(val) => handleKeyPartChange('condition', val)} items={courseOptions} value={keyParts.condition} style={pickerSelectStyles} placeholder={{ label: 'Kurs...', value: null }} />
-                    }
+			<View style={{ flex: 1 }}>
+                <ScrollView contentContainerStyle={{ paddingBottom: 80 }}>
+                    {error && <Text style={styles.errorText}>{error}</Text>}
+                    <Text style={styles.label}>Name</Text>
+                    <TextInput style={styles.input} value={formState.name} onChangeText={val => setFormState({...formState, name: val})} />
+                    
+                    <Text style={styles.label}>System-Schlüssel</Text>
+                    <View style={styles.keyBuilder}>
+                        <RNPickerSelect onValueChange={(val) => handleKeyPartChange('trigger', val)} items={[{ label: 'Event', value: 'EVENT' }, { label: 'Qualifikation', value: 'QUALIFICATION' }]} value={keyParts.trigger} style={pickerSelectStyles} placeholder={{}} />
+                        <RNPickerSelect onValueChange={(val) => handleKeyPartChange('action', val)} items={keyParts.trigger === 'EVENT' ? [{ label: 'Teilnahme', value: 'PARTICIPANT' }, { label: 'Leitung', value: 'LEADER' }] : [{ label: 'Erhalten', value: 'GAINED' }]} value={keyParts.action} style={pickerSelectStyles} placeholder={{ label: 'Aktion...', value: null }} />
+                        {keyParts.trigger === 'EVENT' ? 
+                            <TextInput style={[styles.input, {flex: 1}]} value={keyParts.condition} onChangeText={val => handleKeyPartChange('condition', val)} keyboardType="number-pad" placeholder="Anzahl" /> :
+                            <RNPickerSelect onValueChange={(val) => handleKeyPartChange('condition', val)} items={courseOptions} value={keyParts.condition} style={pickerSelectStyles} placeholder={{ label: 'Kurs...', value: null }} />
+                        }
+                    </View>
+                    <TextInput style={[styles.input, styles.disabledInput]} value={achievementKey} editable={false} />
+
+                    <Text style={styles.label}>Beschreibung</Text>
+                    <TextInput style={[styles.input, styles.textArea]} value={formState.description} onChangeText={val => setFormState({...formState, description: val})} multiline />
+
+                    <Text style={styles.label}>Font Awesome Icon-Klasse</Text>
+                    <TextInput style={styles.input} value={formState.iconClass} onChangeText={val => setFormState({...formState, iconClass: val})} placeholder="z.B. fa-star" />
+                </ScrollView>
+                <View style={styles.modalFooter}>
+                    <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}>
+                        {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Speichern</Text>}
+                    </TouchableOpacity>
                 </View>
-                <TextInput style={[styles.input, styles.disabledInput]} value={achievementKey} editable={false} />
-
-                <Text style={styles.label}>Beschreibung</Text>
-				<TextInput style={[styles.input, styles.textArea]} value={formState.description} onChangeText={val => setFormState({...formState, description: val})} multiline />
-
-                <Text style={styles.label}>Font Awesome Icon-Klasse</Text>
-				<TextInput style={styles.input} value={formState.iconClass} onChangeText={val => setFormState({...formState, iconClass: val})} placeholder="z.B. fa-star" />
-
-				<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}>
-					<Text style={styles.buttonText}>{isSubmitting ? 'Speichern...' : 'Speichern'}</Text>
-				</TouchableOpacity>
-			</ScrollView>
+            </View>
 		</Modal>
 	);
 };
@@ -187,6 +193,11 @@ const AdminAchievementsPage = () => {
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
                 contentContainerStyle={{ paddingHorizontal: 16 }}
+                ListEmptyComponent={
+                    <View style={styles.card}>
+                        <Text>Keine Abzeichen konfiguriert.</Text>
+                    </View>
+                }
             />
 			{isModalOpen && (
 				<AchievementModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); reload(); }} achievement={editingAchievement} />
@@ -218,7 +229,7 @@ const pageStyles = (theme) => {
         keyCondition: { backgroundColor: colors.background, borderColor: colors.border, color: colors.text },
         // Modal Styles
         keyBuilder: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-        disabledInput: { backgroundColor: '#e9ecef' },
+        disabledInput: { backgroundColor: '#e9ecef', color: '#6c757d' },
     });
 };
 

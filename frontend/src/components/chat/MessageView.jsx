@@ -10,13 +10,13 @@ import MessageStatus from './MessageStatus';
 import { useToast } from '../../context/ToastContext';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, spacing, typography, borders } from '../../styles/theme';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import MarkdownDisplay from 'react-native-markdown-display';
 
 const MessageView = () => {
-    const route = useRoute();
-    const navigation = useNavigation();
-    const { conversationId } = route.params;
+	const route = useRoute();
+	const navigation = useNavigation();
+	const { conversationId } = route.params;
 	const user = useAuthStore(state => state.user);
 	const fileInputRef = useRef(null);
 	const [newMessage, setNewMessage] = useState('');
@@ -26,9 +26,9 @@ const MessageView = () => {
 	const [editingMessageId, setEditingMessageId] = useState(null);
 	const [editingText, setEditingText] = useState('');
 	const { addToast } = useToast();
-    const theme = useAuthStore(state => state.theme);
-    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
-    const colors = getThemeColors(theme);
+	const theme = useAuthStore(state => state.theme);
+	const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+	const colors = getThemeColors(theme);
 
 	const messagesApiCall = useCallback(() => apiClient.get(`/public/chat/conversations/${conversationId}/messages`), [conversationId]);
 	const { data: initialMessages, loading: messagesLoading, error: messagesError, reload: reloadMessages } = useApi(messagesApiCall);
@@ -57,12 +57,12 @@ const MessageView = () => {
 
 	const handleSubmit = () => {
 		if (newMessage.trim()) {
-			sendMessage({ type: 'new_message', messageText: newMessage });
+			sendMessage({ type: 'new_message', payload: { messageText: newMessage } });
 			setNewMessage('');
 		}
 	};
-    
-    const renderMessageContent = (msg) => {
+
+	const renderMessageContent = (msg) => {
 		const isSentByMe = msg.senderId === user.id;
 		const fileRegex = /\[(.*?)\]\((.*?)\)/;
 		const fileMatch = msg.messageText.match(fileRegex);
@@ -71,7 +71,7 @@ const MessageView = () => {
 			const fileUrl = fileMatch[2];
 			return <TouchableOpacity onPress={() => Linking.openURL(fileUrl)}><Text style={{ color: isSentByMe ? colors.white : colors.text }}><Icon name="file-alt" /> {fileName}</Text></TouchableOpacity>;
 		}
-		return <MarkdownDisplay style={{body: {color: isSentByMe ? colors.white : colors.text}}}>{msg.messageText}</MarkdownDisplay>;
+		return <MarkdownDisplay style={{ body: { color: isSentByMe ? colors.white : colors.text } }}>{msg.messageText}</MarkdownDisplay>;
 	};
 
 	const getHeaderText = () => {
@@ -86,53 +86,53 @@ const MessageView = () => {
 			<View style={styles.header}>
 				<TouchableOpacity onPress={() => navigation.goBack()}><Icon name="arrow-left" size={20} /></TouchableOpacity>
 				<Text style={styles.headerTitle}>{getHeaderText()}</Text>
-                {conversation?.groupChat && conversation.creatorId === user.id && <TouchableOpacity onPress={() => setIsManageModalOpen(true)}><Icon name="user-plus" size={20} /></TouchableOpacity>}
+				{conversation?.groupChat && conversation.creatorId === user.id && <TouchableOpacity onPress={() => setIsManageModalOpen(true)}><Icon name="user-plus" size={20} /></TouchableOpacity>}
 			</View>
 			<FlatList
-                data={messages}
-                inverted
-                keyExtractor={item => item.id.toString()}
-                renderItem={({ item: msg }) => {
-                    const isSentByMe = msg.senderId === user.id;
-                    return (
-                        <View style={[styles.bubbleContainer, isSentByMe ? styles.sent : styles.received]}>
-                             <View style={[styles.bubble, isSentByMe ? {backgroundColor: colors.primary} : {backgroundColor: msg.chatColor || colors.background}]}>
-                                {!isSentByMe && <Text style={[styles.sender, {color: colors.primary}]}>{msg.senderUsername}</Text>}
-                                {renderMessageContent(msg)}
-                                <View style={styles.metaContainer}>
-                                    <Text style={[styles.timestamp, isSentByMe && {color: 'rgba(255,255,255,0.7)'}]}>{new Date(msg.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</Text>
-                                    <MessageStatus status={msg.status} isSentByMe={isSentByMe} />
-                                </View>
-                            </View>
-                        </View>
-                    )
-                }}
-                contentContainerStyle={{padding: spacing.md}}
-            />
+				data={messages}
+				inverted
+				keyExtractor={item => item.id.toString()}
+				renderItem={({ item: msg }) => {
+					const isSentByMe = msg.senderId === user.id;
+					return (
+						<View style={[styles.bubbleContainer, isSentByMe ? styles.sent : styles.received]}>
+							<View style={[styles.bubble, isSentByMe ? { backgroundColor: colors.primary } : { backgroundColor: msg.chatColor || colors.background }]}>
+								{!isSentByMe && <Text style={[styles.sender, { color: colors.primary }]}>{msg.senderUsername}</Text>}
+								{renderMessageContent(msg)}
+								<View style={styles.metaContainer}>
+									<Text style={[styles.timestamp, isSentByMe && { color: 'rgba(255,255,255,0.7)' }]}>{new Date(msg.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</Text>
+									<MessageStatus status={msg.status} isSentByMe={isSentByMe} />
+								</View>
+							</View>
+						</View>
+					)
+				}}
+				contentContainerStyle={{ padding: spacing.md }}
+			/>
 			<View style={styles.inputContainer}>
 				<TextInput style={styles.input} value={newMessage} onChangeText={setNewMessage} placeholder="Nachricht schreiben..." />
 				<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit}><Text style={styles.buttonText}>Senden</Text></TouchableOpacity>
 			</View>
-            {isManageModalOpen && conversation && <ManageParticipantsModal isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} onAddUsers={() => {}} onRemoveUser={() => {}} conversation={conversation}/>}
+			{isManageModalOpen && conversation && <ManageParticipantsModal isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} onAddUsers={() => { }} onRemoveUser={() => { }} conversation={conversation} />}
 		</View>
 	);
 };
 
 const pageStyles = (theme) => {
-    const colors = getThemeColors(theme);
-    return StyleSheet.create({
-        header: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderBottomWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-        headerTitle: { flex: 1, fontSize: typography.h4, fontWeight: 'bold', textAlign: 'center' },
-        bubbleContainer: { flexDirection: 'row', maxWidth: '80%', marginVertical: spacing.xs },
-        sent: { alignSelf: 'flex-end', justifyContent: 'flex-end' },
-        received: { alignSelf: 'flex-start', justifyContent: 'flex-start' },
-        bubble: { padding: spacing.sm, borderRadius: 18 },
-        sender: { fontWeight: 'bold', fontSize: typography.small, marginBottom: 2 },
-        metaContainer: { flexDirection: 'row', alignSelf: 'flex-end', alignItems: 'center', gap: spacing.xs, marginTop: 4 },
-        timestamp: { fontSize: typography.caption, color: colors.textMuted },
-        inputContainer: { flexDirection: 'row', padding: spacing.sm, borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, gap: spacing.sm },
-        input: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: spacing.md, backgroundColor: colors.background }
-    });
+	const colors = getThemeColors(theme);
+	return StyleSheet.create({
+		header: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderBottomWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+		headerTitle: { flex: 1, fontSize: typography.h4, fontWeight: 'bold', textAlign: 'center' },
+		bubbleContainer: { flexDirection: 'row', maxWidth: '80%', marginVertical: spacing.xs },
+		sent: { alignSelf: 'flex-end', justifyContent: 'flex-end' },
+		received: { alignSelf: 'flex-start', justifyContent: 'flex-start' },
+		bubble: { padding: spacing.sm, borderRadius: 18 },
+		sender: { fontWeight: 'bold', fontSize: typography.small, marginBottom: 2 },
+		metaContainer: { flexDirection: 'row', alignSelf: 'flex-end', alignItems: 'center', gap: spacing.xs, marginTop: 4 },
+		timestamp: { fontSize: typography.caption, color: colors.textMuted },
+		inputContainer: { flexDirection: 'row', padding: spacing.sm, borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, gap: spacing.sm },
+		input: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: spacing.md, backgroundColor: colors.background }
+	});
 };
 
 export default MessageView;

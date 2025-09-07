@@ -1,78 +1,53 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography } from '../../styles/theme';
 
-const AdminRequestsPage = () => {
-	const apiCall = useCallback(() => apiClient.get('/requests/pending'), []);
+const AdminTrainingRequestsPage = () => {
+	const apiCall = useCallback(() => apiClient.get('/admin/training-requests'), []);
 	const { data: requests, loading, error, reload } = useApi(apiCall);
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
 
-    const performAction = async (requestId, action) => {
-        try {
-            const result = await apiClient.post(`/requests/${requestId}/${action}`);
-            if (result.success) {
-                addToast(`Antrag erfolgreich ${action === 'approve' ? 'genehmigt' : 'abgelehnt'}.`, 'success');
-                reload();
-            } else { throw new Error(result.message); }
-        } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
-    };
-
-	const handleAction = (requestId, action) => {
-		const confirmationText = action === 'approve' ? 'Änderungen wirklich übernehmen?' : 'Antrag wirklich ablehnen?';
-        const title = 'Aktion bestätigen';
-
-        if (Platform.OS === 'web') {
-            if (window.confirm(`${title}\n\n${confirmationText}`)) {
-                performAction(requestId, action);
-            }
-        } else {
-            Alert.alert(title, confirmationText, [
-                { text: 'Abbrechen', style: 'cancel' },
-                { text: action === 'approve' ? 'Genehmigen' : 'Ablehnen', style: 'default', onPress: () => performAction(requestId, action) }
-            ]);
-        }
+	const handleDelete = (request) => {
+        Alert.alert(`Anfrage löschen?`, `Anfrage für "${request.topic}" wirklich löschen?`, [
+			{ text: 'Abbrechen', style: 'cancel' },
+			{ text: 'Löschen', style: 'destructive', onPress: async () => {
+				try {
+					const result = await apiClient.delete(`/admin/training-requests/${request.id}`);
+					if (result.success) {
+						addToast('Anfrage gelöscht', 'success');
+						reload();
+					} else { throw new Error(result.message); }
+				} catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
+			}},
+		]);
 	};
 
-	const renderChanges = (changesJson) => {
-		try {
-			const changes = JSON.parse(changesJson);
-			return (
-				<View>
-					{Object.entries(changes).map(([key, value]) => (
-						<Text key={key} style={styles.changeText}><Text style={{fontWeight: 'bold'}}>{key}:</Text> {value}</Text>
-					))}
-				</View>
-			);
-		} catch (e) {
-			return <Text style={styles.errorText}>Fehler beim Parsen der Änderungen.</Text>;
-		}
-	};
-    
     const renderItem = ({ item }) => (
         <View style={styles.card}>
-            <Text style={styles.cardTitle}>Antrag von {item.username}</Text>
+            <Text style={styles.cardTitle}>{item.topic}</Text>
             <View style={styles.detailRow}>
-                <Text style={styles.label}>Beantragt am:</Text>
-                <Text style={styles.value}>{new Date(item.requestedAt).toLocaleString('de-DE')}</Text>
+                <Text style={styles.label}>Angefragt von:</Text>
+                <Text style={styles.value}>{item.requesterUsername}</Text>
             </View>
-            <View style={{marginTop: 8}}>
-                <Text style={styles.label}>Änderungen:</Text>
-                {renderChanges(item.requestedChanges)}
+            <View style={styles.detailRow}>
+                <Text style={styles.label}>Datum:</Text>
+                <Text style={styles.value}>{new Date(item.createdAt).toLocaleDateString('de-DE')}</Text>
+            </View>
+            <View style={styles.detailRow}>
+                <Text style={styles.label}>Interessenten:</Text>
+                <Text style={styles.value}>{item.interestCount}</Text>
             </View>
             <View style={styles.cardActions}>
-                <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => handleAction(item.id, 'approve')}>
-                    <Text style={styles.buttonText}>Genehmigen</Text>
-                </TouchableOpacity>
-                 <TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={() => handleAction(item.id, 'deny')}>
-                    <Text style={styles.buttonText}>Ablehnen</Text>
+                <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => handleDelete(item)}>
+                    <Text style={styles.dangerOutlineButtonText}>Löschen</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -80,11 +55,11 @@ const AdminRequestsPage = () => {
 
 	return (
 		<View style={styles.container}>
-			<View style={styles.headerContainer}>
-                <Icon name="inbox" size={24} style={styles.headerIcon} />
-			    <Text style={styles.title}>Offene Anträge</Text>
+            <View style={styles.headerContainer}>
+                <Icon name="question-circle" size={24} style={styles.headerIcon} />
+			    <Text style={styles.title}>Lehrgangsanfragen</Text>
             </View>
-			<Text style={styles.subtitle}>Hier sehen Sie alle von Benutzern beantragten Änderungen an Stammdaten.</Text>
+			<Text style={styles.subtitle}>Hier sehen Sie alle von Benutzern eingereichten Wünsche für neue Lehrgänge.</Text>
 
 			{loading && <ActivityIndicator size="large" />}
 			{error && <Text style={styles.errorText}>{error}</Text>}
@@ -94,7 +69,11 @@ const AdminRequestsPage = () => {
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
                 contentContainerStyle={styles.contentContainer}
-                ListEmptyComponent={<View style={styles.card}><Text>Keine offenen Anträge vorhanden.</Text></View>}
+                ListEmptyComponent={
+                    <View style={styles.card}>
+                        <Text>Keine Lehrgangsanfragen von Benutzern vorhanden.</Text>
+                    </View>
+                }
             />
 		</View>
 	);
@@ -105,9 +84,8 @@ const pageStyles = (theme) => {
     return StyleSheet.create({
         headerContainer: { flexDirection: 'row', alignItems: 'center' },
         headerIcon: { color: colors.heading, marginRight: 12 },
-        cardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 16 },
-        changeText: { fontSize: typography.body, color: colors.text, marginLeft: 8 }
+        cardActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 }
     });
 };
 
-export default AdminRequestsPage;
+export default AdminTrainingRequestsPage;

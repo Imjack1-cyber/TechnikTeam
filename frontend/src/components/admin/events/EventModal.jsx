@@ -11,7 +11,7 @@ import { getThemeColors, spacing } from '../../../styles/theme';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { format } from 'date-fns';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklistTemplates }) => {
 	const isEditMode = !!event;
@@ -120,7 +120,7 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklis
 			itemIds: itemRows.map(r => r.itemId).filter(Boolean),
 			quantities: itemRows.map(r => r.quantity).filter(Boolean),
 		};
-		data.append('eventData', new Blob([JSON.stringify(eventData)], { type: 'application/json' }));
+		data.append('eventData', JSON.stringify(eventData));
 		try {
 			const result = isEditMode ? await apiClient.post(`/events/${event.id}`, data) : await apiClient.post('/events', data);
 			if (result.success) {

@@ -1,9 +1,12 @@
 package de.technikteam.model;
 
+import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDateTime;
 
 public class Venue {
 	private int id;
+
+	@NotBlank(message = "Venue name cannot be blank")
 	private String name;
 	private String address;
 	private String notes;

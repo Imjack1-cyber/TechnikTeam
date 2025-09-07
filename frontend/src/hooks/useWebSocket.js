@@ -26,9 +26,11 @@ const useWebSocket = (url, onMessage, dependencies = []) => {
 			if (Platform.OS === 'web') {
 				const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 				const webHost = window.location.host;
-				finalUrl = `${protocol}//${webHost}${authenticatedUrl}`;
+                // For web, connect to the same host via the proxy path
+				finalUrl = `${protocol}//${webHost}/TechnikTeam${authenticatedUrl}`;
 			} else {
-				finalUrl = `wss://${host}${authenticatedUrl}`;
+                // For native, connect directly to the backend host
+				finalUrl = `wss://${host}/TechnikTeam${authenticatedUrl}`;
 			}
 
 			console.log(`Attempting to connect to WebSocket at: ${finalUrl}`);

@@ -63,12 +63,16 @@ public class AuthService {
 				.build(jti -> jwtBlocklistDAO.isBlocklisted(jti));
 	}
 
-	public String generateToken(User user) {
+	public String generateToken(User user, long lifetimeSeconds) {
 		Instant now = Instant.now();
-		Instant expiry = now.plus(COOKIE_MAX_AGE_SECONDS, ChronoUnit.SECONDS);
+		Instant expiry = now.plus(lifetimeSeconds, ChronoUnit.SECONDS);
 
 		return Jwts.builder().issuer(JWT_ISSUER).subject(String.valueOf(user.getId())).id(UUID.randomUUID().toString())
 				.issuedAt(Date.from(now)).expiration(Date.from(expiry)).signWith(secretKey).compact();
+	}
+
+	public String generateToken(User user) {
+		return generateToken(user, COOKIE_MAX_AGE_SECONDS);
 	}
 
 	public String generatePreAuthToken(int userId) {

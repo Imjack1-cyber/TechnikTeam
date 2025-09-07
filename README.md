@@ -46,6 +46,14 @@ A comprehensive web application designed to manage a school's event technology c
 *   **API Documentation**: Springdoc OpenAPI (Swagger UI)
 *   **Build Tool**: Apache Maven
 
+## Application Behavior
+
+### Session Management
+*   User sessions are managed by a JSON Web Token (JWT).
+*   **Web Sessions:** For security in a browser environment, web session tokens have a lifetime of **8 hours**.
+*   **Mobile App Sessions:** To provide a better user experience on native apps, mobile session tokens have an extended lifetime of **336 hours (14 days)**.
+*   **Server Restarts:** If the backend server is restarted (e.g., during a deployment), all active sessions will be invalidated for security reasons, and all users will need to log in again. This is expected behavior.
+
 ## Setup and Installation
 
 Follow these steps to get a local instance of the application running for development.
@@ -102,14 +110,13 @@ Follow these steps to get a local instance of the application running for develo
     cd frontend
     ```
 2.  **Environment Configuration:** Create a file named `.env.local` by copying `frontend/.env.local.example`. This file tells the Vite development server where your backend is running.
-    ```
-    # frontend/.env.local
+    ```    # frontend/.env.local
     VITE_API_TARGET_URL=http://localhost:8081
     ```
     Change the port if your backend runs on a different one.
 3.  **Firebase Setup (for Push Notifications on Native):**
-    - **Android:** In your Firebase project, add an Android app with the package name `de.technikteam`. Download the `google-services.json` file and place it in the `frontend` directory.
-    - **iOS:** Add an iOS app with the bundle identifier `de.technikteam`. Download the `GoogleService-Info.plist` file and place it in the `frontend` directory.
+    -   **Android:** In your Firebase project, add an Android app with the package name `de.technikteam`. Download the `google-services.json` file and place it in the `frontend` directory.
+    -   **iOS:** Add an iOS app with the bundle identifier `de.technikteam`. Download the `GoogleService-Info.plist` file and place it in the `frontend` directory.
 4.  Install the required Node.js dependencies:
     ```shell
     npm install

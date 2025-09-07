@@ -40,14 +40,19 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 	const handleSubmit = async () => {
 		setIsSubmitting(true);
 		setError('');
-		// File upload with FormData would need a native library
-		try {
-			const payload = { ...formData };
-			delete payload.imageFile;
+		
+		const data = new FormData();
+		Object.keys(formData).forEach(key => {
+			if (key !== 'imageFile' && formData[key] !== null && formData[key] !== undefined) {
+				data.append(key, String(formData[key]));
+			}
+		});
+		
+		// Note: File upload would append the file object to FormData here
 
-			const result = (mode === 'create')
-				? await apiClient.post('/storage', payload)
-				: await apiClient.put(`/storage/${item.id}`, payload);
+		try {
+			const endpoint = (mode === 'create') ? '/storage' : `/storage/${item.id}`;
+			const result = await apiClient.post(endpoint, data);
 
 			if (result.success) {
 				addToast(`Artikel ${mode === 'create' ? 'erstellt' : 'aktualisiert'}.`, 'success');
@@ -86,28 +91,36 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 		switch (mode) {
 			case 'defect':
 				return (
-					<ScrollView>
-						<Text style={styles.label}>Status</Text>
-						<Picker selectedValue={formData.status || 'DEFECT'} onValueChange={val => handleChange('status', val)}>
-							<Picker.Item label="Defekt melden" value="DEFECT" />
-							<Picker.Item label="Nicht reparierbar" value="UNREPAIRABLE" />
-						</Picker>
-						<Text style={styles.label}>Anzahl</Text>
-						<TextInput style={styles.input} value={formData.defective_quantity_change} onChangeText={val => handleChange('defective_quantity_change', val)} keyboardType="number-pad"/>
-						<Text style={styles.label}>Grund</Text>
-						<TextInput style={[styles.input, styles.textArea]} value={formData.defect_reason_change} onChangeText={val => handleChange('defect_reason_change', val)} multiline/>
-						<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleStatusUpdateSubmit} disabled={isSubmitting}><Text style={styles.buttonText}>Speichern</Text></TouchableOpacity>
-					</ScrollView>
+					<>
+						<ScrollView>
+							<Text style={styles.label}>Status</Text>
+							<Picker selectedValue={formData.status || 'DEFECT'} onValueChange={val => handleChange('status', val)}>
+								<Picker.Item label="Defekt melden" value="DEFECT" />
+								<Picker.Item label="Nicht reparierbar" value="UNREPAIRABLE" />
+							</Picker>
+							<Text style={styles.label}>Anzahl</Text>
+							<TextInput style={styles.input} value={String(formData.defective_quantity_change || '')} onChangeText={val => handleChange('defective_quantity_change', val)} keyboardType="number-pad"/>
+							<Text style={styles.label}>Grund</Text>
+							<TextInput style={[styles.input, styles.textArea]} value={formData.defect_reason_change || ''} onChangeText={val => handleChange('defect_reason_change', val)} multiline/>
+						</ScrollView>
+						<TouchableOpacity style={[styles.button, styles.primaryButton, { marginTop: 16 }]} onPress={handleStatusUpdateSubmit} disabled={isSubmitting}>
+                            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Speichern</Text>}
+                        </TouchableOpacity>
+					</>
 				);
 			case 'repair':
 				return (
-                    <ScrollView>
-                        <Text style={styles.label}>Anzahl reparierter Artikel</Text>
-                        <TextInput style={styles.input} value={formData.repaired_quantity} onChangeText={val => handleChange('repaired_quantity', val)} keyboardType="number-pad"/>
-                        <Text style={styles.label}>Notiz</Text>
-                        <TextInput style={[styles.input, styles.textArea]} value={formData.repair_notes} onChangeText={val => handleChange('repair_notes', val)} multiline/>
-                        <TouchableOpacity style={[styles.button, styles.successButton]} onPress={handleStatusUpdateSubmit} disabled={isSubmitting}><Text style={styles.buttonText}>Als repariert buchen</Text></TouchableOpacity>
-                    </ScrollView>
+                    <>
+                        <ScrollView>
+                            <Text style={styles.label}>Anzahl reparierter Artikel</Text>
+                            <TextInput style={styles.input} value={String(formData.repaired_quantity || '')} onChangeText={val => handleChange('repaired_quantity', val)} keyboardType="number-pad"/>
+                            <Text style={styles.label}>Notiz</Text>
+                            <TextInput style={[styles.input, styles.textArea]} value={formData.repair_notes || ''} onChangeText={val => handleChange('repair_notes', val)} multiline/>
+                        </ScrollView>
+                        <TouchableOpacity style={[styles.button, styles.successButton, { marginTop: 16 }]} onPress={handleStatusUpdateSubmit} disabled={isSubmitting}>
+                            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Als repariert buchen</Text>}
+                        </TouchableOpacity>
+                    </>
                 );
 			case 'relations':
 				return <RelatedItemsManager item={item} allItems={allItems || []} onSave={onSuccess} onCancel={onClose} />;
@@ -130,7 +143,7 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
                                 <TextInput style={styles.input} value={String(formData.maxQuantity || '')} onChangeText={val => handleChange('maxQuantity', val)} keyboardType="number-pad"/>
                             </View>
                         </View>
-						<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}><Text style={styles.buttonText}>Speichern</Text></TouchableOpacity>
+						<TouchableOpacity style={[styles.button, styles.primaryButton, { marginTop: 16 }]} onPress={handleSubmit} disabled={isSubmitting}><Text style={styles.buttonText}>Speichern</Text></TouchableOpacity>
                         {mode === 'edit' && <TouchableOpacity style={[styles.button, styles.secondaryButton, {marginTop: 8}]} onPress={() => setMode('relations')}><Text style={styles.buttonText}>Zugehörige Artikel</Text></TouchableOpacity>}
 					</ScrollView>
 				);

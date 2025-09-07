@@ -5,7 +5,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { getCommonStyles } from '../../../styles/commonStyles';
 import { getThemeColors, spacing } from '../../../styles/theme';
 import { Picker } from '@react-native-picker/picker';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
     const theme = useAuthStore(state => state.theme);
@@ -28,8 +28,20 @@ const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
 
 		if (field === 'itemId') {
 			const selectedStorageItem = allStorageItems.find(si => si.id === parseInt(value));
-			if (selectedStorageItem && currentItem.quantity > selectedStorageItem.maxQuantity) {
+			if (selectedStorageItem && selectedStorageItem.maxQuantity > 0 && currentItem.quantity > selectedStorageItem.maxQuantity) {
 				currentItem.quantity = selectedStorageItem.maxQuantity;
+			}
+		}
+		if (field === 'quantity') {
+			const selectedStorageItem = allStorageItems.find(si => si.id === parseInt(currentItem.itemId));
+			let numValue = parseInt(value, 10);
+			if (isNaN(numValue) || numValue < 1) {
+				numValue = 1;
+			}
+			if (selectedStorageItem && selectedStorageItem.maxQuantity > 0) {
+				currentItem.quantity = Math.min(numValue, selectedStorageItem.maxQuantity);
+			} else {
+				currentItem.quantity = numValue;
 			}
 		}
 		newItems[index] = currentItem;

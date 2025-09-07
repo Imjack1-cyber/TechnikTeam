@@ -1,14 +1,16 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, ScrollView, Alert, Platform } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import MarkdownDisplay from 'react-native-markdown-display';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
+import DateTimePickerModal from "react-native-modal-datetime-picker";
+import { format, parseISO } from 'date-fns';
 
 const ChangelogModal = ({ isOpen, onClose, onSuccess, changelog }) => {
     const theme = useAuthStore(state => state.theme);
@@ -22,6 +24,7 @@ const ChangelogModal = ({ isOpen, onClose, onSuccess, changelog }) => {
 		title: changelog?.title || '',
 		notes: changelog?.notes || '',
 	});
+    const [isDatePickerVisible, setDatePickerVisible] = useState(false);
 
     useEffect(() => {
         if (changelog) {
@@ -30,6 +33,11 @@ const ChangelogModal = ({ isOpen, onClose, onSuccess, changelog }) => {
             setFormData({ version: '', releaseDate: new Date().toISOString().split('T')[0], title: '', notes: '' });
         }
     }, [changelog, isOpen]);
+
+    const handleConfirmDate = (date) => {
+        setFormData({...formData, releaseDate: format(date, 'yyyy-MM-dd')});
+        setDatePickerVisible(false);
+    };
 
 	const handleSubmit = async () => {
 		setIsSubmitting(true);
@@ -51,20 +59,35 @@ const ChangelogModal = ({ isOpen, onClose, onSuccess, changelog }) => {
 
 	return (
 		<Modal isOpen={isOpen} onClose={onClose} title={changelog ? 'Changelog bearbeiten' : 'Neuen Changelog erstellen'}>
-			<ScrollView>
-				{error && <Text style={styles.errorText}>{error}</Text>}
-				<Text style={styles.label}>Version (z.B. 2.1.0)</Text>
-				<TextInput style={styles.input} value={formData.version} onChangeText={val => setFormData({...formData, version: val})} />
-				<Text style={styles.label}>Titel</Text>
-				<TextInput style={styles.input} value={formData.title} onChangeText={val => setFormData({...formData, title: val})} />
-				<Text style={styles.label}>Veröffentlichungsdatum (JJJJ-MM-TT)</Text>
-				<TextInput style={styles.input} value={formData.releaseDate} onChangeText={val => setFormData({...formData, releaseDate: val})} />
-				<Text style={styles.label}>Anmerkungen (Markdown)</Text>
-				<TextInput style={[styles.input, styles.textArea]} value={formData.notes} onChangeText={val => setFormData({...formData, notes: val})} multiline />
-				<TouchableOpacity style={[styles.button, styles.primaryButton, { marginTop: 16 }]} onPress={handleSubmit} disabled={isSubmitting}>
-					{isSubmitting ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Speichern</Text>}
-				</TouchableOpacity>
-			</ScrollView>
+			<View style={{ flex: 1 }}>
+                <ScrollView>
+                    {error && <Text style={styles.errorText}>{error}</Text>}
+                    <Text style={styles.label}>Version (z.B. 2.1.0)</Text>
+                    <TextInput style={styles.input} value={formData.version} onChangeText={val => setFormData({...formData, version: val})} />
+                    <Text style={styles.label}>Titel</Text>
+                    <TextInput style={styles.input} value={formData.title} onChangeText={val => setFormData({...formData, title: val})} />
+                    
+                    <Text style={styles.label}>Veröffentlichungsdatum</Text>
+                    <TouchableOpacity onPress={() => setDatePickerVisible(true)} style={[styles.input, { justifyContent: 'center' }]}>
+                        <Text>{format(parseISO(formData.releaseDate), 'dd.MM.yyyy')}</Text>
+                    </TouchableOpacity>
+                    <DateTimePickerModal
+                        isVisible={isDatePickerVisible}
+                        mode="date"
+                        onConfirm={handleConfirmDate}
+                        onCancel={() => setDatePickerVisible(false)}
+                        date={parseISO(formData.releaseDate)}
+                    />
+
+                    <Text style={styles.label}>Anmerkungen (Markdown)</Text>
+                    <TextInput style={[styles.input, styles.textArea]} value={formData.notes} onChangeText={val => setFormData({...formData, notes: val})} multiline />
+                </ScrollView>
+                <View style={styles.modalFooter}>
+                    <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}>
+                        {isSubmitting ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Speichern</Text>}
+                    </TouchableOpacity>
+                </View>
+			</View>
 		</Modal>
 	);
 };
@@ -98,7 +121,7 @@ const AdminChangelogPage = () => {
             }}
         ]);
 	};
-
+    
     const renderItem = ({ item }) => (
         <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -124,7 +147,7 @@ const AdminChangelogPage = () => {
 			    <Text style={styles.title}>Changelogs verwalten</Text>
             </View>
 			<Text style={styles.subtitle}>Verwalten Sie hier die "Was ist neu?"-Benachrichtigungen.</Text>
-            <TouchableOpacity style={[styles.button, styles.successButton, { alignSelf: 'flex-start' }]} onPress={() => openModal()}>
+            <TouchableOpacity style={[styles.button, styles.successButton, { alignSelf: 'flex-start', marginHorizontal: 16, marginBottom: 16 }]} onPress={() => openModal()}>
                 <Icon name="plus" size={16} color="#fff" />
                 <Text style={styles.buttonText}>Neuer Eintrag</Text>
             </TouchableOpacity>
@@ -136,6 +159,7 @@ const AdminChangelogPage = () => {
                 data={changelogs}
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
+                contentContainerStyle={{paddingHorizontal: 16}}
             />
 
 			{isModalOpen && <ChangelogModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); reload(); }} changelog={editingChangelog} />}
@@ -146,6 +170,7 @@ const AdminChangelogPage = () => {
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
+        container: { flex: 1 },
         headerContainer: { padding: spacing.md, flexDirection: 'row', alignItems: 'center' },
         headerIcon: { color: colors.heading, marginRight: 12 },
         cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },

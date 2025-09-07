@@ -35,7 +35,7 @@ const PermissionsTab = ({ groupedPermissions, assignedIds, onPermissionChange, i
 	return (
 		<View>
 			<Text style={styles.title}>Individuelle Berechtigungen</Text>
-			<Text style={styles.description}>Diese Berechtigungen gelten zusätzlich zu denen, die eine Rolle evtl. standardmäßig hat.</Text>
+			<Text style={styles.description}>Granular permissions are currently not active.</Text>
 			<ScrollView style={styles.listContainer}>
 				{Object.entries(groupedPermissions).map(([groupName, permissionsInGroup]) => (
                     // Accordion would be better here, using View for simplicity
@@ -55,10 +55,10 @@ const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
         title: { fontSize: typography.h4, fontWeight: 'bold', marginBottom: spacing.sm },
-        description: { color: colors.textMuted, marginBottom: spacing.md },
+        description: { color: colors.textMuted, marginBottom: spacing.md, fontStyle: 'italic' },
         listContainer: { maxHeight: '60%', borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: spacing.sm },
         groupName: { fontWeight: 'bold', fontSize: 16, paddingVertical: 8, marginTop: 8 },
-        checkboxContainer: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 },
+        checkboxContainer: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2, paddingVertical: 0 },
         permissionKey: { fontWeight: 'bold' },
         permissionDescription: { fontSize: typography.caption, color: colors.textMuted },
     });

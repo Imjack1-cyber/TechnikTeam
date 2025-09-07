@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Modal from '../../ui/Modal';
 import apiClient from '../../../services/apiClient';
@@ -84,48 +84,52 @@ const DocumentationModal = ({ isOpen, onClose, onSuccess, doc, allDocs }) => {
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={doc ? 'Hilfeseite bearbeiten' : 'Neue Hilfeseite'}>
-            <ScrollView>
-                {error && <Text style={styles.errorText}>{error}</Text>}
-                <Text style={styles.label}>Titel</Text>
-                <TextInput style={styles.input} value={formData.title} onChangeText={val => handleChange('title', val)} />
-                
-                <Text style={styles.label}>Seiten-Schlüssel (pageKey)</Text>
-                <Picker selectedValue={formData.pageKey} onValueChange={val => handleChange('pageKey', val)}>
-                    <Picker.Item label="-- Route auswählen --" value="" />
-                    {pageKeyOptions.map(opt => <Picker.Item key={opt.value} label={opt.label} value={opt.value} />)}
-                </Picker>
-                
-                <Text style={styles.label}>Kategorie</Text>
-                <Picker selectedValue={formData.category} onValueChange={val => handleChange('category', val)}>
-                    {categories.map(cat => <Picker.Item key={cat} label={cat === 'NEW_CATEGORY' ? 'Neue Kategorie erstellen...' : cat} value={cat} />)}
-                </Picker>
+            <View style={{ flex: 1 }}>
+                <ScrollView>
+                    {error && <Text style={styles.errorText}>{error}</Text>}
+                    <Text style={styles.label}>Titel</Text>
+                    <TextInput style={styles.input} value={formData.title} onChangeText={val => handleChange('title', val)} />
+                    
+                    <Text style={styles.label}>Seiten-Schlüssel (pageKey)</Text>
+                    <Picker selectedValue={formData.pageKey} onValueChange={val => handleChange('pageKey', val)}>
+                        <Picker.Item label="-- Route auswählen --" value="" />
+                        {pageKeyOptions.map(opt => <Picker.Item key={opt.value} label={opt.label} value={opt.value} />)}
+                    </Picker>
+                    
+                    <Text style={styles.label}>Kategorie</Text>
+                    <Picker selectedValue={formData.category} onValueChange={val => handleChange('category', val)}>
+                        {categories.map(cat => <Picker.Item key={cat} label={cat === 'NEW_CATEGORY' ? 'Neue Kategorie erstellen...' : cat} value={cat} />)}
+                    </Picker>
 
-                {formData.category === 'NEW_CATEGORY' && (
-                    <TextInput style={styles.input} value={newCategory} onChangeText={setNewCategory} placeholder="Name der neuen Kategorie" />
-                )}
+                    {formData.category === 'NEW_CATEGORY' && (
+                        <TextInput style={styles.input} value={newCategory} onChangeText={setNewCategory} placeholder="Name der neuen Kategorie" />
+                    )}
 
-                <Text style={styles.label}>Features (Markdown)</Text>
-                <TextInput style={[styles.input, styles.textArea]} value={formData.features} onChangeText={val => handleChange('features', val)} multiline />
-                
-                <Text style={styles.label}>Verwandte Seiten</Text>
-                <MultipleSelectList 
-                    setSelected={handleRelatedPagesChange} 
-                    data={relatedPagesOptions} 
-                    save="key"
-                    label="Seiten"
-                    placeholder="Seiten auswählen"
-                    searchPlaceholder="Suchen"
-                    boxStyles={styles.input}
-                    defaultOptions={relatedPagesOptions.filter(opt => selectedRelatedKeys.includes(opt.key))}
-                />
-                <View style={{flexDirection: 'row', alignItems: 'center', marginVertical: 16}}>
-                    <BouncyCheckbox isChecked={formData.adminOnly} onPress={isChecked => handleChange('adminOnly', isChecked)} />
-                    <Text>Nur für Admins sichtbar</Text>
+                    <Text style={styles.label}>Features (Markdown)</Text>
+                    <TextInput style={[styles.input, styles.textArea]} value={formData.features} onChangeText={val => handleChange('features', val)} multiline />
+                    
+                    <Text style={styles.label}>Verwandte Seiten</Text>
+                    <MultipleSelectList 
+                        setSelected={handleRelatedPagesChange} 
+                        data={relatedPagesOptions} 
+                        save="key"
+                        label="Seiten"
+                        placeholder="Seiten auswählen"
+                        searchPlaceholder="Suchen"
+                        boxStyles={styles.input}
+                        defaultOptions={relatedPagesOptions.filter(opt => selectedRelatedKeys.includes(opt.key))}
+                    />
+                    <View style={{flexDirection: 'row', alignItems: 'center', marginVertical: 16}}>
+                        <BouncyCheckbox isChecked={formData.adminOnly} onPress={isChecked => handleChange('adminOnly', isChecked)} />
+                        <Text>Nur für Admins sichtbar</Text>
+                    </View>
+                </ScrollView>
+                <View style={styles.modalFooter}>
+                    <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}>
+                        {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Speichern</Text>}
+                    </TouchableOpacity>
                 </View>
-                <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}>
-                    {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Speichern</Text>}
-                </TouchableOpacity>
-            </ScrollView>
+            </View>
         </Modal>
     );
 };

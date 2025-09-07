@@ -9,6 +9,7 @@ import de.technikteam.service.FileService;
 import de.technikteam.dao.VenueDAO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -52,7 +53,10 @@ public class AdminVenueResource {
 	public ResponseEntity<ApiResponse> createVenue(@RequestPart("venue") String venueJson,
 			@RequestPart(value = "mapImage", required = false) MultipartFile mapImage,
 			@AuthenticationPrincipal SecurityUser securityUser) throws IOException {
-        Venue venue = gson.fromJson(venueJson, Venue.class);
+        if (securityUser == null || securityUser.getUser() == null) {
+            return new ResponseEntity<>(new ApiResponse(false, "Authentication is required.", null), HttpStatus.UNAUTHORIZED);
+        }
+        @Valid Venue venue = gson.fromJson(venueJson, Venue.class);
 		if (mapImage != null && !mapImage.isEmpty()) {
 			de.technikteam.model.File savedFile = fileService.storeFile(mapImage, null, "NUTZER",
 					securityUser.getUser(), "venues");
@@ -65,12 +69,15 @@ public class AdminVenueResource {
 				HttpStatus.CREATED);
 	}
 
-	@PutMapping("/{id}")
+	@PostMapping("/{id}")
 	@Operation(summary = "Update a venue")
 	public ResponseEntity<ApiResponse> updateVenue(@PathVariable int id, @RequestPart("venue") String venueJson,
 			@RequestPart(value = "mapImage", required = false) MultipartFile mapImage,
 			@AuthenticationPrincipal SecurityUser securityUser) throws IOException {
-        Venue venue = gson.fromJson(venueJson, Venue.class);
+        if (securityUser == null || securityUser.getUser() == null) {
+            return new ResponseEntity<>(new ApiResponse(false, "Authentication is required.", null), HttpStatus.UNAUTHORIZED);
+        }
+        @Valid Venue venue = gson.fromJson(venueJson, Venue.class);
 		venue.setId(id);
         
 		if (mapImage != null && !mapImage.isEmpty()) {
@@ -79,7 +86,6 @@ public class AdminVenueResource {
 			venue.setMapImagePath(savedFile.getFilepath());
 		} else {
             // If no new image is sent, keep the old one.
-            // The DTO from frontend might not have it, so we fetch it from DB.
             venueDAO.findById(id).ifPresent(existingVenue -> {
                 if (venue.getMapImagePath() == null) {
                     venue.setMapImagePath(existingVenue.getMapImagePath());
@@ -99,6 +105,9 @@ public class AdminVenueResource {
 	@Operation(summary = "Delete a venue")
 	public ResponseEntity<ApiResponse> deleteVenue(@PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
+        if (securityUser == null || securityUser.getUser() == null) {
+            return new ResponseEntity<>(new ApiResponse(false, "Authentication is required.", null), HttpStatus.UNAUTHORIZED);
+        }
 		Optional<Venue> venue = venueDAO.findById(id);
 		if (venue.isPresent() && venueDAO.delete(id)) {
 			adminLogService.log(securityUser.getUser().getUsername(), "VENUE_DELETE",

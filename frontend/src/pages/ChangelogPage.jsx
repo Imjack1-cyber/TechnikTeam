@@ -3,18 +3,24 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-nat
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import MarkdownDisplay from 'react-native-markdown-display';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const ChangelogPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/public/changelog'), []);
 	const { data: changelogs, loading, error } = useApi(apiCall);
-
 	const renderContent = () => {
 		if (loading) {
 			return <ActivityIndicator size="large" color="#007bff" />;
 		}
 		if (error) {
 			return <Text style={styles.errorText}>{error}</Text>;
+		}
+		if (changelogs?.length === 0) {
+			return (
+				<View style={styles.card}>
+					<Text>Keine Changelog-Einträge vorhanden.</Text>
+				</View>
+			);
 		}
 		return changelogs?.map(cl => (
 			<View style={styles.card} key={cl.id}>
@@ -97,6 +103,5 @@ const styles = StyleSheet.create({
 		textAlign: 'center',
 	}
 });
-
 
 export default ChangelogPage;

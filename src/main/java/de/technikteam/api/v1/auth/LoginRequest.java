@@ -11,5 +11,8 @@ import jakarta.validation.constraints.NotBlank;
 public record LoginRequest(
 		@NotBlank(message = "Username cannot be blank") @Schema(description = "The user's unique username.", example = "admin", required = true) String username,
 
-		@NotBlank(message = "Password cannot be blank") @Schema(description = "The user's password.", example = "admin123", required = true) String password) {
+		@NotBlank(message = "Password cannot be blank") @Schema(description = "The user's password.", example = "admin123", required = true) String password,
+
+        @Schema(description = "The type of client making the request ('web' or 'native'). Affects token expiration.", example = "web", defaultValue = "web") String clientType
+) {
 }

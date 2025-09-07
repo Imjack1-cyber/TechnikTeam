@@ -7,8 +7,8 @@ import { Picker } from '@react-native-picker/picker';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
-import Icon from '@expo/vector-icons/FontAwesome5';
-import { RadioButton } from 'react-native-paper';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import { RadioButton } from 'react-native-paper'; // Example for radio buttons
 
 const AdminNotificationsPage = () => {
     const theme = useAuthStore(state => state.theme);
@@ -126,6 +126,7 @@ const AdminNotificationsPage = () => {
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
+        container: { flex: 1 },
         headerContainer: { flexDirection: 'row', alignItems: 'center' },
         headerIcon: { color: colors.heading, marginRight: 12 },
         radioRow: { flexDirection: 'row', alignItems: 'center' },

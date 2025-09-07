@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import apiClient from '../services/apiClient';
 import { storage, setToken, removeToken } from '../lib/storage';
+import { Platform } from 'react-native';
 
 const hasAdminAccess = (roleName) => {
 	// Frontend authorization check based on role.
@@ -74,7 +75,8 @@ export const useAuthStore = create(
             },
 			login: async (username, password) => {
 				try {
-					const response = await apiClient.post('/auth/login', { username, password });
+                    const clientType = Platform.OS === 'web' ? 'web' : 'native';
+					const response = await apiClient.post('/auth/login', { username, password, clientType });
 					if (response.success && response.data) {
 						if (response.message === '2FA_REQUIRED') {
 							return { status: '2FA_REQUIRED', token: response.data.token };

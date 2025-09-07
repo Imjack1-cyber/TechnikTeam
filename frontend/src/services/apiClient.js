@@ -1,5 +1,8 @@
 import { Platform } from 'react-native';
 import { useAuthStore } from '../store/authStore';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import { getToken } from '../lib/storage';
 
 const getApiBaseUrl = () => {
     const mode = useAuthStore.getState().backendMode;
@@ -32,14 +35,18 @@ const apiClient = {
 		authToken = token;
 	},
     getRootUrl: getRootUrl,
+    getBaseUrl: getApiBaseUrl,
 	request: async function(endpoint, options = {}) {
 		const headers = { ...options.headers };
 		if (authToken) {
 			headers['Authorization'] = `Bearer ${authToken}`;
 		}
+		
+        // FIX: Only set Content-Type for JSON. Let the browser/fetch handle it for FormData.
 		if (!(options.body instanceof FormData)) {
 			headers['Content-Type'] = 'application/json';
 		}
+
 		try {
             const baseUrl = getApiBaseUrl();
 			const response = await fetch(`${baseUrl}${endpoint}`, {
@@ -94,6 +101,40 @@ const apiClient = {
 			throw error;
 		}
 	},
+    downloadFile: async function(fileId, filename, onProgress) {
+        const downloadUrl = `${this.getBaseUrl()}/public/files/download/${fileId}`;
+        const token = await getToken();
+        const headers = { Authorization: `Bearer ${token}` };
+
+        if (Platform.OS === 'web') {
+            onProgress({ totalBytesWritten: 0, totalBytesExpectedToWrite: 1 }); // Indeterminate progress for web
+            const response = await fetch(downloadUrl, { headers });
+            if (!response.ok) throw new Error('Fehler beim Herunterladen der Datei.');
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            onProgress({ totalBytesWritten: 1, totalBytesExpectedToWrite: 1 }); // Mark as complete
+        } else {
+            // Native logic with progress callback
+            const fileUri = FileSystem.documentDirectory + filename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+            const downloadResumable = FileSystem.createDownloadResumable(
+                downloadUrl,
+                fileUri,
+                { headers },
+                onProgress
+            );
+            const { uri } = await downloadResumable.downloadAsync();
+            if (await Sharing.isAvailableAsync()) {
+                await Sharing.shareAsync(uri, { dialogTitle: filename });
+            }
+        }
+    },
 	get(endpoint) {
 		return this.request(endpoint, { method: 'GET' });
 	},

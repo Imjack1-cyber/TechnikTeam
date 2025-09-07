@@ -36,10 +36,10 @@ async function registerForPushNotificationsAsync() {
       console.log('Failed to get push token for push notification!');
       return;
     }
-    // Learn more about projectId: https://docs.expo.dev/push-notifications/push-notifications-setup/#configure-projectid
-    // Must be set in app.json
-    token = (await Notifications.getExpoPushTokenAsync()).data;
-    console.log('Expo Push Token:', token);
+    // FIX: Get the native device token (FCM token) instead of the Expo token.
+    // This is the token our backend is designed to work with.
+    token = (await Notifications.getDevicePushTokenAsync()).data;
+    console.log('Native FCM Token:', token);
   } else {
     console.log('Must use physical device for Push Notifications');
   }
@@ -52,7 +52,9 @@ export const usePushNotifications = () => {
     const isAuthenticated = useAuthStore(state => state.isAuthenticated);
 
     useEffect(() => {
-        if (!isAuthenticated) {
+        // Web push notifications require VAPID setup.
+        // We will only initialize native push notifications.
+        if (Platform.OS === 'web' || !isAuthenticated) {
             return;
         }
 
