@@ -69,6 +69,9 @@ public class UserDAO {
 		if (DaoUtils.hasColumn(resultSet, "dashboard_layout")) {
 			user.setDashboardLayout(resultSet.getString("dashboard_layout"));
 		}
+        if (DaoUtils.hasColumn(resultSet, "verification_token")) {
+            user.setVerificationToken(resultSet.getString("verification_token"));
+        }
 		if (DaoUtils.hasColumn(resultSet, "role_name")) {
 			user.setRoleName(resultSet.getString("role_name"));
 		}
@@ -140,6 +143,21 @@ public class UserDAO {
 		return null;
 	}
 
+    public User findPublicDataByVerificationToken(String token) {
+        String sql = "SELECT u.username, u.status, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.verification_token = ? AND u.is_deleted = FALSE";
+        try {
+            return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
+                User user = new User();
+                user.setUsername(rs.getString("username"));
+                user.setStatus(rs.getString("status"));
+                user.setRoleName(rs.getString("role_name"));
+                return user;
+            }, token);
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        }
+    }
+
 	public User getUserByUsername(String username) {
 		String sql = "SELECT u.*, r.role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ? AND u.is_deleted = FALSE";
 		try {
@@ -188,7 +206,7 @@ public class UserDAO {
 
 	public int createUser(User user, String password) {
 		String hashedPassword = passwordEncoder.encode(password);
-		String sql = "INSERT INTO users (username, password_hash, role_id, class_year, class_name, email, theme) VALUES (?, ?, ?, ?, ?, ?, ?)";
+		String sql = "INSERT INTO users (username, password_hash, role_id, class_year, class_name, email, theme, verification_token) VALUES (?, ?, ?, ?, ?, ?, ?, UUID())";
 		KeyHolder keyHolder = new GeneratedKeyHolder();
 		try {
 			jdbcTemplate.update(connection -> {

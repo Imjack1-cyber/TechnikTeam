@@ -12,7 +12,7 @@ public record MeetingRequest(
 
 		@NotBlank(message = "Meeting-Name darf nicht leer sein") @Schema(description = "The name of the meeting.", required = true, example = "Teil 1: Grundlagen") String name,
 
-		@NotNull(message = "Datum und Uhrzeit des Meetings dürfen nicht null sein") @FutureOrPresent(message = "Das Datum des Meetings muss in der Gegenwart oder Zukunft liegen") @Schema(description = "The start date and time of the meeting.", required = true) LocalDateTime meetingDateTime,
+		@NotNull(message = "Datum und Uhrzeit des Meetings dürfen nicht null sein") @Schema(description = "The start date and time of the meeting.", required = true) LocalDateTime meetingDateTime,
 
 		@Schema(description = "The optional end date and time of the meeting.") LocalDateTime endDateTime,
 

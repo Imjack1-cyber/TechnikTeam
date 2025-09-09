@@ -40,6 +40,8 @@ import ForbiddenPage from '../pages/error/ForbiddenPage';
 import MaintenancePage from '../pages/error/MaintenancePage';
 import NotFoundPage from '../pages/error/NotFoundPage';
 import ErrorTrigger from '../pages/error/ErrorTrigger'; // For testing
+import IdCardPage from '../pages/IdCardPage';
+import VerificationPage from '../pages/VerificationPage';
 
 // --- Import ALL Admin Screen Components ---
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
@@ -173,6 +175,7 @@ const AppStack = () => {
                 <Stack.Screen name="PackKit" component={PackKitPage} options={{ headerShown: false }} />
                 <Stack.Screen name="QrAction" component={QrActionPage} options={{ headerShown: false }} />
                 <Stack.Screen name="FileEditor" component={FileEditorPage} options={{ title: 'Datei-Editor' }} />
+                <Stack.Screen name="IdCard" component={IdCardPage} options={{ title: 'Team Ausweis' }} />
                 <Stack.Screen name="NotFound" component={NotFoundPage} options={{ title: 'Nicht gefunden' }}/>
                 <Stack.Screen name="ErrorTrigger" component={ErrorTrigger} options={{ title: 'Trigger Error' }} />
 
@@ -181,27 +184,26 @@ const AppStack = () => {
     );
 };
 
-const AuthStack = () => {
-    return (
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="Login" component={LoginPage} />
-        </Stack.Navigator>
-    );
-};
-
 const RootNavigator = () => {
 	const { isAuthenticated, maintenanceStatus, isAdmin } = useAuthStore();
 
-    if (maintenanceStatus.mode === 'HARD' && !isAdmin) {
-        return (
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="Maintenance" component={MaintenancePage} />
-                <Stack.Screen name="Login" component={LoginPage} />
-            </Stack.Navigator>
-        );
-    }
-
-	return isAuthenticated ? <AppStack /> : <AuthStack />;
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            {maintenanceStatus.mode === 'HARD' && !isAdmin ? (
+                <Stack.Group>
+                    <Stack.Screen name="Maintenance" component={MaintenancePage} />
+                    <Stack.Screen name="Login" component={LoginPage} />
+                </Stack.Group>
+            ) : isAuthenticated ? (
+                <Stack.Screen name="App" component={AppStack} />
+            ) : (
+                <Stack.Group>
+                    <Stack.Screen name="Login" component={LoginPage} />
+                    <Stack.Screen name="Verification" component={VerificationPage} />
+                </Stack.Group>
+            )}
+        </Stack.Navigator>
+    );
 };
 
 export default RootNavigator;

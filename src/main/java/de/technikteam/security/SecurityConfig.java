@@ -51,7 +51,7 @@ public class SecurityConfig {
 				.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/", "/index.html", "/favicon.ico", "/*.js", "/*.css", "/assets/**", "/theme-loader.js",
-                                 "/api/v1/auth/**", "/ws/**", "/actuator/health", "/api/v1/public/notifications/sse")
+                                 "/api/v1/auth/**", "/ws/**", "/actuator/health", "/api/v1/public/notifications/sse", "/api/v1/public/verify/**")
 						.permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/admin/venues/*").hasRole("ADMIN") // Allow PUT for updates with multipart

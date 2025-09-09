@@ -65,10 +65,8 @@ const pageStyles = (theme) => {
     return StyleSheet.create({
         modalContainer: {
             flex: 1,
-            maxHeight: '100%', // Important for RN
         },
         modalBody: {
-            flexGrow: 1, // Allows content to grow and scroll
             paddingBottom: spacing.lg,
         },
         modalFooter: {

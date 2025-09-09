@@ -10,6 +10,7 @@ import AdminModal from '../ui/AdminModal';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { format } from 'date-fns';
 import Icon from 'react-native-vector-icons/FontAwesome5';
+import { getThemeColors } from '../../../styles/theme';
 
 const MeetingModal = ({ isOpen, onClose, onSuccess, meeting, courseId }) => {
     const theme = useAuthStore(state => state.theme);
@@ -113,12 +114,22 @@ const MeetingModal = ({ isOpen, onClose, onSuccess, meeting, courseId }) => {
                 <TextInput style={[styles.input, {flex: 1}]} value={formData.endDateTime} onChangeText={val => handleChange('endDateTime', val)} placeholder="JJJJ-MM-TTTHH:MM" editable={Platform.OS === 'web'}/>
                 <TouchableOpacity onPress={() => showPicker('endDateTime')}><Icon name="calendar-alt" size={24} color={colors.primary} style={{marginLeft: 8}}/></TouchableOpacity>
             </View>
+            
+            <Text style={styles.label}>Anmeldefrist</Text>
+             <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                <TextInput style={[styles.input, {flex: 1}]} value={formData.signupDeadline} onChangeText={val => handleChange('signupDeadline', val)} placeholder="JJJJ-MM-TTTHH:MM" editable={Platform.OS === 'web'}/>
+                <TouchableOpacity onPress={() => showPicker('signupDeadline')}><Icon name="calendar-alt" size={24} color={colors.primary} style={{marginLeft: 8}}/></TouchableOpacity>
+            </View>
 
             <Text style={styles.label}>Leitung</Text>
             <Picker selectedValue={formData.leaderUserId} onValueChange={val => setFormData({...formData, leaderUserId: val})}>
                 <Picker.Item label="(Keine)" value="" />
                 {users?.map(u => <Picker.Item key={u.id} label={u.username} value={u.id} />)}
             </Picker>
+            
+            <Text style={styles.label}>Maximale Teilnehmer (leer für unbegrenzt)</Text>
+            <TextInput style={styles.input} value={formData.maxParticipants} onChangeText={val => handleChange('maxParticipants', val)} keyboardType="number-pad"/>
+
              <DateTimePickerModal
                 isVisible={isPickerVisible}
                 mode="datetime"

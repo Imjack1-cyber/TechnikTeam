@@ -36,6 +36,7 @@ public class User {
 	private boolean isTotpEnabled;
 	private String totpSecret;
 	private String jti; // JWT ID of the current session token
+    private String verificationToken;
 
 	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String passwordHash;
@@ -283,4 +284,12 @@ public class User {
 	public void setJti(String jti) {
 		this.jti = jti;
 	}
+
+    public String getVerificationToken() {
+        return verificationToken;
+    }
+
+    public void setVerificationToken(String verificationToken) {
+        this.verificationToken = verificationToken;
+    }
 }

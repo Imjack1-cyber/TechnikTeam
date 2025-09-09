@@ -82,6 +82,10 @@ const ProfilePage = () => {
                 <View style={styles.headerTextContainer}>
 				    <Text style={styles.title}>{user.username}</Text>
 				    <Text style={styles.subtitle}>{user.roleName}</Text>
+                    <TouchableOpacity style={styles.idCardButton} onPress={() => navigation.navigate('IdCard')}>
+                        <Icon name="id-card" size={14} color={colors.primary} />
+                        <Text style={styles.idCardButtonText}>Team Ausweis</Text>
+                    </TouchableOpacity>
                 </View>
 				<TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('Settings')}>
 					<Icon name="cog" size={24} color={colors.textMuted} />
@@ -128,6 +132,21 @@ const pageStyles = (theme) => {
         },
         headerTextContainer: {
             flex: 1,
+        },
+        idCardButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+            marginTop: spacing.xs,
+            backgroundColor: colors.primaryLight,
+            paddingVertical: spacing.xs,
+            paddingHorizontal: spacing.sm,
+            borderRadius: 6,
+            alignSelf: 'flex-start',
+        },
+        idCardButtonText: {
+            color: colors.primary,
+            fontWeight: '500',
         },
         settingsButton: {
             padding: spacing.sm,

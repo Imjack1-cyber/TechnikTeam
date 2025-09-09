@@ -13,130 +13,139 @@ import SplashScreen from './src/components/common/SplashScreen';
 import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './src/router/navigation';
 import pageRoutes from './src/router/pageRoutes';
+import VerificationPage from './src/pages/VerificationPage';
 
 // This is the crucial linking configuration for React Navigation on the web.
 const linking = {
   prefixes: [], // Add your app's custom scheme here for native deep linking if needed
   config: {
     screens: {
+        // Public, unauthenticated screens
+        Verification: 'verify/:token',
+
         // Screens outside the drawer/main authenticated stack
         Login: 'login',
         Maintenance: 'maintenance',
-        // Main App Screens (inside the drawer)
-        MainDrawer: {
-            path: '', // The drawer itself doesn't add to the path
+        // Main App Screens are now nested under the 'App' route
+        App: {
             screens: {
-                Dashboard: 'home',
-                Anschlagbrett: 'bulletin-board',
-                Benachrichtigungen: 'notifications',
-                Team: 'team',
-                Chat: 'chat/:conversationId?',
-                Lehrgänge: 'lehrgaenge',
-                Veranstaltungen: 'veranstaltungen',
-                Lager: 'lager',
-                Dateien: 'dateien',
-                Kalender: 'kalender',
-                Feedback: 'feedback',
-                Changelogs: 'changelogs',
+                MainDrawer: {
+                    path: '', // The drawer itself doesn't add to the path
+                    screens: {
+                        Dashboard: 'home',
+                        Anschlagbrett: 'bulletin-board',
+                        Benachrichtigungen: 'notifications',
+                        Team: 'team',
+                        Chat: 'chat/:conversationId?',
+                        Lehrgänge: 'lehrgaenge',
+                        Veranstaltungen: 'veranstaltungen',
+                        Lager: 'lager',
+                        Dateien: 'dateien',
+                        Kalender: 'kalender',
+                        Feedback: 'feedback',
+                        Changelogs: 'changelogs',
 
-                // Admin Screens are nested stacks now
-                "Admin Dashboard": {
-                    path: 'admin/dashboard',
-                    screens: {
-                        AdminDashboardPage: ''
-                    }
+                        // Admin Screens are nested stacks now
+                        "Admin Dashboard": {
+                            path: 'admin/dashboard',
+                            screens: {
+                                AdminDashboardPage: ''
+                            }
+                        },
+                        "Benutzer & Anträge": {
+                            path: 'admin/users',
+                            screens: {
+                                AdminUsersIndex: '',
+                                AdminUsers: 'manage',
+                                AdminRequests: 'requests',
+                                AdminTrainingRequests: 'training-requests',
+                                AdminAchievements: 'achievements'
+                            }
+                        },
+                        "Event Management": {
+                            path: 'admin/events',
+                            screens: {
+                                AdminEventsIndex: '',
+                                AdminEvents: 'manage',
+                                AdminDebriefingsList: 'debriefings',
+                                AdminEventRoles: 'roles',
+                                AdminVenues: 'venues',
+                                AdminChecklistTemplates: 'checklist-templates',
+                                AdminEventDebriefing: 'debriefing/:eventId'
+                            }
+                        },
+                        "Lager & Material": {
+                            path: 'admin/storage',
+                            screens: {
+                                AdminStorageIndex: '',
+                                AdminStorage: 'manage',
+                                AdminKits: 'kits',
+                                AdminDefective: 'defective',
+                                AdminDamageReports: 'damage-reports'
+                            }
+                        },
+                         "Lehrgänge & Skills": {
+                            path: 'admin/courses',
+                            screens: {
+                                AdminCoursesIndex: '',
+                                AdminCourses: 'manage',
+                                AdminMeetings: 'meetings/:courseId',
+                                AdminMatrix: 'matrix'
+                            }
+                        },
+                        "Inhalte & Kommunikation": {
+                             path: 'admin/content',
+                             screens: {
+                                 AdminContentIndex: '',
+                                 AdminAnnouncements: 'announcements',
+                                 AdminFiles: 'files',
+                                 AdminFileEditor: 'files/edit/:fileId',
+                                 AdminFeedback: 'feedback',
+                                 AdminChangelogs: 'changelogs',
+                                 AdminDocumentation: 'documentation',
+                                 AdminNotifications: 'notifications'
+                             }
+                        },
+                        "Berichte": {
+                            path: 'admin/reports',
+                            screens: {
+                                AdminReportsIndex: '',
+                                AdminReports: 'overview',
+                                AdminLog: 'log'
+                            }
+                        },
+                        "System & Entwicklung": {
+                            path: 'admin/system',
+                            screens: {
+                                AdminSystemIndex: '',
+                                AdminSystemPage: 'status',
+                                AdminAuthLog: 'auth-log',
+                                AdminGeoIp: 'geoip',
+                                AdminWiki: 'wiki'
+                            }
+                        }
+                    },
                 },
-                "Benutzer & Anträge": {
-                    path: 'admin/users',
-                    screens: {
-                        AdminUsersIndex: '',
-                        AdminUsers: 'manage',
-                        AdminRequests: 'requests',
-                        AdminTrainingRequests: 'training-requests',
-                        AdminAchievements: 'achievements'
-                    }
-                },
-                "Event Management": {
-                    path: 'admin/events',
-                    screens: {
-                        AdminEventsIndex: '',
-                        AdminEvents: 'manage',
-                        AdminDebriefingsList: 'debriefings',
-                        AdminEventRoles: 'roles',
-                        AdminVenues: 'venues',
-                        AdminChecklistTemplates: 'checklist-templates',
-                        AdminEventDebriefing: 'debriefing/:eventId'
-                    }
-                },
-                "Lager & Material": {
-                    path: 'admin/storage',
-                    screens: {
-                        AdminStorageIndex: '',
-                        AdminStorage: 'manage',
-                        AdminKits: 'kits',
-                        AdminDefective: 'defective',
-                        AdminDamageReports: 'damage-reports'
-                    }
-                },
-                 "Lehrgänge & Skills": {
-                    path: 'admin/courses',
-                    screens: {
-                        AdminCoursesIndex: '',
-                        AdminCourses: 'manage',
-                        AdminMeetings: 'meetings/:courseId',
-                        AdminMatrix: 'matrix'
-                    }
-                },
-                "Inhalte & Kommunikation": {
-                     path: 'admin/content',
-                     screens: {
-                         AdminContentIndex: '',
-                         AdminAnnouncements: 'announcements',
-                         AdminFiles: 'files',
-                         AdminFileEditor: 'files/edit/:fileId',
-                         AdminFeedback: 'feedback',
-                         AdminChangelogs: 'changelogs',
-                         AdminDocumentation: 'documentation',
-                         AdminNotifications: 'notifications'
-                     }
-                },
-                "Berichte": {
-                    path: 'admin/reports',
-                    screens: {
-                        AdminReportsIndex: '',
-                        AdminReports: 'overview',
-                        AdminLog: 'log'
-                    }
-                },
-                "System & Entwicklung": {
-                    path: 'admin/system',
-                    screens: {
-                        AdminSystemIndex: '',
-                        AdminSystemPage: 'status',
-                        AdminAuthLog: 'auth-log',
-                        AdminGeoIp: 'geoip',
-                        AdminWiki: 'wiki'
-                    }
-                }
-            },
-        },
-        // Screens accessible from within the stack but not directly in the drawer
-        Profile: 'profil',
-        Settings: 'profil/einstellungen',
-        PasswordChange: 'passwort',
-        EventDetails: 'veranstaltungen/details/:eventId',
-        MeetingDetails: 'lehrgaenge/details/:meetingId',
-        StorageItemDetails: 'lager/details/:itemId',
-        UserProfile: 'team/:userId',
-        EventFeedback: 'feedback/event/:eventId',
-        PackKit: 'pack-kit/:kitId',
-        QrAction: 'lager/qr-aktion/:itemId',
-        FileEditor: 'files/edit/:fileId',
-        Search: 'suche',
-        HelpList: 'help',
-        HelpDetails: 'help/:pageKey',
-        Forbidden: 'forbidden',
-        NotFound: '*', // Catch-all for 404
+                // Screens accessible from within the stack but not directly in the drawer
+                Profile: 'profil',
+                Settings: 'profil/einstellungen',
+                PasswordChange: 'passwort',
+                EventDetails: 'veranstaltungen/details/:eventId',
+                MeetingDetails: 'lehrgaenge/details/:meetingId',
+                StorageItemDetails: 'lager/details/:itemId',
+                UserProfile: 'team/:userId',
+                EventFeedback: 'feedback/event/:eventId',
+                PackKit: 'pack-kit/:kitId',
+                QrAction: 'lager/qr-aktion/:itemId',
+                FileEditor: 'files/edit/:fileId',
+                Search: 'suche',
+                HelpList: 'help',
+                HelpDetails: 'help/:pageKey',
+                Forbidden: 'forbidden',
+                IdCard: 'profil/id-card',
+                NotFound: '*', // Catch-all for 404
+            }
+        }
     },
   },
 };

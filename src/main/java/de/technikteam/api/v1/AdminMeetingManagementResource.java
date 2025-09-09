@@ -93,7 +93,7 @@ public class AdminMeetingManagementResource {
 			} else {
 				return ResponseEntity.badRequest().body(new ApiResponse(false, "meetingDateTime fehlt.", null));
 			}
-			if (payload.containsKey("endDateTime")) {
+			if (payload.get("endDateTime") != null && !payload.get("endDateTime").isBlank()) {
 				newMeeting.setEndDateTime(LocalDateTime.parse(payload.get("endDateTime")));
 			}
 			if (payload.containsKey("leaderUserId")) {
@@ -103,6 +103,8 @@ public class AdminMeetingManagementResource {
 			}
 			newMeeting.setDescription(payload.getOrDefault("description", original.getDescription()));
 			newMeeting.setLocation(payload.getOrDefault("location", original.getLocation()));
+            newMeeting.setMaxParticipants(original.getMaxParticipants());
+            newMeeting.setSignupDeadline(original.getSignupDeadline());
 
 			int newId = meetingDAO.createMeeting(newMeeting);
 			if (newId > 0) {
