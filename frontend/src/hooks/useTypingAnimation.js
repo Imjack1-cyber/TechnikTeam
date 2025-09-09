@@ -35,13 +35,6 @@ const useTypingAnimation = (lines) => {
 					return newLines;
 				});
 				
-				// In React Native, the component using this hook should attach
-				// this ref to a ScrollView and call .scrollToEnd()
-				if (containerRef.current?.scrollToEnd) {
-					containerRef.current.scrollToEnd({ animated: true });
-				}
-
-
 				if (charIndex < currentLine.text.length - 1) {
 					charIndex++;
 					const timeoutId = setTimeout(typeChar, currentLine.speed || 30);

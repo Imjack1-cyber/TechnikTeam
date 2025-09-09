@@ -45,18 +45,18 @@ public class AdminEventResource {
 	}
 
 	@PostMapping
-	@Operation(summary = "Create a new event", description = "Creates a new event with attachments, skill requirements, and item reservations.")
-	public ResponseEntity<ApiResponse> createEvent(@Valid @RequestPart("eventData") EventUpdateRequest eventData,
-			@RequestPart(value = "file", required = false) MultipartFile file,
+	@Operation(summary = "Create a new event", description = "Creates a new event with skill requirements and item reservations. Attachments must be managed separately.")
+	public ResponseEntity<ApiResponse> createEvent(@Valid @RequestBody EventUpdateRequest eventData,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
 			Event event = new Event();
 			mapDtoToEvent(eventData, event);
 
+			// File upload is removed, so pass null for file and related parameters
 			int newEventId = eventService.createOrUpdateEvent(event, false, securityUser.getUser(),
 					eventData.requiredCourseIds().toArray(new String[0]),
 					eventData.requiredPersons().toArray(new String[0]), eventData.itemIds().toArray(new String[0]),
-					eventData.quantities().toArray(new String[0]), null, file, eventData.requiredRole(),
+					eventData.quantities().toArray(new String[0]), null, null, eventData.requiredRole(),
 					eventData.reminderMinutes());
 
 			return new ResponseEntity<>(
@@ -69,10 +69,9 @@ public class AdminEventResource {
 	}
 
 	@PostMapping("/{id}")
-	@Operation(summary = "Update an event", description = "Updates an existing event with attachments, skill requirements, and item reservations.")
+	@Operation(summary = "Update an event", description = "Updates an existing event with skill requirements and item reservations. Attachments must be managed separately.")
 	public ResponseEntity<ApiResponse> updateEvent(@PathVariable int id,
-			@Valid @RequestPart("eventData") EventUpdateRequest eventData,
-			@RequestPart(value = "file", required = false) MultipartFile file,
+			@Valid @RequestBody EventUpdateRequest eventData,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
 			Event event = eventDAO.getEventById(id);
@@ -81,12 +80,13 @@ public class AdminEventResource {
 						.body(new ApiResponse(false, "Veranstaltung nicht gefunden.", null));
 			}
 			mapDtoToEvent(eventData, event);
-			event.setId(id); 
+			event.setId(id);
 
+			// File upload is removed, so pass null for file and related parameters
 			eventService.createOrUpdateEvent(event, true, securityUser.getUser(),
 					eventData.requiredCourseIds().toArray(new String[0]),
 					eventData.requiredPersons().toArray(new String[0]), eventData.itemIds().toArray(new String[0]),
-					eventData.quantities().toArray(new String[0]), null, file, eventData.requiredRole(),
+					eventData.quantities().toArray(new String[0]), null, null, eventData.requiredRole(),
 					eventData.reminderMinutes());
 
 			return ResponseEntity.ok(new ApiResponse(true, "Veranstaltung erfolgreich aktualisiert.", null));

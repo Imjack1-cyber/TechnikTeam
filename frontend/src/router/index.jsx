@@ -39,6 +39,7 @@ import QrActionPage from '../pages/QrActionPage';
 import ForbiddenPage from '../pages/error/ForbiddenPage';
 import MaintenancePage from '../pages/error/MaintenancePage';
 import NotFoundPage from '../pages/error/NotFoundPage';
+import ErrorTrigger from '../pages/error/ErrorTrigger'; // For testing
 
 // --- Import ALL Admin Screen Components ---
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
@@ -86,7 +87,13 @@ const Stack = createStackNavigator();
 
 // --- Admin Stacks ---
 const AdminUsersStack = () => (
-    <Stack.Navigator><Stack.Screen name="AdminUsersIndex" component={AdminUsersIndex} options={{ headerShown: false }} /><Stack.Screen name="AdminUsers" component={AdminUsersPage} /><Stack.Screen name="AdminRequests" component={AdminRequestsPage} /><Stack.Screen name="AdminTrainingRequests" component={AdminTrainingRequestsPage} /><Stack.Screen name="AdminAchievements" component={AdminAchievementsPage} /></Stack.Navigator>
+    <Stack.Navigator>
+        <Stack.Screen name="AdminUsersIndex" component={AdminUsersIndex} options={{ headerShown: false }} />
+        <Stack.Screen name="AdminUsers" component={AdminUsersPage} options={{ title: 'Benutzer Verwalten' }} />
+        <Stack.Screen name="AdminRequests" component={AdminRequestsPage} options={{ title: 'Profilanträge' }} />
+        <Stack.Screen name="AdminTrainingRequests" component={AdminTrainingRequestsPage} options={{ title: 'Lehrgangsanfragen' }} />
+        <Stack.Screen name="AdminAchievements" component={AdminAchievementsPage} options={{ title: 'Abzeichen' }} />
+    </Stack.Navigator>
 );
 const AdminEventsStack = () => (
     <Stack.Navigator><Stack.Screen name="AdminEventsIndex" component={AdminEventsIndex} options={{ headerShown: false }} /><Stack.Screen name="AdminEvents" component={AdminEventsPage} /><Stack.Screen name="AdminDebriefingsList" component={AdminDebriefingsListPage} /><Stack.Screen name="AdminEventDebriefing" component={AdminEventDebriefingPage} /><Stack.Screen name="AdminEventRoles" component={AdminEventRolesPage} /><Stack.Screen name="AdminVenues" component={AdminVenuesPage} /><Stack.Screen name="AdminChecklistTemplates" component={AdminChecklistTemplatesPage} /></Stack.Navigator>
@@ -145,29 +152,32 @@ const MainDrawerNavigator = () => {
 
 const AppStack = () => {
     return (
-        <Stack.Navigator
-            screenOptions={{
-                header: (props) => <Header {...props} />,
-            }}
-        >
-            <Stack.Screen name="MainDrawer" component={MainDrawerNavigator} options={{ headerShown: false }}/>
-            
-            <Stack.Screen name="UserProfile" component={UserProfilePage} options={{ title: 'Benutzerprofil' }} />
-            <Stack.Screen name="MeetingDetails" component={MeetingDetailsPage} options={{ title: 'Meeting-Details' }}/>
-            <Stack.Screen name="EventDetails" component={EventDetailsPage} options={{ title: 'Event-Details' }}/>
-            <Stack.Screen name="StorageItemDetails" component={StorageItemDetailsPage} options={{ title: 'Lagerartikel-Details' }} />
-            <Stack.Screen name="Settings" component={SettingsPage} options={{ title: 'Einstellungen' }} />
-            <Stack.Screen name="PasswordChange" component={PasswordPage} options={{ title: 'Passwort ändern' }} />
-            <Stack.Screen name="Search" component={SearchResultsPage} options={{ title: 'Suchergebnisse' }} />
-            <Stack.Screen name="HelpList" component={HelpListPage} options={{ title: 'Hilfe' }} />
-            <Stack.Screen name="HelpDetails" component={HelpDetailsPage} options={{ title: 'Hilfe-Detail' }} />
-            <Stack.Screen name="EventFeedback" component={EventFeedbackPage} options={{ title: 'Event-Feedback' }} />
-            <Stack.Screen name="PackKit" component={PackKitPage} options={{ headerShown: false }} />
-            <Stack.Screen name="QrAction" component={QrActionPage} options={{ headerShown: false }} />
-            <Stack.Screen name="FileEditor" component={FileEditorPage} options={{ title: 'Datei-Editor' }} />
-            <Stack.Screen name="NotFound" component={NotFoundPage} options={{ title: 'Nicht gefunden' }}/>
+        <ErrorBoundary>
+            <Stack.Navigator
+                screenOptions={{
+                    header: (props) => <Header {...props} />,
+                }}
+            >
+                <Stack.Screen name="MainDrawer" component={MainDrawerNavigator} options={{ headerShown: false }}/>
+                
+                <Stack.Screen name="UserProfile" component={UserProfilePage} options={{ title: 'Benutzerprofil' }} />
+                <Stack.Screen name="MeetingDetails" component={MeetingDetailsPage} options={{ title: 'Meeting-Details' }}/>
+                <Stack.Screen name="EventDetails" component={EventDetailsPage} options={{ title: 'Event-Details' }}/>
+                <Stack.Screen name="StorageItemDetails" component={StorageItemDetailsPage} options={{ title: 'Lagerartikel-Details' }} />
+                <Stack.Screen name="Settings" component={SettingsPage} options={{ title: 'Einstellungen' }} />
+                <Stack.Screen name="PasswordChange" component={PasswordPage} options={{ title: 'Passwort ändern' }} />
+                <Stack.Screen name="Search" component={SearchResultsPage} options={{ title: 'Suchergebnisse' }} />
+                <Stack.Screen name="HelpList" component={HelpListPage} options={{ title: 'Hilfe' }} />
+                <Stack.Screen name="HelpDetails" component={HelpDetailsPage} options={{ title: 'Hilfe-Detail' }} />
+                <Stack.Screen name="EventFeedback" component={EventFeedbackPage} options={{ title: 'Event-Feedback' }} />
+                <Stack.Screen name="PackKit" component={PackKitPage} options={{ headerShown: false }} />
+                <Stack.Screen name="QrAction" component={QrActionPage} options={{ headerShown: false }} />
+                <Stack.Screen name="FileEditor" component={FileEditorPage} options={{ title: 'Datei-Editor' }} />
+                <Stack.Screen name="NotFound" component={NotFoundPage} options={{ title: 'Nicht gefunden' }}/>
+                <Stack.Screen name="ErrorTrigger" component={ErrorTrigger} options={{ title: 'Trigger Error' }} />
 
-        </Stack.Navigator>
+            </Stack.Navigator>
+        </ErrorBoundary>
     );
 };
 
@@ -191,11 +201,7 @@ const RootNavigator = () => {
         );
     }
 
-	return (
-        <ErrorBoundary>
-            {isAuthenticated ? <AppStack /> : <AuthStack />}
-        </ErrorBoundary>
-    );
+	return isAuthenticated ? <AppStack /> : <AuthStack />;
 };
 
 export default RootNavigator;

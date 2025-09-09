@@ -5,7 +5,7 @@ import apiClient from '../../../services/apiClient';
 import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../store/authStore';
 import { getCommonStyles } from '../../../styles/commonStyles';
-import { getThemeColors, typography, spacing } from '../../../styles/theme';
+import { getThemeColors, typography, spacing, borders } from '../../../styles/theme';
 import Icon from '@expo/vector-icons/FontAwesome5';
 import { Picker } from '@react-native-picker/picker';
 

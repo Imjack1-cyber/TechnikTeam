@@ -64,13 +64,13 @@ const ReservationCalendar = ({ reservations }) => {
 	);
 };
 
-const styles = StyleSheet.create({
+const styles = {
     title: {
         fontSize: 18,
         fontWeight: '600',
         color: '#002B5B',
         marginBottom: 12,
     }
-});
+};
 
 export default ReservationCalendar;

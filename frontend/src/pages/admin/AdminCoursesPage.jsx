@@ -3,12 +3,12 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, 
 import { useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
-import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
+import AdminModal from '../../components/ui/AdminModal';
 
 const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
     const theme = useAuthStore(state => state.theme);
@@ -45,20 +45,22 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={course ? 'Vorlage bearbeiten' : 'Neue Vorlage'}>
-            <ScrollView>
-                {error && <Text style={styles.errorText}>{error}</Text>}
-                <Text style={styles.label}>Name</Text>
-                <TextInput style={styles.input} value={formData.name} onChangeText={val => setFormData({...formData, name: val})} />
-                <Text style={styles.label}>Abkürzung</Text>
-                <TextInput style={styles.input} value={formData.abbreviation} onChangeText={val => setFormData({...formData, abbreviation: val})} />
-                <Text style={styles.label}>Beschreibung</Text>
-                <TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={val => setFormData({...formData, description: val})} multiline />
-                <TouchableOpacity style={[styles.button, styles.primaryButton, {marginTop: 16}]} onPress={handleSubmit} disabled={isSubmitting}>
-                    <Text style={styles.buttonText}>{isSubmitting ? 'Speichern...' : 'Speichern'}</Text>
-                </TouchableOpacity>
-            </ScrollView>
-        </Modal>
+        <AdminModal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={course ? 'Vorlage bearbeiten' : 'Neue Vorlage'}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+            submitText="Speichern"
+        >
+            {error && <Text style={styles.errorText}>{error}</Text>}
+            <Text style={styles.label}>Name</Text>
+            <TextInput style={styles.input} value={formData.name} onChangeText={val => setFormData({...formData, name: val})} />
+            <Text style={styles.label}>Abkürzung</Text>
+            <TextInput style={styles.input} value={formData.abbreviation} onChangeText={val => setFormData({...formData, abbreviation: val})} />
+            <Text style={styles.label}>Beschreibung</Text>
+            <TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={val => setFormData({...formData, description: val})} multiline />
+        </AdminModal>
     );
 };
 

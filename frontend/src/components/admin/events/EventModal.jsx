@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Platform } from 'react-native';
-import Modal from '../../ui/Modal';
 import apiClient from '../../../services/apiClient';
 import { useToast } from '../../../context/ToastContext';
 import DynamicSkillRows from './DynamicSkillRows';
@@ -12,6 +11,7 @@ import { Picker } from '@react-native-picker/picker';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { format } from 'date-fns';
 import Icon from 'react-native-vector-icons/FontAwesome5';
+import AdminModal from '../../ui/AdminModal';
 
 const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklistTemplates }) => {
 	const isEditMode = !!event;
@@ -110,7 +110,6 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklis
             return;
         }
 
-		const data = new FormData();
 		const eventData = {
 			...formData,
 			leaderUserId: formData.leaderUserId ? parseInt(formData.leaderUserId, 10) : 0,
@@ -119,10 +118,11 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklis
 			requiredPersons: skillRows.map(r => r.requiredPersons).filter(Boolean),
 			itemIds: itemRows.map(r => r.itemId).filter(Boolean),
 			quantities: itemRows.map(r => r.quantity).filter(Boolean),
+            requiredRole: 'NUTZER' // Default value, no longer a form field
 		};
-		data.append('eventData', JSON.stringify(eventData));
+
 		try {
-			const result = isEditMode ? await apiClient.post(`/events/${event.id}`, data) : await apiClient.post('/events', data);
+			const result = isEditMode ? await apiClient.post(`/events/${event.id}`, eventData) : await apiClient.post('/events', eventData);
 			if (result.success) {
 				addToast(`Event ${isEditMode ? 'aktualisiert' : 'erstellt'}.`, 'success');
 				onSuccess();
@@ -181,28 +181,30 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklis
     );
 
 	return (
-		<Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? "Event bearbeiten" : "Neues Event erstellen"}>
-			<ScrollView>
-				<View style={{flexDirection: 'row', borderBottomWidth: 1, borderColor: getThemeColors(theme).border, marginBottom: 16}}>
-                    <TouchableOpacity onPress={() => setActiveTab('general')} style={{paddingBottom: 8, marginRight: 16, borderBottomWidth: activeTab === 'general' ? 3 : 0, borderBottomColor: getThemeColors(theme).primary}}><Text>Allgemein</Text></TouchableOpacity>
-                    <TouchableOpacity onPress={() => setActiveTab('details')} style={{paddingBottom: 8, borderBottomWidth: activeTab === 'details' ? 3 : 0, borderBottomColor: getThemeColors(theme).primary}}><Text>Details & Bedarf</Text></TouchableOpacity>
-                </View>
-				{error && <Text style={styles.errorText}>{error}</Text>}
-				
-                {activeTab === 'general' && renderGeneral()}
-                {activeTab === 'details' && renderDetails()}
+        <AdminModal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={isEditMode ? "Event bearbeiten" : "Neues Event erstellen"}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+            submitText="Event speichern"
+        >
+            <View style={{flexDirection: 'row', borderBottomWidth: 1, borderColor: getThemeColors(theme).border, marginBottom: 16}}>
+                <TouchableOpacity onPress={() => setActiveTab('general')} style={{paddingBottom: 8, marginRight: 16, borderBottomWidth: activeTab === 'general' ? 3 : 0, borderBottomColor: getThemeColors(theme).primary}}><Text>Allgemein</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => setActiveTab('details')} style={{paddingBottom: 8, borderBottomWidth: activeTab === 'details' ? 3 : 0, borderBottomColor: getThemeColors(theme).primary}}><Text>Details & Bedarf</Text></TouchableOpacity>
+            </View>
+            {error && <Text style={styles.errorText}>{error}</Text>}
+            
+            {activeTab === 'general' && renderGeneral()}
+            {activeTab === 'details' && renderDetails()}
 
-				<TouchableOpacity style={[styles.button, styles.primaryButton, {marginTop: 16}]} onPress={handleSubmit} disabled={isSubmitting}>
-					{isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Event speichern</Text>}
-				</TouchableOpacity>
-			</ScrollView>
             <DateTimePickerModal
                 isVisible={isPickerVisible}
                 mode="datetime"
                 onConfirm={handleConfirmDate}
                 onCancel={hidePicker}
             />
-		</Modal>
+        </AdminModal>
 	);
 };
 

@@ -19,6 +19,7 @@ import java.util.Objects;
 public class EventChatDAO {
 	private static final Logger logger = LogManager.getLogger(EventChatDAO.class);
 	private final JdbcTemplate jdbcTemplate;
+    private static final int MAX_MESSAGE_LENGTH = 1024;
 
 	@Autowired
 	public EventChatDAO(JdbcTemplate jdbcTemplate) {
@@ -50,13 +51,18 @@ public class EventChatDAO {
 	public EventChatMessage postMessage(EventChatMessage message) {
 		String sql = "INSERT INTO event_chat_messages (event_id, user_id, username, message_text) VALUES (?, ?, ?, ?)";
 		try {
+            String originalText = message.getMessageText();
+            String truncatedText = (originalText != null && originalText.length() > MAX_MESSAGE_LENGTH)
+                    ? originalText.substring(0, MAX_MESSAGE_LENGTH)
+                    : originalText;
+
 			KeyHolder keyHolder = new GeneratedKeyHolder();
 			jdbcTemplate.update(connection -> {
 				PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
 				ps.setInt(1, message.getEventId());
 				ps.setInt(2, message.getUserId());
 				ps.setString(3, message.getUsername());
-				ps.setString(4, message.getMessageText());
+				ps.setString(4, truncatedText);
 				return ps;
 			}, keyHolder);
 
@@ -91,7 +97,10 @@ public class EventChatDAO {
 	public boolean updateMessage(int messageId, int userId, String newText) {
 		String sql = "UPDATE event_chat_messages SET message_text = ?, edited = TRUE, edited_at = NOW() WHERE id = ? AND user_id = ? AND is_deleted = FALSE AND sent_at >= NOW() - INTERVAL 24 HOUR";
 		try {
-			return jdbcTemplate.update(sql, newText, messageId, userId) > 0;
+            String truncatedText = (newText != null && newText.length() > MAX_MESSAGE_LENGTH)
+                    ? newText.substring(0, MAX_MESSAGE_LENGTH)
+                    : newText;
+			return jdbcTemplate.update(sql, truncatedText, messageId, userId) > 0;
 		} catch (Exception e) {
 			logger.error("Error updating message ID {}", messageId, e);
 			return false;

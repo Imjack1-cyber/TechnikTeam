@@ -69,6 +69,11 @@ const AdminTrainingRequestsPage = () => {
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
                 contentContainerStyle={styles.contentContainer}
+                ListEmptyComponent={
+                    <View style={styles.card}>
+                        <Text>Keine Lehrgangsanfragen von Benutzern vorhanden.</Text>
+                    </View>
+                }
             />
 		</View>
 	);

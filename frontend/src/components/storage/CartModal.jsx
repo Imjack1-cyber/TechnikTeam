@@ -114,7 +114,7 @@ const CartModal = ({ isOpen, onClose, cart, onUpdateQuantity, onRemove, onSwitch
 
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
-    return StyleSheet.create({
+    return {
         rowContainer: {
             flexDirection: 'row',
             alignItems: 'center',
@@ -133,7 +133,7 @@ const pageStyles = (theme) => {
             paddingHorizontal: spacing.sm,
             textAlign: 'center',
         },
-    });
+    };
 };
 
 export default CartModal;

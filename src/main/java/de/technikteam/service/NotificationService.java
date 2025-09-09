@@ -3,6 +3,7 @@ package de.technikteam.service;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
+import com.google.firebase.messaging.AndroidConfig;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
@@ -203,15 +204,25 @@ public class NotificationService {
         String title = (String) payload.get("title");
         String description = (String) payload.get("description");
         String url = (String) payload.get("url");
+        String androidImportance = (String) payload.get("androidImportance");
 
-        Message message = Message.builder()
+        Message.Builder messageBuilder = Message.builder()
             .setNotification(Notification.builder()
                 .setTitle(title)
                 .setBody(description)
                 .build())
             .setToken(user.getFcmToken())
-            .putData("url", url != null ? url : "")
-            .build();
+            .putData("url", url != null ? url : "");
+
+        if ("HIGH".equalsIgnoreCase(androidImportance)) {
+            AndroidConfig androidConfig = AndroidConfig.builder()
+                .setPriority(AndroidConfig.Priority.HIGH)
+                .build();
+            messageBuilder.setAndroidConfig(androidConfig);
+            logger.debug("Setting FCM priority to HIGH for user {}", user.getUsername());
+        }
+
+        Message message = messageBuilder.build();
 
         try {
             String response = FirebaseMessaging.getInstance().send(message);
@@ -258,8 +269,13 @@ public class NotificationService {
 			return 0;
 		}
 
-		Map<String, Object> payload = Map.of("title", request.title(), "description", request.description(), "level",
-				request.level());
+		Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("title", request.title());
+        payload.put("description", request.description());
+        payload.put("level", request.level());
+        if (request.androidImportance() != null) {
+            payload.put("androidImportance", request.androidImportance());
+        }
 
 		for (User targetUser : targetUsers) {
 			sendNotificationToUser(targetUser.getId(), payload);

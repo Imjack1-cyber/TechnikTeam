@@ -2,7 +2,6 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, ScrollView, Alert, Platform } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
-import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import MarkdownDisplay from 'react-native-markdown-display';
 import Icon from 'react-native-vector-icons/FontAwesome5';
@@ -11,6 +10,7 @@ import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { format, parseISO } from 'date-fns';
+import AdminModal from '../../components/ui/AdminModal';
 
 const ChangelogModal = ({ isOpen, onClose, onSuccess, changelog }) => {
     const theme = useAuthStore(state => state.theme);
@@ -58,37 +58,35 @@ const ChangelogModal = ({ isOpen, onClose, onSuccess, changelog }) => {
 	};
 
 	return (
-		<Modal isOpen={isOpen} onClose={onClose} title={changelog ? 'Changelog bearbeiten' : 'Neuen Changelog erstellen'}>
-			<View style={{ flex: 1 }}>
-                <ScrollView>
-                    {error && <Text style={styles.errorText}>{error}</Text>}
-                    <Text style={styles.label}>Version (z.B. 2.1.0)</Text>
-                    <TextInput style={styles.input} value={formData.version} onChangeText={val => setFormData({...formData, version: val})} />
-                    <Text style={styles.label}>Titel</Text>
-                    <TextInput style={styles.input} value={formData.title} onChangeText={val => setFormData({...formData, title: val})} />
-                    
-                    <Text style={styles.label}>Veröffentlichungsdatum</Text>
-                    <TouchableOpacity onPress={() => setDatePickerVisible(true)} style={[styles.input, { justifyContent: 'center' }]}>
-                        <Text>{format(parseISO(formData.releaseDate), 'dd.MM.yyyy')}</Text>
-                    </TouchableOpacity>
-                    <DateTimePickerModal
-                        isVisible={isDatePickerVisible}
-                        mode="date"
-                        onConfirm={handleConfirmDate}
-                        onCancel={() => setDatePickerVisible(false)}
-                        date={parseISO(formData.releaseDate)}
-                    />
+		<AdminModal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={changelog ? 'Changelog bearbeiten' : 'Neuen Changelog erstellen'}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+            submitText="Speichern"
+        >
+            {error && <Text style={styles.errorText}>{error}</Text>}
+            <Text style={styles.label}>Version (z.B. 2.1.0)</Text>
+            <TextInput style={styles.input} value={formData.version} onChangeText={val => setFormData({...formData, version: val})} />
+            <Text style={styles.label}>Titel</Text>
+            <TextInput style={styles.input} value={formData.title} onChangeText={val => setFormData({...formData, title: val})} />
+            
+            <Text style={styles.label}>Veröffentlichungsdatum</Text>
+            <TouchableOpacity onPress={() => setDatePickerVisible(true)} style={[styles.input, { justifyContent: 'center' }]}>
+                <Text>{format(parseISO(formData.releaseDate), 'dd.MM.yyyy')}</Text>
+            </TouchableOpacity>
+            <DateTimePickerModal
+                isVisible={isDatePickerVisible}
+                mode="date"
+                onConfirm={handleConfirmDate}
+                onCancel={() => setDatePickerVisible(false)}
+                date={parseISO(formData.releaseDate)}
+            />
 
-                    <Text style={styles.label}>Anmerkungen (Markdown)</Text>
-                    <TextInput style={[styles.input, styles.textArea]} value={formData.notes} onChangeText={val => setFormData({...formData, notes: val})} multiline />
-                </ScrollView>
-                <View style={styles.modalFooter}>
-                    <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}>
-                        {isSubmitting ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Speichern</Text>}
-                    </TouchableOpacity>
-                </View>
-			</View>
-		</Modal>
+            <Text style={styles.label}>Anmerkungen (Markdown)</Text>
+            <TextInput style={[styles.input, styles.textArea]} value={formData.notes} onChangeText={val => setFormData({...formData, notes: val})} multiline />
+        </AdminModal>
 	);
 };
 

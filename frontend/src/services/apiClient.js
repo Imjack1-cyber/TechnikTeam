@@ -42,10 +42,13 @@ const apiClient = {
 			headers['Authorization'] = `Bearer ${authToken}`;
 		}
 		
-        // FIX: Only set Content-Type for JSON. Let the browser/fetch handle it for FormData.
 		if (!(options.body instanceof FormData)) {
 			headers['Content-Type'] = 'application/json';
 		}
+        // IMPORTANT: For FormData, we do NOT set the Content-Type header.
+        // The `fetch` API (on both web and native) will automatically set it
+        // to 'multipart/form-data' and add the required 'boundary' parameter.
+        // Manually setting it here would break the request.
 
 		try {
             const baseUrl = getApiBaseUrl();

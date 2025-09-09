@@ -52,8 +52,8 @@ public class InitialAdminCreator implements CommandLineRunner {
 					.orElseThrow(() -> new RuntimeException("CRITICAL: 'ADMIN' role not found in database. Cannot create initial admin user."));
 			adminUser.setRoleId(adminRole.getId());
 
-//			String randomPassword = generateRandomPassword(8);
-			String randomPassword = "TechnikTeam1+";
+			String randomPassword = generateRandomPassword(8);
+//			String randomPassword = "TechnikTeam1+";
 
 			List<String> permissionKeysToGrant = List.of(Permissions.ACCESS_ADMIN_PANEL, Permissions.NOTIFICATION_SEND,
 					Permissions.LOG_READ, Permissions.LOG_REVOKE);

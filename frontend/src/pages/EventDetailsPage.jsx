@@ -12,7 +12,7 @@ import EventGalleryTab from '../components/events/EventGalleryTab';
 import TaskModal from '../components/events/TaskModal';
 import AdminEventTeamTab from '../components/admin/events/AdminEventTeamTab';
 import { getCommonStyles } from '../styles/commonStyles';
-import { getThemeColors, spacing } from '../styles/theme';
+import { getThemeColors, spacing, borders } from '../styles/theme';
 import Icon from '@expo/vector-icons/FontAwesome5';
 
 // TaskList sub-component adapted for React Native

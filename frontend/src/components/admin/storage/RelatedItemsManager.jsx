@@ -52,7 +52,7 @@ const RelatedItemsManager = ({ item, allItems, onSave, onCancel }) => {
 		<View>
 			{loading && <ActivityIndicator />}
 			{error && <Text style={styles.errorText}>{error}</Text>}
-			<ScrollView style={pageStyles.listContainer}>
+			<View style={pageStyles.listContainer}>
 				{availableItems.map(i => (
 					<BouncyCheckbox
                         key={i.id}
@@ -64,7 +64,7 @@ const RelatedItemsManager = ({ item, allItems, onSave, onCancel }) => {
                         fillColor={colors.primary}
                     />
 				))}
-			</ScrollView>
+			</View>
 			<View style={pageStyles.buttonContainer}>
 				<TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={onCancel}>
                     <Text style={styles.buttonText}>Abbrechen</Text>
@@ -79,7 +79,6 @@ const RelatedItemsManager = ({ item, allItems, onSave, onCancel }) => {
 
 const pageStyles = StyleSheet.create({
     listContainer: {
-        maxHeight: '60%',
         borderWidth: 1,
         borderColor: '#dee2e6',
         borderRadius: 8,

@@ -15,7 +15,7 @@ const AdminNotificationsPage = () => {
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
 	const { addToast } = useToast();
-	const [formData, setFormData] = useState({ title: '', description: '', level: 'Informational', targetType: 'ALL', targetId: '' });
+	const [formData, setFormData] = useState({ title: '', description: '', level: 'Informational', targetType: 'ALL', targetId: '', androidImportance: 'DEFAULT' });
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
 
@@ -33,7 +33,7 @@ const AdminNotificationsPage = () => {
 			const result = await apiClient.post('/admin/notifications', payload);
 			if (result.success) {
 				addToast(result.message, 'success');
-				setFormData({ title: '', description: '', level: 'Informational', targetType: 'ALL', targetId: '' });
+				setFormData({ title: '', description: '', level: 'Informational', targetType: 'ALL', targetId: '', androidImportance: 'DEFAULT' });
 			} else { throw new Error(result.message); }
 		} catch (err) {
 			setError(err.message || 'Senden fehlgeschlagen.');
@@ -86,6 +86,14 @@ const AdminNotificationsPage = () => {
                         <View style={styles.radioRow}><RadioButton value="Important" /><Text>Wichtig</Text></View>
                         <View style={styles.radioRow}><RadioButton value="Warning" /><Text style={{color: colors.danger}}>Warnung (Notfall)</Text></View>
                     </RadioButton.Group>
+                </View>
+
+                <View style={styles.formGroup}>
+                    <Text style={styles.label}>Android Wichtigkeit</Text>
+                    <Picker selectedValue={formData.androidImportance} onValueChange={val => setFormData({...formData, androidImportance: val})}>
+                        <Picker.Item label="Standard" value="DEFAULT" />
+                        <Picker.Item label="Hoch (Heads-up)" value="HIGH" />
+                    </Picker>
                 </View>
 
                 <View style={styles.formGroup}>

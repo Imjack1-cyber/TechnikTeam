@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Modal from '../ui/Modal';
 import apiClient from '../../services/apiClient';
 
@@ -60,7 +60,7 @@ const DamageReportModal = ({ isOpen, onClose, onSuccess, item }) => {
 	);
 };
 
-const styles = StyleSheet.create({
+const styles = {
 	errorText: {
 		color: '#dc3545',
 		marginBottom: 12,
@@ -112,6 +112,6 @@ const styles = StyleSheet.create({
 		color: '#fff',
 		fontWeight: '500',
 	}
-});
+};
 
 export default DamageReportModal;

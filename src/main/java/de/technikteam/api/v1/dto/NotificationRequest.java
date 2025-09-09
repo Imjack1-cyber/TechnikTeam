@@ -16,5 +16,8 @@ public record NotificationRequest(
 		@NotBlank(message = "Zieltyp darf nicht leer sein") @Schema(description = "The target audience type.", required = true, allowableValues = {
 				"ALL", "EVENT", "MEETING" }) String targetType,
 
-		@Schema(description = "The ID of the event or meeting if targetType is EVENT or MEETING.") Integer targetId){
+		@Schema(description = "The ID of the event or meeting if targetType is EVENT or MEETING.") Integer targetId,
+
+        @Schema(description = "The desired importance for the push notification on Android devices.", allowableValues = {"DEFAULT", "HIGH"}) String androidImportance
+){
 }

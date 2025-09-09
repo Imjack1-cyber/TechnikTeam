@@ -36,7 +36,7 @@ const PermissionsTab = ({ groupedPermissions, assignedIds, onPermissionChange, i
 		<View>
 			<Text style={styles.title}>Individuelle Berechtigungen</Text>
 			<Text style={styles.description}>Granular permissions are currently not active.</Text>
-			<ScrollView style={styles.listContainer}>
+			<View style={styles.listContainer}>
 				{Object.entries(groupedPermissions).map(([groupName, permissionsInGroup]) => (
                     // Accordion would be better here, using View for simplicity
 					<View key={groupName}>
@@ -46,7 +46,7 @@ const PermissionsTab = ({ groupedPermissions, assignedIds, onPermissionChange, i
 						</View>
 					</View>
 				))}
-			</ScrollView>
+			</View>
 		</View>
 	);
 };
@@ -56,7 +56,7 @@ const pageStyles = (theme) => {
     return StyleSheet.create({
         title: { fontSize: typography.h4, fontWeight: 'bold', marginBottom: spacing.sm },
         description: { color: colors.textMuted, marginBottom: spacing.md, fontStyle: 'italic' },
-        listContainer: { maxHeight: '60%', borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: spacing.sm },
+        listContainer: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: spacing.sm },
         groupName: { fontWeight: 'bold', fontSize: 16, paddingVertical: 8, marginTop: 8 },
         checkboxContainer: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2, paddingVertical: 0 },
         permissionKey: { fontWeight: 'bold' },

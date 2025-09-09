@@ -152,7 +152,7 @@ public class MeetingDAO {
 	}
 
 	public List<Meeting> getUpcomingMeetingsForUser(User user) {
-		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username, ma.attended, (SELECT COUNT(*) FROM meeting_attendance ma_count WHERE ma_count.meeting_id = m.id AND ma_count.attended = 1) as participant_count FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id LEFT JOIN meeting_attendance ma ON m.id = ma.meeting_id AND ma.user_id = ? WHERE m.meeting_datetime >= NOW() ORDER BY m.meeting_datetime ASC";
+		String sql = "SELECT m.*, c.name as parent_course_name, u.username as leader_username, ma.attended, (SELECT COUNT(*) FROM meeting_attendance ma_count WHERE ma_count.meeting_id = m.id AND ma_count.attended = 1) as participant_count FROM meetings m JOIN courses c ON m.course_id = c.id LEFT JOIN users u ON m.leader_user_id = u.id LEFT JOIN meeting_attendance ma ON m.id = ma.meeting_id AND ma.user_id = ? WHERE m.meeting_datetime > NOW() ORDER BY m.meeting_datetime ASC";
 		try {
 			return jdbcTemplate.query(sql, (rs, rowNum) -> {
 				Meeting meeting = meetingRowMapper.mapRow(rs, rowNum);

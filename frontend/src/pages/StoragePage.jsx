@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Image } from 'react-native';
+import { View, Text, StyleSheet, SectionList, TouchableOpacity, ActivityIndicator, TextInput, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import apiClient from '../services/apiClient';
 import useApi from '../hooks/useApi';
@@ -40,6 +40,28 @@ const StoragePage = () => {
     const commonStyles = getCommonStyles(theme);
     const styles = pageStyles(theme);
     const colors = getThemeColors(theme);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const sections = useMemo(() => {
+        const storageData = data?.storageData || {};
+        const filteredAndGrouped = Object.entries(storageData).map(([location, items]) => {
+            const filteredItems = items.filter(item =>
+                item.name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            return { title: location, data: filteredItems };
+        }).filter(section => section.data.length > 0);
+
+        // Custom sort order: "Erdgeschoss" first, then "Oben", then alphabetically.
+        return filteredAndGrouped.sort((a, b) => {
+            const aTitle = a.title.toLowerCase();
+            const bTitle = b.title.toLowerCase();
+            if (aTitle.includes('erdgeschoss')) return -1;
+            if (bTitle.includes('erdgeschoss')) return 1;
+            if (aTitle.includes('oben')) return -1;
+            if (bTitle.includes('oben')) return 1;
+            return a.title.localeCompare(b.title);
+        });
+    }, [data, searchTerm]);
 
     const handleAddToCart = (item, type) => {
         setCart(prev => [...prev, { ...item, cartQuantity: 1, type }]);
@@ -68,10 +90,14 @@ const StoragePage = () => {
     const renderItem = ({ item }) => (
         <View style={commonStyles.card}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-                {item.imagePath && (
+                {item.imagePath ? (
                     <TouchableOpacity onPress={() => { setLightboxSrc(getImagePath(item.imagePath)); setIsLightboxOpen(true); }}>
                         <Image source={{ uri: getImagePath(item.imagePath) }} style={styles.itemImage} />
                     </TouchableOpacity>
+                ) : (
+                    <View style={[styles.itemImage, styles.imagePlaceholder]}>
+                        <Icon name="box-open" size={24} color={colors.textMuted} />
+                    </View>
                 )}
                 <TouchableOpacity style={{ flex: 1 }} onPress={() => navigation.navigate('StorageItemDetails', { itemId: item.id })}>
                     <Text style={commonStyles.cardTitle}>{item.name}</Text>
@@ -92,23 +118,38 @@ const StoragePage = () => {
         </View>
     );
 
+    const renderSectionHeader = ({ section: { title } }) => (
+        <Text style={styles.sectionHeader}>{title}</Text>
+    );
+
     if (loading) return <View style={commonStyles.centered}><ActivityIndicator size="large" /></View>;
     if (error) return <View style={commonStyles.centered}><Text style={commonStyles.errorText}>{error}</Text></View>;
 
-    const allItems = Object.values(data?.storageData || {}).flat();
-
     return (
         <>
-            <FlatList
-                data={allItems}
+            <SectionList
+                sections={sections}
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
-                contentContainerStyle={{ padding: spacing.md, paddingBottom: 80 }} // Add padding for FAB
+                renderSectionHeader={renderSectionHeader}
+                stickySectionHeadersEnabled={true}
+                contentContainerStyle={{ padding: spacing.md, paddingBottom: 80 }}
                 ListHeaderComponent={
                     <>
                         <Text style={commonStyles.title}>Lagerübersicht</Text>
                         <Text style={commonStyles.subtitle}>Übersicht aller erfassten Artikel im Lager.</Text>
+                        <TextInput
+                            style={[commonStyles.input, {marginBottom: spacing.md}]}
+                            placeholder="Artikel suchen..."
+                            value={searchTerm}
+                            onChangeText={setSearchTerm}
+                        />
                     </>
+                }
+                ListEmptyComponent={
+                    <View style={commonStyles.card}>
+                        <Text>Keine Artikel für Ihre Suche gefunden.</Text>
+                    </View>
                 }
             />
             {cart.length > 0 && (
@@ -142,6 +183,13 @@ const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
         itemImage: { width: 50, height: 50, borderRadius: 8 },
+        imagePlaceholder: {
+            backgroundColor: colors.background,
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderWidth: 1,
+            borderColor: colors.border,
+        },
         quantityText: { fontSize: typography.small, color: colors.textMuted, marginTop: spacing.xs },
         cardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm, marginTop: spacing.md },
         fab: {
@@ -173,6 +221,15 @@ const pageStyles = (theme) => {
             fontSize: 10,
             fontWeight: 'bold',
         },
+        sectionHeader: {
+            fontSize: typography.h3,
+            fontWeight: 'bold',
+            color: colors.heading,
+            padding: spacing.sm,
+            backgroundColor: colors.background,
+            marginTop: spacing.md,
+            marginBottom: spacing.sm,
+        }
     });
 };
 

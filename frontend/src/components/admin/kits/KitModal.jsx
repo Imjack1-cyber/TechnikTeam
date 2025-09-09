@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
-import Modal from '../../ui/Modal';
 import apiClient from '../../../services/apiClient';
 import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../store/authStore';
 import { getCommonStyles } from '../../../styles/commonStyles';
+import AdminModal from '../../ui/AdminModal';
 
 const KitModal = ({ isOpen, onClose, onSuccess, kit }) => {
     const theme = useAuthStore(state => state.theme);
@@ -46,26 +46,28 @@ const KitModal = ({ isOpen, onClose, onSuccess, kit }) => {
 	};
 
 	return (
-		<Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? "Kit bearbeiten" : "Neues Kit anlegen"}>
-			<ScrollView>
-				{error && <Text style={styles.errorText}>{error}</Text>}
-				<View style={styles.formGroup}>
-					<Text style={styles.label}>Name des Kits</Text>
-					<TextInput style={styles.input} value={formData.name} onChangeText={(val) => handleChange('name', val)} />
-				</View>
-				<View style={styles.formGroup}>
-					<Text style={styles.label}>Beschreibung</Text>
-					<TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={(val) => handleChange('description', val)} multiline />
-				</View>
-				<View style={styles.formGroup}>
-					<Text style={styles.label}>Physischer Standort des Kits</Text>
-					<TextInput style={styles.input} value={formData.location} onChangeText={(val) => handleChange('location', val)} placeholder="z.B. Lager, Schrank 3, Fach A" />
-				</View>
-				<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}>
-					{isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Speichern</Text>}
-				</TouchableOpacity>
-			</ScrollView>
-		</Modal>
+		<AdminModal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={isEditMode ? "Kit bearbeiten" : "Neues Kit anlegen"}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+            submitText="Speichern"
+        >
+            {error && <Text style={styles.errorText}>{error}</Text>}
+            <View style={styles.formGroup}>
+                <Text style={styles.label}>Name des Kits</Text>
+                <TextInput style={styles.input} value={formData.name} onChangeText={(val) => handleChange('name', val)} />
+            </View>
+            <View style={styles.formGroup}>
+                <Text style={styles.label}>Beschreibung</Text>
+                <TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={(val) => handleChange('description', val)} multiline />
+            </View>
+            <View style={styles.formGroup}>
+                <Text style={styles.label}>Physischer Standort des Kits</Text>
+                <TextInput style={styles.input} value={formData.location} onChangeText={(val) => handleChange('location', val)} placeholder="z.B. Lager, Schrank 3, Fach A" />
+            </View>
+        </AdminModal>
 	);
 };
 

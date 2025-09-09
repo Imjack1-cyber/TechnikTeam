@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import Modal from '../../ui/Modal';
 import apiClient from '../../../services/apiClient';
 import { useToast } from '../../../context/ToastContext';
 import useApi from '../../../hooks/useApi';
@@ -8,6 +7,7 @@ import RelatedItemsManager from './RelatedItemsManager';
 import { useAuthStore } from '../../../store/authStore';
 import { getCommonStyles } from '../../../styles/commonStyles';
 import { Picker } from '@react-native-picker/picker';
+import AdminModal from '../../ui/AdminModal';
 
 const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edit' }) => {
 	const { data: allItems } = useApi(useCallback(() => apiClient.get('/storage'), []));
@@ -86,47 +86,53 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 			setIsSubmitting(false);
 		}
     };
+    
+    const modalProps = useMemo(() => {
+        switch (mode) {
+            case 'create':
+            case 'edit':
+                return { onSubmit: handleSubmit, submitText: 'Speichern', submitButtonVariant: 'primary', isSubmitting };
+            case 'defect':
+                return { onSubmit: handleStatusUpdateSubmit, submitText: 'Speichern', submitButtonVariant: 'primary', isSubmitting };
+            case 'repair':
+                return { onSubmit: handleStatusUpdateSubmit, submitText: 'Als repariert buchen', submitButtonVariant: 'success', isSubmitting };
+            case 'relations':
+                return { onSubmit: null }; // Hide footer
+            default:
+                return { onSubmit: null };
+        }
+    }, [mode, isSubmitting, formData]);
 
 	const renderContent = () => {
 		switch (mode) {
 			case 'defect':
 				return (
 					<>
-						<ScrollView>
-							<Text style={styles.label}>Status</Text>
-							<Picker selectedValue={formData.status || 'DEFECT'} onValueChange={val => handleChange('status', val)}>
-								<Picker.Item label="Defekt melden" value="DEFECT" />
-								<Picker.Item label="Nicht reparierbar" value="UNREPAIRABLE" />
-							</Picker>
-							<Text style={styles.label}>Anzahl</Text>
-							<TextInput style={styles.input} value={String(formData.defective_quantity_change || '')} onChangeText={val => handleChange('defective_quantity_change', val)} keyboardType="number-pad"/>
-							<Text style={styles.label}>Grund</Text>
-							<TextInput style={[styles.input, styles.textArea]} value={formData.defect_reason_change || ''} onChangeText={val => handleChange('defect_reason_change', val)} multiline/>
-						</ScrollView>
-						<TouchableOpacity style={[styles.button, styles.primaryButton, { marginTop: 16 }]} onPress={handleStatusUpdateSubmit} disabled={isSubmitting}>
-                            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Speichern</Text>}
-                        </TouchableOpacity>
+                        <Text style={styles.label}>Status</Text>
+                        <Picker selectedValue={formData.status || 'DEFECT'} onValueChange={val => handleChange('status', val)}>
+                            <Picker.Item label="Defekt melden" value="DEFECT" />
+                            <Picker.Item label="Nicht reparierbar" value="UNREPAIRABLE" />
+                        </Picker>
+                        <Text style={styles.label}>Anzahl</Text>
+                        <TextInput style={styles.input} value={String(formData.defective_quantity_change || '')} onChangeText={val => handleChange('defective_quantity_change', val)} keyboardType="number-pad"/>
+                        <Text style={styles.label}>Grund</Text>
+                        <TextInput style={[styles.input, styles.textArea]} value={formData.defect_reason_change || ''} onChangeText={val => handleChange('defect_reason_change', val)} multiline/>
 					</>
 				);
 			case 'repair':
 				return (
                     <>
-                        <ScrollView>
-                            <Text style={styles.label}>Anzahl reparierter Artikel</Text>
-                            <TextInput style={styles.input} value={String(formData.repaired_quantity || '')} onChangeText={val => handleChange('repaired_quantity', val)} keyboardType="number-pad"/>
-                            <Text style={styles.label}>Notiz</Text>
-                            <TextInput style={[styles.input, styles.textArea]} value={formData.repair_notes || ''} onChangeText={val => handleChange('repair_notes', val)} multiline/>
-                        </ScrollView>
-                        <TouchableOpacity style={[styles.button, styles.successButton, { marginTop: 16 }]} onPress={handleStatusUpdateSubmit} disabled={isSubmitting}>
-                            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Als repariert buchen</Text>}
-                        </TouchableOpacity>
+                        <Text style={styles.label}>Anzahl reparierter Artikel</Text>
+                        <TextInput style={styles.input} value={String(formData.repaired_quantity || '')} onChangeText={val => handleChange('repaired_quantity', val)} keyboardType="number-pad"/>
+                        <Text style={styles.label}>Notiz</Text>
+                        <TextInput style={[styles.input, styles.textArea]} value={formData.repair_notes || ''} onChangeText={val => handleChange('repair_notes', val)} multiline/>
                     </>
                 );
 			case 'relations':
 				return <RelatedItemsManager item={item} allItems={allItems || []} onSave={onSuccess} onCancel={onClose} />;
 			default:
 				return (
-					<ScrollView>
+					<>
 						<Text style={styles.label}>Name</Text>
 						<TextInput style={styles.input} value={formData.name || ''} onChangeText={val => handleChange('name', val)} />
 						<Text style={styles.label}>Kategorie</Text>
@@ -143,9 +149,8 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
                                 <TextInput style={styles.input} value={String(formData.maxQuantity || '')} onChangeText={val => handleChange('maxQuantity', val)} keyboardType="number-pad"/>
                             </View>
                         </View>
-						<TouchableOpacity style={[styles.button, styles.primaryButton, { marginTop: 16 }]} onPress={handleSubmit} disabled={isSubmitting}><Text style={styles.buttonText}>Speichern</Text></TouchableOpacity>
-                        {mode === 'edit' && <TouchableOpacity style={[styles.button, styles.secondaryButton, {marginTop: 8}]} onPress={() => setMode('relations')}><Text style={styles.buttonText}>Zugehörige Artikel</Text></TouchableOpacity>}
-					</ScrollView>
+                        {mode === 'edit' && <TouchableOpacity style={[styles.button, styles.secondaryButton, {marginTop: 16}]} onPress={() => setMode('relations')}><Text style={styles.buttonText}>Zugehörige Artikel</Text></TouchableOpacity>}
+					</>
 				);
 		}
 	};
@@ -162,10 +167,15 @@ const StorageItemModal = ({ isOpen, onClose, onSuccess, item, initialMode = 'edi
 	};
 
 	return (
-		<Modal isOpen={isOpen} onClose={onClose} title={getTitle()}>
+		<AdminModal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={getTitle()}
+            {...modalProps}
+        >
 			{error && <Text style={styles.errorText}>{error}</Text>}
 			{renderContent()}
-		</Modal>
+		</AdminModal>
 	);
 };
 

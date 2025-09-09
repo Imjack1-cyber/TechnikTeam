@@ -32,7 +32,7 @@ public class AdminVenueResource {
 	private final VenueDAO venueDAO;
 	private final FileService fileService;
 	private final AdminLogService adminLogService;
-    private final Gson gson = new Gson();
+	private final Gson gson = new Gson();
 
 	@Autowired
 	public AdminVenueResource(VenueDAO venueDAO, FileService fileService, AdminLogService adminLogService) {
@@ -48,7 +48,7 @@ public class AdminVenueResource {
 		return ResponseEntity.ok(new ApiResponse(true, "Venues retrieved successfully.", venues));
 	}
 
-	@PostMapping
+	@PostMapping(consumes = {"multipart/form-data"})
 	@Operation(summary = "Create a new venue")
 	public ResponseEntity<ApiResponse> createVenue(@RequestPart("venue") String venueJson,
 			@RequestPart(value = "mapImage", required = false) MultipartFile mapImage,
@@ -69,7 +69,7 @@ public class AdminVenueResource {
 				HttpStatus.CREATED);
 	}
 
-	@PostMapping("/{id}")
+	@PostMapping(value = "/{id}", consumes = {"multipart/form-data"})
 	@Operation(summary = "Update a venue")
 	public ResponseEntity<ApiResponse> updateVenue(@PathVariable int id, @RequestPart("venue") String venueJson,
 			@RequestPart(value = "mapImage", required = false) MultipartFile mapImage,
@@ -85,9 +85,9 @@ public class AdminVenueResource {
 					securityUser.getUser(), "venues");
 			venue.setMapImagePath(savedFile.getFilepath());
 		} else {
-            // If no new image is sent, keep the old one.
+            // If no new image is sent, keep the old one. This handles the case where a user just updates text.
             venueDAO.findById(id).ifPresent(existingVenue -> {
-                if (venue.getMapImagePath() == null) {
+                if (venue.getMapImagePath() == null) { // Retain old path if no new file is sent
                     venue.setMapImagePath(existingVenue.getMapImagePath());
                 }
             });

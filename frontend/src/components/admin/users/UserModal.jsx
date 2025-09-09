@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import Modal from '../../ui/Modal';
 import PermissionsTab from './PermissionTab';
 import apiClient from '../../../services/apiClient';
 import { useToast } from '../../../context/ToastContext';
@@ -8,6 +7,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { getCommonStyles } from '../../../styles/commonStyles';
 import { getThemeColors } from '../../../styles/theme';
 import { Picker } from '@react-native-picker/picker';
+import AdminModal from '../../ui/AdminModal';
 
 const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions, isLoadingData }) => {
 	const [activeTab, setActiveTab] = useState('general');
@@ -103,29 +103,28 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
     );
 
 	return (
-		<Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? `Benutzer: ${user.username}` : 'Neuen Benutzer anlegen'}>
-			<View style={{ flex: 1 }}>
-                <View style={styles.tabs}>
-                    <TouchableOpacity style={[styles.tabButton, activeTab === 'general' && styles.activeTab]} onPress={() => setActiveTab('general')}><Text>Allgemein</Text></TouchableOpacity>
-                    <TouchableOpacity style={[styles.tabButton, activeTab === 'permissions' && styles.activeTab]} onPress={() => setActiveTab('permissions')}><Text>Berechtigungen</Text></TouchableOpacity>
-                    {isEditMode && <TouchableOpacity style={[styles.tabButton, activeTab === 'notes' && styles.activeTab]} onPress={() => setActiveTab('notes')}><Text>Notizen</Text></TouchableOpacity>}
-                </View>
+		<AdminModal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={isEditMode ? `Benutzer: ${user.username}` : 'Neuen Benutzer anlegen'}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+            submitText="Benutzer speichern"
+        >
+            <View style={styles.tabs}>
+                <TouchableOpacity style={[styles.tabButton, activeTab === 'general' && styles.activeTab]} onPress={() => setActiveTab('general')}><Text>Allgemein</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.tabButton, activeTab === 'permissions' && styles.activeTab]} onPress={() => setActiveTab('permissions')}><Text>Berechtigungen</Text></TouchableOpacity>
+                {isEditMode && <TouchableOpacity style={[styles.tabButton, activeTab === 'notes' && styles.activeTab]} onPress={() => setActiveTab('notes')}><Text>Notizen</Text></TouchableOpacity>}
+            </View>
 
-				{error && <Text style={styles.errorText}>{error}</Text>}
-				
-                <View style={{ flex: 1 }}>
-                    {activeTab === 'general' && renderGeneralTab()}
-                    {activeTab === 'permissions' && <PermissionsTab groupedPermissions={groupedPermissions} assignedIds={formData.permissionIds || new Set()} onPermissionChange={handlePermissionChange} isLoading={isLoadingData} />}
-                    {activeTab === 'notes' && isEditMode && renderNotesTab()}
-                </View>
-
-				<View style={styles.modalFooter}>
-                    <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}>
-                        {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Benutzer speichern</Text>}
-                    </TouchableOpacity>
-                </View>
-			</View>
-		</Modal>
+            {error && <Text style={styles.errorText}>{error}</Text>}
+            
+            <View style={{ flex: 1 }}>
+                {activeTab === 'general' && renderGeneralTab()}
+                {activeTab === 'permissions' && <PermissionsTab groupedPermissions={groupedPermissions} assignedIds={formData.permissionIds || new Set()} onPermissionChange={handlePermissionChange} isLoading={isLoadingData} />}
+                {activeTab === 'notes' && isEditMode && renderNotesTab()}
+            </View>
+		</AdminModal>
 	);
 };
 

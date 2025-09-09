@@ -82,6 +82,10 @@ const AdminMeetingsPage = () => {
 	return (
 		<View style={styles.container}>
 			<Text style={styles.title}>Meetings für "{courseName}"</Text>
+            <TouchableOpacity style={[styles.button, styles.successButton, { margin: 16, alignSelf: 'flex-start' }]} onPress={() => openModal()}>
+                <Icon name="plus" size={16} color="#fff" />
+                <Text style={styles.buttonText}>Neues Meeting</Text>
+            </TouchableOpacity>
 
 			{loading && <ActivityIndicator size="large" />}
 			{error && <Text style={styles.errorText}>{error}</Text>}

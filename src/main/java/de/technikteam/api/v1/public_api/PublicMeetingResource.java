@@ -86,28 +86,33 @@ public class PublicMeetingResource {
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		User user = securityUser.getUser();
 
-		if ("signup".equalsIgnoreCase(action)) {
-			MeetingSignupService.SignupResult result = signupService.signupOrWaitlist(user.getId(), id, user.getId());
-			Map<String, Object> data = new HashMap<>();
-			data.put("status", result.status.name());
+		try {
+			if ("signup".equalsIgnoreCase(action)) {
+				MeetingSignupService.SignupResult result = signupService.signupOrWaitlist(user.getId(), id, user.getId());
+				Map<String, Object> data = new HashMap<>();
+				data.put("status", result.status.name());
 
-			if (result.status == MeetingSignupService.SignupStatus.ENROLLED
-					|| result.status == MeetingSignupService.SignupStatus.WAITLISTED) {
-				return ResponseEntity.ok(new ApiResponse(true, result.message, data));
-			} else if (result.status == MeetingSignupService.SignupStatus.ALREADY_ENROLLED) {
-				return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiResponse(false, result.message, data));
+				if (result.status == MeetingSignupService.SignupStatus.ENROLLED
+						|| result.status == MeetingSignupService.SignupStatus.WAITLISTED) {
+					return ResponseEntity.ok(new ApiResponse(true, result.message, data));
+				} else {
+					// Covers ALREADY_ENROLLED and ERROR cases with a user-friendly message
+					return ResponseEntity.badRequest().body(new ApiResponse(false, result.message, data));
+				}
+			} else if ("signoff".equalsIgnoreCase(action)) {
+				if (signupService.signoffFromMeeting(user.getId(), id)) {
+					return ResponseEntity.ok(new ApiResponse(true, "Abmeldung erfolgreich.", null));
+				} else {
+					// This case is unlikely but handled for completeness
+					return ResponseEntity.badRequest()
+							.body(new ApiResponse(false, "Abmeldung war nicht möglich.", null));
+				}
 			} else {
-				return ResponseEntity.internalServerError().body(new ApiResponse(false, result.message, data));
+				return ResponseEntity.badRequest().body(new ApiResponse(false, "Unbekannte Aktion.", null));
 			}
-		} else if ("signoff".equalsIgnoreCase(action)) {
-			if (signupService.signoffFromMeeting(user.getId(), id)) {
-				return ResponseEntity.ok(new ApiResponse(true, "Abmeldung erfolgreich.", null));
-			} else {
-				return ResponseEntity.internalServerError()
-						.body(new ApiResponse(false, "Abmeldung konnte nicht verarbeitet werden.", null));
-			}
-		} else {
-			return ResponseEntity.badRequest().body(new ApiResponse(false, "Unbekannte Aktion.", null));
-		}
+        } catch (Exception e) {
+            // Catch any unexpected exceptions from the service layer
+            return ResponseEntity.internalServerError().body(new ApiResponse(false, "Ein interner Serverfehler ist aufgetreten: " + e.getMessage(), null));
+        }
 	}
 }

@@ -110,7 +110,7 @@ const MessageView = () => {
 				contentContainerStyle={{ padding: spacing.md }}
 			/>
 			<View style={styles.inputContainer}>
-				<TextInput style={styles.input} value={newMessage} onChangeText={setNewMessage} placeholder="Nachricht schreiben..." />
+				<TextInput style={styles.input} value={newMessage} onChangeText={setNewMessage} placeholder="Nachricht schreiben..." multiline maxLength={1024} />
 				<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit}><Text style={styles.buttonText}>Senden</Text></TouchableOpacity>
 			</View>
 			{isManageModalOpen && conversation && <ManageParticipantsModal isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} onAddUsers={() => { }} onRemoveUser={() => { }} conversation={conversation} />}
@@ -126,12 +126,12 @@ const pageStyles = (theme) => {
 		bubbleContainer: { flexDirection: 'row', maxWidth: '80%', marginVertical: spacing.xs },
 		sent: { alignSelf: 'flex-end', justifyContent: 'flex-end' },
 		received: { alignSelf: 'flex-start', justifyContent: 'flex-start' },
-		bubble: { padding: spacing.sm, borderRadius: 18 },
+		bubble: { padding: spacing.sm, borderRadius: 18, flexShrink: 1 },
 		sender: { fontWeight: 'bold', fontSize: typography.small, marginBottom: 2 },
 		metaContainer: { flexDirection: 'row', alignSelf: 'flex-end', alignItems: 'center', gap: spacing.xs, marginTop: 4 },
 		timestamp: { fontSize: typography.caption, color: colors.textMuted },
 		inputContainer: { flexDirection: 'row', padding: spacing.sm, borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, gap: spacing.sm },
-		input: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: spacing.md, backgroundColor: colors.background }
+		input: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: spacing.md, backgroundColor: colors.background, maxHeight: 120, paddingVertical: 10 }
 	});
 };
 

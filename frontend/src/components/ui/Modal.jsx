@@ -48,6 +48,7 @@ const styles = StyleSheet.create({
 		borderRadius: 8,
 		width: '100%',
 		maxHeight: '90%',
+        flexShrink: 1, // Allow the container to shrink if content is large
 		shadowColor: "#000",
 		shadowOffset: {
 			width: 0,

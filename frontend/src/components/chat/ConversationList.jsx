@@ -16,7 +16,7 @@ const ConversationList = () => {
 	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
 	const navigation = useNavigation();
     const route = useRoute(); // Access route to get current conversationId if any
-    const selectedConversationId = route.params?.conversationId;
+    const selectedConversationId = parseInt(route.params?.conversationId, 10);
 
 	const apiCall = useCallback(() => apiClient.get('/public/chat/conversations'), []);
 	const { data: conversations, loading, error, reload } = useApi(apiCall);
@@ -60,7 +60,7 @@ const ConversationList = () => {
 					if (result.success) {
 						addToast('Gruppe wurde gelöscht.', 'success');
 						if (selectedConversationId === conv.id) {
-							navigation.navigate('ConversationList'); // Go back to list if deleted current chat
+							navigation.navigate('Chat'); // Go back to welcome screen if deleted current chat
 						}
 						reload();
 					} else { throw new Error(result.message); }

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
-import Modal from '../../ui/Modal';
 import apiClient from '../../../services/apiClient';
 import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../store/authStore';
 import { getCommonStyles } from '../../../styles/commonStyles';
 import BouncyCheckbox from "react-native-bouncy-checkbox";
 import { Picker } from '@react-native-picker/picker';
+import AdminModal from '../../ui/AdminModal';
 
 const AttendanceModal = ({ isOpen, onClose, onSuccess, cellData }) => {
     const theme = useAuthStore(state => state.theme);
@@ -91,44 +91,42 @@ const AttendanceModal = ({ isOpen, onClose, onSuccess, cellData }) => {
 	};
 
 	return (
-		<Modal
+		<AdminModal
 			isOpen={isOpen}
 			onClose={onClose}
 			title={`Eintrag bearbeiten für: ${cellData.userName}`}
 		>
-            <ScrollView>
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Teilnahme am Meeting: "{cellData.meetingName}"</Text>
-                    {meetingError && <Text style={styles.errorText}>{meetingError}</Text>}
-                    <View style={{flexDirection: 'row', alignItems: 'center', marginVertical: 16}}>
-                        <BouncyCheckbox isChecked={attended} onPress={(isChecked) => setAttended(isChecked)} />
-                        <Text>Hat am Meeting teilgenommen</Text>
-                    </View>
-                    <Text style={styles.label}>Anmerkungen zum Meeting</Text>
-                    <TextInput style={[styles.input, styles.textArea]} value={meetingRemarks} onChangeText={setMeetingRemarks} multiline/>
-                    <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleMeetingSubmit} disabled={isSubmittingMeeting}>
-                        {isSubmittingMeeting ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Meeting-Teilnahme speichern</Text>}
-                    </TouchableOpacity>
+            <View style={styles.card}>
+                <Text style={styles.cardTitle}>Teilnahme am Meeting: "{cellData.meetingName}"</Text>
+                {meetingError && <Text style={styles.errorText}>{meetingError}</Text>}
+                <View style={{flexDirection: 'row', alignItems: 'center', marginVertical: 16}}>
+                    <BouncyCheckbox isChecked={attended} onPress={(isChecked) => setAttended(isChecked)} />
+                    <Text>Hat am Meeting teilgenommen</Text>
                 </View>
+                <Text style={styles.label}>Anmerkungen zum Meeting</Text>
+                <TextInput style={[styles.input, styles.textArea]} value={meetingRemarks} onChangeText={setMeetingRemarks} multiline/>
+                <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleMeetingSubmit} disabled={isSubmittingMeeting}>
+                    {isSubmittingMeeting ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Meeting-Teilnahme speichern</Text>}
+                </TouchableOpacity>
+            </View>
 
-                <View style={[styles.card, {marginTop: 16}]}>
-                    <Text style={styles.cardTitle}>Gesamt-Qualifikation für Kurs: "{cellData.courseName}"</Text>
-                    {qualError && <Text style={styles.errorText}>{qualError}</Text>}
-                    <Text style={styles.label}>Status</Text>
-                    <Picker selectedValue={qualStatus} onValueChange={setQualStatus}>
-                        <Picker.Item label="Besucht" value="BESUCHT" />
-                        <Picker.Item label="Absolviert" value="ABSOLVIERT" />
-                        <Picker.Item label="Bestanden (Qualifiziert)" value="BESTANDEN" />
-                        <Picker.Item label="Nicht Besucht (Eintrag entfernen)" value="NICHT BESUCHT" />
-                    </Picker>
-                    <Text style={styles.label}>Anmerkungen zur Qualifikation</Text>
-                    <TextInput style={[styles.input, styles.textArea]} value={qualRemarks} onChangeText={setQualRemarks} multiline/>
-                    <TouchableOpacity style={[styles.button, styles.successButton]} onPress={handleQualificationSubmit} disabled={isSubmittingQual}>
-                        {isSubmittingQual ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Qualifikation speichern</Text>}
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
-		</Modal>
+            <View style={[styles.card, {marginTop: 16}]}>
+                <Text style={styles.cardTitle}>Gesamt-Qualifikation für Kurs: "{cellData.courseName}"</Text>
+                {qualError && <Text style={styles.errorText}>{qualError}</Text>}
+                <Text style={styles.label}>Status</Text>
+                <Picker selectedValue={qualStatus} onValueChange={setQualStatus}>
+                    <Picker.Item label="Besucht" value="BESUCHT" />
+                    <Picker.Item label="Absolviert" value="ABSOLVIERT" />
+                    <Picker.Item label="Bestanden (Qualifiziert)" value="BESTANDEN" />
+                    <Picker.Item label="Nicht Besucht (Eintrag entfernen)" value="NICHT BESUCHT" />
+                </Picker>
+                <Text style={styles.label}>Anmerkungen zur Qualifikation</Text>
+                <TextInput style={[styles.input, styles.textArea]} value={qualRemarks} onChangeText={setQualRemarks} multiline/>
+                <TouchableOpacity style={[styles.button, styles.successButton]} onPress={handleQualificationSubmit} disabled={isSubmittingQual}>
+                    {isSubmittingQual ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Qualifikation speichern</Text>}
+                </TouchableOpacity>
+            </View>
+		</AdminModal>
 	);
 };
 

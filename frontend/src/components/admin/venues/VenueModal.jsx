@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, Image } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import Modal from '../../ui/Modal';
 import apiClient from '../../../services/apiClient';
 import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../store/authStore';
 import { getCommonStyles } from '../../../styles/commonStyles';
 import Icon from 'react-native-vector-icons/FontAwesome5';
+import AdminModal from '../../ui/AdminModal';
 
 const VenueModal = ({ isOpen, onClose, onSuccess, venue }) => {
     const theme = useAuthStore(state => state.theme);
@@ -54,19 +54,17 @@ const VenueModal = ({ isOpen, onClose, onSuccess, venue }) => {
                 name: mapImage.name,
                 type: mapImage.mimeType,
             });
-        } else {
-            // If no new image is selected but an old one exists, we don't want to lose it.
-            // The backend must handle the case where `mapImage` part is absent.
         }
 
         try {
             const endpoint = venue ? `/admin/venues/${venue.id}` : '/admin/venues';
-            // PUT doesn't typically support multipart, Spring Boot handles it with some configuration.
-            // Using POST for both create and update with multipart is more reliable.
+            const method = 'POST'; // Use POST for both create and update with multipart for reliability
             const result = await apiClient.request(endpoint, {
-                method: venue ? 'PUT' : 'POST',
+                method: method,
                 body: data,
-                headers: { 'Content-Type': 'multipart/form-data' }
+                // The Content-Type header is intentionally NOT set here.
+                // The fetch API will automatically set it to 'multipart/form-data'
+                // with the correct boundary when the body is a FormData object.
             });
 
             if (result.success) {
@@ -81,37 +79,38 @@ const VenueModal = ({ isOpen, onClose, onSuccess, venue }) => {
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={venue ? 'Ort bearbeiten' : 'Neuen Ort erstellen'}>
-            <ScrollView>
-                {error && <Text style={styles.errorText}>{error}</Text>}
-                <View style={styles.formGroup}>
-                    <Text style={styles.label}>Name des Ortes</Text>
-                    <TextInput style={styles.input} value={formData.name} onChangeText={val => setFormData({ ...formData, name: val })} />
-                </View>
-                <View style={styles.formGroup}>
-                    <Text style={styles.label}>Adresse (optional)</Text>
-                    <TextInput style={styles.input} value={formData.address} onChangeText={val => setFormData({ ...formData, address: val })} />
-                </View>
-                <View style={styles.formGroup}>
-                    <Text style={styles.label}>Notizen</Text>
-                    <TextInput style={[styles.input, styles.textArea]} value={formData.notes} onChangeText={val => setFormData({ ...formData, notes: val })} multiline />
-                </View>
+        <AdminModal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={venue ? 'Ort bearbeiten' : 'Neuen Ort erstellen'}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+            submitText="Speichern"
+        >
+            {error && <Text style={styles.errorText}>{error}</Text>}
+            <View style={styles.formGroup}>
+                <Text style={styles.label}>Name des Ortes</Text>
+                <TextInput style={styles.input} value={formData.name} onChangeText={val => setFormData({ ...formData, name: val })} />
+            </View>
+            <View style={styles.formGroup}>
+                <Text style={styles.label}>Adresse (optional)</Text>
+                <TextInput style={styles.input} value={formData.address} onChangeText={val => setFormData({ ...formData, address: val })} />
+            </View>
+            <View style={styles.formGroup}>
+                <Text style={styles.label}>Notizen</Text>
+                <TextInput style={[styles.input, styles.textArea]} value={formData.notes} onChangeText={val => setFormData({ ...formData, notes: val })} multiline />
+            </View>
 
-                <View style={styles.formGroup}>
-                    <Text style={styles.label}>Raumplan / Kartenbild (optional)</Text>
-                    <TouchableOpacity style={[styles.button, styles.secondaryButton, { alignSelf: 'flex-start' }]} onPress={handlePickImage}>
-                        <Icon name="image" size={16} />
-                        <Text>Bild auswählen</Text>
-                    </TouchableOpacity>
-                    {mapImage && <Text style={{ marginTop: 8 }}>Ausgewählt: {mapImage.name}</Text>}
-                    {venue?.mapImagePath && !mapImage && <Text style={{ marginTop: 8 }}>Aktuelles Bild bleibt erhalten.</Text>}
-                </View>
-
-                <TouchableOpacity style={[styles.button, styles.primaryButton, { marginTop: 24 }]} onPress={handleSubmit} disabled={isSubmitting}>
-                    {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Speichern</Text>}
+            <View style={styles.formGroup}>
+                <Text style={styles.label}>Raumplan / Kartenbild (optional)</Text>
+                <TouchableOpacity style={[styles.button, styles.secondaryButton, { alignSelf: 'flex-start' }]} onPress={handlePickImage}>
+                    <Icon name="image" size={16} />
+                    <Text>Bild auswählen</Text>
                 </TouchableOpacity>
-            </ScrollView>
-        </Modal>
+                {mapImage && <Text style={{ marginTop: 8 }}>Ausgewählt: {mapImage.name}</Text>}
+                {venue?.mapImagePath && !mapImage && <Text style={{ marginTop: 8 }}>Aktuelles Bild bleibt erhalten.</Text>}
+            </View>
+        </AdminModal>
     );
 };
 
