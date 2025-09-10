@@ -1,92 +1,128 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import React, { useCallback, useState } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import useApi from '../../hooks/useApi';
+import apiClient from '../../services/apiClient';
 import { useAuthStore } from '../../store/authStore';
+import { useToast } from '../../context/ToastContext';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
+import Icon from '@expo/vector-icons/FontAwesome5';
 
-const ProfileAchievements = ({ achievements }) => {
+const ProfileActiveSessions = ({ onUpdate }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
+    const { addToast } = useToast();
 
-	const renderItem = ({ item }) => (
-		<View style={styles.achievementCard}>
-			<Icon name={item.iconClass.replace('fa-', '')} size={48} color={colors.primary} style={styles.icon} />
-			<Text style={styles.name}>{item.name}</Text>
-			<Text style={styles.description}>{item.description}</Text>
-			<Text style={styles.earnedDate}>Verdient am: {new Date(item.earnedAt).toLocaleDateString('de-DE')}</Text>
-		</View>
-	);
+    const apiCall = useCallback(() => apiClient.get('/public/sessions'), []);
+    const { data: sessions, loading, error, reload } = useApi(apiCall);
 
-	return (
-		<View style={styles.container}>
-			<Text style={styles.title}>Meine Abzeichen</Text>
-			{!achievements || achievements.length === 0 ? (
-				<View style={[styles.card, styles.emptyCard]}>
-					<Text>Du hast noch keine Abzeichen verdient. Nimm an Events teil, um sie freizuschalten!</Text>
-				</View>
-			) : (
-				<FlatList
-					data={achievements}
-					renderItem={renderItem}
-					keyExtractor={item => item.id.toString()}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-					contentContainerStyle={{ paddingHorizontal: spacing.md }}
-				/>
-			)}
-		</View>
-	);
+    const handleRevoke = (session) => {
+        Alert.alert('Sitzung widerrufen?', `Sind Sie sicher, dass Sie die Sitzung von ${session.deviceType || 'Unbekannt'} (${session.ipAddress}) beenden möchten?`, [
+            { text: 'Abbrechen', style: 'cancel' },
+            { text: 'Beenden', style: 'destructive', onPress: async () => {
+                try {
+                    const result = await apiClient.post(`/public/sessions/${session.jti}/revoke`);
+                    if (result.success) {
+                        addToast('Sitzung erfolgreich widerrufen.', 'success');
+                        reload();
+                    } else { throw new Error(result.message); }
+                } catch (err) {
+                    addToast(`Fehler: ${err.message}`, 'error');
+                }
+            }}
+        ]);
+    };
+    
+    const handleRevokeAll = () => {
+        Alert.alert('Alle anderen Sitzungen beenden?', 'Alle anderen angemeldeten Geräte werden abgemeldet.', [
+            { text: 'Abbrechen', style: 'cancel' },
+            { text: 'Alle beenden', style: 'destructive', onPress: async () => {
+                try {
+                    const result = await apiClient.post('/public/sessions/revoke-all');
+                    if (result.success) {
+                        addToast(result.message, 'success');
+                        reload();
+                    } else { throw new Error(result.message); }
+                } catch (err) {
+                    addToast(`Fehler: ${err.message}`, 'error');
+                }
+            }}
+        ]);
+    };
+
+    const getDeviceIcon = (deviceType) => {
+        switch (deviceType?.toLowerCase()) {
+            case 'desktop': return 'desktop';
+            case 'mobile': return 'mobile-alt';
+            case 'tablet': return 'tablet-alt';
+            default: return 'question-circle';
+        }
+    };
+
+    const renderItem = ({ item }) => (
+        <View style={styles.sessionRow}>
+            <Icon name={getDeviceIcon(item.deviceType)} size={24} style={styles.deviceIcon} />
+            <View style={{flex: 1}}>
+                <Text style={styles.deviceInfo}>{item.deviceType || 'Unbekannt'}</Text>
+                <Text style={styles.ipInfo}>{item.ipAddress} ({item.countryCode || 'N/A'})</Text>
+            </View>
+            {item.isCurrentSession ? (
+                <Text style={styles.currentTag}>Aktuell</Text>
+            ) : (
+                <TouchableOpacity onPress={() => handleRevoke(item)}>
+                    <Icon name="times-circle" size={20} color={colors.danger} />
+                </TouchableOpacity>
+            )}
+        </View>
+    );
+
+    return (
+        <View style={styles.card}>
+            <Text style={styles.cardTitle}>Aktive Sitzungen</Text>
+            <Text style={styles.subtitle}>Hier sehen Sie alle Geräte, auf denen Sie aktuell angemeldet sind.</Text>
+            {loading && <ActivityIndicator />}
+            {error && <Text style={styles.errorText}>{error}</Text>}
+
+            <FlatList
+                data={sessions}
+                renderItem={renderItem}
+                keyExtractor={item => item.id.toString()}
+            />
+             <TouchableOpacity style={[styles.button, styles.dangerButton, {marginTop: spacing.md}]} onPress={handleRevokeAll}>
+                <Text style={styles.buttonText}>Alle anderen Sitzungen beenden</Text>
+            </TouchableOpacity>
+        </View>
+    );
 };
 
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
-    return StyleSheet.create({
-        container: {
-            marginTop: spacing.md,
-        },
-        title: {
-            fontSize: typography.h3,
-            fontWeight: '600',
-            color: colors.heading,
-            marginBottom: spacing.md,
-            paddingHorizontal: spacing.md,
-        },
-        achievementCard: {
-            backgroundColor: colors.surface,
-            borderRadius: 8,
-            padding: spacing.md,
+    return {
+        sessionRow: {
+            flexDirection: 'row',
             alignItems: 'center',
-            borderWidth: 1,
+            paddingVertical: spacing.sm,
+            borderBottomWidth: 1,
             borderColor: colors.border,
-            width: 200,
-            marginRight: spacing.md,
+            gap: spacing.md,
         },
-        emptyCard: {
-            marginHorizontal: spacing.md,
+        deviceIcon: {
+            color: colors.textMuted,
         },
-        icon: {
-            marginBottom: spacing.md,
-        },
-        name: {
-            fontSize: typography.body,
+        deviceInfo: {
             fontWeight: 'bold',
-            textAlign: 'center',
+            color: colors.text,
         },
-        description: {
-            color: colors.textMuted,
+        ipInfo: {
             fontSize: typography.small,
-            textAlign: 'center',
-            marginVertical: 4,
-            minHeight: 40,
-        },
-        earnedDate: {
-            fontSize: typography.caption,
             color: colors.textMuted,
-            marginTop: 8,
         },
-    });
+        currentTag: {
+            fontWeight: 'bold',
+            color: colors.success,
+        }
+    };
 };
 
-export default ProfileAchievements;
+export default ProfileActiveSessions;

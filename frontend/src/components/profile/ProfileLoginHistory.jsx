@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, Alert, Platform, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from '@expo/vector-icons/FontAwesome5';
 import { getCommonStyles } from '../../styles/commonStyles';
@@ -70,13 +70,13 @@ const ProfileLoginHistory = ({ loginHistory, onUpdate }) => {
 
     return (
         <View style={styles.card}>
-            <Text style={styles.cardTitle}>Login-Standorte</Text>
-            <Text style={styles.subtitle}>Eine Liste der IP-Adressen, von denen Sie sich zuletzt angemeldet haben.</Text>
+            <Text style={styles.cardTitle}>Bekannte Login-Standorte</Text>
+            <Text style={styles.subtitle}>Eine Liste der IP-Adressen (Standorte), von denen Sie sich zuletzt angemeldet haben und für die kein 2FA erforderlich ist.</Text>
             
             {loginHistory && loginHistory.length > 0 ? (
                 loginHistory.map((item, index) => renderItem(item, index))
             ) : (
-                <Text>Keine Login-Historie verfügbar.</Text>
+                <Text>Keine bekannten Standorte verfügbar.</Text>
             )}
         </View>
     );

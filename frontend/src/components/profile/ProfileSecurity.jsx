@@ -7,6 +7,7 @@ import apiClient from '../../services/apiClient';
 import Modal from '../ui/Modal';
 import TwoFactorAuthSetup from './TwoFactorAuthSetup';
 import { getCommonStyles } from '../../styles/commonStyles';
+import ProfileActiveSessions from './ProfileActiveSessions';
 
 const Disable2FAModal = ({ isOpen, onClose, onSuccess }) => {
     const theme = useAuthStore(state => state.theme);
@@ -70,6 +71,7 @@ const ProfileSecurity = ({ user, onUpdate }) => {
 
 	return (
 		<>
+            <ProfileActiveSessions onUpdate={onUpdate} />
 			<View style={styles.card}>
 				<Text style={styles.cardTitle}>Sicherheit</Text>
 
