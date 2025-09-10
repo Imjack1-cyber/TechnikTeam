@@ -47,31 +47,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         final String requestUri = request.getRequestURI();
         final String contextPath = request.getContextPath();
 
-        // Immediately allow all public auth endpoints to pass through without token validation.
-        if (requestUri.startsWith(contextPath + "/api/v1/auth/")) {
-            filterChain.doFilter(request, response);
-            return;
+        String token = null;
+
+        // 1. Prioritize Authorization header (for native clients and SSE/WS query params)
+        final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+        } else if (requestUri.contains("/sse") || requestUri.contains("/ws/")) {
+            token = request.getParameter("token");
         }
-
-		String token = null;
-
-		// 1. Try to get token from Authorization header (for mobile clients)
-		final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-		if (authHeader != null && authHeader.startsWith("Bearer ")) {
-			token = authHeader.substring(7);
-		}
-
-		// 2. If no header, fall back to cookie (for web app)
-		if (token == null && request.getCookies() != null) {
-			token = Arrays.stream(request.getCookies())
-					.filter(cookie -> AuthService.AUTH_COOKIE_NAME.equals(cookie.getName())).map(Cookie::getValue)
-					.findFirst().orElse(null);
-		}
-
-		// 3. For SSE and WebSockets, fall back to query parameter
-		if (token == null && (request.getRequestURI().contains("/sse") || request.getRequestURI().contains("/ws/"))) {
-			token = request.getParameter("token");
-		}
+        
+        // 2. If no header or query param, fall back to cookie (for web app)
+        if (token == null && request.getCookies() != null) {
+            token = Arrays.stream(request.getCookies())
+                    .filter(cookie -> AuthService.AUTH_COOKIE_NAME.equals(cookie.getName())).map(Cookie::getValue)
+                    .findFirst().orElse(null);
+        }
 
 		if (token == null) {
 			filterChain.doFilter(request, response);

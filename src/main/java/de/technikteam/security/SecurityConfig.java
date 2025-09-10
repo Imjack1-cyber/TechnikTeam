@@ -51,8 +51,10 @@ public class SecurityConfig {
 				.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/", "/index.html", "/favicon.ico", "/*.js", "/*.css", "/assets/**", "/theme-loader.js",
-                                 "/api/v1/auth/**", "/ws/**", "/actuator/health", "/api/v1/public/notifications/sse", "/api/v1/public/verify/**")
+                                 "/api/v1/auth/login", "/api/v1/auth/logout", "/api/v1/auth/verify-2fa", "/api/v1/auth/csrf-token", 
+                                 "/ws/**", "/actuator/health", "/api/v1/public/notifications/sse", "/api/v1/public/verify/**")
 						.permitAll()
+                        .requestMatchers("/api/v1/auth/me").authenticated() // Crucial fix: require authentication but no specific role
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/admin/venues/*").hasRole("ADMIN") // Allow PUT for updates with multipart
 						.requestMatchers("/admin/**", "/api/v1/admin/**").hasRole("ADMIN")

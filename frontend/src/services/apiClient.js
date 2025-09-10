@@ -38,7 +38,10 @@ const apiClient = {
     getBaseUrl: getApiBaseUrl,
 	request: async function(endpoint, options = {}) {
 		const headers = { ...options.headers };
-		if (authToken) {
+		
+        // For native clients, always use the Authorization header.
+        // For web, rely on the HttpOnly cookie and do not send the header.
+		if (Platform.OS !== 'web' && authToken) {
 			headers['Authorization'] = `Bearer ${authToken}`;
 		}
 		

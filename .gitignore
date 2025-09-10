@@ -1,70 +1,90 @@
-# IDE-specific files
-.project
-.classpath
-.settings/
+# ===================================================================
+# IDE and Editor specific
+# ===================================================================
 .idea/
-*.iws
-*.iml
-*.ipr
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
 
-# Maven
+# ===================================================================
+# Java / Maven / Spring Boot
+# ===================================================================
+# Compiled class files
 target/
+*.class
+
+# Log files
+logs/
+*.log
+
+# Package files
+*.jar
+*.war
+*.ear
+
+# Maven build files
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup
 pom.xml.next
 release.properties
 dependency-reduced-pom.xml
-buildNumber.properties
-.mvn/
+build-number.properties
 
-# Node / Frontend
-node_modules/
-dist/
-.npm/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-.pnp/
-.pnp.js
-
-# Local environment files
-.env
-.env.local
-.env.*.local
-flyway.conf
-
-# Log files
-*.log
-logs/
-
-# Temporary and script files from the root directory
-resources/uploads/images
-combine_code_gui.ps1
-run_combine_code_gui.txt
-ProjectTree.ps1
-dependency-tree.txt
-config.json
-technikteam.txt
-technikteam-1.txt
-technikteam-2.txt
-
-# Operating System files
-.DS_Store
-Thumbs.db
-start_development.bat
-DEPLOYMENT.md
-deploy_production.bat
+# Local configuration (sensitive)
+src/main/resources/application.properties
 flyway-dev.conf
 flyway-prod.conf
-config.json
+serviceAccountKey.json
+GeoLite2-Country.mmdb
+frontend/google-services.json
+frontend/app.json
+
+# Generated reports
+/target/site
+
+# ===================================================================
+# Deployment & Infrastructure (Sensitive)
+# ===================================================================
 Caddyfile
-deploy_production.txt
-logs-backend-2025-08-20-1.log.gz
 deploy.bat
-dependency-tree.txt
-.vscode/launch.json
-.settings/org.eclipse.jdt.core.prefs
-/frontend/android
-/frontend/.expo
+
+# ===================================================================
+# Node / NPM / Expo / React Native
+# ===================================================================
+# Log files
+frontend/logs
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/lerna-debug.log*
+
+# Dependency directories
+frontend/node_modules/
+frontend/jspm_packages/
+
+# Expo specific
+frontend/.expo/
+frontend/web-build/
+frontend/dist/
+
+# Local env files (sensitive)
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# Build files and caches
+frontend/.pnp
+frontend/.pnp.js
+frontend/.yarn/cache
+frontend/.yarn/unplugged
+frontend/.yarn/build-state.yml
+frontend/.yarn/install-state.gz
+frontend/yarn.lock
+
+# Android and iOS native project folders
+frontend/android/
+frontend/ios/
+frontend/app.json
