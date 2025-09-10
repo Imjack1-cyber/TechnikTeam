@@ -14,6 +14,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './src/router/navigation';
 import pageRoutes from './src/router/pageRoutes';
 import VerificationPage from './src/pages/VerificationPage';
+import usePageTracking from './src/hooks/usePageTracking';
 
 // This is the crucial linking configuration for React Navigation on the web.
 const linking = {
@@ -154,6 +155,7 @@ const linking = {
 const AppContent = () => {
     const { warningNotification, dismissWarning } = useNotifications();
     usePushNotifications(); // Initialize push notification handling
+    usePageTracking(); // Initialize page tracking for contextual help
     return (
         <SafeAreaProvider>
             <NavigationContainer ref={navigationRef} linking={linking} fallback={<SplashScreen />}>

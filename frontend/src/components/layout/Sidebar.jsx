@@ -3,12 +3,14 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Linkin
 import { useAuthStore } from '../../store/authStore';
 import ThemeSwitcher from '../ui/ThemeSwitcher';
 import Icon from '@expo/vector-icons/FontAwesome5';
-import { getThemeColors } from '../../styles/theme';
+import { getThemeColors, spacing } from '../../styles/theme';
 import apiClient from '../../services/apiClient';
+import { useUIStore } from '../../store/uiStore';
 
 // This component is designed to be used as the `drawerContent` for a React Navigation Drawer.
 const Sidebar = ({ navigation }) => {
 	const { user, navigationItems, logout, layout, theme } = useAuthStore();
+    const { currentPageKey } = useUIStore();
 	const [searchTerm, setSearchTerm] = useState('');
     const colors = getThemeColors(theme);
     const styles = pageStyles(theme);
@@ -84,6 +86,12 @@ const Sidebar = ({ navigation }) => {
 				/>
 			</View>
 			<ScrollView style={styles.navScroller}>
+                {layout.showHelpButton && currentPageKey && (
+                     <TouchableOpacity style={styles.helpLink} onPress={() => navigation.navigate('HelpDetails', { pageKey: currentPageKey })}>
+                        <Icon name="question-circle" style={styles.navIcon} />
+                        <Text style={styles.navLabel}>Hilfe für diese Seite</Text>
+                    </TouchableOpacity>
+                )}
 				<Text style={styles.navSectionTitle}>Benutzerbereich</Text>
 				{userNavItems.map(item => <View key={`${item.label}-${item.url}`}>{renderNavItem(item)}</View>)}
 
@@ -118,6 +126,17 @@ const pageStyles = (theme) => {
         navScroller: { flex: 1 },
         navSectionTitle: { paddingHorizontal: 24, paddingVertical: 8, marginTop: 8, fontSize: 12, fontWeight: '600', textTransform: 'uppercase', color: colors.textMuted },
         navLink: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 24, gap: 16 },
+        helpLink: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingVertical: 12,
+            paddingHorizontal: 24,
+            gap: 16,
+            backgroundColor: colors.primaryLight,
+            borderLeftWidth: 4,
+            borderLeftColor: colors.primary,
+            marginBottom: spacing.md,
+        },
         navIcon: { fontSize: 18, color: colors.textMuted, width: 24, textAlign: 'center' },
         navLabel: { fontSize: 16, fontWeight: '500', color: colors.text },
         badge: { backgroundColor: colors.danger, borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center', marginLeft: 'auto' },
