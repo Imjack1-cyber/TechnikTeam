@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/authStore';
 import Sidebar from '../components/layout/Sidebar';
 import Header from '../components/layout/Header';
 import ErrorBoundary from '../components/common/ErrorBoundary';
+import usePageTracking from '../hooks/usePageTracking';
 
 // --- Import ALL Screen Components ---
 import LoginPage from '../pages/LoginPage';
@@ -153,6 +154,11 @@ const MainDrawerNavigator = () => {
 };
 
 const AppStack = () => {
+    // This component now initializes the page tracking hook,
+    // ensuring it only runs when the user is authenticated and the
+    // main navigation is mounted.
+    usePageTracking();
+
     return (
         <ErrorBoundary>
             <Stack.Navigator
@@ -190,18 +196,13 @@ const RootNavigator = () => {
     return (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
             {maintenanceStatus.mode === 'HARD' && !isAdmin ? (
-                <Stack.Group>
-                    <Stack.Screen name="Maintenance" component={MaintenancePage} />
-                    <Stack.Screen name="Login" component={LoginPage} />
-                </Stack.Group>
+                <Stack.Screen name="Maintenance" component={MaintenancePage} />
             ) : isAuthenticated ? (
                 <Stack.Screen name="App" component={AppStack} />
             ) : (
-                <Stack.Group>
-                    <Stack.Screen name="Login" component={LoginPage} />
-                    <Stack.Screen name="Verification" component={VerificationPage} />
-                </Stack.Group>
+                <Stack.Screen name="Login" component={LoginPage} />
             )}
+             <Stack.Screen name="Verification" component={VerificationPage} />
         </Stack.Navigator>
     );
 };

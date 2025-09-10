@@ -10,13 +10,12 @@ const Header = ({ navigation, route, options }) => {
 	const unseenCount = user?.unseenNotificationsCount || 0;
     const insets = useSafeAreaInsets();
 
-    const canGoBack = navigation.canGoBack();
     const title = options?.title ?? route.name;
 
 	return (
 		<View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? insets.top : 10, height: (Platform.OS === 'ios' ? insets.top : 10) + 54 }]}>
-			<TouchableOpacity style={styles.toggleButton} onPress={canGoBack ? () => navigation.goBack() : () => navigation.dispatch(DrawerActions.toggleDrawer()) }>
-				<Icon name={canGoBack ? 'arrow-left' : 'bars'} size={24} color="#212529" />
+			<TouchableOpacity style={styles.toggleButton} onPress={() => navigation.dispatch(DrawerActions.toggleDrawer()) }>
+				<Icon name={'bars'} size={24} color="#212529" />
 			</TouchableOpacity>
 			<View>
 				<Text style={styles.logo}>{title}</Text>

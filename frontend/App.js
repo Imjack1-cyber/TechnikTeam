@@ -18,7 +18,10 @@ import usePageTracking from './src/hooks/usePageTracking';
 
 // This is the crucial linking configuration for React Navigation on the web.
 const linking = {
-  prefixes: [], // Add your app's custom scheme here for native deep linking if needed
+  prefixes: [
+    'https://technikteam.duckdns.org', 
+    'https://technikteamdev.duckdns.org'
+  ], // Add app domains for deep linking
   config: {
     screens: {
         // Public, unauthenticated screens
@@ -155,15 +158,12 @@ const linking = {
 const AppContent = () => {
     const { warningNotification, dismissWarning } = useNotifications();
     usePushNotifications(); // Initialize push notification handling
-    usePageTracking(); // Initialize page tracking for contextual help
     return (
-        <SafeAreaProvider>
-            <NavigationContainer ref={navigationRef} linking={linking} fallback={<SplashScreen />}>
-                <RootNavigator />
-                <ToastContainer />
-                {warningNotification && <WarningNotification notification={warningNotification} onDismiss={dismissWarning} />}
-            </NavigationContainer>
-        </SafeAreaProvider>
+        <>
+            <RootNavigator />
+            <ToastContainer />
+            {warningNotification && <WarningNotification notification={warningNotification} onDismiss={dismissWarning} />}
+        </>
     );
 };
 
@@ -177,8 +177,8 @@ export default function App() {
                     await useAuthStore.getState().logout();
                 },
                 onMaintenance: () => {
-                    if (navigationRef.current?.isReady()) {
-                        navigationRef.current.navigate('Maintenance');
+                    if (navigationRef.isReady()) {
+                        navigationRef.navigate('Maintenance');
                     }
                 }
             });
@@ -203,8 +203,12 @@ export default function App() {
     }
 
 	return (
-        <ToastProvider>
-		    <AppContent />
-        </ToastProvider>
+        <SafeAreaProvider>
+            <ToastProvider>
+                <NavigationContainer ref={navigationRef} linking={linking} fallback={<SplashScreen />}>
+                    <AppContent />
+                </NavigationContainer>
+            </ToastProvider>
+        </SafeAreaProvider>
 	);
 }

@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import Modal from '../../ui/Modal';
-import apiClient from '../../../services/apiClient';
-import { useToast } from '../../../context/ToastContext';
-import { useAuthStore } from '../../../store/authStore';
-import { getCommonStyles } from '../../../styles/commonStyles';
+import apiClient from '../../services/apiClient';
+import { useToast } from '../../context/ToastContext';
+import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
 import { Picker } from '@react-native-picker/picker';
 import { MultipleSelectList } from 'react-native-dropdown-select-list';
 import TaskDependenciesForm from '../admin/events/TaskDependenciesForm';
