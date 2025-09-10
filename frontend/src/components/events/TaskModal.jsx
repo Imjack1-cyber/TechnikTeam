@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import Modal from '../ui/Modal';
-import apiClient from '../../services/apiClient';
-import { useToast } from '../../context/ToastContext';
-import { useAuthStore } from '../../store/authStore';
-import { getCommonStyles } from '../../styles/commonStyles';
+import Modal from '../../ui/Modal';
+import apiClient from '../../../services/apiClient';
+import { useToast } from '../../../context/ToastContext';
+import { useAuthStore } from '../../../store/authStore';
+import { getCommonStyles } from '../../../styles/commonStyles';
 import { Picker } from '@react-native-picker/picker';
 import { MultipleSelectList } from 'react-native-dropdown-select-list';
+import TaskDependenciesForm from '../admin/events/TaskDependenciesForm';
+import AdminModal from '../ui/AdminModal';
 
 const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
     const theme = useAuthStore(state => state.theme);
@@ -21,6 +23,7 @@ const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
 		status: 'OFFEN',
 		assignedUserIds: [],
 	});
+    const [selectedDependencies, setSelectedDependencies] = useState(new Set());
 
 	useEffect(() => {
 		if (isOpen) {
@@ -31,8 +34,10 @@ const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
 					status: task.status || 'OFFEN',
 					assignedUserIds: task.assignedUsers?.map(u => u.id) || [],
 				});
+                setSelectedDependencies(new Set(task.dependsOn?.map(t => t.id) || []));
 			} else {
 				setFormData({ description: '', details: '', status: 'OFFEN', assignedUserIds: [] });
+                setSelectedDependencies(new Set());
 			}
 		}
 	}, [task, isEditMode, isOpen]);
@@ -51,7 +56,7 @@ const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
 			details: formData.details,
 			status: formData.status,
 			assignedUsers: formData.assignedUserIds.map(id => ({ id })),
-			dependsOn: task?.dependsOn || [],
+			dependsOn: Array.from(selectedDependencies).map(id => ({ id })),
 			requiredItems: task?.requiredItems || [],
 			requiredKits: task?.requiredKits || [],
 			requiredPersons: task?.requiredPersons || 0,
@@ -72,40 +77,49 @@ const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
 	};
     
     const userOptions = allUsers?.map(u => ({ key: u.id, value: u.username })) || [];
+    const allOtherTasks = event.eventTasks?.filter(t => t.id !== task?.id) || [];
 
 	return (
-		<Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? "Aufgabe bearbeiten" : "Neue Aufgabe erstellen"}>
-			<ScrollView>
-				{error && <Text style={styles.errorText}>{error}</Text>}
-				<Text style={styles.label}>Beschreibung (Titel)</Text>
-				<TextInput style={styles.input} value={formData.description} onChangeText={val => handleChange('description', val)} />
+		<AdminModal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={isEditMode ? "Aufgabe bearbeiten" : "Neue Aufgabe erstellen"}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+            submitText="Aufgabe speichern"
+        >
+            {error && <Text style={styles.errorText}>{error}</Text>}
+            <Text style={styles.label}>Beschreibung (Titel)</Text>
+            <TextInput style={styles.input} value={formData.description} onChangeText={val => handleChange('description', val)} />
 
-				<Text style={styles.label}>Details (Markdown unterstützt)</Text>
-				<TextInput style={[styles.input, styles.textArea]} value={formData.details} onChangeText={val => handleChange('details', val)} multiline />
-				
-                <Text style={styles.label}>Status</Text>
-				<Picker selectedValue={formData.status} onValueChange={val => handleChange('status', val)}>
-                    <Picker.Item label="Offen" value="OFFEN" />
-                    <Picker.Item label="In Arbeit" value="IN_ARBEIT" />
-                    <Picker.Item label="Erledigt" value="ERLEDIGT" />
-                </Picker>
-                
-                <Text style={styles.label}>Zugewiesen an</Text>
-                <MultipleSelectList 
-                    setSelected={(val) => handleChange('assignedUserIds', val)} 
-                    data={userOptions} 
-                    save="key"
-                    label="Zugewiesene Mitglieder"
-                    placeholder="Mitglieder auswählen"
-                    searchPlaceholder="Suchen"
-                    boxStyles={styles.input}
-                />
+            <Text style={styles.label}>Details (Markdown unterstützt)</Text>
+            <TextInput style={[styles.input, styles.textArea]} value={formData.details} onChangeText={val => handleChange('details', val)} multiline />
+            
+            <Text style={styles.label}>Status</Text>
+            <Picker selectedValue={formData.status} onValueChange={val => handleChange('status', val)}>
+                <Picker.Item label="Offen" value="OFFEN" />
+                <Picker.Item label="In Arbeit" value="IN_ARBEIT" />
+                <Picker.Item label="Erledigt" value="ERLEDIGT" />
+            </Picker>
+            
+            <Text style={styles.label}>Zugewiesen an</Text>
+            <MultipleSelectList 
+                setSelected={(val) => handleChange('assignedUserIds', val)} 
+                data={userOptions} 
+                save="key"
+                label="Zugewiesene Mitglieder"
+                placeholder="Mitglieder auswählen"
+                searchPlaceholder="Suchen"
+                boxStyles={styles.input}
+                defaultOptions={userOptions.filter(opt => formData.assignedUserIds.includes(opt.key))}
+            />
 
-				<TouchableOpacity style={[styles.button, styles.primaryButton, {marginTop: 16}]} onPress={handleSubmit} disabled={isSubmitting}>
-					{isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Aufgabe speichern</Text>}
-				</TouchableOpacity>
-			</ScrollView>
-		</Modal>
+            <TaskDependenciesForm
+                allTasks={allOtherTasks}
+                selectedDependencies={selectedDependencies}
+                onDependencyChange={setSelectedDependencies}
+            />
+		</AdminModal>
 	);
 };
 

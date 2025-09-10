@@ -12,7 +12,7 @@ import EventGalleryTab from '../components/events/EventGalleryTab';
 import TaskModal from '../components/events/TaskModal';
 import AdminEventTeamTab from '../components/admin/events/AdminEventTeamTab';
 import { getCommonStyles } from '../styles/commonStyles';
-import { getThemeColors, spacing, borders } from '../styles/theme';
+import { getThemeColors, spacing, typography } from '../styles/theme';
 import Icon from '@expo/vector-icons/FontAwesome5';
 
 // TaskList sub-component adapted for React Native
@@ -22,6 +22,12 @@ const TaskList = ({ title, tasks, onToggle, isCollapsed, event, user, canManageT
     const colors = getThemeColors(theme);
     if (!tasks || tasks.length === 0) return null;
 
+    const taskStatusMap = useMemo(() => {
+        const map = new Map();
+        event.eventTasks.forEach(task => map.set(task.id, task.status));
+        return map;
+    }, [event.eventTasks]);
+
     return (
         <View style={{ marginBottom: 16 }}>
             <TouchableOpacity onPress={onToggle} style={styles.accordionHeader}>
@@ -30,14 +36,25 @@ const TaskList = ({ title, tasks, onToggle, isCollapsed, event, user, canManageT
             </TouchableOpacity>
             {!isCollapsed && tasks.map(task => {
                 const isAssigned = task.assignedUsers.some(u => u.id === user.id);
+                const isBlocked = task.dependsOn.some(dep => taskStatusMap.get(dep.id) !== 'ERLEDIGT');
+                
                 return (
-                    <View key={task.id} style={styles.card}>
-                        <Text style={styles.cardTitle}>{task.description}</Text>
+                    <View key={task.id} style={[styles.card, isBlocked && { opacity: 0.6 }]}>
+                        <View style={{flexDirection: 'row', alignItems: 'center', gap: spacing.sm}}>
+                            {isBlocked && <Icon name="lock" size={16} color={colors.textMuted}/>}
+                            <Text style={styles.cardTitle}>{task.description}</Text>
+                        </View>
                         <MarkdownDisplay>{task.details || ''}</MarkdownDisplay>
+                        {task.dependsOn.length > 0 && (
+                            <View style={{marginVertical: spacing.sm}}>
+                                <Text style={{fontWeight: 'bold'}}>Benötigt:</Text>
+                                {task.dependsOn.map(dep => <Text key={dep.id}>- {dep.description}</Text>)}
+                            </View>
+                        )}
                         <Text>Zugewiesen an: {task.assignedUsers.map(u => u.username).join(', ') || 'Niemand'}</Text>
                         <View style={{flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8}}>
                            {canManageTasks && <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => onOpenModal(task)}><Text style={styles.buttonText}>Bearbeiten</Text></TouchableOpacity>}
-                           {!isAssigned && isParticipant && task.assignedUsers.length === 0 && <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => onAction(task.id, 'claim')}><Text style={styles.buttonText}>Übernehmen</Text></TouchableOpacity>}
+                           {!isAssigned && isParticipant && task.assignedUsers.length === 0 && <TouchableOpacity style={[styles.button, styles.successButton, isBlocked && styles.disabledButton]} onPress={() => onAction(task.id, 'claim')} disabled={isBlocked}><Text style={styles.buttonText}>Übernehmen</Text></TouchableOpacity>}
                            {isAssigned && <TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={() => onAction(task.id, 'unclaim')}><Text style={styles.buttonText}>Verlassen</Text></TouchableOpacity>}
                         </View>
                     </View>
