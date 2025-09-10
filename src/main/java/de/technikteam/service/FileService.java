@@ -25,7 +25,7 @@ public class FileService {
 	private final Path fileStorageLocation;
 	private static final Logger logger = LogManager.getLogger(FileService.class);
 
-	// private static final long MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+	private static final long MAX_FILE_SIZE_BYTES = 1000L * 1024 * 1024; // 1000 MB
 
 	@Autowired
 	public FileService(FileDAO fileDAO, ConfigurationService configService, AdminLogService adminLogService) {
@@ -47,12 +47,12 @@ public class FileService {
 				adminUser.getUsername(), categoryId, requiredRole, subDirectory);
 
 		// Security Validations
-		// if (multipartFile.getSize() > MAX_FILE_SIZE_BYTES) {
-		// 	logger.warn("File upload blocked for user {}: File size {} exceeds limit of {} bytes.",
-		// 			adminUser.getUsername(), multipartFile.getSize(), MAX_FILE_SIZE_BYTES);
-		// 	throw new IOException("Dateigröße überschreitet das Limit von 10MB.");
-		// }
-		// logger.trace("File size check passed: {} bytes.", multipartFile.getSize());
+		if (multipartFile.getSize() > MAX_FILE_SIZE_BYTES) {
+			logger.warn("File upload blocked for user {}: File size {} exceeds limit of {} bytes.",
+					adminUser.getUsername(), multipartFile.getSize(), MAX_FILE_SIZE_BYTES);
+			throw new IOException("Dateigröße überschreitet das Limit von 1000MB.");
+		}
+		logger.trace("File size check passed: {} bytes.", multipartFile.getSize());
 
 		FileSignatureValidator.FileTypeValidationResult validationResult = FileSignatureValidator
 				.validateFileType(multipartFile);

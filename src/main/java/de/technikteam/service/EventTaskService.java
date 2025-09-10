@@ -1,5 +1,6 @@
 package de.technikteam.service;
 
+import de.technikteam.api.v1.dto.NotificationPayload;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.EventTaskDAO;
 import de.technikteam.dao.UserDAO;
@@ -101,11 +102,11 @@ public class EventTaskService {
 
 		for (int userId : assignedUserIds) {
 			if (userId != currentUser.getId()) {
-				String title = String.format("Neue Aufgabe in '%s'", event.getName());
-				String description = String.format("%s hat Ihnen die Aufgabe '%s' zugewiesen.",
-						currentUser.getUsername(), task.getDescription());
-				Map<String, Object> payload = Map.of("title", title, "description", description, "level",
-						"Informational", "url", "/veranstaltungen/details/" + event.getId());
+                NotificationPayload payload = new NotificationPayload();
+                payload.setTitle(String.format("Neue Aufgabe in '%s'", event.getName()));
+                payload.setDescription(String.format("%s hat Ihnen die Aufgabe '%s' zugewiesen.", currentUser.getUsername(), task.getDescription()));
+                payload.setLevel("Informational");
+                payload.setUrl("/veranstaltungen/details/" + event.getId());
 				notificationService.sendNotificationToUser(userId, payload);
 			}
 		}
@@ -133,12 +134,11 @@ public class EventTaskService {
 		for (String username : mentionedUsernames) {
 			User mentionedUser = userDAO.getUserByUsername(username);
 			if (mentionedUser != null && mentionedUser.getId() != currentUser.getId()) {
-				String title = String.format("Erwähnung in Aufgabe für '%s'", event.getName());
-				String description = String.format("%s hat Sie in der Aufgabe '%s' erwähnt.", currentUser.getUsername(),
-						task.getDescription());
-
-				Map<String, Object> payload = Map.of("title", title, "description", description, "level",
-						"Informational", "url", "/veranstaltungen/details/" + event.getId());
+                NotificationPayload payload = new NotificationPayload();
+                payload.setTitle(String.format("Erwähnung in Aufgabe für '%s'", event.getName()));
+                payload.setDescription(String.format("%s hat Sie in der Aufgabe '%s' erwähnt.", currentUser.getUsername(), task.getDescription()));
+                payload.setLevel("Informational");
+                payload.setUrl("/veranstaltungen/details/" + event.getId());
 				notificationService.sendNotificationToUser(mentionedUser.getId(), payload);
 			}
 		}

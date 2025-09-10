@@ -3,6 +3,7 @@ package de.technikteam.service;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import de.technikteam.api.v1.dto.EventDebriefingDTO;
+import de.technikteam.api.v1.dto.NotificationPayload;
 import de.technikteam.config.Permissions;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.EventDebriefingDAO;
@@ -74,13 +75,15 @@ public class EventDebriefingService {
 				"Debriefing for event '" + event.getName() + "' submitted/updated.");
 
 		List<Integer> adminIds = userDAO.findUserIdsByPermission(Permissions.EVENT_DEBRIEFING_VIEW);
-		String title = "Neues Event-Debriefing";
-		String description = String.format("Ein Debriefing für das Event '%s' wurde von %s eingereicht.",
-				event.getName(), author.getUsername());
+		
+        NotificationPayload payload = new NotificationPayload();
+        payload.setTitle("Neues Event-Debriefing");
+        payload.setDescription(String.format("Ein Debriefing für das Event '%s' wurde von %s eingereicht.", event.getName(), author.getUsername()));
+        payload.setLevel("Informational");
+        payload.setUrl("/admin/debriefings");
+
 		for (Integer adminId : adminIds) {
 			if (adminId != author.getId()) {
-				Map<String, Object> payload = Map.of("title", title, "description", description, "level",
-						"Informational", "url", "/admin/debriefings");
 				notificationService.sendNotificationToUser(adminId, payload);
 			}
 		}

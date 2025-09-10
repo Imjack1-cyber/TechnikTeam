@@ -2,6 +2,7 @@ package de.technikteam.service;
 
 import com.google.gson.Gson;
 import de.technikteam.api.v1.dto.EventAssignmentDTO;
+import de.technikteam.api.v1.dto.NotificationPayload;
 import de.technikteam.dao.*;
 import de.technikteam.model.*;
 import org.apache.logging.log4j.LogManager;
@@ -133,9 +134,11 @@ public class EventService {
 		// Notify newly added users
 		for (Integer newUserId : newAssigneeIds) {
 			if (!oldAssigneeIds.contains(newUserId)) {
-				String notificationMessage = String.format("Du wurdest zum Event '%s' zugewiesen.", event.getName());
-				Map<String, Object> payload = Map.of("title", "Neue Zuweisung", "description", notificationMessage,
-						"level", "Informational", "url", "/veranstaltungen/details/" + eventId);
+                NotificationPayload payload = new NotificationPayload();
+                payload.setTitle("Neue Zuweisung");
+                payload.setDescription(String.format("Du wurdest zum Event '%s' zugewiesen.", event.getName()));
+                payload.setLevel("Informational");
+                payload.setUrl("/veranstaltungen/details/" + eventId);
 				notificationService.sendNotificationToUser(newUserId, payload);
 			}
 		}
@@ -147,9 +150,11 @@ public class EventService {
 		if (event != null && event.getLeaderUserId() > 0) {
 			String notificationMessage = String.format("%s hat sich vom laufenden Event '%s' abgemeldet. Grund: %s",
 					username, event.getName(), reason);
-
-			Map<String, Object> payload = Map.of("type", "alert", "payload",
-					Map.of("message", notificationMessage, "url", "/veranstaltungen/details/" + eventId));
+            NotificationPayload payload = new NotificationPayload();
+            payload.setTitle("Team-Änderung");
+            payload.setDescription(notificationMessage);
+            payload.setLevel("Important");
+            payload.setUrl("/veranstaltungen/details/" + eventId);
 
 			notificationService.sendNotificationToUser(event.getLeaderUserId(), payload);
 			logger.info("Sent sign-off notification to event leader (ID: {}) for event '{}'", event.getLeaderUserId(),

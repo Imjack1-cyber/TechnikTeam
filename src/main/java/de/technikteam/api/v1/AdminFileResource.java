@@ -87,37 +87,6 @@ public class AdminFileResource {
 		}
 	}
 
-	@GetMapping("/content/{id}")
-	@Operation(summary = "Get a file's text content for editing")
-	public ResponseEntity<ApiResponse> getFileContent(@PathVariable int id) {
-		try {
-			String content = fileService.getFileContent(id);
-			de.technikteam.model.File file = fileDAO.getFileById(id);
-			file.setContent(content);
-			return ResponseEntity.ok(new ApiResponse(true, "File content retrieved.", file));
-		} catch (IOException | SecurityException e) {
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, e.getMessage(), null));
-		}
-	}
-
-	@PutMapping("/content/{id}")
-	@Operation(summary = "Update a file's text content")
-	public ResponseEntity<ApiResponse> updateFileContent(@PathVariable int id,
-			@Valid @RequestBody FileContentUpdateRequest request, @AuthenticationPrincipal SecurityUser securityUser) {
-		try {
-			if (fileService.updateFileContent(id, request.content(), securityUser.getUser())) {
-				return ResponseEntity.ok(new ApiResponse(true, "Datei-Inhalt erfolgreich gespeichert.", null));
-			} else {
-				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-						.body(new ApiResponse(false, "Speichern des Datei-Inhalts fehlgeschlagen.", null));
-			}
-		} catch (IOException | SecurityException e) {
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new ApiResponse(false, e.getMessage(), null));
-		}
-	}
-
 	@PutMapping("/{id}/rename")
 	@Operation(summary = "Rename a file")
 	public ResponseEntity<ApiResponse> renameFile(@PathVariable int id, @Valid @RequestBody FileRenameRequest request,

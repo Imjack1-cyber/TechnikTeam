@@ -1,5 +1,6 @@
 package de.technikteam.service;
 
+import de.technikteam.api.v1.dto.NotificationPayload;
 import de.technikteam.config.Permissions;
 import de.technikteam.dao.*;
 import de.technikteam.model.DamageReport;
@@ -182,13 +183,14 @@ public class StorageService {
 		// Notify admins
 		List<Integer> adminIds = userDAO.findUserIdsByPermission(Permissions.DAMAGE_REPORT_MANAGE);
 		User reporter = userDAO.getUserById(reporterId);
-		String title = "Neue Schadensmeldung";
-		String notificationDescription = String.format("%s hat einen Schaden für '%s' gemeldet.",
-				reporter.getUsername(), item.getName());
 
+        NotificationPayload payload = new NotificationPayload();
+        payload.setTitle("Neue Schadensmeldung");
+        payload.setDescription(String.format("%s hat einen Schaden für '%s' gemeldet.", reporter.getUsername(), item.getName()));
+        payload.setLevel("Important");
+        payload.setUrl("/admin/damage-reports");
+        
 		for (Integer adminId : adminIds) {
-			Map<String, Object> payload = Map.of("title", title, "description", notificationDescription, "level",
-					"Important", "url", "/admin/damage-reports");
 			notificationService.sendNotificationToUser(adminId, payload);
 		}
 

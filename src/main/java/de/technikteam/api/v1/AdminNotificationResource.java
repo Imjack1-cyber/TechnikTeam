@@ -33,12 +33,10 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class AdminNotificationResource {
 
 	private final NotificationService notificationService;
-	private final AuthService authService;
 
 	@Autowired
-	public AdminNotificationResource(NotificationService notificationService, AuthService authService) {
+	public AdminNotificationResource(NotificationService notificationService) {
 		this.notificationService = notificationService;
-		this.authService = authService;
 	}
 
 	@PostMapping

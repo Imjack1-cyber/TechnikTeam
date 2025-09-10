@@ -5,37 +5,45 @@ import apiClient from '../services/apiClient';
 import DownloadWarningModal from '../components/ui/DownloadWarningModal';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useToast } from '../context/ToastContext';
-import ProgressBar from '../components/ui/ProgressBar';
+import { useDownloadStore } from '../store/downloadStore';
+import { v4 as uuidv4 } from 'uuid'; // For generating unique download IDs
 
 const FileLink = ({ file, navigation }) => {
 	const [isModalOpen, setIsModalOpen] = useState(false);
-	const [isDownloading, setIsDownloading] = useState(false);
-	const [downloadProgress, setDownloadProgress] = useState(0);
 	const { addToast } = useToast();
+    const addDownload = useDownloadStore(state => state.addDownload);
+    const markDownloadAsLocallyComplete = useDownloadStore(state => state.markDownloadAsLocallyComplete);
 
 	const isMarkdown = file.filename.toLowerCase().endsWith('.md');
 
 	const handleDownload = async () => {
-		setIsDownloading(true);
-		setDownloadProgress(0);
-		addToast(`Download für "${file.filename}" wird gestartet...`, 'info');
+		addToast(`Download für "${file.filename}" wird vorbereitet...`, 'info');
+        const downloadId = uuidv4();
+        addDownload(downloadId, file.filename);
 
 		try {
 			await apiClient.downloadFile(file.id, file.filename, (progress) => {
-				const currentProgress = progress.totalBytesWritten / progress.totalBytesExpectedToWrite;
-				setDownloadProgress(currentProgress);
-			});
-			addToast(`"${file.filename}" erfolgreich heruntergeladen.`, 'success');
+                // This callback is for the local download progress (mainly UI)
+                useDownloadStore.getState().updateDownload(downloadId, {
+                    progress: progress.totalBytesWritten,
+                    total: progress.totalBytesExpectedToWrite,
+                    status: 'downloading',
+                    fileUri: progress.uri,
+                });
+            });
+
+            // Signal to the store that the local download process has finished.
+            // The store will handle dismissing any related native notifications.
+            markDownloadAsLocallyComplete(downloadId);
+
 		} catch (error) {
 			console.error('Download error:', error);
 			addToast(`Download fehlgeschlagen: ${error.message}`, 'error');
-		} finally {
-			setIsDownloading(false);
+            useDownloadStore.getState().updateDownload(downloadId, { status: 'error' });
 		}
 	};
 
 	const handlePress = () => {
-		if (isDownloading) return;
 		if (file.needsWarning) {
 			setIsModalOpen(true);
 		} else {
@@ -46,18 +54,13 @@ const FileLink = ({ file, navigation }) => {
 	return (
 		<>
 			<View style={styles.fileRow}>
-				<TouchableOpacity style={styles.fileLink} onPress={handlePress} disabled={isDownloading}>
-					<Icon name="download" size={16} color={isDownloading ? "#ccc" : "#007bff"} />
+				<TouchableOpacity style={styles.fileLink} onPress={handlePress}>
+					<Icon name="download" size={16} color={"#007bff"} />
 					<View style={{ flex: 1 }}>
-						<Text style={[styles.fileName, isDownloading && { color: "#ccc" }]}>{file.filename}</Text>
-						{isDownloading && (
-							<View style={{ marginTop: 4 }}>
-								<ProgressBar progress={downloadProgress} />
-							</View>
-						)}
+						<Text style={styles.fileName}>{file.filename}</Text>
 					</View>
 				</TouchableOpacity>
-				{isMarkdown && !isDownloading && (
+				{isMarkdown && (
 					<TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('FileEditor', { fileId: file.id })}>
 						<Icon name="pen-alt" size={12} color="#fff" />
 						<Text style={styles.editButtonText}>Bearbeiten</Text>

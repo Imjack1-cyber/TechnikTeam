@@ -4,6 +4,8 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { getToken } from '../lib/storage';
 
+export const MAX_FILE_SIZE_BYTES = 1000 * 1024 * 1024; // 1000 MB
+
 const getApiBaseUrl = () => {
     const mode = useAuthStore.getState().backendMode;
     if (Platform.OS === 'web') {

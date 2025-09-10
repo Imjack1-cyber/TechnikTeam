@@ -1,4 +1,4 @@
-package de.technikteam.api.v1.public_api;
+package de.technikteam.api.v1;
 
 import de.technikteam.api.v1.dto.FileContentUpdateRequest;
 import de.technikteam.dao.FileDAO;
@@ -19,30 +19,28 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 
 @RestController
-@RequestMapping("/api/v1/public/files/content")
-@Tag(name = "Public Files", description = "Endpoints for editing public files.")
-public class PublicFileEditorResource {
+@RequestMapping("/api/v1/admin/files/content")
+@Tag(name = "Admin Files", description = "Endpoints for managing files and categories.")
+public class AdminFileEditorResource {
 
     private final FileService fileService;
     private final FileDAO fileDAO;
 
     @Autowired
-    public PublicFileEditorResource(FileService fileService, FileDAO fileDAO) {
+    public AdminFileEditorResource(FileService fileService, FileDAO fileDAO) {
         this.fileService = fileService;
         this.fileDAO = fileDAO;
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get a public file's text content for editing")
+    @Operation(summary = "Get a file's text content for editing")
     public ResponseEntity<ApiResponse> getFileContent(@PathVariable int id, @AuthenticationPrincipal SecurityUser securityUser) {
         try {
             File file = fileDAO.getFileById(id);
             if (file == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, "Datei nicht gefunden.", null));
             }
-            if (!"NUTZER".equals(file.getRequiredRole()) && (securityUser == null || !securityUser.getUser().hasAdminAccess())) {
-                throw new AccessDeniedException("Sie haben keine Berechtigung, den Inhalt dieser Datei anzuzeigen.");
-            }
+            // All files are editable by admin
             String content = fileService.getFileContent(id);
             file.setContent(content);
             return ResponseEntity.ok(new ApiResponse(true, "File content retrieved.", file));
@@ -53,18 +51,15 @@ public class PublicFileEditorResource {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update a public file's text content")
-    public ResponseEntity<ApiResponse> updateFileContent(@PathVariable int id, @Valid @RequestBody FileContentUpdateRequest request,
-                                                         @AuthenticationPrincipal SecurityUser securityUser) {
+    @Operation(summary = "Update a file's text content")
+    public ResponseEntity<ApiResponse> updateFileContent(@PathVariable int id,
+                                                         @Valid @RequestBody FileContentUpdateRequest request, @AuthenticationPrincipal SecurityUser securityUser) {
         try {
             File file = fileDAO.getFileById(id);
             if (file == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, "Datei nicht gefunden.", null));
             }
-            if (!"NUTZER".equals(file.getRequiredRole()) && (securityUser == null || !securityUser.getUser().hasAdminAccess())) {
-                throw new AccessDeniedException("Sie haben keine Berechtigung, den Inhalt dieser Datei zu bearbeiten.");
-            }
-
+            // All files are editable by admin
             if (fileService.updateFileContent(id, request.content(), securityUser.getUser())) {
                 return ResponseEntity.ok(new ApiResponse(true, "Datei-Inhalt erfolgreich gespeichert.", null));
             } else {

@@ -8,6 +8,8 @@ import MarkdownDisplay from 'react-native-markdown-display';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography } from '../../styles/theme';
+import useWebSocket from '../../hooks/useWebSocket';
+import { debounce } from 'lodash';
 
 const AdminFileEditorPage = () => {
 	const route = useRoute();
@@ -16,55 +18,47 @@ const AdminFileEditorPage = () => {
 	const { addToast } = useToast();
 	const { isAdmin } = useAuthStore();
 	const [content, setContent] = useState('');
-	const [initialContent, setInitialContent] = useState(null);
 	const [viewMode, setViewMode] = useState('edit');
-	const [saveStatus, setSaveStatus] = useState('idle');
 	const [error, setError] = useState('');
+    const isTypingRef = useRef(false);
 
 	const theme = useAuthStore(state => state.theme);
 	const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
 	const apiCall = useCallback(() => apiClient.get(`/admin/files/content/${fileId}`), [fileId]);
 	const { data: fileData, loading, error: fetchError } = useApi(apiCall);
 
 	useEffect(() => {
 		if (fileData?.content !== null && fileData?.content !== undefined) {
-			setContent(fileData.content);
-			setInitialContent(fileData.content);
+            if (!isTypingRef.current) {
+			    setContent(fileData.content);
+            }
 		}
 	}, [fileData]);
 
-	const handleSave = useCallback(async () => {
-		if (saveStatus === 'saving' || content === initialContent) return;
+    const handleWebSocketMessage = useCallback((message) => {
+        if (message.type === 'content_update') {
+            // Only update if the user is not currently typing, to avoid losing their changes.
+            if (!isTypingRef.current) {
+                setContent(message.payload.content);
+            }
+        }
+    }, []);
 
-		setSaveStatus('saving');
-		setError('');
-		try {
-			const result = await apiClient.put(`/admin/files/content/${fileId}`, { content });
-			if (result.success) {
-				setInitialContent(content);
-				setSaveStatus('saved');
-				setTimeout(() => setSaveStatus('idle'), 2000);
-			} else { throw new Error(result.message); }
-		} catch (err) {
-			setError(err.message || 'Speichern fehlgeschlagen.');
-			setSaveStatus('idle');
-			addToast(`Fehler beim Speichern: ${err.message}`, 'error');
-		}
-	}, [fileId, content, initialContent, saveStatus, addToast]);
+    const { sendMessage } = useWebSocket(`/ws/editor/${fileId}`, handleWebSocketMessage);
+    
+    // Use lodash debounce to send updates only after the user stops typing for 500ms
+    const debouncedSend = useCallback(debounce((newContent) => {
+        sendMessage({ type: 'content_update', payload: { content: newContent } });
+        isTypingRef.current = false;
+    }, 500), [sendMessage]);
 
-    useEffect(() => {
-		const interval = setInterval(handleSave, 5000);
-		return () => clearInterval(interval);
-	}, [handleSave]);
-
-	const getSaveButtonContent = () => {
-		switch (saveStatus) {
-			case 'saving': return <ActivityIndicator color="#fff" />;
-			case 'saved': return <Text style={styles.buttonText}>Gespeichert!</Text>;
-			default: return <Text style={styles.buttonText}>Jetzt Speichern</Text>;
-		}
-	};
+    const handleContentChange = (text) => {
+        setContent(text);
+        isTypingRef.current = true;
+        debouncedSend(text);
+    };
 
 	if (loading) return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
 	if (fetchError) return <View style={styles.centered}><Text style={styles.errorText}>{fetchError}</Text></View>;
@@ -83,9 +77,6 @@ const AdminFileEditorPage = () => {
                         <Text style={[styles.tabText, viewMode === 'preview' && styles.activeTabText]}>Vorschau</Text>
                     </TouchableOpacity>
                 </View>
-                <TouchableOpacity style={[styles.button, saveStatus === 'saved' ? styles.successButton : styles.primaryButton]} onPress={handleSave} disabled={saveStatus === 'saving' || content === initialContent}>
-                    {getSaveButtonContent()}
-                </TouchableOpacity>
             </View>
             {error && <Text style={styles.errorText}>{error}</Text>}
 
@@ -93,7 +84,7 @@ const AdminFileEditorPage = () => {
 				{viewMode === 'edit' ? (
 					<TextInput
 						value={content}
-						onChangeText={setContent}
+						onChangeText={handleContentChange}
 						style={styles.textArea}
                         multiline
                         textAlignVertical="top"

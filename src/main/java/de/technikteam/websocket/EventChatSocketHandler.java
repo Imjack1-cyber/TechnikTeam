@@ -3,6 +3,7 @@ package de.technikteam.websocket;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
+import de.technikteam.api.v1.dto.NotificationPayload;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.config.Permissions;
 import de.technikteam.dao.EventChatDAO;
@@ -171,9 +172,12 @@ public class EventChatSocketHandler extends TextWebSocketHandler {
 			if (mentionedUser != null && mentionedUser.getId() != sender.getId()) {
 				String notificationMessage = String.format("%s hat Sie im Chat für '%s' erwähnt.", sender.getUsername(),
 						event.getName());
-				Map<String, Object> notificationPayload = Map.of("type", "mention", "payload",
-						Map.of("message", notificationMessage, "url", "/veranstaltungen/details/" + event.getId()));
-				notificationService.sendNotificationToUser(mentionedUser.getId(), notificationPayload);
+                NotificationPayload payload = new NotificationPayload();
+                payload.setTitle(String.format("Erwähnung in Chat für '%s'", event.getName()));
+                payload.setDescription(notificationMessage);
+                payload.setLevel("Informational");
+                payload.setUrl("/veranstaltungen/details/" + event.getId());
+				notificationService.sendNotificationToUser(mentionedUser.getId(), payload);
 			}
 		}
 	}

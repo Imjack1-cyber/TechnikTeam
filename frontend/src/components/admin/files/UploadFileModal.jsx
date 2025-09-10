@@ -1,11 +1,12 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, Platform } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import Modal from '../../ui/Modal';
-import apiClient from '../../../services/apiClient';
+import apiClient, { MAX_FILE_SIZE_BYTES } from '../../../services/apiClient';
 import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../store/authStore';
 import { getCommonStyles } from '../../../styles/commonStyles';
+import { getThemeColors } from '../../../styles/theme';
 import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import useApi from '../../../hooks/useApi';
@@ -13,12 +14,13 @@ import useApi from '../../../hooks/useApi';
 const UploadFileModal = ({ isOpen, onClose, onSuccess }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
     const { addToast } = useToast();
 
     const categoriesApiCall = useCallback(() => apiClient.get('/admin/files/categories'), []);
     const { data: categories, loading, error: categoriesError } = useApi(categoriesApiCall);
 
-    const [file, setFile] = useState(null);
+    const [file, setFile] = useState(null); // Will be the asset from DocumentPicker
     const [categoryId, setCategoryId] = useState('');
     const [newCategoryName, setNewCategoryName] = useState('');
     const [requiredRole, setRequiredRole] = useState('NUTZER');
@@ -28,11 +30,22 @@ const UploadFileModal = ({ isOpen, onClose, onSuccess }) => {
     const handlePickFile = async () => {
         try {
           const res = await DocumentPicker.getDocumentAsync({});
-          if (!res.canceled) {
-             setFile(res.assets[0]);
+          if (res.canceled) {
+            return;
+          }
+          if (res.assets && res.assets[0]) {
+             const asset = res.assets[0];
+             setFile(asset);
+          } else {
+            throw new Error("Document picker returned an unexpected response.");
           }
         } catch (err) {
-            addToast("Fehler beim Auswählen der Datei.", "error");
+            console.error("DocumentPicker Error:", err);
+            let errorMessage = "Fehler beim Auswählen der Datei.";
+            if (Platform.OS !== 'web' && err.message.includes('permission')) {
+                errorMessage = "Fehler beim Auswählen der Datei. Bitte stellen Sie sicher, dass die App die Berechtigung hat, auf Ihre Dateien zuzugreifen.";
+            }
+            addToast(errorMessage, "error");
         }
     };
 
@@ -94,12 +107,16 @@ const UploadFileModal = ({ isOpen, onClose, onSuccess }) => {
                 )}
 
                 <View style={styles.formGroup}>
-                    <Text style={styles.label}>2. Datei auswählen</Text>
+                    <Text style={styles.label}>2. Datei auswählen (Max: {MAX_FILE_SIZE_BYTES / 1024 / 1024} MB)</Text>
                     <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={handlePickFile}>
                         <Icon name="file" size={16} />
                         <Text>Datei auswählen</Text>
                     </TouchableOpacity>
-                    {file && <Text style={{marginTop: 8}}>Ausgewählt: {file.name}</Text>}
+                    {file && (
+                        <Text style={[{marginTop: 8}]}>
+                            Ausgewählt: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                        </Text>
+                    )}
                 </View>
 
                 <View style={styles.formGroup}>

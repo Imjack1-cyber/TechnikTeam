@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
+import de.technikteam.api.v1.dto.NotificationPayload;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.ChatDAO;
 import de.technikteam.model.ChatConversation;
@@ -181,9 +182,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
 				String title = conversation.isGroupChat() ? "Neue Nachricht in \"" + conversation.getName() + "\""
 						: "Neue Nachricht von " + sender.getUsername();
-
-				Map<String, Object> payload = Map.of("type", "new_message", "title", title, "description",
-						messageSnippet, "level", "Informational", "url", "/chat/" + message.getConversationId());
+                
+                NotificationPayload payload = new NotificationPayload();
+                payload.setTitle(title);
+                payload.setDescription(messageSnippet);
+                payload.setLevel("Informational");
+                payload.setUrl("/chat/" + message.getConversationId());
 				notificationService.sendNotificationToUser(participant.getId(), payload);
 			}
 		}

@@ -13,13 +13,15 @@ public class WebSocketConfig implements WebSocketConfigurer {
 	private final EventChatSocketHandler eventChatSocketHandler;
 	private final ChatWebSocketHandler chatWebSocketHandler;
 	private final ChecklistWebSocketHandler checklistWebSocketHandler;
+	private final FileEditorSocketHandler fileEditorSocketHandler;
 
 	@Autowired
 	public WebSocketConfig(EventChatSocketHandler eventChatSocketHandler, ChatWebSocketHandler chatWebSocketHandler,
-			ChecklistWebSocketHandler checklistWebSocketHandler) {
+			ChecklistWebSocketHandler checklistWebSocketHandler, FileEditorSocketHandler fileEditorSocketHandler) {
 		this.eventChatSocketHandler = eventChatSocketHandler;
 		this.chatWebSocketHandler = chatWebSocketHandler;
 		this.checklistWebSocketHandler = checklistWebSocketHandler;
+		this.fileEditorSocketHandler = fileEditorSocketHandler;
 	}
 
 	@Override
@@ -27,5 +29,6 @@ public class WebSocketConfig implements WebSocketConfigurer {
 		registry.addHandler(eventChatSocketHandler, "/ws/chat/{eventId}").setAllowedOrigins("*");
 		registry.addHandler(chatWebSocketHandler, "/ws/dm/{conversationId}").setAllowedOrigins("*");
 		registry.addHandler(checklistWebSocketHandler, "/ws/checklist/{eventId}").setAllowedOrigins("*");
+		registry.addHandler(fileEditorSocketHandler, "/ws/editor/{fileId}").setAllowedOrigins("*");
 	}
 }

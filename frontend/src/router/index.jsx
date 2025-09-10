@@ -89,6 +89,7 @@ const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
 
 // --- Admin Stacks ---
+// These remain as they are, correctly nested inside the Drawer
 const AdminUsersStack = () => (
     <Stack.Navigator>
         <Stack.Screen name="AdminUsersIndex" component={AdminUsersIndex} options={{ headerShown: false }} />
@@ -127,6 +128,7 @@ const MainDrawerNavigator = () => {
                 headerShown: true
             }}
         >
+            {/* --- User Pages --- */}
             <Drawer.Screen name="Dashboard" component={DashboardPage} />
             <Drawer.Screen name="Anschlagbrett" component={AnnouncementsPage} />
             <Drawer.Screen name="Benachrichtigungen" component={NotificationsPage} />
@@ -141,6 +143,7 @@ const MainDrawerNavigator = () => {
             <Drawer.Screen name="Changelogs" component={ChangelogPage} />
             <Drawer.Screen name="Profile" component={ProfilePage} />
 
+            {/* --- Admin Pages --- */}
             <Drawer.Screen name="Admin Dashboard" component={AdminDashboardPage} />
             <Drawer.Screen name="Benutzer & Anträge" component={AdminUsersStack} />
             <Drawer.Screen name="Event Management" component={AdminEventsStack} />
@@ -149,42 +152,40 @@ const MainDrawerNavigator = () => {
             <Drawer.Screen name="Inhalte & Kommunikation" component={AdminContentStack} />
             <Drawer.Screen name="Berichte" component={AdminReportsStack} />
             <Drawer.Screen name="System & Entwicklung" component={AdminSystemStack} />
+
+            {/* --- Other screens nested within the Drawer to get the correct header --- */}
+            <Drawer.Screen name="UserProfile" component={UserProfilePage} options={{ title: 'Benutzerprofil', drawerItemStyle: { height: 0 } }} />
+            <Drawer.Screen name="MeetingDetails" component={MeetingDetailsPage} options={{ title: 'Meeting-Details', drawerItemStyle: { height: 0 } }}/>
+            <Drawer.Screen name="EventDetails" component={EventDetailsPage} options={{ title: 'Event-Details', drawerItemStyle: { height: 0 } }}/>
+            <Drawer.Screen name="StorageItemDetails" component={StorageItemDetailsPage} options={{ title: 'Lagerartikel-Details', drawerItemStyle: { height: 0 } }} />
+            <Drawer.Screen name="Settings" component={SettingsPage} options={{ title: 'Einstellungen', drawerItemStyle: { height: 0 } }} />
+            <Drawer.Screen name="PasswordChange" component={PasswordPage} options={{ title: 'Passwort ändern', drawerItemStyle: { height: 0 } }} />
+            <Drawer.Screen name="Search" component={SearchResultsPage} options={{ title: 'Suchergebnisse', drawerItemStyle: { height: 0 } }} />
+            <Drawer.Screen name="HelpList" component={HelpListPage} options={{ title: 'Hilfe', drawerItemStyle: { height: 0 } }} />
+            <Drawer.Screen name="HelpDetails" component={HelpDetailsPage} options={{ title: 'Hilfe-Detail', drawerItemStyle: { height: 0 } }} />
+            <Drawer.Screen name="EventFeedback" component={EventFeedbackPage} options={{ title: 'Event-Feedback', drawerItemStyle: { height: 0 } }} />
+            <Drawer.Screen name="FileEditor" component={FileEditorPage} options={{ title: 'Datei-Editor', drawerItemStyle: { height: 0 } }} />
+            <Drawer.Screen name="IdCard" component={IdCardPage} options={{ title: 'Team Ausweis', drawerItemStyle: { height: 0 } }} />
+
+            {/* --- Special screens that should NOT have the main header --- */}
+            <Drawer.Screen name="PackKit" component={PackKitPage} options={{ headerShown: false, drawerItemStyle: { height: 0 } }} />
+            <Drawer.Screen name="QrAction" component={QrActionPage} options={{ headerShown: false, drawerItemStyle: { height: 0 } }} />
+
+            {/* --- Error screens, also hidden --- */}
+            <Drawer.Screen name="NotFound" component={NotFoundPage} options={{ title: 'Nicht gefunden', drawerItemStyle: { height: 0 } }}/>
+            <Drawer.Screen name="ErrorTrigger" component={ErrorTrigger} options={{ title: 'Trigger Error', drawerItemStyle: { height: 0 } }} />
+
         </Drawer.Navigator>
     );
 };
 
 const AppStack = () => {
-    // This component now initializes the page tracking hook,
-    // ensuring it only runs when the user is authenticated and the
-    // main navigation is mounted.
     usePageTracking();
 
     return (
         <ErrorBoundary>
-            <Stack.Navigator
-                screenOptions={{
-                    header: (props) => <Header {...props} />,
-                }}
-            >
+            <Stack.Navigator>
                 <Stack.Screen name="MainDrawer" component={MainDrawerNavigator} options={{ headerShown: false }}/>
-                
-                <Stack.Screen name="UserProfile" component={UserProfilePage} options={{ title: 'Benutzerprofil' }} />
-                <Stack.Screen name="MeetingDetails" component={MeetingDetailsPage} options={{ title: 'Meeting-Details' }}/>
-                <Stack.Screen name="EventDetails" component={EventDetailsPage} options={{ title: 'Event-Details' }}/>
-                <Stack.Screen name="StorageItemDetails" component={StorageItemDetailsPage} options={{ title: 'Lagerartikel-Details' }} />
-                <Stack.Screen name="Settings" component={SettingsPage} options={{ title: 'Einstellungen' }} />
-                <Stack.Screen name="PasswordChange" component={PasswordPage} options={{ title: 'Passwort ändern' }} />
-                <Stack.Screen name="Search" component={SearchResultsPage} options={{ title: 'Suchergebnisse' }} />
-                <Stack.Screen name="HelpList" component={HelpListPage} options={{ title: 'Hilfe' }} />
-                <Stack.Screen name="HelpDetails" component={HelpDetailsPage} options={{ title: 'Hilfe-Detail' }} />
-                <Stack.Screen name="EventFeedback" component={EventFeedbackPage} options={{ title: 'Event-Feedback' }} />
-                <Stack.Screen name="PackKit" component={PackKitPage} options={{ headerShown: false }} />
-                <Stack.Screen name="QrAction" component={QrActionPage} options={{ headerShown: false }} />
-                <Stack.Screen name="FileEditor" component={FileEditorPage} options={{ title: 'Datei-Editor' }} />
-                <Stack.Screen name="IdCard" component={IdCardPage} options={{ title: 'Team Ausweis' }} />
-                <Stack.Screen name="NotFound" component={NotFoundPage} options={{ title: 'Nicht gefunden' }}/>
-                <Stack.Screen name="ErrorTrigger" component={ErrorTrigger} options={{ title: 'Trigger Error' }} />
-
             </Stack.Navigator>
         </ErrorBoundary>
     );

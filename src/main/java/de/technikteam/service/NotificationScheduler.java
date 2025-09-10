@@ -1,5 +1,6 @@
 package de.technikteam.service;
 
+import de.technikteam.api.v1.dto.NotificationPayload;
 import de.technikteam.dao.ScheduledNotificationDAO;
 import de.technikteam.model.ScheduledNotification;
 import org.apache.logging.log4j.LogManager;
@@ -40,9 +41,11 @@ public class NotificationScheduler {
 
 		logger.info("Found {} pending notifications to send.", pending.size());
 		for (ScheduledNotification notification : pending) {
-			Map<String, Object> payload = Map.of("title", notification.getTitle(), "description",
-					notification.getDescription(), "level", "Important", // Reminders are always important
-					"url", notification.getUrl());
+            NotificationPayload payload = new NotificationPayload();
+            payload.setTitle(notification.getTitle());
+            payload.setDescription(notification.getDescription());
+            payload.setLevel("Important"); // Reminders are always important
+            payload.setUrl(notification.getUrl());
 			notificationService.sendNotificationToUser(notification.getTargetUserId(), payload);
 		}
 

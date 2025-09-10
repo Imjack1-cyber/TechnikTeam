@@ -4,6 +4,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import apiClient from '../services/apiClient';
 import { useAuthStore } from '../store/authStore';
+import { useDownloadStore } from '../store/downloadStore';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -17,11 +18,20 @@ async function registerForPushNotificationsAsync() {
   let token;
 
   if (Platform.OS === 'android') {
+    // Create notification channels for Android
     await Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.MAX,
+      name: 'Default',
+      importance: Notifications.AndroidImportance.DEFAULT,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#FF231F7C',
+    });
+    await Notifications.setNotificationChannelAsync('downloads', {
+        name: 'Downloads',
+        importance: Notifications.AndroidImportance.LOW, // For progress, so it's less intrusive
+    });
+     await Notifications.setNotificationChannelAsync('reminders', {
+        name: 'Reminders',
+        importance: Notifications.AndroidImportance.HIGH,
     });
   }
 
@@ -36,8 +46,6 @@ async function registerForPushNotificationsAsync() {
       console.log('Failed to get push token for push notification!');
       return;
     }
-    // FIX: Get the native device token (FCM token) instead of the Expo token.
-    // This is the token our backend is designed to work with.
     token = (await Notifications.getDevicePushTokenAsync()).data;
     console.log('Native FCM Token:', token);
   } else {
@@ -74,6 +82,24 @@ export const usePushNotifications = () => {
 
         const notificationListener = Notifications.addNotificationReceivedListener(notification => {
             console.log('Notification received while app is in foreground:', notification);
+            const { data } = notification.request.content;
+            const identifier = notification.request.identifier;
+            
+            // Check for progress data
+            if (data && data.progressMax) {
+                const downloadId = data.downloadId || 'unknown';
+                const progressCurrent = parseInt(data.progressCurrent, 10);
+                const progressMax = parseInt(data.progressMax, 10);
+                const isComplete = progressCurrent >= progressMax;
+
+                // Centralize all update logic in the store. The store will handle dismissal.
+                useDownloadStore.getState().updateDownload(downloadId, {
+                    progress: progressCurrent,
+                    total: progressMax,
+                    status: isComplete ? 'completed' : 'downloading',
+                    nativeNotificationId: identifier, // Always pass the ID
+                });
+            }
         });
 
         const responseListener = Notifications.addNotificationResponseReceivedListener(response => {

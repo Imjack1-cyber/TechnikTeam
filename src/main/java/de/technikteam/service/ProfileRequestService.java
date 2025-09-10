@@ -2,6 +2,7 @@ package de.technikteam.service;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import de.technikteam.api.v1.dto.NotificationPayload;
 import de.technikteam.api.v1.dto.ProfileChangeRequestDTO;
 import de.technikteam.dao.ProfileChangeRequestDAO;
 import de.technikteam.dao.UserDAO;
@@ -111,10 +112,11 @@ public class ProfileRequestService {
 				adminLogService.log(adminUser.getUsername(), "PROFILE_CHANGE_APPROVED_API", "Profile change for '"
 						+ userToUpdate.getUsername() + "' (Request ID: " + requestId + ") approved via API.");
 
-				String notificationTitle = "Profiländerung genehmigt";
-				String notificationMessage = "Ihre beantragte Profiländerung wurde von einem Administrator genehmigt.";
-				Map<String, Object> payload = Map.of("title", notificationTitle, "description", notificationMessage,
-						"level", "Informational", "url", "/profil");
+                NotificationPayload payload = new NotificationPayload();
+                payload.setTitle("Profiländerung genehmigt");
+                payload.setDescription("Ihre beantragte Profiländerung wurde von einem Administrator genehmigt.");
+                payload.setLevel("Informational");
+                payload.setUrl("/profil");
 				notificationService.sendNotificationToUser(userToUpdate.getId(), payload);
 
 				return true;

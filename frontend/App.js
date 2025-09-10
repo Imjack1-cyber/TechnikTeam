@@ -12,9 +12,7 @@ import { getToken } from './src/lib/storage';
 import SplashScreen from './src/components/common/SplashScreen';
 import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './src/router/navigation';
-import pageRoutes from './src/router/pageRoutes';
-import VerificationPage from './src/pages/VerificationPage';
-import usePageTracking from './src/hooks/usePageTracking';
+import DownloadsIndicator from './src/components/ui/DownloadsIndicator';
 
 // This is the crucial linking configuration for React Navigation on the web.
 const linking = {
@@ -162,6 +160,7 @@ const AppContent = () => {
         <>
             <RootNavigator />
             <ToastContainer />
+            <DownloadsIndicator />
             {warningNotification && <WarningNotification notification={warningNotification} onDismiss={dismissWarning} />}
         </>
     );

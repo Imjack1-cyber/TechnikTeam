@@ -11,6 +11,7 @@ import com.google.firebase.messaging.Notification;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import de.technikteam.api.v1.dto.MaintenanceStatusDTO;
+import de.technikteam.api.v1.dto.NotificationPayload;
 import de.technikteam.api.v1.dto.NotificationRequest;
 import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.EventDAO;
@@ -155,15 +156,17 @@ public class NotificationService {
 		}));
 	}
 
-	public void sendNotificationToUser(int userId, Map<String, Object> payload) {
-		// 1. Persist the notification
-		UserNotification notification = new UserNotification();
-		notification.setUserId(userId);
-		notification.setTitle((String) payload.get("title"));
-		notification.setDescription((String) payload.get("description"));
-		notification.setLevel((String) payload.get("level"));
-		notification.setUrl((String) payload.get("url"));
-		userNotificationDAO.create(notification);
+	public void sendNotificationToUser(int userId, NotificationPayload payload) {
+        if (!payload.isSilent()) {
+            // 1. Persist the notification if it's not a silent one (like progress updates)
+            UserNotification notification = new UserNotification();
+            notification.setUserId(userId);
+            notification.setTitle(payload.getTitle());
+            notification.setDescription(payload.getDescription());
+            notification.setLevel(payload.getLevel());
+            notification.setUrl(payload.getUrl());
+            userNotificationDAO.create(notification);
+        }
 
 		// 2. Push via SSE if user is connected
 		List<SseEmitter> userEmitters = emittersByUser.get(userId);
@@ -192,7 +195,7 @@ public class NotificationService {
         }
 	}
 
-	private void sendFcmNotification(User user, Map<String, Object> payload) {
+	private void sendFcmNotification(User user, NotificationPayload payload) {
         if (user.getFcmToken() == null || user.getFcmToken().isBlank()) {
             return; // No token, nothing to do
         }
@@ -201,26 +204,36 @@ public class NotificationService {
             return;
         }
 
-        String title = (String) payload.get("title");
-        String description = (String) payload.get("description");
-        String url = (String) payload.get("url");
-        String androidImportance = (String) payload.get("androidImportance");
-
         Message.Builder messageBuilder = Message.builder()
-            .setNotification(Notification.builder()
-                .setTitle(title)
-                .setBody(description)
-                .build())
-            .setToken(user.getFcmToken())
-            .putData("url", url != null ? url : "");
+            .setToken(user.getFcmToken());
 
-        if ("HIGH".equalsIgnoreCase(androidImportance)) {
-            AndroidConfig androidConfig = AndroidConfig.builder()
-                .setPriority(AndroidConfig.Priority.HIGH)
-                .build();
-            messageBuilder.setAndroidConfig(androidConfig);
+        if (!payload.isSilent()) {
+            messageBuilder.setNotification(Notification.builder()
+                .setTitle(payload.getTitle())
+                .setBody(payload.getDescription())
+                .build());
+        }
+
+        AndroidConfig.Builder androidConfigBuilder = AndroidConfig.builder();
+        if ("HIGH".equalsIgnoreCase(payload.getAndroidImportance())) {
+            androidConfigBuilder.setPriority(AndroidConfig.Priority.HIGH);
             logger.debug("Setting FCM priority to HIGH for user {}", user.getUsername());
         }
+        if (payload.getAndroidChannelId() != null) {
+            // Correct way to set channel ID
+            androidConfigBuilder.setNotification(com.google.firebase.messaging.AndroidNotification.builder()
+                .setChannelId(payload.getAndroidChannelId()).build());
+        }
+        messageBuilder.setAndroidConfig(androidConfigBuilder.build());
+        
+        if (payload.getUrl() != null) {
+            messageBuilder.putData("url", payload.getUrl());
+        }
+        if (payload.getProgress() != null && payload.getProgress().size() == 2) {
+            messageBuilder.putData("progressMax", String.valueOf(payload.getProgress().get(0)));
+            messageBuilder.putData("progressCurrent", String.valueOf(payload.getProgress().get(1)));
+        }
+
 
         Message message = messageBuilder.build();
 
@@ -269,13 +282,11 @@ public class NotificationService {
 			return 0;
 		}
 
-		Map<String, Object> payload = new java.util.HashMap<>();
-        payload.put("title", request.title());
-        payload.put("description", request.description());
-        payload.put("level", request.level());
-        if (request.androidImportance() != null) {
-            payload.put("androidImportance", request.androidImportance());
-        }
+		NotificationPayload payload = new NotificationPayload();
+        payload.setTitle(request.title());
+        payload.setDescription(request.description());
+        payload.setLevel(request.level());
+        payload.setAndroidImportance(request.androidImportance());
 
 		for (User targetUser : targetUsers) {
 			sendNotificationToUser(targetUser.getId(), payload);
