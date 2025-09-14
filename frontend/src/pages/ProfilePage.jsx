@@ -21,8 +21,11 @@ const ProfilePage = () => {
 	const { fetchUserSession } = useAuthStore(state => ({
         fetchUserSession: state.fetchUserSession
     }));
-	const apiCall = useCallback(() => apiClient.get('/public/profile'), []);
-	const { data: profileData, loading, error, reload } = useApi(apiCall);
+	const profileApiCall = useCallback(() => apiClient.get('/public/profile'), []);
+	const { data: profileData, loading: profileLoading, error: profileError, reload: reloadProfile } = useApi(profileApiCall);
+    const knownIpsApiCall = useCallback(() => apiClient.get('/public/profile/known-ips'), []);
+    const { data: knownIps, loading: ipsLoading, error: ipsError, reload: reloadIps } = useApi(knownIpsApiCall);
+
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
@@ -30,9 +33,13 @@ const ProfilePage = () => {
 
 	const handleUpdate = useCallback(() => {
 		addToast('Profildaten werden aktualisiert...', 'info');
-		reload();
+		reloadProfile();
+        reloadIps();
 		fetchUserSession();
-	}, [reload, fetchUserSession, addToast]);
+	}, [reloadProfile, reloadIps, fetchUserSession, addToast]);
+    
+    const loading = profileLoading || ipsLoading;
+    const error = profileError || ipsError;
 
 	if (loading) {
 		return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
@@ -46,7 +53,7 @@ const ProfilePage = () => {
 		return <View style={styles.centered}><Text>Keine Profildaten gefunden.</Text></View>;
 	}
 
-	const { user, eventHistory = [], qualifications = [], achievements = [], hasPendingRequest = false, loginHistory = [] } = profileData;
+	const { user, eventHistory = [], qualifications = [], achievements = [], hasPendingRequest = false } = profileData;
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -54,7 +61,7 @@ const ProfilePage = () => {
                 return (
                     <>
                         <ProfileSecurity user={user} onUpdate={handleUpdate} />
-                        <ProfileLoginHistory loginHistory={loginHistory} onUpdate={handleUpdate} />
+                        <ProfileLoginHistory loginHistory={knownIps || []} onUpdate={handleUpdate} />
                     </>
                 );
             case 'activity':

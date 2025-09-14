@@ -37,6 +37,8 @@ public class User {
 	private String totpSecret;
 	private String jti; // JWT ID of the current session token
     private String verificationToken;
+    private String privacyPolicyVersion;
+    private LocalDateTime privacyPolicyAcceptedAt;
 
 	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String passwordHash;
@@ -291,5 +293,21 @@ public class User {
 
     public void setVerificationToken(String verificationToken) {
         this.verificationToken = verificationToken;
+    }
+
+    public String getPrivacyPolicyVersion() {
+        return privacyPolicyVersion;
+    }
+
+    public void setPrivacyPolicyVersion(String privacyPolicyVersion) {
+        this.privacyPolicyVersion = privacyPolicyVersion;
+    }
+
+    public LocalDateTime getPrivacyPolicyAcceptedAt() {
+        return privacyPolicyAcceptedAt;
+    }
+
+    public void setPrivacyPolicyAcceptedAt(LocalDateTime privacyPolicyAcceptedAt) {
+        this.privacyPolicyAcceptedAt = privacyPolicyAcceptedAt;
     }
 }

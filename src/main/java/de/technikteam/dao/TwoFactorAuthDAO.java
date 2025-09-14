@@ -1,6 +1,7 @@
 package de.technikteam.dao;
 
 import de.technikteam.model.UserBackupCode;
+import de.technikteam.model.dto.LoginIpInfo;
 import de.technikteam.util.IpUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -47,6 +48,16 @@ public class TwoFactorAuthDAO {
 
         logger.info("No matching subnet found for user {}. IP '{}' is considered new.", userId, ipAddress);
         return false;
+    }
+    
+    public List<LoginIpInfo> getKnownIpsForUser(int userId) {
+        String sql = "SELECT ip_address, last_seen, device_name FROM user_known_ips WHERE user_id = ? ORDER BY last_seen DESC";
+        return jdbcTemplate.query(sql, (rs, rowNum) -> new LoginIpInfo(
+                rs.getString("ip_address"),
+                null, // Country code is not stored here
+                rs.getString("device_name"),
+                rs.getTimestamp("last_seen").toLocalDateTime()
+        ), userId);
     }
 
     public void addKnownIpForUser(int userId, String ipAddress) {

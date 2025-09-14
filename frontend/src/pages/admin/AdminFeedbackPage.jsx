@@ -11,6 +11,7 @@ import { getThemeColors, typography, spacing, borders } from '../../styles/theme
 const FeedbackColumn = ({ title, submissions, onCardClick }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
 	return (
 		<View style={pageStyles(theme).feedbackColumn}>
 			<Text style={pageStyles(theme).columnTitle}>{title}</Text>
@@ -19,7 +20,9 @@ const FeedbackColumn = ({ title, submissions, onCardClick }) => {
 					<TouchableOpacity key={sub.id} style={styles.card} onPress={() => onCardClick(sub)}>
 						<Text style={pageStyles(theme).cardSubject}>{sub.subject}</Text>
 						<Text style={pageStyles(theme).cardPreview} numberOfLines={2}>{sub.content}</Text>
-						<Text style={pageStyles(theme).cardMeta}>Von: {sub.username}</Text>
+						<Text style={pageStyles(theme).cardMeta}>
+                            Von: {sub.username} am {new Date(sub.submittedAt).toLocaleDateString('de-DE')}
+                        </Text>
 					</TouchableOpacity>
 				))}
 			</ScrollView>
@@ -34,6 +37,7 @@ const AdminFeedbackPage = () => {
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
 	const groupedSubmissions = useMemo(() => submissions?.reduce((acc, sub) => {
 		(acc[sub.status] = acc[sub.status] || []).push(sub);
@@ -54,6 +58,14 @@ const AdminFeedbackPage = () => {
 
 	if (loading) return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
 	if (error) return <View style={styles.centered}><Text style={styles.errorText}>{error}</Text></View>;
+
+	const statusConfig = {
+        NEW: { label: 'Neu', style: { backgroundColor: colors.primary } },
+        VIEWED: { label: 'Gesehen', style: { backgroundColor: colors.info } },
+        PLANNED: { label: 'Geplant', style: { backgroundColor: colors.warning } },
+        COMPLETED: { label: 'Erledigt', style: { backgroundColor: colors.success } },
+        REJECTED: { label: 'Abgelehnt', style: { backgroundColor: colors.danger } },
+    };
 
 	return (
 		<View style={styles.container}>
@@ -80,9 +92,9 @@ const AdminFeedbackPage = () => {
                         <View style={styles.modalFooter}>
                             <Text style={styles.modalSectionTitle}>Status ändern:</Text>
                             <View style={styles.statusButtons}>
-                                {['NEW', 'VIEWED', 'PLANNED', 'COMPLETED', 'REJECTED'].map(status => (
-                                    <TouchableOpacity key={status} onPress={() => handleStatusChange(status)} style={styles.button}>
-                                        <Text style={styles.buttonText}>{status}</Text>
+                                {Object.entries(statusConfig).map(([status, config]) => (
+                                    <TouchableOpacity key={status} onPress={() => handleStatusChange(status)} style={[styles.button, config.style]}>
+                                        <Text style={{color: ['VIEWED', 'PLANNED'].includes(status) ? colors.black : colors.white}}>{config.label}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>

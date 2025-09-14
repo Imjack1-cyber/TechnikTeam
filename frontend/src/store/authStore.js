@@ -4,6 +4,8 @@ import apiClient from '../services/apiClient';
 import { storage, setToken, removeToken } from '../lib/storage';
 import { Platform } from 'react-native';
 
+const CURRENT_POLICY_VERSION = "2025-09-10";
+
 const hasAdminAccess = (roleName) => {
 	// Frontend authorization check based on role.
 	return roleName === 'ADMIN';
@@ -31,6 +33,7 @@ export const useAuthStore = create(
 			navigationItems: [],
 			isAuthenticated: false,
 			isAdmin: false,
+            needsPolicyAcceptance: false,
 			theme: 'light',
             backendMode: 'prod', // 'prod' or 'dev'
 			layout: defaultLayout,
@@ -71,6 +74,7 @@ export const useAuthStore = create(
 					layout: userLayout,
                     maintenanceStatus: maintenanceStatus || { mode: 'OFF', message: '' },
                     previousLogin: previousLogin,
+                    needsPolicyAcceptance: user.privacyPolicyVersion !== CURRENT_POLICY_VERSION,
                 });
             },
 			login: async (username, password) => {
@@ -101,7 +105,7 @@ export const useAuthStore = create(
 					await removeToken();
 					apiClient.setAuthToken(null);
                     // Preserve theme and backendMode on logout
-					set(state => ({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, layout: defaultLayout, lastUpdatedEvent: null, maintenanceStatus: { mode: 'OFF', message: '' }, previousLogin: null, theme: state.theme, backendMode: state.backendMode }));
+					set(state => ({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, layout: defaultLayout, lastUpdatedEvent: null, maintenanceStatus: { mode: 'OFF', message: '' }, previousLogin: null, theme: state.theme, backendMode: state.backendMode, needsPolicyAcceptance: false }));
 				}
 			},
 			fetchUserSession: async () => {
@@ -109,7 +113,7 @@ export const useAuthStore = create(
 					const result = await apiClient.get('/auth/me');
 
 					if (result.success && result.data.user && result.data.navigation) {
-						const { user, navigation, maintenanceStatus } = result.data;
+						const { user, navigation, maintenanceStatus, currentPolicyVersion } = result.data;
 						const newTheme = user.theme || 'light';
 						let userLayout = defaultLayout;
 						if (user.dashboardLayout) {
@@ -136,6 +140,7 @@ export const useAuthStore = create(
 							theme: newTheme,
 							layout: userLayout,
 							maintenanceStatus: maintenanceStatus || { mode: 'OFF', message: '' },
+                            needsPolicyAcceptance: user.privacyPolicyVersion !== CURRENT_POLICY_VERSION,
 						});
 					} else {
 						throw new Error(result.message || "Ungültige Sitzungsdaten vom Server.");

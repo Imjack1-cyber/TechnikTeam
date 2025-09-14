@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useAuthStore } from '../../store/authStore';
@@ -18,37 +18,59 @@ const ProfileActiveSessions = ({ onUpdate }) => {
     const { data: sessions, loading, error, reload } = useApi(apiCall);
 
     const handleRevoke = (session) => {
-        Alert.alert('Sitzung widerrufen?', `Sind Sie sicher, dass Sie die Sitzung von ${session.deviceType || 'Unbekannt'} (${session.ipAddress}) beenden möchten?`, [
-            { text: 'Abbrechen', style: 'cancel' },
-            { text: 'Beenden', style: 'destructive', onPress: async () => {
-                try {
-                    const result = await apiClient.post(`/public/sessions/${session.jti}/revoke`);
-                    if (result.success) {
-                        addToast('Sitzung erfolgreich widerrufen.', 'success');
-                        reload();
-                    } else { throw new Error(result.message); }
-                } catch (err) {
-                    addToast(`Fehler: ${err.message}`, 'error');
-                }
-            }}
-        ]);
+        const title = 'Sitzung widerrufen?';
+        const message = `Sind Sie sicher, dass Sie die Sitzung von ${session.deviceType || 'Unbekannt'} (${session.ipAddress}) beenden möchten?`;
+        
+        const action = async () => {
+            try {
+                const result = await apiClient.post(`/public/sessions/${session.jti}/revoke`);
+                if (result.success) {
+                    addToast('Sitzung erfolgreich widerrufen.', 'success');
+                    onUpdate();
+                } else { throw new Error(result.message); }
+            } catch (err) {
+                addToast(`Fehler: ${err.message}`, 'error');
+            }
+        };
+
+        if (Platform.OS === 'web') {
+            if (window.confirm(`${title}\n\n${message}`)) {
+                action();
+            }
+        } else {
+            Alert.alert(title, message, [
+                { text: 'Abbrechen', style: 'cancel' },
+                { text: 'Beenden', style: 'destructive', onPress: action }
+            ]);
+        }
     };
     
     const handleRevokeAll = () => {
-        Alert.alert('Alle anderen Sitzungen beenden?', 'Alle anderen angemeldeten Geräte werden abgemeldet.', [
-            { text: 'Abbrechen', style: 'cancel' },
-            { text: 'Alle beenden', style: 'destructive', onPress: async () => {
-                try {
-                    const result = await apiClient.post('/public/sessions/revoke-all');
-                    if (result.success) {
-                        addToast(result.message, 'success');
-                        reload();
-                    } else { throw new Error(result.message); }
-                } catch (err) {
-                    addToast(`Fehler: ${err.message}`, 'error');
-                }
-            }}
-        ]);
+        const title = 'Alle anderen Sitzungen beenden?';
+        const message = 'Alle anderen angemeldeten Geräte werden abgemeldet.';
+
+        const action = async () => {
+            try {
+                const result = await apiClient.post('/public/sessions/revoke-all');
+                if (result.success) {
+                    addToast(result.message, 'success');
+                    onUpdate();
+                } else { throw new Error(result.message); }
+            } catch (err) {
+                addToast(`Fehler: ${err.message}`, 'error');
+            }
+        };
+        
+        if (Platform.OS === 'web') {
+            if (window.confirm(`${title}\n\n${message}`)) {
+                action();
+            }
+        } else {
+            Alert.alert(title, message, [
+                { text: 'Abbrechen', style: 'cancel' },
+                { text: 'Alle beenden', style: 'destructive', onPress: action }
+            ]);
+        }
     };
 
     const getDeviceIcon = (deviceType) => {

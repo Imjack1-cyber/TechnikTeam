@@ -49,6 +49,35 @@ const ProfileLoginHistory = ({ loginHistory, onUpdate }) => {
         }
     };
 
+    const handleForgetAll = () => {
+        const title = 'Alle bekannten Standorte vergessen?';
+        const message = 'Bei Ihrer nächsten Anmeldung von einem beliebigen Standort aus wird eine Zwei-Faktor-Authentifizierung (2FA) erforderlich sein.';
+        const action = async () => {
+            try {
+                const result = await apiClient.post('/public/profile/known-ips/forget-all');
+                if (result.success) {
+                    addToast('Alle Standorte erfolgreich vergessen.', 'success');
+                    onUpdate();
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (err) {
+                addToast(`Fehler: ${err.message}`, 'error');
+            }
+        };
+
+        if (Platform.OS === 'web') {
+            if (window.confirm(`${title}\n\n${message}`)) {
+                action();
+            }
+        } else {
+            Alert.alert(title, message, [
+                { text: 'Abbrechen', style: 'cancel' },
+                { text: 'Alle vergessen', style: 'destructive', onPress: action }
+            ]);
+        }
+    };
+
 
     const renderItem = (item, index) => (
         <View style={styles.detailsListRow} key={index}>
@@ -78,6 +107,10 @@ const ProfileLoginHistory = ({ loginHistory, onUpdate }) => {
             ) : (
                 <Text>Keine bekannten Standorte verfügbar.</Text>
             )}
+
+            <TouchableOpacity style={[styles.button, styles.dangerOutlineButton, {marginTop: 16}]} onPress={handleForgetAll}>
+                <Text style={styles.dangerOutlineButtonText}>Alle bekannten Standorte vergessen</Text>
+            </TouchableOpacity>
         </View>
     );
 };

@@ -182,6 +182,9 @@ const LoginPage = ({ navigation }) => {
 						{isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Anmelden</Text>}
 					</TouchableOpacity>
 				</View>
+                <TouchableOpacity onPress={() => navigation.navigate('PrivacyPolicy')} style={{marginTop: 16}}>
+                    <Text style={{color: '#007bff', textAlign: 'center'}}>Datenschutzerklärung</Text>
+                </TouchableOpacity>
 			</View>
             <View style={styles.backendSwitcher}>
                 <Text style={styles.backendText}>

@@ -102,6 +102,12 @@ public class UserDAO {
 		if (DaoUtils.hasColumn(resultSet, "deleted_at") && resultSet.getTimestamp("deleted_at") != null) {
 			user.setDeletedAt(resultSet.getTimestamp("deleted_at").toLocalDateTime());
 		}
+        if (DaoUtils.hasColumn(resultSet, "privacy_policy_version")) {
+            user.setPrivacyPolicyVersion(resultSet.getString("privacy_policy_version"));
+        }
+        if (DaoUtils.hasColumn(resultSet, "privacy_policy_accepted_at") && resultSet.getTimestamp("privacy_policy_accepted_at") != null) {
+            user.setPrivacyPolicyAcceptedAt(resultSet.getTimestamp("privacy_policy_accepted_at").toLocalDateTime());
+        }
 
 		return user;
 	};
@@ -443,4 +449,14 @@ public class UserDAO {
 		}
 		return user.getSuspendedUntil().isAfter(LocalDateTime.now());
 	}
+
+    public boolean acceptPrivacyPolicy(int userId, String version) {
+        String sql = "UPDATE users SET privacy_policy_version = ?, privacy_policy_accepted_at = NOW() WHERE id = ?";
+        try {
+            return jdbcTemplate.update(sql, version, userId) > 0;
+        } catch (Exception e) {
+            logger.error("Error accepting privacy policy for user {}", userId, e);
+            return false;
+        }
+    }
 }

@@ -43,6 +43,7 @@ import NotFoundPage from '../pages/error/NotFoundPage';
 import ErrorTrigger from '../pages/error/ErrorTrigger'; // For testing
 import IdCardPage from '../pages/IdCardPage';
 import VerificationPage from '../pages/VerificationPage';
+import PrivacyPolicyPage from '../pages/PrivacyPolicyPage';
 
 // --- Import ALL Admin Screen Components ---
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
@@ -192,16 +193,23 @@ const AppStack = () => {
 };
 
 const RootNavigator = () => {
-	const { isAuthenticated, maintenanceStatus, isAdmin } = useAuthStore();
+	const { isAuthenticated, maintenanceStatus, isAdmin, needsPolicyAcceptance } = useAuthStore();
 
     return (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
             {maintenanceStatus.mode === 'HARD' && !isAdmin ? (
                 <Stack.Screen name="Maintenance" component={MaintenancePage} />
             ) : isAuthenticated ? (
-                <Stack.Screen name="App" component={AppStack} />
+                needsPolicyAcceptance ? (
+                    <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyPage} />
+                ) : (
+                    <Stack.Screen name="App" component={AppStack} />
+                )
             ) : (
-                <Stack.Screen name="Login" component={LoginPage} />
+                <>
+                    <Stack.Screen name="Login" component={LoginPage} />
+                    <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyPage} options={{ title: 'Datenschutzerklärung' }}/>
+                </>
             )}
              <Stack.Screen name="Verification" component={VerificationPage} />
         </Stack.Navigator>

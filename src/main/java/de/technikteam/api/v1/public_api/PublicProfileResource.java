@@ -7,6 +7,7 @@ import de.technikteam.api.v1.dto.TwoFactorSetupDTO;
 import de.technikteam.dao.*;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
+import de.technikteam.model.dto.LoginIpInfo;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.ProfileRequestService;
 import de.technikteam.service.TwoFactorAuthService;
@@ -73,7 +74,6 @@ public class PublicProfileResource {
 		profileData.put("achievements", achievementDAO.getAchievementsForUser(user.getId()));
 		profileData.put("passkeys", Collections.emptyList());
 		profileData.put("hasPendingRequest", requestDAO.hasPendingRequest(user.getId()));
-        profileData.put("loginHistory", authLogDAO.getLoginIpsForUser(user.getId()));
 
 		return ResponseEntity.ok(new ApiResponse(true, "Profildaten erfolgreich abgerufen.", profileData));
 	}
@@ -96,6 +96,13 @@ public class PublicProfileResource {
 
 		return ResponseEntity.ok(new ApiResponse(true, "Profildaten erfolgreich abgerufen.", profileData));
 	}
+    
+    @GetMapping("/known-ips")
+    @Operation(summary = "Get known IP addresses for the current user")
+    public ResponseEntity<ApiResponse> getKnownIps(@AuthenticationPrincipal SecurityUser securityUser) {
+        List<LoginIpInfo> knownIps = twoFactorAuthDAO.getKnownIpsForUser(securityUser.getUser().getId());
+        return ResponseEntity.ok(new ApiResponse(true, "Bekannte Standorte abgerufen.", knownIps));
+    }
 
 	@PostMapping("/request-change")
 	@Operation(summary = "Request a profile data change", description = "Submits a request for an administrator to approve changes to the user's profile data.")
@@ -263,5 +270,12 @@ public class PublicProfileResource {
             return ResponseEntity.ok(new ApiResponse(true, "IP address forgotten. 2FA will be required on next login from this location.", null));
         }
         return ResponseEntity.internalServerError().body(new ApiResponse(false, "Could not forget IP address.", null));
+    }
+
+    @PostMapping("/known-ips/forget-all")
+    @Operation(summary = "Forget all known IP addresses", description = "Removes all of the user's known IPs, forcing 2FA challenges on all subsequent logins.")
+    public ResponseEntity<ApiResponse> forgetAllIps(@AuthenticationPrincipal SecurityUser securityUser) {
+        twoFactorAuthDAO.clearKnownIpsForUser(securityUser.getUser().getId());
+        return ResponseEntity.ok(new ApiResponse(true, "All known locations have been forgotten. 2FA will be required on your next login.", null));
     }
 }

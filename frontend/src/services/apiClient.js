@@ -90,10 +90,14 @@ const apiClient = {
 			}
 			const result = await response.json();
 			if (!response.ok) {
+                // Prioritize the message from the backend JSON response
+                if (result.message) {
+                    throw new Error(result.message);
+                }
 				if (response.status >= 500) {
 					throw new Error("Ein interner Serverfehler ist aufgetreten.");
 				}
-				throw new Error(result.message || `Ein Fehler ist aufgetreten (Status: ${response.status})`);
+				throw new Error(`Ein Fehler ist aufgetreten (Status: ${response.status})`);
 			}
 			return result;
 		} catch (error) {

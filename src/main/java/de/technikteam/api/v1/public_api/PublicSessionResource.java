@@ -76,12 +76,16 @@ public class PublicSessionResource {
     @PostMapping("/revoke-all")
     @Operation(summary = "Revoke all other sessions for the current user")
     public ResponseEntity<ApiResponse> revokeAllOtherSessions(@AuthenticationPrincipal SecurityUser securityUser) {
-        String currentTokenJti = securityUser.getUser().getJti(); // Assuming JTI is added to SecurityUser
+        String currentTokenJti = securityUser.getUser().getJti();
+        if (currentTokenJti == null) {
+            // This can happen if the JTI is not being set correctly in the SecurityUser
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Current session identifier is missing.", null));
+        }
         List<AuthenticationLog> activeSessions = authLogDAO.getActiveSessionsForUser(securityUser.getUser().getId());
         
         int revokedCount = 0;
         for (AuthenticationLog session : activeSessions) {
-            if (!session.getJti().equals(currentTokenJti)) {
+            if (session.getJti() != null && !session.getJti().equals(currentTokenJti)) {
                 authService.revokeToken(session.getJti());
                 revokedCount++;
             }
