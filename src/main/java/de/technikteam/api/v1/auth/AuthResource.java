@@ -52,13 +52,12 @@ public class AuthResource {
 	private final TwoFactorAuthService twoFactorAuthService;
 	private final GeoIpService geoIpService;
 	private final UserAgentService userAgentService;
-	private final PrivacyPolicyService privacyPolicyService;
 
 	@Autowired
 	public AuthResource(UserDAO userDAO, AuthService authService, LoginAttemptService loginAttemptService,
 			AuthenticationLogService authLogService, SystemSettingsService settingsService,
 			TwoFactorAuthDAO twoFactorAuthDAO, TwoFactorAuthService twoFactorAuthService,
-			GeoIpService geoIpService, UserAgentService userAgentService, PrivacyPolicyService privacyPolicyService) {
+			GeoIpService geoIpService, UserAgentService userAgentService) {
 		this.userDAO = userDAO;
 		this.authService = authService;
 		this.loginAttemptService = loginAttemptService;
@@ -68,7 +67,6 @@ public class AuthResource {
 		this.twoFactorAuthService = twoFactorAuthService;
 		this.geoIpService = geoIpService;
 		this.userAgentService = userAgentService;
-		this.privacyPolicyService = privacyPolicyService;
 	}
 
 	@PostMapping("/login")
@@ -245,7 +243,6 @@ public class AuthResource {
 		responseData.put("user", authenticatedUser);
 		responseData.put("navigation", navigationItems);
 		responseData.put("maintenanceStatus", settingsService.getMaintenanceStatus());
-		responseData.put("currentPolicyVersion", privacyPolicyService.getCurrentVersion());
 
 		return ResponseEntity.ok(new ApiResponse(true, "Current user session retrieved.", responseData));
 	}

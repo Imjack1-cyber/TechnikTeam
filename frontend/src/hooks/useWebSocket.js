@@ -12,7 +12,7 @@ const useWebSocket = (url, onMessage, dependencies = []) => {
 		let reconnectTimeout;
 		const connect = async () => {
             const backendMode = useAuthStore.getState().backendMode;
-            const host = backendMode === 'dev' ? 'technikteamdev.duckdns.org' : 'technikteam.duckdns.org';
+            const host = backendMode === 'dev' ? 'technikteamdev.qs0.de' : 'technikteam.qs0.de';
 
 			const token = await getToken();
 			if (!url || !token) {

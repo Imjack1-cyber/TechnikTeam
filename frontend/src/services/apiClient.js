@@ -11,7 +11,7 @@ const getApiBaseUrl = () => {
     if (Platform.OS === 'web') {
         return '/TechnikTeam/api/v1';
     }
-    const host = mode === 'dev' ? 'technikteamdev.duckdns.org' : 'technikteam.duckdns.org';
+    const host = mode === 'dev' ? 'technikteamdev.qs0.de' : 'technikteam.qs0.de';
     return `https://${host}/TechnikTeam/api/v1`;
 };
 
@@ -20,7 +20,7 @@ const getRootUrl = () => {
     if (Platform.OS === 'web') {
         return '';
     }
-    const host = mode === 'dev' ? 'technikteamdev.duckdns.org' : 'technikteam.duckdns.org';
+    const host = mode === 'dev' ? 'technikteamdev.qs0.de' : 'technikteam.qs0.de';
     return `https://${host}/TechnikTeam`;
 };
 

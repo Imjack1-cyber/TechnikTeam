@@ -92,7 +92,7 @@ Follow these steps to get a local instance of the application running for develo
 4.  Open `src/main/resources/application.properties`.
 5.  Update the `spring.datasource.*` properties to match your database connection details.
 6.  Set the `upload.directory` to an absolute path on your local machine. This directory must exist and be writable by the application.
-7.  Set the `app.base-url` to the full public URL where your application will be hosted (e.g., `http://localhost:8080/TechnikTeam` for local development).
+7.  Set the `app.base-url` to the full public URL where your application will be hosted (e.g., `https://technikteam.qs0.de/TechnikTeam` for production).
 8.  The application uses Flyway for database migrations. The necessary tables will be created automatically when the application starts for the first time.
 
 **First-time Setup Note:** The application includes a component (`InitialAdminCreator.java`) that checks if an 'admin' user exists on first startup. If not, it creates a default `admin` user with full permissions and a strong, random password. This password is printed to the console **only once** on the very first startup. Please copy this password immediately and store it securely.
@@ -144,7 +144,7 @@ If the backend fails to start with an error message like `Migrations have failed
 After running `npm run build` in the `frontend` directory, a production-ready version of the site is available in `frontend/dist`. For deployment, it is recommended to use a reverse proxy like Nginx.
 
 1.  Serve the static files from `frontend/dist`.
-2.  Configure the reverse proxy to forward all requests starting with `/TechnikTeam/` to the running Spring Boot backend.
+2.  Configure the reverse proxy to forward all requests starting with `/TechnikTeam/` to the running Spring Boot backend. The primary domains are `technikteam.qs0.de` (production) and `technikteamdev.qs0.de` (development).
 3.  Ensure the `app.base-url` in `application.properties` is set to your final public domain.
 
 A detailed guide and example Nginx configuration can be found by asking the maintaining AI for instructions on setting up a reverse proxy.

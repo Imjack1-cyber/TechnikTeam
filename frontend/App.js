@@ -18,7 +18,9 @@ import DownloadsIndicator from './src/components/ui/DownloadsIndicator';
 const linking = {
   prefixes: [
     'https://technikteam.duckdns.org', 
-    'https://technikteamdev.duckdns.org'
+    'https://technikteamdev.duckdns.org',
+    'https://technikteam.qs0.de', 
+    'https://technikteamdev.qs0.de'
   ], // Add app domains for deep linking
   config: {
     screens: {
