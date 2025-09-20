@@ -2,7 +2,9 @@ package de.technikteam.api.v1.public_api;
 
 import de.technikteam.dao.*;
 import de.technikteam.model.Attachment;
+import de.technikteam.model.FileSharingLink;
 import de.technikteam.model.User;
+import de.technikteam.security.SecurityUser;
 import de.technikteam.service.ConfigurationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -17,9 +19,11 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
@@ -29,6 +33,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/v1/public/files")
@@ -40,15 +45,17 @@ public class PublicFileStreamResource {
 	private final AttachmentDAO attachmentDAO;
 	private final EventDAO eventDAO;
 	private final MeetingDAO meetingDAO;
+    private final FileSharingDAO fileSharingDAO;
 	private final Path fileStorageLocation;
 
 	@Autowired
 	public PublicFileStreamResource(FileDAO fileDAO, AttachmentDAO attachmentDAO, EventDAO eventDAO,
-			MeetingDAO meetingDAO, ConfigurationService configService) {
+			MeetingDAO meetingDAO, FileSharingDAO fileSharingDAO, ConfigurationService configService) {
 		this.fileDAO = fileDAO;
 		this.attachmentDAO = attachmentDAO;
 		this.eventDAO = eventDAO;
 		this.meetingDAO = meetingDAO;
+        this.fileSharingDAO = fileSharingDAO;
 		this.fileStorageLocation = Paths.get(configService.getProperty("upload.directory")).toAbsolutePath()
 				.normalize();
 	}
@@ -78,6 +85,44 @@ public class PublicFileStreamResource {
 
 		return serveFile(filePathFromDb, filenameForDownload, false);
 	}
+
+    @GetMapping("/share/{token}")
+    @Operation(summary = "Download a shared file", description = "Downloads a file using a secure sharing token.")
+    public ResponseEntity<Resource> downloadSharedFile(@PathVariable String token, @AuthenticationPrincipal SecurityUser securityUser) {
+        FileSharingLink link = fileSharingDAO.findByToken(token)
+                .orElse(null);
+
+        if (link == null || (link.getExpiresAt() != null && link.getExpiresAt().isBefore(LocalDateTime.now()))) {
+            return ResponseEntity.status(410).build(); // Gone
+        }
+
+        User currentUser = (securityUser != null) ? securityUser.getUser() : null;
+
+        // Authorization check
+        switch (link.getAccessLevel()) {
+            case "LOGGED_IN":
+                if (currentUser == null) return ResponseEntity.status(401).build();
+                break;
+            case "ADMIN":
+                if (currentUser == null || !currentUser.hasAdminAccess()) {
+                    return ResponseEntity.status(403).build();
+                }
+                break;
+            case "PUBLIC":
+                // No check needed
+                break;
+            default:
+                return ResponseEntity.status(500).build();
+        }
+
+        de.technikteam.model.File fileToServe = fileDAO.getFileById(link.getFileId());
+        if (fileToServe == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return serveFile(fileToServe.getFilepath(), fileToServe.getFilename(), false);
+    }
+
 
 	@GetMapping("/images/{filename:.+}")
 	@Operation(summary = "Get an inventory image", description = "Retrieves an inventory image for display. The filename usually corresponds to a storage item's image path.")

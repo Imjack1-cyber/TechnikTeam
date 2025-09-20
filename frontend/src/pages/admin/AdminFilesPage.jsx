@@ -11,6 +11,7 @@ import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import AdminModal from '../../components/ui/AdminModal';
 import * as DocumentPicker from 'expo-document-picker';
+import FileShareModal from '../../components/admin/files/FileShareModal';
 
 const RenameFileModal = ({ isOpen, onClose, onSuccess, file }) => {
     const theme = useAuthStore(state => state.theme);
@@ -233,6 +234,9 @@ const AdminFilesPage = ({ navigation }) => {
                     <Text style={styles.fileName}>{item.filename}</Text>
                 </View>
                 <View style={styles.fileActions}>
+                    <TouchableOpacity onPress={() => setModalState({ type: 'shareFile', data: item })}>
+                        <Icon name="share-alt" size={18} color={colors.textMuted} />
+                    </TouchableOpacity>
                     {isMarkdown && (
                         <TouchableOpacity onPress={() => navigation.navigate('AdminFileEditor', { fileId: item.id })}>
                             <Icon name="pen-alt" size={18} color={colors.textMuted} />
@@ -305,6 +309,7 @@ const AdminFilesPage = ({ navigation }) => {
             {modalState.type === 'renameCategory' && <RenameCategoryModal isOpen={true} onClose={closeModal} onSuccess={handleModalSuccess} category={modalState.data} />}
             {modalState.type === 'confirmDeleteFile' && <DeleteConfirmationModal isOpen={true} onClose={closeModal} onConfirm={() => handleDeleteFile(modalState.data)} itemType="Datei" itemName={modalState.data.filename} />}
             {modalState.type === 'confirmDeleteCategory' && <DeleteConfirmationModal isOpen={true} onClose={closeModal} onConfirm={() => handleDeleteCategory(modalState.data)} itemType="Kategorie" itemName={modalState.data.name} />}
+            {modalState.type === 'shareFile' && <FileShareModal isOpen={true} onClose={closeModal} file={modalState.data} />}
 		</View>
 	);
 };

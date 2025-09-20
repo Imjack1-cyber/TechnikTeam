@@ -1,0 +1,73 @@
+package de.technikteam.api.v1;
+
+import de.technikteam.dao.EventTaskCategoryDAO;
+import de.technikteam.model.ApiResponse;
+import de.technikteam.model.EventTaskCategory;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/v1/admin/events/{eventId}/task-categories")
+@Tag(name = "Admin Event Tasks", description = "Endpoints for managing event task categories.")
+public class AdminEventTaskCategoryResource {
+
+    private final EventTaskCategoryDAO categoryDAO;
+
+    @Autowired
+    public AdminEventTaskCategoryResource(EventTaskCategoryDAO categoryDAO) {
+        this.categoryDAO = categoryDAO;
+    }
+
+    @GetMapping
+    @Operation(summary = "Get all task categories for an event")
+    public ResponseEntity<ApiResponse> getCategories(@PathVariable int eventId) {
+        List<EventTaskCategory> categories = categoryDAO.findByEventId(eventId);
+        return ResponseEntity.ok(new ApiResponse(true, "Categories retrieved successfully.", categories));
+    }
+
+    @PostMapping
+    @Operation(summary = "Create a new task category")
+    public ResponseEntity<ApiResponse> createCategory(@PathVariable int eventId, @RequestBody EventTaskCategory category) {
+        category.setEventId(eventId);
+        EventTaskCategory createdCategory = categoryDAO.create(category);
+        return new ResponseEntity<>(new ApiResponse(true, "Category created successfully.", createdCategory), HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{categoryId}")
+    @Operation(summary = "Update a task category")
+    public ResponseEntity<ApiResponse> updateCategory(@PathVariable int eventId, @PathVariable int categoryId, @RequestBody EventTaskCategory category) {
+        category.setId(categoryId);
+        category.setEventId(eventId);
+        if (categoryDAO.update(category)) {
+            return ResponseEntity.ok(new ApiResponse(true, "Category updated successfully.", category));
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @DeleteMapping("/{categoryId}")
+    @Operation(summary = "Delete a task category")
+    public ResponseEntity<ApiResponse> deleteCategory(@PathVariable int eventId, @PathVariable int categoryId) {
+        if (categoryDAO.delete(categoryId)) {
+            return ResponseEntity.ok(new ApiResponse(true, "Category deleted successfully.", null));
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @PostMapping("/reorder")
+    @Operation(summary = "Update the display order of categories")
+    public ResponseEntity<ApiResponse> reorderCategories(@PathVariable int eventId, @RequestBody Map<String, List<Integer>> payload) {
+        List<Integer> categoryIds = payload.get("categoryIds");
+        if (categoryIds == null) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Payload must contain 'categoryIds'.", null));
+        }
+        categoryDAO.updateOrder(eventId, categoryIds);
+        return ResponseEntity.ok(new ApiResponse(true, "Category order updated successfully.", null));
+    }
+}

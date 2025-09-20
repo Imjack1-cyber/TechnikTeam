@@ -10,6 +10,8 @@ const useWebSocket = (url, onMessage, dependencies = []) => {
 
 	useEffect(() => {
 		let reconnectTimeout;
+		let shouldReconnect = true;
+
 		const connect = async () => {
             const backendMode = useAuthStore.getState().backendMode;
             const host = backendMode === 'dev' ? 'technikteamdev.qs0.de' : 'technikteam.qs0.de';
@@ -52,13 +54,18 @@ const useWebSocket = (url, onMessage, dependencies = []) => {
 			socket.onclose = (event) => {
 				if (event.code === 1000 && event.reason === "URL or token changed to null") {
 					console.log("WebSocket connection intentionally closed.");
+                    shouldReconnect = false;
 				} else if (event.code === 4001 || event.code === 403) {
 					console.error('WebSocket-Verbindung aufgrund von Authentifizierungs-/Autorisierungsfehler geschlossen.');
+                    shouldReconnect = false;
 				} else {
 					console.warn('WebSocket-Verbindung geschlossen. Versuche erneute Verbindung...');
-					reconnectTimeout = setTimeout(connect, 5000);
 				}
-				setReadyState(WebSocket.CLOSED);
+
+                setReadyState(WebSocket.CLOSED);
+                if (shouldReconnect) {
+				    reconnectTimeout = setTimeout(connect, 5000);
+                }
 			};
 			socket.onerror = (error) => {
 				console.error('WebSocket-Fehler:', error.message);
@@ -68,6 +75,7 @@ const useWebSocket = (url, onMessage, dependencies = []) => {
 		};
 		connect();
 		return () => {
+            shouldReconnect = false; // Prevent reconnect on component unmount
 			clearTimeout(reconnectTimeout);
 			if (socketRef.current) {
 				socketRef.current.onclose = null;

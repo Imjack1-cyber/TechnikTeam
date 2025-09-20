@@ -8,20 +8,24 @@ import java.util.stream.Collectors;
 public class EventTask {
 	private int id;
 	private int eventId;
+	private Integer categoryId;
+	private String name;
 	private String description;
-	private String details;
 	private String status;
 	private String eventName;
 	private LocalDateTime updatedAt;
 
 	private int displayOrder;
 	private int requiredPersons;
+	private boolean isImportant;
 
 	private List<User> assignedUsers = new ArrayList<>();
 	private List<StorageItem> requiredItems = new ArrayList<>();
 	private List<InventoryKit> requiredKits = new ArrayList<>();
 	private List<EventTask> dependsOn = new ArrayList<>(); 
 	private List<EventTask> dependencyFor = new ArrayList<>(); 
+    private List<Attachment> attachments = new ArrayList<>();
+
 
 	public String getAssignedUsernames() {
 		if (assignedUsers != null && !assignedUsers.isEmpty()) {
@@ -46,20 +50,28 @@ public class EventTask {
 		this.eventId = eventId;
 	}
 
+	public Integer getCategoryId() {
+		return categoryId;
+	}
+
+	public void setCategoryId(Integer categoryId) {
+		this.categoryId = categoryId;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
 	public String getDescription() {
 		return description;
 	}
 
 	public void setDescription(String description) {
 		this.description = description;
-	}
-
-	public String getDetails() {
-		return details;
-	}
-
-	public void setDetails(String details) {
-		this.details = details;
 	}
 
 	public String getStatus() {
@@ -102,6 +114,14 @@ public class EventTask {
 		this.requiredPersons = requiredPersons;
 	}
 
+	public boolean isImportant() {
+		return isImportant;
+	}
+
+	public void setImportant(boolean important) {
+		isImportant = important;
+	}
+
 	public List<User> getAssignedUsers() {
 		return assignedUsers;
 	}
@@ -141,4 +161,12 @@ public class EventTask {
 	public void setDependencyFor(List<EventTask> dependencyFor) {
 		this.dependencyFor = dependencyFor;
 	}
+
+    public List<Attachment> getAttachments() {
+        return attachments;
+    }
+
+    public void setAttachments(List<Attachment> attachments) {
+        this.attachments = attachments;
+    }
 }

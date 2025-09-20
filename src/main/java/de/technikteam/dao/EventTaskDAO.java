@@ -34,7 +34,7 @@ public class EventTaskDAO {
 	public int saveTask(EventTask task, int[] userIds, String[] itemIds, String[] itemQuantities, String[] kitIds,
 			int[] dependencyIds) {
 		boolean isUpdate = task.getId() > 0;
-		logger.debug("DAO saveTask called for task '{}'. Is update: {}", task.getDescription(), isUpdate);
+		logger.debug("DAO saveTask called for task '{}'. Is update: {}", task.getName(), isUpdate);
 		if (isUpdate) {
 			updateTask(task);
 		} else {
@@ -43,7 +43,7 @@ public class EventTaskDAO {
 		}
 
 		if (task.getId() == 0) {
-			logger.error("Failed to create or find task ID for task: {}", task.getDescription());
+			logger.error("Failed to create or find task ID for task: {}", task.getName());
 			throw new RuntimeException("Failed to create or find task ID.");
 		}
 
@@ -58,16 +58,19 @@ public class EventTaskDAO {
 	}
 
 	private int createTask(EventTask task) {
-		logger.debug("DAO createTask: eventId={}, description='{}'", task.getEventId(), task.getDescription());
-		String taskSql = "INSERT INTO event_tasks (event_id, description, details, status, display_order, required_persons) VALUES (?, ?, ?, 'OFFEN', ?, ?)";
+		logger.debug("DAO createTask: eventId={}, name='{}'", task.getEventId(), task.getName());
+		String taskSql = "INSERT INTO event_tasks (event_id, category_id, name, description, status, display_order, required_persons, is_important) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 		KeyHolder keyHolder = new GeneratedKeyHolder();
 		jdbcTemplate.update(connection -> {
 			PreparedStatement ps = connection.prepareStatement(taskSql, Statement.RETURN_GENERATED_KEYS);
 			ps.setInt(1, task.getEventId());
-			ps.setString(2, task.getDescription());
-			ps.setString(3, task.getDetails());
-			ps.setInt(4, task.getDisplayOrder());
-			ps.setInt(5, task.getRequiredPersons());
+			ps.setObject(2, task.getCategoryId());
+			ps.setString(3, task.getName());
+			ps.setString(4, task.getDescription());
+			ps.setString(5, task.getStatus());
+			ps.setInt(6, task.getDisplayOrder());
+			ps.setInt(7, task.getRequiredPersons());
+			ps.setBoolean(8, task.isImportant());
 			return ps;
 		}, keyHolder);
 		int newId = Objects.requireNonNull(keyHolder.getKey()).intValue();
@@ -77,9 +80,9 @@ public class EventTaskDAO {
 
 	private void updateTask(EventTask task) {
 		logger.debug("DAO updateTask for task ID: {}", task.getId());
-		String taskSql = "UPDATE event_tasks SET description = ?, details = ?, status = ?, display_order = ?, required_persons = ? WHERE id = ?";
-		jdbcTemplate.update(taskSql, task.getDescription(), task.getDetails(), task.getStatus(), task.getDisplayOrder(),
-				task.getRequiredPersons(), task.getId());
+		String taskSql = "UPDATE event_tasks SET category_id = ?, name = ?, description = ?, status = ?, display_order = ?, required_persons = ?, is_important = ? WHERE id = ?";
+		jdbcTemplate.update(taskSql, task.getCategoryId(), task.getName(), task.getDescription(), task.getStatus(), task.getDisplayOrder(),
+				task.getRequiredPersons(), task.isImportant(), task.getId());
 	}
 
 	private void clearAssociations(int taskId) {
@@ -92,7 +95,7 @@ public class EventTaskDAO {
 	private void saveUserAssignments(int taskId, int[] userIds) {
 		if (userIds == null || userIds.length == 0)
 			return;
-		String sql = "INSERT INTO event_task_assignments (task_id, user_id) VALUES (?, ?)";
+		String sql = "INSERT INTO event_task_assignments (task_id, user_id, status) VALUES (?, ?, 'ACTIVE')";
 		List<Integer> userIdList = Arrays.stream(userIds).boxed().collect(Collectors.toList());
 		jdbcTemplate.batchUpdate(sql, userIdList, 100, (ps, userId) -> {
 			ps.setInt(1, taskId);
@@ -141,7 +144,7 @@ public class EventTaskDAO {
 
 	public List<EventTask> getTasksForEvent(int eventId) {
 		Map<Integer, EventTask> tasksById = new LinkedHashMap<>();
-		String sql = "SELECT t.*, u.id as user_id, u.username, si.id as item_id, si.name as item_name, tsi.quantity as item_quantity, ik.id as kit_id, ik.name as kit_name FROM event_tasks t LEFT JOIN event_task_assignments ta ON t.id = ta.task_id LEFT JOIN users u ON ta.user_id = u.id LEFT JOIN event_task_storage_items tsi ON t.id = tsi.task_id LEFT JOIN storage_items si ON tsi.item_id = si.id LEFT JOIN event_task_kits tk ON t.id = tk.task_id LEFT JOIN inventory_kits ik ON tk.kit_id = ik.id WHERE t.event_id = ? ORDER BY FIELD(t.status, 'OFFEN', 'IN_ARBEIT', 'ERLEDIGT'), CASE WHEN t.status = 'OFFEN' AND ta.user_id IS NULL THEN 0 ELSE 1 END, t.updated_at DESC";
+		String sql = "SELECT t.*, u.id as user_id, u.username, si.id as item_id, si.name as item_name, tsi.quantity as item_quantity, ik.id as kit_id, ik.name as kit_name FROM event_tasks t LEFT JOIN event_task_assignments ta ON t.id = ta.task_id LEFT JOIN users u ON ta.user_id = u.id LEFT JOIN event_task_storage_items tsi ON t.id = tsi.task_id LEFT JOIN storage_items si ON tsi.item_id = si.id LEFT JOIN event_task_kits tk ON t.id = tk.task_id LEFT JOIN inventory_kits ik ON tk.kit_id = ik.id WHERE t.event_id = ? ORDER BY FIELD(t.status, 'OPEN', 'IN_PROGRESS', 'LOCKED', 'DONE'), t.display_order, t.updated_at DESC";
 
 		jdbcTemplate.query(sql, (ResultSet rs) -> {
 			int currentTaskId = rs.getInt("id");
@@ -194,11 +197,13 @@ public class EventTaskDAO {
 			EventTask task = new EventTask();
 			task.setId(rs.getInt("id"));
 			task.setEventId(rs.getInt("event_id"));
+			task.setCategoryId(rs.getObject("category_id", Integer.class));
+			task.setName(rs.getString("name"));
 			task.setDescription(rs.getString("description"));
-			task.setDetails(rs.getString("details"));
 			task.setStatus(rs.getString("status"));
 			task.setDisplayOrder(rs.getInt("display_order"));
 			task.setRequiredPersons(rs.getInt("required_persons"));
+			task.setImportant(rs.getBoolean("is_important"));
 			task.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
 			task.setAssignedUsers(new ArrayList<>());
 			task.setRequiredItems(new ArrayList<>());
@@ -242,12 +247,12 @@ public class EventTaskDAO {
 	}
 
 	public List<EventTask> getOpenTasksForUser(int userId) {
-		String sql = "SELECT t.*, e.name as event_name FROM event_tasks t JOIN event_task_assignments ta ON t.id = ta.task_id JOIN events e ON t.event_id = e.id WHERE ta.user_id = ? AND t.status = 'OFFEN' ORDER BY e.event_datetime ASC";
+		String sql = "SELECT t.*, e.name as event_name FROM event_tasks t JOIN event_task_assignments ta ON t.id = ta.task_id JOIN events e ON t.event_id = e.id WHERE ta.user_id = ? AND t.status = 'OPEN' ORDER BY e.event_datetime ASC";
 		return jdbcTemplate.query(sql, (rs, rowNum) -> {
 			EventTask task = new EventTask();
 			task.setId(rs.getInt("id"));
 			task.setEventId(rs.getInt("event_id"));
-			task.setDescription(rs.getString("description"));
+			task.setName(rs.getString("name"));
 			task.setStatus(rs.getString("status"));
 			task.setEventName(rs.getString("event_name"));
 			return task;

@@ -6,6 +6,7 @@ import de.technikteam.api.v1.dto.FileRenameRequest;
 import de.technikteam.dao.FileDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.FileCategory;
+import de.technikteam.model.FileSharingLink;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
@@ -188,4 +189,25 @@ public class AdminFileResource {
 		List<FileCategory> categories = fileDAO.getAllCategories();
 		return ResponseEntity.ok(new ApiResponse(true, "Kategorien erfolgreich abgerufen.", categories));
 	}
+
+    @PostMapping("/{fileId}/share")
+    @Operation(summary = "Create a sharing link for a file")
+    public ResponseEntity<ApiResponse> createShareLink(@PathVariable int fileId, @RequestBody FileSharingLink linkDetails, @AuthenticationPrincipal SecurityUser securityUser) {
+        FileSharingLink createdLink = fileService.createSharingLink(fileId, linkDetails.getAccessLevel(), linkDetails.getExpiresAt(), securityUser.getUser());
+        return new ResponseEntity<>(new ApiResponse(true, "Sharing link created.", createdLink), HttpStatus.CREATED);
+    }
+
+    @GetMapping("/{fileId}/share")
+    @Operation(summary = "Get all sharing links for a file")
+    public ResponseEntity<ApiResponse> getShareLinks(@PathVariable int fileId) {
+        List<FileSharingLink> links = fileService.getSharingLinksForFile(fileId);
+        return ResponseEntity.ok(new ApiResponse(true, "Sharing links retrieved.", links));
+    }
+
+    @DeleteMapping("/share/{linkId}")
+    @Operation(summary = "Delete a sharing link")
+    public ResponseEntity<ApiResponse> deleteShareLink(@PathVariable int linkId, @AuthenticationPrincipal SecurityUser securityUser) {
+        fileService.deleteSharingLink(linkId, securityUser.getUser());
+        return ResponseEntity.ok(new ApiResponse(true, "Sharing link deleted.", null));
+    }
 }

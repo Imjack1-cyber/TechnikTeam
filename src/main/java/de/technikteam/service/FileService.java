@@ -1,6 +1,8 @@
 package de.technikteam.service;
 
 import de.technikteam.dao.FileDAO;
+import de.technikteam.dao.FileSharingDAO;
+import de.technikteam.model.FileSharingLink;
 import de.technikteam.model.User;
 import de.technikteam.util.FileSignatureValidator;
 import org.apache.commons.io.FilenameUtils;
@@ -15,12 +17,17 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.List;
 import java.util.UUID;
 
 @Service
 public class FileService {
 
 	private final FileDAO fileDAO;
+	private final FileSharingDAO fileSharingDAO;
 	private final AdminLogService adminLogService;
 	private final Path fileStorageLocation;
 	private static final Logger logger = LogManager.getLogger(FileService.class);
@@ -28,8 +35,9 @@ public class FileService {
 	private static final long MAX_FILE_SIZE_BYTES = 1000L * 1024 * 1024; // 1000 MB
 
 	@Autowired
-	public FileService(FileDAO fileDAO, ConfigurationService configService, AdminLogService adminLogService) {
+	public FileService(FileDAO fileDAO, FileSharingDAO fileSharingDAO, ConfigurationService configService, AdminLogService adminLogService) {
 		this.fileDAO = fileDAO;
+		this.fileSharingDAO = fileSharingDAO;
 		this.adminLogService = adminLogService;
 		this.fileStorageLocation = Paths.get(configService.getProperty("upload.directory")).toAbsolutePath()
 				.normalize();
@@ -193,4 +201,41 @@ public class FileService {
 		}
 		return success;
 	}
+
+    @Transactional
+    public FileSharingLink createSharingLink(int fileId, String accessLevel, LocalDateTime expiresAt, User adminUser) {
+        if (fileDAO.getFileById(fileId) == null) {
+            throw new IllegalArgumentException("File not found.");
+        }
+        FileSharingLink link = new FileSharingLink();
+        link.setFileId(fileId);
+        link.setToken(generateSecureToken());
+        link.setAccessLevel(accessLevel);
+        link.setExpiresAt(expiresAt);
+
+        FileSharingLink createdLink = fileSharingDAO.create(link);
+        adminLogService.log(adminUser.getUsername(), "CREATE_FILE_SHARE_LINK",
+                String.format("Created %s share link for file ID %d.", accessLevel, fileId));
+        return createdLink;
+    }
+
+    public List<FileSharingLink> getSharingLinksForFile(int fileId) {
+        return fileSharingDAO.findByFileId(fileId);
+    }
+
+    @Transactional
+    public void deleteSharingLink(int linkId, User adminUser) {
+        FileSharingLink link = fileSharingDAO.findById(linkId)
+                .orElseThrow(() -> new IllegalArgumentException("Sharing link not found."));
+        fileSharingDAO.delete(linkId);
+        adminLogService.log(adminUser.getUsername(), "DELETE_FILE_SHARE_LINK",
+                String.format("Deleted share link (ID: %d) for file ID %d.", linkId, link.getFileId()));
+    }
+
+    private String generateSecureToken() {
+        SecureRandom random = new SecureRandom();
+        byte[] bytes = new byte[32];
+        random.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
 }

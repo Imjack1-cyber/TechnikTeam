@@ -8,6 +8,7 @@ import { Picker } from '@react-native-picker/picker';
 import { MultipleSelectList } from 'react-native-dropdown-select-list';
 import TaskDependenciesForm from '../admin/events/TaskDependenciesForm';
 import AdminModal from '../ui/AdminModal';
+import BouncyCheckbox from "react-native-bouncy-checkbox";
 
 const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
     const theme = useAuthStore(state => state.theme);
@@ -17,10 +18,13 @@ const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
 	const [formData, setFormData] = useState({
+		name: '',
 		description: '',
-		details: '',
-		status: 'OFFEN',
+		status: 'LOCKED',
+        requiredPersons: 1,
+        isImportant: false,
 		assignedUserIds: [],
+        categoryId: null,
 	});
     const [selectedDependencies, setSelectedDependencies] = useState(new Set());
 
@@ -28,14 +32,17 @@ const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
 		if (isOpen) {
 			if (isEditMode && task) {
 				setFormData({
+					name: task.name || '',
 					description: task.description || '',
-					details: task.details || '',
-					status: task.status || 'OFFEN',
+					status: task.status || 'LOCKED',
+                    requiredPersons: task.requiredPersons || 1,
+                    isImportant: task.isImportant || false,
 					assignedUserIds: task.assignedUsers?.map(u => u.id) || [],
+                    categoryId: task.categoryId,
 				});
                 setSelectedDependencies(new Set(task.dependsOn?.map(t => t.id) || []));
 			} else {
-				setFormData({ description: '', details: '', status: 'OFFEN', assignedUserIds: [] });
+				setFormData({ name: '', description: '', status: 'LOCKED', requiredPersons: 1, isImportant: false, assignedUserIds: [], categoryId: null });
                 setSelectedDependencies(new Set());
 			}
 		}
@@ -51,15 +58,14 @@ const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
 
 		const payload = {
 			id: task?.id || 0,
+			name: formData.name,
 			description: formData.description,
-			details: formData.details,
 			status: formData.status,
+            requiredPersons: parseInt(formData.requiredPersons, 10) || 1,
+            isImportant: formData.isImportant,
 			assignedUsers: formData.assignedUserIds.map(id => ({ id })),
 			dependsOn: Array.from(selectedDependencies).map(id => ({ id })),
-			requiredItems: task?.requiredItems || [],
-			requiredKits: task?.requiredKits || [],
-			requiredPersons: task?.requiredPersons || 0,
-			displayOrder: task?.displayOrder || 0,
+            categoryId: formData.categoryId,
 		};
 
 		try {
@@ -88,19 +94,28 @@ const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
             submitText="Aufgabe speichern"
         >
             {error && <Text style={styles.errorText}>{error}</Text>}
-            <Text style={styles.label}>Beschreibung (Titel)</Text>
-            <TextInput style={styles.input} value={formData.description} onChangeText={val => handleChange('description', val)} />
+            <Text style={styles.label}>Name (Titel)</Text>
+            <TextInput style={styles.input} value={formData.name} onChangeText={val => handleChange('name', val)} />
 
-            <Text style={styles.label}>Details (Markdown unterstützt)</Text>
-            <TextInput style={[styles.input, styles.textArea]} value={formData.details} onChangeText={val => handleChange('details', val)} multiline />
+            <Text style={styles.label}>Beschreibung (Markdown unterstützt)</Text>
+            <TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={val => handleChange('description', val)} multiline />
             
             <Text style={styles.label}>Status</Text>
             <Picker selectedValue={formData.status} onValueChange={val => handleChange('status', val)}>
-                <Picker.Item label="Offen" value="OFFEN" />
-                <Picker.Item label="In Arbeit" value="IN_ARBEIT" />
-                <Picker.Item label="Erledigt" value="ERLEDIGT" />
+                <Picker.Item label="Gesperrt" value="LOCKED" />
+                <Picker.Item label="Offen" value="OPEN" />
+                <Picker.Item label="In Arbeit" value="IN_PROGRESS" />
+                <Picker.Item label="Erledigt" value="DONE" />
             </Picker>
             
+            <Text style={styles.label}>Benötigte Personen</Text>
+            <TextInput style={styles.input} value={String(formData.requiredPersons)} onChangeText={val => handleChange('requiredPersons', val)} keyboardType="number-pad"/>
+
+            <View style={{flexDirection: 'row', alignItems: 'center', marginVertical: 16}}>
+                 <BouncyCheckbox isChecked={formData.isImportant} onPress={isChecked => handleChange('isImportant', isChecked)} />
+                <Text>Als wichtig markieren</Text>
+            </View>
+
             <Text style={styles.label}>Zugewiesen an</Text>
             <MultipleSelectList 
                 setSelected={(val) => handleChange('assignedUserIds', val)} 

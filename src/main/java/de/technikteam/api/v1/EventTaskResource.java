@@ -35,13 +35,18 @@ public class EventTaskResource {
 	@Operation(summary = "Create or update an event task")
 	public ResponseEntity<ApiResponse> saveTask(@PathVariable int eventId, @RequestBody EventTask task,
 			@AuthenticationPrincipal SecurityUser securityUser) {
-		logger.debug("Received request to save task for event {}: {}", eventId, task.getDescription());
+		logger.debug("Received request to save task for event {}: {}", eventId, task.getName());
 		try {
 			task.setEventId(eventId);
-			int taskId = eventTaskService.saveTaskAndHandleMentions(task,
-					task.getAssignedUsers().stream().mapToInt(User::getId).toArray(), null, null, null, 
-					task.getDependsOn().stream().mapToInt(EventTask::getId).toArray(), securityUser.getUser());
-			logger.info("Task {} for event {} saved successfully with ID: {}", task.getDescription(), eventId, taskId);
+
+			// Extract IDs from the provided objects for the service layer
+			int[] assignedUserIds = task.getAssignedUsers().stream().mapToInt(User::getId).toArray();
+			int[] dependencyIds = task.getDependsOn().stream().mapToInt(EventTask::getId).toArray();
+
+			int taskId = eventTaskService.saveTaskAndHandleMentions(task, assignedUserIds, null, null, null,
+					dependencyIds, securityUser.getUser());
+
+			logger.info("Task {} for event {} saved successfully with ID: {}", task.getName(), eventId, taskId);
 			return new ResponseEntity<>(new ApiResponse(true, "Task saved successfully.", Map.of("taskId", taskId)),
 					HttpStatus.OK);
 		} catch (Exception e) {
