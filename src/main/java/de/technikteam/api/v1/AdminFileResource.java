@@ -45,7 +45,7 @@ public class AdminFileResource {
 
 	@PostMapping
 	@Operation(summary = "Upload a new file")
-	public ResponseEntity<ApiResponse> uploadFile(@RequestParam("file") MultipartFile file,
+	public ResponseEntity<ApiResponse> uploadFile(@RequestPart("file") MultipartFile file,
 			@RequestParam(required = false) Integer categoryId, 
             @RequestParam(required = false) String newCategoryName,
             @RequestParam String requiredRole,
@@ -75,7 +75,7 @@ public class AdminFileResource {
 
 	@PostMapping("/replace/{id}")
 	@Operation(summary = "Replace an existing file")
-	public ResponseEntity<ApiResponse> replaceFile(@PathVariable int id, @RequestParam("file") MultipartFile file,
+	public ResponseEntity<ApiResponse> replaceFile(@PathVariable int id, @RequestPart("file") MultipartFile file,
 			@RequestParam(required = false) Integer categoryId, @RequestParam String requiredRole,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {

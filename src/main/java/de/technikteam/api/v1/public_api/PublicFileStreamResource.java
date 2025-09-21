@@ -1,6 +1,7 @@
 package de.technikteam.api.v1.public_api;
 
 import de.technikteam.dao.*;
+import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Attachment;
 import de.technikteam.model.FileSharingLink;
 import de.technikteam.model.User;
@@ -9,7 +10,6 @@ import de.technikteam.service.ConfigurationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -17,13 +17,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
@@ -43,18 +43,14 @@ public class PublicFileStreamResource {
 
 	private final FileDAO fileDAO;
 	private final AttachmentDAO attachmentDAO;
-	private final EventDAO eventDAO;
-	private final MeetingDAO meetingDAO;
     private final FileSharingDAO fileSharingDAO;
 	private final Path fileStorageLocation;
 
 	@Autowired
-	public PublicFileStreamResource(FileDAO fileDAO, AttachmentDAO attachmentDAO, EventDAO eventDAO,
-			MeetingDAO meetingDAO, FileSharingDAO fileSharingDAO, ConfigurationService configService) {
+	public PublicFileStreamResource(FileDAO fileDAO, AttachmentDAO attachmentDAO,
+			FileSharingDAO fileSharingDAO, ConfigurationService configService) {
 		this.fileDAO = fileDAO;
 		this.attachmentDAO = attachmentDAO;
-		this.eventDAO = eventDAO;
-		this.meetingDAO = meetingDAO;
         this.fileSharingDAO = fileSharingDAO;
 		this.fileStorageLocation = Paths.get(configService.getProperty("upload.directory")).toAbsolutePath()
 				.normalize();
@@ -62,7 +58,7 @@ public class PublicFileStreamResource {
 
 	@GetMapping("/download/{id}")
 	@Operation(summary = "Download a file", description = "Downloads a file (general or attachment) by its database ID after checking permissions.")
-	@ApiResponse(responseCode = "200", description = "File content", content = @Content(mediaType = "application/octet-stream"))
+	@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "File content", content = @Content(mediaType = "application/octet-stream"))
 	public ResponseEntity<Resource> downloadFile(
 			@Parameter(description = "ID of the file or attachment record") @PathVariable int id) {
 		String filePathFromDb = null;
@@ -85,6 +81,47 @@ public class PublicFileStreamResource {
 
 		return serveFile(filePathFromDb, filenameForDownload, false);
 	}
+
+    @GetMapping("/share/{token}/meta")
+    @Operation(summary = "Get metadata for a shared file", description = "Retrieves metadata like filename for a file shared via a secure token.")
+    public ResponseEntity<ApiResponse> getSharedFileMetadata(@PathVariable String token, @AuthenticationPrincipal SecurityUser securityUser) {
+        FileSharingLink link = fileSharingDAO.findByToken(token)
+                .orElse(null);
+
+        if (link == null || (link.getExpiresAt() != null && link.getExpiresAt().isBefore(LocalDateTime.now()))) {
+            return ResponseEntity.status(HttpStatus.GONE).body(new ApiResponse(false, "Link is expired or invalid.", null));
+        }
+
+        User currentUser = (securityUser != null) ? securityUser.getUser() : null;
+
+        // Authorization check
+        switch (link.getAccessLevel()) {
+            case "LOGGED_IN":
+                if (currentUser == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponse(false, "You must be logged in to access this file.", null));
+                break;
+            case "ADMIN":
+                if (currentUser == null || !currentUser.hasAdminAccess()) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, "You do not have permission to access this file.", null));
+                }
+                break;
+            case "PUBLIC":
+                // No check needed
+                break;
+            default:
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(false, "Invalid link configuration.", null));
+        }
+
+        de.technikteam.model.File fileToServe = fileDAO.getFileById(link.getFileId());
+        if (fileToServe == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, "File not found.", null));
+        }
+
+        // Don't send sensitive info like filepath
+        fileToServe.setFilepath(null);
+
+        return ResponseEntity.ok(new ApiResponse(true, "File metadata retrieved.", fileToServe));
+    }
+
 
     @GetMapping("/share/{token}")
     @Operation(summary = "Download a shared file", description = "Downloads a file using a secure sharing token.")
@@ -126,7 +163,7 @@ public class PublicFileStreamResource {
 
 	@GetMapping("/images/{filename:.+}")
 	@Operation(summary = "Get an inventory image", description = "Retrieves an inventory image for display. The filename usually corresponds to a storage item's image path.")
-	@ApiResponse(responseCode = "200", description = "Image content", content = @Content(mediaType = "image/*"))
+	@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Image content", content = @Content(mediaType = "image/*"))
 	public ResponseEntity<Resource> getImage(
 			@Parameter(description = "The filename of the image") @PathVariable String filename) {
 		return serveFile("images/" + filename, filename, true);

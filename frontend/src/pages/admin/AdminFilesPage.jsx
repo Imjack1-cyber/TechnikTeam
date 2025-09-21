@@ -13,6 +13,15 @@ import AdminModal from '../../components/ui/AdminModal';
 import * as DocumentPicker from 'expo-document-picker';
 import FileShareModal from '../../components/admin/files/FileShareModal';
 
+const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    if (!bytes) return '';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
 const RenameFileModal = ({ isOpen, onClose, onSuccess, file }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
@@ -81,11 +90,19 @@ const ReplaceFileModal = ({ isOpen, onClose, onSuccess, file }) => {
         }
         setIsSubmitting(true);
         const data = new FormData();
-        data.append('file', {
-            uri: newFile.uri,
-            name: newFile.name,
-            type: newFile.mimeType,
-        });
+        
+        if (Platform.OS === 'web') {
+            const response = await fetch(newFile.uri);
+            const blob = await response.blob();
+            data.append('file', new File([blob], newFile.name, { type: newFile.mimeType }));
+        } else {
+            data.append('file', {
+                uri: newFile.uri,
+                name: newFile.name,
+                type: newFile.mimeType,
+            });
+        }
+        
         // Retain original properties
         data.append('requiredRole', file.requiredRole);
         data.append('categoryId', file.categoryId || '');
@@ -115,7 +132,7 @@ const ReplaceFileModal = ({ isOpen, onClose, onSuccess, file }) => {
             </TouchableOpacity>
             {newFile && (
                 <Text style={[{marginTop: 8}]}>
-                    Ausgewählt: {newFile.name} ({(newFile.size / 1024 / 1024).toFixed(2)} MB)
+                    Ausgewählt: {newFile.name} ({formatFileSize(newFile.size)})
                 </Text>
             )}
         </AdminModal>
@@ -303,6 +320,7 @@ const AdminFilesPage = ({ navigation }) => {
                 isOpen={isUploadModalOpen}
                 onClose={() => setIsUploadModalOpen(false)}
                 onSuccess={handleUploadSuccess}
+                formatFileSize={formatFileSize}
             />
             {modalState.type === 'renameFile' && <RenameFileModal isOpen={true} onClose={closeModal} onSuccess={handleModalSuccess} file={modalState.data} />}
             {modalState.type === 'replaceFile' && <ReplaceFileModal isOpen={true} onClose={closeModal} onSuccess={handleModalSuccess} file={modalState.data} />}

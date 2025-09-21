@@ -77,4 +77,16 @@ public class EventTaskResource {
 					.body(new ApiResponse(false, "Ein interner Fehler ist aufgetreten.", null));
 		}
 	}
+
+    @PostMapping("/reorder")
+    @Operation(summary = "Update the display order of tasks within categories")
+    public ResponseEntity<ApiResponse> reorderTasks(@PathVariable int eventId, @RequestBody Map<String, List<Integer>> payload, @AuthenticationPrincipal SecurityUser securityUser) {
+        try {
+            eventTaskService.reorderTasks(eventId, payload, securityUser.getUser());
+            return ResponseEntity.ok(new ApiResponse(true, "Task order updated successfully.", null));
+        } catch (Exception e) {
+            logger.error("Failed to reorder tasks for event {}", eventId, e);
+            return ResponseEntity.internalServerError().body(new ApiResponse(false, "Failed to reorder tasks: " + e.getMessage(), null));
+        }
+    }
 }

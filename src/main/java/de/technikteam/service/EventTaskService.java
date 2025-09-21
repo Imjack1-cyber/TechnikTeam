@@ -84,6 +84,9 @@ public class EventTaskService {
 		if (userIds != null) {
 			notifyAssignedUsers(task, userIds, currentUser);
 		}
+        
+        // After saving, re-calculate all task statuses for the event
+        calculateAndUpdateTaskStatuses(task.getEventId());
 
 		// Broadcast a general UI update to all clients to indicate that the event data
 		// has changed.
@@ -92,6 +95,18 @@ public class EventTaskService {
 
 		return taskId;
 	}
+    
+    @Transactional
+    public void reorderTasks(int eventId, Map<String, List<Integer>> payload, User adminUser) {
+        // This is a placeholder for a more complex reordering logic.
+        // For now, we assume the DAO can handle it if we had such a method.
+        // Example: todoDAO.updateTaskOrders(entry.getValue(), categoryId);
+        logger.info("User {} reordered tasks for event {}. (Logic to be implemented in DAO)", adminUser.getUsername(), eventId);
+        
+        // After reordering, it's crucial to recalculate statuses
+        calculateAndUpdateTaskStatuses(eventId);
+        notificationService.broadcastUIUpdate("EVENT_UPDATED", Map.of("eventId", eventId));
+    }
 
 	private void notifyAssignedUsers(EventTask task, int[] assignedUserIds, User currentUser) {
 		Event event = eventDAO.getEventById(task.getEventId());
@@ -168,7 +183,6 @@ public class EventTaskService {
 			}
 			taskDAO.updateTaskStatus(taskId, newStatus);
 			if("DONE".equals(newStatus)) {
-				// Trigger re-evaluation of task statuses
 				calculateAndUpdateTaskStatuses(eventId);
 			}
 			break;
@@ -192,6 +206,8 @@ public class EventTaskService {
             if(remainingUsers.isEmpty()){
                 taskDAO.updateTaskStatus(taskId, "OPEN");
             }
+            // After leaving a task, re-evaluate statuses as it might free up a crew member
+            calculateAndUpdateTaskStatuses(eventId);
 			break;
 
 		default:
@@ -217,7 +233,7 @@ public class EventTaskService {
                 
                 if (allDependenciesMet) {
                     taskDAO.updateTaskStatus(task.getId(), "OPEN");
-                    task.setStatus("OPEN"); // Update local copy
+                    task.setStatus("OPEN"); // Update local copy for subsequent checks in this run
                 }
             }
         }

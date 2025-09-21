@@ -26,6 +26,7 @@ const linking = {
     screens: {
         // Public, unauthenticated screens
         Verification: 'verify/:token',
+        FileShare: 'share/:token',
 
         // Screens outside the drawer/main authenticated stack
         Login: 'login',

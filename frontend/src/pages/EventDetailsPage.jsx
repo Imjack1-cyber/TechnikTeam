@@ -30,10 +30,13 @@ const TaskList = ({ category, tasks, event, user, canManageTasks, isParticipant,
         return map;
     }, [event.eventTasks]);
 
+    // Sort tasks by their display_order
+    const sortedTasks = [...tasks].sort((a, b) => a.displayOrder - b.displayOrder);
+
     return (
         <View style={styles.categoryContainer}>
             <Text style={styles.categoryTitle}>{category?.name || 'Unkategorisiert'}</Text>
-            {tasks.map(task => {
+            {sortedTasks.map(task => {
                 const isAssigned = task.assignedUsers.some(u => u.id === user.id);
                 const isBlocked = task.status === 'LOCKED';
                 const isInProgress = task.status === 'IN_PROGRESS';
@@ -51,6 +54,15 @@ const TaskList = ({ category, tasks, event, user, canManageTasks, isParticipant,
                             <Text style={styles.cardTitle}>{task.name}</Text>
                         </View>
                         <MarkdownDisplay>{task.description || ''}</MarkdownDisplay>
+                        {task.dependsOn && task.dependsOn.length > 0 && (
+                            <View style={{marginVertical: spacing.sm}}>
+                                <Text style={{fontWeight: 'bold'}}>Benötigt:</Text>
+                                {task.dependsOn.map(dep => (
+                                    <Text key={dep.id}>- {taskStatusMap.get(dep.id) === 'DONE' ? '✅' : '⏳'} {dep.name || `Aufgabe #${dep.id}`}</Text>
+                                ))}
+                            </View>
+                        )}
+                        <Text>Zugewiesen an: {task.assignedUsers.map(u => u.username).join(', ') || 'Niemand'}</Text>
                         <View style={{flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm}}>
                             <Text>Benötigt: {task.requiredPersons} Person(en)</Text>
                             <Text>Aktiv: {task.assignedUsers.length}</Text>
@@ -70,6 +82,56 @@ const TaskList = ({ category, tasks, event, user, canManageTasks, isParticipant,
     );
 };
 
+
+const UserTaskView = ({ event, user, canManageTasks, isParticipant, onOpenModal, onAction, showDoneTasks, onShowDoneTasksToggle, styles }) => {
+    const categoriesApiCall = useCallback(() => apiClient.get(`/admin/events/${event.id}/task-categories`), [event.id]);
+    const { data: categories, loading: categoriesLoading } = useApi(categoriesApiCall);
+
+    const categorizedTasks = useMemo(() => {
+        if (!event.eventTasks) return {};
+        const filteredTasks = event.eventTasks.filter(task => showDoneTasks || task.status !== 'DONE');
+        
+        const tasksByCat = filteredTasks.reduce((acc, task) => {
+            const categoryId = task.categoryId || 0;
+            if (!acc[categoryId]) acc[categoryId] = [];
+            acc[categoryId].push(task);
+            return acc;
+        }, {});
+
+        const orderedCategories = categories ? [...categories, {id: 0, name: 'Unkategorisiert'}] : [{id: 0, name: 'Unkategorisiert'}];
+        
+        return orderedCategories.map(cat => ({
+            ...cat,
+            tasks: tasksByCat[cat.id] || []
+        })).filter(cat => cat.tasks.length > 0);
+
+    }, [event.eventTasks, showDoneTasks, categories]);
+
+    if (categoriesLoading) {
+        return <ActivityIndicator />;
+    }
+
+    return (
+        <View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
+                <BouncyCheckbox isChecked={showDoneTasks} onPress={onShowDoneTasksToggle} />
+                <Text>Erledigte Aufgaben anzeigen</Text>
+            </View>
+            {categorizedTasks.map(categoryData => (
+                <TaskList
+                    key={categoryData.id}
+                    category={categoryData}
+                    tasks={categoryData.tasks}
+                    event={event} user={user}
+                    canManageTasks={canManageTasks}
+                    isParticipant={isParticipant}
+                    onOpenModal={onOpenModal}
+                    onAction={onAction}
+                />
+            ))}
+        </View>
+    );
+};
 
 const EventDetailsPage = () => {
 	const route = useRoute();
@@ -119,69 +181,6 @@ const EventDetailsPage = () => {
     const isParticipant = event.userAttendanceStatus === 'ANGEMELDET' || event.userAttendanceStatus === 'ZUGEWIESEN';
     const canManageTasks = isAdmin || user.id === event.leaderUserId;
     
-    const categorizedTasks = useMemo(() => {
-        if (!event.eventTasks) return {};
-        const filteredTasks = event.eventTasks.filter(task => showDoneTasks || task.status !== 'DONE');
-        return filteredTasks.reduce((acc, task) => {
-            const categoryId = task.categoryId || 0; // Group tasks without a category under '0'
-            if (!acc[categoryId]) {
-                acc[categoryId] = { name: 'Allgemein', tasks: [] }; // Placeholder name
-            }
-            acc[categoryId].tasks.push(task);
-            return acc;
-        }, {});
-    }, [event.eventTasks, showDoneTasks]);
-
-
-    const renderTabContent = () => {
-        switch(activeTab) {
-            case 'details':
-                 return (
-                    <View style={styles.card}>
-                        <Text style={styles.cardTitle}>Beschreibung</Text>
-                        <MarkdownDisplay>{event.description || 'Keine Beschreibung.'}</MarkdownDisplay>
-                        <Text style={[styles.cardTitle, {marginTop: 16}]}>Details</Text>
-                        <Text>Ort: {event.location || 'N/A'}</Text>
-                        <Text>Leitung: {event.leaderUsername || 'N/A'}</Text>
-                    </View>
-                );
-            case 'team':
-                return isAdmin ? <AdminEventTeamTab event={event} onTeamUpdate={reloadEventDetails} /> : <Text>Teamansicht in Kürze verfügbar.</Text>;
-            case 'tasks-admin':
-                return <AdminEventTasksTab event={event} onUpdate={reloadEventDetails} />;
-            case 'tasks':
-                return (
-                    <View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
-                            <BouncyCheckbox isChecked={showDoneTasks} onPress={() => setShowDoneTasks(!showDoneTasks)} />
-                            <Text>Erledigte Aufgaben anzeigen</Text>
-                        </View>
-                        {Object.entries(categorizedTasks).map(([categoryId, data]) => (
-                            <TaskList
-                                key={categoryId}
-                                category={{ id: categoryId, name: data.name }}
-                                tasks={data.tasks}
-                                event={event} user={user}
-                                canManageTasks={canManageTasks}
-                                isParticipant={isParticipant}
-                                onOpenModal={handleOpenTaskModal}
-                                onAction={handleTaskAction}
-                            />
-                        ))}
-                    </View>
-                );
-            case 'checklist':
-                return <ChecklistTab event={event} user={user} />;
-            case 'gallery':
-                return <EventGalleryTab event={event} user={user} />;
-            case 'chat':
-                 return <Text>Chat in Kürze hier verfügbar.</Text>; // Placeholder
-            default:
-                return null;
-        }
-    };
-
-
 	return (
         <>
 		<ScrollView style={styles.container}>
@@ -204,7 +203,21 @@ const EventDetailsPage = () => {
             </ScrollView>
 
             <View style={styles.contentContainer}>
-                {renderTabContent()}
+                {activeTab === 'details' && (
+                    <View style={styles.card}>
+                        <Text style={styles.cardTitle}>Beschreibung</Text>
+                        <MarkdownDisplay>{event.description || 'Keine Beschreibung.'}</MarkdownDisplay>
+                        <Text style={[styles.cardTitle, {marginTop: 16}]}>Details</Text>
+                        <Text>Ort: {event.location || 'N/A'}</Text>
+                        <Text>Leitung: {event.leaderUsername || 'N/A'}</Text>
+                    </View>
+                )}
+                 {activeTab === 'team' && (isAdmin ? <AdminEventTeamTab event={event} onTeamUpdate={reloadEventDetails} /> : <Text>Teamansicht in Kürze verfügbar.</Text>)}
+                 {activeTab === 'tasks-admin' && <AdminEventTasksTab event={event} onUpdate={reloadEventDetails} />}
+                 {activeTab === 'tasks' && <UserTaskView event={event} user={user} canManageTasks={canManageTasks} isParticipant={isParticipant} onOpenModal={handleOpenTaskModal} onAction={handleTaskAction} showDoneTasks={showDoneTasks} onShowDoneTasksToggle={() => setShowDoneTasks(!showDoneTasks)} styles={styles} />}
+                 {activeTab === 'checklist' && <ChecklistTab event={event} user={user} />}
+                 {activeTab === 'gallery' && <EventGalleryTab event={event} user={user} />}
+                 {activeTab === 'chat' && <Text>Chat in Kürze hier verfügbar.</Text>}
             </View>
 		</ScrollView>
         <TaskModal
@@ -214,6 +227,7 @@ const EventDetailsPage = () => {
             event={event}
             task={editingTask}
             allUsers={event.assignedAttendees}
+            categories={[]}
         />
         </>
 	);

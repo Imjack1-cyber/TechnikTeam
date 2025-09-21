@@ -6,11 +6,10 @@ import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { Picker } from '@react-native-picker/picker';
 import { MultipleSelectList } from 'react-native-dropdown-select-list';
-import TaskDependenciesForm from '../admin/events/TaskDependenciesForm';
 import AdminModal from '../ui/AdminModal';
 import BouncyCheckbox from "react-native-bouncy-checkbox";
 
-const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
+const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers, categories }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
 	const isEditMode = !!task;
@@ -25,8 +24,10 @@ const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
         isImportant: false,
 		assignedUserIds: [],
         categoryId: null,
+        displayOrder: 0,
 	});
     const [selectedDependencies, setSelectedDependencies] = useState(new Set());
+    const [dependsOnPrevious, setDependsOnPrevious] = useState(true);
 
 	useEffect(() => {
 		if (isOpen) {
@@ -39,14 +40,16 @@ const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
                     isImportant: task.isImportant || false,
 					assignedUserIds: task.assignedUsers?.map(u => u.id) || [],
                     categoryId: task.categoryId,
+                    displayOrder: task.displayOrder || 0,
 				});
                 setSelectedDependencies(new Set(task.dependsOn?.map(t => t.id) || []));
 			} else {
-				setFormData({ name: '', description: '', status: 'LOCKED', requiredPersons: 1, isImportant: false, assignedUserIds: [], categoryId: null });
+				setFormData({ name: '', description: '', status: 'LOCKED', requiredPersons: 1, isImportant: false, assignedUserIds: [], categoryId: categories?.[0]?.id || null, displayOrder: 0 });
                 setSelectedDependencies(new Set());
 			}
+            setDependsOnPrevious(true);
 		}
-	}, [task, isEditMode, isOpen]);
+	}, [task, isEditMode, isOpen, categories]);
     
     const handleChange = (name, value) => {
         setFormData(prev => ({...prev, [name]: value}));
@@ -56,16 +59,28 @@ const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
 		setIsSubmitting(true);
 		setError('');
 
+        let finalDependencies = Array.from(selectedDependencies);
+        if (dependsOnPrevious) {
+            const tasksInCategory = event.eventTasks
+                .filter(t => t.categoryId === formData.categoryId)
+                .sort((a, b) => a.displayOrder - b.displayOrder);
+            const currentIndex = tasksInCategory.findIndex(t => t.displayOrder === formData.displayOrder);
+            if (currentIndex > 0) {
+                finalDependencies.push(tasksInCategory[currentIndex - 1].id);
+            }
+        }
+
 		const payload = {
 			id: task?.id || 0,
 			name: formData.name,
 			description: formData.description,
 			status: formData.status,
-            requiredPersons: parseInt(formData.requiredPersons, 10) || 1,
+            requiredPersons: parseInt(String(formData.requiredPersons), 10) || 1,
             isImportant: formData.isImportant,
 			assignedUsers: formData.assignedUserIds.map(id => ({ id })),
-			dependsOn: Array.from(selectedDependencies).map(id => ({ id })),
+			dependsOn: [...new Set(finalDependencies)].map(id => ({ id })),
             categoryId: formData.categoryId,
+            displayOrder: parseInt(String(formData.displayOrder), 10) || 0,
 		};
 
 		try {
@@ -100,6 +115,20 @@ const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
             <Text style={styles.label}>Beschreibung (Markdown unterstützt)</Text>
             <TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={val => handleChange('description', val)} multiline />
             
+            <Text style={styles.label}>Kategorie</Text>
+            <Picker selectedValue={formData.categoryId} onValueChange={val => handleChange('categoryId', val)}>
+                <Picker.Item label="Unkategorisiert" value={null} />
+                {categories?.map(cat => <Picker.Item key={cat.id} label={cat.name} value={cat.id} />)}
+            </Picker>
+
+            <Text style={styles.label}>Reihenfolgen-Nummer</Text>
+            <TextInput style={styles.input} value={String(formData.displayOrder)} onChangeText={val => handleChange('displayOrder', val)} keyboardType="number-pad"/>
+
+            <View style={{flexDirection: 'row', alignItems: 'center', marginVertical: 16}}>
+                 <BouncyCheckbox isChecked={dependsOnPrevious} onPress={(isChecked) => setDependsOnPrevious(isChecked)} />
+                <Text>Hängt von vorheriger Aufgabe ab</Text>
+            </View>
+            
             <Text style={styles.label}>Status</Text>
             <Picker selectedValue={formData.status} onValueChange={val => handleChange('status', val)}>
                 <Picker.Item label="Gesperrt" value="LOCKED" />
@@ -126,12 +155,6 @@ const TaskModal = ({ isOpen, onClose, onSuccess, event, task, allUsers }) => {
                 searchPlaceholder="Suchen"
                 boxStyles={styles.input}
                 defaultOptions={userOptions.filter(opt => formData.assignedUserIds.includes(opt.key))}
-            />
-
-            <TaskDependenciesForm
-                allTasks={allOtherTasks}
-                selectedDependencies={selectedDependencies}
-                onDependencyChange={setSelectedDependencies}
             />
 		</AdminModal>
 	);

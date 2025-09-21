@@ -11,7 +11,7 @@ import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import useApi from '../../../hooks/useApi';
 
-const UploadFileModal = ({ isOpen, onClose, onSuccess }) => {
+const UploadFileModal = ({ isOpen, onClose, onSuccess, formatFileSize }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
     const colors = getThemeColors(theme);
@@ -54,11 +54,19 @@ const UploadFileModal = ({ isOpen, onClose, onSuccess }) => {
         setError('');
 
         const data = new FormData();
-        data.append('file', {
-            uri: file.uri,
-            name: file.name,
-            type: file.mimeType,
-        });
+        
+        if (Platform.OS === 'web') {
+            const response = await fetch(file.uri);
+            const blob = await response.blob();
+            data.append('file', new File([blob], file.name, { type: file.mimeType }));
+        } else {
+            data.append('file', {
+                uri: file.uri,
+                name: file.name,
+                type: file.mimeType,
+            });
+        }
+
         data.append('requiredRole', requiredRole);
 
         if (categoryId === 'NEW') {
@@ -114,7 +122,7 @@ const UploadFileModal = ({ isOpen, onClose, onSuccess }) => {
                     </TouchableOpacity>
                     {file && (
                         <Text style={[{marginTop: 8}]}>
-                            Ausgewählt: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                            Ausgewählt: {file.name} ({formatFileSize(file.size)})
                         </Text>
                     )}
                 </View>

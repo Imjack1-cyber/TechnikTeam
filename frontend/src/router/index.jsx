@@ -25,6 +25,7 @@ import StoragePage from '../pages/StoragePage';
 import StorageItemDetailsPage from '../pages/StorageItemDetailsPage';
 import FilesPage from '../pages/FilesPage';
 import FileEditorPage from '../pages/files/FileEditorPage';
+import FileSharePage from '../pages/FileSharePage';
 import CalendarPage from '../pages/CalendarPage';
 import FeedbackPage from '../pages/FeedbackPage';
 import EventFeedbackPage from '../pages/EventFeedbackPage';
@@ -204,6 +205,7 @@ const RootNavigator = () => {
                 <Stack.Screen name="Login" component={LoginPage} />
             )}
              <Stack.Screen name="Verification" component={VerificationPage} />
+             <Stack.Screen name="FileShare" component={FileSharePage} />
         </Stack.Navigator>
     );
 };
