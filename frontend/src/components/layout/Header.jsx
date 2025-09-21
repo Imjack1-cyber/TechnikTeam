@@ -5,7 +5,7 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DrawerActions } from '@react-navigation/native';
 
-const Header = ({ navigation, route, options }) => {
+const Header = ({ navigation, route, options, back }) => {
 	const user = useAuthStore(state => state.user);
 	const unseenCount = user?.unseenNotificationsCount || 0;
     const insets = useSafeAreaInsets();
@@ -14,9 +14,15 @@ const Header = ({ navigation, route, options }) => {
 
 	return (
 		<View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? insets.top : 10, height: (Platform.OS === 'ios' ? insets.top : 10) + 54 }]}>
-			<TouchableOpacity style={styles.toggleButton} onPress={() => navigation.dispatch(DrawerActions.toggleDrawer()) }>
-				<Icon name={'bars'} size={24} color="#212529" />
-			</TouchableOpacity>
+			{back ? (
+                <TouchableOpacity style={styles.toggleButton} onPress={navigation.goBack}>
+                    <Icon name={'arrow-left'} size={24} color="#212529" />
+                </TouchableOpacity>
+            ) : (
+                <TouchableOpacity style={styles.toggleButton} onPress={() => navigation.dispatch(DrawerActions.toggleDrawer()) }>
+				    <Icon name={'bars'} size={24} color="#212529" />
+			    </TouchableOpacity>
+            )}
 			<View>
 				<Text style={styles.logo}>{title}</Text>
 			</View>

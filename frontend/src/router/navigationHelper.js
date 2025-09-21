@@ -24,7 +24,7 @@ export function navigateFromUrl(url) {
     const id = match[2];
     switch (resource) {
       case 'veranstaltungen':
-        return navigate('EventDetails', { eventId: id });
+        return navigate('Veranstaltungen', { screen: 'EventDetails', params: { eventId: id } });
       case 'lehrgaenge':
         return navigate('MeetingDetails', { meetingId: id });
       case 'lager':

@@ -43,7 +43,13 @@ const linking = {
                         Team: 'team',
                         Chat: 'chat/:conversationId?',
                         Lehrgänge: 'lehrgaenge',
-                        Veranstaltungen: 'veranstaltungen',
+                        Veranstaltungen: {
+                            path: 'veranstaltungen',
+                            screens: {
+                                EventsList: '',
+                                EventDetails: 'details/:eventId'
+                            }
+                        },
                         Lager: 'lager',
                         Dateien: 'dateien',
                         Kalender: 'kalender',
@@ -135,7 +141,6 @@ const linking = {
                 Profile: 'profil',
                 Settings: 'profil/einstellungen',
                 PasswordChange: 'passwort',
-                EventDetails: 'veranstaltungen/details/:eventId',
                 MeetingDetails: 'lehrgaenge/details/:meetingId',
                 StorageItemDetails: 'lager/details/:itemId',
                 UserProfile: 'team/:userId',

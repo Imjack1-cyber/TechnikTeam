@@ -21,11 +21,17 @@ const CalendarMobileView = ({ entries }) => {
 
 	const renderItem = ({ item }) => {
         const isEvent = item.type === 'Event';
-        const navigateTo = isEvent ? 'EventDetails' : 'MeetingDetails';
-        const params = isEvent ? { eventId: item.id } : { meetingId: item.id };
+        
+        const handlePress = () => {
+            if (isEvent) {
+                navigation.navigate('Veranstaltungen', { screen: 'EventDetails', params: { eventId: item.id } });
+            } else {
+                navigation.navigate('MeetingDetails', { meetingId: item.id });
+            }
+        };
         
 		return (
-            <TouchableOpacity style={styles.itemLink} onPress={() => navigation.navigate(navigateTo, params)}>
+            <TouchableOpacity style={styles.itemLink} onPress={handlePress}>
                 <View style={styles.dateContainer}>
                     <Text style={styles.dateDay}>{format(parseISO(item.start), 'dd')}</Text>
                     <Text style={styles.dateMonth}>{format(parseISO(item.start), 'MMM', { locale: de })}</Text>

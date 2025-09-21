@@ -39,9 +39,11 @@ const CalendarView = ({ entries }) => {
         const dateString = day.dateString;
         if (markedDates[dateString] && markedDates[dateString].entryData) {
             const entry = markedDates[dateString].entryData;
-            const routeName = entry.type === 'Event' ? 'EventDetails' : 'MeetingDetails';
-            const params = entry.type === 'Event' ? { eventId: entry.id } : { meetingId: entry.id };
-            navigation.navigate(routeName, params);
+            if (entry.type === 'Event') {
+                navigation.navigate('Veranstaltungen', { screen: 'EventDetails', params: { eventId: entry.id } });
+            } else {
+                navigation.navigate('MeetingDetails', { meetingId: entry.id });
+            }
         }
     };
 

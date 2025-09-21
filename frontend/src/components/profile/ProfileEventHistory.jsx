@@ -19,7 +19,7 @@ const ProfileEventHistory = ({ eventHistory }) => {
 		const canGiveFeedback = item.status === 'ABGESCHLOSSEN' && item.userAttendanceStatus === 'ZUGEWIESEN';
 		return (
 			<View style={[styles.card, {marginBottom: 12}]} key={item.id}>
-				<TouchableOpacity onPress={() => navigation.navigate('EventDetails', { eventId: item.id })}>
+				<TouchableOpacity onPress={() => navigation.navigate('Veranstaltungen', { screen: 'EventDetails', params: { eventId: item.id } })}>
 					<Text style={styles.cardTitle}>{item.name}</Text>
 				</TouchableOpacity>
 				<View style={styles.detailsListRow}>

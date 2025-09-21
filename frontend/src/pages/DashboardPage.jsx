@@ -19,7 +19,7 @@ const DashboardPage = () => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
 
-	const { dashboardWidgets: widgets = {} } = layout || {};
+	const widgets = layout?.dashboardWidgets || {};
 
     const renderItem = (item, type) => {
         const handlePress = () => {
@@ -28,7 +28,7 @@ const DashboardPage = () => {
             } else {
                 // Fallback for items without a direct URL, like tasks
                 if (type === 'task' && item.eventId) {
-                    navigation.navigate('EventDetails', { eventId: item.eventId });
+                    navigation.navigate('Veranstaltungen', { screen: 'EventDetails', params: { eventId: item.eventId } });
                 }
             }
         };
