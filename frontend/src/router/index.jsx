@@ -101,22 +101,60 @@ const AdminUsersStack = () => (
     </Stack.Navigator>
 );
 const AdminEventsStack = () => (
-    <Stack.Navigator><Stack.Screen name="AdminEventsIndex" component={AdminEventsIndex} options={{ headerShown: false }} /><Stack.Screen name="AdminEvents" component={AdminEventsPage} /><Stack.Screen name="AdminDebriefingsList" component={AdminDebriefingsListPage} /><Stack.Screen name="AdminEventDebriefing" component={AdminEventDebriefingPage} /><Stack.Screen name="AdminEventRoles" component={AdminEventRolesPage} /><Stack.Screen name="AdminVenues" component={AdminVenuesPage} /><Stack.Screen name="AdminChecklistTemplates" component={AdminChecklistTemplatesPage} /></Stack.Navigator>
+    <Stack.Navigator>
+        <Stack.Screen name="AdminEventsIndex" component={AdminEventsIndex} options={{ headerShown: false }} />
+        <Stack.Screen name="AdminEvents" component={AdminEventsPage} options={{ title: 'Events Verwalten' }} />
+        <Stack.Screen name="AdminDebriefingsList" component={AdminDebriefingsListPage} options={{ title: 'Debriefing-Übersicht' }} />
+        <Stack.Screen name="AdminEventDebriefing" component={AdminEventDebriefingPage} options={{ title: 'Event-Debriefing' }} />
+        <Stack.Screen name="AdminEventRoles" component={AdminEventRolesPage} options={{ title: 'Event-Rollen' }} />
+        <Stack.Screen name="AdminVenues" component={AdminVenuesPage} options={{ title: 'Veranstaltungsorte' }} />
+        <Stack.Screen name="AdminChecklistTemplates" component={AdminChecklistTemplatesPage} options={{ title: 'Checklisten-Vorlagen' }} />
+    </Stack.Navigator>
 );
 const AdminStorageStack = () => (
-    <Stack.Navigator><Stack.Screen name="AdminStorageIndex" component={AdminStorageIndex} options={{ headerShown: false }} /><Stack.Screen name="AdminStorage" component={AdminStoragePage} /><Stack.Screen name="AdminKits" component={AdminKitsPage} /><Stack.Screen name="AdminDefective" component={AdminDefectivePage} /><Stack.Screen name="AdminDamageReports" component={AdminDamageReportsPage} /></Stack.Navigator>
+    <Stack.Navigator>
+        <Stack.Screen name="AdminStorageIndex" component={AdminStorageIndex} options={{ headerShown: false }} />
+        <Stack.Screen name="AdminStorage" component={AdminStoragePage} options={{ title: 'Lager Verwalten' }} />
+        <Stack.Screen name="AdminKits" component={AdminKitsPage} options={{ title: 'Kit-Verwaltung' }} />
+        <Stack.Screen name="AdminDefective" component={AdminDefectivePage} options={{ title: 'Defekte Artikel' }} />
+        <Stack.Screen name="AdminDamageReports" component={AdminDamageReportsPage} options={{ title: 'Schadensmeldungen' }} />
+    </Stack.Navigator>
 );
 const AdminCoursesStack = () => (
-    <Stack.Navigator><Stack.Screen name="AdminCoursesIndex" component={AdminCoursesIndex} options={{ headerShown: false }} /><Stack.Screen name="AdminCourses" component={AdminCoursesPage} /><Stack.Screen name="AdminMeetings" component={AdminMeetingsPage} /><Stack.Screen name="AdminMatrix" component={AdminMatrixPage} /></Stack.Navigator>
+    <Stack.Navigator>
+        <Stack.Screen name="AdminCoursesIndex" component={AdminCoursesIndex} options={{ headerShown: false }} />
+        <Stack.Screen name="AdminCourses" component={AdminCoursesPage} options={{ title: 'Lehrgangs-Vorlagen' }} />
+        <Stack.Screen name="AdminMeetings" component={AdminMeetingsPage} options={{ title: 'Meetings' }} />
+        <Stack.Screen name="AdminMatrix" component={AdminMatrixPage} options={{ title: 'Qualifikations-Matrix' }} />
+    </Stack.Navigator>
 );
 const AdminContentStack = () => (
-    <Stack.Navigator><Stack.Screen name="AdminContentIndex" component={AdminContentIndex} options={{ headerShown: false }} /><Stack.Screen name="AdminAnnouncements" component={AdminAnnouncementsPage} /><Stack.Screen name="AdminFiles" component={AdminFilesPage} /><Stack.Screen name="AdminFileEditor" component={AdminFileEditorPage} /><Stack.Screen name="AdminFeedback" component={AdminFeedbackPage} /><Stack.Screen name="AdminChangelogs" component={AdminChangelogPage} /><Stack.Screen name="AdminDocumentation" component={AdminDocumentationPage} /><Stack.Screen name="AdminNotifications" component={AdminNotificationsPage} /></Stack.Navigator>
+    <Stack.Navigator>
+        <Stack.Screen name="AdminContentIndex" component={AdminContentIndex} options={{ headerShown: false }} />
+        <Stack.Screen name="AdminAnnouncements" component={AdminAnnouncementsPage} options={{ title: 'Anschlagbrett' }} />
+        <Stack.Screen name="AdminFiles" component={AdminFilesPage} options={{ title: 'Dateien' }} />
+        <Stack.Screen name="AdminFileEditor" component={AdminFileEditorPage} options={{ title: 'Datei-Editor' }} />
+        <Stack.Screen name="AdminFeedback" component={AdminFeedbackPage} options={{ title: 'Feedback' }} />
+        <Stack.Screen name="AdminChangelogs" component={AdminChangelogPage} options={{ title: 'Changelogs' }} />
+        <Stack.Screen name="AdminDocumentation" component={AdminDocumentationPage} options={{ title: 'Seiten-Doku' }} />
+        <Stack.Screen name="AdminNotifications" component={AdminNotificationsPage} options={{ title: 'Benachrichtigungen' }} />
+    </Stack.Navigator>
 );
 const AdminReportsStack = () => (
-    <Stack.Navigator><Stack.Screen name="AdminReportsIndex" component={AdminReportsIndex} options={{ headerShown: false }} /><Stack.Screen name="AdminReports" component={AdminReportsPage} /><Stack.Screen name="AdminLog" component={AdminLogPage} /></Stack.Navigator>
+    <Stack.Navigator>
+        <Stack.Screen name="AdminReportsIndex" component={AdminReportsIndex} options={{ headerShown: false }} />
+        <Stack.Screen name="AdminReports" component={AdminReportsPage} options={{ title: 'Berichte & Analysen' }} />
+        <Stack.Screen name="AdminLog" component={AdminLogPage} options={{ title: 'Aktions-Log' }} />
+    </Stack.Navigator>
 );
 const AdminSystemStack = () => (
-    <Stack.Navigator><Stack.Screen name="AdminSystemIndex" component={AdminSystemIndex} options={{ headerShown: false }} /><Stack.Screen name="AdminSystemPage" component={AdminSystemPage} /><Stack.Screen name="AdminAuthLog" component={AdminAuthLogPage} /><Stack.Screen name="AdminGeoIp" component={AdminGeoIpPage} /><Stack.Screen name="AdminWiki" component={AdminWikiPage} /></Stack.Navigator>
+    <Stack.Navigator>
+        <Stack.Screen name="AdminSystemIndex" component={AdminSystemIndex} options={{ headerShown: false }} />
+        <Stack.Screen name="AdminSystemPage" component={AdminSystemPage} options={{ title: 'System-Status' }} />
+        <Stack.Screen name="AdminAuthLog" component={AdminAuthLogPage} options={{ title: 'Auth Log' }} />
+        <Stack.Screen name="AdminGeoIp" component={AdminGeoIpPage} options={{ title: 'GeoIP Filter' }} />
+        <Stack.Screen name="AdminWiki" component={AdminWikiPage} options={{ title: 'Technische Wiki' }} />
+    </Stack.Navigator>
 );
 
 

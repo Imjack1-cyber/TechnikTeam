@@ -219,6 +219,11 @@ const EventDetailsPage = () => {
                  {activeTab === 'gallery' && <EventGalleryTab event={event} user={user} />}
                  {activeTab === 'chat' && <Text>Chat in Kürze hier verfügbar.</Text>}
             </View>
+
+            <TouchableOpacity style={[styles.button, styles.secondaryButton, { margin: spacing.md, alignSelf: 'flex-start' }]} onPress={() => navigation.goBack()}>
+                <Icon name="arrow-left" size={14} color={colors.white} />
+                <Text style={styles.buttonText}>Zurück zur Event-Übersicht</Text>
+            </TouchableOpacity>
 		</ScrollView>
         <TaskModal
             isOpen={isTaskModalOpen}
