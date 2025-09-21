@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import apiClient from '../services/apiClient';
 import useApi from '../hooks/useApi';
 import { useAuthStore } from '../store/authStore';
@@ -16,6 +17,8 @@ import { getCommonStyles } from '../styles/commonStyles';
 import { getThemeColors, spacing, typography } from '../styles/theme';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import BouncyCheckbox from "react-native-bouncy-checkbox";
+
+const Tab = createMaterialTopTabNavigator();
 
 // TaskList sub-component adapted for React Native
 const TaskList = ({ category, tasks, event, user, canManageTasks, isParticipant, onOpenModal, onAction }) => {
@@ -112,7 +115,7 @@ const UserTaskView = ({ event, user, canManageTasks, isParticipant, onOpenModal,
     }
 
     return (
-        <View>
+        <ScrollView style={{flex: 1}} contentContainerStyle={{padding: spacing.md}}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
                 <BouncyCheckbox isChecked={showDoneTasks} onPress={onShowDoneTasksToggle} />
                 <Text>Erledigte Aufgaben anzeigen</Text>
@@ -129,9 +132,44 @@ const UserTaskView = ({ event, user, canManageTasks, isParticipant, onOpenModal,
                     onAction={onAction}
                 />
             ))}
-        </View>
+        </ScrollView>
     );
 };
+
+const DetailsTab = ({ route }) => {
+    const { event } = route.params;
+    const theme = useAuthStore(state => state.theme);
+    const styles = getCommonStyles(theme);
+    return (
+        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+            <View style={styles.card}>
+                <Text style={styles.cardTitle}>Beschreibung</Text>
+                <MarkdownDisplay>{event.description || 'Keine Beschreibung.'}</MarkdownDisplay>
+                <Text style={[styles.cardTitle, {marginTop: 16}]}>Details</Text>
+                <Text>Ort: {event.location || 'N/A'}</Text>
+                <Text>Leitung: {event.leaderUsername || 'N/A'}</Text>
+            </View>
+        </ScrollView>
+    );
+};
+
+const TeamTab = ({ route }) => {
+    const { isAdmin } = route.params;
+    if (isAdmin) {
+        return <AdminEventTeamTab />;
+    }
+    return <View style={getCommonStyles().centered}><Text>Teamansicht in Kürze verfügbar.</Text></View>;
+};
+
+const TasksTab = ({ route }) => {
+    const { event, user, canManageTasks, isParticipant, handleOpenTaskModal, handleTaskAction } = route.params;
+    const [showDoneTasks, setShowDoneTasks] = useState(false);
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    return <UserTaskView event={event} user={user} canManageTasks={canManageTasks} isParticipant={isParticipant} onOpenModal={handleOpenTaskModal} onAction={handleTaskAction} showDoneTasks={showDoneTasks} onShowDoneTasksToggle={() => setShowDoneTasks(!showDoneTasks)} styles={styles} />;
+};
+
+const ChatTab = () => <View style={getCommonStyles().centered}><Text>Chat in Kürze hier verfügbar.</Text></View>;
 
 const EventDetailsPage = () => {
 	const route = useRoute();
@@ -146,10 +184,8 @@ const EventDetailsPage = () => {
 	const apiCall = useCallback(() => apiClient.get(`/public/events/${eventId}`), [eventId]);
 	const { data: event, loading, error, reload: reloadEventDetails } = useApi(apiCall);
 	
-    const [activeTab, setActiveTab] = useState('tasks');
     const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
-    const [showDoneTasks, setShowDoneTasks] = useState(false);
 
 	useEffect(() => {
 		if (lastUpdatedEvent && lastUpdatedEvent.id === parseInt(eventId, 10)) {
@@ -182,59 +218,40 @@ const EventDetailsPage = () => {
     const canManageTasks = isAdmin || user.id === event.leaderUserId;
     
 	return (
-        <>
-		<ScrollView style={styles.container}>
-			<View style={styles.header}>
-				<Text style={styles.title}>{event.name}</Text>
-				<StatusBadge status={event.status} />
-			</View>
-			<Text style={styles.subtitle}>
-				{new Date(event.eventDateTime).toLocaleString('de-DE')}
-			</Text>
-
-			<ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabContainer}>
-                <TouchableOpacity style={[styles.tabButton, activeTab === 'details' && styles.activeTab]} onPress={() => setActiveTab('details')}><Text style={[styles.tabText, activeTab === 'details' && styles.activeTabText]}>Details</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.tabButton, activeTab === 'team' && styles.activeTab]} onPress={() => setActiveTab('team')}><Text style={[styles.tabText, activeTab === 'team' && styles.activeTabText]}>Team</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.tabButton, activeTab === 'tasks' && styles.activeTab]} onPress={() => setActiveTab('tasks')}><Text style={[styles.tabText, activeTab === 'tasks' && styles.activeTabText]}>Aufgaben</Text></TouchableOpacity>
-                {canManageTasks && <TouchableOpacity style={[styles.tabButton, activeTab === 'tasks-admin' && styles.activeTab]} onPress={() => setActiveTab('tasks-admin')}><Text style={[styles.tabText, activeTab === 'tasks-admin' && styles.activeTabText]}>Aufgaben (Admin)</Text></TouchableOpacity>}
-                <TouchableOpacity style={[styles.tabButton, activeTab === 'checklist' && styles.activeTab]} onPress={() => setActiveTab('checklist')}><Text style={[styles.tabText, activeTab === 'checklist' && styles.activeTabText]}>Checkliste</Text></TouchableOpacity>
-                {event.status === 'LAUFEND' && <TouchableOpacity style={[styles.tabButton, activeTab === 'chat' && styles.activeTab]} onPress={() => setActiveTab('chat')}><Text style={[styles.tabText, activeTab === 'chat' && styles.activeTabText]}>Chat</Text></TouchableOpacity>}
-                {event.status === 'ABGESCHLOSSEN' && <TouchableOpacity style={[styles.tabButton, activeTab === 'gallery' && styles.activeTab]} onPress={() => setActiveTab('gallery')}><Text style={[styles.tabText, activeTab === 'gallery' && styles.activeTabText]}>Galerie</Text></TouchableOpacity>}
-            </ScrollView>
-
-            <View style={styles.contentContainer}>
-                {activeTab === 'details' && (
-                    <View style={styles.card}>
-                        <Text style={styles.cardTitle}>Beschreibung</Text>
-                        <MarkdownDisplay>{event.description || 'Keine Beschreibung.'}</MarkdownDisplay>
-                        <Text style={[styles.cardTitle, {marginTop: 16}]}>Details</Text>
-                        <Text>Ort: {event.location || 'N/A'}</Text>
-                        <Text>Leitung: {event.leaderUsername || 'N/A'}</Text>
-                    </View>
-                )}
-                 {activeTab === 'team' && (isAdmin ? <AdminEventTeamTab event={event} onTeamUpdate={reloadEventDetails} /> : <Text>Teamansicht in Kürze verfügbar.</Text>)}
-                 {activeTab === 'tasks-admin' && <AdminEventTasksTab event={event} onUpdate={reloadEventDetails} />}
-                 {activeTab === 'tasks' && <UserTaskView event={event} user={user} canManageTasks={canManageTasks} isParticipant={isParticipant} onOpenModal={handleOpenTaskModal} onAction={handleTaskAction} showDoneTasks={showDoneTasks} onShowDoneTasksToggle={() => setShowDoneTasks(!showDoneTasks)} styles={styles} />}
-                 {activeTab === 'checklist' && <ChecklistTab event={event} user={user} />}
-                 {activeTab === 'gallery' && <EventGalleryTab event={event} user={user} />}
-                 {activeTab === 'chat' && <Text>Chat in Kürze hier verfügbar.</Text>}
+        <View style={styles.container}>
+            <View style={styles.header}>
+                <Text style={styles.title}>{event.name}</Text>
+                <StatusBadge status={event.status} />
             </View>
-
-            <TouchableOpacity style={[styles.button, styles.secondaryButton, { margin: spacing.md, alignSelf: 'flex-start' }]} onPress={() => navigation.navigate('EventsList')}>
-                <Icon name="arrow-left" size={14} color={colors.white} />
-                <Text style={styles.buttonText}>Zurück zur Event-Übersicht</Text>
-            </TouchableOpacity>
-		</ScrollView>
-        <TaskModal
-            isOpen={isTaskModalOpen}
-            onClose={() => setIsTaskModalOpen(false)}
-            onSuccess={() => { setIsTaskModalOpen(false); reloadEventDetails(); }}
-            event={event}
-            task={editingTask}
-            allUsers={event.assignedAttendees}
-            categories={[]}
-        />
-        </>
+            <Text style={styles.subtitle}>{new Date(event.eventDateTime).toLocaleString('de-DE')}</Text>
+            
+            <Tab.Navigator
+                screenOptions={{
+                    tabBarScrollEnabled: true,
+                    tabBarItemStyle: { width: 'auto' },
+                    tabBarIndicatorStyle: { backgroundColor: colors.primary },
+                    tabBarLabelStyle: { fontFamily: 'System', fontSize: 14, textTransform: 'capitalize', fontWeight: '500' },
+                }}
+            >
+                <Tab.Screen name="Details" component={DetailsTab} initialParams={{ event }} />
+                <Tab.Screen name="Team" component={TeamTab} initialParams={{ event, onUpdate: reloadEventDetails, isAdmin }} />
+                <Tab.Screen name="Aufgaben" component={TasksTab} initialParams={{ event, user, canManageTasks, isParticipant, handleOpenTaskModal, handleTaskAction }} />
+                {canManageTasks && <Tab.Screen name="Aufgaben (Admin)" component={AdminEventTasksTab} initialParams={{ event, onUpdate: reloadEventDetails }} />}
+                <Tab.Screen name="Checkliste" component={ChecklistTab} initialParams={{ event }} />
+                {event.status === 'LAUFEND' && <Tab.Screen name="Chat" component={ChatTab} />}
+                {event.status === 'ABGESCHLOSSEN' && <Tab.Screen name="Galerie" component={EventGalleryTab} initialParams={{ event, user }} />}
+            </Tab.Navigator>
+            
+            <TaskModal
+                isOpen={isTaskModalOpen}
+                onClose={() => setIsTaskModalOpen(false)}
+                onSuccess={() => { setIsTaskModalOpen(false); reloadEventDetails(); }}
+                event={event}
+                task={editingTask}
+                allUsers={event.assignedAttendees}
+                categories={[]}
+            />
+        </View>
 	);
 };
 

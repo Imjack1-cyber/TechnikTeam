@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
@@ -9,9 +9,11 @@ import { Picker } from '@react-native-picker/picker';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
-const ChecklistTab = ({ event }) => {
+const ChecklistTab = () => {
+    const route = useRoute();
+    const { event } = route.params;
     const navigation = useNavigation();
 	const { addToast } = useToast();
 	const [checklistItems, setChecklistItems] = useState([]);

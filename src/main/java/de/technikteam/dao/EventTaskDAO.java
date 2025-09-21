@@ -144,7 +144,7 @@ public class EventTaskDAO {
 
 	public List<EventTask> getTasksForEvent(int eventId) {
 		Map<Integer, EventTask> tasksById = new LinkedHashMap<>();
-		String sql = "SELECT t.*, u.id as user_id, u.username, si.id as item_id, si.name as item_name, tsi.quantity as item_quantity, ik.id as kit_id, ik.name as kit_name FROM event_tasks t LEFT JOIN event_task_assignments ta ON t.id = ta.task_id LEFT JOIN users u ON ta.user_id = u.id LEFT JOIN event_task_storage_items tsi ON t.id = tsi.task_id LEFT JOIN storage_items si ON tsi.item_id = si.id LEFT JOIN event_task_kits tk ON t.id = tk.task_id LEFT JOIN inventory_kits ik ON tk.kit_id = ik.id WHERE t.event_id = ? ORDER BY FIELD(t.status, 'OPEN', 'IN_PROGRESS', 'LOCKED', 'DONE'), t.display_order, t.updated_at DESC";
+		String sql = "SELECT t.*, u.id as user_id, u.username, si.id as item_id, si.name as item_name, tsi.quantity as item_quantity, ik.id as kit_id, ik.name as kit_name FROM event_tasks t LEFT JOIN event_task_assignments ta ON t.id = ta.task_id LEFT JOIN users u ON ta.user_id = u.id LEFT JOIN event_task_storage_items tsi ON t.id = tsi.task_id LEFT JOIN storage_items si ON tsi.item_id = si.id LEFT JOIN event_task_kits tk ON t.id = tk.task_id LEFT JOIN inventory_kits ik ON tk.kit_id = ik.id WHERE t.event_id = ? ORDER BY FIELD(t.status, 'OPEN', 'IN_PROGRESS', 'LOCKED', 'DONE'), t.display_order IS NULL, t.display_order, t.updated_at DESC";
 
 		jdbcTemplate.query(sql, (ResultSet rs) -> {
 			int currentTaskId = rs.getInt("id");

@@ -8,6 +8,8 @@ import { getCommonStyles } from '../../../styles/commonStyles';
 import { getThemeColors, spacing, typography, borders, shadows } from '../../../styles/theme';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import AdminModal from '../../ui/AdminModal';
+import { useRoute } from '@react-navigation/native';
+import BouncyCheckbox from "react-native-bouncy-checkbox";
 
 const CategoryModal = ({ isOpen, onClose, eventId, onSuccess }) => {
     const theme = useAuthStore(state => state.theme);
@@ -57,17 +59,37 @@ const DeleteCategoryModal = ({ isOpen, onClose, category, onSuccess }) => {
     );
 };
 
-const TaskCard = ({ task, onOpenModal, styles, colors }) => (
-    <TouchableOpacity style={styles.taskCard} onPress={() => onOpenModal('task', task)}>
-        <Text style={styles.taskName}>{task.name}</Text>
-        <View style={styles.assignees}>
-            {task.assignedUsers?.slice(0, 3).map(user => (
-                 <Icon key={user.id} name={user.profileIconClass?.replace('fa-', '') || 'user-circle'} solid size={18} style={{marginRight: -8}} color={colors.primary}/>
-            ))}
-            {task.assignedUsers?.length > 3 && <Text style={styles.moreAssignees}>+{task.assignedUsers.length - 3}</Text>}
-        </View>
-    </TouchableOpacity>
-);
+const TaskCard = ({ task, onOpenModal, styles, colors }) => {
+    const getTaskCardStyle = () => {
+        const needsHelp = task.status === 'IN_PROGRESS' && task.assignedUsers.length < task.requiredPersons;
+        if (task.status === 'LOCKED') return styles.lockedTask;
+        if (task.status === 'DONE') return styles.doneTask;
+        if (task.isImportant || needsHelp) return styles.importantTask;
+        if (task.status === 'IN_PROGRESS') return styles.inProgressTask;
+        return {}; // Default for OPEN
+    };
+    const isDone = task.status === 'DONE';
+
+    return (
+        <TouchableOpacity style={[styles.taskCard, getTaskCardStyle()]} onPress={() => onOpenModal('task', task)}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Text style={[styles.taskName, isDone && styles.doneTaskText]}>{task.name}</Text>
+                <Text style={styles.displayOrder}>#{task.displayOrder}</Text>
+            </View>
+            <View style={styles.metaContainer}>
+                <View style={styles.metaItem}>
+                    <Icon name="users" size={12} color={colors.textMuted} />
+                    <Text style={styles.metaText}>{task.assignedUsers.length} / {task.requiredPersons}</Text>
+                </View>
+            </View>
+            {task.assignedUsers.length > 0 && (
+                <View style={styles.assigneeList}>
+                    <Text style={styles.assigneeText}>Aktiv: {task.assignedUsers.map(u => u.username).join(', ')}</Text>
+                </View>
+            )}
+        </TouchableOpacity>
+    );
+};
 
 const KanbanColumn = ({ title, tasks, onOpenModal, styles, colors }) => (
     <View style={styles.kanbanColumn}>
@@ -80,7 +102,9 @@ const KanbanColumn = ({ title, tasks, onOpenModal, styles, colors }) => (
     </View>
 );
 
-const AdminEventTasksTab = ({ event, onUpdate }) => {
+const AdminEventTasksTab = () => {
+    const route = useRoute();
+    const { event, onUpdate } = route.params;
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
@@ -89,6 +113,7 @@ const AdminEventTasksTab = ({ event, onUpdate }) => {
     const { data: categories, loading: categoriesLoading, reload: reloadCategories } = useApi(categoriesApiCall);
 
     const [modalState, setModalState] = useState({ type: null, data: null });
+    const [showDoneTasks, setShowDoneTasks] = useState(false);
 
     const openModal = (type, data = null) => setModalState({ type, data });
 
@@ -98,37 +123,55 @@ const AdminEventTasksTab = ({ event, onUpdate }) => {
         onUpdate();
     };
 
-    const tasksByStatus = useMemo(() => {
-        const grouped = { LOCKED: [], OPEN: [], IN_PROGRESS: [], DONE: [] };
-        event.eventTasks?.forEach(task => {
-            if (grouped[task.status]) {
-                grouped[task.status].push(task);
+    const tasksByCategory = useMemo(() => {
+        const byCategory = {};
+
+        const allCategories = categories ? [...categories, {id: 0, name: 'Unkategorisiert'}] : [{id: 0, name: 'Unkategorisiert'}];
+        allCategories.forEach(cat => {
+            byCategory[cat.id] = { ...cat, tasks: [] };
+        });
+
+        const filteredTasks = event.eventTasks?.filter(task => showDoneTasks || task.status !== 'DONE');
+
+        filteredTasks?.forEach(task => {
+            const categoryId = task.categoryId || 0;
+            if (byCategory[categoryId]) {
+                byCategory[categoryId].tasks.push(task);
             }
         });
-        Object.values(grouped).forEach(arr => arr.sort((a, b) => a.displayOrder - b.displayOrder));
-        return grouped;
-    }, [event.eventTasks]);
+
+        Object.values(byCategory).forEach(cat => {
+            cat.tasks.sort((a, b) => a.displayOrder - b.displayOrder);
+        });
+
+        return Object.values(byCategory).filter(cat => cat.tasks.length > 0);
+    }, [event.eventTasks, categories, showDoneTasks]);
     
 
     return (
         <View style={{flex: 1}}>
-            <View style={{flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md}}>
-                <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => openModal('task')}>
-                    <Icon name="plus" size={16} color={colors.white} />
-                    <Text style={styles.buttonText}> Aufgabe</Text>
-                </TouchableOpacity>
-                 <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => openModal('category')}>
-                    <Icon name="folder-plus" size={16} color={colors.text} />
-                    <Text style={{color: colors.text}}> Kategorie</Text>
-                </TouchableOpacity>
+            <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md}}>
+                <View style={{flexDirection: 'row', gap: spacing.sm}}>
+                    <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => openModal('task')}>
+                        <Icon name="plus" size={16} color={colors.white} />
+                        <Text style={styles.buttonText}> Aufgabe</Text>
+                    </TouchableOpacity>
+                     <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => openModal('category')}>
+                        <Icon name="folder-plus" size={16} color={colors.text} />
+                        <Text style={{color: colors.text}}> Kategorie</Text>
+                    </TouchableOpacity>
+                </View>
+                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <BouncyCheckbox isChecked={showDoneTasks} onPress={(isChecked) => setShowDoneTasks(isChecked)} size={20} />
+                    <Text>Erledigte anzeigen</Text>
+                </View>
             </View>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={styles.kanbanBoard}>
-                    <KanbanColumn title="Gesperrt" tasks={tasksByStatus.LOCKED} onOpenModal={openModal} styles={styles} colors={colors} />
-                    <KanbanColumn title="Offen" tasks={tasksByStatus.OPEN} onOpenModal={openModal} styles={styles} colors={colors} />
-                    <KanbanColumn title="In Arbeit" tasks={tasksByStatus.IN_PROGRESS} onOpenModal={openModal} styles={styles} colors={colors} />
-                    <KanbanColumn title="Erledigt" tasks={tasksByStatus.DONE} onOpenModal={openModal} styles={styles} colors={colors} />
+                    {tasksByCategory.map(category => (
+                        <KanbanColumn key={category.id} title={category.name} tasks={category.tasks} onOpenModal={openModal} styles={styles} colors={colors} />
+                    ))}
                 </View>
             </ScrollView>
 
@@ -162,48 +205,22 @@ const AdminEventTasksTab = ({ event, onUpdate }) => {
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
-        kanbanBoard: {
-            flexDirection: 'row',
-            gap: spacing.md,
-            paddingBottom: spacing.md,
-        },
-        kanbanColumn: {
-            width: 280,
-            backgroundColor: colors.background,
-            borderRadius: borders.radius,
-            padding: spacing.sm,
-            height: '100%',
-        },
-        columnTitle: {
-            fontSize: typography.h4,
-            fontWeight: 'bold',
-            padding: spacing.sm,
-            color: colors.heading,
-        },
-        taskCard: {
-            backgroundColor: colors.surface,
-            borderRadius: borders.radius,
-            padding: spacing.sm,
-            marginBottom: spacing.sm,
-            borderWidth: 1,
-            borderColor: colors.border,
-            ...shadows.sm,
-        },
-        taskName: {
-            fontWeight: 'bold',
-            marginBottom: spacing.sm,
-        },
-        assignees: {
-            flexDirection: 'row',
-            marginTop: spacing.sm,
-        },
-        moreAssignees: {
-            backgroundColor: colors.background,
-            borderRadius: 12,
-            paddingHorizontal: 6,
-            marginLeft: 12,
-            fontSize: typography.small,
-        }
+        kanbanBoard: { flexDirection: 'row', gap: spacing.md, paddingBottom: spacing.md },
+        kanbanColumn: { width: 280, backgroundColor: colors.background, borderRadius: borders.radius, padding: spacing.sm, height: '100%'},
+        columnTitle: { fontSize: typography.h4, fontWeight: 'bold', padding: spacing.sm, color: colors.heading },
+        taskCard: { backgroundColor: colors.surface, borderRadius: borders.radius, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border, ...shadows.sm },
+        lockedTask: { backgroundColor: colors.background, opacity: 0.7 },
+        importantTask: { backgroundColor: 'rgba(255, 193, 7, 0.1)', borderColor: colors.warning },
+        inProgressTask: { backgroundColor: 'rgba(40, 167, 69, 0.1)', borderColor: colors.success },
+        doneTask: { backgroundColor: colors.background, opacity: 0.6 },
+        doneTaskText: { textDecorationLine: 'line-through', color: colors.textMuted },
+        taskName: { fontWeight: 'bold', marginBottom: spacing.xs, color: colors.text, fontSize: typography.body },
+        displayOrder: { fontSize: typography.caption, color: colors.textMuted, fontWeight: 'bold' },
+        metaContainer: { flexDirection: 'row', gap: spacing.md, marginVertical: spacing.sm },
+        metaItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+        metaText: { color: colors.textMuted, fontSize: typography.small },
+        assigneeList: { marginTop: spacing.sm, borderTopWidth: 1, borderColor: colors.border, paddingTop: spacing.sm },
+        assigneeText: { color: colors.textMuted, fontSize: typography.small },
     });
 };
 

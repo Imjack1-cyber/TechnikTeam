@@ -8,8 +8,11 @@ import { getCommonStyles } from '../../../styles/commonStyles';
 import { getThemeColors, typography, spacing, borders } from '../../../styles/theme';
 import Icon from '@expo/vector-icons/FontAwesome5';
 import { Picker } from '@react-native-picker/picker';
+import { useRoute } from '@react-navigation/native';
 
-const AdminEventTeamTab = ({ event, onTeamUpdate }) => {
+const AdminEventTeamTab = () => {
+    const route = useRoute();
+    const { event, onTeamUpdate } = route.params;
 	const { addToast } = useToast();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [assignedUsers, setAssignedUsers] = useState(event.assignedAttendees || []);
