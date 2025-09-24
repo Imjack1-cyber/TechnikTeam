@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import apiClient from '../services/apiClient';
@@ -18,6 +18,7 @@ import { getThemeColors, spacing, typography } from '../styles/theme';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import BouncyCheckbox from "react-native-bouncy-checkbox";
 import ScrollableContent from '../components/ui/ScrollableContent';
+import AdminModal from '../components/ui/AdminModal';
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -187,6 +188,8 @@ const EventDetailsPage = () => {
 	
     const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
+    const [isStarting, setIsStarting] = useState(false);
+    const [isStartConfirmModalOpen, setIsStartConfirmModalOpen] = useState(false);
 
 	useEffect(() => {
 		if (lastUpdatedEvent && lastUpdatedEvent.id === parseInt(eventId, 10)) {
@@ -210,6 +213,28 @@ const EventDetailsPage = () => {
         } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
     };
 
+    const handleStartEvent = () => {
+        setIsStartConfirmModalOpen(true);
+    };
+
+    const performStartEvent = async () => {
+        setIsStarting(true);
+        try {
+            const result = await apiClient.post(`/events/${eventId}/start`);
+            if (result.success) {
+                addToast('Event erfolgreich gestartet.', 'success');
+                reloadEventDetails();
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (err) {
+            addToast(`Fehler beim Starten des Events: ${err.message}`, 'error');
+        } finally {
+            setIsStarting(false);
+            setIsStartConfirmModalOpen(false);
+        }
+    };
+
 
 	if (loading) return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
 	if (error) return <View style={styles.centered}><Text style={styles.errorText}>{error}</Text></View>;
@@ -222,7 +247,26 @@ const EventDetailsPage = () => {
         <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.title}>{event.name}</Text>
-                <StatusBadge status={event.status} />
+                <View style={{flexDirection: 'row', alignItems: 'center', gap: spacing.sm}}>
+                    <StatusBadge status={event.status} />
+                    {canManageTasks && event.status === 'GEPLANT' && (
+                        <TouchableOpacity 
+                            style={[styles.button, styles.successButton, {paddingVertical: 6, paddingHorizontal: 12}]}
+                            onPress={handleStartEvent}
+                            disabled={isStarting}
+                        >
+                            {isStarting 
+                                ? <ActivityIndicator color={colors.white} size="small" /> 
+                                : (
+                                    <>
+                                        <Icon name="play" size={14} color={colors.white} />
+                                        <Text style={styles.buttonText}> Starten</Text>
+                                    </>
+                                )
+                            }
+                        </TouchableOpacity>
+                    )}
+                </View>
             </View>
             <Text style={styles.subtitle}>{new Date(event.eventDateTime).toLocaleString('de-DE')}</Text>
             
@@ -252,6 +296,20 @@ const EventDetailsPage = () => {
                 allUsers={event.assignedAttendees}
                 categories={[]}
             />
+
+            <AdminModal
+                isOpen={isStartConfirmModalOpen}
+                onClose={() => setIsStartConfirmModalOpen(false)}
+                onSubmit={performStartEvent}
+                title="Event starten?"
+                submitText="Starten"
+                submitButtonVariant="success"
+                isSubmitting={isStarting}
+            >
+                <Text style={styles.bodyText}>
+                    Möchten Sie das Event "{event.name}" wirklich starten? Alle zugewiesenen Mitglieder werden benachrichtigt.
+                </Text>
+            </AdminModal>
         </View>
 	);
 };

@@ -232,6 +232,16 @@ public class EventDAO {
 		}
 	}
 
+	public boolean updateEventStatus(int eventId, String newStatus) {
+		String sql = "UPDATE events SET status = ? WHERE id = ?";
+		try {
+			return jdbcTemplate.update(sql, newStatus, eventId) > 0;
+		} catch (Exception e) {
+			logger.error("Error updating status for event {}", eventId, e);
+			return false;
+		}
+	}
+
 	public boolean deleteEvent(int eventId) {
 		String sql = "DELETE FROM events WHERE id = ?";
 		try {

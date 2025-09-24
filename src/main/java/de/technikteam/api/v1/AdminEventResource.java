@@ -14,6 +14,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import de.technikteam.security.SecurityUser;
 import org.springframework.web.bind.annotation.*;
@@ -109,6 +110,25 @@ public class AdminEventResource {
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body(new ApiResponse(false, "Klonen des Events fehlgeschlagen: " + e.getMessage(), null));
+		}
+	}
+
+	@PostMapping("/{id}/start")
+	@Operation(summary = "Start an event", description = "Changes an event's status from PLANNED to RUNNING.")
+	public ResponseEntity<ApiResponse> startEvent(@PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		try {
+			eventService.startEvent(id, securityUser.getUser());
+			return ResponseEntity.ok(new ApiResponse(true, "Event erfolgreich gestartet.", null));
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, e.getMessage(), null));
+		} catch (IllegalStateException e) {
+			return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
+		} catch (AccessDeniedException e) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, e.getMessage(), null));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new ApiResponse(false, "Event konnte nicht gestartet werden: " + e.getMessage(), null));
 		}
 	}
 

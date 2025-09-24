@@ -10,6 +10,7 @@ import org.apache.logging.log4j.Logger;
 import org.owasp.html.PolicyFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -112,6 +113,45 @@ public class EventService {
 
 		logger.info("Transaction for event ID {} committed successfully.", eventId);
 		return eventId;
+	}
+
+	@Transactional
+	public void startEvent(int eventId, User currentUser) {
+		Event event = eventDAO.getEventById(eventId);
+		if (event == null) {
+			throw new IllegalArgumentException("Event not found.");
+		}
+
+		// Authorization check
+		boolean canManage = currentUser.hasAdminAccess() || event.getLeaderUserId() == currentUser.getId();
+		if (!canManage) {
+			throw new AccessDeniedException("You do not have permission to start this event.");
+		}
+
+		if (!"GEPLANT".equals(event.getStatus())) {
+			throw new IllegalStateException("Only planned events can be started.");
+		}
+
+		if (eventDAO.updateEventStatus(eventId, "LAUFEND")) {
+			adminLogService.log(currentUser.getUsername(), "EVENT_START",
+					"Event '" + event.getName() + "' (ID: " + eventId + ") started.");
+
+			// Notify all assigned attendees
+			List<User> attendees = eventDAO.getAssignedUsersForEvent(eventId);
+			for (User attendee : attendees) {
+				NotificationPayload payload = new NotificationPayload();
+				payload.setTitle("Event gestartet: " + event.getName());
+				payload.setDescription("Das Event, dem du zugewiesen bist, hat jetzt begonnen.");
+				payload.setLevel("Important");
+				payload.setUrl("/veranstaltungen/details/" + eventId);
+				notificationService.sendNotificationToUser(attendee.getId(), payload);
+			}
+
+			// Trigger UI update for everyone
+			notificationService.broadcastUIUpdate("EVENT_UPDATED", Map.of("eventId", eventId));
+		} else {
+			throw new RuntimeException("Failed to update event status in database.");
+		}
 	}
 
 	@Transactional
