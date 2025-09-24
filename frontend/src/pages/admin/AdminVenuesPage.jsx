@@ -4,7 +4,7 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import VenueModal from '../../components/admin/venues/VenueModal';
 import { useToast } from '../../context/ToastContext';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
@@ -65,7 +65,7 @@ const AdminVenuesPage = () => {
     );
 
 	return (
-		<View style={styles.container}>
+		<View style={[styles.container, {overflow: 'auto'}]}>
             <View style={styles.headerContainer}>
                 <Icon name="map-marked-alt" size={24} style={styles.headerIcon} />
 			    <Text style={styles.title}>Veranstaltungsorte</Text>

@@ -13,7 +13,8 @@ import { useToast } from '../context/ToastContext';
 import { useAuthStore } from '../store/authStore';
 import { getCommonStyles } from '../styles/commonStyles';
 import { getThemeColors, spacing, typography } from '../styles/theme';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import ScrollableContent from '../components/ui/ScrollableContent';
 
 const ProfilePage = () => {
     const navigation = useNavigation();
@@ -83,7 +84,7 @@ const ProfilePage = () => {
     };
 
 	return (
-		<ScrollView style={styles.container}>
+		<ScrollableContent>
 			<View style={styles.header}>
                 <Icon name={user.profileIconClass?.replace('fa-', '') || 'user-circle'} solid size={80} color={colors.primary} />
                 <View style={styles.headerTextContainer}>
@@ -114,7 +115,7 @@ const ProfilePage = () => {
             <View style={styles.mainContent}>
                 {renderTabContent()}
             </View>
-		</ScrollView>
+		</ScrollableContent>
 	);
 };
 

@@ -11,6 +11,7 @@ import { getThemeColors, typography, spacing } from '../../styles/theme';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { format, parseISO } from 'date-fns';
 import AdminModal from '../../components/ui/AdminModal';
+import ScrollableContent from '../../components/ui/ScrollableContent';
 
 const ChangelogModal = ({ isOpen, onClose, onSuccess, changelog }) => {
     const theme = useAuthStore(state => state.theme);
@@ -139,7 +140,7 @@ const AdminChangelogPage = () => {
     );
 
 	return (
-		<View style={styles.container}>
+		<ScrollableContent style={styles.container}>
 			<View style={styles.headerContainer}>
                 <Icon name="history" size={24} style={styles.headerIcon} />
 			    <Text style={styles.title}>Changelogs verwalten</Text>
@@ -161,7 +162,7 @@ const AdminChangelogPage = () => {
             />
 
 			{isModalOpen && <ChangelogModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); reload(); }} changelog={editingChangelog} />}
-		</View>
+		</ScrollableContent>
 	);
 };
 

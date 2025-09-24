@@ -4,11 +4,12 @@ import { useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import AdminModal from '../../components/ui/AdminModal';
+import ScrollableContent from '../../components/ui/ScrollableContent';
 
 const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
     const theme = useAuthStore(state => state.theme);
@@ -94,7 +95,7 @@ const AdminCoursesPage = ({ navigation }) => {
             }}
         ]);
 	};
-
+    
     const renderItem = ({ item }) => (
         <View style={styles.card}>
             <Text style={styles.cardTitle}>{item.name}</Text>
@@ -121,7 +122,7 @@ const AdminCoursesPage = ({ navigation }) => {
     );
 
 	return (
-		<View style={styles.container}>
+		<ScrollableContent style={styles.container}>
             <View style={styles.headerContainer}>
                 <Icon name="book" size={24} style={styles.headerIcon}/>
 			    <Text style={styles.title}>Lehrgangs-Vorlagen</Text>
@@ -142,7 +143,7 @@ const AdminCoursesPage = ({ navigation }) => {
             {isModalOpen && (
                 <CourseModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); reload(); }} course={editingCourse} />
             )}
-		</View>
+		</ScrollableContent>
 	);
 };
 

@@ -17,6 +17,7 @@ import { getCommonStyles } from '../styles/commonStyles';
 import { getThemeColors, spacing, typography } from '../styles/theme';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import BouncyCheckbox from "react-native-bouncy-checkbox";
+import ScrollableContent from '../components/ui/ScrollableContent';
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -115,7 +116,7 @@ const UserTaskView = ({ event, user, canManageTasks, isParticipant, onOpenModal,
     }
 
     return (
-        <ScrollView style={{flex: 1}} contentContainerStyle={{padding: spacing.md}}>
+        <ScrollableContent contentContainerStyle={{padding: spacing.md}}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
                 <BouncyCheckbox isChecked={showDoneTasks} onPress={onShowDoneTasksToggle} />
                 <Text>Erledigte Aufgaben anzeigen</Text>
@@ -132,7 +133,7 @@ const UserTaskView = ({ event, user, canManageTasks, isParticipant, onOpenModal,
                     onAction={onAction}
                 />
             ))}
-        </ScrollView>
+        </ScrollableContent>
     );
 };
 
@@ -141,7 +142,7 @@ const DetailsTab = ({ route }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+        <ScrollableContent style={styles.container} contentContainerStyle={styles.contentContainer}>
             <View style={styles.card}>
                 <Text style={styles.cardTitle}>Beschreibung</Text>
                 <MarkdownDisplay>{event.description || 'Keine Beschreibung.'}</MarkdownDisplay>
@@ -149,7 +150,7 @@ const DetailsTab = ({ route }) => {
                 <Text>Ort: {event.location || 'N/A'}</Text>
                 <Text>Leitung: {event.leaderUsername || 'N/A'}</Text>
             </View>
-        </ScrollView>
+        </ScrollableContent>
     );
 };
 

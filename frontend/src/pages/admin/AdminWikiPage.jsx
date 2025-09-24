@@ -4,11 +4,12 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
 import MarkdownDisplay from 'react-native-markdown-display';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import WikiPageModal from '../../components/admin/wiki/WikiPageModal';
+import ScrollableContent from '../../components/ui/ScrollableContent';
 
 const WikiTreeNode = ({ name, node, onSelect, selectedId, level = 0 }) => {
     const theme = useAuthStore(state => state.theme);
@@ -103,11 +104,11 @@ const AdminWikiPage = () => {
                     <Text style={styles.title}>Wiki-Verzeichnis</Text>
                     <TouchableOpacity onPress={() => setIsModalOpen(true)}><Icon name="plus" size={20} /></TouchableOpacity>
                 </View>
-                <ScrollView contentContainerStyle={styles.contentContainer}>
+                <ScrollableContent contentContainerStyle={styles.contentContainer}>
                     {wikiTree && Object.entries(wikiTree).map(([name, node]) => (
                         <WikiTreeNode key={name} name={name} node={node} onSelect={handleSelectEntry} selectedId={null} />
                     ))}
-                </ScrollView>
+                </ScrollableContent>
                 <WikiPageModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => {setIsModalOpen(false); reload();}} parentPath={""}/>
             </View>
         );
@@ -135,7 +136,7 @@ const AdminWikiPage = () => {
             {isEditing ? (
                 <TextInput value={editContent} onChangeText={setEditContent} multiline style={styles.textArea} />
             ) : (
-                <ScrollView style={{padding: spacing.md}}><MarkdownDisplay>{selectedEntry.content}</MarkdownDisplay></ScrollView>
+                <ScrollableContent style={{padding: spacing.md}}><MarkdownDisplay>{selectedEntry.content}</MarkdownDisplay></ScrollableContent>
             )}
 		</View>
 	);

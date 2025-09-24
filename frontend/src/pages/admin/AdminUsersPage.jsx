@@ -11,6 +11,7 @@ import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import AdminModal from '../../components/ui/AdminModal';
+import ScrollableContent from '../../components/ui/ScrollableContent';
 
 const SuspendUserModal = ({ isOpen, onClose, user, onSuccess }) => {
     const theme = useAuthStore(state => state.theme);
@@ -244,7 +245,7 @@ const AdminUsersPage = () => {
     };
 
 	return (
-		<ScrollView style={styles.container}>
+		<ScrollableContent>
 			<TouchableOpacity style={[styles.button, styles.successButton, {margin: 16}]} onPress={() => openModal()}>
                 <Icon name="user-plus" size={16} color="#fff" />
                 <Text style={styles.buttonText}>Neuen Benutzer anlegen</Text>
@@ -254,7 +255,7 @@ const AdminUsersPage = () => {
 			{users?.map(user => renderItem({item: user}))}
 			{isModalOpen && !adminFormData.loading && <UserModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} user={editingUser} roles={adminFormData.roles} groupedPermissions={adminFormData.groupedPermissions} />}
             {suspendingUser && <SuspendUserModal isOpen={!!suspendingUser} onClose={() => setSuspendingUser(null)} onSuccess={handleSuccess} user={suspendingUser} />}
-		</ScrollView>
+		</ScrollableContent>
 	);
 };
 

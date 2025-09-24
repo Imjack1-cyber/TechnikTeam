@@ -8,6 +8,7 @@ import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import { RadioButton } from 'react-native-paper'; // Example for radio buttons
+import ScrollableContent from '../../components/ui/ScrollableContent';
 
 const MaintenanceModeManager = () => {
     const theme = useAuthStore(state => state.theme);
@@ -81,7 +82,7 @@ const AdminSystemPage = () => {
 
 	return (
 		<View style={styles.container}>
-			<ScrollView contentContainerStyle={styles.contentContainer}>
+			<ScrollableContent contentContainerStyle={styles.contentContainer}>
 				<View style={styles.headerContainer}>
 					<Icon name="server" size={24} style={styles.headerIcon} />
 					<Text style={styles.title}>Systeminformationen</Text>
@@ -110,7 +111,7 @@ const AdminSystemPage = () => {
 						</View>
 					</>
 				)}
-			</ScrollView>
+			</ScrollableContent>
 		</View>
 	);
 };

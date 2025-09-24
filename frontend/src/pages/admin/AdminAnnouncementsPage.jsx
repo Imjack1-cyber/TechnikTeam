@@ -10,6 +10,7 @@ import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import AdminModal from '../../components/ui/AdminModal';
+import ScrollableContent from '../../components/ui/ScrollableContent';
 
 const AnnouncementModal = ({ isOpen, onClose, onSuccess, announcement }) => {
 	const [isSubmitting, setIsSubmitting] = useState(false);

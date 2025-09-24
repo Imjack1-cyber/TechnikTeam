@@ -1,125 +1,75 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
-import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import Icon from 'react-native-vector-icons/FontAwesome5';
-import RNPickerSelect from 'react-native-picker-select';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
-
-const AchievementKeyDisplay = ({ achievementKey }) => {
-    const theme = useAuthStore(state => state.theme);
-    const styles = pageStyles(theme);
-	const parts = achievementKey.split('_');
-	const [trigger, action, condition] = parts;
-
-	return (
-		<View style={styles.keyContainer}>
-			<Text style={[styles.keyPart, styles.keyTrigger]}>{trigger}</Text>
-			<Text style={[styles.keyPart, styles.keyAction]}>{action}</Text>
-			{condition && <Text style={[styles.keyPart, styles.keyCondition]}>{condition}</Text>}
-		</View>
-	);
-};
+import AdminModal from '../../components/ui/AdminModal';
 
 const AchievementModal = ({ isOpen, onClose, onSuccess, achievement }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [error, setError] = useState('');
-	const { addToast } = useToast();
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState('');
+    const { addToast } = useToast();
+    const [formData, setFormData] = useState({ name: '', description: '', iconClass: 'fa-award', achievementKey: '' });
 
-	const formDataApiCall = useCallback(() => apiClient.get('/form-data/achievements'), []);
-	const { data: formData, loading } = useApi(formDataApiCall);
+    useEffect(() => {
+        if (achievement) {
+            setFormData({
+                name: achievement.name || '',
+                description: achievement.description || '',
+                iconClass: achievement.iconClass || 'fa-award',
+                achievementKey: achievement.achievementKey || ''
+            });
+        } else {
+            setFormData({ name: '', description: '', iconClass: 'fa-award', achievementKey: '' });
+        }
+    }, [achievement]);
 
-	const [keyParts, setKeyParts] = useState({ trigger: 'EVENT', action: '', condition: '' });
-    const [formState, setFormState] = useState({ name: '', description: '', iconClass: '' });
+    const handleSubmit = async () => {
+        setIsSubmitting(true);
+        setError('');
+        try {
+            const result = achievement
+                ? await apiClient.put(`/achievements/${achievement.id}`, formData)
+                : await apiClient.post('/achievements', formData);
+            if (result.success) {
+                addToast(`Abzeichen erfolgreich ${achievement ? 'aktualisiert' : 'erstellt'}.`, 'success');
+                onSuccess();
+            } else { throw new Error(result.message); }
+        } catch (err) {
+            setError(err.message || 'Fehler beim Speichern');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
-	useEffect(() => {
-		if (isOpen) {
-			if (achievement) {
-				setFormState({ name: achievement.name, description: achievement.description, iconClass: achievement.iconClass });
-				const parts = achievement.achievementKey.split('_');
-				const newKeyParts = { trigger: parts[0] || 'EVENT', action: parts[1] || '', condition: parts[2] || '' };
-				setKeyParts(newKeyParts);
-			} else {
-                setFormState({ name: '', description: '', iconClass: '' });
-				setKeyParts({ trigger: 'EVENT', action: '', condition: '' });
-			}
-		}
-	}, [achievement, isOpen]);
+    return (
+        <AdminModal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={achievement ? 'Abzeichen bearbeiten' : 'Neues Abzeichen'}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+        >
+            {error && <Text style={styles.errorText}>{error}</Text>}
+            <Text style={styles.label}>Name</Text>
+            <TextInput style={styles.input} value={formData.name} onChangeText={val => setFormData({ ...formData, name: val })} />
 
-    const achievementKey = useMemo(() => {
-        const { trigger, action, condition } = keyParts;
-        return `${trigger}_${action}_${condition || ''}`.toUpperCase();
-    }, [keyParts]);
+            <Text style={styles.label}>System-Schlüssel (z.B. EVENT_PARTICIPANT_10)</Text>
+            <TextInput style={styles.input} value={formData.achievementKey} onChangeText={val => setFormData({ ...formData, achievementKey: val.toUpperCase() })} autoCapitalize="characters" />
 
-	const handleKeyPartChange = (part, value) => {
-		const newKeyParts = { ...keyParts, [part]: value };
-		if (part === 'trigger') {
-            newKeyParts.action = '';
-            newKeyParts.condition = ''; 
-        };
-		setKeyParts(newKeyParts);
-	};
+            <Text style={styles.label}>Beschreibung</Text>
+            <TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={val => setFormData({ ...formData, description: val })} multiline />
 
-	const handleSubmit = async () => {
-		setIsSubmitting(true);
-		setError('');
-		const data = { ...formState, achievementKey };
-		try {
-			const result = achievement
-				? await apiClient.put(`/achievements/${achievement.id}`, data)
-				: await apiClient.post('/achievements', data);
-			if (result.success) {
-				addToast(`Abzeichen erfolgreich ${achievement ? 'aktualisiert' : 'erstellt'}.`, 'success');
-				onSuccess();
-			} else { throw new Error(result.message); }
-		} catch (err) {
-			setError(err.message || 'Fehler beim Speichern');
-		} finally {
-			setIsSubmitting(false);
-		}
-	};
-
-    const courseOptions = formData?.courses?.map(c => ({ label: c.name, value: c.abbreviation })) || [];
-
-	return (
-		<Modal isOpen={isOpen} onClose={onClose} title={achievement ? 'Abzeichen bearbeiten' : 'Neues Abzeichen'}>
-			<View style={{ flex: 1 }}>
-                <ScrollView contentContainerStyle={{ paddingBottom: 80 }}>
-                    {error && <Text style={styles.errorText}>{error}</Text>}
-                    <Text style={styles.label}>Name</Text>
-                    <TextInput style={styles.input} value={formState.name} onChangeText={val => setFormState({...formState, name: val})} />
-                    
-                    <Text style={styles.label}>System-Schlüssel</Text>
-                    <View style={styles.keyBuilder}>
-                        <RNPickerSelect onValueChange={(val) => handleKeyPartChange('trigger', val)} items={[{ label: 'Event', value: 'EVENT' }, { label: 'Qualifikation', value: 'QUALIFICATION' }]} value={keyParts.trigger} style={pickerSelectStyles} placeholder={{}} />
-                        <RNPickerSelect onValueChange={(val) => handleKeyPartChange('action', val)} items={keyParts.trigger === 'EVENT' ? [{ label: 'Teilnahme', value: 'PARTICIPANT' }, { label: 'Leitung', value: 'LEADER' }] : [{ label: 'Erhalten', value: 'GAINED' }]} value={keyParts.action} style={pickerSelectStyles} placeholder={{ label: 'Aktion...', value: null }} />
-                        {keyParts.trigger === 'EVENT' ? 
-                            <TextInput style={[styles.input, {flex: 1}]} value={keyParts.condition} onChangeText={val => handleKeyPartChange('condition', val)} keyboardType="number-pad" placeholder="Anzahl" /> :
-                            <RNPickerSelect onValueChange={(val) => handleKeyPartChange('condition', val)} items={courseOptions} value={keyParts.condition} style={pickerSelectStyles} placeholder={{ label: 'Kurs...', value: null }} />
-                        }
-                    </View>
-                    <TextInput style={[styles.input, styles.disabledInput]} value={achievementKey} editable={false} />
-
-                    <Text style={styles.label}>Beschreibung</Text>
-                    <TextInput style={[styles.input, styles.textArea]} value={formState.description} onChangeText={val => setFormState({...formState, description: val})} multiline />
-
-                    <Text style={styles.label}>Font Awesome Icon-Klasse</Text>
-                    <TextInput style={styles.input} value={formState.iconClass} onChangeText={val => setFormState({...formState, iconClass: val})} placeholder="z.B. fa-star" />
-                </ScrollView>
-                <View style={styles.modalFooter}>
-                    <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}>
-                        {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Speichern</Text>}
-                    </TouchableOpacity>
-                </View>
-            </View>
-		</Modal>
-	);
+            <Text style={styles.label}>Font Awesome Icon-Klasse (z.B. fa-star)</Text>
+            <TextInput style={styles.input} value={formData.iconClass} onChangeText={val => setFormData({ ...formData, iconClass: val })} />
+        </AdminModal>
+    );
 };
 
 const AdminAchievementsPage = () => {
@@ -160,7 +110,7 @@ const AdminAchievementsPage = () => {
             </View>
             <View style={styles.detailRow}>
                 <Text style={styles.label}>Schlüssel:</Text>
-                <AchievementKeyDisplay achievementKey={item.achievementKey} />
+                <Text style={styles.code}>{item.achievementKey}</Text>
             </View>
             <Text style={styles.cardDescription}>{item.description}</Text>
             <View style={styles.cardActions}>
@@ -222,21 +172,8 @@ const pageStyles = (theme) => {
         buttonText: { color: '#fff' },
         secondaryButtonText: { color: '#fff' },
         dangerOutlineButtonText: { color: colors.danger },
-        keyContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
-        keyPart: { paddingVertical: 2, paddingHorizontal: 6, borderRadius: 4, borderWidth: 1, overflow: 'hidden'},
-        keyTrigger: { backgroundColor: colors.primaryLight, borderColor: colors.primary, color: colors.primary },
-        keyAction: { backgroundColor: colors.background, borderColor: colors.border, color: colors.text },
-        keyCondition: { backgroundColor: colors.background, borderColor: colors.border, color: colors.text },
-        // Modal Styles
-        keyBuilder: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-        disabledInput: { backgroundColor: '#e9ecef', color: '#6c757d' },
+        code: { fontFamily: 'monospace', backgroundColor: colors.background, padding: 4, borderRadius: 4 },
     });
 };
-
-const pickerSelectStyles = StyleSheet.create({
-  inputIOS: { height: 48, borderWidth: 1, borderColor: '#dee2e6', borderRadius: 6, paddingHorizontal: 12, justifyContent: 'center', flex: 1 },
-  inputAndroid: { height: 48, borderWidth: 1, borderColor: '#dee2e6', borderRadius: 6, paddingHorizontal: 12, justifyContent: 'center', flex: 1 },
-});
-
 
 export default AdminAchievementsPage;
