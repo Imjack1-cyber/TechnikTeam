@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform, FlatList, TextInput } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import apiClient from '../services/apiClient';
@@ -14,81 +14,68 @@ import TaskModal from '../components/events/TaskModal';
 import AdminEventTeamTab from '../components/admin/events/AdminEventTeamTab';
 import AdminEventTasksTab from '../components/admin/events/AdminEventTasksTab';
 import { getCommonStyles } from '../styles/commonStyles';
-import { getThemeColors, spacing, typography } from '../styles/theme';
+import { getThemeColors, spacing, typography, borders, shadows } from '../styles/theme';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import BouncyCheckbox from "react-native-bouncy-checkbox";
 import ScrollableContent from '../components/ui/ScrollableContent';
 import AdminModal from '../components/ui/AdminModal';
+import useWebSocket from '../hooks/useWebSocket';
 
 const Tab = createMaterialTopTabNavigator();
 
-// TaskList sub-component adapted for React Native
-const TaskList = ({ category, tasks, event, user, canManageTasks, isParticipant, onOpenModal, onAction }) => {
-    const theme = useAuthStore(state => state.theme);
-    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
-    const colors = getThemeColors(theme);
-    if (!tasks || tasks.length === 0) return null;
-
-    const taskStatusMap = useMemo(() => {
-        const map = new Map();
-        event.eventTasks.forEach(task => map.set(task.id, task.status));
-        return map;
-    }, [event.eventTasks]);
-
-    // Sort tasks by their display_order
-    const sortedTasks = [...tasks].sort((a, b) => a.displayOrder - b.displayOrder);
-
+const UserTaskCard = ({ task, user, canManageTasks, isParticipant, onOpenModal, onAction, styles, colors }) => {
+    const getTaskCardStyle = () => {
+        const needsHelp = task.status === 'IN_PROGRESS' && task.assignedUsers.length < task.requiredPersons;
+        if (task.status === 'LOCKED') return styles.lockedTask;
+        if (task.status === 'DONE') return styles.doneTask;
+        if (task.isImportant || needsHelp) return styles.importantTask;
+        if (task.status === 'IN_PROGRESS') return styles.inProgressTask;
+        return {}; // Default for OPEN
+    };
+    const isDone = task.status === 'DONE';
+    const isAssigned = task.assignedUsers.some(u => u.id === user.id);
+    const isInProgress = task.status === 'IN_PROGRESS';
+    
     return (
-        <View style={styles.categoryContainer}>
-            <Text style={styles.categoryTitle}>{category?.name || 'Unkategorisiert'}</Text>
-            {sortedTasks.map(task => {
-                const isAssigned = task.assignedUsers.some(u => u.id === user.id);
-                const isBlocked = task.status === 'LOCKED';
-                const isInProgress = task.status === 'IN_PROGRESS';
-                const needsHelp = isInProgress && task.assignedUsers.length < task.requiredPersons;
-                
-                let cardStyle = styles.card;
-                if (isBlocked) cardStyle = { ...cardStyle, ...styles.lockedTask };
-                else if (task.isImportant || needsHelp) cardStyle = { ...cardStyle, ...styles.importantTask };
-                else if (isInProgress) cardStyle = { ...cardStyle, ...styles.inProgressTask };
-
-                return (
-                    <View key={task.id} style={cardStyle}>
-                        <View style={{flexDirection: 'row', alignItems: 'center', gap: spacing.sm}}>
-                            {isBlocked && <Icon name="lock" size={16} color={colors.textMuted}/>}
-                            <Text style={styles.cardTitle}>{task.name}</Text>
-                        </View>
-                        <MarkdownDisplay>{task.description || ''}</MarkdownDisplay>
-                        {task.dependsOn && task.dependsOn.length > 0 && (
-                            <View style={{marginVertical: spacing.sm}}>
-                                <Text style={{fontWeight: 'bold'}}>Benötigt:</Text>
-                                {task.dependsOn.map(dep => (
-                                    <Text key={dep.id}>- {taskStatusMap.get(dep.id) === 'DONE' ? '✅' : '⏳'} {dep.name || `Aufgabe #${dep.id}`}</Text>
-                                ))}
-                            </View>
-                        )}
-                        <Text>Zugewiesen an: {task.assignedUsers.map(u => u.username).join(', ') || 'Niemand'}</Text>
-                        <View style={{flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm}}>
-                            <Text>Benötigt: {task.requiredPersons} Person(en)</Text>
-                            <Text>Aktiv: {task.assignedUsers.length}</Text>
-                        </View>
-
-                        <View style={{flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8}}>
-                           {canManageTasks && <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => onOpenModal(task)}><Text style={styles.buttonText}>Bearbeiten</Text></TouchableOpacity>}
-                           {!isAssigned && isParticipant && task.status === 'OPEN' && <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => onAction(task.id, 'claim')}><Text style={styles.buttonText}>Starten</Text></TouchableOpacity>}
-                           {!isAssigned && isParticipant && isInProgress && <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => onAction(task.id, 'claim')}><Text style={styles.buttonText}>Beitreten</Text></TouchableOpacity>}
-                           {isAssigned && <TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={() => onAction(task.id, 'unclaim')}><Text style={styles.buttonText}>Verlassen</Text></TouchableOpacity>}
-                           {isAssigned && <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={() => onAction(task.id, 'updateStatus', 'DONE')}><Text style={styles.buttonText}>Abschließen</Text></TouchableOpacity>}
-                        </View>
-                    </View>
-                );
-            })}
+        <View style={[styles.taskCard, getTaskCardStyle()]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Text style={[styles.taskName, isDone && styles.doneTaskText]}>{task.name}</Text>
+                <Text style={styles.displayOrder}>#{task.displayOrder}</Text>
+            </View>
+             <View style={styles.metaContainer}>
+                <View style={styles.metaItem}>
+                    <Icon name="users" size={12} color={colors.textMuted} />
+                    <Text style={styles.metaText}>{task.assignedUsers.length} / {task.requiredPersons}</Text>
+                </View>
+            </View>
+            {task.assignedUsers.length > 0 && (
+                <View style={styles.assigneeList}>
+                    <Text style={styles.assigneeText}>Aktiv: {task.assignedUsers.map(u => u.username).join(', ')}</Text>
+                </View>
+            )}
+             <View style={{flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8}}>
+                {canManageTasks && <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => onOpenModal(task)}><Text style={styles.buttonText}>Bearbeiten</Text></TouchableOpacity>}
+                {!isAssigned && isParticipant && task.status === 'OPEN' && <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => onAction(task.id, 'claim')}><Text style={styles.buttonText}>Starten</Text></TouchableOpacity>}
+                {!isAssigned && isParticipant && isInProgress && <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => onAction(task.id, 'claim')}><Text style={styles.buttonText}>Beitreten</Text></TouchableOpacity>}
+                {isAssigned && <TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={() => onAction(task.id, 'unclaim')}><Text style={styles.buttonText}>Verlassen</Text></TouchableOpacity>}
+                {isAssigned && <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={() => onAction(task.id, 'updateStatus', 'DONE')}><Text style={styles.buttonText}>Abschließen</Text></TouchableOpacity>}
+            </View>
         </View>
     );
 };
 
+const UserKanbanColumn = ({ category, tasks, ...props }) => (
+    <View style={props.styles.kanbanColumn}>
+        <Text style={props.styles.columnTitle}>{category.name}</Text>
+        <ScrollView>
+            {tasks.map(task => (
+                <UserTaskCard key={task.id} task={task} {...props} />
+            ))}
+        </ScrollView>
+    </View>
+);
 
-const UserTaskView = ({ event, user, canManageTasks, isParticipant, onOpenModal, onAction, showDoneTasks, onShowDoneTasksToggle, styles }) => {
+const UserTaskView = ({ event, user, canManageTasks, isParticipant, onOpenModal, onAction, showDoneTasks, onShowDoneTasksToggle, styles, colors }) => {
     const categoriesApiCall = useCallback(() => apiClient.get(`/admin/events/${event.id}/task-categories`), [event.id]);
     const { data: categories, loading: categoriesLoading } = useApi(categoriesApiCall);
 
@@ -103,11 +90,11 @@ const UserTaskView = ({ event, user, canManageTasks, isParticipant, onOpenModal,
             return acc;
         }, {});
 
-        const orderedCategories = categories ? [...categories, {id: 0, name: 'Unkategorisiert'}] : [{id: 0, name: 'Unkategorisiert'}];
+        const allCategories = categories ? [...categories, {id: 0, name: 'Unkategorisiert'}] : [{id: 0, name: 'Unkategorisiert'}];
         
-        return orderedCategories.map(cat => ({
+        return allCategories.map(cat => ({
             ...cat,
-            tasks: tasksByCat[cat.id] || []
+            tasks: (tasksByCat[cat.id] || []).sort((a,b) => a.displayOrder - b.displayOrder)
         })).filter(cat => cat.tasks.length > 0);
 
     }, [event.eventTasks, showDoneTasks, categories]);
@@ -117,24 +104,31 @@ const UserTaskView = ({ event, user, canManageTasks, isParticipant, onOpenModal,
     }
 
     return (
-        <ScrollableContent contentContainerStyle={{padding: spacing.md}}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
+        <View style={{ flex: 1 }}>
+             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md, paddingHorizontal: spacing.md, paddingTop: spacing.md }}>
                 <BouncyCheckbox isChecked={showDoneTasks} onPress={onShowDoneTasksToggle} />
                 <Text>Erledigte Aufgaben anzeigen</Text>
             </View>
-            {categorizedTasks.map(categoryData => (
-                <TaskList
-                    key={categoryData.id}
-                    category={categoryData}
-                    tasks={categoryData.tasks}
-                    event={event} user={user}
-                    canManageTasks={canManageTasks}
-                    isParticipant={isParticipant}
-                    onOpenModal={onOpenModal}
-                    onAction={onAction}
-                />
-            ))}
-        </ScrollableContent>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.kanbanBoard}>
+                    {categorizedTasks.map(categoryData => (
+                        <UserKanbanColumn
+                            key={categoryData.id}
+                            category={categoryData}
+                            tasks={categoryData.tasks}
+                            event={event}
+                            user={user}
+                            canManageTasks={canManageTasks}
+                            isParticipant={isParticipant}
+                            onOpenModal={onOpenModal}
+                            onAction={onAction}
+                            styles={styles}
+                            colors={colors}
+                        />
+                    ))}
+                </View>
+            </ScrollView>
+        </View>
     );
 };
 
@@ -168,10 +162,91 @@ const TasksTab = ({ route }) => {
     const [showDoneTasks, setShowDoneTasks] = useState(false);
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
-    return <UserTaskView event={event} user={user} canManageTasks={canManageTasks} isParticipant={isParticipant} onOpenModal={handleOpenTaskModal} onAction={handleTaskAction} showDoneTasks={showDoneTasks} onShowDoneTasksToggle={() => setShowDoneTasks(!showDoneTasks)} styles={styles} />;
+    const colors = getThemeColors(theme);
+    return <UserTaskView event={event} user={user} canManageTasks={canManageTasks} isParticipant={isParticipant} onOpenModal={handleOpenTaskModal} onAction={handleTaskAction} showDoneTasks={showDoneTasks} onShowDoneTasksToggle={() => setShowDoneTasks(!showDoneTasks)} styles={styles} colors={colors} />;
 };
 
-const ChatTab = () => <View style={getCommonStyles().centered}><Text>Chat in Kürze hier verfügbar.</Text></View>;
+const EventChatTab = ({ route }) => {
+    const { eventId } = route.params;
+    const user = useAuthStore(state => state.user);
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
+
+    const [messages, setMessages] = useState([]);
+    const [newMessage, setNewMessage] = useState('');
+
+    const messagesApiCall = useCallback(() => apiClient.get(`/public/events/${eventId}/chat/messages`), [eventId]);
+    const { data: initialMessages, loading: messagesLoading, error: messagesError } = useApi(messagesApiCall);
+
+    useEffect(() => {
+        if (initialMessages) {
+            setMessages(initialMessages.slice().reverse());
+        }
+    }, [initialMessages]);
+
+    const handleWebSocketMessage = useCallback((message) => {
+        if (message.type === 'new_message') {
+            setMessages(prev => [message.payload, ...prev]);
+        } else if (message.type === 'message_updated' || message.type === 'message_soft_deleted') {
+            setMessages(prev => prev.map(msg => msg.id === message.payload.id ? message.payload : msg));
+        }
+    }, []);
+
+    const { sendMessage } = useWebSocket(`/ws/chat/${eventId}`, handleWebSocketMessage, [eventId]);
+
+    const handleSubmit = () => {
+        if (newMessage.trim()) {
+            sendMessage({ type: 'new_message', payload: { messageText: newMessage } });
+            setNewMessage('');
+        }
+    };
+
+    if (messagesLoading) return <View style={styles.centered}><ActivityIndicator /></View>;
+    if (messagesError) return <View style={styles.centered}><Text style={styles.errorText}>{messagesError}</Text></View>;
+
+    return (
+        <View style={{ flex: 1, backgroundColor: colors.surface }}>
+            <FlatList
+                data={messages}
+                inverted
+                keyExtractor={item => item.id.toString()}
+                renderItem={({ item: msg }) => {
+                    const isSentByMe = msg.userId === user.id;
+                    return (
+                        <View style={[styles.bubbleContainer, isSentByMe ? styles.sent : styles.received]}>
+                            <View style={[styles.bubble, isSentByMe ? { backgroundColor: colors.primary } : { backgroundColor: msg.chatColor || colors.background }]}>
+                                {!isSentByMe && <Text style={[styles.sender, { color: colors.primary }]}>{msg.username}</Text>}
+                                {msg.isDeleted ? (
+                                    <Text style={{ fontStyle: 'italic', color: isSentByMe ? colors.white : colors.textMuted }}>Nachricht gelöscht</Text>
+                                ) : (
+                                    <MarkdownDisplay style={{ body: { color: isSentByMe ? colors.white : colors.text } }}>{msg.messageText}</MarkdownDisplay>
+                                )}
+                                <View style={styles.metaContainer}>
+                                    <Text style={[styles.timestamp, isSentByMe && { color: 'rgba(255,255,255,0.7)' }]}>{new Date(msg.sentAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</Text>
+                                </View>
+                            </View>
+                        </View>
+                    );
+                }}
+                contentContainerStyle={{ padding: spacing.md }}
+            />
+            <View style={styles.inputContainer}>
+                <TextInput
+                    style={styles.chatInput}
+                    value={newMessage}
+                    onChangeText={setNewMessage}
+                    placeholder="Nachricht schreiben..."
+                    multiline
+                    maxLength={1024}
+                />
+                <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit}>
+                    <Text style={styles.buttonText}>Senden</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+};
 
 const EventDetailsPage = () => {
 	const route = useRoute();
@@ -283,7 +358,7 @@ const EventDetailsPage = () => {
                 <Tab.Screen name="Aufgaben" component={TasksTab} initialParams={{ event, user, canManageTasks, isParticipant, handleOpenTaskModal, handleTaskAction }} />
                 {canManageTasks && <Tab.Screen name="Aufgaben (Admin)" component={AdminEventTasksTab} initialParams={{ event, onUpdate: reloadEventDetails }} />}
                 <Tab.Screen name="Checkliste" component={ChecklistTab} initialParams={{ event }} />
-                {event.status === 'LAUFEND' && <Tab.Screen name="Chat" component={ChatTab} />}
+                {event.status === 'LAUFEND' && <Tab.Screen name="Chat" component={EventChatTab} initialParams={{ eventId: event.id }}/>}
                 {event.status === 'ABGESCHLOSSEN' && <Tab.Screen name="Galerie" component={EventGalleryTab} initialParams={{ event, user }} />}
             </Tab.Navigator>
             
@@ -325,9 +400,32 @@ const pageStyles = (theme) => {
         activeTabText: { color: colors.white },
         categoryContainer: { marginBottom: spacing.lg },
         categoryTitle: { fontSize: typography.h3, fontWeight: 'bold', marginBottom: spacing.md, borderBottomWidth: 1, borderColor: colors.border, paddingBottom: spacing.sm },
-        lockedTask: { backgroundColor: colors.background, borderColor: colors.border, opacity: 0.7 },
-        importantTask: { backgroundColor: 'rgba(220, 53, 69, 0.1)', borderColor: colors.danger },
-        inProgressTask: { backgroundColor: 'rgba(255, 193, 7, 0.1)', borderColor: colors.warning },
+        lockedTask: { opacity: 0.7 },
+        importantTask: { backgroundColor: 'rgba(255, 193, 7, 0.1)', borderColor: colors.warning },
+        inProgressTask: { backgroundColor: 'rgba(40, 167, 69, 0.1)', borderColor: colors.success },
+        doneTask: { backgroundColor: colors.background, opacity: 0.6 },
+        doneTaskText: { textDecorationLine: 'line-through', color: colors.textMuted },
+        taskName: { fontWeight: 'bold', marginBottom: spacing.xs, color: colors.text, fontSize: typography.body },
+        displayOrder: { fontSize: typography.caption, color: colors.textMuted, fontWeight: 'bold' },
+        metaContainer: { flexDirection: 'row', gap: spacing.md, marginVertical: spacing.sm },
+        metaItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+        metaText: { color: colors.textMuted, fontSize: typography.small },
+        assigneeList: { marginTop: spacing.sm, borderTopWidth: 1, borderColor: colors.border, paddingTop: spacing.sm },
+        assigneeText: { color: colors.textMuted, fontSize: typography.small },
+        // Kanban styles
+        kanbanBoard: { flexDirection: 'row', gap: spacing.md, padding: spacing.md },
+        kanbanColumn: { width: 300, backgroundColor: colors.background, borderRadius: borders.radius, padding: spacing.sm, height: '100%'},
+        columnTitle: { fontSize: typography.h4, fontWeight: 'bold', padding: spacing.sm, color: colors.heading },
+        taskCard: { backgroundColor: colors.surface, borderRadius: borders.radius, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border, ...shadows.sm },
+        // Chat styles
+        bubbleContainer: { flexDirection: 'row', maxWidth: '80%', marginVertical: spacing.xs },
+		sent: { alignSelf: 'flex-end', justifyContent: 'flex-end' },
+		received: { alignSelf: 'flex-start', justifyContent: 'flex-start' },
+		bubble: { padding: spacing.sm, borderRadius: 18, flexShrink: 1 },
+		sender: { fontWeight: 'bold', fontSize: typography.small, marginBottom: 2 },
+		timestamp: { fontSize: typography.caption, color: colors.textMuted },
+		inputContainer: { flexDirection: 'row', padding: spacing.sm, borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, gap: spacing.sm },
+		chatInput: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: spacing.md, backgroundColor: colors.background, maxHeight: 120, paddingVertical: 10 }
     });
 };
 

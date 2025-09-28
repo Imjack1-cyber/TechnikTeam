@@ -1,5 +1,6 @@
 package de.technikteam.api.v1.public_api;
 
+import de.technikteam.dao.EventChatDAO;
 import de.technikteam.dao.EventCustomFieldDAO;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.model.*;
@@ -30,14 +31,16 @@ public class PublicEventResource {
 	private final EventService eventService;
 	private final EventCustomFieldDAO customFieldDAO;
 	private final FileService fileService;
+	private final EventChatDAO eventChatDAO;
 
 	@Autowired
 	public PublicEventResource(EventDAO eventDAO, EventService eventService, EventCustomFieldDAO customFieldDAO,
-			FileService fileService) {
+			FileService fileService, EventChatDAO eventChatDAO) {
 		this.eventDAO = eventDAO;
 		this.eventService = eventService;
 		this.customFieldDAO = customFieldDAO;
 		this.fileService = fileService;
+		this.eventChatDAO = eventChatDAO;
 	}
 
 	@GetMapping
@@ -124,5 +127,17 @@ public class PublicEventResource {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body(new ApiResponse(false, "Datei-Upload fehlgeschlagen: " + e.getMessage(), null));
 		}
+	}
+
+	@GetMapping("/{eventId}/chat/messages")
+	@Operation(summary = "Get chat messages for an event")
+	public ResponseEntity<ApiResponse> getEventChatMessages(@PathVariable int eventId,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		if (!eventDAO.isUserAssociatedWithEvent(eventId, securityUser.getUser().getId())) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN)
+					.body(new ApiResponse(false, "You are not a participant of this event's chat.", null));
+		}
+		List<EventChatMessage> messages = eventChatDAO.getMessagesForEvent(eventId);
+		return ResponseEntity.ok(new ApiResponse(true, "Chat messages retrieved successfully.", messages));
 	}
 }
