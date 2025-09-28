@@ -132,6 +132,25 @@ public class AdminEventResource {
 		}
 	}
 
+	@PostMapping("/{id}/stop")
+	@Operation(summary = "Stop a running event", description = "Changes an event's status from RUNNING to COMPLETED.")
+	public ResponseEntity<ApiResponse> stopEvent(@PathVariable int id,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		try {
+			eventService.stopEvent(id, securityUser.getUser());
+			return ResponseEntity.ok(new ApiResponse(true, "Event erfolgreich beendet.", null));
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, e.getMessage(), null));
+		} catch (IllegalStateException e) {
+			return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
+		} catch (AccessDeniedException e) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, e.getMessage(), null));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new ApiResponse(false, "Event konnte nicht beendet werden: " + e.getMessage(), null));
+		}
+	}
+
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete an event", description = "Permanently deletes an event and all associated data.")
 	public ResponseEntity<ApiResponse> deleteEvent(@PathVariable int id) {

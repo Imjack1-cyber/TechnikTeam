@@ -264,7 +264,9 @@ const EventDetailsPage = () => {
     const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
     const [isStarting, setIsStarting] = useState(false);
+    const [isStopping, setIsStopping] = useState(false);
     const [isStartConfirmModalOpen, setIsStartConfirmModalOpen] = useState(false);
+    const [isStopConfirmModalOpen, setIsStopConfirmModalOpen] = useState(false);
 
 	useEffect(() => {
 		if (lastUpdatedEvent && lastUpdatedEvent.id === parseInt(eventId, 10)) {
@@ -310,6 +312,28 @@ const EventDetailsPage = () => {
         }
     };
 
+    const handleStopEvent = () => {
+        setIsStopConfirmModalOpen(true);
+    };
+
+    const performStopEvent = async () => {
+        setIsStopping(true);
+        try {
+            const result = await apiClient.post(`/events/${eventId}/stop`);
+            if (result.success) {
+                addToast('Event erfolgreich beendet.', 'success');
+                reloadEventDetails();
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (err) {
+            addToast(`Fehler beim Beenden des Events: ${err.message}`, 'error');
+        } finally {
+            setIsStopping(false);
+            setIsStopConfirmModalOpen(false);
+        }
+    };
+
 
 	if (loading) return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
 	if (error) return <View style={styles.centered}><Text style={styles.errorText}>{error}</Text></View>;
@@ -336,6 +360,23 @@ const EventDetailsPage = () => {
                                     <>
                                         <Icon name="play" size={14} color={colors.white} />
                                         <Text style={styles.buttonText}> Starten</Text>
+                                    </>
+                                )
+                            }
+                        </TouchableOpacity>
+                    )}
+                    {canManageTasks && event.status === 'LAUFEND' && (
+                        <TouchableOpacity 
+                            style={[styles.button, styles.dangerButton, {paddingVertical: 6, paddingHorizontal: 12}]}
+                            onPress={handleStopEvent}
+                            disabled={isStopping}
+                        >
+                            {isStopping 
+                                ? <ActivityIndicator color={colors.white} size="small" /> 
+                                : (
+                                    <>
+                                        <Icon name="stop" size={14} color={colors.white} />
+                                        <Text style={styles.buttonText}> Beenden</Text>
                                     </>
                                 )
                             }
@@ -383,6 +424,20 @@ const EventDetailsPage = () => {
             >
                 <Text style={styles.bodyText}>
                     Möchten Sie das Event "{event.name}" wirklich starten? Alle zugewiesenen Mitglieder werden benachrichtigt.
+                </Text>
+            </AdminModal>
+            
+            <AdminModal
+                isOpen={isStopConfirmModalOpen}
+                onClose={() => setIsStopConfirmModalOpen(false)}
+                onSubmit={performStopEvent}
+                title="Event beenden?"
+                submitText="Beenden"
+                submitButtonVariant="danger"
+                isSubmitting={isStopping}
+            >
+                <Text style={styles.bodyText}>
+                    Möchten Sie das Event "{event.name}" wirklich beenden? Der Status wird auf "Abgeschlossen" gesetzt und alle Teilnehmer werden benachrichtigt.
                 </Text>
             </AdminModal>
         </View>

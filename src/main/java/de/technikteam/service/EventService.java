@@ -155,6 +155,45 @@ public class EventService {
 	}
 
 	@Transactional
+	public void stopEvent(int eventId, User currentUser) {
+		Event event = eventDAO.getEventById(eventId);
+		if (event == null) {
+			throw new IllegalArgumentException("Event not found.");
+		}
+
+		// Authorization check
+		boolean canManage = currentUser.hasAdminAccess() || event.getLeaderUserId() == currentUser.getId();
+		if (!canManage) {
+			throw new AccessDeniedException("You do not have permission to stop this event.");
+		}
+
+		if (!"LAUFEND".equals(event.getStatus())) {
+			throw new IllegalStateException("Only running events can be stopped.");
+		}
+
+		if (eventDAO.updateEventStatus(eventId, "ABGESCHLOSSEN")) {
+			adminLogService.log(currentUser.getUsername(), "EVENT_STOP",
+					"Event '" + event.getName() + "' (ID: " + eventId + ") stopped.");
+
+			// Notify all assigned attendees
+			List<User> attendees = eventDAO.getAssignedUsersForEvent(eventId);
+			for (User attendee : attendees) {
+				NotificationPayload payload = new NotificationPayload();
+				payload.setTitle("Event beendet: " + event.getName());
+				payload.setDescription("Das Event, dem du zugewiesen warst, wurde beendet. Vergiss nicht, dein Feedback abzugeben!");
+				payload.setLevel("Informational");
+				payload.setUrl("/veranstaltungen/details/" + eventId);
+				notificationService.sendNotificationToUser(attendee.getId(), payload);
+			}
+
+			// Trigger UI update for everyone
+			notificationService.broadcastUIUpdate("EVENT_UPDATED", Map.of("eventId", eventId));
+		} else {
+			throw new RuntimeException("Failed to update event status in database.");
+		}
+	}
+
+	@Transactional
 	public void updateTeamAssignmentsAndNotify(int eventId, List<EventAssignmentDTO> newAssignments, User adminUser) {
 		Event event = eventDAO.getEventById(eventId);
 		if (event == null) {
