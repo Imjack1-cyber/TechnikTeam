@@ -391,7 +391,7 @@ const EventDetailsPage = () => {
                     tabBarScrollEnabled: true,
                     tabBarItemStyle: { width: 'auto' },
                     tabBarIndicatorStyle: { backgroundColor: colors.primary },
-                    tabBarLabelStyle: { fontFamily: 'System', fontSize: 14, textTransform: 'capitalize', fontWeight: '500' },
+                    tabBarLabelStyle: { color: colors.text, fontFamily: 'System', fontSize: 14, textTransform: 'capitalize', fontWeight: '500' },
                 }}
             >
                 <Tab.Screen name="Details" component={DetailsTab} initialParams={{ event }} />

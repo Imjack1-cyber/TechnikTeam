@@ -5,6 +5,7 @@ import de.technikteam.dao.EventTaskDAO;
 import de.technikteam.dao.ChatDAO;
 import de.technikteam.dao.MeetingDAO;
 import de.technikteam.dao.StorageDAO;
+import de.technikteam.dao.AnnouncementDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Event;
 import de.technikteam.model.EventTask;
@@ -12,6 +13,7 @@ import de.technikteam.model.ChatConversation;
 import de.technikteam.model.Meeting;
 import de.technikteam.model.StorageItem;
 import de.technikteam.model.User;
+import de.technikteam.model.Announcement;
 import de.technikteam.security.SecurityUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -38,15 +40,17 @@ public class PublicDashboardResource {
 	private final ChatDAO chatDAO;
 	private final MeetingDAO meetingDAO;
 	private final StorageDAO storageDAO;
+	private final AnnouncementDAO announcementDAO;
 
 	@Autowired
 	public PublicDashboardResource(EventDAO eventDAO, EventTaskDAO eventTaskDAO, ChatDAO chatDAO, MeetingDAO meetingDAO,
-			StorageDAO storageDAO) {
+			StorageDAO storageDAO, AnnouncementDAO announcementDAO) {
 		this.eventDAO = eventDAO;
 		this.eventTaskDAO = eventTaskDAO;
 		this.chatDAO = chatDAO;
 		this.meetingDAO = meetingDAO;
 		this.storageDAO = storageDAO;
+		this.announcementDAO = announcementDAO;
 	}
 
 	@GetMapping
@@ -73,5 +77,22 @@ public class PublicDashboardResource {
 		dashboardData.put("lowStockItems", lowStockItems);
 
 		return ResponseEntity.ok(new ApiResponse(true, "Dashboard-Daten erfolgreich abgerufen.", dashboardData));
+	}
+
+	@GetMapping("/widget-data")
+	@Operation(summary = "Get data for widgets", description = "Retrieves lightweight data specifically for home screen widgets.")
+	public ResponseEntity<ApiResponse> getWidgetData(@AuthenticationPrincipal SecurityUser securityUser) {
+		User user = securityUser.getUser();
+
+		List<Event> nextAssignedEvent = eventDAO.getAssignedEventsForUser(user.getId(), 1);
+		List<EventTask> openTasks = eventTaskDAO.getOpenTasksForUser(user.getId());
+		List<Announcement> announcements = announcementDAO.findAll();
+
+		Map<String, Object> widgetData = new HashMap<>();
+		widgetData.put("nextEvent", nextAssignedEvent.isEmpty() ? null : nextAssignedEvent.get(0));
+		widgetData.put("openTasks", openTasks);
+		widgetData.put("latestAnnouncement", announcements.isEmpty() ? null : announcements.get(0));
+
+		return ResponseEntity.ok(new ApiResponse(true, "Widget data retrieved successfully.", widgetData));
 	}
 }
