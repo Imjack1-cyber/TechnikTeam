@@ -33,6 +33,7 @@ import {
   subMonths,
 } from 'date-fns';
 import Stepper from '../../ui/Stepper';
+import ScrollableContent from '../../ui/ScrollableContent';
 import { RadioButton } from 'react-native-paper';
 
 // -------------------------------
@@ -430,38 +431,40 @@ const AdminAvailabilityPollModal = ({ isOpen, onClose, onSuccess }) => {
 
   return (
     <AdminModal isOpen={isOpen} onClose={handleClose} title="Neue Umfrage erstellen">
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      <Stepper steps={steps} currentStep={step} />
-      <View style={{ marginVertical: spacing.md, minHeight: 400, justifyContent: 'center' }}>
-        {renderStepContent()}
-      </View>
+        <ScrollableContent>
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            <Stepper steps={steps} currentStep={step} />
+            <View style={{ marginVertical: spacing.md, minHeight: 400, justifyContent: 'center' }}>
+                {renderStepContent()}
+            </View>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <TouchableOpacity
-          style={[styles.button, styles.secondaryButton, step === 0 ? styles.disabledButton : null]}
-          onPress={() => setStep(s => Math.max(0, s - 1))}
-          disabled={step === 0}
-        >
-          <Text style={styles.buttonText}>Zurück</Text>
-        </TouchableOpacity>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <TouchableOpacity
+                style={[styles.button, styles.secondaryButton, step === 0 ? styles.disabledButton : null]}
+                onPress={() => setStep(s => Math.max(0, s - 1))}
+                disabled={step === 0}
+                >
+                <Text style={styles.buttonText}>Zurück</Text>
+                </TouchableOpacity>
 
-        {step < steps.length - 1 ? (
-          <TouchableOpacity
-            style={[styles.button, styles.primaryButton]}
-            onPress={() => setStep(s => Math.min(steps.length - 1, s + 1))}
-          >
-            <Text style={styles.buttonText}>Weiter</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={[styles.button, styles.successButton]}
-            onPress={handleSubmit}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Erstellen</Text>}
-          </TouchableOpacity>
-        )}
-      </View>
+                {step < steps.length - 1 ? (
+                <TouchableOpacity
+                    style={[styles.button, styles.primaryButton]}
+                    onPress={() => setStep(s => Math.min(steps.length - 1, s + 1))}
+                >
+                    <Text style={styles.buttonText}>Weiter</Text>
+                </TouchableOpacity>
+                ) : (
+                <TouchableOpacity
+                    style={[styles.button, styles.successButton]}
+                    onPress={handleSubmit}
+                    disabled={isSubmitting}
+                >
+                    {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Erstellen</Text>}
+                </TouchableOpacity>
+                )}
+            </View>
+        </ScrollableContent>
 
       <InlineDatePickerModal
         isVisible={isPickerVisible}

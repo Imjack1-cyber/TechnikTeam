@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Alert, Platform } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute } from '@react-navigation/native';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import { useAuthStore } from '../store/authStore';
@@ -8,9 +8,10 @@ import { getCommonStyles } from '../styles/commonStyles';
 import { getThemeColors, spacing, typography, borders } from '../styles/theme';
 import Stepper from '../components/ui/Stepper';
 import { useToast } from '../context/ToastContext';
-import { addDays, format, isAfter, isBefore, isEqual, startOfDay, parseISO, eachDayOfInterval } from 'date-fns';
+import { format, parseISO, eachDayOfInterval } from 'date-fns';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import Modal from '../components/ui/Modal';
+import ScrollableContent from '../components/ui/ScrollableContent';
 
 // --- Reusable, Simple Components ---
 
@@ -238,7 +239,7 @@ const SchedulingPollPage = () => {
     };
 
     return (
-        <ScrollView contentContainerStyle={styles.centered}>
+        <ScrollableContent contentContainerStyle={styles.centered}>
             <View style={styles.card}>
                 <Stepper steps={['Identität', 'Auswahl', 'Abschluss', 'Fertig']} currentStep={step} />
                 <View style={{padding: spacing.md, minHeight: 400, justifyContent: 'center'}}>
@@ -268,7 +269,7 @@ const SchedulingPollPage = () => {
                 notes={maybeNotes}
                 setNotes={setMaybeNotes}
             />
-        </ScrollView>
+        </ScrollableContent>
     );
 };
 

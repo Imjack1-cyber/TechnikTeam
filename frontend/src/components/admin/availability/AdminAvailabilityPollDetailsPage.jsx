@@ -7,6 +7,7 @@ import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import DailyVoteSummary from '../../components/admin/availability/DailyVoteSummary';
 import { getThemeColors, spacing } from '../../styles/theme';
+import ScrollableContent from '../../components/ui/ScrollableContent';
 
 const AdminAvailabilityPollDetailsPage = () => {
     const route = useRoute();
@@ -29,17 +30,17 @@ const AdminAvailabilityPollDetailsPage = () => {
         return <View style={styles.centered}><Text>Umfragedaten nicht gefunden.</Text></View>;
     }
 
-    const { poll, responses, analysis, adminAvailableDays } = data;
+    const { poll, analysis, adminAvailableDays } = data;
 
     return (
-        <ScrollView style={styles.container}>
+        <ScrollableContent style={styles.container}>
             <View style={{padding: spacing.md}}>
                 <Text style={styles.title}>{poll.title}</Text>
                 <Text style={styles.subtitle}>{poll.description}</Text>
             </View>
 
             <DailyVoteSummary analysis={analysis} adminAvailableDays={adminAvailableDays} />
-        </ScrollView>
+        </ScrollableContent>
     );
 };
 
