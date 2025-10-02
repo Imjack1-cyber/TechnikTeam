@@ -53,7 +53,7 @@ public class SecurityConfig {
 						.requestMatchers("/", "/index.html", "/favicon.ico", "/*.js", "/*.css", "/assets/**", "/theme-loader.js",
                                  "/api/v1/auth/login", "/api/v1/auth/logout", "/api/v1/auth/verify-2fa", "/api/v1/auth/csrf-token", 
                                  "/ws/**", "/actuator/health", "/api/v1/public/notifications/sse", "/api/v1/public/verify/**",
-                                 "/api/v1/public/files/share/**")
+                                 "/api/v1/public/files/share/**", "/api/v1/public/polls/**")
 						.permitAll()
                         .requestMatchers("/api/v1/auth/me").authenticated() // Crucial fix: require authentication but no specific role
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").hasRole("ADMIN")

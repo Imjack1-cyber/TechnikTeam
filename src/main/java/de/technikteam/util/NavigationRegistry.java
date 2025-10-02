@@ -44,6 +44,8 @@ public final class NavigationRegistry {
 				.add(new NavigationItem("Lehrgänge & Skills", "/admin/lehrgaenge", "fa-book", Permissions.COURSE_READ));
 		ALL_ITEMS.add(
 				new NavigationItem("Inhalte & Kommunikation", "/admin/content", "fa-desktop", Permissions.FILE_MANAGE));
+		ALL_ITEMS.add(new NavigationItem("Verfügbarkeits-Check", "/admin/availability", "fa-user-clock",
+				Permissions.AVAILABILITY_MANAGE));
 		ALL_ITEMS.add(new NavigationItem("Berichte", "/admin/reports", "fa-chart-line", Permissions.REPORT_READ));
 		ALL_ITEMS.add(new NavigationItem("System & Entwicklung", "/admin/system", "fa-cogs", Permissions.SYSTEM_READ));
 	}

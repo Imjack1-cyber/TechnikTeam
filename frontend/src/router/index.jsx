@@ -44,6 +44,7 @@ import NotFoundPage from '../pages/error/NotFoundPage';
 import ErrorTrigger from '../pages/error/ErrorTrigger'; // For testing
 import IdCardPage from '../pages/IdCardPage';
 import VerificationPage from '../pages/VerificationPage';
+import SchedulingPollPage from '../pages/SchedulingPollPage';
 
 // --- Import ALL Admin Screen Components ---
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
@@ -84,6 +85,7 @@ import AdminSystemPage from '../pages/admin/AdminSystemPage';
 import AdminAuthLogPage from '../pages/admin/AdminAuthLogPage';
 import AdminGeoIpPage from '../pages/admin/AdminGeoIpPage';
 import AdminWikiPage from '../pages/admin/AdminWikiPage';
+import AdminAvailabilityStack from '../pages/admin/AdminAvailabilityStack';
 
 
 const Drawer = createDrawerNavigator();
@@ -197,6 +199,7 @@ const MainDrawerNavigator = () => {
             <Drawer.Screen name="Lager & Material" component={AdminStorageStack} options={{ headerShown: false }} />
             <Drawer.Screen name="Lehrgänge & Skills" component={AdminCoursesStack} options={{ headerShown: false }} />
             <Drawer.Screen name="Inhalte & Kommunikation" component={AdminContentStack} options={{ headerShown: false }} />
+            <Drawer.Screen name="Verfügbarkeits-Check" component={AdminAvailabilityStack} options={{ headerShown: false }} />
             <Drawer.Screen name="Berichte" component={AdminReportsStack} options={{ headerShown: false }} />
             <Drawer.Screen name="System & Entwicklung" component={AdminSystemStack} options={{ headerShown: false }} />
 
@@ -249,8 +252,10 @@ const RootNavigator = () => {
             ) : (
                 <Stack.Screen name="Login" component={LoginPage} />
             )}
+             {/* Publicly accessible screens */}
              <Stack.Screen name="Verification" component={VerificationPage} />
              <Stack.Screen name="FileShare" component={FileSharePage} />
+             <Stack.Screen name="SchedulingPoll" component={SchedulingPollPage} />
         </Stack.Navigator>
     );
 };
