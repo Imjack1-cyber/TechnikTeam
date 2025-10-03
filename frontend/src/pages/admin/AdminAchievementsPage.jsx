@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Alert, Linking } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
@@ -8,14 +8,26 @@ import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import AdminModal from '../../components/ui/AdminModal';
+import { Picker } from '@react-native-picker/picker';
 
 const AchievementModal = ({ isOpen, onClose, onSuccess, achievement }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const { addToast } = useToast();
     const [formData, setFormData] = useState({ name: '', description: '', iconClass: 'fa-award', achievementKey: '' });
+    const [keyPrefix, setKeyPrefix] = useState('EVENT_PARTICIPANT_');
+    const [keyValue, setKeyValue] = useState('');
+
+    const KEY_PREFIXES = ['EVENT_PARTICIPANT_', 'EVENT_LEADER_', 'QUALIFICATION_GAINED_'];
+
+    const KEY_DESCRIPTIONS = {
+        'EVENT_PARTICIPANT_': 'Wert ist die Anzahl der abgeschlossenen Events (z.B. 1, 5, 10).',
+        'EVENT_LEADER_': 'Wert ist die Anzahl der geleiteten Events.',
+        'QUALIFICATION_GAINED_': 'Wert ist die Abkürzung des Kurses (z.B. TON-GL).',
+    };
 
     useEffect(() => {
         if (achievement) {
@@ -25,10 +37,29 @@ const AchievementModal = ({ isOpen, onClose, onSuccess, achievement }) => {
                 iconClass: achievement.iconClass || 'fa-award',
                 achievementKey: achievement.achievementKey || ''
             });
+
+            const foundPrefix = KEY_PREFIXES.find(p => achievement.achievementKey.startsWith(p));
+            if (foundPrefix) {
+                setKeyPrefix(foundPrefix);
+                setKeyValue(achievement.achievementKey.substring(foundPrefix.length));
+            } else {
+                // Fallback for old custom keys, though they can't be created anymore
+                setKeyPrefix(KEY_PREFIXES[0]);
+                setKeyValue(achievement.achievementKey);
+            }
         } else {
             setFormData({ name: '', description: '', iconClass: 'fa-award', achievementKey: '' });
+            setKeyPrefix('EVENT_PARTICIPANT_');
+            setKeyValue('');
         }
-    }, [achievement]);
+    }, [achievement, isOpen]);
+
+    // Effect to combine prefix and value into the final achievementKey
+    useEffect(() => {
+        const finalKey = `${keyPrefix}${keyValue}`;
+        setFormData(prev => ({ ...prev, achievementKey: finalKey.toUpperCase() }));
+    }, [keyPrefix, keyValue]);
+
 
     const handleSubmit = async () => {
         setIsSubmitting(true);
@@ -60,14 +91,35 @@ const AchievementModal = ({ isOpen, onClose, onSuccess, achievement }) => {
             <Text style={styles.label}>Name</Text>
             <TextInput style={styles.input} value={formData.name} onChangeText={val => setFormData({ ...formData, name: val })} />
 
-            <Text style={styles.label}>System-Schlüssel (z.B. EVENT_PARTICIPANT_10)</Text>
-            <TextInput style={styles.input} value={formData.achievementKey} onChangeText={val => setFormData({ ...formData, achievementKey: val.toUpperCase() })} autoCapitalize="characters" />
+            <Text style={styles.label}>System-Schlüssel</Text>
+            <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
+                <View style={[styles.input, { flex: 2, paddingHorizontal: 0 }]}>
+                    <Picker selectedValue={keyPrefix} onValueChange={(itemValue) => setKeyPrefix(itemValue)}>
+                        {KEY_PREFIXES.map(p => <Picker.Item key={p} label={p} value={p} />)}
+                    </Picker>
+                </View>
+                 <TextInput 
+                    style={[styles.input, { flex: 1 }]} 
+                    value={keyValue} 
+                    onChangeText={setKeyValue}
+                    placeholder={'Wert'}
+                    autoCapitalize="characters" 
+                />
+            </View>
+            <Text style={styles.helperText}>{KEY_DESCRIPTIONS[keyPrefix]}</Text>
+            <Text style={styles.subtitle}>Resultierender Schlüssel: <Text style={{fontWeight: 'bold'}}>{formData.achievementKey}</Text></Text>
+
 
             <Text style={styles.label}>Beschreibung</Text>
             <TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={val => setFormData({ ...formData, description: val })} multiline />
 
-            <Text style={styles.label}>Font Awesome Icon-Klasse (z.B. fa-star)</Text>
-            <TextInput style={styles.input} value={formData.iconClass} onChangeText={val => setFormData({ ...formData, iconClass: val })} />
+            <Text style={styles.label}>Font Awesome Icon-Klasse</Text>
+            <TouchableOpacity style={{ alignSelf: 'flex-start', marginBottom: 4 }} onPress={() => Linking.openURL('https://fontawesome.com/search?m=free&s=solid')}>
+                <Text style={{ color: colors.primary, fontSize: typography.small }}>
+                    <Icon name="search" /> Icons suchen (solid)
+                </Text>
+            </TouchableOpacity>
+            <TextInput style={styles.input} value={formData.iconClass} onChangeText={val => setFormData({ ...formData, iconClass: val })} placeholder="z.B. fa-star"/>
         </AdminModal>
     );
 };
@@ -173,6 +225,12 @@ const pageStyles = (theme) => {
         secondaryButtonText: { color: '#fff' },
         dangerOutlineButtonText: { color: colors.danger },
         code: { fontFamily: 'monospace', backgroundColor: colors.background, padding: 4, borderRadius: 4 },
+        helperText: {
+            fontSize: typography.caption,
+            color: colors.textMuted,
+            marginTop: -spacing.sm, // pull up under the inputs
+            marginBottom: spacing.sm,
+        }
     });
 };
 

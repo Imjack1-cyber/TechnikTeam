@@ -18,8 +18,8 @@ const AdminDashboardPage = () => {
 
 	const renderWidgetItem = (item, type) => {
 		const handlePress = () => {
-			if (type === 'event') navigation.navigate('Event Management', { screen: 'AdminEvents' });
-			if (type === 'item') navigation.navigate('Lager & Material', { screen: 'AdminStorage' });
+			if (type === 'event') navigation.navigate('Event Management', { screen: 'EventDetails', params: { eventId: item.id } });
+			if (type === 'item') navigation.navigate('Lager & Material', { screen: 'StorageItemDetails', params: { itemId: item.id } });
             if (type === 'log') navigation.navigate('Berichte', { screen: 'AdminLog' });
 		};
 

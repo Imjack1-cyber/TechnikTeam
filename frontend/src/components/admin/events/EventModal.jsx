@@ -8,10 +8,10 @@ import { useAuthStore } from '../../../store/authStore';
 import { getCommonStyles } from '../../../styles/commonStyles';
 import { getThemeColors, spacing } from '../../../styles/theme';
 import { Picker } from '@react-native-picker/picker';
-import DateTimePickerModal from "react-native-modal-datetime-picker";
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import AdminModal from '../../ui/AdminModal';
+import DateTimePicker from '../../ui/DateTimePicker';
 
 const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklistTemplates }) => {
 	const isEditMode = !!event;
@@ -27,8 +27,6 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklis
 	const [formData, setFormData] = useState({});
 	const [skillRows, setSkillRows] = useState([]);
 	const [itemRows, setItemRows] = useState([]);
-    const [isPickerVisible, setPickerVisible] = useState(false);
-    const [pickerTargetField, setPickerTargetField] = useState(null);
     const [templateId, setTemplateId] = useState('');
     const [availabilityPreview, setAvailabilityPreview] = useState({});
 	
@@ -37,8 +35,8 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklis
 			if (isEditMode && event) {
 				setFormData({
 					name: event.name || '',
-					eventDateTime: event.eventDateTime ? event.eventDateTime.substring(0, 16) : '',
-					endDateTime: event.endDateTime ? event.endDateTime.substring(0, 16) : '',
+					eventDateTime: event.eventDateTime ? parseISO(event.eventDateTime) : null,
+					endDateTime: event.endDateTime ? parseISO(event.endDateTime) : null,
 					venueId: event.venueId || '',
 					description: event.description || '',
 					status: event.status || 'GEPLANT',
@@ -49,7 +47,7 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklis
 				setItemRows(event.reservedItems?.length > 0 ? event.reservedItems.map(i => ({ itemId: i.id, quantity: i.quantity })) : [{ itemId: '', quantity: 1 }]);
                 setTemplateId(event.preflightTemplateId || '');
 			} else {
-				setFormData({ name: '', eventDateTime: '', endDateTime: '', venueId: '', description: '', status: 'GEPLANT', leaderUserId: '', reminderMinutes: '0'});
+				setFormData({ name: '', eventDateTime: null, endDateTime: null, venueId: '', description: '', status: 'GEPLANT', leaderUserId: '', reminderMinutes: '0'});
 				setSkillRows([{ requiredCourseId: '', requiredPersons: 1 }]);
 				setItemRows([{ itemId: '', quantity: 1 }]);
                 setTemplateId('');
@@ -87,24 +85,11 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklis
 
 	const handleChange = (name, value) => setFormData(prev => ({...prev, [name]: value}));
     
-    const showPicker = (field) => {
-        setPickerTargetField(field);
-        setPickerVisible(true);
-    };
-
-    const hidePicker = () => setPickerVisible(false);
-
-    const handleConfirmDate = (date) => {
-        const formattedDate = format(date, "yyyy-MM-dd'T'HH:mm");
-        handleChange(pickerTargetField, formattedDate);
-        hidePicker();
-    };
-
 	const handleSubmit = async () => {
 		setIsSubmitting(true);
 		setError('');
 
-        if (!formData.name.trim() || !formData.eventDateTime.trim()) {
+        if (!formData.name.trim() || !formData.eventDateTime) {
             setError('Name und Beginn dürfen nicht leer sein.');
             setIsSubmitting(false);
             return;
@@ -112,6 +97,8 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklis
 
 		const eventData = {
 			...formData,
+            eventDateTime: format(formData.eventDateTime, "yyyy-MM-dd'T'HH:mm"),
+            endDateTime: formData.endDateTime ? format(formData.endDateTime, "yyyy-MM-dd'T'HH:mm") : null,
 			leaderUserId: formData.leaderUserId ? parseInt(formData.leaderUserId, 10) : 0,
             preflightTemplateId: templateId ? parseInt(templateId, 10) : null,
 			requiredCourseIds: skillRows.map(r => r.requiredCourseId).filter(Boolean),
@@ -136,19 +123,22 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklis
     
     const renderGeneral = () => (
         <View>
-            <Text style={styles.label}>Name</Text><TextInput style={styles.input} value={formData.name} onChangeText={val => handleChange('name', val)} />
+            <Text style={styles.label}>Name</Text>
+            <TextInput style={styles.input} value={formData.name} onChangeText={val => handleChange('name', val)} />
             
-            <Text style={styles.label}>Beginn</Text>
-            <View style={styles.dateInputContainer}>
-                <TextInput style={styles.input} value={formData.eventDateTime} onChangeText={val => handleChange('eventDateTime', val)} placeholder="JJJJ-MM-TTTHH:MM" editable={Platform.OS === 'web'}/>
-                <TouchableOpacity onPress={() => Platform.OS !== 'web' && showPicker('eventDateTime')}><Icon name="calendar-alt" size={24} color={colors.primary} /></TouchableOpacity>
-            </View>
+            <DateTimePicker
+                label="Beginn"
+                value={formData.eventDateTime}
+                onChange={(date) => handleChange('eventDateTime', date)}
+                mode="datetime"
+            />
             
-            <Text style={styles.label}>Ende</Text>
-            <View style={styles.dateInputContainer}>
-                <TextInput style={styles.input} value={formData.endDateTime} onChangeText={val => handleChange('endDateTime', val)} placeholder="JJJJ-MM-TTTHH:MM" editable={Platform.OS === 'web'}/>
-                <TouchableOpacity onPress={() => Platform.OS !== 'web' && showPicker('endDateTime')}><Icon name="calendar-alt" size={24} color={colors.primary} /></TouchableOpacity>
-            </View>
+            <DateTimePicker
+                label="Ende"
+                value={formData.endDateTime}
+                onChange={(date) => handleChange('endDateTime', date)}
+                mode="datetime"
+            />
 
             <Text style={styles.label}>Ort</Text>
             <Picker selectedValue={formData.venueId} onValueChange={val => handleChange('venueId', val)}>
@@ -197,24 +187,13 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklis
             
             {activeTab === 'general' && renderGeneral()}
             {activeTab === 'details' && renderDetails()}
-
-            <DateTimePickerModal
-                isVisible={isPickerVisible}
-                mode="datetime"
-                onConfirm={handleConfirmDate}
-                onCancel={hidePicker}
-            />
         </AdminModal>
 	);
 };
 
 const pageStyles = (theme) => {
     return StyleSheet.create({
-        dateInputContainer: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: spacing.sm,
-        },
+        // No custom styles needed here anymore
     });
 };
 

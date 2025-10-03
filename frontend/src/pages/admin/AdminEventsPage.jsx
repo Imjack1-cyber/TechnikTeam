@@ -11,6 +11,7 @@ import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const AdminEventsPage = () => {
     const navigation = useNavigation();
@@ -22,6 +23,9 @@ const AdminEventsPage = () => {
 	const adminFormData = useAdminData();
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingEvent, setEditingEvent] = useState(null);
+    const [cloningEvent, setCloningEvent] = useState(null);
+    const [deletingEvent, setDeletingEvent] = useState(null);
+    const [isSubmittingAction, setIsSubmittingAction] = useState(false);
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
@@ -34,34 +38,36 @@ const AdminEventsPage = () => {
 
 	const handleSuccess = () => { setIsModalOpen(false); setEditingEvent(null); reload(); };
 
-	const handleClone = (event) => {
-        Alert.alert(`Event "${event.name}" klonen?`, "Ein neues Event wird erstellt und Sie werden zur Detailansicht weitergeleitet.", [
-            { text: 'Abbrechen', style: 'cancel'},
-            { text: 'Klonen', onPress: async () => {
-                try {
-                    const result = await apiClient.post(`/events/${event.id}/clone`);
-                    if (result.success) {
-                        addToast('Event erfolgreich geklont.', 'success');
-                        navigation.navigate('EventDetails', { eventId: result.data.id });
-                    } else { throw new Error(result.message); }
-                } catch (err) { addToast(`Klonen fehlgeschlagen: ${err.message}`, 'error'); }
-            }}
-        ]);
+	const confirmClone = async () => {
+        if (!cloningEvent) return;
+        setIsSubmittingAction(true);
+        try {
+            const result = await apiClient.post(`/events/${cloningEvent.id}/clone`);
+            if (result.success) {
+                addToast('Event erfolgreich geklont.', 'success');
+                navigation.navigate('EventDetails', { eventId: result.data.id });
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Klonen fehlgeschlagen: ${err.message}`, 'error'); }
+        finally {
+            setIsSubmittingAction(false);
+            setCloningEvent(null);
+        }
 	};
 
-	const handleDelete = (event) => {
-        Alert.alert(`Event löschen?`, `Event '${event.name}' wirklich löschen?`, [
-            { text: 'Abbrechen', style: 'cancel'},
-            { text: 'Löschen', style: 'destructive', onPress: async () => {
-                try {
-                    const result = await apiClient.delete(`/events/${event.id}`);
-                    if (result.success) {
-                        addToast('Event erfolgreich gelöscht', 'success');
-                        reload();
-                    } else { throw new Error(result.message); }
-                } catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
-            }}
-        ]);
+	const confirmDelete = async () => {
+        if (!deletingEvent) return;
+        setIsSubmittingAction(true);
+        try {
+            const result = await apiClient.delete(`/events/${deletingEvent.id}`);
+            if (result.success) {
+                addToast('Event erfolgreich gelöscht', 'success');
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
+        finally {
+            setIsSubmittingAction(false);
+            setDeletingEvent(null);
+        }
 	};
     
     const renderItem = ({ item }) => (
@@ -73,9 +79,9 @@ const AdminEventsPage = () => {
             <View style={styles.detailRow}><Text style={styles.label}>Status:</Text><StatusBadge status={item.status} /></View>
             <View style={styles.actionsContainer}>
                 <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => openModal(item)}><Text style={styles.buttonText}>Bearbeiten</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.button, {backgroundColor: colors.primaryLight}]} onPress={() => handleClone(item)}><Text style={{color: colors.primary}}>Klonen</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.button, {backgroundColor: colors.primaryLight}]} onPress={() => setCloningEvent(item)}><Text style={{color: colors.primary}}>Klonen</Text></TouchableOpacity>
                 <TouchableOpacity style={[styles.button, {backgroundColor: colors.info}]} onPress={() => navigation.navigate('EventDetails', { eventId: item.id })}><Text style={styles.buttonText}>Details</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => handleDelete(item)}><Text style={styles.dangerOutlineButtonText}>Löschen</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => setDeletingEvent(item)}><Text style={styles.dangerOutlineButtonText}>Löschen</Text></TouchableOpacity>
             </View>
         </View>
     );
@@ -99,6 +105,30 @@ const AdminEventsPage = () => {
 			{isModalOpen && !loading && (
 				<EventModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} event={editingEvent} adminFormData={adminFormData} checklistTemplates={templates || []} />
 			)}
+            {cloningEvent && (
+                <ConfirmationModal
+                    isOpen={!!cloningEvent}
+                    onClose={() => setCloningEvent(null)}
+                    onConfirm={confirmClone}
+                    title={`Event "${cloningEvent.name}" klonen?`}
+                    message="Ein neues Event wird mit den Daten dieses Events als Vorlage erstellt und Sie werden zur Detailansicht des Klons weitergeleitet."
+                    confirmText="Klonen"
+                    confirmButtonVariant="primary"
+                    isSubmitting={isSubmittingAction}
+                />
+            )}
+            {deletingEvent && (
+                 <ConfirmationModal
+                    isOpen={!!deletingEvent}
+                    onClose={() => setDeletingEvent(null)}
+                    onConfirm={confirmDelete}
+                    title={`Event "${deletingEvent.name}" löschen?`}
+                    message="Diese Aktion kann nicht rückgängig gemacht werden."
+                    confirmText="Löschen"
+                    confirmButtonVariant="danger"
+                    isSubmitting={isSubmittingAction}
+                />
+            )}
 		</View>
 	);
 };
