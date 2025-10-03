@@ -5,10 +5,17 @@ import { useAuthStore } from '../store/authStore';
 import RNEventSource from 'react-native-sse';
 import { getToken } from '../lib/storage';
 
-const ANDROID_SSE_URL = 'https://technikteam.duckdns.org/TechnikTeam';
-const WEB_SSE_URL = ''; // For web, it's relative to the current host
-
-const BASE_URL = Platform.OS === 'web' ? WEB_SSE_URL : ANDROID_SSE_URL;
+const getSseBaseUrl = () => {
+    const mode = useAuthStore.getState().backendMode;
+    if (Platform.OS === 'web') {
+        // On the web, the browser handles the relative path correctly.
+        // We just need the context path.
+        return '/TechnikTeam';
+    }
+    // For native, we need the full absolute URL.
+    const host = mode === 'dev' ? 'technikteamdev.qs0.de' : 'technikteam.qs0.de';
+    return `https://${host}/TechnikTeam`;
+};
 
 export const useNotifications = () => {
 	const { addToast } = useToast();
@@ -37,8 +44,8 @@ export const useNotifications = () => {
 				return;
 			}
 
-			// For web, the browser constructs the full URL including protocol and host.
-			const sseUrl = `${BASE_URL}/api/v1/public/notifications/sse?token=${encodeURIComponent(token)}`;
+			const baseUrl = getSseBaseUrl();
+			const sseUrl = `${baseUrl}/api/v1/public/notifications/sse?token=${encodeURIComponent(token)}`;
 
 			console.log(`[useNotifications] Connecting to SSE at: ${sseUrl}`);
 			// react-native-sse polyfills EventSource for native, and uses the browser's native one on web.
