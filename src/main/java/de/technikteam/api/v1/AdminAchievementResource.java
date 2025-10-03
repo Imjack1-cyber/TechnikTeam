@@ -3,6 +3,7 @@ package de.technikteam.api.v1;
 import de.technikteam.dao.AchievementDAO;
 import de.technikteam.model.Achievement;
 import de.technikteam.model.ApiResponse;
+import de.technikteam.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/achievements")
@@ -19,10 +21,12 @@ import java.util.List;
 public class AdminAchievementResource {
 
 	private final AchievementDAO achievementDAO;
+	private final NotificationService notificationService;
 
 	@Autowired
-	public AdminAchievementResource(AchievementDAO achievementDAO) {
+	public AdminAchievementResource(AchievementDAO achievementDAO, NotificationService notificationService) {
 		this.achievementDAO = achievementDAO;
+		this.notificationService = notificationService;
 	}
 
 	@GetMapping
@@ -36,6 +40,7 @@ public class AdminAchievementResource {
 	@Operation(summary = "Create an achievement", description = "Creates a new achievement definition.")
 	public ResponseEntity<ApiResponse> createAchievement(@RequestBody Achievement achievement) {
 		if (achievementDAO.createAchievement(achievement)) {
+			notificationService.broadcastUIUpdate("ACHIEVEMENT", "CREATED", achievement);
 			return ResponseEntity.ok(new ApiResponse(true, "Abzeichen erstellt.", null));
 		}
 		return ResponseEntity.internalServerError()
@@ -47,6 +52,7 @@ public class AdminAchievementResource {
 	public ResponseEntity<ApiResponse> updateAchievement(@PathVariable int id, @RequestBody Achievement achievement) {
 		achievement.setId(id);
 		if (achievementDAO.updateAchievement(achievement)) {
+			notificationService.broadcastUIUpdate("ACHIEVEMENT", "UPDATED", achievement);
 			return ResponseEntity.ok(new ApiResponse(true, "Abzeichen aktualisiert.", null));
 		}
 		return ResponseEntity.internalServerError()
@@ -57,6 +63,7 @@ public class AdminAchievementResource {
 	@Operation(summary = "Delete an achievement", description = "Deletes an achievement definition.")
 	public ResponseEntity<ApiResponse> deleteAchievement(@PathVariable int id) {
 		if (achievementDAO.deleteAchievement(id)) {
+			notificationService.broadcastUIUpdate("ACHIEVEMENT", "DELETED", Map.of("id", id));
 			return ResponseEntity.ok(new ApiResponse(true, "Abzeichen gelöscht.", null));
 		}
 		return ResponseEntity.internalServerError()

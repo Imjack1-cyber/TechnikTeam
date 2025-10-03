@@ -7,6 +7,7 @@ import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.ChatService;
 import de.technikteam.service.FileService;
+import de.technikteam.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,12 +31,14 @@ public class PublicChatResource {
 	private final ChatDAO chatDAO;
 	private final FileService fileService;
 	private final ChatService chatService;
+	private final NotificationService notificationService;
 
 	@Autowired
-	public PublicChatResource(ChatDAO chatDAO, FileService fileService, ChatService chatService) {
+	public PublicChatResource(ChatDAO chatDAO, FileService fileService, ChatService chatService, NotificationService notificationService) {
 		this.chatDAO = chatDAO;
 		this.fileService = fileService;
 		this.chatService = chatService;
+		this.notificationService = notificationService;
 	}
 
 	@GetMapping("/conversations")
@@ -76,6 +79,7 @@ public class PublicChatResource {
 			return ResponseEntity.badRequest().body(new ApiResponse(false, "Benutzer-ID fehlt.", null));
 		}
 		int conversationId = chatDAO.findOrCreateConversation(securityUser.getUser().getId(), otherUserId);
+		notificationService.broadcastUIUpdate("CONVERSATION", "CREATED", chatDAO.getConversationById(conversationId));
 		return ResponseEntity.ok(
 				new ApiResponse(true, "Gespräch gefunden oder erstellt.", Map.of("conversationId", conversationId)));
 	}
@@ -115,6 +119,7 @@ public class PublicChatResource {
 		}
 
 		chatDAO.addParticipantsToGroup(id, userIds);
+		notificationService.broadcastUIUpdate("CONVERSATION", "UPDATED", chatDAO.getConversationById(id));
 		return ResponseEntity.ok(new ApiResponse(true, "Teilnehmer erfolgreich hinzugefügt.", null));
 	}
 

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -15,11 +16,13 @@ public class TrainingRequestService {
 
 	private final TrainingRequestDAO trainingRequestDAO;
 	private final AdminLogService adminLogService;
+	private final NotificationService notificationService;
 
 	@Autowired
-	public TrainingRequestService(TrainingRequestDAO trainingRequestDAO, AdminLogService adminLogService) {
+	public TrainingRequestService(TrainingRequestDAO trainingRequestDAO, AdminLogService adminLogService, NotificationService notificationService) {
 		this.trainingRequestDAO = trainingRequestDAO;
 		this.adminLogService = adminLogService;
+		this.notificationService = notificationService;
 	}
 
 	public List<TrainingRequest> findAllWithInterestCount() {
@@ -31,11 +34,16 @@ public class TrainingRequestService {
 		TrainingRequest newRequest = trainingRequestDAO.create(topic, requester.getId());
 		// Automatically register interest for the user who created the request
 		trainingRequestDAO.addInterest(newRequest.getId(), requester.getId());
+		notificationService.broadcastUIUpdate("TRAINING_REQUEST", "CREATED", newRequest);
 		return newRequest;
 	}
 
 	public boolean registerInterest(int requestId, int userId) {
-		return trainingRequestDAO.addInterest(requestId, userId);
+		boolean success = trainingRequestDAO.addInterest(requestId, userId);
+		if (success) {
+			notificationService.broadcastUIUpdate("TRAINING_REQUEST", "UPDATED", Map.of("id", requestId));
+		}
+		return success;
 	}
 
 	@Transactional
@@ -46,6 +54,7 @@ public class TrainingRequestService {
 			if (success) {
 				adminLogService.log(adminUser.getUsername(), "TRAINING_REQUEST_DELETE",
 						"Deleted training request: " + requestOpt.get().getTopic() + " (ID: " + id + ")");
+				notificationService.broadcastUIUpdate("TRAINING_REQUEST", "DELETED", Map.of("id", id));
 			}
 			return success;
 		}

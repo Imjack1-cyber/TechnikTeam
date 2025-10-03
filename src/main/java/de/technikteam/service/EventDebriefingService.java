@@ -73,6 +73,7 @@ public class EventDebriefingService {
 		EventDebriefing savedDebriefing = debriefingDAO.save(debriefing);
 		adminLogService.log(author.getUsername(), "SUBMIT_DEBRIEFING",
 				"Debriefing for event '" + event.getName() + "' submitted/updated.");
+		notificationService.broadcastUIUpdate("DEBRIEFING", "UPDATED", savedDebriefing);
 
 		List<Integer> adminIds = userDAO.findUserIdsByPermission(Permissions.EVENT_DEBRIEFING_VIEW);
 		

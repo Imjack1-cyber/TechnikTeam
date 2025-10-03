@@ -15,7 +15,7 @@ const DashboardPage = () => {
 	}));
 	const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/public/dashboard'), []);
-	const { data: dashboardData, loading, error } = useApi(apiCall);
+	const { data: dashboardData, loading, error } = useApi(apiCall, { subscribeTo: ['EVENT', 'EVENT_TASK', 'CONVERSATION', 'MEETING', 'STORAGE_ITEM'] });
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
 

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -22,18 +23,21 @@ public class ChatService {
 	private final ChatDAO chatDAO;
 	private final UserDAO userDAO;
 	private final AdminLogService adminLogService;
+	private final NotificationService notificationService;
 
 	@Autowired
-	public ChatService(ChatDAO chatDAO, UserDAO userDAO, AdminLogService adminLogService) {
+	public ChatService(ChatDAO chatDAO, UserDAO userDAO, AdminLogService adminLogService, NotificationService notificationService) {
 		this.chatDAO = chatDAO;
 		this.userDAO = userDAO;
 		this.adminLogService = adminLogService;
+		this.notificationService = notificationService;
 	}
 
 	@Transactional
 	public boolean leaveGroup(int conversationId, int userId) {
 		boolean success = chatDAO.leaveGroup(conversationId, userId);
 		if (success) {
+			notificationService.broadcastUIUpdate("CONVERSATION", "UPDATED", Map.of("id", conversationId));
 			// Check if group is now empty
 			List<User> participants = chatDAO.getParticipantsForConversation(conversationId);
 			if (participants.isEmpty()) {
@@ -60,7 +64,7 @@ public class ChatService {
 		if (creator.hasAdminAccess()) {
 			adminLogService.log(creator.getUsername(), "GROUP_CHAT_CREATE", logDetails);
 		}
-
+		notificationService.broadcastUIUpdate("CONVERSATION", "CREATED", chatDAO.getConversationById(conversationId));
 		return conversationId;
 	}
 
@@ -81,7 +85,11 @@ public class ChatService {
 			throw new AccessDeniedException("Nur der Ersteller der Gruppe oder ein Admin kann diese löschen.");
 		}
 
-		return chatDAO.deleteGroup(conversationId);
+		boolean success = chatDAO.deleteGroup(conversationId);
+		if (success) {
+			notificationService.broadcastUIUpdate("CONVERSATION", "DELETED", Map.of("id", conversationId));
+		}
+		return success;
 	}
 
 	@Transactional
@@ -103,6 +111,10 @@ public class ChatService {
 			throw new IllegalArgumentException("Der Ersteller der Gruppe kann sich nicht selbst entfernen.");
 		}
 
-		return chatDAO.removeParticipant(conversationId, userIdToRemove);
+		boolean success = chatDAO.removeParticipant(conversationId, userIdToRemove);
+		if (success) {
+			notificationService.broadcastUIUpdate("CONVERSATION", "UPDATED", Map.of("id", conversationId));
+		}
+		return success;
 	}
 }

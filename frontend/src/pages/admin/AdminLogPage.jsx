@@ -5,7 +5,7 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../context/ToastContext';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import { Picker } from '@react-native-picker/picker';
@@ -13,7 +13,7 @@ import { Picker } from '@react-native-picker/picker';
 const AdminLogPage = () => {
 	const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/logs'), []);
-	const { data: logs, loading, error, reload } = useApi(apiCall);
+	const { data: logs, loading, error, reload } = useApi(apiCall, { subscribeTo: 'ADMIN_LOG' });
 	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
 	const { addToast } = useToast();
 

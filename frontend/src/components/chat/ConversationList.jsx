@@ -19,7 +19,7 @@ const ConversationList = () => {
     const selectedConversationId = parseInt(route.params?.conversationId, 10);
 
 	const apiCall = useCallback(() => apiClient.get('/public/chat/conversations'), []);
-	const { data: conversations, loading, error, reload } = useApi(apiCall);
+	const { data: conversations, loading, error, reload } = useApi(apiCall, { subscribeTo: 'CONVERSATION' });
 	const [isUserSearchModalOpen, setIsUserSearchModalOpen] = useState(false);
 	const [isGroupChatModalOpen, setIsGroupChatModalOpen] = useState(false);
     const [deletingConversation, setDeletingConversation] = useState(null);

@@ -11,7 +11,7 @@ import { useToast } from '../../context/ToastContext';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
-import { getThemeColors } from '../../styles/theme';
+import { getThemeColors, typography } from '../../styles/theme';
 import Clipboard from '@react-native-clipboard/clipboard';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -76,7 +76,7 @@ const KitAccordion = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems, s
 
 const AdminKitsPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/kits'), []);
-	const { data: kits, loading: kitsLoading, error: kitsError, reload } = useApi(apiCall);
+	const { data: kits, loading: kitsLoading, error: kitsError, reload } = useApi(apiCall, { subscribeTo: 'KIT' });
 	const { storageItems, loading: storageItemsLoading, error: storageItemsError } = useAdminData();
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingKit, setEditingKit] = useState(null);

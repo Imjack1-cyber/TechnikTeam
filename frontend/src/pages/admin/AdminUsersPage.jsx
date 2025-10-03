@@ -91,7 +91,7 @@ const pageStyles = (theme) => {
 const AdminUsersPage = () => {
     const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/users'), []);
-	const { data: users, loading, error, reload } = useApi(apiCall);
+	const { data: users, loading, error, reload } = useApi(apiCall, { subscribeTo: 'USER' });
 	const adminFormData = useAdminData();
 	const { addToast } = useToast();
     const currentUser = useAuthStore(state => state.user);

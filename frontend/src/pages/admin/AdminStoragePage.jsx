@@ -8,7 +8,7 @@ import Lightbox from '../../components/ui/Lightbox';
 import { useToast } from '../../context/ToastContext';
 import Modal from '../../components/ui/Modal';
 import QRCode from 'react-native-qrcode-svg';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography } from '../../styles/theme';
@@ -23,7 +23,7 @@ const HealthIndicator = ({ item }) => {
 const AdminStoragePage = () => {
     const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/storage'), []);
-	const { data: items, loading, error, reload } = useApi(apiCall);
+	const { data: items, loading, error, reload } = useApi(apiCall, { subscribeTo: 'STORAGE_ITEM' });
 	const [modalState, setModalState] = useState({ isOpen: false, item: null, mode: 'edit' });
 	const [lightboxSrc, setLightboxSrc] = useState('');
 	const [qrCodeItem, setQrCodeItem] = useState(null);

@@ -30,15 +30,17 @@ public class AdminLogService {
 	private final AdminUserManagementService adminUserManagementService;
 	private final UserService userService;
 	private final CourseDAO courseDAO;
+	private final NotificationService notificationService;
 	private final Gson gson;
 
 	@Autowired
 	public AdminLogService(AdminLogDAO logDAO, @Lazy AdminUserManagementService adminUserManagementService,
-			@Lazy UserService userService, @Lazy CourseDAO courseDAO) {
+			@Lazy UserService userService, @Lazy CourseDAO courseDAO, @Lazy NotificationService notificationService) {
 		this.logDAO = logDAO;
 		this.adminUserManagementService = adminUserManagementService;
 		this.userService = userService;
 		this.courseDAO = courseDAO;
+		this.notificationService = notificationService;
 		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
@@ -68,6 +70,7 @@ public class AdminLogService {
 			logger.info("[AUDIT] User: '{}', Action: '{}', Details: {}", saneAdminUsername, saneActionType,
 					saneDetails);
 			logDAO.createLog(log);
+			notificationService.broadcastUIUpdate("ADMIN_LOG", "CREATED", log);
 		} catch (Exception e) {
 			logger.error(
 					"KRITISCH: Fehler beim Schreiben in das Admin-Audit-Log! Daten: [Benutzer: {}, Aktion: {}, Details: {}]",
@@ -173,6 +176,7 @@ public class AdminLogService {
 
 		// Mark the original log entry as revoked
 		logDAO.updateStatus(logId, "REVOKED", revokingAdmin.getId());
+		notificationService.broadcastUIUpdate("ADMIN_LOG", "UPDATED", logDAO.getLogById(logId));
 
 		// Log the revocation itself
 		log(revokingAdmin.getUsername(), "ACTION_REVOKED",

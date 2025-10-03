@@ -11,6 +11,7 @@ import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.FileService;
+import de.technikteam.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -20,6 +21,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.google.gson.Gson;
+
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -35,12 +38,14 @@ public class AdminFileResource {
 	private final FileDAO fileDAO;
 	private final FileService fileService;
 	private final AdminLogService adminLogService;
+	private final NotificationService notificationService;
 
 	@Autowired
-	public AdminFileResource(FileDAO fileDAO, FileService fileService, AdminLogService adminLogService) {
+	public AdminFileResource(FileDAO fileDAO, FileService fileService, AdminLogService adminLogService, NotificationService notificationService) {
 		this.fileDAO = fileDAO;
 		this.fileService = fileService;
 		this.adminLogService = adminLogService;
+		this.notificationService = notificationService;
 	}
 
 	@PostMapping
@@ -100,6 +105,7 @@ public class AdminFileResource {
 		if (fileDAO.renameFile(id, request.newName())) {
 			adminLogService.log(securityUser.getUser().getUsername(), "FILE_RENAME",
 					"File '" + file.getFilename() + "' (ID: " + id + ") renamed to '" + request.newName() + "'.");
+			notificationService.broadcastUIUpdate("FILE", "UPDATED", fileDAO.getFileById(id));
 			return ResponseEntity.ok(new ApiResponse(true, "Datei erfolgreich umbenannt.", null));
 		}
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -130,6 +136,7 @@ public class AdminFileResource {
 		if (fileDAO.createCategory(request.name())) {
 			adminLogService.log(securityUser.getUser().getUsername(), "CREATE_FILE_CATEGORY_API",
 					"Category '" + request.name() + "' created.");
+			notificationService.broadcastUIUpdate("FILE_CATEGORY", "CREATED", Map.of("name", request.name()));
 			return new ResponseEntity<>(new ApiResponse(true, "Kategorie erfolgreich erstellt.", null),
 					HttpStatus.CREATED);
 		}
@@ -149,6 +156,7 @@ public class AdminFileResource {
 		if (fileDAO.renameCategory(id, request.name())) {
 			adminLogService.log(securityUser.getUser().getUsername(), "RENAME_FILE_CATEGORY_API",
 					"Category '" + oldName + "' renamed to '" + request.name() + "'.");
+			notificationService.broadcastUIUpdate("FILE_CATEGORY", "UPDATED", Map.of("id", id, "name", request.name()));
 			return ResponseEntity.ok(new ApiResponse(true, "Kategorie erfolgreich umbenannt.", null));
 		}
 		return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiResponse(false,
@@ -163,6 +171,7 @@ public class AdminFileResource {
 		if (categoryName != null && fileDAO.deleteCategory(id)) {
 			adminLogService.log(securityUser.getUser().getUsername(), "DELETE_FILE_CATEGORY_API",
 					"Category '" + categoryName + "' deleted.");
+			notificationService.broadcastUIUpdate("FILE_CATEGORY", "DELETED", Map.of("id", id));
 			return ResponseEntity.ok(new ApiResponse(true, "Kategorie erfolgreich gelöscht.", Map.of("deletedId", id)));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)

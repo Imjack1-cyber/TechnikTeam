@@ -8,6 +8,7 @@ import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.EventService;
+import de.technikteam.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -30,15 +31,17 @@ public class MeetingResource {
 	private final MeetingDAO meetingDAO;
 	private final AdminLogService adminLogService;
 	private final EventService eventService;
+	private final NotificationService notificationService;
 	private final PolicyFactory richTextPolicy;
 
 	@Autowired
 	public MeetingResource(MeetingDAO meetingDAO, AdminLogService adminLogService, EventService eventService,
-			@Qualifier("richTextPolicy") PolicyFactory richTextPolicy) {
+			@Qualifier("richTextPolicy") PolicyFactory richTextPolicy, NotificationService notificationService) {
 		this.meetingDAO = meetingDAO;
 		this.adminLogService = adminLogService;
 		this.eventService = eventService;
 		this.richTextPolicy = richTextPolicy;
+		this.notificationService = notificationService;
 	}
 
 	@GetMapping
@@ -82,6 +85,7 @@ public class MeetingResource {
 			meeting.setId(newId);
 			adminLogService.log(securityUser.getUser().getUsername(), "CREATE_MEETING_API",
 					"Meeting '" + meeting.getName() + "' created.");
+			notificationService.broadcastUIUpdate("MEETING", "CREATED", meeting);
 			return new ResponseEntity<>(new ApiResponse(true, "Termin erfolgreich erstellt.", meeting),
 					HttpStatus.CREATED);
 		}
@@ -99,6 +103,7 @@ public class MeetingResource {
 		if (meetingDAO.updateMeeting(meeting)) {
 			adminLogService.log(securityUser.getUser().getUsername(), "UPDATE_MEETING_API",
 					"Meeting '" + meeting.getName() + "' updated.");
+			notificationService.broadcastUIUpdate("MEETING", "UPDATED", meeting);
 			return ResponseEntity.ok(new ApiResponse(true, "Termin erfolgreich aktualisiert.", meeting));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -129,6 +134,7 @@ public class MeetingResource {
 		if (meeting != null && meetingDAO.deleteMeeting(id)) {
 			adminLogService.log(securityUser.getUser().getUsername(), "DELETE_MEETING_API",
 					"Meeting '" + meeting.getName() + "' deleted.");
+			notificationService.broadcastUIUpdate("MEETING", "DELETED", Map.of("id", id));
 			return ResponseEntity.ok(new ApiResponse(true, "Termin erfolgreich gelöscht.", Map.of("deletedId", id)));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)

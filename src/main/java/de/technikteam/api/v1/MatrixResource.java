@@ -7,6 +7,7 @@ import de.technikteam.dao.UserDAO;
 import de.technikteam.dao.UserQualificationsDAO;
 import de.technikteam.model.*;
 import de.technikteam.service.AchievementService;
+import de.technikteam.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,17 +34,19 @@ public class MatrixResource {
 	private final MeetingAttendanceDAO meetingAttendanceDAO;
 	private final UserQualificationsDAO qualificationsDAO;
 	private final AchievementService achievementService;
+	private final NotificationService notificationService;
 
 	@Autowired
 	public MatrixResource(UserDAO userDAO, CourseDAO courseDAO, MeetingDAO meetingDAO,
 			MeetingAttendanceDAO meetingAttendanceDAO, UserQualificationsDAO qualificationsDAO,
-			AchievementService achievementService) {
+			AchievementService achievementService, NotificationService notificationService) {
 		this.userDAO = userDAO;
 		this.courseDAO = courseDAO;
 		this.meetingDAO = meetingDAO;
 		this.meetingAttendanceDAO = meetingAttendanceDAO;
 		this.qualificationsDAO = qualificationsDAO;
 		this.achievementService = achievementService;
+		this.notificationService = notificationService;
 	}
 
 	@GetMapping
@@ -84,6 +87,7 @@ public class MatrixResource {
 		boolean success = meetingAttendanceDAO.setAttendance(attendance.getUserId(), attendance.getMeetingId(),
 				attendance.getAttended(), attendance.getRemarks());
 		if (success) {
+			notificationService.broadcastUIUpdate("MATRIX", "UPDATED", null);
 			return ResponseEntity.ok(new ApiResponse(true, "Teilnahme aktualisiert.", null));
 		}
 		return ResponseEntity.internalServerError()
@@ -104,6 +108,7 @@ public class MatrixResource {
 							qualification.getCourseId());
 				}
 			}
+			notificationService.broadcastUIUpdate("MATRIX", "UPDATED", null);
 			return ResponseEntity.ok(new ApiResponse(true, "Qualifikationsstatus aktualisiert.", null));
 		}
 		return ResponseEntity.internalServerError()

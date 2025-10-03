@@ -39,6 +39,7 @@ public class SystemSettingsService {
 		settingsCache.invalidateAll(); // Invalidate cache immediately
 		MaintenanceStatusDTO newStatus = getMaintenanceStatus(); // Get the fresh status from the DB
 		notificationService.broadcastSystemStatusUpdate(newStatus);
+		notificationService.broadcastUIUpdate("MAINTENANCE", "UPDATED", newStatus);
 		return newStatus;
 	}
 }

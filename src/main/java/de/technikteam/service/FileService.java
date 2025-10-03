@@ -21,6 +21,7 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -29,16 +30,18 @@ public class FileService {
 	private final FileDAO fileDAO;
 	private final FileSharingDAO fileSharingDAO;
 	private final AdminLogService adminLogService;
+	private final NotificationService notificationService;
 	private final Path fileStorageLocation;
 	private static final Logger logger = LogManager.getLogger(FileService.class);
 
 	private static final long MAX_FILE_SIZE_BYTES = 1000L * 1024 * 1024; // 1000 MB
 
 	@Autowired
-	public FileService(FileDAO fileDAO, FileSharingDAO fileSharingDAO, ConfigurationService configService, AdminLogService adminLogService) {
+	public FileService(FileDAO fileDAO, FileSharingDAO fileSharingDAO, ConfigurationService configService, AdminLogService adminLogService, NotificationService notificationService) {
 		this.fileDAO = fileDAO;
 		this.fileSharingDAO = fileSharingDAO;
 		this.adminLogService = adminLogService;
+		this.notificationService = notificationService;
 		this.fileStorageLocation = Paths.get(configService.getProperty("upload.directory")).toAbsolutePath()
 				.normalize();
 	}
@@ -99,6 +102,7 @@ public class FileService {
 			de.technikteam.model.File savedFile = fileDAO.getFileById(newFileId);
 			logger.info("File '{}' successfully stored and saved to database with ID {}.", originalFileName, newFileId);
 			logger.debug("Final saved file data from DB: {}", savedFile);
+			notificationService.broadcastUIUpdate("FILE", "CREATED", savedFile);
 			return savedFile;
 		} else {
 			Files.deleteIfExists(targetPath);
@@ -122,6 +126,7 @@ public class FileService {
 			Files.deleteIfExists(filePath);
 			adminLogService.log(adminUser.getUsername(), "DELETE_FILE",
 					"Datei '" + file.getFilename() + "' (ID: " + fileId + ") gelöscht.");
+			notificationService.broadcastUIUpdate("FILE", "DELETED", Map.of("id", fileId));
 		}
 		return success;
 	}
@@ -162,7 +167,7 @@ public class FileService {
 
 		adminLogService.log(adminUser.getUsername(), "REPLACE_FILE",
 				"Datei '" + existingFile.getFilename() + "' (ID: " + existingFileId + ") ersetzt.");
-
+		notificationService.broadcastUIUpdate("FILE", "UPDATED", existingFile);
 		return existingFile;
 	}
 

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class UserService {
@@ -17,11 +18,13 @@ public class UserService {
 
 	private final UserDAO userDAO;
 	private final AdminLogService adminLogService;
+	private final NotificationService notificationService;
 
 	@Autowired
-	public UserService(UserDAO userDAO, AdminLogService adminLogService) {
+	public UserService(UserDAO userDAO, AdminLogService adminLogService, NotificationService notificationService) {
 		this.userDAO = userDAO;
 		this.adminLogService = adminLogService;
+		this.notificationService = notificationService;
 	}
 
 	@Transactional
@@ -32,6 +35,8 @@ public class UserService {
 				userDAO.updateUserPermissions(newUserId, permissionIds);
 				logger.info("Transaction for creating user '{}' committed successfully.", user.getUsername());
 				adminLogService.logUserCreation(adminUsername, newUserId);
+				User createdUser = userDAO.getUserById(newUserId);
+				notificationService.broadcastUIUpdate("USER", "CREATED", createdUser);
 				return newUserId;
 			} else {
 				// This case might occur if there's a non-exception failure in the DAO
@@ -65,6 +70,7 @@ public class UserService {
 		boolean success = userDAO.deleteUser(userId);
 		if (success) {
 			adminLogService.logUserDeletion(adminUser.getUsername(), userToDelete);
+			notificationService.broadcastUIUpdate("USER", "DELETED", Map.of("id", userId));
 		}
 		return success;
 	}

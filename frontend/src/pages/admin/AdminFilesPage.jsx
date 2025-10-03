@@ -189,7 +189,7 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, itemType, itemNam
 
 const AdminFilesPage = ({ navigation }) => {
 	const filesApiCall = useCallback(() => apiClient.get('/admin/files'), []);
-	const { data: fileApiResponse, loading, error, reload: reloadFiles } = useApi(filesApiCall);
+	const { data: fileApiResponse, loading, error, reload: reloadFiles } = useApi(filesApiCall, { subscribeTo: ['FILE', 'FILE_CATEGORY'] });
     const { addToast } = useToast();
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [modalState, setModalState] = useState({ type: null, data: null });

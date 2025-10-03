@@ -6,6 +6,7 @@ import de.technikteam.model.InventoryKit;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
+import de.technikteam.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,11 +25,13 @@ public class KitResource {
 
 	private final InventoryKitDAO kitDAO;
 	private final AdminLogService adminLogService;
+	private final NotificationService notificationService;
 
 	@Autowired
-	public KitResource(InventoryKitDAO kitDAO, AdminLogService adminLogService) {
+	public KitResource(InventoryKitDAO kitDAO, AdminLogService adminLogService, NotificationService notificationService) {
 		this.kitDAO = kitDAO;
 		this.adminLogService = adminLogService;
+		this.notificationService = notificationService;
 	}
 
 	@GetMapping
@@ -47,6 +50,7 @@ public class KitResource {
 			kit.setId(newId);
 			adminLogService.log(securityUser.getUser().getUsername(), "CREATE_KIT_API",
 					"Kit '" + kit.getName() + "' created.");
+			notificationService.broadcastUIUpdate("KIT", "CREATED", kit);
 			return new ResponseEntity<>(new ApiResponse(true, "Kit erfolgreich erstellt.", kit), HttpStatus.CREATED);
 		}
 		return ResponseEntity.badRequest().body(new ApiResponse(false, "Kit konnte nicht erstellt werden.", null));
@@ -60,6 +64,7 @@ public class KitResource {
 		if (kitDAO.updateKit(kit)) {
 			adminLogService.log(securityUser.getUser().getUsername(), "UPDATE_KIT_API",
 					"Kit '" + kit.getName() + "' updated.");
+			notificationService.broadcastUIUpdate("KIT", "UPDATED", kit);
 			return ResponseEntity.ok(new ApiResponse(true, "Kit erfolgreich aktualisiert.", kit));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -74,6 +79,7 @@ public class KitResource {
 		if (kit != null && kitDAO.deleteKit(id)) {
 			adminLogService.log(securityUser.getUser().getUsername(), "DELETE_KIT_API",
 					"Kit '" + kit.getName() + "' deleted.");
+			notificationService.broadcastUIUpdate("KIT", "DELETED", Map.of("id", id));
 			return ResponseEntity.ok(new ApiResponse(true, "Kit erfolgreich gelöscht.", Map.of("deletedId", id)));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)

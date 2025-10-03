@@ -5,7 +5,7 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography } from '../../styles/theme';
@@ -74,7 +74,7 @@ const ActionModal = ({ isOpen, onClose, onSuccess, report, action }) => {
 const AdminDamageReportsPage = () => {
     const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/admin/damage-reports/pending'), []);
-	const { data: reports, loading, error, reload } = useApi(apiCall);
+	const { data: reports, loading, error, reload } = useApi(apiCall, { subscribeTo: 'DAMAGE_REPORT' });
 	const [selectedReport, setSelectedReport] = useState(null);
 	const [action, setAction] = useState(null);
     const theme = useAuthStore(state => state.theme);

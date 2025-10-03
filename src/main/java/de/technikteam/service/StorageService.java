@@ -69,6 +69,7 @@ public class StorageService {
 		}
 
 		storageDAO.updateItem(item);
+		notificationService.broadcastUIUpdate("STORAGE_ITEM", "UPDATED", item);
 
 		String finalNotes = notes;
 		if ("checkout".equals(type) && eventId != null) {
@@ -153,6 +154,7 @@ public class StorageService {
 		}
 
 		storageDAO.updateItem(item);
+		notificationService.broadcastUIUpdate("STORAGE_ITEM", "UPDATED", item);
 		return true;
 	}
 
@@ -167,6 +169,7 @@ public class StorageService {
 		}
 		item.setDefectiveQuantity(item.getDefectiveQuantity() - quantity);
 		storageDAO.updateItem(item);
+		notificationService.broadcastUIUpdate("STORAGE_ITEM", "UPDATED", item);
 		// Log maintenance action
 		adminLogService.log(adminUser.getUsername(), "ITEM_REPAIRED",
 				String.format("Repaired %d x '%s' (ID: %d). Notes: %s", quantity, item.getName(), itemId, notes));
@@ -179,6 +182,7 @@ public class StorageService {
 			throw new IllegalArgumentException("Der zu meldende Artikel existiert nicht.");
 		}
 		DamageReport report = damageReportDAO.createReport(itemId, reporterId, description);
+		notificationService.broadcastUIUpdate("DAMAGE_REPORT", "CREATED", report);
 
 		// Notify admins
 		List<Integer> adminIds = userDAO.findUserIdsByPermission(Permissions.DAMAGE_REPORT_MANAGE);
@@ -220,9 +224,11 @@ public class StorageService {
 			item.setDefectReason(item.getDefectReason() + " | Gemeldet: " + report.getReportDescription());
 		}
 		storageDAO.updateItem(item);
+		notificationService.broadcastUIUpdate("STORAGE_ITEM", "UPDATED", item);
 
 		// Update the report status
 		damageReportDAO.updateStatus(reportId, "CONFIRMED", adminUser.getId(), "Bestätigt und als defekt verbucht.");
+		notificationService.broadcastUIUpdate("DAMAGE_REPORT", "UPDATED", report);
 
 		// Log the admin action
 		adminLogService.log(adminUser.getUsername(), "DAMAGE_REPORT_CONFIRMED",
@@ -239,6 +245,7 @@ public class StorageService {
 		}
 
 		damageReportDAO.updateStatus(reportId, "REJECTED", adminUser.getId(), adminNotes);
+		notificationService.broadcastUIUpdate("DAMAGE_REPORT", "UPDATED", report);
 
 		adminLogService.log(adminUser.getUsername(), "DAMAGE_REPORT_REJECTED", String.format(
 				"Schadensmeldung #%d für '%s' abgelehnt. Grund: %s", reportId, report.getItemName(), adminNotes));

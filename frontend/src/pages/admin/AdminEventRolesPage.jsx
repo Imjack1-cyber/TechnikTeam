@@ -64,7 +64,7 @@ const RoleModal = ({ isOpen, onClose, onSuccess, role }) => {
 
 const AdminEventRolesPage = () => {
     const apiCall = useCallback(() => apiClient.get('/admin/event-roles'), []);
-    const { data: roles, loading, error, reload } = useApi(apiCall);
+    const { data: roles, loading, error, reload } = useApi(apiCall, { subscribeTo: 'EVENT_ROLE' });
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingRole, setEditingRole] = useState(null);
     const { addToast } = useToast();

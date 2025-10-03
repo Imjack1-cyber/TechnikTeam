@@ -13,7 +13,7 @@ import { useAuthStore } from '../store/authStore';
 const LehrgaengePage = () => {
     const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/public/meetings'), []);
-	const { data: coursesWithMeetings, loading, error, reload } = useApi(apiCall);
+	const { data: coursesWithMeetings, loading, error, reload } = useApi(apiCall, { subscribeTo: ['MEETING', 'COURSE'] });
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };

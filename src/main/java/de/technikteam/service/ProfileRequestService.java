@@ -67,6 +67,7 @@ public class ProfileRequestService {
 		if (!requestDAO.createRequest(pcr)) {
 			throw new IOException("Ihr Antrag konnte nicht in der Datenbank gespeichert werden.");
 		}
+		notificationService.broadcastUIUpdate("PROFILE_REQUEST", "CREATED", pcr);
 	}
 
 	@Transactional
@@ -111,6 +112,7 @@ public class ProfileRequestService {
 					&& requestDAO.updateRequestStatus(requestId, "APPROVED", adminUser.getId())) {
 				adminLogService.log(adminUser.getUsername(), "PROFILE_CHANGE_APPROVED_API", "Profile change for '"
 						+ userToUpdate.getUsername() + "' (Request ID: " + requestId + ") approved via API.");
+				notificationService.broadcastUIUpdate("PROFILE_REQUEST", "UPDATED", pcr);
 
                 NotificationPayload payload = new NotificationPayload();
                 payload.setTitle("Profiländerung genehmigt");
@@ -139,6 +141,7 @@ public class ProfileRequestService {
 		if (requestDAO.updateRequestStatus(requestId, "DENIED", adminUser.getId())) {
 			adminLogService.log(adminUser.getUsername(), "PROFILE_CHANGE_DENIED_API", "Profile change for user ID "
 					+ pcr.getUserId() + " (Request ID: " + requestId + ") denied via API.");
+			notificationService.broadcastUIUpdate("PROFILE_REQUEST", "UPDATED", pcr);
 			return true;
 		}
 		return false;

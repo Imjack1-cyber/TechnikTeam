@@ -32,7 +32,7 @@ const FeedbackColumn = ({ title, submissions, onCardClick }) => {
 
 const AdminFeedbackPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/feedback'), []);
-	const { data: submissions, loading, error, reload } = useApi(apiCall);
+	const { data: submissions, loading, error, reload } = useApi(apiCall, { subscribeTo: 'FEEDBACK' });
 	const [selectedFeedback, setSelectedFeedback] = useState(null);
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);

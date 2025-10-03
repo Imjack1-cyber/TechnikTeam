@@ -250,14 +250,14 @@ const EventDetailsPage = () => {
 	const route = useRoute();
     const navigation = useNavigation();
 	const { eventId } = route.params;
-	const { user, isAdmin, lastUpdatedEvent } = useAuthStore();
+	const { user, isAdmin } = useAuthStore();
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
 
 	const eventApiCall = useCallback(() => apiClient.get(`/public/events/${eventId}`), [eventId]);
-	const { data: event, loading: eventLoading, error: eventError, reload: reloadEventDetails } = useApi(eventApiCall);
+	const { data: event, loading: eventLoading, error: eventError, reload: reloadEventDetails } = useApi(eventApiCall, { subscribeTo: 'EVENT' });
     const categoriesApiCall = useCallback(() => eventId ? apiClient.get(`/admin/events/${eventId}/task-categories`) : null, [eventId]);
     const { data: categories, loading: categoriesLoading } = useApi(categoriesApiCall);
 	
@@ -268,13 +268,6 @@ const EventDetailsPage = () => {
     const [isStartConfirmModalOpen, setIsStartConfirmModalOpen] = useState(false);
     const [isStopConfirmModalOpen, setIsStopConfirmModalOpen] = useState(false);
     const [showDoneTasks, setShowDoneTasks] = useState(false);
-
-	useEffect(() => {
-		if (lastUpdatedEvent && lastUpdatedEvent.id === parseInt(eventId, 10)) {
-			reloadEventDetails();
-		}
-	}, [lastUpdatedEvent, eventId, reloadEventDetails]);
-
 
     const handleOpenTaskModal = (task = null) => {
         setEditingTask(task);

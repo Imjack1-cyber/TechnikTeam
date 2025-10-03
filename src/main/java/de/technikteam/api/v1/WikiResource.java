@@ -7,6 +7,7 @@ import de.technikteam.model.User;
 import de.technikteam.model.WikiEntry;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
+import de.technikteam.service.NotificationService;
 import de.technikteam.service.WikiService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -32,15 +33,17 @@ public class WikiResource {
 	private final WikiService wikiService;
 	private final WikiDAO wikiDAO;
 	private final AdminLogService adminLogService;
+	private final NotificationService notificationService;
 	private final PolicyFactory richTextPolicy;
 
 	@Autowired
 	public WikiResource(WikiService wikiService, WikiDAO wikiDAO, AdminLogService adminLogService,
-			@Qualifier("richTextPolicy") PolicyFactory richTextPolicy) {
+			@Qualifier("richTextPolicy") PolicyFactory richTextPolicy, NotificationService notificationService) {
 		this.wikiService = wikiService;
 		this.wikiDAO = wikiDAO;
 		this.adminLogService = adminLogService;
 		this.richTextPolicy = richTextPolicy;
+		this.notificationService = notificationService;
 	}
 
 	@GetMapping
@@ -84,6 +87,7 @@ public class WikiResource {
 		if (createdEntryOptional.isPresent()) {
 			adminLogService.log(securityUser.getUser().getUsername(), "CREATE_WIKI_PAGE",
 					"Created wiki page: " + createdEntryOptional.get().getFilePath());
+			notificationService.broadcastUIUpdate("WIKI", "CREATED", createdEntryOptional.get());
 			return new ResponseEntity<>(
 					new ApiResponse(true, "Seite erfolgreich erstellt.", createdEntryOptional.get()),
 					HttpStatus.CREATED);
@@ -103,6 +107,7 @@ public class WikiResource {
 		if (wikiDAO.updateWikiContent(id, sanitizedContent)) {
 			adminLogService.log(securityUser.getUser().getUsername(), "UPDATE_WIKI_PAGE",
 					"Updated wiki page ID: " + id);
+			notificationService.broadcastUIUpdate("WIKI", "UPDATED", Map.of("id", id));
 			return ResponseEntity.ok(new ApiResponse(true, "Seite erfolgreich aktualisiert.", null));
 		} else {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false,
@@ -125,6 +130,7 @@ public class WikiResource {
 		if (wikiDAO.deleteWikiEntry(id)) {
 			adminLogService.log(securityUser.getUser().getUsername(), "DELETE_WIKI_PAGE",
 					"Deleted wiki page: " + entryToDelete.get().getFilePath());
+			notificationService.broadcastUIUpdate("WIKI", "DELETED", Map.of("id", id));
 			return ResponseEntity.ok(new ApiResponse(true, "Seite erfolgreich gelöscht.", Map.of("deletedId", id)));
 		} else {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

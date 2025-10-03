@@ -18,7 +18,7 @@ const AdminEventsPage = () => {
 	const eventsApiCall = useCallback(() => apiClient.get('/events'), []);
 	const templatesApiCall = useCallback(() => apiClient.get('/admin/checklist-templates'), []);
 
-	const { data: events, loading: eventsLoading, error: eventsError, reload } = useApi(eventsApiCall);
+	const { data: events, loading: eventsLoading, error: eventsError, reload } = useApi(eventsApiCall, { subscribeTo: 'EVENT' });
 	const { data: templates, loading: templatesLoading } = useApi(templatesApiCall);
 	const adminFormData = useAdminData();
 	const [isModalOpen, setIsModalOpen] = useState(false);

@@ -10,7 +10,7 @@ import { getThemeColors, typography } from '../../styles/theme';
 
 const AdminTrainingRequestsPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/admin/training-requests'), []);
-	const { data: requests, loading, error, reload } = useApi(apiCall);
+	const { data: requests, loading, error, reload } = useApi(apiCall, { subscribeTo: 'TRAINING_REQUEST' });
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };

@@ -14,7 +14,7 @@ import ConfirmationModal from '../../components/ui/ConfirmationModal';
 const AdminDefectivePage = () => {
     const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/storage'), []);
-	const { data: allItems, loading, error, reload } = useApi(apiCall);
+	const { data: allItems, loading, error, reload } = useApi(apiCall, { subscribeTo: ['STORAGE_ITEM', 'DAMAGE_REPORT'] });
 	const [modalState, setModalState] = useState({ isOpen: false, item: null, mode: 'defect' });
 	const { addToast } = useToast();
     

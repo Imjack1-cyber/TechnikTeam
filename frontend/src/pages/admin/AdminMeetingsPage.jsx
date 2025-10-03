@@ -4,7 +4,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import RNPickerSelect from 'react-native-picker-select';
@@ -17,7 +17,7 @@ const AdminMeetingsPage = () => {
     const navigation = useNavigation();
     const { courseId } = route.params;
 	const meetingsApiCall = useCallback(() => apiClient.get(`/meetings?courseId=${courseId}`), [courseId]);
-	const { data: meetingsData, loading, error, reload } = useApi(meetingsApiCall);
+	const { data: meetingsData, loading, error, reload } = useApi(meetingsApiCall, { subscribeTo: 'MEETING' });
     const { addToast } = useToast();
     const [repeatingMeeting, setRepeatingMeeting] = useState(null);
     const [editingMeeting, setEditingMeeting] = useState(null);

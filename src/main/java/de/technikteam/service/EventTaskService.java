@@ -90,7 +90,7 @@ public class EventTaskService {
 
 		// Broadcast a general UI update to all clients to indicate that the event data
 		// has changed.
-		notificationService.broadcastUIUpdate("EVENT_UPDATED", Map.of("eventId", task.getEventId()));
+		notificationService.broadcastUIUpdate("EVENT", "UPDATED", Map.of("id", task.getEventId()));
 		logger.debug("Broadcasted EVENT_UPDATED notification for eventId: {}", task.getEventId());
 
 		return taskId;
@@ -105,7 +105,7 @@ public class EventTaskService {
         
         // After reordering, it's crucial to recalculate statuses
         calculateAndUpdateTaskStatuses(eventId);
-        notificationService.broadcastUIUpdate("EVENT_UPDATED", Map.of("eventId", eventId));
+        notificationService.broadcastUIUpdate("EVENT", "UPDATED", Map.of("id", eventId));
     }
 
 	private void notifyAssignedUsers(EventTask task, int[] assignedUserIds, User currentUser) {
@@ -214,7 +214,7 @@ public class EventTaskService {
 			throw new IllegalArgumentException("Invalid action: " + action);
 		}
 
-		notificationService.broadcastUIUpdate("EVENT_UPDATED", Map.of("eventId", eventId));
+		notificationService.broadcastUIUpdate("EVENT", "UPDATED", Map.of("id", eventId));
 	}
 
     @Transactional
@@ -269,6 +269,6 @@ public class EventTaskService {
                 });
         }
 
-        notificationService.broadcastUIUpdate("EVENT_UPDATED", Map.of("eventId", eventId));
+        notificationService.broadcastUIUpdate("EVENT", "UPDATED", Map.of("id", eventId));
     }
 }

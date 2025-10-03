@@ -29,7 +29,7 @@ const AnnouncementModal = ({ announcement, onClose }) => {
 
 const AnnouncementsPage = () => {
     const apiCall = useCallback(() => apiClient.get('/public/announcements'), []);
-    const { data: announcements, loading, error } = useApi(apiCall);
+    const { data: announcements, loading, error } = useApi(apiCall, { subscribeTo: 'ANNOUNCEMENT' });
     const [modalData, setModalData] = useState(null);
     const [expandedIds, setExpandedIds] = useState([]); // track expanded announcements
 

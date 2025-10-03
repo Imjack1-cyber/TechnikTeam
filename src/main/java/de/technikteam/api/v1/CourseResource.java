@@ -7,6 +7,7 @@ import de.technikteam.model.Course;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
+import de.technikteam.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,11 +26,13 @@ public class CourseResource {
 
 	private final CourseDAO courseDAO;
 	private final AdminLogService adminLogService;
+	private final NotificationService notificationService;
 
 	@Autowired
-	public CourseResource(CourseDAO courseDAO, AdminLogService adminLogService) {
+	public CourseResource(CourseDAO courseDAO, AdminLogService adminLogService, NotificationService notificationService) {
 		this.courseDAO = courseDAO;
 		this.adminLogService = adminLogService;
+		this.notificationService = notificationService;
 	}
 
 	@GetMapping
@@ -46,6 +49,7 @@ public class CourseResource {
 		Course createdCourse = courseDAO.createCourse(course);
 		if (createdCourse != null) {
 			adminLogService.logCourseCreation(securityUser.getUser().getUsername(), createdCourse);
+			notificationService.broadcastUIUpdate("COURSE", "CREATED", createdCourse);
 			return new ResponseEntity<>(new ApiResponse(true, "Lehrgang erfolgreich erstellt.", createdCourse),
 					HttpStatus.CREATED);
 		}
@@ -64,6 +68,7 @@ public class CourseResource {
 		course.setId(id);
 		if (courseDAO.updateCourse(course)) {
 			adminLogService.logCourseUpdate(securityUser.getUser().getUsername(), originalCourse, course);
+			notificationService.broadcastUIUpdate("COURSE", "UPDATED", course);
 			return ResponseEntity.ok(new ApiResponse(true, "Lehrgang erfolgreich aktualisiert.", course));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -77,6 +82,7 @@ public class CourseResource {
 		Course course = courseDAO.getCourseById(id);
 		if (course != null && courseDAO.deleteCourse(id)) {
 			adminLogService.logCourseDeletion(securityUser.getUser().getUsername(), course);
+			notificationService.broadcastUIUpdate("COURSE", "DELETED", Map.of("id", id));
 			return ResponseEntity.ok(new ApiResponse(true, "Lehrgang erfolgreich gelöscht.", Map.of("deletedId", id)));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)

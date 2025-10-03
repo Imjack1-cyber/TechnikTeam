@@ -6,6 +6,7 @@ import de.technikteam.model.Venue;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.FileService;
+import de.technikteam.service.NotificationService;
 import de.technikteam.dao.VenueDAO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,13 +33,15 @@ public class AdminVenueResource {
 	private final VenueDAO venueDAO;
 	private final FileService fileService;
 	private final AdminLogService adminLogService;
+	private final NotificationService notificationService;
 	private final Gson gson = new Gson();
 
 	@Autowired
-	public AdminVenueResource(VenueDAO venueDAO, FileService fileService, AdminLogService adminLogService) {
+	public AdminVenueResource(VenueDAO venueDAO, FileService fileService, AdminLogService adminLogService, NotificationService notificationService) {
 		this.venueDAO = venueDAO;
 		this.fileService = fileService;
 		this.adminLogService = adminLogService;
+		this.notificationService = notificationService;
 	}
 
 	@GetMapping
@@ -65,6 +68,7 @@ public class AdminVenueResource {
 		Venue createdVenue = venueDAO.create(venue);
 		adminLogService.log(securityUser.getUser().getUsername(), "VENUE_CREATE",
 				"Venue '" + createdVenue.getName() + "' created.");
+		notificationService.broadcastUIUpdate("VENUE", "CREATED", createdVenue);
 		return new ResponseEntity<>(new ApiResponse(true, "Venue created successfully.", createdVenue),
 				HttpStatus.CREATED);
 	}
@@ -96,6 +100,7 @@ public class AdminVenueResource {
 		if (venueDAO.update(venue)) {
 			adminLogService.log(securityUser.getUser().getUsername(), "VENUE_UPDATE",
 					"Venue '" + venue.getName() + "' updated.");
+			notificationService.broadcastUIUpdate("VENUE", "UPDATED", venue);
 			return ResponseEntity.ok(new ApiResponse(true, "Venue updated successfully.", venue));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, "Venue not found.", null));
@@ -112,6 +117,7 @@ public class AdminVenueResource {
 		if (venue.isPresent() && venueDAO.delete(id)) {
 			adminLogService.log(securityUser.getUser().getUsername(), "VENUE_DELETE",
 					"Venue '" + venue.get().getName() + "' deleted.");
+			notificationService.broadcastUIUpdate("VENUE", "DELETED", Map.of("id", id));
 			return ResponseEntity.ok(new ApiResponse(true, "Venue deleted successfully.", null));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, "Venue not found.", null));

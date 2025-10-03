@@ -100,7 +100,7 @@ const ViewAnnouncementModal = ({ announcement, onClose }) => {
 const AdminAnnouncementsPage = () => {
     const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/admin/announcements'), []);
-	const { data: announcements, loading, error, reload } = useApi(apiCall);
+	const { data: announcements, loading, error, reload } = useApi(apiCall, { subscribeTo: 'ANNOUNCEMENT' });
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingAnnouncement, setEditingAnnouncement] = useState(null);
     const [viewingAnnouncement, setViewingAnnouncement] = useState(null);

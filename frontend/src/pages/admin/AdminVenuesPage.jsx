@@ -11,7 +11,7 @@ import { getThemeColors, typography, spacing } from '../../styles/theme';
 
 const AdminVenuesPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/admin/venues'), []);
-	const { data: venues, loading, error, reload } = useApi(apiCall);
+	const { data: venues, loading, error, reload } = useApi(apiCall, { subscribeTo: 'VENUE' });
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingVenue, setEditingVenue] = useState(null);
 	const { addToast } = useToast();

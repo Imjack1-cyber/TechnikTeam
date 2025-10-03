@@ -118,7 +118,7 @@ const AdminChecklistTemplatesPage = () => {
 	const templatesApiCall = useCallback(() => apiClient.get('/admin/checklist-templates'), []);
 	const storageItemsApiCall = useCallback(() => apiClient.get('/storage'), []);
 
-	const { data: templates, loading, error, reload } = useApi(templatesApiCall);
+	const { data: templates, loading, error, reload } = useApi(templatesApiCall, { subscribeTo: 'CHECKLIST_TEMPLATE' });
 	const { data: allStorageItems, loading: itemsLoading } = useApi(storageItemsApiCall);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingTemplate, setEditingTemplate] = useState(null);

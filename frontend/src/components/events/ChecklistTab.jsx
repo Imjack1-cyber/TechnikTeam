@@ -20,7 +20,7 @@ const ChecklistTab = ({ event }) => {
     const colors = getThemeColors(theme);
 
 	const checklistApiCall = useCallback(() => apiClient.get(`/events/${event.id}/checklist`), [event.id]);
-	const { data: initialItems, loading, error, reload } = useApi(checklistApiCall);
+	const { data: initialItems, loading, error, reload } = useApi(checklistApiCall, { subscribeTo: 'EVENT' });
 
 	useEffect(() => {
 		if (initialItems) setChecklistItems(initialItems);

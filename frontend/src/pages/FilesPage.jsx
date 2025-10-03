@@ -82,7 +82,7 @@ const FileLink = ({ file, navigation }) => {
 
 const FilesPage = ({ navigation }) => {
 	const apiCall = useCallback(() => apiClient.get('/public/files'), []);
-	const { data: fileData, loading, error } = useApi(apiCall);
+	const { data: fileData, loading, error } = useApi(apiCall, { subscribeTo: ['FILE', 'FILE_CATEGORY'] });
 
 	const renderContent = () => {
 		if (loading) return <ActivityIndicator size="large" style={{ marginTop: 20 }} />;

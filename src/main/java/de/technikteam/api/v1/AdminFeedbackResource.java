@@ -3,6 +3,7 @@ package de.technikteam.api.v1;
 import de.technikteam.dao.FeedbackSubmissionDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.FeedbackSubmission;
+import de.technikteam.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,10 +21,12 @@ import java.util.Map;
 public class AdminFeedbackResource {
 
 	private final FeedbackSubmissionDAO submissionDAO;
+	private final NotificationService notificationService;
 
 	@Autowired
-	public AdminFeedbackResource(FeedbackSubmissionDAO submissionDAO) {
+	public AdminFeedbackResource(FeedbackSubmissionDAO submissionDAO, NotificationService notificationService) {
 		this.submissionDAO = submissionDAO;
+		this.notificationService = notificationService;
 	}
 
 	@GetMapping
@@ -42,6 +45,7 @@ public class AdminFeedbackResource {
 			return ResponseEntity.notFound().build();
 		}
 		if (submissionDAO.updateStatusAndTitle(id, newStatus, submission.getDisplayTitle())) {
+			notificationService.broadcastUIUpdate("FEEDBACK", "UPDATED", Map.of("id", id, "status", newStatus));
 			return ResponseEntity.ok(new ApiResponse(true, "Status aktualisiert.", null));
 		}
 		return ResponseEntity.internalServerError()

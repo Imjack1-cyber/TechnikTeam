@@ -21,14 +21,16 @@ public class AdminUserManagementService {
 	private final AdminLogService adminLogService;
 	private final LoginAttemptService loginAttemptService;
 	private final TwoFactorAuthDAO twoFactorAuthDAO;
+	private final NotificationService notificationService;
 
 	@Autowired
 	public AdminUserManagementService(UserDAO userDAO, AdminLogService adminLogService,
-			LoginAttemptService loginAttemptService, TwoFactorAuthDAO twoFactorAuthDAO) {
+			LoginAttemptService loginAttemptService, TwoFactorAuthDAO twoFactorAuthDAO, NotificationService notificationService) {
 		this.userDAO = userDAO;
 		this.adminLogService = adminLogService;
 		this.loginAttemptService = loginAttemptService;
 		this.twoFactorAuthDAO = twoFactorAuthDAO;
+		this.notificationService = notificationService;
 	}
 
 	@Transactional
@@ -67,6 +69,7 @@ public class AdminUserManagementService {
 					suspendedUntil != null ? suspendedUntil.toString() : "indefinite", reason);
 			Map<String, Object> context = Map.of("userId", userId, "revocable", true);
 			adminLogService.log(adminUser.getUsername(), "USER_SUSPEND", logDetails, context);
+			notificationService.broadcastUIUpdate("USER", "UPDATED", suspendedUser);
 		} else {
 			logger.warn("Failed to suspend user id {}", userId);
 		}
@@ -90,6 +93,7 @@ public class AdminUserManagementService {
 				// Un-suspending is not easily reversible, so mark as not revocable
 				Map<String, Object> context = Map.of("userId", userId, "revocable", false);
 				adminLogService.log(adminUser.getUsername(), "USER_UNSUSPEND", logDetails, context);
+				notificationService.broadcastUIUpdate("USER", "UPDATED", unsuspendedUser);
 			}
 			return true; // Return true if the user is now in an unsuspended state, even if they already
 							// were

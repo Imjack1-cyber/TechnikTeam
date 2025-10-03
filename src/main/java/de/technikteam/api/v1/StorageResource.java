@@ -7,6 +7,7 @@ import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.FileService;
+import de.technikteam.service.NotificationService;
 import de.technikteam.service.StorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,14 +30,16 @@ public class StorageResource {
 	private final StorageService storageService;
 	private final AdminLogService adminLogService;
 	private final FileService fileService;
+	private final NotificationService notificationService;
 
 	@Autowired
 	public StorageResource(StorageDAO storageDAO, StorageService storageService, AdminLogService adminLogService,
-			FileService fileService) {
+			FileService fileService, NotificationService notificationService) {
 		this.storageDAO = storageDAO;
 		this.storageService = storageService;
 		this.adminLogService = adminLogService;
 		this.fileService = fileService;
+		this.notificationService = notificationService;
 	}
 
 	@GetMapping
@@ -61,6 +64,7 @@ public class StorageResource {
 			if (storageDAO.createItem(item)) {
 				adminLogService.log(securityUser.getUser().getUsername(), "CREATE_STORAGE_ITEM_API",
 						"Item '" + item.getName() + "' created.");
+				notificationService.broadcastUIUpdate("STORAGE_ITEM", "CREATED", item);
 				return new ResponseEntity<>(new ApiResponse(true, "Artikel erfolgreich erstellt.", item),
 						HttpStatus.CREATED);
 			}
@@ -100,6 +104,7 @@ public class StorageResource {
 			if (storageDAO.updateItem(item)) {
 				adminLogService.log(securityUser.getUser().getUsername(), "UPDATE_STORAGE_ITEM_API",
 						"Item '" + item.getName() + "' updated.");
+				notificationService.broadcastUIUpdate("STORAGE_ITEM", "UPDATED", item);
 				return ResponseEntity.ok(new ApiResponse(true, "Artikel erfolgreich aktualisiert.", item));
 			}
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -118,6 +123,7 @@ public class StorageResource {
 		if (item != null && storageDAO.deleteItem(id)) {
 			adminLogService.log(securityUser.getUser().getUsername(), "DELETE_STORAGE_ITEM_API",
 					"Item '" + item.getName() + "' deleted.");
+			notificationService.broadcastUIUpdate("STORAGE_ITEM", "DELETED", Map.of("id", id));
 			return ResponseEntity.ok(new ApiResponse(true, "Artikel erfolgreich gelöscht.", Map.of("deletedId", id)));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)

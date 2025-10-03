@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Platform } from 'react-native';
 import { useToast } from '../context/ToastContext';
 import { useAuthStore } from '../store/authStore';
+import { useUIStore } from '../store/uiStore';
 import RNEventSource from 'react-native-sse';
 import { getToken } from '../lib/storage';
 
@@ -20,12 +21,12 @@ const getSseBaseUrl = () => {
 export const useNotifications = () => {
 	const { addToast } = useToast();
 	const [warningNotification, setWarningNotification] = useState(null);
-	const { isAuthenticated, triggerEventUpdate, incrementUnseenNotificationCount, setMaintenanceStatus } = useAuthStore(state => ({
+	const { isAuthenticated, incrementUnseenNotificationCount, setMaintenanceStatus } = useAuthStore(state => ({
 		isAuthenticated: state.isAuthenticated,
-		triggerEventUpdate: state.triggerEventUpdate,
 		incrementUnseenNotificationCount: state.incrementUnseenNotificationCount,
         setMaintenanceStatus: state.setMaintenanceStatus,
 	}));
+    const triggerRefetch = useUIStore(state => state.triggerRefetch);
 
 	const dismissWarning = useCallback(() => {
 		setWarningNotification(null);
@@ -77,9 +78,9 @@ export const useNotifications = () => {
 			es.addEventListener("ui_update", (event) => {
 				const data = JSON.parse(event.data);
 				console.log("Received UI update event:", data);
-				if (data.updateType === 'EVENT_UPDATED') {
-					triggerEventUpdate(data.data.eventId);
-				}
+				if (data.entity) {
+                    triggerRefetch(data.entity);
+                }
 			});
 
             es.addEventListener("system_status_update", (event) => {
@@ -103,7 +104,7 @@ export const useNotifications = () => {
 				es.close();
 			}
 		};
-	}, [isAuthenticated, addToast, triggerEventUpdate, incrementUnseenNotificationCount, setMaintenanceStatus]);
+	}, [isAuthenticated, addToast, triggerRefetch, incrementUnseenNotificationCount, setMaintenanceStatus]);
 
 	return { warningNotification, dismissWarning };
 };

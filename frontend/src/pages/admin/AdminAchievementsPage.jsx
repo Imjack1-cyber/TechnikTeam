@@ -126,7 +126,7 @@ const AchievementModal = ({ isOpen, onClose, onSuccess, achievement }) => {
 
 const AdminAchievementsPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/achievements'), []);
-	const { data: achievements, loading, error, reload } = useApi(apiCall);
+	const { data: achievements, loading, error, reload } = useApi(apiCall, { subscribeTo: 'ACHIEVEMENT' });
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingAchievement, setEditingAchievement] = useState(null);
     const { addToast } = useToast();

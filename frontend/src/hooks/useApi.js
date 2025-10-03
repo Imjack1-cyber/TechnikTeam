@@ -1,14 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useUIStore } from '../store/uiStore';
 
 /**
  * A custom React hook to manage the state of an API call.
  * @param {Function} apiCall - The function from apiClient to execute.
+ * @param {object} [options] - Optional configuration.
+ * @param {string|string[]} [options.subscribeTo] - An entity type or array of entity types to subscribe to for real-time updates.
  * @returns {object} An object containing data, loading state, error state, and a reload function.
  */
-const useApi = (apiCall) => {
+const useApi = (apiCall, options = {}) => {
 	const [data, setData] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
+
+	const { subscribeTo } = options;
 
 	const fetchData = useCallback(async () => {
 		// Don't fetch if the apiCall function isn't ready or is null
@@ -41,6 +46,33 @@ const useApi = (apiCall) => {
 	useEffect(() => {
 		fetchData();
 	}, [fetchData]);
+
+    // Effect for real-time updates via SSE triggers
+    useEffect(() => {
+        if (!subscribeTo) {
+            return;
+        }
+
+        const entitiesToSubscribe = Array.isArray(subscribeTo) ? subscribeTo : [subscribeTo];
+        
+        const unsubscribe = useUIStore.subscribe(
+            (state) => {
+                const relevantTriggers = {};
+                entitiesToSubscribe.forEach(entity => {
+                    relevantTriggers[entity] = state.refetchTriggers[entity.toUpperCase()];
+                });
+                return relevantTriggers;
+            },
+            () => {
+                console.log(`[useApi] Refetch triggered for entities: ${entitiesToSubscribe.join(', ')}`);
+                fetchData();
+            },
+            { equalityFn: (a, b) => JSON.stringify(a) === JSON.stringify(b) }
+        );
+
+        return () => unsubscribe();
+
+    }, [subscribeTo, fetchData]);
 
 	return { data, loading, error, reload: fetchData };
 };

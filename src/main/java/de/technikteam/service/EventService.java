@@ -112,6 +112,7 @@ public class EventService {
 		}
 
 		logger.info("Transaction for event ID {} committed successfully.", eventId);
+		notificationService.broadcastUIUpdate("EVENT", isUpdate ? "UPDATED" : "CREATED", Map.of("id", eventId));
 		return eventId;
 	}
 
@@ -148,7 +149,7 @@ public class EventService {
 			}
 
 			// Trigger UI update for everyone
-			notificationService.broadcastUIUpdate("EVENT_UPDATED", Map.of("eventId", eventId));
+			notificationService.broadcastUIUpdate("EVENT", "UPDATED", Map.of("id", eventId));
 		} else {
 			throw new RuntimeException("Failed to update event status in database.");
 		}
@@ -187,7 +188,7 @@ public class EventService {
 			}
 
 			// Trigger UI update for everyone
-			notificationService.broadcastUIUpdate("EVENT_UPDATED", Map.of("eventId", eventId));
+			notificationService.broadcastUIUpdate("EVENT", "UPDATED", Map.of("id", eventId));
 		} else {
 			throw new RuntimeException("Failed to update event status in database.");
 		}
@@ -221,6 +222,8 @@ public class EventService {
 				notificationService.sendNotificationToUser(newUserId, payload);
 			}
 		}
+
+		notificationService.broadcastUIUpdate("EVENT", "UPDATED", Map.of("id", eventId));
 	}
 
 	public void signOffUserFromRunningEvent(int userId, String username, int eventId, String reason) {
@@ -283,6 +286,8 @@ public class EventService {
 		adminLogService.log(adminUser.getUsername(), "CLONE_EVENT", "Event '" + originalEvent.getName() + "' (ID: "
 				+ originalEventId + ") zu '" + clonedEvent.getName() + "' (ID: " + newEventId + ") geklont.");
 
+		notificationService.broadcastUIUpdate("EVENT", "CREATED", clonedEvent);
+
 		return clonedEvent;
 	}
 
@@ -307,6 +312,8 @@ public class EventService {
 		adminLogService.log(adminUser.getUsername(), "CLONE_MEETING",
 				"Meeting '" + originalMeeting.getName() + "' (ID: " + originalMeetingId + ") zu '"
 						+ clonedMeeting.getName() + "' (ID: " + newMeetingId + ") geklont.");
+
+		notificationService.broadcastUIUpdate("MEETING", "CREATED", clonedMeeting);
 
 		return clonedMeeting;
 	}

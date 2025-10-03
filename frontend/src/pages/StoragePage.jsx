@@ -30,7 +30,7 @@ const AvailabilityBar = ({ available, max }) => {
 const StoragePage = () => {
     const navigation = useNavigation();
     const apiCall = useCallback(() => apiClient.get('/public/storage'), []);
-    const { data, loading, error, reload } = useApi(apiCall);
+    const { data, loading, error, reload } = useApi(apiCall, { subscribeTo: 'STORAGE_ITEM' });
     const [cart, setCart] = useState([]);
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
     const [lightboxSrc, setLightboxSrc] = useState('');

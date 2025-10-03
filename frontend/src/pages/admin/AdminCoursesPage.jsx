@@ -69,7 +69,7 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
 
 const AdminCoursesPage = ({ navigation }) => {
 	const apiCall = useCallback(() => apiClient.get('/courses'), []);
-	const { data: courses, loading, error, reload } = useApi(apiCall);
+	const { data: courses, loading, error, reload } = useApi(apiCall, { subscribeTo: 'COURSE' });
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
@@ -87,13 +87,13 @@ const AdminCoursesPage = ({ navigation }) => {
 	const confirmDelete = async () => {
         if (!deletingCourse) return;
         setIsSubmittingDelete(true);
-        try {
-            const result = await apiClient.delete(`/courses/${deletingCourse.id}`);
-            if (result.success) {
-                addToast('Vorlage erfolgreich gelöscht.', 'success');
-                reload();
-            } else { throw new Error(result.message); }
-        } catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
+		try {
+			const result = await apiClient.delete(`/courses/${deletingCourse.id}`);
+			if (result.success) {
+				addToast('Vorlage erfolgreich gelöscht.', 'success');
+				reload();
+			} else { throw new Error(result.message); }
+		} catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
         finally {
             setIsSubmittingDelete(false);
             setDeletingCourse(null);

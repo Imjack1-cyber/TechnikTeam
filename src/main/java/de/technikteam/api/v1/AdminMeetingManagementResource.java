@@ -4,6 +4,7 @@ import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.MeetingSignupService;
+import de.technikteam.service.NotificationService;
 import de.technikteam.dao.MeetingDAO;
 import de.technikteam.model.Meeting;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,11 +30,13 @@ public class AdminMeetingManagementResource {
 
 	private final MeetingSignupService signupService;
 	private final MeetingDAO meetingDAO;
+	private final NotificationService notificationService;
 
 	@Autowired
-	public AdminMeetingManagementResource(MeetingSignupService signupService, MeetingDAO meetingDAO) {
+	public AdminMeetingManagementResource(MeetingSignupService signupService, MeetingDAO meetingDAO, NotificationService notificationService) {
 		this.signupService = signupService;
 		this.meetingDAO = meetingDAO;
+		this.notificationService = notificationService;
 	}
 
 	@Operation(summary = "Get enrolled users for a meeting (admin)")
@@ -66,6 +69,7 @@ public class AdminMeetingManagementResource {
 		int adminId = securityUser.getUser().getId();
 		boolean ok = signupService.promoteUserFromWaitlist(meetingId, userId, adminId);
 		if (ok) {
+			notificationService.broadcastUIUpdate("MEETING", "UPDATED", Map.of("id", meetingId));
 			return ResponseEntity.ok(new ApiResponse(true, "Nutzer erfolgreich befördert.", null));
 		} else {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -110,6 +114,7 @@ public class AdminMeetingManagementResource {
 			if (newId > 0) {
 				Map<String, Object> data = new HashMap<>();
 				data.put("id", newId);
+				notificationService.broadcastUIUpdate("MEETING", "CREATED", newMeeting);
 				return ResponseEntity.ok(new ApiResponse(true, "Repeat-Meeting erstellt.", data));
 			} else {
 				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

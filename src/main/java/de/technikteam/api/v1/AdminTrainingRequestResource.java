@@ -4,6 +4,7 @@ import de.technikteam.model.ApiResponse;
 import de.technikteam.model.TrainingRequest;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
+import de.technikteam.service.NotificationService;
 import de.technikteam.service.TrainingRequestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -13,6 +14,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/admin/training-requests")
@@ -20,10 +22,12 @@ import java.util.List;
 public class AdminTrainingRequestResource {
 
 	private final TrainingRequestService trainingRequestService;
+	private final NotificationService notificationService;
 
 	@Autowired
-	public AdminTrainingRequestResource(TrainingRequestService trainingRequestService) {
+	public AdminTrainingRequestResource(TrainingRequestService trainingRequestService, NotificationService notificationService) {
 		this.trainingRequestService = trainingRequestService;
+		this.notificationService = notificationService;
 	}
 
 	@GetMapping
@@ -38,6 +42,7 @@ public class AdminTrainingRequestResource {
 	public ResponseEntity<ApiResponse> deleteRequest(@PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		if (trainingRequestService.delete(id, securityUser.getUser())) {
+			notificationService.broadcastUIUpdate("TRAINING_REQUEST", "DELETED", Map.of("id", id));
 			return ResponseEntity.ok(new ApiResponse(true, "Training request deleted successfully.", null));
 		}
 		return ResponseEntity.notFound().build();

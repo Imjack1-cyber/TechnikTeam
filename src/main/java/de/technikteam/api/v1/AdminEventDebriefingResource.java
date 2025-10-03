@@ -12,6 +12,7 @@ import de.technikteam.model.FeedbackResponse;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.EventDebriefingService;
+import de.technikteam.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -39,14 +40,16 @@ public class AdminEventDebriefingResource {
 	private final EventDebriefingService debriefingService;
 	private final EventDAO eventDAO;
 	private final EventFeedbackDAO feedbackDAO;
+	private final NotificationService notificationService;
 
 	@Autowired
 	public AdminEventDebriefingResource(EventDebriefingDAO debriefingDAO, EventDebriefingService debriefingService,
-			EventDAO eventDAO, EventFeedbackDAO feedbackDAO) {
+			EventDAO eventDAO, EventFeedbackDAO feedbackDAO, NotificationService notificationService) {
 		this.debriefingDAO = debriefingDAO;
 		this.debriefingService = debriefingService;
 		this.eventDAO = eventDAO;
 		this.feedbackDAO = feedbackDAO;
+		this.notificationService = notificationService;
 	}
 
 	@GetMapping("/debriefings")

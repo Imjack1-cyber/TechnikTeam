@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -18,13 +19,15 @@ public class AnnouncementService {
 	private final AnnouncementDAO announcementDAO;
 	private final AdminLogService adminLogService;
 	private final PolicyFactory richTextPolicy;
+	private final NotificationService notificationService;
 
 	@Autowired
 	public AnnouncementService(AnnouncementDAO announcementDAO, AdminLogService adminLogService,
-			@Qualifier("richTextPolicy") PolicyFactory richTextPolicy) {
+			@Qualifier("richTextPolicy") PolicyFactory richTextPolicy, NotificationService notificationService) {
 		this.announcementDAO = announcementDAO;
 		this.adminLogService = adminLogService;
 		this.richTextPolicy = richTextPolicy;
+		this.notificationService = notificationService;
 	}
 
 	public List<Announcement> findAll() {
@@ -39,6 +42,7 @@ public class AnnouncementService {
 
 		Announcement created = announcementDAO.create(announcement);
 		adminLogService.log(author.getUsername(), "ANNOUNCEMENT_CREATE", "Created announcement: " + created.getTitle());
+		notificationService.broadcastUIUpdate("ANNOUNCEMENT", "CREATED", created);
 		return created;
 	}
 
@@ -52,6 +56,7 @@ public class AnnouncementService {
 			Announcement updated = announcementDAO.update(existing);
 			adminLogService.log(editor.getUsername(), "ANNOUNCEMENT_UPDATE",
 					"Updated announcement: " + updated.getTitle());
+			notificationService.broadcastUIUpdate("ANNOUNCEMENT", "UPDATED", updated);
 			return updated;
 		}
 		return null;
@@ -65,6 +70,7 @@ public class AnnouncementService {
 			if (success) {
 				adminLogService.log(adminUser.getUsername(), "ANNOUNCEMENT_DELETE",
 						"Deleted announcement: " + announcementOpt.get().getTitle() + " (ID: " + id + ")");
+				notificationService.broadcastUIUpdate("ANNOUNCEMENT", "DELETED", Map.of("id", id));
 			}
 			return success;
 		}

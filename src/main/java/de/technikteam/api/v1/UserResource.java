@@ -8,6 +8,7 @@ import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.LoginAttemptService;
+import de.technikteam.service.NotificationService;
 import de.technikteam.service.UserService;
 import de.technikteam.util.PasswordPolicyValidator;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,14 +34,16 @@ public class UserResource {
 	private final UserDAO userDAO;
 	private final AdminLogService adminLogService;
 	private final LoginAttemptService loginAttemptService;
+	private final NotificationService notificationService;
 
 	@Autowired
 	public UserResource(UserService userService, UserDAO userDAO, AdminLogService adminLogService,
-			LoginAttemptService loginAttemptService) {
+			LoginAttemptService loginAttemptService, NotificationService notificationService) {
 		this.userService = userService;
 		this.userDAO = userDAO;
 		this.adminLogService = adminLogService;
 		this.loginAttemptService = loginAttemptService;
+		this.notificationService = notificationService;
 	}
 
 	@GetMapping
@@ -123,6 +126,7 @@ public class UserResource {
 		if (userService.updateUserWithPermissions(userToUpdate, permissionIds)) {
 			User refreshedUser = userDAO.getUserById(id);
 			adminLogService.logUserUpdate(securityUser.getUser().getUsername(), originalUser, refreshedUser);
+			notificationService.broadcastUIUpdate("USER", "UPDATED", refreshedUser);
 			return ResponseEntity.ok(new ApiResponse(true, "User updated successfully", refreshedUser));
 		} else {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

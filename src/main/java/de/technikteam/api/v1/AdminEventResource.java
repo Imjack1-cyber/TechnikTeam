@@ -7,6 +7,7 @@ import de.technikteam.model.ApiResponse;
 import de.technikteam.model.Event;
 import de.technikteam.model.User;
 import de.technikteam.service.EventService;
+import de.technikteam.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,11 +32,13 @@ public class AdminEventResource {
 
 	private final EventDAO eventDAO;
 	private final EventService eventService;
+	private final NotificationService notificationService;
 
 	@Autowired
-	public AdminEventResource(EventDAO eventDAO, EventService eventService) {
+	public AdminEventResource(EventDAO eventDAO, EventService eventService, NotificationService notificationService) {
 		this.eventDAO = eventDAO;
 		this.eventService = eventService;
+		this.notificationService = notificationService;
 	}
 
 	@GetMapping
@@ -155,6 +158,7 @@ public class AdminEventResource {
 	@Operation(summary = "Delete an event", description = "Permanently deletes an event and all associated data.")
 	public ResponseEntity<ApiResponse> deleteEvent(@PathVariable int id) {
 		if (eventDAO.deleteEvent(id)) {
+			notificationService.broadcastUIUpdate("EVENT", "DELETED", Map.of("id", id));
 			return ResponseEntity.ok(new ApiResponse(true, "Veranstaltung erfolgreich gelöscht.", null));
 		} else {
 			return ResponseEntity.internalServerError()

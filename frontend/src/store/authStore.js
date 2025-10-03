@@ -34,7 +34,6 @@ export const useAuthStore = create(
 			theme: 'light',
             backendMode: 'prod', // 'prod' or 'dev'
 			layout: defaultLayout,
-			lastUpdatedEvent: null, // { id: eventId, nonce: Math.random() }
 			maintenanceStatus: { mode: 'OFF', message: '' },
 			previousLogin: null,
             completeLogin: async (loginData) => {
@@ -101,7 +100,7 @@ export const useAuthStore = create(
 					await removeToken();
 					apiClient.setAuthToken(null);
                     // Preserve theme and backendMode on logout
-					set(state => ({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, layout: defaultLayout, lastUpdatedEvent: null, maintenanceStatus: { mode: 'OFF', message: '' }, previousLogin: null, theme: state.theme, backendMode: state.backendMode }));
+					set(state => ({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, layout: defaultLayout, maintenanceStatus: { mode: 'OFF', message: '' }, previousLogin: null, theme: state.theme, backendMode: state.backendMode }));
 				}
 			},
 			fetchUserSession: async () => {
@@ -200,9 +199,6 @@ export const useAuthStore = create(
 				} catch (error) {
 					console.error("Failed to save layout preferences:", error);
 				}
-			},
-			triggerEventUpdate: (eventId) => {
-				set({ lastUpdatedEvent: { id: eventId, nonce: Math.random() } });
 			},
 			setUnseenNotificationCount: (count) => {
 				set(state => ({

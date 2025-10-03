@@ -4,7 +4,7 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
 import MarkdownDisplay from 'react-native-markdown-display';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
@@ -116,7 +116,7 @@ const ViewChangelogModal = ({ changelog, onClose }) => {
 
 const AdminChangelogPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/admin/changelogs'), []);
-	const { data: changelogs, loading, error, reload } = useApi(apiCall);
+	const { data: changelogs, loading, error, reload } = useApi(apiCall, { subscribeTo: 'CHANGELOG' });
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingChangelog, setEditingChangelog] = useState(null);
     const [viewingChangelog, setViewingChangelog] = useState(null);

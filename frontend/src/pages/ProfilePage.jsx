@@ -23,7 +23,7 @@ const ProfilePage = () => {
         fetchUserSession: state.fetchUserSession
     }));
 	const profileApiCall = useCallback(() => apiClient.get('/public/profile'), []);
-	const { data: profileData, loading: profileLoading, error: profileError, reload: reloadProfile } = useApi(profileApiCall);
+	const { data: profileData, loading: profileLoading, error: profileError, reload: reloadProfile } = useApi(profileApiCall, { subscribeTo: 'USER' });
     const knownIpsApiCall = useCallback(() => apiClient.get('/public/profile/known-ips'), []);
     const { data: knownIps, loading: ipsLoading, error: ipsError, reload: reloadIps } = useApi(knownIpsApiCall);
 

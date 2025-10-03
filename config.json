@@ -12,7 +12,8 @@
                                 "C:\\dev\\eclipse\\workspace\\TechnikTeam\\frontend\\.expo",
                                 "C:\\dev\\eclipse\\workspace\\TechnikTeam\\frontend\\.idea",
                                 "C:\\dev\\eclipse\\workspace\\TechnikTeam\\frontend\\android",
-                                "C:\\dev\\eclipse\\workspace\\TechnikTeam\\frontend\\assets"
+                                "C:\\dev\\eclipse\\workspace\\TechnikTeam\\frontend\\assets",
+                                "C:\\dev\\eclipse\\workspace\\TechnikTeam\\frontend\\web-build"
                             ],
     "ExcludedFiles":  [
                           "C:\\dev\\eclipse\\workspace\\TechnikTeam\\dependency-tree.txt",

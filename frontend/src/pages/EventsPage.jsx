@@ -64,7 +64,7 @@ const ActionConfirmationModal = ({ isOpen, onClose, onConfirm, event, action, is
 
 const EventsPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/public/events'), []);
-	const { data: events, loading, error, reload } = useApi(apiCall);
+	const { data: events, loading, error, reload } = useApi(apiCall, { subscribeTo: 'EVENT' });
 	const { addToast } = useToast();
     const navigation = useNavigation();
     const theme = useAuthStore(state => state.theme);

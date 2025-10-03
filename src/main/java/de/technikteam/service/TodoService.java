@@ -18,11 +18,13 @@ public class TodoService {
 	private static final Logger logger = LogManager.getLogger(TodoService.class);
 	private final TodoDAO todoDAO;
 	private final AdminLogService adminLogService;
+	private final NotificationService notificationService;
 
 	@Autowired
-	public TodoService(TodoDAO todoDAO, AdminLogService adminLogService) {
+	public TodoService(TodoDAO todoDAO, AdminLogService adminLogService, NotificationService notificationService) {
 		this.todoDAO = todoDAO;
 		this.adminLogService = adminLogService;
+		this.notificationService = notificationService;
 	}
 
 	public List<TodoCategory> getAllTodos() {
@@ -36,6 +38,7 @@ public class TodoService {
 			if (newCategory != null) {
 				adminLogService.log(admin.getUsername(), "TODO_CREATE_CATEGORY",
 						"To-Do Kategorie '" + name + "' erstellt.");
+				notificationService.broadcastUIUpdate("TODO", "CREATED", newCategory);
 			}
 			return newCategory;
 		} catch (Exception e) {
@@ -51,6 +54,7 @@ public class TodoService {
 			if (newTask != null) {
 				adminLogService.log(admin.getUsername(), "TODO_CREATE_TASK",
 						"To-Do Aufgabe '" + content + "' in Kategorie ID " + categoryId + " erstellt.");
+				notificationService.broadcastUIUpdate("TODO", "CREATED", newTask);
 			}
 			return newTask;
 		} catch (Exception e) {
@@ -64,14 +68,18 @@ public class TodoService {
 		boolean success = false;
 		if (content != null) {
 			success = todoDAO.updateTaskContent(taskId, content);
-			if (success)
+			if (success) {
 				adminLogService.log(admin.getUsername(), "TODO_UPDATE_TASK", "Aufgabe ID " + taskId + " aktualisiert.");
+				notificationService.broadcastUIUpdate("TODO", "UPDATED", Map.of("id", taskId));
+			}
 		}
 		if (isCompleted != null) {
 			success = todoDAO.updateTaskStatus(taskId, isCompleted);
-			if (success)
+			if (success) {
 				adminLogService.log(admin.getUsername(), "TODO_UPDATE_STATUS",
 						"Status für Aufgabe ID " + taskId + " auf '" + isCompleted + "' gesetzt.");
+				notificationService.broadcastUIUpdate("TODO", "UPDATED", Map.of("id", taskId));
+			}
 		}
 		return success;
 	}
@@ -80,6 +88,7 @@ public class TodoService {
 	public boolean deleteTask(int taskId, User admin) {
 		if (todoDAO.deleteTask(taskId)) {
 			adminLogService.log(admin.getUsername(), "TODO_DELETE_TASK", "Aufgabe ID " + taskId + " gelöscht.");
+			notificationService.broadcastUIUpdate("TODO", "DELETED", Map.of("id", taskId, "type", "task"));
 			return true;
 		}
 		return false;
@@ -90,6 +99,7 @@ public class TodoService {
 		if (todoDAO.deleteCategory(categoryId)) {
 			adminLogService.log(admin.getUsername(), "TODO_DELETE_CATEGORY",
 					"Kategorie ID " + categoryId + " und alle zugehörigen Aufgaben gelöscht.");
+			notificationService.broadcastUIUpdate("TODO", "DELETED", Map.of("id", categoryId, "type", "category"));
 			return true;
 		}
 		return false;
@@ -109,6 +119,7 @@ public class TodoService {
 			}
 		}
 		adminLogService.log(admin.getUsername(), "TODO_REORDER", "To-Do-Listen neu sortiert.");
+		notificationService.broadcastUIUpdate("TODO", "UPDATED", null);
 		return true;
 	}
 }

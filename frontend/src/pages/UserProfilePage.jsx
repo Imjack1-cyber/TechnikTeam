@@ -9,7 +9,7 @@ import ProfileEventHistory from '../components/profile/ProfileEventHistory';
 import { useAuthStore } from '../store/authStore';
 import { getCommonStyles } from '../styles/commonStyles';
 import { getThemeColors, spacing, typography } from '../styles/theme';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import ScrollableContent from '../components/ui/ScrollableContent';
 
 const UserProfilePage = () => {
@@ -17,7 +17,7 @@ const UserProfilePage = () => {
 	const route = useRoute();
 	const { userId } = route.params;
 	const apiCall = useCallback(() => apiClient.get(`/public/profile/${userId}`), [userId]);
-	const { data: profileData, loading, error } = useApi(apiCall);
+	const { data: profileData, loading, error } = useApi(apiCall, { subscribeTo: 'USER' });
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);

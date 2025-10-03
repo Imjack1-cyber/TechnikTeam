@@ -28,7 +28,7 @@ const ChangelogModal = ({ changelog, onClose }) => {
 
 const ChangelogPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/public/changelog'), []);
-	const { data: changelogs, loading, error } = useApi(apiCall);
+	const { data: changelogs, loading, error } = useApi(apiCall, { subscribeTo: 'CHANGELOG' });
     const [modalData, setModalData] = useState(null);
     const [expandedIds, setExpandedIds] = useState([]);
 

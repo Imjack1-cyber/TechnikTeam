@@ -4,6 +4,7 @@ import de.technikteam.model.ApiResponse;
 import de.technikteam.model.TrainingRequest;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
+import de.technikteam.service.NotificationService;
 import de.technikteam.service.TrainingRequestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,10 +22,12 @@ import java.util.Map;
 public class PublicTrainingRequestResource {
 
 	private final TrainingRequestService trainingRequestService;
+	private final NotificationService notificationService;
 
 	@Autowired
-	public PublicTrainingRequestResource(TrainingRequestService trainingRequestService) {
+	public PublicTrainingRequestResource(TrainingRequestService trainingRequestService, NotificationService notificationService) {
 		this.trainingRequestService = trainingRequestService;
+		this.notificationService = notificationService;
 	}
 
 	@PostMapping

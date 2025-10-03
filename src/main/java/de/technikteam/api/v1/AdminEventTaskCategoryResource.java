@@ -3,6 +3,7 @@ package de.technikteam.api.v1;
 import de.technikteam.dao.EventTaskCategoryDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.EventTaskCategory;
+import de.technikteam.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,10 +20,12 @@ import java.util.Map;
 public class AdminEventTaskCategoryResource {
 
     private final EventTaskCategoryDAO categoryDAO;
+    private final NotificationService notificationService;
 
     @Autowired
-    public AdminEventTaskCategoryResource(EventTaskCategoryDAO categoryDAO) {
+    public AdminEventTaskCategoryResource(EventTaskCategoryDAO categoryDAO, NotificationService notificationService) {
         this.categoryDAO = categoryDAO;
+        this.notificationService = notificationService;
     }
 
     @GetMapping
@@ -37,6 +40,7 @@ public class AdminEventTaskCategoryResource {
     public ResponseEntity<ApiResponse> createCategory(@PathVariable int eventId, @RequestBody EventTaskCategory category) {
         category.setEventId(eventId);
         EventTaskCategory createdCategory = categoryDAO.create(category);
+        notificationService.broadcastUIUpdate("EVENT_TASK_CATEGORY", "CREATED", createdCategory);
         return new ResponseEntity<>(new ApiResponse(true, "Category created successfully.", createdCategory), HttpStatus.CREATED);
     }
 
@@ -46,6 +50,7 @@ public class AdminEventTaskCategoryResource {
         category.setId(categoryId);
         category.setEventId(eventId);
         if (categoryDAO.update(category)) {
+            notificationService.broadcastUIUpdate("EVENT_TASK_CATEGORY", "UPDATED", category);
             return ResponseEntity.ok(new ApiResponse(true, "Category updated successfully.", category));
         }
         return ResponseEntity.notFound().build();
@@ -55,6 +60,7 @@ public class AdminEventTaskCategoryResource {
     @Operation(summary = "Delete a task category")
     public ResponseEntity<ApiResponse> deleteCategory(@PathVariable int eventId, @PathVariable int categoryId) {
         if (categoryDAO.delete(categoryId)) {
+            notificationService.broadcastUIUpdate("EVENT_TASK_CATEGORY", "DELETED", Map.of("id", categoryId, "eventId", eventId));
             return ResponseEntity.ok(new ApiResponse(true, "Category deleted successfully.", null));
         }
         return ResponseEntity.notFound().build();
@@ -68,6 +74,7 @@ public class AdminEventTaskCategoryResource {
             return ResponseEntity.badRequest().body(new ApiResponse(false, "Payload must contain 'categoryIds'.", null));
         }
         categoryDAO.updateOrder(eventId, categoryIds);
+        notificationService.broadcastUIUpdate("EVENT", "UPDATED", Map.of("id", eventId));
         return ResponseEntity.ok(new ApiResponse(true, "Category order updated successfully.", null));
     }
 }

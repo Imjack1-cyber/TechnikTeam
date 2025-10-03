@@ -3,6 +3,7 @@ package de.technikteam.api.v1;
 import de.technikteam.dao.EventRoleDAO;
 import de.technikteam.model.ApiResponse;
 import de.technikteam.model.EventRole;
+import de.technikteam.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/admin/event-roles")
@@ -21,10 +23,12 @@ import java.util.List;
 public class AdminEventRoleResource {
 
 	private final EventRoleDAO eventRoleDAO;
+	private final NotificationService notificationService;
 
 	@Autowired
-	public AdminEventRoleResource(EventRoleDAO eventRoleDAO) {
+	public AdminEventRoleResource(EventRoleDAO eventRoleDAO, NotificationService notificationService) {
 		this.eventRoleDAO = eventRoleDAO;
+		this.notificationService = notificationService;
 	}
 
 	@GetMapping
@@ -38,6 +42,7 @@ public class AdminEventRoleResource {
 	@Operation(summary = "Create a new event role")
 	public ResponseEntity<ApiResponse> createRole(@Valid @RequestBody EventRole role) {
 		if (eventRoleDAO.create(role)) {
+			notificationService.broadcastUIUpdate("EVENT_ROLE", "CREATED", role);
 			return new ResponseEntity<>(new ApiResponse(true, "Rolle erfolgreich erstellt.", role), HttpStatus.CREATED);
 		}
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -49,6 +54,7 @@ public class AdminEventRoleResource {
 	public ResponseEntity<ApiResponse> updateRole(@PathVariable int id, @Valid @RequestBody EventRole role) {
 		role.setId(id);
 		if (eventRoleDAO.update(role)) {
+			notificationService.broadcastUIUpdate("EVENT_ROLE", "UPDATED", role);
 			return ResponseEntity.ok(new ApiResponse(true, "Rolle erfolgreich aktualisiert.", role));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -59,6 +65,7 @@ public class AdminEventRoleResource {
 	@Operation(summary = "Delete an event role")
 	public ResponseEntity<ApiResponse> deleteRole(@PathVariable int id) {
 		if (eventRoleDAO.delete(id)) {
+			notificationService.broadcastUIUpdate("EVENT_ROLE", "DELETED", Map.of("id", id));
 			return ResponseEntity.ok(new ApiResponse(true, "Rolle erfolgreich gelöscht.", null));
 		}
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)

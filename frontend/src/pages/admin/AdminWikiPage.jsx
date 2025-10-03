@@ -46,7 +46,7 @@ const WikiTreeNode = ({ name, node, onSelect, selectedId, level = 0 }) => {
 
 const AdminWikiPage = () => {
 	const treeApiCall = useCallback(() => apiClient.get('/wiki'), []);
-	const { data: wikiTree, loading, error, reload } = useApi(treeApiCall);
+	const { data: wikiTree, loading, error, reload } = useApi(treeApiCall, { subscribeTo: 'WIKI' });
 	const [selectedEntry, setSelectedEntry] = useState(null);
 	const [isEditing, setIsEditing] = useState(false);
 	const [editContent, setEditContent] = useState('');

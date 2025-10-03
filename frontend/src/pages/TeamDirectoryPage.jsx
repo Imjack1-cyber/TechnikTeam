@@ -8,7 +8,7 @@ import Icon from '@expo/vector-icons/FontAwesome5';
 const TeamDirectoryPage = () => {
 	const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/users'), []);
-	const { data: users, loading, error } = useApi(apiCall);
+	const { data: users, loading, error } = useApi(apiCall, { subscribeTo: 'USER' });
 	const [searchTerm, setSearchTerm] = useState('');
 
 	const filteredUsers = users?.filter(user =>

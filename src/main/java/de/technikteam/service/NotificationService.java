@@ -140,18 +140,16 @@ public class NotificationService {
 		}));
 	}
 
-	public void broadcastUIUpdate(String type, Object payload) {
-		logger.info("Sende UI-Update vom Typ '{}' an alle Clients.", type);
-		Map<String, Object> message = Map.of("updateType", type, "data", payload);
+	public void broadcastUIUpdate(String entity, String action, Object payload) {
+		logger.info("Broadcasting UI update for entity '{}', action '{}'", entity, action);
+		Map<String, Object> message = Map.of("entity", entity, "action", action, "payload", payload);
 		SseEmitter.SseEventBuilder event = SseEmitter.event().name("ui_update").data(message);
 
 		emittersByUser.values().forEach(emitterList -> emitterList.forEach(emitter -> {
 			try {
 				emitter.send(event);
 			} catch (Exception e) {
-				logger.warn("Fehler beim Senden an einen Client (wahrscheinlich getrennt), wird entfernt. Fehler: {}",
-						e.getMessage());
-				// Do not complete the emitter here, let its own lifecycle handlers manage it.
+				logger.warn("Error broadcasting UI update to a client: {}", e.getMessage());
 			}
 		}));
 	}

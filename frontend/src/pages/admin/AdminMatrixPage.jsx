@@ -15,7 +15,7 @@ const USER_COL_WIDTH = 150;
 const AdminMatrixPage = () => {
     const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/matrix'), []);
-	const { data, loading, error, reload } = useApi(apiCall);
+	const { data, loading, error, reload } = useApi(apiCall, { subscribeTo: 'MATRIX' });
 	const qualificationsApiCall = useCallback(() => apiClient.get('/admin/qualifications/all'), []);
 	const { data: allQualifications } = useApi(qualificationsApiCall);
 	const [modalData, setModalData] = useState(null);

@@ -63,7 +63,7 @@ const RequestActionModal = ({ isOpen, onClose, onConfirm, request, action, isSub
 const AdminRequestsPage = () => {
     const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/requests/pending'), []);
-	const { data: requests, loading, error, reload } = useApi(apiCall);
+	const { data: requests, loading, error, reload } = useApi(apiCall, { subscribeTo: 'PROFILE_REQUEST' });
 	const [actionableRequest, setActionableRequest] = useState(null); // { request: {...}, action: 'approve' | 'deny' }
     const [isSubmitting, setIsSubmitting] = useState(false);
 	const { addToast } = useToast();

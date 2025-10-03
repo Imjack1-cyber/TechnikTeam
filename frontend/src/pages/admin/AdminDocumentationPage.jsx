@@ -14,7 +14,7 @@ import DocumentationModal from '../../components/admin/documentation/Documentati
 const AdminDocumentationPage = () => {
     const navigation = useNavigation();
 	const docsApiCall = useCallback(() => apiClient.get('/admin/documentation'), []);
-	const { data: docs, loading, error, reload } = useApi(docsApiCall);
+	const { data: docs, loading, error, reload } = useApi(docsApiCall, { subscribeTo: 'DOCUMENTATION' });
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);

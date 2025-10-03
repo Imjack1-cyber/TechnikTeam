@@ -4,14 +4,14 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import EventTrendChart from '../../components/admin/dashboard/EventTrendChart';
 import UserActivityChart from '../../components/admin/reports/UserActivityChart';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 
 const AdminReportsPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/reports/dashboard'), []);
-	const { data: reportData, loading, error } = useApi(apiCall);
+	const { data: reportData, loading, error } = useApi(apiCall, { subscribeTo: 'EVENT' });
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
