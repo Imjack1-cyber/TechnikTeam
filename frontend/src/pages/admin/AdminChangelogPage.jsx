@@ -12,6 +12,8 @@ import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { format, parseISO } from 'date-fns';
 import AdminModal from '../../components/ui/AdminModal';
 import ScrollableContent from '../../components/ui/ScrollableContent';
+import Modal from '../../components/ui/Modal';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const ChangelogModal = ({ isOpen, onClose, onSuccess, changelog }) => {
     const theme = useAuthStore(state => state.theme);
@@ -91,53 +93,106 @@ const ChangelogModal = ({ isOpen, onClose, onSuccess, changelog }) => {
 	);
 };
 
+const ViewChangelogModal = ({ changelog, onClose }) => {
+    if (!changelog) return null;
+    const styles = { ...getCommonStyles(), ...pageStyles() };
+
+    return (
+        <Modal isOpen={true} onClose={onClose} title={`Version ${changelog.version} - ${changelog.title}`}>
+            <Text style={styles.subtitle}>
+                Veröffentlicht am {new Date(changelog.releaseDate).toLocaleDateString('de-DE')}
+            </Text>
+            <ScrollView style={styles.modalMarkdownContainer}>
+                <MarkdownDisplay style={{ body: { padding: 12 } }}>
+                    {changelog.notes}
+                </MarkdownDisplay>
+            </ScrollView>
+            <TouchableOpacity style={[styles.button, { backgroundColor: '#6c757d', marginTop: 16 }]} onPress={onClose}>
+                <Text style={styles.buttonText}>Schließen</Text>
+            </TouchableOpacity>
+        </Modal>
+    );
+};
+
 const AdminChangelogPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/admin/changelogs'), []);
 	const { data: changelogs, loading, error, reload } = useApi(apiCall);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingChangelog, setEditingChangelog] = useState(null);
+    const [viewingChangelog, setViewingChangelog] = useState(null);
+    const [deletingChangelog, setDeletingChangelog] = useState(null);
+    const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
+    const [expandedIds, setExpandedIds] = useState([]);
     const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
+
+    const toggleExpand = (id) => {
+        setExpandedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
 
 	const openModal = (changelog = null) => {
 		setEditingChangelog(changelog);
 		setIsModalOpen(true);
 	};
 
-	const handleDelete = (changelog) => {
-        Alert.alert(`Changelog löschen?`, `Version "${changelog.version}" wirklich löschen?`, [
-            { text: 'Abbrechen', style: 'cancel'},
-            { text: 'Löschen', style: 'destructive', onPress: async () => {
-                try {
-                    const result = await apiClient.delete(`/admin/changelogs/${changelog.id}`);
-                    if (result.success) {
-                        addToast('Changelog gelöscht', 'success');
-                        reload();
-                    } else { throw new Error(result.message); }
-                } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
-            }}
-        ]);
+	const confirmDelete = async () => {
+        if (!deletingChangelog) return;
+        setIsSubmittingDelete(true);
+        try {
+            const result = await apiClient.delete(`/admin/changelogs/${deletingChangelog.id}`);
+            if (result.success) {
+                addToast('Changelog gelöscht', 'success');
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
+        finally {
+            setIsSubmittingDelete(false);
+            setDeletingChangelog(null);
+        }
 	};
     
-    const renderItem = ({ item }) => (
-        <View style={styles.card}>
-            <View style={styles.cardHeader}>
-                <View style={{flex: 1}}>
-                    <Text style={styles.cardTitle}>Version {item.version} - {item.title}</Text>
-                    <Text style={styles.subtitle}>Veröffentlicht: {new Date(item.releaseDate).toLocaleDateString('de-DE')}</Text>
+    const renderItem = ({ item }) => {
+        const isVeryLongContent = item.notes.length > 500;
+        const isExpanded = expandedIds.includes(item.id);
+        const previewContent = isVeryLongContent && !isExpanded ? item.notes.slice(0, 400) + " …" : item.notes;
+
+        return(
+            <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                    <View style={{flex: 1}}>
+                        <Text style={styles.cardTitle}>Version {item.version} - {item.title}</Text>
+                        <Text style={styles.subtitle}>Veröffentlicht: {new Date(item.releaseDate).toLocaleDateString('de-DE')}</Text>
+                    </View>
+                    <View style={styles.cardActions}>
+                        <TouchableOpacity onPress={() => openModal(item)}><Icon name="edit" size={18} color={colors.textMuted}/></TouchableOpacity>
+                        <TouchableOpacity onPress={() => setDeletingChangelog(item)}><Icon name="trash" size={18} color={colors.danger} /></TouchableOpacity>
+                    </View>
                 </View>
-                <View style={styles.cardActions}>
-                    <TouchableOpacity onPress={() => openModal(item)}><Icon name="edit" size={18} color={colors.textMuted}/></TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleDelete(item)}><Icon name="trash" size={18} color={colors.danger} /></TouchableOpacity>
+                <View style={isVeryLongContent && !isExpanded ? styles.markdownContainerTruncated : {}}>
+                    <MarkdownDisplay>{previewContent}</MarkdownDisplay>
                 </View>
+                {isVeryLongContent && (
+                    <View style={styles.actionsRow}>
+                        {!isExpanded &&
+                            <TouchableOpacity style={styles.readMoreButton} onPress={() => toggleExpand(item.id)}>
+                                <Text style={styles.readMoreText}>Mehr anzeigen</Text>
+                            </TouchableOpacity>
+                        }
+                        {isExpanded &&
+                             <TouchableOpacity style={styles.readMoreButton} onPress={() => toggleExpand(item.id)}>
+                                <Text style={styles.readMoreText}>Weniger anzeigen</Text>
+                            </TouchableOpacity>
+                        }
+                        <TouchableOpacity style={styles.readMoreButton} onPress={() => setViewingChangelog(item)}>
+                            <Text style={styles.readMoreText}>Im Fenster öffnen</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
             </View>
-            <View style={styles.markdownContainer}>
-                <MarkdownDisplay>{item.notes}</MarkdownDisplay>
-            </View>
-        </View>
-    );
+        );
+    };
 
 	return (
 		<ScrollableContent style={styles.container}>
@@ -162,6 +217,18 @@ const AdminChangelogPage = () => {
             />
 
 			{isModalOpen && <ChangelogModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); reload(); }} changelog={editingChangelog} />}
+            <ViewChangelogModal changelog={viewingChangelog} onClose={() => setViewingChangelog(null)} />
+            {deletingChangelog && (
+                <ConfirmationModal
+                    isOpen={!!deletingChangelog}
+                    onClose={() => setDeletingChangelog(null)}
+                    onConfirm={confirmDelete}
+                    title={`Changelog "${deletingChangelog.version}" löschen?`}
+                    message="Diese Aktion kann nicht rückgängig gemacht werden."
+                    confirmText="Löschen"
+                    isSubmitting={isSubmittingDelete}
+                />
+            )}
 		</ScrollableContent>
 	);
 };
@@ -175,7 +242,39 @@ const pageStyles = (theme) => {
         cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
         cardTitle: { fontSize: typography.h4, fontWeight: 'bold', flexShrink: 1 },
         cardActions: { flexDirection: 'row', gap: 16 },
-        markdownContainer: { maxHeight: 200, borderWidth: 1, borderColor: colors.border, borderRadius: 6, padding: 8 },
+        markdownContainerTruncated: { maxHeight: 200, overflow: 'hidden' },
+        actionsRow: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginTop: 12,
+            paddingTop: 12,
+            borderTopWidth: 1,
+            borderTopColor: '#eee',
+        },
+        readMoreButton: {
+            alignItems: 'center',
+        },
+        readMoreText: {
+            color: colors.primary,
+            fontWeight: 'bold',
+        },
+        modalMarkdownContainer: {
+            maxHeight: '80%',
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 6,
+            marginTop: 12,
+        },
+        button: {
+            backgroundColor: '#6c757d',
+            padding: 12,
+            borderRadius: 6,
+            alignItems: 'center',
+        },
+        buttonText: {
+            color: '#fff',
+            fontWeight: '500',
+        },
     });
 };
 

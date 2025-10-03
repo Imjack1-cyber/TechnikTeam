@@ -5,10 +5,11 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import StorageItemModal from '../../components/admin/storage/StorageItemModal';
 import { useToast } from '../../context/ToastContext';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
-import { getThemeColors } from '../../styles/theme';
+import { getThemeColors, typography } from '../../styles/theme';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const AdminDefectivePage = () => {
     const navigation = useNavigation();
