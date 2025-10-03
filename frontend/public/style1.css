@@ -88,9 +88,19 @@
 }
 
 html,
-body {
+body,
+#root {
 	height: 100%;
+	overflow: hidden; /* Prevent the main document from scrolling */
 }
+
+/* The root div rendered by Expo/React Native for Web needs to be a flex container filling the height */
+#root > div {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
 
 html {
 	scroll-behavior: smooth;

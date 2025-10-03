@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Platform } from 'react-native';
 import { useAuthStore } from './src/store/authStore';
 import { ToastProvider } from './src/context/ToastContext';
 import ToastContainer from './src/components/ui/ToastContainer';
@@ -167,15 +168,21 @@ const AppContent = () => {
     const { warningNotification, dismissWarning } = useNotifications();
     usePushNotifications(); // Initialize push notification handling
     return (
-        <>
+        <View style={styles.container}>
             <MaintenanceBanner />
             <RootNavigator />
             <ToastContainer />
             <DownloadsIndicator />
             {warningNotification && <WarningNotification notification={warningNotification} onDismiss={dismissWarning} />}
-        </>
+        </View>
     );
 };
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+});
 
 export default function App() {
     const [isLoading, setIsLoading] = useState(true);

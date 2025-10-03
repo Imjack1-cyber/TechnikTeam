@@ -13,7 +13,9 @@ const MaintenanceBanner = () => {
     const insets = useSafeAreaInsets();
 
     if (mode !== 'SOFT') {
-        return null;
+        // Return a 1-pixel high, invisible view to keep the component in the layout tree,
+        // which ensures the flexbox layout calculates correctly on web.
+        return <View style={styles.hiddenBanner} />;
     }
 
     return (
@@ -30,6 +32,10 @@ const MaintenanceBanner = () => {
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
+        hiddenBanner: {
+            height: 1,
+            opacity: 0,
+        },
         bannerContainer: {
             backgroundColor: colors.warning,
             paddingHorizontal: spacing.md,
