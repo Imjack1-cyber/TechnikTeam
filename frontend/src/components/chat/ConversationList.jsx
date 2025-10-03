@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, 
 import { useNavigation, useRoute } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
-import Modal from '../ui/Modal';
 import GroupChatModal from './GroupChatModal';
 import { useToast } from '../../context/ToastContext';
 import { useAuthStore } from '../../store/authStore';
@@ -11,6 +10,7 @@ import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing, borders } from '../../styles/theme';
 import Icon from '@expo/vector-icons/FontAwesome5';
 import UserSearchModal from './UserSearchModal';
+import ConfirmationModal from '../ui/ConfirmationModal';
 
 const ConversationList = () => {
 	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
@@ -22,6 +22,8 @@ const ConversationList = () => {
 	const { data: conversations, loading, error, reload } = useApi(apiCall);
 	const [isUserSearchModalOpen, setIsUserSearchModalOpen] = useState(false);
 	const [isGroupChatModalOpen, setIsGroupChatModalOpen] = useState(false);
+    const [deletingConversation, setDeletingConversation] = useState(null);
+    const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
 	const { addToast } = useToast();
 
     const theme = useAuthStore(state => state.theme);
@@ -52,22 +54,28 @@ const ConversationList = () => {
 	};
 
 	const handleDeleteGroup = (conv) => {
-		Alert.alert(`Gruppe "${conv.name}" löschen?`, "Dies kann nicht rückgängig gemacht werden.", [
-			{ text: 'Abbrechen', style: 'cancel' },
-			{ text: 'Löschen', style: 'destructive', onPress: async () => {
-				try {
-					const result = await apiClient.delete(`/public/chat/conversations/${conv.id}`);
-					if (result.success) {
-						addToast('Gruppe wurde gelöscht.', 'success');
-						if (selectedConversationId === conv.id) {
-							navigation.navigate('Chat'); // Go back to welcome screen if deleted current chat
-						}
-						reload();
-					} else { throw new Error(result.message); }
-				} catch (err) { addToast(err.message, 'error'); }
-			}},
-		]);
+		setDeletingConversation(conv);
 	};
+
+    const confirmDeleteGroup = async () => {
+        if (!deletingConversation) return;
+        setIsSubmittingDelete(true);
+
+        try {
+            const result = await apiClient.delete(`/public/chat/conversations/${deletingConversation.id}`);
+            if (result.success) {
+                addToast('Gruppe wurde gelöscht.', 'success');
+                if (selectedConversationId === deletingConversation.id) {
+                    navigation.navigate('ConversationList');
+                }
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(err.message, 'error'); }
+        finally {
+            setDeletingConversation(null);
+            setIsSubmittingDelete(false);
+        }
+    };
     
     const renderConversationItem = ({ item: conv }) => (
         <TouchableOpacity 
@@ -112,6 +120,18 @@ const ConversationList = () => {
 			</View>
 			<UserSearchModal isOpen={isUserSearchModalOpen} onClose={() => setIsUserSearchModalOpen(false)} onSelectUser={handleSelectUser} />
 			<GroupChatModal isOpen={isGroupChatModalOpen} onClose={() => setIsGroupChatModalOpen(false)} onCreateGroup={handleCreateGroup} />
+            {deletingConversation && (
+                <ConfirmationModal
+                    isOpen={!!deletingConversation}
+                    onClose={() => setDeletingConversation(null)}
+                    onConfirm={confirmDeleteGroup}
+                    title={`Gruppe "${deletingConversation.name}" löschen?`}
+                    message="Dies kann nicht rückgängig gemacht werden und löscht die Gruppe für alle Mitglieder."
+                    confirmText="Löschen"
+                    confirmButtonVariant="danger"
+                    isSubmitting={isSubmittingDelete}
+                />
+            )}
 		</View>
 	);
 };
