@@ -79,7 +79,8 @@ public class UserService {
 	public boolean undeleteUser(int userId, User adminUser) {
 		boolean success = userDAO.undeleteUser(userId);
 		if (success) {
-			// No specific log needed as the revocation itself is logged.
+            User restoredUser = userDAO.getUserById(userId);
+			notificationService.broadcastUIUpdate("USER", "CREATED", restoredUser); // Treat as created for the UI
 		}
 		return success;
 	}
@@ -93,6 +94,10 @@ public class UserService {
 		// We'll use the existing `updateUserWithPermissions` for simplicity, assuming
 		// the `beforeState` has permissions.
 		String[] permissionIds = userToRestore.getPermissions().stream().map(String::valueOf).toArray(String[]::new);
-		return updateUserWithPermissions(userToRestore, permissionIds);
+        boolean success = updateUserWithPermissions(userToRestore, permissionIds);
+        if(success) {
+            notificationService.broadcastUIUpdate("USER", "UPDATED", userToRestore);
+        }
+        return success;
 	}
 }

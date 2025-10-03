@@ -6,6 +6,7 @@ import de.technikteam.model.AuthenticationLog;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AdminLogService;
 import de.technikteam.service.AuthService;
+import de.technikteam.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,12 +30,14 @@ public class AdminAuthLogResource {
     private final AuthenticationLogDAO authLogDAO;
     private final AuthService authService;
     private final AdminLogService adminLogService;
+    private final NotificationService notificationService;
 
     @Autowired
-    public AdminAuthLogResource(AuthenticationLogDAO authLogDAO, AuthService authService, AdminLogService adminLogService) {
+    public AdminAuthLogResource(AuthenticationLogDAO authLogDAO, AuthService authService, AdminLogService adminLogService, NotificationService notificationService) {
         this.authLogDAO = authLogDAO;
         this.authService = authService;
         this.adminLogService = adminLogService;
+        this.notificationService = notificationService;
     }
 
     @GetMapping
@@ -69,6 +72,7 @@ public class AdminAuthLogResource {
             String details = String.format("Session for user '%s' (IP: %s, Login: %s) revoked.",
                     logToRevoke.getUsername(), logToRevoke.getIpAddress(), logToRevoke.getTimestamp());
             adminLogService.log(securityUser.getUsername(), "SESSION_REVOKE", details);
+            notificationService.broadcastUIUpdate("AUTH_LOG", "UPDATED", logToRevoke);
         }
 
         logger.info("Session with JTI '{}' was successfully added to the blocklist.", jti);

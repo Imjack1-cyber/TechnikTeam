@@ -23,9 +23,9 @@ const ProfilePage = () => {
         fetchUserSession: state.fetchUserSession
     }));
 	const profileApiCall = useCallback(() => apiClient.get('/public/profile'), []);
-	const { data: profileData, loading: profileLoading, error: profileError, reload: reloadProfile } = useApi(profileApiCall, { subscribeTo: 'USER' });
+	const { data: profileData, loading: profileLoading, error: profileError, reload: reloadProfile } = useApi(profileApiCall, { subscribeTo: ['USER', 'PROFILE_REQUEST'] });
     const knownIpsApiCall = useCallback(() => apiClient.get('/public/profile/known-ips'), []);
-    const { data: knownIps, loading: ipsLoading, error: ipsError, reload: reloadIps } = useApi(knownIpsApiCall);
+    const { data: knownIps, loading: ipsLoading, error: ipsError, reload: reloadIps } = useApi(knownIpsApiCall, { subscribeTo: ['SESSION'] });
 
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };

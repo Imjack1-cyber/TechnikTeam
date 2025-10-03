@@ -9,6 +9,7 @@ import de.technikteam.model.Meeting;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.MeetingSignupService;
+import de.technikteam.service.NotificationService;
 import de.technikteam.service.TrainingHubService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -35,15 +36,17 @@ public class PublicMeetingResource {
 	private final AttachmentDAO attachmentDAO;
 	private final MeetingSignupService signupService;
 	private final TrainingHubService trainingHubService;
+	private final NotificationService notificationService;
 
 	@Autowired
 	public PublicMeetingResource(MeetingDAO meetingDAO, MeetingAttendanceDAO attendanceDAO, AttachmentDAO attachmentDAO,
-			MeetingSignupService signupService, TrainingHubService trainingHubService) {
+			MeetingSignupService signupService, TrainingHubService trainingHubService, NotificationService notificationService) {
 		this.meetingDAO = meetingDAO;
 		this.attendanceDAO = attendanceDAO;
 		this.attachmentDAO = attachmentDAO;
 		this.signupService = signupService;
 		this.trainingHubService = trainingHubService;
+		this.notificationService = notificationService;
 	}
 
 	@GetMapping
@@ -91,6 +94,7 @@ public class PublicMeetingResource {
 				MeetingSignupService.SignupResult result = signupService.signupOrWaitlist(user.getId(), id, user.getId());
 				Map<String, Object> data = new HashMap<>();
 				data.put("status", result.status.name());
+				notificationService.broadcastUIUpdate("MEETING", "UPDATED", Map.of("id", id));
 
 				if (result.status == MeetingSignupService.SignupStatus.ENROLLED
 						|| result.status == MeetingSignupService.SignupStatus.WAITLISTED) {
@@ -101,6 +105,7 @@ public class PublicMeetingResource {
 				}
 			} else if ("signoff".equalsIgnoreCase(action)) {
 				if (signupService.signoffFromMeeting(user.getId(), id)) {
+					notificationService.broadcastUIUpdate("MEETING", "UPDATED", Map.of("id", id));
 					return ResponseEntity.ok(new ApiResponse(true, "Abmeldung erfolgreich.", null));
 				} else {
 					// This case is unlikely but handled for completeness

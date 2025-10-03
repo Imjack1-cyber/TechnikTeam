@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUIStore } from '../store/uiStore';
 
 /**
@@ -12,19 +12,17 @@ const useApi = (apiCall, options = {}) => {
 	const [data, setData] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
-
 	const { subscribeTo } = options;
+	const fetchDataRef = useRef();
 
 	const fetchData = useCallback(async () => {
-		// Don't fetch if the apiCall function isn't ready or is null
 		if (!apiCall) {
 			setLoading(false);
-			setData(null); // Clear data if the call is removed
+			setData(null);
 			return;
 		}
-
 		try {
-			setLoading(true); // Set loading to true at the start of a fetch/refetch
+			setLoading(true);
 			setError(null);
 			const result = await apiCall();
 			if (result.success) {
@@ -33,9 +31,8 @@ const useApi = (apiCall, options = {}) => {
 				throw new Error(result.message);
 			}
 		} catch (err) {
-            // If it's our special auth error, do nothing. The logout process has taken over.
             if (err.isAuthError) {
-                return; // Suppress setting the error state for this component
+                return;
             }
 			setError(err.message || 'Ein unerwarteter Fehler ist aufgetreten.');
 		} finally {
@@ -44,35 +41,42 @@ const useApi = (apiCall, options = {}) => {
 	}, [apiCall]);
 
 	useEffect(() => {
+		fetchDataRef.current = fetchData;
+	}, [fetchData]);
+
+	useEffect(() => {
 		fetchData();
 	}, [fetchData]);
 
-    // Effect for real-time updates via SSE triggers
     useEffect(() => {
         if (!subscribeTo) {
             return;
         }
 
-        const entitiesToSubscribe = Array.isArray(subscribeTo) ? subscribeTo : [subscribeTo];
-        
+        const entitiesToSubscribe = Array.isArray(subscribeTo) 
+            ? subscribeTo.map(e => e.toUpperCase()) 
+            : [subscribeTo.toUpperCase()];
+
         const unsubscribe = useUIStore.subscribe(
-            (state) => {
-                const relevantTriggers = {};
-                entitiesToSubscribe.forEach(entity => {
-                    relevantTriggers[entity] = state.refetchTriggers[entity.toUpperCase()];
-                });
-                return relevantTriggers;
-            },
-            () => {
-                console.log(`[useApi] Refetch triggered for entities: ${entitiesToSubscribe.join(', ')}`);
-                fetchData();
-            },
-            { equalityFn: (a, b) => JSON.stringify(a) === JSON.stringify(b) }
+            (state, prevState) => {
+                // Manually check if any of the subscribed entities have a new timestamp
+                const hasChanged = entitiesToSubscribe.some(entity => 
+                    state.refetchTriggers[entity] !== prevState.refetchTriggers[entity]
+                );
+
+                if (hasChanged) {
+                    console.log(`[useApi] Refetch triggered for entities: ${entitiesToSubscribe.join(', ')}`);
+                    // Use the ref to call the latest version of fetchData
+                    if (fetchDataRef.current) {
+                        fetchDataRef.current();
+                    }
+                }
+            }
         );
 
         return () => unsubscribe();
 
-    }, [subscribeTo, fetchData]);
+    }, [subscribeTo]);
 
 	return { data, loading, error, reload: fetchData };
 };

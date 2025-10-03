@@ -6,6 +6,7 @@ import de.technikteam.model.ApiResponse;
 import de.technikteam.model.File;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.FileService;
+import de.technikteam.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -25,11 +26,13 @@ public class PublicFileEditorResource {
 
     private final FileService fileService;
     private final FileDAO fileDAO;
+    private final NotificationService notificationService;
 
     @Autowired
-    public PublicFileEditorResource(FileService fileService, FileDAO fileDAO) {
+    public PublicFileEditorResource(FileService fileService, FileDAO fileDAO, NotificationService notificationService) {
         this.fileService = fileService;
         this.fileDAO = fileDAO;
+        this.notificationService = notificationService;
     }
 
     @GetMapping("/{id}")
@@ -66,6 +69,7 @@ public class PublicFileEditorResource {
             }
 
             if (fileService.updateFileContent(id, request.content(), securityUser.getUser())) {
+                notificationService.broadcastUIUpdate("FILE", "UPDATED", fileDAO.getFileById(id));
                 return ResponseEntity.ok(new ApiResponse(true, "Datei-Inhalt erfolgreich gespeichert.", null));
             } else {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

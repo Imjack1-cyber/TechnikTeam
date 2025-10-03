@@ -6,6 +6,7 @@ import de.technikteam.model.ApiResponse;
 import de.technikteam.model.AuthenticationLog;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AuthService;
+import de.technikteam.service.NotificationService;
 import io.jsonwebtoken.Claims;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,12 +26,14 @@ public class PublicSessionResource {
     private final AuthenticationLogDAO authLogDAO;
     private final TwoFactorAuthDAO twoFactorAuthDAO;
     private final AuthService authService;
+    private final NotificationService notificationService;
 
     @Autowired
-    public PublicSessionResource(AuthenticationLogDAO authLogDAO, TwoFactorAuthDAO twoFactorAuthDAO, AuthService authService) {
+    public PublicSessionResource(AuthenticationLogDAO authLogDAO, TwoFactorAuthDAO twoFactorAuthDAO, AuthService authService, NotificationService notificationService) {
         this.authLogDAO = authLogDAO;
         this.twoFactorAuthDAO = twoFactorAuthDAO;
         this.authService = authService;
+        this.notificationService = notificationService;
     }
 
     @GetMapping
@@ -54,6 +57,7 @@ public class PublicSessionResource {
         }
 
         twoFactorAuthDAO.nameKnownIp(securityUser.getUser().getId(), log.getIpAddress(), deviceName);
+        notificationService.broadcastUIUpdate("SESSION", "UPDATED", null);
         return ResponseEntity.ok(new ApiResponse(true, "Device named successfully.", null));
     }
 
@@ -70,6 +74,7 @@ public class PublicSessionResource {
         }
 
         authService.revokeToken(jti);
+        notificationService.broadcastUIUpdate("SESSION", "UPDATED", null);
         return ResponseEntity.ok(new ApiResponse(true, "Session revoked successfully.", null));
     }
 
@@ -91,6 +96,7 @@ public class PublicSessionResource {
             }
         }
         
+        notificationService.broadcastUIUpdate("SESSION", "UPDATED", null);
         return ResponseEntity.ok(new ApiResponse(true, revokedCount + " other sessions have been revoked.", null));
     }
 }
