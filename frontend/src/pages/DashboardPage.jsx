@@ -19,16 +19,31 @@ const DashboardPage = () => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
 
-	const widgets = layout?.dashboardWidgets || {};
-
-    const renderItem = (item, type) => {
+	const renderItem = (item, type) => {
         const handlePress = () => {
             if (item.url) {
                 navigateFromUrl(item.url);
             } else {
-                // Fallback for items without a direct URL, like tasks
-                if (type === 'task' && item.eventId) {
-                    navigation.navigate('Veranstaltungen', { screen: 'EventDetails', params: { eventId: item.eventId } });
+                switch(type) {
+                    case 'event':
+                        navigation.navigate('Veranstaltungen', { screen: 'EventDetails', params: { eventId: item.id } });
+                        break;
+                    case 'task':
+                        if (item.eventId) {
+                            navigation.navigate('Veranstaltungen', { screen: 'EventDetails', params: { eventId: item.eventId } });
+                        }
+                        break;
+                    case 'meeting':
+                        navigation.navigate('MeetingDetails', { meetingId: item.id });
+                        break;
+                    case 'conversation':
+                        navigation.navigate('Chat', { screen: 'MessageView', params: { conversationId: item.id } });
+                        break;
+                    case 'item': // For low stock items
+                        navigation.navigate('StorageItemDetails', { itemId: item.id });
+                        break;
+                    default:
+                        console.warn(`Unhandled navigation type in Dashboard: ${type}`);
                 }
             }
         };
@@ -52,13 +67,13 @@ const DashboardPage = () => {
 		<ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
 			<Text style={styles.title}>Willkommen, {user?.username}!</Text>
 			
-            {widgets.recommendedEvents && <Widget icon="fa-star" title="Für Dich empfohlen">{renderWidgetContent(dashboardData.recommendedEvents, 'event', 'Keine Empfehlungen.')}</Widget>}
-            {widgets.assignedEvents && <Widget icon="fa-calendar-check" title="Meine nächsten Einsätze">{renderWidgetContent(dashboardData.assignedEvents, 'event', 'Keine Einsätze.')}</Widget>}
-            {widgets.openTasks && <Widget icon="fa-tasks" title="Meine offenen Aufgaben">{renderWidgetContent(dashboardData.openTasks, 'task', 'Keine offenen Aufgaben.')}</Widget>}
-            {widgets.upcomingMeetings && <Widget icon="fa-graduation-cap" title="Meine nächsten Lehrgänge">{renderWidgetContent(dashboardData.upcomingMeetings, 'meeting', 'Keine Lehrgänge.')}</Widget>}
-            {widgets.recentConversations && <Widget icon="fa-comments" title="Letzte Gespräche">{renderWidgetContent(dashboardData.recentConversations, 'conversation', 'Keine Gespräche.')}</Widget>}
-            {widgets.upcomingEvents && <Widget icon="fa-calendar-alt" title="Weitere anstehende Events">{renderWidgetContent(dashboardData.upcomingEvents, 'event', 'Keine weiteren Events.')}</Widget>}
-            {widgets.lowStockItems && <Widget icon="fa-box-open" title="Niedriger Lagerbestand">{renderWidgetContent(dashboardData.lowStockItems, 'item', 'Alle Artikel ausreichend vorhanden.')}</Widget>}
+            {layout.dashboardWidgets.recommendedEvents && <Widget icon="fa-star" title="Für Dich empfohlen">{renderWidgetContent(dashboardData.recommendedEvents, 'event', 'Keine Empfehlungen.')}</Widget>}
+            {layout.dashboardWidgets.assignedEvents && <Widget icon="fa-calendar-check" title="Meine nächsten Einsätze">{renderWidgetContent(dashboardData.assignedEvents, 'event', 'Keine Einsätze.')}</Widget>}
+            {layout.dashboardWidgets.openTasks && <Widget icon="fa-tasks" title="Meine offenen Aufgaben">{renderWidgetContent(dashboardData.openTasks, 'task', 'Keine offenen Aufgaben.')}</Widget>}
+            {layout.dashboardWidgets.upcomingMeetings && <Widget icon="fa-graduation-cap" title="Meine nächsten Lehrgänge">{renderWidgetContent(dashboardData.upcomingMeetings, 'meeting', 'Keine Lehrgänge.')}</Widget>}
+            {layout.dashboardWidgets.recentConversations && <Widget icon="fa-comments" title="Letzte Gespräche">{renderWidgetContent(dashboardData.recentConversations, 'conversation', 'Keine Gespräche.')}</Widget>}
+            {layout.dashboardWidgets.upcomingEvents && <Widget icon="fa-calendar-alt" title="Weitere anstehende Events">{renderWidgetContent(dashboardData.upcomingEvents, 'event', 'Keine weiteren Events.')}</Widget>}
+            {layout.dashboardWidgets.lowStockItems && <Widget icon="fa-box-open" title="Niedriger Lagerbestand">{renderWidgetContent(dashboardData.lowStockItems, 'item', 'Alle Artikel ausreichend vorhanden.')}</Widget>}
 		</ScrollView>
 	);
 };

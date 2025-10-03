@@ -13,12 +13,12 @@ export function navigateFromUrl(url) {
     return;
   }
 
-  console.log('Attempting to navigate from URL: ${url}');
+  console.log(`Attempting to navigate from URL: ${url}`);
 
   const navigate = (routeName, params) => navigationRef.navigate(routeName, params);
 
   // Match /path/details/:id
-  let match = url.match('/^/(\w+)/details/(\d+)$/');
+  let match = url.match(/^\/(\w+)\/details\/(\d+)$/);
   if (match) {
     const resource = match[1];
     const id = match[2];
@@ -35,7 +35,7 @@ export function navigateFromUrl(url) {
   }
 
   // Match /chat/:id
-  match = url.match('/^/chat/(\d+)$/');
+  match = url.match(/^\/chat\/(\d+)$/);
   if (match) {
     const conversationId = match[1];
     return navigate('Chat', { screen: 'MessageView', params: { conversationId } });
@@ -71,5 +71,5 @@ export function navigateFromUrl(url) {
       return navigate('Changelogs');
   }
 
-  console.warn('No navigation route found for URL: ${url}');
+  console.warn(`No navigation route found for URL: ${url}`);
 }
