@@ -3,7 +3,7 @@ import * as Notifications from 'expo-notifications';
 
 export const useDownloadStore = create((set, get) => ({
     /**
-     * @type {Object.<string, {filename: string, status: 'starting'|'downloading'|'completed'|'error', progress: number, total: number, fileUri: string|null, nativeNotificationId: string|null, isLocallyComplete: boolean}>}
+     * @type {Object.<string, {filename: string, status: 'starting'|'downloading'|'completed'|'error', progress: number, total: number, fileUri: string|null, nativeNotificationId: string|null, isLocallyComplete: boolean, autoRemoveTimeoutId?: number}>}
      */
     downloads: {},
 
@@ -23,35 +23,45 @@ export const useDownloadStore = create((set, get) => ({
     })),
 
     updateDownload: (id, updates) => {
-        const state = get();
-        const existingDownload = state.downloads[id];
+        set(state => {
+            const existingDownload = state.downloads[id];
+            if (!existingDownload) {
+                // This can happen if a progress update arrives after the download was removed.
+                return state;
+            }
+            
+            // If a timeout is already set from a previous 'completed' update, clear it.
+            if (existingDownload.autoRemoveTimeoutId) {
+                clearTimeout(existingDownload.autoRemoveTimeoutId);
+            }
 
-        const newDownloadState = {
-            ...state.downloads,
-            [id]: { ...(existingDownload || {
-                filename: 'Unbekannter Download',
-                status: 'downloading',
-                progress: 0,
-                total: 1,
-                fileUri: null,
-                nativeNotificationId: null,
-                isLocallyComplete: false,
-            }), ...updates },
-        };
-        
-        const updatedDownload = newDownloadState[id];
-        const isComplete = updatedDownload.status === 'completed' || (updatedDownload.progress >= updatedDownload.total && updatedDownload.total > 0);
+            const updatedDownload = { ...existingDownload, ...updates };
 
-        // Reconciliation Logic: Dismiss the native notification if the download is complete
-        // AND we have the notification's ID. This handles all cases (foreground and background).
-        if (isComplete && updatedDownload.nativeNotificationId) {
-            console.log(`Dismissal condition met for download ${id}. Dismissing notification ${updatedDownload.nativeNotificationId}`);
-            Notifications.dismissNotificationAsync(updatedDownload.nativeNotificationId);
-            updatedDownload.status = 'completed';
-            updatedDownload.nativeNotificationId = null; // Clear ID after dismissal
-        }
+            const isComplete = updatedDownload.status === 'completed' || (updatedDownload.progress >= updatedDownload.total && updatedDownload.total > 0);
 
-        set({ downloads: newDownloadState });
+            // Reconciliation Logic for native notifications
+            if (isComplete && updatedDownload.nativeNotificationId) {
+                console.log(`Dismissal condition met for download ${id}. Dismissing notification ${updatedDownload.nativeNotificationId}`);
+                Notifications.dismissNotificationAsync(updatedDownload.nativeNotificationId);
+                updatedDownload.status = 'completed';
+                updatedDownload.nativeNotificationId = null; // Clear ID after dismissal
+            }
+
+            // Auto-remove the UI indicator after a delay when complete
+            if (isComplete) {
+                const timeoutId = setTimeout(() => {
+                    get().removeDownload(id);
+                }, 5000); // 5-second delay before removing from UI
+                updatedDownload.autoRemoveTimeoutId = timeoutId;
+            }
+
+            return {
+                downloads: {
+                    ...state.downloads,
+                    [id]: updatedDownload,
+                },
+            };
+        });
     },
 
     markDownloadAsLocallyComplete: (id) => {
@@ -65,6 +75,10 @@ export const useDownloadStore = create((set, get) => ({
     },
 
     removeDownload: (id) => set(state => {
+        const downloadToRemove = state.downloads[id];
+        if (downloadToRemove && downloadToRemove.autoRemoveTimeoutId) {
+            clearTimeout(downloadToRemove.autoRemoveTimeoutId);
+        }
         const newDownloads = { ...state.downloads };
         delete newDownloads[id];
         return { downloads: newDownloads };
