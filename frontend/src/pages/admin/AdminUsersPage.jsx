@@ -12,6 +12,8 @@ import { getThemeColors, typography, spacing } from '../../styles/theme';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import AdminModal from '../../components/ui/AdminModal';
 import ScrollableContent from '../../components/ui/ScrollableContent';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import Modal from '../../components/ui/Modal';
 
 const SuspendUserModal = ({ isOpen, onClose, user, onSuccess }) => {
     const theme = useAuthStore(state => state.theme);
@@ -63,6 +65,23 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuccess }) => {
 	);
 };
 
+const PasswordDisplayModal = ({ isOpen, onClose, username, newPassword }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = getCommonStyles(theme);
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Neues Passwort">
+            <Text style={styles.bodyText}>Das temporäre Passwort für <Text style={{fontWeight: 'bold'}}>{username}</Text> lautet:</Text>
+            <TextInput
+                style={[styles.input, {textAlign: 'center', fontWeight: 'bold', fontSize: 18, marginVertical: 16}]}
+                value={newPassword}
+                editable={false}
+                selectTextOnFocus
+            />
+            <Text style={styles.bodyText}>Bitte geben Sie dieses Passwort sicher an den Benutzer weiter.</Text>
+        </Modal>
+    );
+};
+
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
@@ -102,99 +121,61 @@ const AdminUsersPage = () => {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingUser, setEditingUser] = useState(null);
     const [suspendingUser, setSuspendingUser] = useState(null);
+    const [unsuspendingUser, setUnsuspendingUser] = useState(null);
+    const [deletingUser, setDeletingUser] = useState(null);
+    const [resettingUser, setResettingUser] = useState(null);
+    const [newPasswordInfo, setNewPasswordInfo] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const openModal = (user = null) => { setEditingUser(user); setIsModalOpen(true); };
 	const handleSuccess = () => { setIsModalOpen(false); setEditingUser(null); setSuspendingUser(null); reload(); };
 
-    const performResetPassword = async (user) => {
+    const performResetPassword = async () => {
+        if (!resettingUser) return;
+        setIsSubmitting(true);
         try {
-            const result = await apiClient.post(`/users/${user.id}/reset-password`);
+            const result = await apiClient.post(`/users/${resettingUser.id}/reset-password`);
             if (result.success) {
-                const message = `Das neue Passwort für ${result.data.username} ist: ${result.data.newPassword}\n\nBitte geben Sie es sicher weiter.`;
-                if (Platform.OS === 'web') {
-                    alert(message);
-                } else {
-                    Alert.alert('Passwort zurückgesetzt', message, [{ text: 'OK' }]);
-                }
+                setNewPasswordInfo({ username: result.data.username, newPassword: result.data.newPassword });
                 addToast('Passwort zurückgesetzt.', 'success');
             } else { throw new Error(result.message); }
         } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
-    };
-
-	const handleResetPassword = (user) => {
-        console.log("Reset Password button pressed for user:", user.username);
-        const title = `Passwort für ${user.username} zurücksetzen?`;
-        const message = "Ein neues, temporäres Passwort wird generiert.";
-        
-        if (Platform.OS === 'web') {
-            if (window.confirm(`${title}\n\n${message}`)) {
-                performResetPassword(user);
-            }
-        } else {
-            Alert.alert(title, message, [
-                { text: 'Abbrechen', style: 'cancel' },
-                { text: 'Zurücksetzen', onPress: () => performResetPassword(user) },
-            ]);
+        finally {
+            setIsSubmitting(false);
+            setResettingUser(null);
         }
-	};
+    };
     
-    const performUnsuspend = async (user) => {
+    const performUnsuspend = async () => {
+        if (!unsuspendingUser) return;
+        setIsSubmitting(true);
         try {
-            const result = await apiClient.post(`/admin/users/${user.id}/unsuspend`);
+            const result = await apiClient.post(`/admin/users/${unsuspendingUser.id}/unsuspend`);
             if (result.success) {
                 addToast('Benutzer erfolgreich entsperrt.', 'success');
                 reload();
             } else { throw new Error(result.message); }
         } catch (err) { addToast(`Entsperren fehlgeschlagen: ${err.message}`, 'error'); }
-    };
-
-    const handleUnsuspend = (user) => {
-        console.log("Unsuspend button pressed for user:", user.username);
-        const title = `Benutzer "${user.username}" entsperren?`;
-        const message = "Die Sperre des Benutzers wird aufgehoben und alle Anmeldeversuche werden zurückgesetzt.";
-
-        if (Platform.OS === 'web') {
-            if(window.confirm(`${title}\n\n${message}`)) {
-                performUnsuspend(user);
-            }
-        } else {
-            Alert.alert(title, message, [
-                { text: 'Abbrechen', style: 'cancel' },
-                { text: 'Entsperren', onPress: () => performUnsuspend(user) },
-            ]);
+        finally {
+            setIsSubmitting(false);
+            setUnsuspendingUser(null);
         }
     };
 
-    const performDelete = async (userToDelete) => {
+    const performDelete = async () => {
+        if (!deletingUser) return;
+        setIsSubmitting(true);
         try {
-            const result = await apiClient.delete(`/users/${userToDelete.id}`);
+            const result = await apiClient.delete(`/users/${deletingUser.id}`);
             if (result.success) {
                 addToast('Benutzer erfolgreich gelöscht.', 'success');
                 reload();
             } else { throw new Error(result.message); }
         } catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
-    };
-
-    const handleDelete = (userToDelete) => {
-        console.log("Delete button pressed for user:", userToDelete.username);
-        const title = `Benutzer "${userToDelete.username}" löschen?`;
-        const message = "Diese Aktion kann nicht rückgängig gemacht werden.";
-
-        if (Platform.OS === 'web') {
-            if (window.confirm(`${title}\n\n${message}`)) {
-                performDelete(userToDelete);
-            }
-        } else {
-            Alert.alert(title, message, [
-                { text: 'Abbrechen', style: 'cancel' },
-                { text: 'Löschen', style: 'destructive', onPress: () => performDelete(userToDelete) },
-            ]);
+        finally {
+            setIsSubmitting(false);
+            setDeletingUser(null);
         }
-    };
-
-    const handleSuspend = (user) => {
-        console.log("Suspend button pressed for user:", user.username);
-        setSuspendingUser(user);
     };
     
     const renderItem = ({ item: user }) => {
@@ -218,23 +199,23 @@ const AdminUsersPage = () => {
                         <Icon name="id-card" size={14} color={colors.text} />
                         <Text style={styles.actionButtonText}>Profil</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton} onPress={() => handleResetPassword(user)}>
+                    <TouchableOpacity style={styles.actionButton} onPress={() => setResettingUser(user)}>
                         <Icon name="key" size={14} color={colors.text} />
                         <Text style={styles.actionButtonText}>Reset PW</Text>
                     </TouchableOpacity>
                     {isLocked ? (
-                        <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.success}]} onPress={() => handleUnsuspend(user)}>
+                        <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.success}]} onPress={() => setUnsuspendingUser(user)}>
                             <Icon name="unlock" size={14} color={colors.white} />
                             <Text style={[styles.actionButtonText, {color: colors.white}]}>Entsperren</Text>
                         </TouchableOpacity>
                     ) : (
-                        <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.warning}, !canSuspend && styles.disabledButton]} onPress={() => handleSuspend(user)} disabled={!canSuspend}>
+                        <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.warning}, !canSuspend && styles.disabledButton]} onPress={() => setSuspendingUser(user)} disabled={!canSuspend}>
                             <Icon name="user-lock" size={14} color={colors.black} />
                             <Text style={[styles.actionButtonText, {color: colors.black}]}>Sperren</Text>
                         </TouchableOpacity>
                     )}
                     {canDelete && (
-                         <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.danger}]} onPress={() => handleDelete(user)}>
+                         <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.danger}]} onPress={() => setDeletingUser(user)}>
                             <Icon name="trash" size={14} color="#fff" />
                             <Text style={[styles.actionButtonText, {color: '#fff'}]}>Löschen</Text>
                          </TouchableOpacity>
@@ -255,6 +236,41 @@ const AdminUsersPage = () => {
 			{users?.map(user => renderItem({item: user}))}
 			{isModalOpen && !adminFormData.loading && <UserModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} user={editingUser} roles={adminFormData.roles} groupedPermissions={adminFormData.groupedPermissions} />}
             {suspendingUser && <SuspendUserModal isOpen={!!suspendingUser} onClose={() => setSuspendingUser(null)} onSuccess={handleSuccess} user={suspendingUser} />}
+            {newPasswordInfo && <PasswordDisplayModal isOpen={!!newPasswordInfo} onClose={() => setNewPasswordInfo(null)} username={newPasswordInfo.username} newPassword={newPasswordInfo.newPassword} />}
+            {resettingUser && (
+                <ConfirmationModal
+                    isOpen={!!resettingUser}
+                    onClose={() => setResettingUser(null)}
+                    onConfirm={performResetPassword}
+                    title={`Passwort für ${resettingUser.username} zurücksetzen?`}
+                    message="Ein neues, temporäres Passwort wird generiert und angezeigt. Geben Sie es sicher an den Benutzer weiter."
+                    confirmText="Zurücksetzen"
+                    isSubmitting={isSubmitting}
+                />
+            )}
+            {unsuspendingUser && (
+                <ConfirmationModal
+                    isOpen={!!unsuspendingUser}
+                    onClose={() => setUnsuspendingUser(null)}
+                    onConfirm={performUnsuspend}
+                    title={`Benutzer "${unsuspendingUser.username}" entsperren?`}
+                    message="Die Sperre des Benutzers wird aufgehoben und alle Anmeldeversuche werden zurückgesetzt."
+                    confirmText="Entsperren"
+                    confirmButtonVariant="success"
+                    isSubmitting={isSubmitting}
+                />
+            )}
+            {deletingUser && (
+                <ConfirmationModal
+                    isOpen={!!deletingUser}
+                    onClose={() => setDeletingUser(null)}
+                    onConfirm={performDelete}
+                    title={`Benutzer "${deletingUser.username}" löschen?`}
+                    message="Diese Aktion kann nicht rückgängig gemacht werden."
+                    confirmText="Löschen"
+                    isSubmitting={isSubmitting}
+                />
+            )}
 		</ScrollableContent>
 	);
 };

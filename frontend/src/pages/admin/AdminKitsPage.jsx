@@ -1,24 +1,20 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Linking, Platform } from 'react-native';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Linking, Platform, TextInput } from 'react-native';
 import useApi from '../../hooks/useApi';
 import useAdminData from '../../hooks/useAdminData';
 import apiClient from '../../services/apiClient';
 import KitModal from '../../components/admin/kits/KitModal';
 import KitItemsForm from '../../components/admin/kits/KitItemsForm';
-import Modal from '../../components/ui/Modal';
-import QRCode from 'react-native-qrcode-svg';
 import { useToast } from '../../context/ToastContext';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
-import { getThemeColors, typography } from '../../styles/theme';
-import Clipboard from '@react-native-clipboard/clipboard';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
+import { getThemeColors, typography, spacing } from '../../styles/theme';
 import ShareModal from '../../components/ui/ShareModal';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import AccordionSection from '../../components/ui/AccordionSection';
 
-const KitAccordion = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems, storageReady }) => {
-	const [isOpen, setIsOpen] = useState(false);
+const KitListItem = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems, storageReady }) => {
 	const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
     const getPackKitUrl = () => {
@@ -26,38 +22,30 @@ const KitAccordion = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems, s
         return `${baseUrl}/pack-kit/${kit.id}`;
     };
     const theme = useAuthStore(state => state.theme);
-    const styles = getCommonStyles(theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
 	return (
-		<View style={styles.card}>
-			<TouchableOpacity onPress={() => setIsOpen(!isOpen)} style={styles.accordionHeader}>
-				<View style={{flexDirection: 'row', alignItems: 'center', flex: 1}}>
-                    <Icon name={isOpen ? 'chevron-down' : 'chevron-right'} size={16} />
-                    <View style={{marginLeft: 12}}>
-                        <Text style={styles.cardTitle}>{kit.name}</Text>
-                        <Text style={styles.subtitle}>{kit.description}</Text>
-                    </View>
+        <>
+            <AccordionSection title={kit.name}>
+                {!storageReady ? <ActivityIndicator /> : (
+                    <KitItemsForm kit={kit} allStorageItems={allStorageItems} onUpdateSuccess={onItemsUpdate} />
+                )}
+                <View style={styles.cardActions}>
+                    <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => setIsShareModalOpen(true)}>
+                        <Icon name="qrcode" size={14} color={colors.white} />
+                        <Text style={styles.buttonText}> QR-Code</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => onEdit(kit)}>
+                        <Icon name="edit" size={14} color={colors.white} />
+                        <Text style={styles.buttonText}> Bearbeiten</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => onDelete(kit)}>
+                         <Icon name="trash" size={14} color={colors.danger} />
+                        <Text style={styles.dangerOutlineButtonText}> Löschen</Text>
+                    </TouchableOpacity>
                 </View>
-                <TouchableOpacity style={[styles.button, {backgroundColor: getThemeColors(theme).primaryLight}]} onPress={() => setIsShareModalOpen(true)}>
-                    <Text style={{color: getThemeColors(theme).primary}}>QR-Code</Text>
-                </TouchableOpacity>
-			</TouchableOpacity>
-
-			{isOpen && (
-				<View style={styles.accordionContent}>
-					{!storageReady ? <ActivityIndicator /> : (
-						<KitItemsForm kit={kit} allStorageItems={allStorageItems} onUpdateSuccess={onItemsUpdate} />
-					)}
-                    <View style={styles.cardActions}>
-                        <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => onEdit(kit)}>
-                            <Text style={styles.buttonText}>Bearbeiten</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => onDelete(kit)}>
-                            <Text style={styles.dangerOutlineButtonText}>Löschen</Text>
-                        </TouchableOpacity>
-                    </View>
-				</View>
-			)}
+            </AccordionSection>
             
             {isShareModalOpen && (
                 <ShareModal
@@ -70,7 +58,7 @@ const KitAccordion = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems, s
                     shareUrl={getPackKitUrl()}
                 />
             )}
-		</View>
+        </>
 	);
 };
 
@@ -80,9 +68,17 @@ const AdminKitsPage = () => {
 	const { storageItems, loading: storageItemsLoading, error: storageItemsError } = useAdminData();
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingKit, setEditingKit] = useState(null);
+    const [deletingKit, setDeletingKit] = useState(null);
+    const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
-    const styles = getCommonStyles(theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+
+    const filteredKits = useMemo(() => {
+        if (!kits) return [];
+        return kits.filter(kit => kit.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    }, [kits, searchTerm]);
 
 	const openModal = (kit = null) => {
 		setEditingKit(kit);
@@ -95,27 +91,28 @@ const AdminKitsPage = () => {
 		reload();
 	};
 
-	const handleDelete = (kit) => {
-        Alert.alert(`Kit "${kit.name}" löschen?`, "Diese Aktion kann nicht rückgängig gemacht werden.", [
-			{ text: 'Abbrechen', style: 'cancel' },
-			{ text: 'Löschen', style: 'destructive', onPress: async () => {
-				try {
-					const result = await apiClient.delete(`/kits/${kit.id}`);
-					if (result.success) {
-						addToast('Kit erfolgreich gelöscht.', 'success');
-						reload();
-					} else { throw new Error(result.message); }
-				} catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
-			}},
-		]);
-	};
+    const confirmDelete = async () => {
+        if (!deletingKit) return;
+        setIsSubmittingDelete(true);
+        try {
+            const result = await apiClient.delete(`/kits/${deletingKit.id}`);
+            if (result.success) {
+                addToast('Kit erfolgreich gelöscht.', 'success');
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
+        finally {
+            setIsSubmittingDelete(false);
+            setDeletingKit(null);
+        }
+    };
     
     const renderItem = ({ item }) => (
-        <KitAccordion
+        <KitListItem
             kit={item}
             onEdit={openModal}
-            onDelete={handleDelete}
-            onItemsUpdate={() => addToast('Kit-Inhalt gespeichert.', 'success')}
+            onDelete={() => setDeletingKit(item)}
+            onItemsUpdate={reload}
             allStorageItems={storageItems || []}
             storageReady={!storageItemsLoading}
         />
@@ -129,16 +126,23 @@ const AdminKitsPage = () => {
 			<View style={styles.contentContainer}>
                 <Text style={styles.title}><Icon name="box-open" size={24} /> Kit-Verwaltung</Text>
                 <Text style={styles.subtitle}>Verwalten Sie hier wiederverwendbare Material-Zusammenstellungen.</Text>
-                <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => openModal()}>
+                <TouchableOpacity style={[styles.button, styles.successButton, {alignSelf: 'flex-start'}]} onPress={() => openModal()}>
+                    <Icon name="plus" size={16} color="#fff"/>
                     <Text style={styles.buttonText}>Neues Kit anlegen</Text>
                 </TouchableOpacity>
+                 <TextInput
+                    style={[styles.input, {marginTop: spacing.md}]}
+                    placeholder="Kit suchen..."
+                    value={searchTerm}
+                    onChangeText={setSearchTerm}
+                />
             </View>
 
             {loading && <ActivityIndicator size="large" style={{marginTop: 20}} />}
 			{error && <Text style={styles.errorText}>{error}</Text>}
 			
             <FlatList
-                data={kits}
+                data={filteredKits}
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
                 contentContainerStyle={{ padding: 16 }}
@@ -147,8 +151,29 @@ const AdminKitsPage = () => {
 			{isModalOpen && (
 				<KitModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} kit={editingKit} />
 			)}
+            {deletingKit && (
+                <ConfirmationModal
+                    isOpen={!!deletingKit}
+                    onClose={() => setDeletingKit(null)}
+                    onConfirm={confirmDelete}
+                    title={`Kit "${deletingKit.name}" löschen?`}
+                    message="Diese Aktion kann nicht rückgängig gemacht werden."
+                    confirmText="Löschen"
+                    confirmButtonVariant="danger"
+                    isSubmitting={isSubmittingDelete}
+                />
+            )}
 		</View>
 	);
+};
+
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        accordionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 0 },
+        accordionContent: { paddingTop: spacing.md, borderTopWidth: 1, borderColor: colors.border, marginTop: spacing.md },
+        cardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm, marginTop: spacing.md },
+    });
 };
 
 export default AdminKitsPage;

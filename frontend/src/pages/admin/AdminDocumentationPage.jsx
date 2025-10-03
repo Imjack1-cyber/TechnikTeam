@@ -10,6 +10,7 @@ import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography } from '../../styles/theme';
 import DocumentationModal from '../../components/admin/documentation/DocumentationModal';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const AdminDocumentationPage = () => {
     const navigation = useNavigation();
@@ -21,6 +22,8 @@ const AdminDocumentationPage = () => {
 
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingDoc, setEditingDoc] = useState(null);
+    const [deletingDoc, setDeletingDoc] = useState(null);
+    const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
 	const { addToast } = useToast();
 
 	const openModal = (doc = null) => {
@@ -34,17 +37,18 @@ const AdminDocumentationPage = () => {
         reload();
     };
 
-	const handleDelete = (doc) => {
-        Alert.alert(`Doku löschen?`, `"${doc.title}" wirklich löschen?`, [
-            { text: 'Abbrechen', style: 'cancel' },
-            { text: 'Löschen', style: 'destructive', onPress: async () => {
-                try {
-                    await apiClient.delete(`/admin/documentation/${doc.id}`);
-                    addToast('Dokumentation gelöscht', 'success');
-                    reload();
-                } catch (err) { addToast(err.message, 'error'); }
-            }}
-        ]);
+	const confirmDelete = async () => {
+        if (!deletingDoc) return;
+        setIsSubmittingDelete(true);
+        try {
+            await apiClient.delete(`/admin/documentation/${deletingDoc.id}`);
+            addToast('Dokumentation gelöscht', 'success');
+            reload();
+        } catch (err) { addToast(err.message, 'error'); }
+        finally {
+            setIsSubmittingDelete(false);
+            setDeletingDoc(null);
+        }
 	};
 
     const renderItem = ({ item }) => (
@@ -55,7 +59,7 @@ const AdminDocumentationPage = () => {
             <View style={styles.detailRow}><Text style={styles.label}>Sichtbarkeit:</Text><Text style={styles.value}>{item.adminOnly ? 'Admin' : 'Alle'}</Text></View>
             <View style={styles.cardActions}>
                 <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => openModal(item)}><Text style={styles.buttonText}>Bearbeiten</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => handleDelete(item)}><Text style={styles.dangerOutlineButtonText}>Löschen</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => setDeletingDoc(item)}><Text style={styles.dangerOutlineButtonText}>Löschen</Text></TouchableOpacity>
             </View>
         </View>
     );
@@ -82,6 +86,17 @@ const AdminDocumentationPage = () => {
             />
 
             <DocumentationModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} doc={editingDoc} allDocs={docs || []} />
+            {deletingDoc && (
+                 <ConfirmationModal
+                    isOpen={!!deletingDoc}
+                    onClose={() => setDeletingDoc(null)}
+                    onConfirm={confirmDelete}
+                    title="Dokumentation löschen?"
+                    message={`Die Hilfeseite "${deletingDoc.title}" wirklich löschen?`}
+                    confirmText="Löschen"
+                    isSubmitting={isSubmittingDelete}
+                />
+            )}
 		</View>
 	);
 };

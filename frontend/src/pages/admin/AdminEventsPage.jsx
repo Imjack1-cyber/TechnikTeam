@@ -7,7 +7,7 @@ import useAdminData from '../../hooks/useAdminData';
 import EventModal from '../../components/admin/events/EventModal';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { useToast } from '../../context/ToastContext';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
@@ -45,7 +45,7 @@ const AdminEventsPage = () => {
             const result = await apiClient.post(`/events/${cloningEvent.id}/clone`);
             if (result.success) {
                 addToast('Event erfolgreich geklont.', 'success');
-                navigation.navigate('EventDetails', { eventId: result.data.id });
+                navigation.navigate('Veranstaltungen', { screen: 'EventDetails', params: { eventId: result.data.id } });
             } else { throw new Error(result.message); }
         } catch (err) { addToast(`Klonen fehlgeschlagen: ${err.message}`, 'error'); }
         finally {
@@ -72,7 +72,7 @@ const AdminEventsPage = () => {
     
     const renderItem = ({ item }) => (
         <View style={styles.card}>
-            <TouchableOpacity onPress={() => navigation.navigate('EventDetails', { eventId: item.id })}>
+            <TouchableOpacity onPress={() => navigation.navigate('Veranstaltungen', { screen: 'EventDetails', params: { eventId: item.id } })}>
                 <Text style={styles.cardTitle}>{item.name}</Text>
             </TouchableOpacity>
             <View style={styles.detailRow}><Text style={styles.label}>Datum:</Text><Text style={styles.value}>{new Date(item.eventDateTime).toLocaleString('de-DE')}</Text></View>
@@ -80,7 +80,7 @@ const AdminEventsPage = () => {
             <View style={styles.actionsContainer}>
                 <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => openModal(item)}><Text style={styles.buttonText}>Bearbeiten</Text></TouchableOpacity>
                 <TouchableOpacity style={[styles.button, {backgroundColor: colors.primaryLight}]} onPress={() => setCloningEvent(item)}><Text style={{color: colors.primary}}>Klonen</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.button, {backgroundColor: colors.info}]} onPress={() => navigation.navigate('EventDetails', { eventId: item.id })}><Text style={styles.buttonText}>Details</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.button, {backgroundColor: colors.info}]} onPress={() => navigation.navigate('Veranstaltungen', { screen: 'EventDetails', params: { eventId: item.id } })}><Text style={styles.buttonText}>Details</Text></TouchableOpacity>
                 <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => setDeletingEvent(item)}><Text style={styles.dangerOutlineButtonText}>Löschen</Text></TouchableOpacity>
             </View>
         </View>

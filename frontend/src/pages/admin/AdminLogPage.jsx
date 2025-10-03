@@ -9,6 +9,7 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import { Picker } from '@react-native-picker/picker';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const AdminLogPage = () => {
 	const navigation = useNavigation();
@@ -26,6 +27,8 @@ const AdminLogPage = () => {
     const [selectedUser, setSelectedUser] = useState('');
     const [selectedAction, setSelectedAction] = useState('');
     const [showOnlyRevocable, setShowOnlyRevocable] = useState(false);
+    const [revokingLog, setRevokingLog] = useState(null);
+    const [isSubmittingRevoke, setIsSubmittingRevoke] = useState(false);
 
 	const canRevoke = isAdmin || user?.permissions.includes('LOG_REVOKE');
 
@@ -51,23 +54,20 @@ const AdminLogPage = () => {
     }, [logs, searchTerm, selectedUser, selectedAction, showOnlyRevocable]);
 
 
-	const handleRevoke = (log) => {
-        Alert.alert(
-            `Aktion widerrufen?`,
-            `Möchten Sie die Aktion "${log.actionType}" (ID: ${log.id}) wirklich widerrufen? Dies führt die entsprechende Gegenaktion aus.`,
-            [
-                { text: 'Abbrechen', style: 'cancel' },
-                { text: 'Widerrufen', style: 'destructive', onPress: async () => {
-                    try {
-                        const result = await apiClient.post(`/logs/${log.id}/revoke`);
-                        if (result.success) {
-                            addToast('Aktion erfolgreich widerrufen.', 'success');
-                            reload();
-                        } else { throw new Error(result.message); }
-                    } catch (err) { addToast(`Widerrufen fehlgeschlagen: ${err.message}`, 'error'); }
-                }}
-            ]
-        );
+	const confirmRevoke = async () => {
+        if (!revokingLog) return;
+        setIsSubmittingRevoke(true);
+        try {
+            const result = await apiClient.post(`/logs/${revokingLog.id}/revoke`);
+            if (result.success) {
+                addToast('Aktion erfolgreich widerrufen.', 'success');
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Widerrufen fehlgeschlagen: ${err.message}`, 'error'); }
+        finally {
+            setIsSubmittingRevoke(false);
+            setRevokingLog(null);
+        }
 	};
 
     const renderItem = ({ item: log }) => {
@@ -97,7 +97,7 @@ const AdminLogPage = () => {
                 <Text style={styles.detailsText}>{log.details}</Text>
                 {canRevoke && (
                     <View style={styles.cardActions}>
-                        <TouchableOpacity style={[styles.button, {backgroundColor: getThemeColors(theme).warning}, isRevocable ? {} : styles.disabledButton]} onPress={() => handleRevoke(log)} disabled={!isRevocable}>
+                        <TouchableOpacity style={[styles.button, {backgroundColor: getThemeColors(theme).warning}, isRevocable ? {} : styles.disabledButton]} onPress={() => setRevokingLog(log)} disabled={!isRevocable}>
                             <Text style={{color: '#000'}}>Widerrufen</Text>
                         </TouchableOpacity>
                     </View>
@@ -149,6 +149,18 @@ const AdminLogPage = () => {
                 contentContainerStyle={styles.contentContainer}
                 ListEmptyComponent={<View style={styles.card}><Text>Keine Log-Einträge gefunden, die den Filtern entsprechen.</Text></View>}
             />
+            {revokingLog && (
+                <ConfirmationModal
+                    isOpen={!!revokingLog}
+                    onClose={() => setRevokingLog(null)}
+                    onConfirm={confirmRevoke}
+                    title="Aktion widerrufen?"
+                    message={`Möchten Sie die Aktion "${revokingLog.actionType}" (ID: ${revokingLog.id}) wirklich widerrufen? Dies führt die entsprechende Gegenaktion aus und kann nicht rückgängig gemacht werden.`}
+                    confirmText="Widerrufen"
+                    confirmButtonVariant="danger"
+                    isSubmitting={isSubmittingRevoke}
+                />
+            )}
 		</View>
 	);
 };

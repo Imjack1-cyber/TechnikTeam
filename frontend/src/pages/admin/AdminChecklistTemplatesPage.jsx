@@ -9,6 +9,8 @@ import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import { Picker } from '@react-native-picker/picker';
+import AdminModal from '../../components/ui/AdminModal';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const TemplateModal = ({ isOpen, onClose, onSuccess, template, allStorageItems }) => {
     const theme = useAuthStore(state => state.theme);
@@ -122,6 +124,8 @@ const AdminChecklistTemplatesPage = () => {
 	const { data: allStorageItems, loading: itemsLoading } = useApi(storageItemsApiCall);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingTemplate, setEditingTemplate] = useState(null);
+    const [deletingTemplate, setDeletingTemplate] = useState(null);
+    const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const commonStyles = getCommonStyles(theme);
@@ -129,19 +133,20 @@ const AdminChecklistTemplatesPage = () => {
 
 	const openModal = (template = null) => { setEditingTemplate(template); setIsModalOpen(true); };
 
-	const handleDelete = (template) => {
-        Alert.alert(`Vorlage "${template.name}" löschen?`, "", [
-            { text: 'Abbrechen', style: 'cancel' },
-            { text: 'Löschen', style: 'destructive', onPress: async () => {
-                try {
-                    const result = await apiClient.delete(`/admin/checklist-templates/${template.id}`);
-                    if (result.success) {
-                        addToast('Vorlage gelöscht', 'success');
-                        reload();
-                    } else { throw new Error(result.message); }
-                } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
-            }},
-        ]);
+	const confirmDelete = async () => {
+        if (!deletingTemplate) return;
+        setIsSubmittingDelete(true);
+        try {
+            const result = await apiClient.delete(`/admin/checklist-templates/${deletingTemplate.id}`);
+            if (result.success) {
+                addToast('Vorlage gelöscht', 'success');
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
+        finally {
+            setIsSubmittingDelete(false);
+            setDeletingTemplate(null);
+        }
 	};
     
     const renderItem = ({ item }) => (
@@ -151,7 +156,7 @@ const AdminChecklistTemplatesPage = () => {
             <View style={styles.detailRow}><Text style={styles.label}>Anzahl Items:</Text><Text style={styles.value}>{item.items?.length || 0}</Text></View>
             <View style={styles.cardActions}>
                 <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => openModal(item)}><Text style={styles.buttonText}>Bearbeiten</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => handleDelete(item)}><Text style={styles.dangerOutlineButtonText}>Löschen</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => setDeletingTemplate(item)}><Text style={styles.dangerOutlineButtonText}>Löschen</Text></TouchableOpacity>
             </View>
         </View>
     );
@@ -163,7 +168,10 @@ const AdminChecklistTemplatesPage = () => {
 			    <Text style={styles.title}>Checklisten-Vorlagen</Text>
             </View>
 			<Text style={styles.subtitle}>Verwalten Sie hier Vorlagen für wiederverwendbare Checklisten.</Text>
-            <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => openModal()}><Icon name="plus" size={16} color="#fff" /><Text style={styles.buttonText}>Neue Vorlage</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.button, styles.successButton, { alignSelf: 'flex-start', marginHorizontal: 16, marginBottom: 16}]} onPress={() => openModal()}>
+                <Icon name="plus" size={16} color="#fff" />
+                <Text style={styles.buttonText}>Neue Vorlage</Text>
+            </TouchableOpacity>
 
 			{loading && <ActivityIndicator size="large" />}
 			{error && <Text style={styles.errorText}>{error}</Text>}
@@ -178,6 +186,18 @@ const AdminChecklistTemplatesPage = () => {
 			{isModalOpen && !itemsLoading && (
 				<TemplateModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); reload(); }} template={editingTemplate} allStorageItems={allStorageItems || []} />
 			)}
+            {deletingTemplate && (
+                <ConfirmationModal
+                    isOpen={!!deletingTemplate}
+                    onClose={() => setDeletingTemplate(null)}
+                    onConfirm={confirmDelete}
+                    title={`Vorlage "${deletingTemplate.name}" löschen?`}
+                    message="Diese Aktion kann nicht rückgängig gemacht werden."
+                    confirmText="Löschen"
+                    confirmButtonVariant="danger"
+                    isSubmitting={isSubmittingDelete}
+                />
+            )}
 		</View>
 	);
 };

@@ -9,6 +9,7 @@ import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import AdminModal from '../../components/ui/AdminModal';
 import { Picker } from '@react-native-picker/picker';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const AchievementModal = ({ isOpen, onClose, onSuccess, achievement }) => {
     const theme = useAuthStore(state => state.theme);
@@ -129,6 +130,8 @@ const AdminAchievementsPage = () => {
 	const { data: achievements, loading, error, reload } = useApi(apiCall, { subscribeTo: 'ACHIEVEMENT' });
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingAchievement, setEditingAchievement] = useState(null);
+    const [deletingAchievement, setDeletingAchievement] = useState(null);
+    const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
     const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
@@ -139,19 +142,20 @@ const AdminAchievementsPage = () => {
 		setIsModalOpen(true);
 	};
     
-    const handleDelete = (achievement) => {
-        Alert.alert(`Abzeichen "${achievement.name}" löschen?`, "Diese Aktion kann nicht rückgängig gemacht werden.", [
-            { text: 'Abbrechen', style: 'cancel' },
-            { text: 'Löschen', style: 'destructive', onPress: async () => {
-                try {
-                    const result = await apiClient.delete(`/achievements/${achievement.id}`);
-                    if (result.success) {
-                        addToast('Abzeichen gelöscht', 'success');
-                        reload();
-                    } else { throw new Error(result.message); }
-                } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
-            }},
-        ]);
+    const confirmDelete = async () => {
+        if (!deletingAchievement) return;
+        setIsSubmittingDelete(true);
+        try {
+            const result = await apiClient.delete(`/achievements/${deletingAchievement.id}`);
+            if (result.success) {
+                addToast('Abzeichen gelöscht', 'success');
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
+        finally {
+            setIsSubmittingDelete(false);
+            setDeletingAchievement(null);
+        }
     };
     
     const renderItem = ({ item }) => (
@@ -169,7 +173,7 @@ const AdminAchievementsPage = () => {
                 <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => openModal(item)}>
                     <Text style={styles.buttonText}>Bearbeiten</Text>
                 </TouchableOpacity>
-                 <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => handleDelete(item)}>
+                 <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => setDeletingAchievement(item)}>
                     <Text style={styles.dangerOutlineButtonText}>Löschen</Text>
                 </TouchableOpacity>
             </View>
@@ -204,6 +208,18 @@ const AdminAchievementsPage = () => {
 			{isModalOpen && (
 				<AchievementModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); reload(); }} achievement={editingAchievement} />
 			)}
+            {deletingAchievement && (
+                <ConfirmationModal
+                    isOpen={!!deletingAchievement}
+                    onClose={() => setDeletingAchievement(null)}
+                    onConfirm={confirmDelete}
+                    title={`Abzeichen "${deletingAchievement.name}" löschen?`}
+                    message="Diese Aktion kann nicht rückgängig gemacht werden."
+                    confirmText="Löschen"
+                    confirmButtonVariant="danger"
+                    isSubmitting={isSubmittingDelete}
+                />
+            )}
 		</View>
 	);
 };

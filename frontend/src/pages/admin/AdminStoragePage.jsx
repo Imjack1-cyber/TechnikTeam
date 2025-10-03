@@ -12,6 +12,7 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography } from '../../styles/theme';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const HealthIndicator = ({ item }) => {
 	let color = '#28a745'; // success
@@ -27,6 +28,8 @@ const AdminStoragePage = () => {
 	const [modalState, setModalState] = useState({ isOpen: false, item: null, mode: 'edit' });
 	const [lightboxSrc, setLightboxSrc] = useState('');
 	const [qrCodeItem, setQrCodeItem] = useState(null);
+    const [deletingItem, setDeletingItem] = useState(null);
+    const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
@@ -34,29 +37,19 @@ const AdminStoragePage = () => {
 	const openModal = (mode, item = null) => setModalState({ isOpen: true, item, mode });
 	const handleSuccess = () => { setModalState({ isOpen: false, item: null, mode: 'edit' }); reload(); };
 
-	const handleDelete = (item) => {
-        const title = `Artikel "${item.name}" löschen?`;
-        const message = "Diese Aktion kann nicht rückgängig gemacht werden.";
-
-        const performDelete = async () => {
-            try {
-                const result = await apiClient.delete(`/storage/${item.id}`);
-                if (result.success) {
-                    addToast('Artikel gelöscht.', 'success');
-                    reload();
-                } else { throw new Error(result.message); }
-            } catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
-        };
-
-        if (Platform.OS === 'web') {
-            if (window.confirm(`${title}\n\n${message}`)) {
-                performDelete();
-            }
-        } else {
-            Alert.alert(title, message, [
-                { text: 'Abbrechen', style: 'cancel' },
-                { text: 'Löschen', style: 'destructive', onPress: performDelete },
-            ]);
+	const confirmDelete = async () => {
+        if (!deletingItem) return;
+        setIsSubmittingDelete(true);
+        try {
+            const result = await apiClient.delete(`/storage/${deletingItem.id}`);
+            if (result.success) {
+                addToast('Artikel gelöscht.', 'success');
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
+        finally {
+            setIsSubmittingDelete(false);
+            setDeletingItem(null);
         }
 	};
 
@@ -86,7 +79,7 @@ const AdminStoragePage = () => {
                     <TouchableOpacity style={styles.actionButton} onPress={() => openModal('repair', item)}><Text>Repariert</Text></TouchableOpacity>
                 )}
                 <TouchableOpacity style={styles.actionButton} onPress={() => setQrCodeItem(item)}><Text>QR</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.actionButton} onPress={() => handleDelete(item)}><Text style={{color: getThemeColors(theme).danger}}>Löschen</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.actionButton} onPress={() => setDeletingItem(item)}><Text style={{color: getThemeColors(theme).danger}}>Löschen</Text></TouchableOpacity>
             </View>
         </View>
     );
@@ -118,6 +111,18 @@ const AdminStoragePage = () => {
 				</Modal>
 			)}
 			{lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc('')} />}
+            {deletingItem && (
+                 <ConfirmationModal
+                    isOpen={!!deletingItem}
+                    onClose={() => setDeletingItem(null)}
+                    onConfirm={confirmDelete}
+                    title={`Artikel "${deletingItem.name}" löschen?`}
+                    message="Diese Aktion kann nicht rückgängig gemacht werden."
+                    confirmText="Löschen"
+                    confirmButtonVariant="danger"
+                    isSubmitting={isSubmittingDelete}
+                />
+            )}
 		</View>
 	);
 };

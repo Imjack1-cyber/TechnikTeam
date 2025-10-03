@@ -4,10 +4,11 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../context/ToastContext';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import { RadioButton } from 'react-native-paper';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const AdminAuthLogPage = () => {
     const apiCall = useCallback(() => apiClient.get('/admin/auth-log'), []);
@@ -21,6 +22,8 @@ const AdminAuthLogPage = () => {
     const [showFilter, setShowFilter] = useState('ACTIVE');
     const [userFilter, setUserFilter] = useState('');
     const [ipFilter, setIpFilter] = useState('');
+    const [revokingSession, setRevokingSession] = useState(null);
+    const [isSubmittingRevoke, setIsSubmittingRevoke] = useState(false);
 
     const isSessionActive = useCallback((log) => log.eventType === 'LOGIN_SUCCESS' && !log.revoked && log.tokenExpiry && new Date(log.tokenExpiry) > new Date(), []);
 
@@ -34,19 +37,20 @@ const AdminAuthLogPage = () => {
         });
     }, [logs, showFilter, userFilter, ipFilter, isSessionActive]);
 
-    const handleForceLogout = (jti) => {
-        Alert.alert('Sitzung beenden?', 'Der Benutzer wird bei der nächsten Aktion ausgeloggt.', [
-            { text: 'Abbrechen', style: 'cancel'},
-            { text: 'Beenden', style: 'destructive', onPress: async () => {
-                try {
-                    const result = await apiClient.post('/admin/auth-log/revoke-session', { jti });
-                    if (result.success) {
-                        addToast('Sitzung erfolgreich widerrufen.', 'success');
-                        reload();
-                    } else { throw new Error(result.message); }
-                } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
-            }}
-        ]);
+    const confirmForceLogout = async () => {
+        if (!revokingSession) return;
+        setIsSubmittingRevoke(true);
+        try {
+            const result = await apiClient.post('/admin/auth-log/revoke-session', { jti: revokingSession.jti });
+            if (result.success) {
+                addToast('Sitzung erfolgreich widerrufen.', 'success');
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
+        finally {
+            setIsSubmittingRevoke(false);
+            setRevokingSession(null);
+        }
     };
 
     const renderItem = ({ item: log }) => {
@@ -58,7 +62,7 @@ const AdminAuthLogPage = () => {
                 <Text>{log.ipAddress} ({log.countryCode || 'N/A'})</Text>
                 <Text><Icon name={log.deviceType === 'Desktop' ? 'desktop' : 'mobile-alt'} /> {log.deviceType}</Text>
                 {isActive && (
-                    <TouchableOpacity style={[styles.button, styles.dangerButton, {marginTop: 8}]} onPress={() => handleForceLogout(log.jti)}>
+                    <TouchableOpacity style={[styles.button, styles.dangerButton, {marginTop: 8}]} onPress={() => setRevokingSession(log)}>
                         <Text style={styles.buttonText}>Logout erzwingen</Text>
                     </TouchableOpacity>
                 )}
@@ -93,6 +97,18 @@ const AdminAuthLogPage = () => {
                 keyExtractor={item => item.id.toString()}
                 contentContainerStyle={styles.contentContainer}
             />
+            {revokingSession && (
+                <ConfirmationModal
+                    isOpen={!!revokingSession}
+                    onClose={() => setRevokingSession(null)}
+                    onConfirm={confirmForceLogout}
+                    title="Sitzung beenden?"
+                    message={`Der Benutzer "${revokingSession.username}" wird bei der nächsten Aktion ausgeloggt.`}
+                    confirmText="Beenden"
+                    confirmButtonVariant="danger"
+                    isSubmitting={isSubmittingRevoke}
+                />
+            )}
 		</View>
 	);
 };
