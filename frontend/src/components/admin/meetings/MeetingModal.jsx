@@ -6,11 +6,10 @@ import { useAuthStore } from '../../../store/authStore';
 import { getCommonStyles } from '../../../styles/commonStyles';
 import { Picker } from '@react-native-picker/picker';
 import useAdminData from '../../../hooks/useAdminData';
-import AdminModal from '../ui/AdminModal';
-import DateTimePickerModal from "react-native-modal-datetime-picker";
-import { format } from 'date-fns';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import AdminModal from '../../ui/AdminModal';
+import { parseISO } from 'date-fns';
 import { getThemeColors } from '../../../styles/theme';
+import DateTimePicker from '../../ui/DateTimePicker';
 
 const MeetingModal = ({ isOpen, onClose, onSuccess, meeting, courseId }) => {
     const theme = useAuthStore(state => state.theme);
@@ -21,17 +20,16 @@ const MeetingModal = ({ isOpen, onClose, onSuccess, meeting, courseId }) => {
     const { addToast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
-    const [isPickerVisible, setPickerVisible] = useState(false);
-    const [pickerTargetField, setPickerTargetField] = useState(null);
+    
     const [formData, setFormData] = useState({
         name: '',
-        meetingDateTime: '',
-        endDateTime: '',
+        meetingDateTime: null,
+        endDateTime: null,
         location: '',
         description: '',
         leaderUserId: '',
         maxParticipants: '',
-        signupDeadline: '',
+        signupDeadline: null,
     });
     
     useEffect(() => {
@@ -39,37 +37,24 @@ const MeetingModal = ({ isOpen, onClose, onSuccess, meeting, courseId }) => {
             if (meeting) {
                 setFormData({
                     name: meeting.name || '',
-                    meetingDateTime: meeting.meetingDateTime?.substring(0, 16) || '',
-                    endDateTime: meeting.endDateTime?.substring(0, 16) || '',
+                    meetingDateTime: meeting.meetingDateTime ? parseISO(meeting.meetingDateTime) : null,
+                    endDateTime: meeting.endDateTime ? parseISO(meeting.endDateTime) : null,
                     location: meeting.location || '',
                     description: meeting.description || '',
                     leaderUserId: meeting.leaderUserId || '',
                     maxParticipants: meeting.maxParticipants?.toString() || '',
-                    signupDeadline: meeting.signupDeadline?.substring(0, 16) || '',
+                    signupDeadline: meeting.signupDeadline ? parseISO(meeting.signupDeadline) : null,
                 });
             } else {
                 setFormData({
-                    name: '', meetingDateTime: '', endDateTime: '', location: '',
-                    description: '', leaderUserId: '', maxParticipants: '', signupDeadline: '',
+                    name: '', meetingDateTime: null, endDateTime: null, location: '',
+                    description: '', leaderUserId: '', maxParticipants: '', signupDeadline: null,
                 });
             }
         }
     }, [meeting, isOpen]);
 
     const handleChange = (name, value) => setFormData(prev => ({ ...prev, [name]: value }));
-
-    const showPicker = (field) => {
-        setPickerTargetField(field);
-        setPickerVisible(true);
-    };
-
-    const hidePicker = () => setPickerVisible(false);
-
-    const handleConfirmDate = (date) => {
-        const formattedDate = format(date, "yyyy-MM-dd'T'HH:mm");
-        handleChange(pickerTargetField, formattedDate);
-        hidePicker();
-    };
 
     const handleSubmit = async () => {
         setIsSubmitting(true);
@@ -103,23 +88,26 @@ const MeetingModal = ({ isOpen, onClose, onSuccess, meeting, courseId }) => {
             <Text style={styles.label}>Name</Text>
             <TextInput style={styles.input} value={formData.name} onChangeText={val => handleChange('name', val)} />
             
-            <Text style={styles.label}>Beginn</Text>
-            <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                <TextInput style={[styles.input, {flex: 1}]} value={formData.meetingDateTime} onChangeText={val => handleChange('meetingDateTime', val)} placeholder="JJJJ-MM-TTTHH:MM" editable={Platform.OS === 'web'}/>
-                <TouchableOpacity onPress={() => showPicker('meetingDateTime')}><Icon name="calendar-alt" size={24} color={colors.primary} style={{marginLeft: 8}}/></TouchableOpacity>
-            </View>
-
-            <Text style={styles.label}>Ende</Text>
-             <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                <TextInput style={[styles.input, {flex: 1}]} value={formData.endDateTime} onChangeText={val => handleChange('endDateTime', val)} placeholder="JJJJ-MM-TTTHH:MM" editable={Platform.OS === 'web'}/>
-                <TouchableOpacity onPress={() => showPicker('endDateTime')}><Icon name="calendar-alt" size={24} color={colors.primary} style={{marginLeft: 8}}/></TouchableOpacity>
-            </View>
+            <DateTimePicker
+                label="Beginn"
+                value={formData.meetingDateTime}
+                onChange={(date) => handleChange('meetingDateTime', date)}
+                mode="datetime"
+            />
             
-            <Text style={styles.label}>Anmeldefrist</Text>
-             <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                <TextInput style={[styles.input, {flex: 1}]} value={formData.signupDeadline} onChangeText={val => handleChange('signupDeadline', val)} placeholder="JJJJ-MM-TTTHH:MM" editable={Platform.OS === 'web'}/>
-                <TouchableOpacity onPress={() => showPicker('signupDeadline')}><Icon name="calendar-alt" size={24} color={colors.primary} style={{marginLeft: 8}}/></TouchableOpacity>
-            </View>
+            <DateTimePicker
+                label="Ende (optional)"
+                value={formData.endDateTime}
+                onChange={(date) => handleChange('endDateTime', date)}
+                mode="datetime"
+            />
+            
+            <DateTimePicker
+                label="Anmeldefrist (optional)"
+                value={formData.signupDeadline}
+                onChange={(date) => handleChange('signupDeadline', date)}
+                mode="datetime"
+            />
 
             <Text style={styles.label}>Leitung</Text>
             <Picker selectedValue={formData.leaderUserId} onValueChange={val => setFormData({...formData, leaderUserId: val})}>
@@ -129,13 +117,6 @@ const MeetingModal = ({ isOpen, onClose, onSuccess, meeting, courseId }) => {
             
             <Text style={styles.label}>Maximale Teilnehmer (leer für unbegrenzt)</Text>
             <TextInput style={styles.input} value={formData.maxParticipants} onChangeText={val => handleChange('maxParticipants', val)} keyboardType="number-pad"/>
-
-             <DateTimePickerModal
-                isVisible={isPickerVisible}
-                mode="datetime"
-                onConfirm={handleConfirmDate}
-                onCancel={hidePicker}
-            />
         </AdminModal>
     );
 };

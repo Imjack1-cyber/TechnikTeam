@@ -58,18 +58,24 @@ public class MeetingResource {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, "Termin nicht gefunden.", null));
 	}
 
+	private void mapRequestToMeeting(MeetingRequest request, Meeting meeting) {
+        meeting.setCourseId(request.courseId());
+        meeting.setName(request.name());
+        meeting.setMeetingDateTime(request.meetingDateTime());
+        meeting.setEndDateTime(request.endDateTime());
+        meeting.setLeaderUserId(request.leaderUserId() != null ? request.leaderUserId() : 0);
+        meeting.setDescription(richTextPolicy.sanitize(request.description()));
+        meeting.setLocation(request.location());
+        meeting.setMaxParticipants(request.maxParticipants());
+        meeting.setSignupDeadline(request.signupDeadline());
+    }
+
 	@PostMapping
 	@Operation(summary = "Create a new meeting")
 	public ResponseEntity<ApiResponse> createMeeting(@Valid @RequestBody MeetingRequest request,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		Meeting meeting = new Meeting();
-		meeting.setCourseId(request.courseId());
-		meeting.setName(request.name());
-		meeting.setMeetingDateTime(request.meetingDateTime());
-		meeting.setEndDateTime(request.endDateTime());
-		meeting.setLeaderUserId(request.leaderUserId() != null ? request.leaderUserId() : 0);
-		meeting.setDescription(richTextPolicy.sanitize(request.description()));
-		meeting.setLocation(request.location());
+		mapRequestToMeeting(request, meeting);
 
 		int newId = meetingDAO.createMeeting(meeting);
 		if (newId > 0) {
@@ -87,14 +93,8 @@ public class MeetingResource {
 	public ResponseEntity<ApiResponse> updateMeeting(@PathVariable int id, @Valid @RequestBody MeetingRequest request,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		Meeting meeting = new Meeting();
-		meeting.setId(id);
-		meeting.setCourseId(request.courseId());
-		meeting.setName(request.name());
-		meeting.setMeetingDateTime(request.meetingDateTime());
-		meeting.setEndDateTime(request.endDateTime());
-		meeting.setLeaderUserId(request.leaderUserId() != null ? request.leaderUserId() : 0);
-		meeting.setDescription(richTextPolicy.sanitize(request.description()));
-		meeting.setLocation(request.location());
+        meeting.setId(id);
+        mapRequestToMeeting(request, meeting);
 
 		if (meetingDAO.updateMeeting(meeting)) {
 			adminLogService.log(securityUser.getUser().getUsername(), "UPDATE_MEETING_API",

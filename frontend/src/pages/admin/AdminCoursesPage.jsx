@@ -4,12 +4,13 @@ import { useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import AdminModal from '../../components/ui/AdminModal';
 import ScrollableContent from '../../components/ui/ScrollableContent';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
     const theme = useAuthStore(state => state.theme);
@@ -75,25 +76,28 @@ const AdminCoursesPage = ({ navigation }) => {
     const colors = getThemeColors(theme);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCourse, setEditingCourse] = useState(null);
+    const [deletingCourse, setDeletingCourse] = useState(null);
+    const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
 
     const openModal = (course = null) => {
         setEditingCourse(course);
         setIsModalOpen(true);
     };
 
-	const handleDelete = async (course) => {
-		Alert.alert(`Vorlage '${course.name}' löschen?`, "Alle zugehörigen Meetings und Qualifikationen werden auch gelöscht!", [
-            { text: "Abbrechen", style: "cancel" },
-            { text: "Löschen", style: "destructive", onPress: async () => {
-                try {
-                    const result = await apiClient.delete(`/courses/${course.id}`);
-                    if (result.success) {
-                        addToast('Vorlage erfolgreich gelöscht.', 'success');
-                        reload();
-                    } else { throw new Error(result.message); }
-                } catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
-            }}
-        ]);
+	const confirmDelete = async () => {
+        if (!deletingCourse) return;
+        setIsSubmittingDelete(true);
+        try {
+            const result = await apiClient.delete(`/courses/${deletingCourse.id}`);
+            if (result.success) {
+                addToast('Vorlage erfolgreich gelöscht.', 'success');
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
+        finally {
+            setIsSubmittingDelete(false);
+            setDeletingCourse(null);
+        }
 	};
     
     const renderItem = ({ item }) => (
@@ -113,7 +117,7 @@ const AdminCoursesPage = ({ navigation }) => {
                     <Icon name="edit" size={14} color={colors.white} />
                     <Text style={styles.buttonText}> Bearbeiten</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => handleDelete(item)}>
+                <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => setDeletingCourse(item)}>
                      <Icon name="trash" size={14} color={colors.danger} />
                     <Text style={styles.dangerOutlineButtonText}> Löschen</Text>
                 </TouchableOpacity>
@@ -142,6 +146,18 @@ const AdminCoursesPage = ({ navigation }) => {
             />
             {isModalOpen && (
                 <CourseModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); reload(); }} course={editingCourse} />
+            )}
+            {deletingCourse && (
+                <ConfirmationModal
+                    isOpen={!!deletingCourse}
+                    onClose={() => setDeletingCourse(null)}
+                    onConfirm={confirmDelete}
+                    title={`Vorlage '${deletingCourse.name}' löschen?`}
+                    message="Alle zugehörigen Meetings und Qualifikationen werden ebenfalls gelöscht. Diese Aktion kann nicht rückgängig gemacht werden."
+                    confirmText="Löschen"
+                    confirmButtonVariant="danger"
+                    isSubmitting={isSubmittingDelete}
+                />
             )}
 		</ScrollableContent>
 	);

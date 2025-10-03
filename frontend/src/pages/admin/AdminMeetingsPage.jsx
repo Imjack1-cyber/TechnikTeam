@@ -10,6 +10,7 @@ import { getCommonStyles } from '../../styles/commonStyles';
 import RNPickerSelect from 'react-native-picker-select';
 import RepeatMeetingModal from '../../components/admin/meetings/RepeatMeetingModal';
 import MeetingModal from '../../components/admin/meetings/MeetingModal';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const AdminMeetingsPage = () => {
     const route = useRoute();
@@ -21,6 +22,8 @@ const AdminMeetingsPage = () => {
     const [repeatingMeeting, setRepeatingMeeting] = useState(null);
     const [editingMeeting, setEditingMeeting] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [deletingMeeting, setDeletingMeeting] = useState(null);
+    const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
 
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
@@ -32,19 +35,20 @@ const AdminMeetingsPage = () => {
         setIsModalOpen(true);
     };
 
-	const handleDelete = (meeting) => {
-        Alert.alert(`Meeting '${meeting.name}' löschen?`, "Diese Aktion kann nicht rückgängig gemacht werden.", [
-			{ text: 'Abbrechen', style: 'cancel' },
-			{ text: 'Löschen', style: 'destructive', onPress: async () => {
-				try {
-					const result = await apiClient.delete(`/meetings/${meeting.id}`);
-					if (result.success) {
-						addToast('Meeting gelöscht.', 'success');
-						reload();
-					} else { throw new Error(result.message); }
-				} catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
-			}},
-		]);
+	const confirmDelete = async () => {
+        if (!deletingMeeting) return;
+        setIsSubmittingDelete(true);
+		try {
+			const result = await apiClient.delete(`/meetings/${deletingMeeting.id}`);
+			if (result.success) {
+				addToast('Meeting gelöscht.', 'success');
+				reload();
+			} else { throw new Error(result.message); }
+		} catch (err) { addToast(`Löschen fehlgeschlagen: ${err.message}`, 'error'); }
+        finally {
+            setIsSubmittingDelete(false);
+            setDeletingMeeting(null);
+        }
 	};
     
     const handleSuccess = () => {
@@ -72,7 +76,7 @@ const AdminMeetingsPage = () => {
                 <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => setRepeatingMeeting(meeting)}>
                     <Text style={styles.buttonText}>Wiederholen</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => handleDelete(meeting)}>
+                <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => setDeletingMeeting(meeting)}>
                     <Text style={styles.dangerOutlineButtonText}>Löschen</Text>
                 </TouchableOpacity>
             </View>
@@ -112,6 +116,18 @@ const AdminMeetingsPage = () => {
                     onSuccess={handleSuccess}
                     meeting={editingMeeting}
                     courseId={courseId}
+                />
+            )}
+            {deletingMeeting && (
+                 <ConfirmationModal
+                    isOpen={!!deletingMeeting}
+                    onClose={() => setDeletingMeeting(null)}
+                    onConfirm={confirmDelete}
+                    title={`Meeting "${deletingMeeting.name}" löschen?`}
+                    message="Diese Aktion kann nicht rückgängig gemacht werden."
+                    confirmText="Löschen"
+                    confirmButtonVariant="danger"
+                    isSubmitting={isSubmittingDelete}
                 />
             )}
 		</View>
