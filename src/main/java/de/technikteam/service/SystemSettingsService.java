@@ -33,10 +33,12 @@ public class SystemSettingsService {
 		return new MaintenanceStatusDTO(mode != null ? mode : "OFF", message);
 	}
 
-	public void setMaintenanceMode(MaintenanceStatusDTO status) {
+	public MaintenanceStatusDTO setMaintenanceMode(MaintenanceStatusDTO status) {
 		settingsDAO.updateSetting(MAINTENANCE_MODE_KEY, status.mode());
 		settingsDAO.updateSetting(MAINTENANCE_MESSAGE_KEY, status.message());
 		settingsCache.invalidateAll(); // Invalidate cache immediately
-		notificationService.broadcastSystemStatusUpdate(status);
+		MaintenanceStatusDTO newStatus = getMaintenanceStatus(); // Get the fresh status from the DB
+		notificationService.broadcastSystemStatusUpdate(newStatus);
+		return newStatus;
 	}
 }

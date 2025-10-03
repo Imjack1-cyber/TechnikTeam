@@ -20,10 +20,11 @@ const getSseBaseUrl = () => {
 export const useNotifications = () => {
 	const { addToast } = useToast();
 	const [warningNotification, setWarningNotification] = useState(null);
-	const { isAuthenticated, triggerEventUpdate, incrementUnseenNotificationCount } = useAuthStore(state => ({
+	const { isAuthenticated, triggerEventUpdate, incrementUnseenNotificationCount, setMaintenanceStatus } = useAuthStore(state => ({
 		isAuthenticated: state.isAuthenticated,
 		triggerEventUpdate: state.triggerEventUpdate,
 		incrementUnseenNotificationCount: state.incrementUnseenNotificationCount,
+        setMaintenanceStatus: state.setMaintenanceStatus,
 	}));
 
 	const dismissWarning = useCallback(() => {
@@ -81,6 +82,12 @@ export const useNotifications = () => {
 				}
 			});
 
+            es.addEventListener("system_status_update", (event) => {
+                const data = JSON.parse(event.data);
+                console.log("Received system status update:", data);
+                setMaintenanceStatus(data);
+            });
+
 			es.addEventListener("error", (err) => {
 				console.error("EventSource failed:", err);
 				if (es) {
@@ -96,7 +103,7 @@ export const useNotifications = () => {
 				es.close();
 			}
 		};
-	}, [isAuthenticated, addToast, triggerEventUpdate, incrementUnseenNotificationCount]);
+	}, [isAuthenticated, addToast, triggerEventUpdate, incrementUnseenNotificationCount, setMaintenanceStatus]);
 
 	return { warningNotification, dismissWarning };
 };

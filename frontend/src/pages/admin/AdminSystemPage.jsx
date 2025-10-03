@@ -9,13 +9,16 @@ import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import { RadioButton } from 'react-native-paper'; // Example for radio buttons
 import ScrollableContent from '../../components/ui/ScrollableContent';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const MaintenanceModeManager = () => {
     const theme = useAuthStore(state => state.theme);
+    const setMaintenanceStatus = useAuthStore(state => state.setMaintenanceStatus);
     const styles = getCommonStyles(theme);
 	const apiCall = useCallback(() => apiClient.get('/admin/system/maintenance'), []);
 	const { data, loading, error, reload } = useApi(apiCall);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 	const [mode, setMode] = useState('OFF');
 	const [message, setMessage] = useState('');
 	const { addToast } = useToast();
@@ -28,46 +31,62 @@ const MaintenanceModeManager = () => {
 	}, [data]);
 
 	const handleSubmit = () => {
-		const newStatus = { mode, message };
-		const actionText = { OFF: 'deaktivieren', SOFT: 'aktivieren (Warnung)', HARD: 'aktivieren (Sperre)'}[mode];
-        Alert.alert('Bestätigen', `Sind Sie sicher, dass Sie den Wartungsmodus ${actionText} möchten?`, [
-            { text: 'Abbrechen', style: 'cancel'},
-            { text: 'Ja', onPress: async () => {
-                setIsSubmitting(true);
-                try {
-                    const result = await apiClient.post('/admin/system/maintenance', newStatus);
-                    if (result.success) {
-                        addToast(result.message, 'success');
-                        reload();
-                    } else { throw new Error(result.message); }
-                } catch (err) { addToast(err.message, 'error'); } finally { setIsSubmitting(false); }
-            }}
-        ]);
+        setIsConfirmModalOpen(true);
 	};
+
+    const performUpdate = async () => {
+        const newStatus = { mode, message };
+        setIsSubmitting(true);
+        try {
+            const result = await apiClient.post('/admin/system/maintenance', newStatus);
+            if (result.success) {
+                addToast(result.message, 'success');
+                setMaintenanceStatus(result.data); // Update global state immediately
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(err.message, 'error'); } 
+        finally { 
+            setIsSubmitting(false); 
+            setIsConfirmModalOpen(false);
+        }
+    };
 
 	if (loading) return <ActivityIndicator />;
 	if (error) return <Text style={styles.errorText}>{error}</Text>;
 
+    const actionText = { OFF: 'deaktivieren', SOFT: 'aktivieren (Warnung)', HARD: 'aktivieren (Sperre)'}[mode];
+
 	return (
-		<View style={styles.card}>
-			<Text style={styles.cardTitle}>Wartungsmodus</Text>
-			<Text style={styles.subtitle}>Steuern Sie den globalen Zugriffsstatus der Anwendung.</Text>
-            
-            <RadioButton.Group onValueChange={newValue => setMode(newValue)} value={mode}>
-                <View>
-                    <View style={pageStyles(theme).radioRow}><RadioButton value="OFF" /><Text>Aus</Text></View>
-                    <View style={pageStyles(theme).radioRow}><RadioButton value="SOFT" /><Text>Warnung (Banner)</Text></View>
-                    <View style={pageStyles(theme).radioRow}><RadioButton value="HARD" /><Text>Sperre (Nur Admins)</Text></View>
-                </View>
-            </RadioButton.Group>
-			
-            <Text style={styles.label}>Angezeigte Nachricht</Text>
-			<TextInput style={[styles.input, styles.textArea]} value={message} onChangeText={setMessage} multiline placeholder="z.B. Führen gerade Datenbank-Updates durch."/>
-			
-            <TouchableOpacity style={[styles.button, styles.successButton]} onPress={handleSubmit} disabled={isSubmitting}>
-				{isSubmitting ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Status aktualisieren</Text>}
-			</TouchableOpacity>
-		</View>
+        <>
+            <View style={styles.card}>
+                <Text style={styles.cardTitle}>Wartungsmodus</Text>
+                <Text style={styles.subtitle}>Steuern Sie den globalen Zugriffsstatus der Anwendung.</Text>
+                
+                <RadioButton.Group onValueChange={newValue => setMode(newValue)} value={mode}>
+                    <View>
+                        <View style={pageStyles(theme).radioRow}><RadioButton value="OFF" /><Text>Aus</Text></View>
+                        <View style={pageStyles(theme).radioRow}><RadioButton value="SOFT" /><Text>Warnung (Banner)</Text></View>
+                        <View style={pageStyles(theme).radioRow}><RadioButton value="HARD" /><Text style={{color: getThemeColors(theme).danger}}>Sperre (Nur Admins)</Text></View>
+                    </View>
+                </RadioButton.Group>
+                
+                <Text style={styles.label}>Angezeigte Nachricht</Text>
+                <TextInput style={[styles.input, styles.textArea]} value={message} onChangeText={setMessage} multiline placeholder="z.B. Führen gerade Datenbank-Updates durch."/>
+                
+                <TouchableOpacity style={[styles.button, styles.successButton]} onPress={handleSubmit} disabled={isSubmitting}>
+                    <Text style={styles.buttonText}>Status aktualisieren</Text>
+                </TouchableOpacity>
+            </View>
+            <ConfirmationModal
+                isOpen={isConfirmModalOpen}
+                onClose={() => setIsConfirmModalOpen(false)}
+                onConfirm={performUpdate}
+                title="Bestätigen"
+                message={`Sind Sie sicher, dass Sie den Wartungsmodus ${actionText} möchten?` + (message ? `\n\nNachricht: "${message}"` : '')}
+                confirmText="Ja, bestätigen"
+                isSubmitting={isSubmitting}
+            />
+        </>
 	);
 };
 

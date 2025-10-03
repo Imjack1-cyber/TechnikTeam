@@ -215,7 +215,7 @@ export const useAuthStore = create(
 				}));
 			},
 			setMaintenanceStatus: (status) => {
-				set({ maintenanceStatus: status });
+				set(state => ({ maintenanceStatus: { ...state.maintenanceStatus, ...status } }));
 			},
 		}),
 		{

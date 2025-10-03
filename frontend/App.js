@@ -13,6 +13,7 @@ import SplashScreen from './src/components/common/SplashScreen';
 import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './src/router/navigation';
 import DownloadsIndicator from './src/components/ui/DownloadsIndicator';
+import MaintenanceBanner from './src/components/ui/MaintenanceBanner';
 
 // This is the crucial linking configuration for React Navigation on the web.
 const linking = {
@@ -167,6 +168,7 @@ const AppContent = () => {
     usePushNotifications(); // Initialize push notification handling
     return (
         <>
+            <MaintenanceBanner />
             <RootNavigator />
             <ToastContainer />
             <DownloadsIndicator />

@@ -57,9 +57,9 @@ public class AdminSystemResource {
 			return ResponseEntity.badRequest()
 					.body(new ApiResponse(false, "Payload must contain 'mode'.", null));
 		}
-		settingsService.setMaintenanceMode(status);
+		MaintenanceStatusDTO newStatus = settingsService.setMaintenanceMode(status);
 		adminLogService.log(securityUser.getUser().getUsername(), "MAINTENANCE_MODE_UPDATE",
 				"Maintenance mode set to " + status.mode() + ". Message: " + status.message());
-		return ResponseEntity.ok(new ApiResponse(true, "Wartungsmodus erfolgreich aktualisiert.", null));
+		return ResponseEntity.ok(new ApiResponse(true, "Wartungsmodus erfolgreich aktualisiert.", newStatus));
 	}
 }
