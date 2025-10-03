@@ -20,12 +20,10 @@ const ProfileAchievements = ({ achievements }) => {
 	);
 
 	return (
-		<View style={styles.container}>
-			<Text style={styles.title}>Meine Abzeichen</Text>
+		<View style={styles.card}>
+			<Text style={styles.cardTitle}>Meine Abzeichen</Text>
 			{!achievements || achievements.length === 0 ? (
-				<View style={[styles.card, styles.emptyCard]}>
-					<Text>Du hast noch keine Abzeichen verdient. Nimm an Events teil, um sie freizuschalten!</Text>
-				</View>
+				<Text style={styles.bodyText}>Du hast noch keine Abzeichen verdient. Nimm an Events teil, um sie freizuschalten!</Text>
 			) : (
 				<FlatList
 					data={achievements}
@@ -33,7 +31,6 @@ const ProfileAchievements = ({ achievements }) => {
 					keyExtractor={item => item.id.toString()}
                     horizontal
                     showsHorizontalScrollIndicator={false}
-					contentContainerStyle={{ paddingHorizontal: spacing.md }}
 				/>
 			)}
 		</View>
@@ -43,16 +40,6 @@ const ProfileAchievements = ({ achievements }) => {
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
-        container: {
-            marginTop: spacing.md,
-        },
-        title: {
-            fontSize: typography.h3,
-            fontWeight: '600',
-            color: colors.heading,
-            marginBottom: spacing.md,
-            paddingHorizontal: spacing.md,
-        },
         achievementCard: {
             backgroundColor: colors.surface,
             borderRadius: 8,
@@ -63,9 +50,6 @@ const pageStyles = (theme) => {
             width: 200,
             marginRight: spacing.md,
         },
-        emptyCard: {
-            marginHorizontal: spacing.md,
-        },
         icon: {
             marginBottom: spacing.md,
         },
@@ -73,6 +57,7 @@ const pageStyles = (theme) => {
             fontSize: typography.body,
             fontWeight: 'bold',
             textAlign: 'center',
+            color: colors.text,
         },
         description: {
             color: colors.textMuted,

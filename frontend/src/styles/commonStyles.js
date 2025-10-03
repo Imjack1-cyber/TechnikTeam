@@ -35,6 +35,15 @@ export const getCommonStyles = (theme) => {
 			color: colors.heading,
 			marginBottom: spacing.md,
 		},
+		cardTitle: {
+			fontSize: typography.h4,
+			fontWeight: typography.fontWeights.bold,
+			color: colors.heading,
+			marginBottom: spacing.md,
+			borderBottomWidth: borders.width,
+			borderBottomColor: colors.border,
+			paddingBottom: spacing.sm,
+		},
 		subtitle: {
 			fontSize: typography.body,
 			color: colors.textMuted,
