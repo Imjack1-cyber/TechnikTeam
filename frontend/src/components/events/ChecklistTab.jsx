@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
@@ -11,9 +11,7 @@ import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 
-const ChecklistTab = () => {
-    const route = useRoute();
-    const { event } = route.params;
+const ChecklistTab = ({ event }) => {
     const navigation = useNavigation();
 	const { addToast } = useToast();
 	const [checklistItems, setChecklistItems] = useState([]);
@@ -90,7 +88,7 @@ const ChecklistTab = () => {
                 data={checklistItems}
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
-                ListEmptyComponent={<Text>Keine Artikel auf der Checkliste.</Text>}
+                ListEmptyComponent={<Text style={{ padding: spacing.md }}>Keine Artikel auf der Checkliste.</Text>}
             />
 		</View>
 	);

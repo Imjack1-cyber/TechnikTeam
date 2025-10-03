@@ -8,66 +8,25 @@ import KitItemsForm from '../../components/admin/kits/KitItemsForm';
 import Modal from '../../components/ui/Modal';
 import QRCode from 'react-native-qrcode-svg';
 import { useToast } from '../../context/ToastContext';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors } from '../../styles/theme';
 import Clipboard from '@react-native-clipboard/clipboard';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import ShareModal from '../../components/ui/ShareModal';
 
 const KitAccordion = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems, storageReady }) => {
 	const [isOpen, setIsOpen] = useState(false);
-	const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+	const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
     const getPackKitUrl = () => {
         const baseUrl = apiClient.getRootUrl() || (typeof window !== 'undefined' ? window.location.origin : '');
         return `${baseUrl}/pack-kit/${kit.id}`;
     };
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
-    const { addToast } = useToast();
-    const qrCodeRef = useRef(null);
-
-    const handleCopyLink = () => {
-        Clipboard.setString(getPackKitUrl());
-        addToast('Link in die Zwischenablage kopiert!', 'success');
-    };
-    
-    const handleDownloadQrCode = () => {
-        if (qrCodeRef.current) {
-            qrCodeRef.current.toDataURL(async (data) => {
-                const filename = `kit-${kit.id}-qrcode.png`;
-                if (Platform.OS === 'web') {
-                    try {
-                        const link = document.createElement('a');
-                        link.href = `data:image/png;base64,${data}`;
-                        link.download = filename;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        addToast('QR-Code wird heruntergeladen...', 'success');
-                    } catch (error) {
-                        console.error('Error downloading QR code on web', error);
-                        addToast('Fehler beim Speichern des QR-Codes.', 'error');
-                    }
-                } else {
-                    try {
-                        const fileUri = FileSystem.cacheDirectory + filename;
-                        await FileSystem.writeAsStringAsync(fileUri, data, { encoding: FileSystem.EncodingType.Base64 });
-                        if (await Sharing.isAvailableAsync()) {
-                            await Sharing.shareAsync(fileUri);
-                        } else {
-                             addToast('QR-Code konnte nicht geteilt werden.', 'info');
-                        }
-                    } catch (error) {
-                        console.error('Error saving or sharing QR code on native', error);
-                        addToast('Fehler beim Speichern des QR-Codes.', 'error');
-                    }
-                }
-            });
-        }
-    };
-
 
 	return (
 		<View style={styles.card}>
@@ -79,7 +38,7 @@ const KitAccordion = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems, s
                         <Text style={styles.subtitle}>{kit.description}</Text>
                     </View>
                 </View>
-                <TouchableOpacity style={[styles.button, {backgroundColor: getThemeColors(theme).primaryLight}]} onPress={() => setIsQrModalOpen(true)}>
+                <TouchableOpacity style={[styles.button, {backgroundColor: getThemeColors(theme).primaryLight}]} onPress={() => setIsShareModalOpen(true)}>
                     <Text style={{color: getThemeColors(theme).primary}}>QR-Code</Text>
                 </TouchableOpacity>
 			</TouchableOpacity>
@@ -99,25 +58,18 @@ const KitAccordion = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems, s
                     </View>
 				</View>
 			)}
-
-			<Modal isOpen={isQrModalOpen} onClose={() => setIsQrModalOpen(false)} title={`QR-Code für: ${kit.name}`}>
-				<View style={{alignItems: 'center', padding: 16}}>
-                    <View style={{ padding: 10, backgroundColor: 'white' }}>
-					    <QRCode value={getPackKitUrl()} size={256} getRef={c => (qrCodeRef.current = c)} />
-                    </View>
-					<Text style={{marginTop: 16}}>Scannen, um die Packliste zu öffnen.</Text>
-                    <View style={{flexDirection: 'row', gap: 16, marginTop: 16}}>
-                        <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={handleCopyLink}>
-                            <Icon name="copy" size={14} color="#fff" />
-                            <Text style={styles.buttonText}> Link kopieren</Text>
-                        </TouchableOpacity>
-                         <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleDownloadQrCode}>
-                            <Icon name="download" size={14} color="#fff" />
-                            <Text style={styles.buttonText}> Download</Text>
-                        </TouchableOpacity>
-                    </View>
-				</View>
-			</Modal>
+            
+            {isShareModalOpen && (
+                <ShareModal
+                    isOpen={isShareModalOpen}
+                    onClose={() => setIsShareModalOpen(false)}
+                    isCreatable={false}
+                    itemType="kit"
+                    itemId={kit.id}
+                    itemName={kit.name}
+                    shareUrl={getPackKitUrl()}
+                />
+            )}
 		</View>
 	);
 };

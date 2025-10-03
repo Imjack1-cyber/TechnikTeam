@@ -22,10 +22,12 @@ const ShareModal = ({
     itemType,
     itemId,
     itemName,
+    isCreatable = true,
     getLinksUrl,
     createLinkUrl,
     deleteLinkUrlPrefix,
     publicUrlPrefix,
+    shareUrl, // Used only when isCreatable is false
 }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
@@ -34,7 +36,10 @@ const ShareModal = ({
     const qrCodeRefs = useRef({});
     const [downloadQrConfig, setDownloadQrConfig] = useState(null);
 
-    const linksApiCall = useCallback(() => apiClient.get(getLinksUrl), [getLinksUrl]);
+    const linksApiCall = useCallback(() => {
+        if (!isCreatable) return null;
+        return apiClient.get(getLinksUrl);
+    }, [getLinksUrl, isCreatable]);
     const { data: links, loading, error, reload } = useApi(linksApiCall);
 
     const [accessLevel, setAccessLevel] = useState('PUBLIC');
@@ -71,7 +76,7 @@ const ShareModal = ({
         }
     };
     
-    const getShareUrl = (token) => {
+    const getApiShareUrl = (token) => {
         const baseUrl = apiClient.getRootUrl() || (typeof window !== 'undefined' ? window.location.origin : '');
         return `${baseUrl}${publicUrlPrefix}/${token}`;
     };
@@ -81,14 +86,12 @@ const ShareModal = ({
         addToast('Link in die Zwischenablage kopiert!', 'success');
     };
 
-    const startQrDownload = (linkId) => {
-        const link = links.find(l => l.id === linkId);
-        if(link) {
-            setDownloadQrConfig({
-                url: getShareUrl(link.token),
-                filename: `${itemType}-${itemId}-share-${linkId}-qrcode.png`
-            });
-        }
+    const startQrDownload = (linkId, url) => {
+        setDownloadQrConfig({
+            id: linkId,
+            url: url,
+            filename: `${itemType}-${itemId}-share-${linkId}-qrcode.png`
+        });
     };
 
     const onQrDownloadRef = (ref) => {
@@ -130,56 +133,64 @@ const ShareModal = ({
     };
 
     const renderLinkItem = ({ item }) => {
-        const url = getShareUrl(item.token);
+        const url = isCreatable ? getApiShareUrl(item.token) : shareUrl;
+        const displayId = isCreatable ? item.id : 'static';
+
         return (
             <View style={styles.linkItem}>
                 <View style={styles.qrCodeContainer}>
                     <QRCode 
                         value={url} 
                         size={80} 
-                        getRef={c => (qrCodeRefs.current[item.id] = c)}
                         backgroundColor="transparent"
                     />
                 </View>
                 <View style={{flex: 1}}>
                     <Text style={styles.linkLabel}>Zugriff: <Text style={{fontWeight: 'bold'}}>{item.accessLevel}</Text></Text>
-                    <Text style={styles.linkLabel}>Erstellt: {new Date(item.createdAt).toLocaleDateString()}</Text>
+                    {isCreatable && <Text style={styles.linkLabel}>Erstellt: {new Date(item.createdAt).toLocaleDateString()}</Text>}
                     <TouchableOpacity onPress={() => handleCopyToClipboard(url)}>
                         <Text style={styles.urlText} numberOfLines={1}>{url}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.button, styles.secondaryButton, {alignSelf: 'flex-start', marginTop: spacing.sm}]} onPress={() => startQrDownload(item.id)}>
+                    <TouchableOpacity style={[styles.button, styles.secondaryButton, {alignSelf: 'flex-start', marginTop: spacing.sm}]} onPress={() => startQrDownload(displayId, url)}>
                         <Icon name="download" size={12} color={colors.text} />
                         <Text style={{color: colors.text, fontSize: 12}}> QR-Code</Text>
                     </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => setConfirmDeleteId(item.id)}>
-                    <Icon name="trash" size={20} color={colors.danger} />
-                </TouchableOpacity>
+                {isCreatable && (
+                    <TouchableOpacity onPress={() => setConfirmDeleteId(item.id)}>
+                        <Icon name="trash" size={20} color={colors.danger} />
+                    </TouchableOpacity>
+                )}
             </View>
         );
     };
 
+    const staticLinkData = [{ id: 'static', token: null, accessLevel: 'PUBLIC', createdAt: new Date().toISOString() }];
+    const linksToRender = isCreatable ? links : (shareUrl ? staticLinkData : []);
+
     return (
         <AdminModal isOpen={isOpen} onClose={onClose} title={`"${itemName}" freigeben`}>
-            <View style={styles.newLinkContainer}>
-                <Text style={styles.cardTitle}>Neuen Link erstellen</Text>
-                <Picker selectedValue={accessLevel} onValueChange={setAccessLevel}>
-                    <Picker.Item label="Öffentlich (jeder mit Link)" value="PUBLIC" />
-                    <Picker.Item label="Angemeldete Benutzer" value="LOGGED_IN" />
-                    <Picker.Item label="Nur Administratoren" value="ADMIN" />
-                </Picker>
-                <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleCreateLink} disabled={isSubmitting}>
-                    {isSubmitting ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Link generieren</Text>}
-                </TouchableOpacity>
-            </View>
+            {isCreatable && (
+                <View style={styles.newLinkContainer}>
+                    <Text style={styles.cardTitle}>Neuen Link erstellen</Text>
+                    <Picker selectedValue={accessLevel} onValueChange={setAccessLevel}>
+                        <Picker.Item label="Öffentlich (jeder mit Link)" value="PUBLIC" />
+                        <Picker.Item label="Angemeldete Benutzer" value="LOGGED_IN" />
+                        <Picker.Item label="Nur Administratoren" value="ADMIN" />
+                    </Picker>
+                    <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleCreateLink} disabled={isSubmitting}>
+                        {isSubmitting ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Link generieren</Text>}
+                    </TouchableOpacity>
+                </View>
+            )}
 
             <View style={styles.existingLinksContainer}>
-                <Text style={styles.cardTitle}>Bestehende Freigabe-Links</Text>
+                <Text style={styles.cardTitle}>{isCreatable ? 'Bestehende Freigabe-Links' : 'Freigabe-Link'}</Text>
                 {loading ? <ActivityIndicator /> : (
                     <FlatList
-                        data={links}
+                        data={linksToRender}
                         renderItem={renderLinkItem}
-                        keyExtractor={item => item.id.toString()}
+                        keyExtractor={item => String(item.id)}
                         ListEmptyComponent={<Text style={styles.emptyText}>Für dieses Element gibt es keine Freigabe-Links.</Text>}
                     />
                 )}
@@ -202,7 +213,7 @@ const ShareModal = ({
                 <View style={{ position: 'absolute', left: -10000, top: 0 }}>
                     <QRCode
                         value={downloadQrConfig.url}
-                        size={300}
+                        size={900}
                         backgroundColor="transparent"
                         color={colors.text}
                         getRef={onQrDownloadRef}
@@ -236,7 +247,7 @@ const pageStyles = (theme) => {
         },
         qrCodeContainer: {
             padding: 4,
-            backgroundColor: 'white', // A white background for display, but transparent for download
+            backgroundColor: 'white',
             borderRadius: 4,
         },
         linkLabel: {

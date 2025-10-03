@@ -9,7 +9,6 @@ import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, spacing, borders } from '../../styles/theme';
 import Icon from 'react-native-vector-icons/FontAwesome5';
-import { useRoute } from '@react-navigation/native';
 
 // PhotoUploadModal would be a new component, similar to others, using a file picker
 const PhotoUploadModal = ({ isOpen, onClose, onSuccess, eventId }) => {
@@ -28,9 +27,7 @@ const PhotoUploadModal = ({ isOpen, onClose, onSuccess, eventId }) => {
     );
 }
 
-const EventGalleryTab = () => {
-    const route = useRoute();
-    const { event, user } = route.params;
+const EventGalleryTab = ({ event, user }) => {
 	const apiCall = useCallback(() => apiClient.get(`/public/events/${event.id}/gallery`), [event.id]);
 	const { data: photos, loading, error, reload } = useApi(apiCall);
 	const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);

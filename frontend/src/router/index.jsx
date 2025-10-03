@@ -1,6 +1,5 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import { createDrawerNavigator } from '@react-navigation/drawer';
 import { useAuthStore } from '../store/authStore';
 
 // Custom Components
@@ -86,6 +85,7 @@ import AdminAuthLogPage from '../pages/admin/AdminAuthLogPage';
 import AdminGeoIpPage from '../pages/admin/AdminGeoIpPage';
 import AdminWikiPage from '../pages/admin/AdminWikiPage';
 import AdminAvailabilityStack from '../pages/admin/AdminAvailabilityStack';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 
 
 const Drawer = createDrawerNavigator();
@@ -190,7 +190,6 @@ const MainDrawerNavigator = () => {
             <Drawer.Screen name="Kalender" component={CalendarPage} />
             <Drawer.Screen name="Feedback" component={FeedbackPage} />
             <Drawer.Screen name="Changelogs" component={ChangelogPage} />
-            <Drawer.Screen name="Profile" component={ProfilePage} />
 
             {/* --- Admin Pages --- */}
             <Drawer.Screen name="Admin Dashboard" component={AdminDashboardPage} />
@@ -202,28 +201,6 @@ const MainDrawerNavigator = () => {
             <Drawer.Screen name="Verfügbarkeits-Check" component={AdminAvailabilityStack} options={{ headerShown: false }} />
             <Drawer.Screen name="Berichte" component={AdminReportsStack} options={{ headerShown: false }} />
             <Drawer.Screen name="System & Entwicklung" component={AdminSystemStack} options={{ headerShown: false }} />
-
-            {/* --- Other screens nested within the Drawer to get the correct header --- */}
-            <Drawer.Screen name="UserProfile" component={UserProfilePage} options={{ title: 'Benutzerprofil', drawerItemStyle: { height: 0 } }} />
-            <Drawer.Screen name="MeetingDetails" component={MeetingDetailsPage} options={{ title: 'Meeting-Details', drawerItemStyle: { height: 0 } }}/>
-            <Drawer.Screen name="StorageItemDetails" component={StorageItemDetailsPage} options={{ title: 'Lagerartikel-Details', drawerItemStyle: { height: 0 } }} />
-            <Drawer.Screen name="Settings" component={SettingsPage} options={{ title: 'Einstellungen', drawerItemStyle: { height: 0 } }} />
-            <Drawer.Screen name="PasswordChange" component={PasswordPage} options={{ title: 'Passwort ändern', drawerItemStyle: { height: 0 } }} />
-            <Drawer.Screen name="Search" component={SearchResultsPage} options={{ title: 'Suchergebnisse', drawerItemStyle: { height: 0 } }} />
-            <Drawer.Screen name="HelpList" component={HelpListPage} options={{ title: 'Hilfe', drawerItemStyle: { height: 0 } }} />
-            <Drawer.Screen name="HelpDetails" component={HelpDetailsPage} options={{ title: 'Hilfe-Detail', drawerItemStyle: { height: 0 } }} />
-            <Drawer.Screen name="EventFeedback" component={EventFeedbackPage} options={{ title: 'Event-Feedback', drawerItemStyle: { height: 0 } }} />
-            <Drawer.Screen name="FileEditor" component={FileEditorPage} options={{ title: 'Datei-Editor', drawerItemStyle: { height: 0 } }} />
-            <Drawer.Screen name="IdCard" component={IdCardPage} options={{ title: 'Team Ausweis', drawerItemStyle: { height: 0 } }} />
-
-            {/* --- Special screens that should NOT have the main header --- */}
-            <Drawer.Screen name="PackKit" component={PackKitPage} options={{ headerShown: false, drawerItemStyle: { height: 0 } }} />
-            <Drawer.Screen name="QrAction" component={QrActionPage} options={{ headerShown: false, drawerItemStyle: { height: 0 } }} />
-
-            {/* --- Error screens, also hidden --- */}
-            <Drawer.Screen name="NotFound" component={NotFoundPage} options={{ title: 'Nicht gefunden', drawerItemStyle: { height: 0 } }}/>
-            <Drawer.Screen name="ErrorTrigger" component={ErrorTrigger} options={{ title: 'Trigger Error', drawerItemStyle: { height: 0 } }} />
-
         </Drawer.Navigator>
     );
 };
@@ -233,8 +210,30 @@ const AppStack = () => {
 
     return (
         <ErrorBoundary>
-            <Stack.Navigator>
+            <Stack.Navigator screenOptions={{ header: (props) => <Header {...props} /> }}>
                 <Stack.Screen name="MainDrawer" component={MainDrawerNavigator} options={{ headerShown: false }}/>
+                {/* Screens accessible from within the stack but not directly in the drawer */}
+                <Stack.Screen name="Profile" component={ProfilePage} options={{ title: 'Mein Profil' }} />
+                <Stack.Screen name="UserProfile" component={UserProfilePage} options={{ title: 'Benutzerprofil' }} />
+                <Stack.Screen name="MeetingDetails" component={MeetingDetailsPage} options={{ title: 'Meeting-Details' }}/>
+                <Stack.Screen name="StorageItemDetails" component={StorageItemDetailsPage} options={{ title: 'Lagerartikel-Details' }} />
+                <Stack.Screen name="Settings" component={SettingsPage} options={{ title: 'Einstellungen' }} />
+                <Stack.Screen name="PasswordChange" component={PasswordPage} options={{ title: 'Passwort ändern' }} />
+                <Stack.Screen name="Search" component={SearchResultsPage} options={{ title: 'Suchergebnisse' }} />
+                <Stack.Screen name="HelpList" component={HelpListPage} options={{ title: 'Hilfe' }} />
+                <Stack.Screen name="HelpDetails" component={HelpDetailsPage} options={{ title: 'Hilfe-Detail' }} />
+                <Stack.Screen name="EventFeedback" component={EventFeedbackPage} options={{ title: 'Event-Feedback' }} />
+                <Stack.Screen name="FileEditor" component={FileEditorPage} options={{ title: 'Datei-Editor' }} />
+                <Stack.Screen name="IdCard" component={IdCardPage} options={{ title: 'Team Ausweis' }} />
+                
+                {/* --- Special screens that should NOT have the main header --- */}
+                <Stack.Screen name="PackKit" component={PackKitPage} options={{ headerShown: false }} />
+                <Stack.Screen name="QrAction" component={QrActionPage} options={{ headerShown: false }} />
+
+                {/* --- Error screens, also hidden --- */}
+                <Stack.Screen name="Forbidden" component={ForbiddenPage} options={{ headerShown: false }}/>
+                <Stack.Screen name="NotFound" component={NotFoundPage} options={{ headerShown: false }}/>
+                <Stack.Screen name="ErrorTrigger" component={ErrorTrigger} options={{ title: 'Trigger Error' }} />
             </Stack.Navigator>
         </ErrorBoundary>
     );
@@ -250,12 +249,14 @@ const RootNavigator = () => {
             ) : isAuthenticated ? (
                 <Stack.Screen name="App" component={AppStack} />
             ) : (
-                <Stack.Screen name="Login" component={LoginPage} />
+                <>
+                    <Stack.Screen name="Login" component={LoginPage} />
+                    {/* Publicly accessible screens */}
+                    <Stack.Screen name="Verification" component={VerificationPage} />
+                    <Stack.Screen name="FileShare" component={FileSharePage} />
+                    <Stack.Screen name="SchedulingPoll" component={SchedulingPollPage} />
+                </>
             )}
-             {/* Publicly accessible screens */}
-             <Stack.Screen name="Verification" component={VerificationPage} />
-             <Stack.Screen name="FileShare" component={FileSharePage} />
-             <Stack.Screen name="SchedulingPoll" component={SchedulingPollPage} />
         </Stack.Navigator>
     );
 };

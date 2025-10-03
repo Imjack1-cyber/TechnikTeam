@@ -1,10 +1,10 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Platform, Share } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, spacing } from '../../styles/theme';
@@ -12,7 +12,7 @@ import ScrollableContent from '../../components/ui/ScrollableContent';
 import AdminModal from '../../components/ui/AdminModal';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 import AdminAvailabilityPollModal from '../../components/admin/availability/AdminAvailabilityPollModal';
-import Clipboard from '@react-native-clipboard/clipboard';
+import ShareModal from '../../components/ui/ShareModal';
 
 const AdminAvailabilityPage = () => {
     const navigation = useNavigation();
@@ -26,6 +26,7 @@ const AdminAvailabilityPage = () => {
     const [deletingPoll, setDeletingPoll] = useState(null);
     const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [sharingPoll, setSharingPoll] = useState(null);
 
     const handleDeletePress = (poll) => {
         setDeletingPoll(poll);
@@ -62,34 +63,12 @@ const AdminAvailabilityPage = () => {
         return `https://${host}`;
     };
 
-    const handleShare = async (poll) => {
-        const pollUrl = `${getBaseShareUrl()}/poll/${poll.uuid}`;
-        const shareMessage = `Bitte nimm an der Umfrage "${poll.title}" teil: ${pollUrl}`;
-        const shareTitle = `Umfrage: ${poll.title}`;
-
-        if (Platform.OS === 'web') {
-            Clipboard.setString(pollUrl);
-            addToast('Link in die Zwischenablage kopiert!', 'success');
-        } else {
-             try {
-                await Share.share({
-                    message: shareMessage,
-                    url: pollUrl, // For iOS
-                    title: shareTitle // For Android
-                });
-            } catch (error) {
-                addToast(`Fehler beim Teilen: ${error.message}`, 'error');
-            }
-        }
-    };
-
-
     const renderItem = ({ item }) => {
         return (
             <View style={styles.card}>
                 <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
                     <Text style={styles.cardTitle}>{item.title}</Text>
-                    <TouchableOpacity onPress={() => handleShare(item)}>
+                    <TouchableOpacity onPress={() => setSharingPoll(item)}>
                         <Icon name="share-alt" size={20} color={colors.primary} />
                     </TouchableOpacity>
                 </View>
@@ -147,6 +126,17 @@ const AdminAvailabilityPage = () => {
                 onClose={() => setIsCreateModalOpen(false)}
                 onSuccess={handleCreationSuccess}
             />
+            {sharingPoll && (
+                <ShareModal
+                    isOpen={!!sharingPoll}
+                    onClose={() => setSharingPoll(null)}
+                    isCreatable={false}
+                    itemType="poll"
+                    itemId={sharingPoll.id}
+                    itemName={sharingPoll.title}
+                    shareUrl={`${getBaseShareUrl()}/poll/${sharingPoll.uuid}`}
+                />
+            )}
 		</ScrollableContent>
 	);
 };

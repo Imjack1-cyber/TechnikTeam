@@ -8,7 +8,6 @@ import { getCommonStyles } from '../../../styles/commonStyles';
 import { getThemeColors, spacing, typography, borders, shadows } from '../../../styles/theme';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import AdminModal from '../../ui/AdminModal';
-import { useRoute } from '@react-navigation/native';
 import BouncyCheckbox from "react-native-bouncy-checkbox";
 
 const CategoryModal = ({ isOpen, onClose, eventId, onSuccess }) => {
@@ -102,9 +101,7 @@ const KanbanColumn = ({ title, tasks, onOpenModal, styles, colors }) => (
     </View>
 );
 
-const AdminEventTasksTab = () => {
-    const route = useRoute();
-    const { event, onUpdate } = route.params;
+const AdminEventTasksTab = ({ event, onUpdate }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);

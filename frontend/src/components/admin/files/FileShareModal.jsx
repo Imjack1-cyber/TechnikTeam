@@ -13,6 +13,7 @@ const FileShareModal = ({ isOpen, onClose, file }) => {
             itemType="file"
             itemId={file.id}
             itemName={file.filename}
+            isCreatable={true} // This enables the multi-link management UI
             getLinksUrl={`/admin/files/${file.id}/share`}
             createLinkUrl={`/admin/files/${file.id}/share`}
             deleteLinkUrlPrefix="/admin/files/share"

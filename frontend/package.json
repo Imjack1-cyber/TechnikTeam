@@ -2,7 +2,6 @@
   "name": "technikteam-frontend",
   "version": "1.0.0",
   "private": true,
-  "main": "index.js",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
@@ -52,7 +51,6 @@
     "react-native-gesture-handler": "~2.16.1",
     "react-native-markdown-display": "^7.0.2",
     "react-native-modal-datetime-picker": "17.1.0",
-    "react-native-pager-view": "6.3.0",
     "react-native-paper": "^5.12.3",
     "react-native-picker-select": "^9.1.3",
     "react-native-qrcode-svg": "^6.3.1",

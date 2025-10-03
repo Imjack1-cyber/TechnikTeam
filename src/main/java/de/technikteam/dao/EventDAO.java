@@ -79,7 +79,7 @@ public class EventDAO {
 				+ "        WHERE uq.user_id = ? AND uq.course_id = esr.required_course_id AND uq.status = 'BESTANDEN'"
 				+ "    )" + ") AS is_user_qualified " + "FROM events e "
 				+ "LEFT JOIN users u_leader ON e.leader_user_id = u_leader.id "
-				+ "WHERE e.status IN ('GEPLANT', 'LAUFEND') AND e.event_datetime >= NOW() - INTERVAL 1 DAY "
+				+ "WHERE (e.status = 'GEPLANT' AND e.event_datetime >= NOW() - INTERVAL 1 DAY) OR e.status = 'LAUFEND' "
 				+ "ORDER BY e.event_datetime ASC";
 		try {
 			return jdbcTemplate.query(sql, (rs, rowNum) -> {

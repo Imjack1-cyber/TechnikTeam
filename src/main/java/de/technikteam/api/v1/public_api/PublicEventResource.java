@@ -70,6 +70,14 @@ public class PublicEventResource {
 	@Operation(summary = "Sign up for an event", description = "Allows the current user to sign up for an event and submit custom field responses.")
 	public ResponseEntity<ApiResponse> signUpForEvent(@Parameter(description = "ID of the event") @PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser, @RequestBody Map<String, String> customFieldResponses) {
+		Event event = eventDAO.getEventById(id);
+		if (event == null) {
+			return new ResponseEntity<>(new ApiResponse(false, "Veranstaltung nicht gefunden.", null), HttpStatus.NOT_FOUND);
+		}
+		if (!"GEPLANT".equals(event.getStatus()) && !"LAUFEND".equals(event.getStatus())) {
+			return new ResponseEntity<>(new ApiResponse(false, "Anmeldungen sind nur für geplante oder laufende Veranstaltungen möglich.", null), HttpStatus.BAD_REQUEST);
+		}
+
 		User user = securityUser.getUser();
 		eventDAO.signUpForEvent(user.getId(), id);
 		if (customFieldResponses != null) {
