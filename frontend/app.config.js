@@ -8,25 +8,29 @@ const widgetConfig = [
     name: "UpcomingEventWidget",
     label: "Nächster Einsatz",
     description: "Zeigt deinen nächsten zugewiesenen Event an.",
-    updateInterval: 1800000 // 30 minutes
+    updateInterval: 1800000, // 30 minutes
+    component: "./src/widgets/UpcomingEventWidget.jsx", // <-- ADDED: Path to the component
   },
   {
     name: "OpenTasksWidget",
     label: "Offene Aufgaben",
     description: "Zeigt deine offenen Aufgaben aus laufenden Events.",
-    updateInterval: 1800000 // 30 minutes
+    updateInterval: 1800000, // 30 minutes
+    component: "./src/widgets/OpenTasksWidget.jsx", // <-- ADDED: Path to the component
   },
   {
     name: "AdminActionsWidget",
     label: "Admin Schnellzugriff",
     description: "Schnellzugriff auf Admin-Funktionen.",
-    updateInterval: 3600000 // 1 hour
+    updateInterval: 3600000, // 1 hour
+    component: "./src/widgets/AdminActionsWidget.jsx", // <-- ADDED: Path to the component
   },
   {
     name: "AnnouncementsWidget",
     label: "Anschlagbrett",
     description: "Zeigt die neueste Mitteilung vom Anschlagbrett.",
-    updateInterval: 1800000 // 30 minutes
+    updateInterval: 1800000, // 30 minutes
+    component: "./src/widgets/AnnouncementsWidget.jsx", // <-- ADDED: Path to the component
   }
 ];
 
@@ -64,12 +68,8 @@ module.exports = ({ config }) => {
       foregroundImage: "./assets/adaptive-icon.png",
       backgroundColor: "#ffffff",
     },
-    // This section configures the small icon that appears in the status bar
-    // for push notifications on Android.
     notification: {
       icon: "./assets/notification-icon.png",
-      // You can also add a color tint to the notification icon.
-      // The icon should be a single-color image with a transparent background.
       color: "#ffffff"
     },
   };
@@ -78,8 +78,6 @@ module.exports = ({ config }) => {
     bundleIdentifier: "de.technikteam",
     googleServicesFile:
       process.env.GOOGLE_SERVICES_INFO_PLIST ?? "./GoogleService-Info.plist",
-    // NOTE: iOS does not support a custom small icon for push notifications.
-    // It uses a white version of the main app icon.
   };
   config.web = {
     ...(config.web || {}),
