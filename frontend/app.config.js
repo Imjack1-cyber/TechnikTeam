@@ -58,7 +58,7 @@ module.exports = ({ config }) => {
   };
   config.assetBundlePatterns = ["**/*"];
   config.android = {
-    ...config.android,
+    ...(config.android || {}), // Safely spread existing android config
     package: "de.technikteam",
     googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
     adaptiveIcon: {
@@ -76,7 +76,7 @@ module.exports = ({ config }) => {
     widgets: widgetConfig,
   };
   config.ios = {
-    ...config.ios,
+    ...(config.ios || {}), // Safely spread existing ios config
     bundleIdentifier: "de.technikteam",
     googleServicesFile:
       process.env.GOOGLE_SERVICES_INFO_PLIST ?? "./GoogleService-Info.plist",
@@ -85,7 +85,7 @@ module.exports = ({ config }) => {
     widgets: widgetConfig,
   };
   config.web = {
-    ...config.web,
+    ...(config.web || {}), // Safely spread existing web config
     favicon: "./assets/favicon.png",
     bundler: "metro",
     notification: {
@@ -95,7 +95,7 @@ module.exports = ({ config }) => {
   };
   config.plugins = plugins;
   config.extra = {
-    ...config.extra,
+    ...(config.extra || {}), // Safely spread existing extra config
     eas: {
       projectId: "f362ae37-0995-4578-b240-654bb4a07a72",
     },
