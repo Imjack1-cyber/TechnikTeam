@@ -87,4 +87,3 @@ frontend/yarn.lock
 # Android and iOS native project folders
 frontend/android/
 frontend/ios/
-frontend/app.config.js
