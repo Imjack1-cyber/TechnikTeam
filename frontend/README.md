@@ -46,6 +46,24 @@ A comprehensive web application designed to manage a school's event technology c
 *   **API Documentation**: Springdoc OpenAPI (Swagger UI)
 *   **Build Tool**: Apache Maven
 
+## Home Screen Widgets (iOS & Android)
+
+The native mobile app supports home screen widgets to provide quick, at-a-glance information.
+
+### Widget Architecture
+Widgets are designed to be efficient and reliable, adhering to platform best practices:
+1.  **App-Centric Data Fetching**: The main application is responsible for all API calls. When the app is opened, it fetches the latest data for all widgets.
+2.  **Persistent Storage**: The fetched data is saved to a persistent Zustand store (`widgetStore`) on the device using `@react-native-async-storage/async-storage`.
+3.  **Widget Rendering**: The native widget process does **not** perform any network requests. It simply reads the latest data from the shared AsyncStorage and renders its simple, stateless view.
+4.  **Data Push**: The main app pushes the updated data to the native widget system every time it becomes active, ensuring the widgets stay reasonably up-to-date without draining battery.
+
+### **CRITICAL: Native Rebuilds Required**
+Due to the way native widgets are compiled into the app, any changes to the following files **will not be visible** until you create a new native build of the application (e.g., via `npx expo prebuild` or `eas build`):
+*   Any code inside `frontend/src/widgets/`.
+*   The widget configuration in `frontend/app.config.js`.
+
+Changes made to these files will **not** appear in the Expo Go app or through live updates. A full rebuild and reinstallation of the app is mandatory to see widget changes.
+
 ## Application Behavior
 
 ### Session Management
@@ -110,8 +128,7 @@ Follow these steps to get a local instance of the application running for develo
     cd frontend
     ```
 2.  **Environment Configuration:** Create a file named `.env.local` by copying `frontend/.env.local.example`. This file tells the Vite development server where your backend is running.
-    ```
-    # frontend/.env.local
+    ```    # frontend/.env.local
     VITE_API_TARGET_URL=http://localhost:8081
     ```
     Change the port if your backend runs on a different one.

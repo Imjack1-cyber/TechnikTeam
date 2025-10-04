@@ -1,38 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, Platform, TouchableOpacity, Linking } from 'react-native';
-import { getToken } from '../lib/storage';
 import { getThemeColors, typography, spacing } from '../styles/theme';
 import Icon from '@expo/vector-icons/FontAwesome5';
 
-const AnnouncementsWidget = () => {
-    const [announcement, setAnnouncement] = useState(null);
-    const [error, setError] = useState(null);
+const AnnouncementsWidget = ({ announcement, error }) => {
     const colors = getThemeColors('light');
     const styles = pageStyles({ colors });
-
-    useEffect(() => {
-        const fetchWidgetData = async () => {
-            try {
-                const token = await getToken();
-                if (!token) {
-                    setError('Not logged in.');
-                    return;
-                }
-                const response = await fetch('https://technikteam.qs0.de/TechnikTeam/api/v1/public/dashboard/widget-data', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const result = await response.json();
-                if (result.success) {
-                    setAnnouncement(result.data.latestAnnouncement);
-                } else {
-                    setError(result.message);
-                }
-            } catch (e) {
-                setError('Network error.');
-            }
-        };
-        fetchWidgetData();
-    }, []);
 
     const renderContent = () => {
         if (error) {
@@ -78,15 +51,15 @@ const pageStyles = ({ colors }) => StyleSheet.create({
         marginBottom: spacing.sm,
     },
     title: {
-        fontSize: typography.h3,
+        fontSize: typography.body, // Adjusted for widget size
         fontWeight: '600',
         color: colors.primary,
         marginBottom: spacing.sm,
     },
     content: {
-        fontSize: typography.body,
+        fontSize: typography.small,
         color: colors.text,
-        lineHeight: 22,
+        lineHeight: 18,
     },
     footer: {
         flexDirection: 'row',
@@ -95,7 +68,7 @@ const pageStyles = ({ colors }) => StyleSheet.create({
     },
     footerText: {
         marginLeft: spacing.sm,
-        fontSize: typography.small,
+        fontSize: typography.caption,
         color: colors.textMuted,
     },
     placeholderText: {

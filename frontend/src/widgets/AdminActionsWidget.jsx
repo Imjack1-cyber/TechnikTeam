@@ -1,15 +1,19 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, Linking } from 'react-native';
-import { getToken } from '../lib/storage';
 import { getThemeColors, typography, spacing } from '../styles/theme';
 import Icon from '@expo/vector-icons/FontAwesome5';
 
 const WidgetButton = ({ label, icon, deepLink, styles, colors }) => {
+    // On native, deep links are used to navigate within the app.
+    // On web, this is a placeholder as widgets are not supported.
+    const handlePress = () => {
+        if (Platform.OS !== 'web') {
+            Linking.openURL(`technikteam://${deepLink}`);
+        }
+    };
+
     return (
-        <TouchableOpacity
-            style={styles.button}
-            onPress={() => Linking.openURL(`technikteam://${deepLink}`)}
-        >
+        <TouchableOpacity style={styles.button} onPress={handlePress}>
             <Icon name={icon} size={20} color={colors.primary} />
             <Text style={styles.buttonText}>{label}</Text>
         </TouchableOpacity>

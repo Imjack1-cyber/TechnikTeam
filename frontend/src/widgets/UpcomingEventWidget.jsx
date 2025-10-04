@@ -1,39 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, Platform, TouchableOpacity, Linking } from 'react-native';
-import { getToken } from '../lib/storage';
 import { getThemeColors, typography, spacing } from '../styles/theme';
 import Icon from '@expo/vector-icons/FontAwesome5';
 
-const UpcomingEventWidget = () => {
-    const [nextEvent, setNextEvent] = useState(null);
-    const [error, setError] = useState(null);
+const UpcomingEventWidget = ({ nextEvent, error }) => {
     const colors = getThemeColors('light'); // Widgets often have a fixed theme
     const styles = pageStyles({ colors });
-
-    useEffect(() => {
-        const fetchWidgetData = async () => {
-            try {
-                const token = await getToken();
-                if (!token) {
-                    setError('Not logged in.');
-                    return;
-                }
-                // This is a simplified direct fetch, bypassing apiClient for widget context
-                const response = await fetch('https://technikteam.qs0.de/TechnikTeam/api/v1/public/dashboard/widget-data', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const result = await response.json();
-                if (result.success) {
-                    setNextEvent(result.data.nextEvent);
-                } else {
-                    setError(result.message);
-                }
-            } catch (e) {
-                setError('Network error.');
-            }
-        };
-        fetchWidgetData();
-    }, []);
 
     const renderContent = () => {
         if (error) {
@@ -49,7 +21,7 @@ const UpcomingEventWidget = () => {
 
         return (
             <TouchableOpacity onPress={() => Linking.openURL(`technikteam://veranstaltungen/details/${nextEvent.id}`)}>
-                <Text style={styles.eventName}>{nextEvent.name}</Text>
+                <Text style={styles.eventName} numberOfLines={2}>{nextEvent.name}</Text>
                 <View style={styles.detailRow}>
                     <Icon name="calendar-alt" size={16} color={colors.textMuted} />
                     <Text style={styles.detailText}>{formattedDate}</Text>
@@ -60,7 +32,7 @@ const UpcomingEventWidget = () => {
                 </View>
                 <View style={styles.detailRow}>
                     <Icon name="map-marker-alt" size={16} color={colors.textMuted} />
-                    <Text style={styles.detailText}>{nextEvent.location}</Text>
+                    <Text style={styles.detailText} numberOfLines={1}>{nextEvent.location}</Text>
                 </View>
             </TouchableOpacity>
         );
@@ -102,6 +74,7 @@ const pageStyles = ({ colors }) => StyleSheet.create({
         marginLeft: spacing.md,
         fontSize: typography.body,
         color: colors.text,
+        flexShrink: 1, // Allow text to shrink if needed
     },
     placeholderText: {
         color: colors.textMuted,
