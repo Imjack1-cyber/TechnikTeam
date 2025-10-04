@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import useApi from '../hooks/useApi';
@@ -8,6 +8,7 @@ import { getCommonStyles } from '../styles/commonStyles';
 import { getThemeColors, spacing } from '../styles/theme';
 import BouncyCheckbox from "react-native-bouncy-checkbox";
 import Icon from '@expo/vector-icons/FontAwesome5';
+import AdminModal from '../components/ui/AdminModal';
 
 const PackKitPage = () => {
     const navigation = useNavigation();
@@ -18,10 +19,10 @@ const PackKitPage = () => {
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
+    const [isPrintInfoModalOpen, setIsPrintInfoModalOpen] = useState(false);
 
 	const handlePrint = () => {
-        // Printing in React Native requires a dedicated library like 'react-native-print'.
-        Alert.alert("Drucken", "Die Druckfunktion ist in der mobilen App nicht verfügbar.");
+        setIsPrintInfoModalOpen(true);
     };
 
 	if (loading) return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
@@ -29,45 +30,56 @@ const PackKitPage = () => {
 	if (!kit) return <View style={styles.centered}><Text style={styles.errorText}>Kit nicht gefunden.</Text></View>;
 
 	return (
-		<ScrollView style={styles.container}>
-			<View style={styles.card}>
-				<View style={styles.header}>
-					<View style={{flex: 1}}>
-						<Text style={styles.title}>Packliste: {kit.name}</Text>
-						<Text style={styles.subtitle}>{kit.description}</Text>
-					</View>
-					<TouchableOpacity style={styles.printButton} onPress={handlePrint}>
-						<Icon name="print" size={20} color={colors.text} />
-					</TouchableOpacity>
-				</View>
+        <>
+            <ScrollView style={styles.container}>
+                <View style={styles.card}>
+                    <View style={styles.header}>
+                        <View style={{flex: 1}}>
+                            <Text style={styles.title}>Packliste: {kit.name}</Text>
+                            <Text style={styles.subtitle}>{kit.description}</Text>
+                        </View>
+                        <TouchableOpacity style={styles.printButton} onPress={handlePrint}>
+                            <Icon name="print" size={20} color={colors.text} />
+                        </TouchableOpacity>
+                    </View>
 
-				{kit.location && (
-					<View style={[styles.card, {backgroundColor: colors.background}]}>
-						<Text style={styles.cardTitle}>Standort</Text>
-						<Text style={styles.locationText}>{kit.location}</Text>
-					</View>
-				)}
+                    {kit.location && (
+                        <View style={[styles.card, {backgroundColor: colors.background}]}>
+                            <Text style={styles.cardTitle}>Standort</Text>
+                            <Text style={styles.locationText}>{kit.location}</Text>
+                        </View>
+                    )}
 
-				<Text style={styles.contentHeader}>Inhalt zum Einpacken</Text>
-				{!kit.items || kit.items.length === 0 ? (
-					<Text>Dieses Kit hat keinen definierten Inhalt.</Text>
-				) : (
-					kit.items.map(item => (
-						<BouncyCheckbox
-                            key={item.itemId}
-                            style={{paddingVertical: 8}}
-                            text={`${item.quantity}x ${item.itemName}`}
-                            textStyle={{ color: colors.text, textDecorationLine: 'none', fontSize: 16 }}
-                            fillColor={colors.primary}
-                            innerIconStyle={{ borderWidth: 2 }}
-                        />
-					))
-				)}
-			</View>
-			<TouchableOpacity style={[styles.button, styles.secondaryButton, {marginTop: 24}]} onPress={() => navigation.navigate('Lager')}>
-				<Text style={styles.buttonText}>Zurück zur Lagerübersicht</Text>
-			</TouchableOpacity>
-		</ScrollView>
+                    <Text style={styles.contentHeader}>Inhalt zum Einpacken</Text>
+                    {!kit.items || kit.items.length === 0 ? (
+                        <Text>Dieses Kit hat keinen definierten Inhalt.</Text>
+                    ) : (
+                        kit.items.map(item => (
+                            <BouncyCheckbox
+                                key={item.itemId}
+                                style={{paddingVertical: 8}}
+                                text={`${item.quantity}x ${item.itemName}`}
+                                textStyle={{ color: colors.text, textDecorationLine: 'none', fontSize: 16 }}
+                                fillColor={colors.primary}
+                                innerIconStyle={{ borderWidth: 2 }}
+                            />
+                        ))
+                    )}
+                </View>
+                <TouchableOpacity style={[styles.button, styles.secondaryButton, {marginTop: 24}]} onPress={() => navigation.navigate('Lager')}>
+                    <Text style={styles.buttonText}>Zurück zur Lagerübersicht</Text>
+                </TouchableOpacity>
+            </ScrollView>
+            <AdminModal
+                isOpen={isPrintInfoModalOpen}
+                onClose={() => setIsPrintInfoModalOpen(false)}
+                title="Drucken"
+                onSubmit={() => setIsPrintInfoModalOpen(false)}
+                submitText="OK"
+            >
+                <Text style={styles.bodyText}>Die Druckfunktion ist in der mobilen App nicht verfügbar. Bitte verwenden Sie die Web-Version, um diese Seite zu drucken.</Text>
+            </AdminModal>
+        </>
 	);
 };
 

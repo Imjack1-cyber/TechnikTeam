@@ -9,6 +9,7 @@ import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { RadioButton } from 'react-native-paper'; // Example for radio buttons
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const AdminNotificationsPage = () => {
     const theme = useAuthStore(state => state.theme);
@@ -18,6 +19,7 @@ const AdminNotificationsPage = () => {
 	const [formData, setFormData] = useState({ title: '', description: '', level: 'Informational', targetType: 'ALL', targetId: '', androidImportance: 'DEFAULT' });
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
 	const fetchEvents = useCallback(() => apiClient.get('/events'), []);
 	const fetchMeetings = useCallback(() => apiClient.get('/meetings?courseId=0'), []);
@@ -39,6 +41,7 @@ const AdminNotificationsPage = () => {
 			setError(err.message || 'Senden fehlgeschlagen.');
 		} finally {
 			setIsSubmitting(false);
+            setIsConfirmModalOpen(false);
 		}
 	};
 
@@ -48,86 +51,94 @@ const AdminNotificationsPage = () => {
 			return;
 		}
         if (formData.level === 'Warning') {
-            Alert.alert(
-                "WARNUNG: Notfall-Benachrichtigung",
-                "Diese Stufe sollte nur für echte Notfälle verwendet werden. Der Bildschirm des Empfängers wird blinken und ein Alarmton wird abgespielt. Sind Sie sicher?",
-                [ { text: "Abbrechen", style: "cancel" }, { text: "Ja, Notfall senden", style: "destructive", onPress: sendNotification } ]
-            );
+            setIsConfirmModalOpen(true);
         } else {
             sendNotification();
         }
     }
 
 	return (
-		<ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-			<View style={styles.headerContainer}>
-                <Icon name="bullhorn" size={24} style={styles.headerIcon}/>
-			    <Text style={styles.title}>Benachrichtigungen senden</Text>
-            </View>
-            <Text style={styles.subtitle}>Erstellen und versenden Sie hier systemweite Benachrichtigungen an Benutzergruppen.</Text>
-			
-            <View style={styles.card}>
-                <Text style={styles.cardTitle}>Neue Benachrichtigung</Text>
-				{error && <Text style={styles.errorText}>{error}</Text>}
-				
-                <View style={styles.formGroup}>
-                    <Text style={styles.label}>Titel</Text>
-                    <TextInput style={styles.input} value={formData.title} onChangeText={val => setFormData({...formData, title: val})} />
+        <>
+            <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+                <View style={styles.headerContainer}>
+                    <Icon name="bullhorn" size={24} style={styles.headerIcon}/>
+                    <Text style={styles.title}>Benachrichtigungen senden</Text>
                 </View>
-                <View style={styles.formGroup}>
-                    <Text style={styles.label}>Beschreibung</Text>
-                    <TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={val => setFormData({...formData, description: val})} multiline />
-                </View>
-
-                <View style={styles.formGroup}>
-                    <Text style={styles.label}>Stufe</Text>
-                    <RadioButton.Group onValueChange={val => setFormData({...formData, level: val})} value={formData.level}>
-                        <View style={styles.radioRow}><RadioButton value="Informational" /><Text>Info</Text></View>
-                        <View style={styles.radioRow}><RadioButton value="Important" /><Text>Wichtig</Text></View>
-                        <View style={styles.radioRow}><RadioButton value="Warning" /><Text style={{color: colors.danger}}>Warnung (Notfall)</Text></View>
-                    </RadioButton.Group>
-                </View>
-
-                <View style={styles.formGroup}>
-                    <Text style={styles.label}>Android Wichtigkeit</Text>
-                    <Picker selectedValue={formData.androidImportance} onValueChange={val => setFormData({...formData, androidImportance: val})}>
-                        <Picker.Item label="Standard" value="DEFAULT" />
-                        <Picker.Item label="Hoch (Heads-up)" value="HIGH" />
-                    </Picker>
-                </View>
-
-                <View style={styles.formGroup}>
-                    <Text style={styles.label}>Zielgruppe</Text>
-                    <Picker selectedValue={formData.targetType} onValueChange={val => setFormData({...formData, targetType: val, targetId: ''})}>
-                        <Picker.Item label="Alle Benutzer" value="ALL" />
-                        <Picker.Item label="Event-Teilnehmer" value="EVENT" />
-                        <Picker.Item label="Meeting-Teilnehmer" value="MEETING" />
-                    </Picker>
-                </View>
-
-                {formData.targetType === 'EVENT' && (
+                <Text style={styles.subtitle}>Erstellen und versenden Sie hier systemweite Benachrichtigungen an Benutzergruppen.</Text>
+                
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>Neue Benachrichtigung</Text>
+                    {error && <Text style={styles.errorText}>{error}</Text>}
+                    
                     <View style={styles.formGroup}>
-                        <Text style={styles.label}>Spezifisches Event</Text>
-                        <Picker selectedValue={formData.targetId} onValueChange={val => setFormData({...formData, targetId: val})}>
-                            <Picker.Item label="-- Bitte auswählen --" value="" />
-                            {events?.map(e => <Picker.Item key={e.id} label={e.name} value={e.id} />)}
+                        <Text style={styles.label}>Titel</Text>
+                        <TextInput style={styles.input} value={formData.title} onChangeText={val => setFormData({...formData, title: val})} />
+                    </View>
+                    <View style={styles.formGroup}>
+                        <Text style={styles.label}>Beschreibung</Text>
+                        <TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={val => setFormData({...formData, description: val})} multiline />
+                    </View>
+
+                    <View style={styles.formGroup}>
+                        <Text style={styles.label}>Stufe</Text>
+                        <RadioButton.Group onValueChange={val => setFormData({...formData, level: val})} value={formData.level}>
+                            <View style={styles.radioRow}><RadioButton value="Informational" /><Text>Info</Text></View>
+                            <View style={styles.radioRow}><RadioButton value="Important" /><Text>Wichtig</Text></View>
+                            <View style={styles.radioRow}><RadioButton value="Warning" /><Text style={{color: colors.danger}}>Warnung (Notfall)</Text></View>
+                        </RadioButton.Group>
+                    </View>
+
+                    <View style={styles.formGroup}>
+                        <Text style={styles.label}>Android Wichtigkeit</Text>
+                        <Picker selectedValue={formData.androidImportance} onValueChange={val => setFormData({...formData, androidImportance: val})}>
+                            <Picker.Item label="Standard" value="DEFAULT" />
+                            <Picker.Item label="Hoch (Heads-up)" value="HIGH" />
                         </Picker>
                     </View>
-                )}
-                {formData.targetType === 'MEETING' && (
-                     <View style={styles.formGroup}>
-                        <Text style={styles.label}>Spezifisches Meeting</Text>
-                        <Picker selectedValue={formData.targetId} onValueChange={val => setFormData({...formData, targetId: val})}>
-                            <Picker.Item label="-- Bitte auswählen --" value="" />
-                            {meetings?.map(m => <Picker.Item key={m.id} label={`${m.parentCourseName}: ${m.name}`} value={m.id} />)}
+
+                    <View style={styles.formGroup}>
+                        <Text style={styles.label}>Zielgruppe</Text>
+                        <Picker selectedValue={formData.targetType} onValueChange={val => setFormData({...formData, targetType: val, targetId: ''})}>
+                            <Picker.Item label="Alle Benutzer" value="ALL" />
+                            <Picker.Item label="Event-Teilnehmer" value="EVENT" />
+                            <Picker.Item label="Meeting-Teilnehmer" value="MEETING" />
                         </Picker>
                     </View>
-                )}
-				<TouchableOpacity style={[styles.button, styles.successButton]} onPress={handleSendPress} disabled={isSubmitting}>
-					{isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Benachrichtigung senden</Text>}
-				</TouchableOpacity>
-			</View>
-		</ScrollView>
+
+                    {formData.targetType === 'EVENT' && (
+                        <View style={styles.formGroup}>
+                            <Text style={styles.label}>Spezifisches Event</Text>
+                            <Picker selectedValue={formData.targetId} onValueChange={val => setFormData({...formData, targetId: val})}>
+                                <Picker.Item label="-- Bitte auswählen --" value="" />
+                                {events?.map(e => <Picker.Item key={e.id} label={e.name} value={e.id} />)}
+                            </Picker>
+                        </View>
+                    )}
+                    {formData.targetType === 'MEETING' && (
+                         <View style={styles.formGroup}>
+                            <Text style={styles.label}>Spezifisches Meeting</Text>
+                            <Picker selectedValue={formData.targetId} onValueChange={val => setFormData({...formData, targetId: val})}>
+                                <Picker.Item label="-- Bitte auswählen --" value="" />
+                                {meetings?.map(m => <Picker.Item key={m.id} label={`${m.parentCourseName}: ${m.name}`} value={m.id} />)}
+                            </Picker>
+                        </View>
+                    )}
+                    <TouchableOpacity style={[styles.button, styles.successButton]} onPress={handleSendPress} disabled={isSubmitting}>
+                        {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Benachrichtigung senden</Text>}
+                    </TouchableOpacity>
+                </View>
+            </ScrollView>
+            <ConfirmationModal
+                isOpen={isConfirmModalOpen}
+                onClose={() => setIsConfirmModalOpen(false)}
+                onConfirm={sendNotification}
+                isSubmitting={isSubmitting}
+                title="WARNUNG: Notfall-Benachrichtigung"
+                message="Diese Stufe sollte nur für echte Notfälle verwendet werden. Der Bildschirm des Empfängers wird blinken und ein Alarmton wird abgespielt. Sind Sie sicher?"
+                confirmText="Ja, Notfall senden"
+                confirmButtonVariant="danger"
+            />
+        </>
 	);
 };
 

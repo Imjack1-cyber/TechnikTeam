@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
@@ -7,6 +7,7 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography } from '../../styles/theme';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const AdminTrainingRequestsPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/admin/training-requests'), []);
@@ -14,21 +15,24 @@ const AdminTrainingRequestsPage = () => {
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const [deletingRequest, setDeletingRequest] = useState(null);
+    const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
 
-	const handleDelete = (request) => {
-        Alert.alert(`Anfrage löschen?`, `Anfrage für "${request.topic}" wirklich löschen?`, [
-			{ text: 'Abbrechen', style: 'cancel' },
-			{ text: 'Löschen', style: 'destructive', onPress: async () => {
-				try {
-					const result = await apiClient.delete(`/admin/training-requests/${request.id}`);
-					if (result.success) {
-						addToast('Anfrage gelöscht', 'success');
-						reload();
-					} else { throw new Error(result.message); }
-				} catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
-			}},
-		]);
-	};
+    const confirmDelete = async () => {
+        if (!deletingRequest) return;
+        setIsSubmittingDelete(true);
+        try {
+            const result = await apiClient.delete(`/admin/training-requests/${deletingRequest.id}`);
+            if (result.success) {
+                addToast('Anfrage gelöscht', 'success');
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
+        finally {
+            setIsSubmittingDelete(false);
+            setDeletingRequest(null);
+        }
+    };
 
     const renderItem = ({ item }) => (
         <View style={styles.card}>
@@ -46,7 +50,7 @@ const AdminTrainingRequestsPage = () => {
                 <Text style={styles.value}>{item.interestCount}</Text>
             </View>
             <View style={styles.cardActions}>
-                <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => handleDelete(item)}>
+                <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => setDeletingRequest(item)}>
                     <Text style={styles.dangerOutlineButtonText}>Löschen</Text>
                 </TouchableOpacity>
             </View>
@@ -54,28 +58,42 @@ const AdminTrainingRequestsPage = () => {
     );
 
 	return (
-		<View style={styles.container}>
-            <View style={styles.headerContainer}>
-                <Icon name="question-circle" size={24} style={styles.headerIcon} />
-			    <Text style={styles.title}>Lehrgangsanfragen</Text>
+        <>
+            <View style={styles.container}>
+                <View style={styles.headerContainer}>
+                    <Icon name="question-circle" size={24} style={styles.headerIcon} />
+                    <Text style={styles.title}>Lehrgangsanfragen</Text>
+                </View>
+                <Text style={styles.subtitle}>Hier sehen Sie alle von Benutzern eingereichten Wünsche für neue Lehrgänge.</Text>
+
+                {loading && <ActivityIndicator size="large" />}
+                {error && <Text style={styles.errorText}>{error}</Text>}
+
+                <FlatList
+                    data={requests}
+                    renderItem={renderItem}
+                    keyExtractor={item => item.id.toString()}
+                    contentContainerStyle={styles.contentContainer}
+                    ListEmptyComponent={
+                        <View style={styles.card}>
+                            <Text>Keine Lehrgangsanfragen von Benutzern vorhanden.</Text>
+                        </View>
+                    }
+                />
             </View>
-			<Text style={styles.subtitle}>Hier sehen Sie alle von Benutzern eingereichten Wünsche für neue Lehrgänge.</Text>
-
-			{loading && <ActivityIndicator size="large" />}
-			{error && <Text style={styles.errorText}>{error}</Text>}
-
-			<FlatList
-                data={requests}
-                renderItem={renderItem}
-                keyExtractor={item => item.id.toString()}
-                contentContainerStyle={styles.contentContainer}
-                ListEmptyComponent={
-                    <View style={styles.card}>
-                        <Text>Keine Lehrgangsanfragen von Benutzern vorhanden.</Text>
-                    </View>
-                }
-            />
-		</View>
+            {deletingRequest && (
+                <ConfirmationModal
+                    isOpen={!!deletingRequest}
+                    onClose={() => setDeletingRequest(null)}
+                    onConfirm={confirmDelete}
+                    isSubmitting={isSubmittingDelete}
+                    title="Anfrage löschen?"
+                    message={`Anfrage für "${deletingRequest.topic}" wirklich löschen?`}
+                    confirmText="Löschen"
+                    confirmButtonVariant="danger"
+                />
+            )}
+        </>
 	);
 };
 

@@ -8,12 +8,15 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const AdminVenuesPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/admin/venues'), []);
 	const { data: venues, loading, error, reload } = useApi(apiCall, { subscribeTo: 'VENUE' });
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingVenue, setEditingVenue] = useState(null);
+    const [deletingVenue, setDeletingVenue] = useState(null);
+    const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const commonStyles = getCommonStyles(theme);
@@ -31,19 +34,20 @@ const AdminVenuesPage = () => {
         reload();
     };
 
-	const handleDelete = (venue) => {
-        Alert.alert(`Ort "${venue.name}" löschen?`, "", [
-            { text: 'Abbrechen', style: 'cancel' },
-            { text: 'Löschen', style: 'destructive', onPress: async () => {
-                try {
-                    const result = await apiClient.delete(`/admin/venues/${venue.id}`);
-                    if (result.success) {
-                        addToast('Ort erfolgreich gelöscht', 'success');
-                        reload();
-                    } else { throw new Error(result.message); }
-                } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
-            }}
-        ]);
+	const confirmDelete = async () => {
+        if (!deletingVenue) return;
+        setIsSubmittingDelete(true);
+        try {
+            const result = await apiClient.delete(`/admin/venues/${deletingVenue.id}`);
+            if (result.success) {
+                addToast('Ort erfolgreich gelöscht', 'success');
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
+        finally {
+            setIsSubmittingDelete(false);
+            setDeletingVenue(null);
+        }
 	};
     
     const renderItem = ({ item }) => (
@@ -59,34 +63,48 @@ const AdminVenuesPage = () => {
             </View>
              <View style={styles.cardActions}>
                 <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => openModal(item)}><Text style={styles.buttonText}>Bearbeiten</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => handleDelete(item)}><Text style={styles.dangerOutlineButtonText}>Löschen</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => setDeletingVenue(item)}><Text style={styles.dangerOutlineButtonText}>Löschen</Text></TouchableOpacity>
             </View>
         </View>
     );
 
 	return (
-		<View style={[styles.container, {overflow: 'auto'}]}>
-            <View style={styles.headerContainer}>
-                <Icon name="map-marked-alt" size={24} style={styles.headerIcon} />
-			    <Text style={styles.title}>Veranstaltungsorte</Text>
+        <>
+            <View style={[styles.container, {overflow: 'auto'}]}>
+                <View style={styles.headerContainer}>
+                    <Icon name="map-marked-alt" size={24} style={styles.headerIcon} />
+                    <Text style={styles.title}>Veranstaltungsorte</Text>
+                </View>
+                <Text style={styles.subtitle}>Verwalten Sie hier die Orte und die zugehörigen Raumpläne.</Text>
+                <TouchableOpacity style={[styles.button, styles.successButton, { alignSelf: 'flex-start' }]} onPress={() => openModal()}>
+                    <Icon name="plus" size={16} color="#fff" />
+                    <Text style={styles.buttonText}>Neuer Ort</Text>
+                </TouchableOpacity>
+
+                {loading && <ActivityIndicator size="large" />}
+                {error && <Text style={styles.errorText}>{error}</Text>}
+
+                <FlatList
+                    data={venues}
+                    renderItem={renderItem}
+                    keyExtractor={item => item.id.toString()}
+                />
+
+                {isModalOpen && <VenueModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} venue={editingVenue} />}
             </View>
-			<Text style={styles.subtitle}>Verwalten Sie hier die Orte und die zugehörigen Raumpläne.</Text>
-            <TouchableOpacity style={[styles.button, styles.successButton, { alignSelf: 'flex-start' }]} onPress={() => openModal()}>
-                <Icon name="plus" size={16} color="#fff" />
-                <Text style={styles.buttonText}>Neuer Ort</Text>
-            </TouchableOpacity>
-
-			{loading && <ActivityIndicator size="large" />}
-			{error && <Text style={styles.errorText}>{error}</Text>}
-
-			<FlatList
-                data={venues}
-                renderItem={renderItem}
-                keyExtractor={item => item.id.toString()}
-            />
-
-			{isModalOpen && <VenueModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} venue={editingVenue} />}
-		</View>
+            {deletingVenue && (
+                <ConfirmationModal
+                    isOpen={!!deletingVenue}
+                    onClose={() => setDeletingVenue(null)}
+                    onConfirm={confirmDelete}
+                    isSubmitting={isSubmittingDelete}
+                    title={`Ort "${deletingVenue.name}" löschen?`}
+                    message="Diese Aktion kann nicht rückgängig gemacht werden."
+                    confirmText="Löschen"
+                    confirmButtonVariant="danger"
+                />
+            )}
+        </>
 	);
 };
 

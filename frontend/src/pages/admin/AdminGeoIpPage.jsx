@@ -8,12 +8,14 @@ import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors } from '../../styles/theme';
 import { Picker } from '@react-native-picker/picker';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const AdminGeoIpPage = () => {
     const apiCall = useCallback(() => apiClient.get('/admin/geoip/rules'), []);
     const { data: rules, loading, error, reload } = useApi(apiCall);
     const [newRule, setNewRule] = useState({ countryCode: '', ruleType: 'BLOCK' });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [deletingRule, setDeletingRule] = useState(null);
     const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
@@ -39,67 +41,82 @@ const AdminGeoIpPage = () => {
         }
     };
 
-    const handleDeleteRule = (countryCode) => {
-        Alert.alert(`Regel für "${countryCode}" löschen?`, "Diese Aktion kann nicht rückgängig gemacht werden.", [
-			{ text: 'Abbrechen', style: 'cancel' },
-			{ text: 'Löschen', style: 'destructive', onPress: async () => {
-                try {
-                    const result = await apiClient.delete(`/admin/geoip/rules/${countryCode}`);
-                    if (result.success) {
-                        addToast('Regel erfolgreich gelöscht.', 'success');
-                        reload();
-                    } else { throw new Error(result.message); }
-                } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
-            }},
-		]);
+    const confirmDeleteRule = async () => {
+        if (!deletingRule) return;
+        setIsSubmitting(true);
+        try {
+            const result = await apiClient.delete(`/admin/geoip/rules/${deletingRule}`);
+            if (result.success) {
+                addToast('Regel erfolgreich gelöscht.', 'success');
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
+        finally {
+            setIsSubmitting(false);
+            setDeletingRule(null);
+        }
     };
     
     const renderItem = ({ item }) => (
         <View style={styles.detailsListRow}>
             <Text style={styles.detailsListLabel}>{item.countryCode}</Text>
             <Text style={item.ruleType === 'BLOCK' ? {color: colors.danger} : {color: colors.success}}>{item.ruleType}</Text>
-            <TouchableOpacity onPress={() => handleDeleteRule(item.countryCode)}>
+            <TouchableOpacity onPress={() => setDeletingRule(item.countryCode)}>
                 <Icon name="trash" size={18} color={colors.danger} />
             </TouchableOpacity>
         </View>
     );
 
     return (
-        <View style={styles.container}>
-            <View style={styles.contentContainer}>
-                <Text style={styles.title}><Icon name="globe-americas" size={24} /> GeoIP Filterregeln</Text>
-                <Text style={styles.subtitle}>Verwalten Sie hier, aus welchen Ländern der Login erlaubt oder blockiert ist.</Text>
-                
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Neue Regel hinzufügen</Text>
-                    <View style={styles.formGroup}>
-                        <Text style={styles.label}>Ländercode (ISO 3166-1 alpha-2)</Text>
-                        <TextInput style={styles.input} value={newRule.countryCode} onChangeText={val => setNewRule({...newRule, countryCode: val.toUpperCase()})} maxLength={2} autoCapitalize="characters" placeholder="z.B. DE, US, CN" />
+        <>
+            <View style={styles.container}>
+                <View style={styles.contentContainer}>
+                    <Text style={styles.title}><Icon name="globe-americas" size={24} /> GeoIP Filterregeln</Text>
+                    <Text style={styles.subtitle}>Verwalten Sie hier, aus welchen Ländern der Login erlaubt oder blockiert ist.</Text>
+                    
+                    <View style={styles.card}>
+                        <Text style={styles.cardTitle}>Neue Regel hinzufügen</Text>
+                        <View style={styles.formGroup}>
+                            <Text style={styles.label}>Ländercode (ISO 3166-1 alpha-2)</Text>
+                            <TextInput style={styles.input} value={newRule.countryCode} onChangeText={val => setNewRule({...newRule, countryCode: val.toUpperCase()})} maxLength={2} autoCapitalize="characters" placeholder="z.B. DE, US, CN" />
+                        </View>
+                        <View style={styles.formGroup}>
+                            <Text style={styles.label}>Regeltyp</Text>
+                            <Picker selectedValue={newRule.ruleType} onValueChange={(val) => setNewRule({...newRule, ruleType: val})}>
+                                <Picker.Item label="Blockieren" value="BLOCK" />
+                                <Picker.Item label="Erlauben" value="ALLOW" />
+                            </Picker>
+                        </View>
+                        <TouchableOpacity style={[styles.button, styles.successButton]} onPress={handleAddRule} disabled={isSubmitting}>
+                            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Hinzufügen</Text>}
+                        </TouchableOpacity>
                     </View>
-                    <View style={styles.formGroup}>
-                        <Text style={styles.label}>Regeltyp</Text>
-                        <Picker selectedValue={newRule.ruleType} onValueChange={(val) => setNewRule({...newRule, ruleType: val})}>
-                            <Picker.Item label="Blockieren" value="BLOCK" />
-                            <Picker.Item label="Erlauben" value="ALLOW" />
-                        </Picker>
-                    </View>
-                    <TouchableOpacity style={[styles.button, styles.successButton]} onPress={handleAddRule} disabled={isSubmitting}>
-                        {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Hinzufügen</Text>}
-                    </TouchableOpacity>
-                </View>
 
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Bestehende Regeln</Text>
-                    {loading && <ActivityIndicator />}
-                    {error && <Text style={styles.errorText}>{error}</Text>}
-                    <FlatList
-                        data={rules}
-                        renderItem={renderItem}
-                        keyExtractor={item => item.countryCode}
-                    />
+                    <View style={styles.card}>
+                        <Text style={styles.cardTitle}>Bestehende Regeln</Text>
+                        {loading && <ActivityIndicator />}
+                        {error && <Text style={styles.errorText}>{error}</Text>}
+                        <FlatList
+                            data={rules}
+                            renderItem={renderItem}
+                            keyExtractor={item => item.countryCode}
+                        />
+                    </View>
                 </View>
             </View>
-        </View>
+            {deletingRule && (
+                <ConfirmationModal
+                    isOpen={!!deletingRule}
+                    onClose={() => setDeletingRule(null)}
+                    onConfirm={confirmDeleteRule}
+                    isSubmitting={isSubmitting}
+                    title={`Regel für "${deletingRule}" löschen?`}
+                    message="Diese Aktion kann nicht rückgängig gemacht werden."
+                    confirmText="Löschen"
+                    confirmButtonVariant="danger"
+                />
+            )}
+        </>
     );
 };
 

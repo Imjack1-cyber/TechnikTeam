@@ -4,8 +4,9 @@ import { useAuthStore } from '../store/authStore';
 import { useToast } from '../context/ToastContext';
 import Icon from '@expo/vector-icons/FontAwesome5';
 import apiClient from '../services/apiClient';
-import { getThemeColors } from '../styles/theme';
+import { getThemeColors, spacing } from '../styles/theme';
 import { passkeyService } from '../services/passkeyService'; // Import the frontend passkey service
+import AdminModal from '../components/ui/AdminModal';
 
 const TwoFactorAuthForm = ({ username, preAuthToken, onAuthSuccess }) => {
 	const [token, setToken] = useState('');
@@ -92,6 +93,8 @@ const LoginPage = ({ navigation }) => {
 	const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState('');
+    const [isPasskeyInfoModalOpen, setIsPasskeyInfoModalOpen] = useState(false);
+    const [isBackendSwitcherOpen, setIsBackendSwitcherOpen] = useState(false);
 
 	const [preAuthToken, setPreAuthToken] = useState(null);
 
@@ -124,7 +127,7 @@ const LoginPage = ({ navigation }) => {
     
     const handlePasskeyLogin = async () => {
         if (Platform.OS !== 'web' || !navigator.credentials) {
-            Alert.alert("Nicht unterstützt", "Passkey-Login ist derzeit nur im Web-Browser verfügbar oder Ihr Gerät unterstützt es nicht.");
+            setIsPasskeyInfoModalOpen(true);
             return;
         }
         if (!username) {
@@ -156,15 +159,7 @@ const LoginPage = ({ navigation }) => {
     };
     
     const handleSwitchBackend = () => {
-        Alert.alert(
-            'Backend wechseln',
-            'Wählen Sie die Zielumgebung aus. Sie werden abgemeldet.',
-            [
-                { text: 'Abbrechen', style: 'cancel' },
-                { text: 'Development', onPress: () => setBackendMode('dev') },
-                { text: 'Production', onPress: () => setBackendMode('prod') },
-            ]
-        );
+        setIsBackendSwitcherOpen(true);
     };
 
 	if (preAuthToken) {
@@ -231,6 +226,32 @@ const LoginPage = ({ navigation }) => {
                     <Text style={styles.backendSwitchLink}>Wechseln</Text>
                 </TouchableOpacity>
             </View>
+            <AdminModal
+                isOpen={isPasskeyInfoModalOpen}
+                onClose={() => setIsPasskeyInfoModalOpen(false)}
+                title="Nicht unterstützt"
+                onSubmit={() => setIsPasskeyInfoModalOpen(false)}
+                submitText="OK"
+            >
+                <Text style={styles.bodyText}>
+                    Passkey-Login ist derzeit nur im Web-Browser verfügbar oder Ihr Gerät unterstützt es nicht.
+                </Text>
+            </AdminModal>
+            <AdminModal
+                isOpen={isBackendSwitcherOpen}
+                onClose={() => setIsBackendSwitcherOpen(false)}
+                title="Backend wechseln"
+            >
+                <Text style={styles.bodyText}>Wählen Sie die Zielumgebung aus. Sie werden abgemeldet.</Text>
+                <View style={{flexDirection: 'row', justifyContent: 'space-around', marginTop: 24, gap: spacing.sm}}>
+                    <TouchableOpacity style={[styles.button, {flex: 1, backgroundColor: '#6c757d'}]} onPress={() => { setBackendMode('dev'); setIsBackendSwitcherOpen(false); }}>
+                        <Text style={styles.buttonText}>Development</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.button, {flex: 1, backgroundColor: '#28a745'}]} onPress={() => { setBackendMode('prod'); setIsBackendSwitcherOpen(false); }}>
+                        <Text style={styles.buttonText}>Production</Text>
+                    </TouchableOpacity>
+                </View>
+            </AdminModal>
 		</SafeAreaView>
 	);
 };
@@ -240,6 +261,7 @@ const styles = StyleSheet.create({
     loginBox: { width: '100%', maxWidth: 400, padding: 24, backgroundColor: '#ffffff', borderRadius: 8, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 5 },
     title: { fontSize: 24, fontWeight: '700', textAlign: 'center', marginBottom: 24, color: '#002B5B' },
     subtitle: { fontSize: 16, textAlign: 'center', marginBottom: 16, color: '#6c757d' },
+    bodyText: { fontSize: 16, color: '#212529', lineHeight: 24 },
     errorText: { color: '#dc3545', marginBottom: 16, textAlign: 'center' },
     label: { marginBottom: 8, fontWeight: '500', color: '#6c757d' },
     input: { width: '100%', height: 48, borderWidth: 1, borderColor: '#dee2e6', borderRadius: 6, paddingHorizontal: 12, marginBottom: 16, backgroundColor: '#fff' },

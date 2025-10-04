@@ -4,10 +4,11 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors } from '../../styles/theme';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const RoleModal = ({ isOpen, onClose, onSuccess, role }) => {
     const theme = useAuthStore(state => state.theme);
@@ -67,6 +68,8 @@ const AdminEventRolesPage = () => {
     const { data: roles, loading, error, reload } = useApi(apiCall, { subscribeTo: 'EVENT_ROLE' });
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingRole, setEditingRole] = useState(null);
+    const [deletingRole, setDeletingRole] = useState(null);
+    const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
     const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
@@ -77,18 +80,23 @@ const AdminEventRolesPage = () => {
     };
 
     const handleDelete = (role) => {
-        Alert.alert(`Rolle "${role.name}" löschen?`, "Dies kann nicht rückgängig gemacht werden.", [
-            { text: 'Abbrechen', style: 'cancel' },
-            { text: 'Löschen', style: 'destructive', onPress: async () => {
-                try {
-                    const result = await apiClient.delete(`/admin/event-roles/${role.id}`);
-                    if (result.success) {
-                        addToast('Rolle gelöscht', 'success');
-                        reload();
-                    } else { throw new Error(result.message); }
-                } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
-            }},
-        ]);
+        setDeletingRole(role);
+    };
+
+    const confirmDelete = async () => {
+        if (!deletingRole) return;
+        setIsSubmittingDelete(true);
+        try {
+            const result = await apiClient.delete(`/admin/event-roles/${deletingRole.id}`);
+            if (result.success) {
+                addToast('Rolle gelöscht', 'success');
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
+        finally {
+            setIsSubmittingDelete(false);
+            setDeletingRole(null);
+        }
     };
 
     const renderItem = ({ item }) => (
@@ -123,6 +131,18 @@ const AdminEventRolesPage = () => {
             />
 
             <RoleModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); reload(); }} role={editingRole} />
+            {deletingRole && (
+                <ConfirmationModal
+                    isOpen={!!deletingRole}
+                    onClose={() => setDeletingRole(null)}
+                    onConfirm={confirmDelete}
+                    title={`Rolle "${deletingRole.name}" löschen?`}
+                    message="Dies kann nicht rückgängig gemacht werden."
+                    confirmText="Löschen"
+                    confirmButtonVariant="danger"
+                    isSubmitting={isSubmittingDelete}
+                />
+            )}
         </View>
     );
 };
