@@ -4,7 +4,6 @@
 
 module.exports = ({ config }) => {
   // Determine the platform from environment variables set by Expo CLI and EAS Build.
-  // This will be 'android', 'ios', or 'web' in build contexts, and undefined otherwise.
   const platform = process.env.EAS_BUILD_PLATFORM || process.env.EXPO_PLATFORM;
 
   // Base plugins applicable to all platforms
@@ -52,55 +51,55 @@ module.exports = ({ config }) => {
     ]);
   }
 
-  // Return the complete, final configuration object.
-  return {
-    ...config,
-    name: "TechnikTeam",
-    slug: "technikteam",
-    version: "1.0.0",
-    orientation: "portrait",
-    icon: "./assets/icon.png",
-    userInterfaceStyle: "automatic",
-    splash: {
-      image: "./assets/splash.png",
-      resizeMode: "contain",
+  // Overwrite the static config with our dynamic values
+  config.name = "TechnikTeam";
+  config.slug = "technikteam";
+  config.version = "1.0.0";
+  config.orientation = "portrait";
+  config.icon = "./assets/icon.png";
+  config.userInterfaceStyle = "automatic";
+  config.splash = {
+    image: "./assets/splash.png",
+    resizeMode: "contain",
+    backgroundColor: "#ffffff",
+  };
+  config.assetBundlePatterns = ["**/*"];
+  config.android = {
+    ...config.android,
+    package: "de.technikteam",
+    googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
+    adaptiveIcon: {
+      foregroundImage: "./assets/adaptive-icon.png",
       backgroundColor: "#ffffff",
     },
-    assetBundlePatterns: ["**/*"],
-    android: {
-      ...config.android,
-      package: "de.technikteam",
-      googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
-      adaptiveIcon: {
-        foregroundImage: "./assets/adaptive-icon.png",
-        backgroundColor: "#ffffff",
-      },
-      notification: {
-        icon: "./assets/notification-icon.png",
-      },
+    notification: {
+      icon: "./assets/notification-icon.png",
     },
-    ios: {
-      ...config.ios,
-      bundleIdentifier: "de.technikteam",
-      googleServicesFile:
-        process.env.GOOGLE_SERVICES_INFO_PLIST ?? "./GoogleService-Info.plist",
-    },
-    web: {
-      ...config.web,
-      favicon: "./assets/favicon.png",
-      bundler: "metro",
-      notification: {
-        vapidPublicKey:
-          "BAv_VgqykjTTPK53NZHllECPvkkMkdJFos3buGrlZOGD_T1WY6GebGRe-N2FFmDlOybMgpppTJjuaiXBGLfQEJU",
-      },
-    },
-    plugins: plugins,
-    extra: {
-      ...config.extra,
-      eas: {
-        projectId: "f362ae37-0995-4578-b240-654bb4a07a72",
-      },
-    },
-    owner: "technikteamnobs",
   };
+  config.ios = {
+    ...config.ios,
+    bundleIdentifier: "de.technikteam",
+    googleServicesFile:
+      process.env.GOOGLE_SERVICES_INFO_PLIST ?? "./GoogleService-Info.plist",
+  };
+  config.web = {
+    ...config.web,
+    favicon: "./assets/favicon.png",
+    bundler: "metro",
+    notification: {
+      vapidPublicKey:
+        "BAv_VgqykjTTPK53NZHllECPvkkMkdJFos3buGrlZOGD_T1WY6GebGRe-N2FFmDlOybMgpppTJjuaiXBGLfQEJU",
+    },
+  };
+  config.plugins = plugins;
+  config.extra = {
+    ...config.extra,
+    eas: {
+      projectId: "f362ae37-0995-4578-b240-654bb4a07a72",
+    },
+  };
+  config.owner = "technikteamnobs";
+
+  // Return the modified config object
+  return config;
 };
