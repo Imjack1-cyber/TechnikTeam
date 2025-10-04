@@ -211,11 +211,9 @@ const LoginPage = ({ navigation }) => {
 						{isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Anmelden</Text>}
 					</TouchableOpacity>
                     {/* New Passkey Login Button */}
-                    {Platform.OS === 'web' && ( // Only show on web initially
-                        <TouchableOpacity style={[styles.button, { marginTop: 8, backgroundColor: '#6c757d'}]} onPress={handlePasskeyLogin} disabled={isLoading}>
-                            {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Login mit Passkey</Text>}
-                        </TouchableOpacity>
-                    )}
+                    <TouchableOpacity style={[styles.button, { marginTop: 8, backgroundColor: '#6c757d'}]} onPress={handlePasskeyLogin} disabled={isLoading}>
+                        {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Login mit Passkey</Text>}
+                    </TouchableOpacity>
 				</View>
 			</View>
             <View style={styles.backendSwitcher}>

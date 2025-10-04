@@ -58,7 +58,8 @@ const styles = (theme) => {
             ...shadows.lg,
             // Use flexbox to allow content (like ScrollViews in AdminModal) to expand correctly.
             flexDirection: 'column',
-            // Allow the modal to shrink to its content's size if the content is small.
+            // Allow the modal to shrink if the content is small, but also allow it to grow
+            // to fill the available space if the content (like a ScrollView with flex: 1) requires it.
             flexShrink: 1,
         },
         modalCloseBtn: {

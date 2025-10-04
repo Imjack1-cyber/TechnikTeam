@@ -67,6 +67,7 @@ const pageStyles = (theme) => {
             flex: 1,
         },
         modalBody: {
+            flexGrow: 1, // Allows content to grow and scroll
             paddingBottom: spacing.lg,
         },
         modalFooter: {

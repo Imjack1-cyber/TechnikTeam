@@ -2,10 +2,35 @@
 // are not included when the config is evaluated in a non-native context.
 // It correctly references the '@bittingz/expo-widgets' package.
 
-module.exports = ({ config }) => {
-  // Determine the platform from environment variables set by Expo CLI and EAS Build.
-  const platform = process.env.EAS_BUILD_PLATFORM || process.env.EXPO_PLATFORM;
+// Centralized widget configuration
+const widgetConfig = [
+  {
+    name: "UpcomingEventWidget",
+    label: "Nächster Einsatz",
+    description: "Zeigt deinen nächsten zugewiesenen Event an.",
+    updateInterval: 1800000 // 30 minutes
+  },
+  {
+    name: "OpenTasksWidget",
+    label: "Offene Aufgaben",
+    description: "Zeigt deine offenen Aufgaben aus laufenden Events.",
+    updateInterval: 1800000 // 30 minutes
+  },
+  {
+    name: "AdminActionsWidget",
+    label: "Admin Schnellzugriff",
+    description: "Schnellzugriff auf Admin-Funktionen.",
+    updateInterval: 3600000 // 1 hour
+  },
+  {
+    name: "AnnouncementsWidget",
+    label: "Anschlagbrett",
+    description: "Zeigt die neueste Mitteilung vom Anschlagbrett.",
+    updateInterval: 1800000 // 30 minutes
+  }
+];
 
+module.exports = ({ config }) => {
   // Base plugins applicable to all platforms
   const plugins = [
     [
@@ -14,42 +39,10 @@ module.exports = ({ config }) => {
         "username": "Technik-Team",
       },
     ],
+    // The widget plugin is always included for native builds to run its config modifications.
+    // It will do nothing on web.
+    "@bittingz/expo-widgets",
   ];
-
-  // Conditionally add the native-only '@bittingz/expo-widgets' plugin
-  if (platform === 'android' || platform === 'ios') {
-    plugins.push([
-      "@bittingz/expo-widgets",
-      {
-        widgets: [
-          {
-            name: "UpcomingEventWidget",
-            label: "Nächster Einsatz",
-            description: "Zeigt deinen nächsten zugewiesenen Event an.",
-            updateInterval: 1800000
-          },
-          {
-            name: "OpenTasksWidget",
-            label: "Offene Aufgaben",
-            description: "Zeigt deine offenen Aufgaben aus laufenden Events.",
-            updateInterval: 1800000
-          },
-          {
-            name: "AdminActionsWidget",
-            label: "Admin Schnellzugriff",
-            description: "Schnellzugriff auf Admin-Funktionen.",
-            updateInterval: 3600000
-          },
-          {
-            name: "AnnouncementsWidget",
-            label: "Anschlagbrett",
-            description: "Zeigt die neueste Mitteilung vom Anschlagbrett.",
-            updateInterval: 1800000
-          }
-        ]
-      }
-    ]);
-  }
 
   // Overwrite the static config with our dynamic values
   config.name = "TechnikTeam";
@@ -72,15 +65,24 @@ module.exports = ({ config }) => {
       foregroundImage: "./assets/adaptive-icon.png",
       backgroundColor: "#ffffff",
     },
+    // This section configures the small icon that appears in the status bar
+    // for push notifications on Android.
     notification: {
       icon: "./assets/notification-icon.png",
+      // You can also add a color tint to the notification icon.
+      // The icon should be a single-color image with a transparent background.
+      color: "#ffffff"
     },
+    widgets: widgetConfig,
   };
   config.ios = {
     ...config.ios,
     bundleIdentifier: "de.technikteam",
     googleServicesFile:
       process.env.GOOGLE_SERVICES_INFO_PLIST ?? "./GoogleService-Info.plist",
+    // NOTE: iOS does not support a custom small icon for push notifications.
+    // It uses a white version of the main app icon.
+    widgets: widgetConfig,
   };
   config.web = {
     ...config.web,
