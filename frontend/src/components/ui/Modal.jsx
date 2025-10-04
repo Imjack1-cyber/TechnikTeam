@@ -54,10 +54,12 @@ const styles = (theme) => {
             padding: spacing.lg,
             borderRadius: borders.radius,
             width: '100%',
-            maxHeight: '90%',
+            maxHeight: '90%', // Ensure the modal does not exceed screen height
             ...shadows.lg,
-            display: 'flex',
+            // Use flexbox to allow content (like ScrollViews in AdminModal) to expand correctly.
             flexDirection: 'column',
+            // Allow the modal itself to shrink to fit its content if the content is small.
+            flexShrink: 1,
         },
         modalCloseBtn: {
             position: 'absolute',
