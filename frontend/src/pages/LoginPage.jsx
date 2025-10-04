@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, StatusBar, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, StatusBar, Alert, Platform } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { useToast } from '../context/ToastContext';
 import Icon from '@expo/vector-icons/FontAwesome5';
 import apiClient from '../services/apiClient';
 import { getThemeColors } from '../styles/theme';
+import { passkeyService } from '../services/passkeyService'; // Import the frontend passkey service
 
 const TwoFactorAuthForm = ({ username, preAuthToken, onAuthSuccess }) => {
 	const [token, setToken] = useState('');
@@ -94,7 +95,7 @@ const LoginPage = ({ navigation }) => {
 
 	const [preAuthToken, setPreAuthToken] = useState(null);
 
-	const { login, backendMode, setBackendMode } = useAuthStore();
+	const { login, backendMode, setBackendMode, completePasskeyLogin } = useAuthStore();
 	const { addToast } = useToast();
 
 	const handleAuthSuccess = async (loginData) => {
@@ -120,6 +121,39 @@ const LoginPage = ({ navigation }) => {
 			setIsLoading(false);
 		}
 	};
+    
+    const handlePasskeyLogin = async () => {
+        if (Platform.OS !== 'web' || !navigator.credentials) {
+            Alert.alert("Nicht unterstützt", "Passkey-Login ist derzeit nur im Web-Browser verfügbar oder Ihr Gerät unterstützt es nicht.");
+            return;
+        }
+        if (!username) {
+            setError('Bitte geben Sie zuerst Ihren Benutzernamen ein.');
+            return;
+        }
+        setIsLoading(true);
+        setError('');
+        try {
+            const startResult = await apiClient.post('/passkeys/authentication/start', { username });
+            if (!startResult.success) throw new Error(startResult.message);
+            
+            // `startAuthentication` from `passkeyService` expects the raw options object
+            const credential = await passkeyService.startAuthentication(startResult.data);
+
+            const finishResult = await apiClient.post('/passkeys/authentication/finish', credential);
+            if (finishResult.success && finishResult.data.token && finishResult.data.session) {
+                await completePasskeyLogin(finishResult.data);
+                addToast('Erfolgreich mit Passkey angemeldet!', 'success');
+            } else {
+                throw new Error(finishResult.message || 'Passkey-Anmeldung fehlgeschlagen.');
+            }
+        } catch (err) {
+            console.error("Passkey Login Error:", err);
+            setError(err.message || 'Passkey-Anmeldung fehlgeschlagen. Stellen Sie sicher, dass Sie den richtigen Benutzernamen eingegeben und einen Passkey für dieses Konto registriert haben.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
     
     const handleSwitchBackend = () => {
         Alert.alert(
@@ -181,6 +215,12 @@ const LoginPage = ({ navigation }) => {
 					<TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={isLoading}>
 						{isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Anmelden</Text>}
 					</TouchableOpacity>
+                    {/* New Passkey Login Button */}
+                    {Platform.OS === 'web' && ( // Only show on web initially
+                        <TouchableOpacity style={[styles.button, { marginTop: 8, backgroundColor: '#6c757d'}]} onPress={handlePasskeyLogin} disabled={isLoading}>
+                            {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Login mit Passkey</Text>}
+                        </TouchableOpacity>
+                    )}
 				</View>
 			</View>
             <View style={styles.backendSwitcher}>

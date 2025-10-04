@@ -91,6 +91,9 @@ export const useAuthStore = create(
 					throw error;
 				}
 			},
+            completePasskeyLogin: (loginData) => {
+                return get().completeLogin(loginData);
+            },
 			logout: async () => {
 				try {
 					await apiClient.post('/auth/logout');

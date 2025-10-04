@@ -45,12 +45,13 @@ public class PublicProfileResource {
 	private final TwoFactorAuthService twoFactorAuthService;
     private final AuthenticationLogDAO authLogDAO;
     private final TwoFactorAuthDAO twoFactorAuthDAO;
+	private final PasskeyDAO passkeyDAO;
 
 	@Autowired
 	public PublicProfileResource(UserDAO userDAO, EventDAO eventDAO, UserQualificationsDAO qualificationsDAO,
 			AchievementDAO achievementDAO, ProfileChangeRequestDAO requestDAO,
 			ProfileRequestService profileRequestService, TwoFactorAuthService twoFactorAuthService,
-            AuthenticationLogDAO authLogDAO, TwoFactorAuthDAO twoFactorAuthDAO) {
+            AuthenticationLogDAO authLogDAO, TwoFactorAuthDAO twoFactorAuthDAO, PasskeyDAO passkeyDAO) {
 		this.userDAO = userDAO;
 		this.eventDAO = eventDAO;
 		this.qualificationsDAO = qualificationsDAO;
@@ -60,6 +61,7 @@ public class PublicProfileResource {
 		this.twoFactorAuthService = twoFactorAuthService;
         this.authLogDAO = authLogDAO;
         this.twoFactorAuthDAO = twoFactorAuthDAO;
+		this.passkeyDAO = passkeyDAO;
 	}
 
 	@GetMapping
@@ -72,7 +74,7 @@ public class PublicProfileResource {
 		profileData.put("eventHistory", eventDAO.getEventHistoryForUser(user.getId()));
 		profileData.put("qualifications", qualificationsDAO.getQualificationsForUser(user.getId()));
 		profileData.put("achievements", achievementDAO.getAchievementsForUser(user.getId()));
-		profileData.put("passkeys", Collections.emptyList());
+		profileData.put("passkeys", passkeyDAO.getCredentialsByUserId(user.getId()));
 		profileData.put("hasPendingRequest", requestDAO.hasPendingRequest(user.getId()));
 
 		return ResponseEntity.ok(new ApiResponse(true, "Profildaten erfolgreich abgerufen.", profileData));

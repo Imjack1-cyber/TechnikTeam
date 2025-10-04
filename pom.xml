@@ -27,6 +27,7 @@
         <commons-io.version>2.16.1</commons-io.version>
         <owasp-java-html-sanitizer.version>20240325.1</owasp-java-html-sanitizer.version>
         <bucket4j.version>8.9.0</bucket4j.version>
+        <webauthn.version>2.1.0</webauthn.version>
     </properties>
 
     <dependencies>
@@ -169,6 +170,11 @@
             <version>7.26.1</version>
         </dependency>
         <dependency>
+            <groupId>com.yubico</groupId>
+            <artifactId>webauthn-server-core</artifactId>
+            <version>${webauthn.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
@@ -193,7 +199,9 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <!-- Removing the arguments block to rely solely on application.properties -->
+                    <profiles>
+                        <profile>${activatedProperties}</profile>
+                    </profiles>
                 </configuration>
             </plugin>
             <plugin>

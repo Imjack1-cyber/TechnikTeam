@@ -51,7 +51,8 @@ public class SecurityConfig {
 				.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/", "/index.html", "/favicon.ico", "/*.js", "/*.css", "/assets/**", "/theme-loader.js",
-                                 "/api/v1/auth/login", "/api/v1/auth/logout", "/api/v1/auth/verify-2fa", "/api/v1/auth/csrf-token", 
+                                 "/api/v1/auth/login", "/api/v1/auth/logout", "/api/v1/auth/verify-2fa", "/api/v1/auth/csrf-token",
+                                 "/api/v1/passkeys/authentication/**",
                                  "/ws/**", "/actuator/health", "/api/v1/public/notifications/sse", "/api/v1/public/verify/**",
                                  "/api/v1/public/files/share/**", "/api/v1/public/polls/**")
 						.permitAll()
