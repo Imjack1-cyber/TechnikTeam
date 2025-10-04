@@ -34,7 +34,7 @@ const AdminModal = ({
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={title}>
             <View style={styles.modalContainer}>
-                <ScrollView contentContainerStyle={styles.modalBody}>
+                <ScrollView style={styles.modalBody} contentContainerStyle={styles.modalBodyContent}>
                     {children}
                 </ScrollView>
                 {onSubmit && (
@@ -65,9 +65,13 @@ const pageStyles = (theme) => {
     return StyleSheet.create({
         modalContainer: {
             flex: 1,
+            // Ensure the container itself doesn't shrink, allowing its children to flex correctly.
         },
         modalBody: {
-            flexGrow: 1, // Allows content to grow and scroll
+            flex: 1, // Allow the ScrollView to take up the available space
+        },
+        modalBodyContent: {
+            flexGrow: 1, // Allows content to grow and enable scrolling if it overflows
             paddingBottom: spacing.lg,
         },
         modalFooter: {

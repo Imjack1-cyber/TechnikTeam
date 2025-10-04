@@ -39,9 +39,8 @@ module.exports = ({ config }) => {
         "username": "Technik-Team",
       },
     ],
-    // The widget plugin is always included for native builds to run its config modifications.
-    // It will do nothing on web.
-    "@bittingz/expo-widgets",
+    // The widget plugin is always included. Configuration is passed as the second element.
+    ["@bittingz/expo-widgets", { widgets: widgetConfig }],
   ];
 
   // Overwrite the static config with our dynamic values
@@ -58,7 +57,7 @@ module.exports = ({ config }) => {
   };
   config.assetBundlePatterns = ["**/*"];
   config.android = {
-    ...(config.android || {}), // Safely spread existing android config
+    ...(config.android || {}),
     package: "de.technikteam",
     googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
     adaptiveIcon: {
@@ -73,19 +72,17 @@ module.exports = ({ config }) => {
       // The icon should be a single-color image with a transparent background.
       color: "#ffffff"
     },
-    widgets: widgetConfig,
   };
   config.ios = {
-    ...(config.ios || {}), // Safely spread existing ios config
+    ...(config.ios || {}),
     bundleIdentifier: "de.technikteam",
     googleServicesFile:
       process.env.GOOGLE_SERVICES_INFO_PLIST ?? "./GoogleService-Info.plist",
     // NOTE: iOS does not support a custom small icon for push notifications.
     // It uses a white version of the main app icon.
-    widgets: widgetConfig,
   };
   config.web = {
-    ...(config.web || {}), // Safely spread existing web config
+    ...(config.web || {}),
     favicon: "./assets/favicon.png",
     bundler: "metro",
     notification: {
@@ -95,7 +92,7 @@ module.exports = ({ config }) => {
   };
   config.plugins = plugins;
   config.extra = {
-    ...(config.extra || {}), // Safely spread existing extra config
+    ...(config.extra || {}),
     eas: {
       projectId: "f362ae37-0995-4578-b240-654bb4a07a72",
     },
