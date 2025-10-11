@@ -15,6 +15,10 @@ const Sidebar = ({ navigation }) => {
     const colors = getThemeColors(theme);
     const styles = pageStyles(theme);
 
+    // Get the name of the top-level route in the drawer navigator's state
+    const navState = navigation.getState();
+    const activeRouteName = navState.routeNames[navState.index];
+
 	const orderedNavItems = useMemo(() => {
 		if (!navigationItems) return [];
 		const userOrder = layout.navOrder || [];
@@ -45,6 +49,7 @@ const Sidebar = ({ navigation }) => {
 
 	const renderNavItem = (item) => {
         const hasBadge = item.url === '/notifications' && user.unseenNotificationsCount > 0;
+        const isActive = item.label === activeRouteName;
         
 		if (item.url.startsWith('/swagger-ui')) {
 			const swaggerUrl = `${apiClient.getRootUrl()}/swagger-ui.html`;
@@ -56,9 +61,9 @@ const Sidebar = ({ navigation }) => {
 			);
 		}
 		return (
-			<TouchableOpacity style={styles.navLink} onPress={() => navigation.navigate(item.label)}>
-				<Icon name={item.icon.replace('fa-', '')} style={styles.navIcon} />
-				<Text style={styles.navLabel}>{item.label}</Text>
+			<TouchableOpacity style={[styles.navLink, isActive && styles.activeNavLink]} onPress={() => navigation.navigate(item.label)}>
+				<Icon name={item.icon.replace('fa-', '')} style={[styles.navIcon, isActive && styles.activeNavIcon]} />
+				<Text style={[styles.navLabel, isActive && styles.activeNavLabel]}>{item.label}</Text>
                 {hasBadge && (
                     <View style={styles.badge}>
                         <Text style={styles.badgeText}>{user.unseenNotificationsCount}</Text>
@@ -125,7 +130,11 @@ const pageStyles = (theme) => {
         searchIcon: { position: 'absolute', top: 12, left: 30, color: colors.textMuted },
         navScroller: { flex: 1 },
         navSectionTitle: { paddingHorizontal: 24, paddingVertical: 8, marginTop: 8, fontSize: 12, fontWeight: '600', textTransform: 'uppercase', color: colors.textMuted },
-        navLink: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 24, gap: 16 },
+        navLink: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 24, gap: 16, borderLeftWidth: 4, borderLeftColor: 'transparent' },
+        activeNavLink: {
+            backgroundColor: colors.primaryLight,
+            borderLeftColor: colors.primary,
+        },
         helpLink: {
             flexDirection: 'row',
             alignItems: 'center',
@@ -138,7 +147,14 @@ const pageStyles = (theme) => {
             marginBottom: spacing.md,
         },
         navIcon: { fontSize: 18, color: colors.textMuted, width: 24, textAlign: 'center' },
+        activeNavIcon: {
+            color: colors.primary,
+        },
         navLabel: { fontSize: 16, fontWeight: '500', color: colors.text },
+        activeNavLabel: {
+            color: colors.primary,
+            fontWeight: '700',
+        },
         badge: { backgroundColor: colors.danger, borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center', marginLeft: 'auto' },
         badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
         footer: { padding: 24, borderTopWidth: 1, borderTopColor: colors.border },

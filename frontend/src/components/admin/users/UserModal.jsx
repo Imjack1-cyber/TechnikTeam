@@ -5,15 +5,17 @@ import apiClient from '../../../services/apiClient';
 import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../store/authStore';
 import { getCommonStyles } from '../../../styles/commonStyles';
-import { getThemeColors } from '../../../styles/theme';
+import { getThemeColors, spacing } from '../../../styles/theme';
 import { Picker } from '@react-native-picker/picker';
 import AdminModal from '../../ui/AdminModal';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions, isLoadingData }) => {
 	const [activeTab, setActiveTab] = useState('general');
 	const [formData, setFormData] = useState({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
+    const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
@@ -84,7 +86,17 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
             <TextInput style={styles.input} value={formData.username || ''} onChangeText={val => handleChange('username', val)} />
             {!isEditMode && <>
                 <Text style={styles.label}>Passwort</Text>
-                <TextInput style={styles.input} value={formData.password || ''} onChangeText={val => handleChange('password', val)} secureTextEntry />
+                <View style={styles.passwordContainer}>
+                    <TextInput 
+                        style={[styles.input, { paddingRight: 40 }]} 
+                        value={formData.password || ''} 
+                        onChangeText={val => handleChange('password', val)} 
+                        secureTextEntry={!isPasswordVisible} 
+                    />
+                    <TouchableOpacity style={styles.eyeIcon} onPress={() => setIsPasswordVisible(!isPasswordVisible)}>
+                        <Icon name={isPasswordVisible ? 'eye-slash' : 'eye'} size={18} color={colors.textMuted} />
+                    </TouchableOpacity>
+                </View>
             </>}
             <Text style={styles.label}>Rolle</Text>
             <Picker selectedValue={formData.roleId} onValueChange={val => handleChange('roleId', val)}>
@@ -134,6 +146,19 @@ const pageStyles = (theme) => {
         tabs: { flexDirection: 'row', borderBottomWidth: 1, borderColor: colors.border, marginBottom: 16 },
         tabButton: { paddingBottom: 8, marginRight: 16 },
         activeTab: { borderBottomWidth: 3, borderBottomColor: colors.primary },
+        passwordContainer: {
+            position: 'relative',
+            justifyContent: 'center',
+        },
+        eyeIcon: {
+            position: 'absolute',
+            right: 0,
+            height: '100%',
+            width: 40,
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingBottom: 16, // Adjust for marginBottom of input
+        },
     });
 };
 
