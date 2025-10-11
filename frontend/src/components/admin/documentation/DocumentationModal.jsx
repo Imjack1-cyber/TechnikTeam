@@ -9,10 +9,12 @@ import BouncyCheckbox from "react-native-bouncy-checkbox";
 import { MultipleSelectList } from 'react-native-dropdown-select-list';
 import pageRoutes from '../../../router/pageRoutes';
 import AdminModal from '../../ui/AdminModal';
+import { getThemeColors } from '../../../styles/theme';
 
 const DocumentationModal = ({ isOpen, onClose, onSuccess, doc, allDocs }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
 	const { addToast } = useToast();
@@ -96,13 +98,13 @@ const DocumentationModal = ({ isOpen, onClose, onSuccess, doc, allDocs }) => {
             <TextInput style={styles.input} value={formData.title} onChangeText={val => handleChange('title', val)} />
             
             <Text style={styles.label}>Seiten-Schlüssel (pageKey)</Text>
-            <Picker selectedValue={formData.pageKey} onValueChange={val => handleChange('pageKey', val)}>
+            <Picker selectedValue={formData.pageKey} onValueChange={val => handleChange('pageKey', val)} itemStyle={{ color: colors.text }}>
                 <Picker.Item label="-- Route auswählen --" value="" />
                 {pageKeyOptions.map(opt => <Picker.Item key={opt.value} label={opt.label} value={opt.value} />)}
             </Picker>
             
             <Text style={styles.label}>Kategorie</Text>
-            <Picker selectedValue={formData.category} onValueChange={val => handleChange('category', val)}>
+            <Picker selectedValue={formData.category} onValueChange={val => handleChange('category', val)} itemStyle={{ color: colors.text }}>
                 {categories.map(cat => <Picker.Item key={cat} label={cat === 'NEW_CATEGORY' ? 'Neue Kategorie erstellen...' : cat} value={cat} />)}
             </Picker>
 
@@ -122,11 +124,13 @@ const DocumentationModal = ({ isOpen, onClose, onSuccess, doc, allDocs }) => {
                 placeholder="Seiten auswählen"
                 searchPlaceholder="Suchen"
                 boxStyles={styles.input}
+                inputStyles={{ color: colors.text }}
+                dropdownTextStyles={{ color: colors.text }}
                 defaultOptions={relatedPagesOptions.filter(opt => selectedRelatedKeys.includes(opt.key))}
             />
             <View style={{flexDirection: 'row', alignItems: 'center', marginVertical: 16}}>
-                <BouncyCheckbox isChecked={formData.adminOnly} onPress={isChecked => handleChange('adminOnly', isChecked)} />
-                <Text>Nur für Admins sichtbar</Text>
+                <BouncyCheckbox isChecked={formData.adminOnly} onPress={isChecked => handleChange('adminOnly', isChecked)} fillColor={colors.primary} />
+                <Text style={{ color: colors.text }}>Nur für Admins sichtbar</Text>
             </View>
         </AdminModal>
     );

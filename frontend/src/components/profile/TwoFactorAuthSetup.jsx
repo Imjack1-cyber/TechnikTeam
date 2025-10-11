@@ -3,6 +3,9 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
 import Clipboard from '@react-native-clipboard/clipboard';
+import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, typography, spacing } from '../../styles/theme';
 
 const TwoFactorAuthSetup = ({ onSetupComplete }) => {
     const [setupData, setSetupData] = useState(null);
@@ -11,6 +14,9 @@ const TwoFactorAuthSetup = ({ onSetupComplete }) => {
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { addToast } = useToast();
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
     useEffect(() => {
         const startSetup = async () => {
@@ -65,7 +71,7 @@ const TwoFactorAuthSetup = ({ onSetupComplete }) => {
                     {backupCodes.map(code => <Text key={code} style={styles.codeText}>{code}</Text>)}
                 </ScrollView>
                 <TouchableOpacity onPress={handleCopyCodes} style={[styles.button, styles.secondaryButton]}>
-                    <Text style={styles.secondaryButtonText}>Codes kopieren</Text>
+                    <Text style={styles.buttonText}>Codes kopieren</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={onSetupComplete} style={[styles.button, styles.primaryButton, { marginTop: 8 }]}>
                     <Text style={styles.buttonText}>Fertig</Text>
@@ -88,7 +94,7 @@ const TwoFactorAuthSetup = ({ onSetupComplete }) => {
                 <Text style={styles.stepText}>2. Geben Sie den 6-stelligen Code aus Ihrer App ein.</Text>
                 <Text style={styles.label}>Verifizierungscode</Text>
                 <TextInput
-                    style={styles.input}
+                    style={[styles.input, { textAlign: 'center', fontSize: 20, letterSpacing: 5 }]}
                     value={verificationCode}
                     onChangeText={setVerificationCode}
                     keyboardType="number-pad"
@@ -104,24 +110,18 @@ const TwoFactorAuthSetup = ({ onSetupComplete }) => {
     return <ActivityIndicator size="large" />;
 };
 
-const styles = StyleSheet.create({
-    errorText: { color: '#dc3545', textAlign: 'center', marginBottom: 16 },
-    successTitle: { fontSize: 18, fontWeight: 'bold', color: '#28a745', marginBottom: 8 },
-    infoText: { backgroundColor: '#e2f3fe', padding: 12, borderRadius: 6, marginBottom: 12, color: '#0c5460' },
-    codeContainer: { backgroundColor: '#f8f9fa', padding: 16, borderRadius: 8, marginVertical: 16, maxHeight: 150 },
-    codeText: { fontFamily: 'monospace', fontSize: 16, lineHeight: 24 },
-    stepText: { fontSize: 16, marginBottom: 8 },
-    qrContainer: { alignItems: 'center', marginVertical: 16 },
-    qrCode: { width: 250, height: 250 },
-    secretText: { fontFamily: 'monospace', backgroundColor: '#e9ecef', padding: 8, borderRadius: 4, textAlign: 'center', marginBottom: 16 },
-    label: { fontWeight: '500', color: '#6c757d', marginBottom: 8 },
-    input: { borderWidth: 1, borderColor: '#dee2e6', borderRadius: 6, padding: 12, fontSize: 18, textAlign: 'center', letterSpacing: 5 },
-    button: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 6, alignItems: 'center', marginTop: 16 },
-    primaryButton: { backgroundColor: '#007bff' },
-    secondaryButton: { backgroundColor: '#6c757d' },
-    successButton: { backgroundColor: '#28a745' },
-    buttonText: { color: '#fff', fontWeight: '500' },
-    secondaryButtonText: { color: '#fff', fontWeight: '500' },
-});
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        successTitle: { fontSize: 18, fontWeight: 'bold', color: colors.success, marginBottom: 8 },
+        infoText: { backgroundColor: colors.primaryLight, padding: 12, borderRadius: 6, marginBottom: 12, color: colors.primary },
+        codeContainer: { backgroundColor: colors.background, padding: 16, borderRadius: 8, marginVertical: 16, maxHeight: 150 },
+        codeText: { fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontSize: 16, lineHeight: 24, color: colors.text },
+        stepText: { fontSize: 16, marginBottom: 8, color: colors.text },
+        qrContainer: { alignItems: 'center', marginVertical: 16 },
+        qrCode: { width: 250, height: 250, backgroundColor: 'white' },
+        secretText: { fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', backgroundColor: colors.background, padding: 8, borderRadius: 4, textAlign: 'center', marginBottom: 16, color: colors.text },
+    });
+};
 
 export default TwoFactorAuthSetup;

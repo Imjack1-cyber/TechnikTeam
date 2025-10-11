@@ -3,10 +3,17 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import MarkdownDisplay from 'react-native-markdown-display';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import Modal from '../components/ui/Modal';
+import { useAuthStore } from '../store/authStore';
+import { getCommonStyles } from '../styles/commonStyles';
+import { getThemeColors, spacing, typography } from '../styles/theme';
 
 const ChangelogModal = ({ changelog, onClose }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = getCommonStyles(theme);
+    const pageSpecificStyles = pageStyles(theme);
+
     if (!changelog) return null;
 
     return (
@@ -14,12 +21,12 @@ const ChangelogModal = ({ changelog, onClose }) => {
             <Text style={styles.subtitle}>
                 Veröffentlicht am {new Date(changelog.releaseDate).toLocaleDateString('de-DE')}
             </Text>
-            <ScrollView style={styles.modalMarkdownContainer}>
-                <MarkdownDisplay style={{ body: { padding: 12 } }}>
+            <ScrollView style={pageSpecificStyles.modalMarkdownContainer}>
+                <MarkdownDisplay style={{ body: { padding: 12, color: getThemeColors(theme).text } }}>
                     {changelog.notes}
                 </MarkdownDisplay>
             </ScrollView>
-            <TouchableOpacity style={[styles.button, { marginTop: 16 }]} onPress={onClose}>
+            <TouchableOpacity style={[styles.button, styles.secondaryButton, { marginTop: 16 }]} onPress={onClose}>
                 <Text style={styles.buttonText}>Schließen</Text>
             </TouchableOpacity>
         </Modal>
@@ -27,10 +34,13 @@ const ChangelogModal = ({ changelog, onClose }) => {
 };
 
 const ChangelogPage = () => {
-	const apiCall = useCallback(() => apiClient.get('/public/changelog'), []);
-	const { data: changelogs, loading, error } = useApi(apiCall, { subscribeTo: 'CHANGELOG' });
+    const apiCall = useCallback(() => apiClient.get('/public/changelog'), []);
+    const { data: changelogs, loading, error } = useApi(apiCall, { subscribeTo: 'CHANGELOG' });
     const [modalData, setModalData] = useState(null);
     const [expandedIds, setExpandedIds] = useState([]);
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
     const toggleExpand = (id) => {
         setExpandedIds((prev) =>
@@ -38,21 +48,21 @@ const ChangelogPage = () => {
         );
     };
 
-	const renderContent = () => {
-		if (loading) {
-			return <ActivityIndicator size="large" color="#007bff" />;
-		}
-		if (error) {
-			return <Text style={styles.errorText}>{error}</Text>;
-		}
-		if (changelogs?.length === 0) {
-			return (
-				<View style={styles.card}>
-					<Text>Keine Changelog-Einträge vorhanden.</Text>
-				</View>
-			);
-		}
-		return changelogs?.map(cl => {
+    const renderContent = () => {
+        if (loading) {
+            return <ActivityIndicator size="large" color={colors.primary} />;
+        }
+        if (error) {
+            return <Text style={styles.errorText}>{error}</Text>;
+        }
+        if (changelogs?.length === 0) {
+            return (
+                <View style={styles.card}>
+                    <Text style={styles.bodyText}>Keine Changelog-Einträge vorhanden.</Text>
+                </View>
+            );
+        }
+        return changelogs?.map(cl => {
             const isLongContent = cl.notes.length > 500;
             const isExpanded = expandedIds.includes(cl.id);
             const previewContent = isLongContent && !isExpanded ? cl.notes.slice(0, 400) + " …" : cl.notes;
@@ -65,7 +75,7 @@ const ChangelogPage = () => {
                     <Text style={styles.subtitle}>
                         Veröffentlicht am {new Date(cl.releaseDate).toLocaleDateString('de-DE')}
                     </Text>
-                    <MarkdownDisplay>{previewContent}</MarkdownDisplay>
+                    <MarkdownDisplay style={{ body: { color: colors.text } }}>{previewContent}</MarkdownDisplay>
                     {isLongContent && (
                         <View style={styles.actionsRow}>
                             <TouchableOpacity
@@ -87,103 +97,68 @@ const ChangelogPage = () => {
                 </View>
             );
         });
-	};
+    };
 
-	return (
-		<ScrollView style={styles.container}>
-			<View style={styles.header}>
-				<Icon name="history" size={24} style={styles.headerIcon} />
-				<Text style={styles.title}>Changelogs & Neuerungen</Text>
-			</View>
-			<Text style={styles.description}>Hier finden Sie eine Übersicht aller wichtigen Änderungen und neuen Features der Anwendung.</Text>
-			{renderContent()}
+    return (
+        <ScrollView style={styles.container}>
+            <View style={styles.header}>
+                <Icon name="history" size={24} style={styles.headerIcon} />
+                <Text style={styles.title}>Changelogs & Neuerungen</Text>
+            </View>
+            <Text style={styles.description}>Hier finden Sie eine Übersicht aller wichtigen Änderungen und neuen Features der Anwendung.</Text>
+            {renderContent()}
             <ChangelogModal changelog={modalData} onClose={() => setModalData(null)} />
-		</ScrollView>
-	);
+        </ScrollView>
+    );
 };
 
-const styles = StyleSheet.create({
-	container: {
-		flex: 1,
-		backgroundColor: '#f8f9fa',
-	},
-	header: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		padding: 16,
-	},
-	headerIcon: {
-		color: '#002B5B',
-		marginRight: 12,
-	},
-	title: {
-		fontSize: 24,
-		fontWeight: '700',
-		color: '#002B5B',
-	},
-	description: {
-		fontSize: 16,
-		color: '#6c757d',
-		paddingHorizontal: 16,
-		marginBottom: 16,
-	},
-	card: {
-		backgroundColor: '#ffffff',
-		borderRadius: 8,
-		padding: 16,
-		marginHorizontal: 16,
-		marginBottom: 16,
-		borderWidth: 1,
-		borderColor: '#dee2e6',
-	},
-	cardTitle: {
-		fontSize: 18,
-		fontWeight: '600',
-		color: '#002B5B',
-	},
-	subtitle: {
-		color: '#6c757d',
-		marginTop: 4,
-		marginBottom: 12,
-		fontSize: 12,
-	},
-	errorText: {
-		color: '#dc3545',
-		padding: 16,
-		textAlign: 'center',
-	},
-    actionsRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 12,
-        borderTopWidth: 1,
-        borderTopColor: '#eee',
-        paddingTop: 12,
-    },
-    readMoreButton: {
-        alignItems: 'center',
-    },
-    readMoreText: {
-        color: '#007bff',
-        fontWeight: 'bold',
-    },
-    modalMarkdownContainer: {
-        maxHeight: '80%',
-        borderWidth: 1,
-        borderColor: '#dee2e6',
-        borderRadius: 6,
-        marginTop: 12,
-    },
-    button: {
-        backgroundColor: '#6c757d',
-        padding: 12,
-        borderRadius: 6,
-        alignItems: 'center',
-    },
-    buttonText: {
-        color: '#fff',
-        fontWeight: '500',
-    },
-});
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+        },
+        header: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+            paddingTop: 16,
+        },
+        headerIcon: {
+            color: colors.heading,
+            marginRight: 12,
+        },
+        title: {
+            fontSize: typography.h2,
+            fontWeight: '700',
+        },
+        description: {
+            paddingHorizontal: 16,
+            marginVertical: 8,
+        },
+        actionsRow: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginTop: 12,
+            paddingTop: 12,
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+        },
+        readMoreButton: {
+            alignItems: 'center',
+        },
+        readMoreText: {
+            color: colors.primary,
+            fontWeight: 'bold',
+        },
+        modalMarkdownContainer: {
+            maxHeight: '80%',
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 6,
+            marginTop: 12,
+        },
+    });
+};
 
 export default ChangelogPage;

@@ -4,11 +4,15 @@ import { useAuthStore } from '../store/authStore';
 import { useToast } from '../context/ToastContext';
 import Icon from '@expo/vector-icons/FontAwesome5';
 import apiClient from '../services/apiClient';
-import { getThemeColors, spacing, borders } from '../styles/theme';
+import { getThemeColors, spacing, borders, typography } from '../styles/theme';
 import { passkeyService } from '../services/passkeyService'; // Import the frontend passkey service
 import AdminModal from '../components/ui/AdminModal';
+import { getCommonStyles } from '../styles/commonStyles';
 
 const TwoFactorAuthForm = ({ username, preAuthToken, onAuthSuccess }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 	const [token, setToken] = useState('');
 	const [backupCode, setBackupCode] = useState('');
 	const [isLoading, setIsLoading] = useState(false);
@@ -69,12 +73,12 @@ const TwoFactorAuthForm = ({ username, preAuthToken, onAuthSuccess }) => {
                 </>
             )}
 
-			<TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={isLoading || (!token && !backupCode)}>
+			<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isLoading || (!token && !backupCode)}>
 				{isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Bestätigen</Text>}
 			</TouchableOpacity>
             
             <TouchableOpacity onPress={() => setShowRecovery(!showRecovery)} style={{marginTop: 16}}>
-                <Text style={{color: '#007bff', textAlign: 'center'}}>{showRecovery ? 'Verberge Wiederherstellungsoptionen' : 'Hilfe benötigt?'}</Text>
+                <Text style={{color: colors.primary, textAlign: 'center'}}>{showRecovery ? 'Verberge Wiederherstellungsoptionen' : 'Hilfe benötigt?'}</Text>
             </TouchableOpacity>
 
             {showRecovery && (
@@ -100,6 +104,9 @@ const LoginPage = ({ navigation }) => {
 
 	const { login, backendMode, setBackendMode, completePasskeyLogin, postLoginRedirectPath } = useAuthStore();
 	const { addToast } = useToast();
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
 	const handleAuthSuccess = async (loginData) => {
 		const { completeLogin } = useAuthStore.getState();
@@ -140,7 +147,6 @@ const LoginPage = ({ navigation }) => {
             const startResult = await apiClient.post('/passkeys/authentication/start', { username });
             if (!startResult.success) throw new Error(startResult.message);
             
-            // `startAuthentication` from `passkeyService` expects the raw options object
             const credential = await passkeyService.startAuthentication(startResult.data);
 
             const finishResult = await apiClient.post('/passkeys/authentication/finish', credential);
@@ -177,15 +183,15 @@ const LoginPage = ({ navigation }) => {
 
 	return (
 		<SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" />
+            <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} />
 			<View style={styles.loginBox}>
                 {postLoginRedirectPath && (
                     <View style={styles.redirectInfo}>
-                        <Icon name="info-circle" size={16} color={getThemeColors('light').primary} />
+                        <Icon name="info-circle" size={16} color={colors.primary} />
                         <Text style={styles.redirectText}>Bitte anmelden, um <Text style={{fontWeight: 'bold'}}>{postLoginRedirectPath}</Text> anzuzeigen.</Text>
                     </View>
                 )}
-				<Icon name="bolt" size={40} color="#007bff" style={{ alignSelf: 'center', marginBottom: 8 }} />
+				<Icon name="bolt" size={40} color={colors.primary} style={{ alignSelf: 'center', marginBottom: 8 }} />
 				<Text style={styles.title}>TechnikTeam</Text>
 				{error && <Text style={styles.errorText}>{error}</Text>}
 				<View>
@@ -209,14 +215,13 @@ const LoginPage = ({ navigation }) => {
 							editable={!isLoading}
 						/>
 						<TouchableOpacity onPress={() => setIsPasswordVisible(!isPasswordVisible)} style={styles.eyeIcon}>
-							<Icon name={isPasswordVisible ? 'eye-slash' : 'eye'} size={18} color="#6c757d" />
+							<Icon name={isPasswordVisible ? 'eye-slash' : 'eye'} size={18} color={colors.textMuted} />
 						</TouchableOpacity>
 					</View>
-					<TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={isLoading}>
+					<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isLoading}>
 						{isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Anmelden</Text>}
 					</TouchableOpacity>
-                    {/* New Passkey Login Button */}
-                    <TouchableOpacity style={[styles.button, { marginTop: 8, backgroundColor: '#6c757d'}]} onPress={handlePasskeyLogin} disabled={isLoading}>
+                    <TouchableOpacity style={[styles.button, styles.secondaryButton, { marginTop: 8}]} onPress={handlePasskeyLogin} disabled={isLoading}>
                         {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Login mit Passkey</Text>}
                     </TouchableOpacity>
 				</View>
@@ -247,10 +252,10 @@ const LoginPage = ({ navigation }) => {
             >
                 <Text style={styles.bodyText}>Wählen Sie die Zielumgebung aus. Sie werden abgemeldet.</Text>
                 <View style={{flexDirection: 'row', justifyContent: 'space-around', marginTop: 24, gap: spacing.sm}}>
-                    <TouchableOpacity style={[styles.button, {flex: 1, backgroundColor: '#6c757d'}]} onPress={() => { setBackendMode('dev'); setIsBackendSwitcherOpen(false); }}>
+                    <TouchableOpacity style={[styles.button, {flex: 1, backgroundColor: colors.textMuted}]} onPress={() => { setBackendMode('dev'); setIsBackendSwitcherOpen(false); }}>
                         <Text style={styles.buttonText}>Development</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.button, {flex: 1, backgroundColor: '#28a745'}]} onPress={() => { setBackendMode('prod'); setIsBackendSwitcherOpen(false); }}>
+                    <TouchableOpacity style={[styles.button, {flex: 1, backgroundColor: colors.success}]} onPress={() => { setBackendMode('prod'); setIsBackendSwitcherOpen(false); }}>
                         <Text style={styles.buttonText}>Production</Text>
                     </TouchableOpacity>
                 </View>
@@ -259,55 +264,51 @@ const LoginPage = ({ navigation }) => {
 	);
 };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16, backgroundColor: '#f8f9fa' },
-    loginBox: { width: '100%', maxWidth: 400, padding: 24, backgroundColor: '#ffffff', borderRadius: 8, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 5 },
-    title: { fontSize: 24, fontWeight: '700', textAlign: 'center', marginBottom: 24, color: '#002B5B' },
-    subtitle: { fontSize: 16, textAlign: 'center', marginBottom: 16, color: '#6c757d' },
-    bodyText: { fontSize: 16, color: '#212529', lineHeight: 24 },
-    errorText: { color: '#dc3545', marginBottom: 16, textAlign: 'center' },
-    label: { marginBottom: 8, fontWeight: '500', color: '#6c757d' },
-    input: { width: '100%', height: 48, borderWidth: 1, borderColor: '#dee2e6', borderRadius: 6, paddingHorizontal: 12, marginBottom: 16, backgroundColor: '#fff' },
-    passwordContainer: { position: 'relative', justifyContent: 'center' },
-    eyeIcon: { position: 'absolute', right: 12, padding: 4 },
-    button: { backgroundColor: '#007bff', paddingVertical: 12, borderRadius: 6, alignItems: 'center', justifyContent: 'center', height: 48 },
-    buttonText: { color: '#fff', fontWeight: '500', fontSize: 16 },
-    recoveryInfo: {
-        marginTop: 16,
-        padding: 12,
-        backgroundColor: '#f8f9fa',
-        borderRadius: 6,
-    },
-    backendSwitcher: {
-        position: 'absolute',
-        bottom: 20,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        padding: 8,
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-        borderRadius: 6,
-    },
-    backendText: {
-        color: '#6c757d',
-    },
-    backendSwitchLink: {
-        color: '#007bff',
-        fontWeight: 'bold',
-    },
-    redirectInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
-        backgroundColor: getThemeColors('light').primaryLight,
-        padding: spacing.md,
-        borderRadius: borders.radius,
-        marginBottom: spacing.md,
-    },
-    redirectText: {
-        color: getThemeColors('light').text,
-        flex: 1,
-    },
-});
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16, backgroundColor: colors.background },
+        loginBox: { width: '100%', maxWidth: 400, padding: 24, backgroundColor: colors.surface, borderRadius: 8, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 5 },
+        title: { fontSize: 24, fontWeight: '700', textAlign: 'center', marginBottom: 24, color: colors.heading },
+        subtitle: { fontSize: 16, textAlign: 'center', marginBottom: 16, color: colors.textMuted },
+        eyeIcon: { position: 'absolute', right: 12, padding: 4 },
+        recoveryInfo: {
+            marginTop: 16,
+            padding: 12,
+            backgroundColor: colors.background,
+            borderRadius: 6,
+        },
+        backendSwitcher: {
+            position: 'absolute',
+            bottom: 20,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+            padding: 8,
+            backgroundColor: colors.surface,
+            borderRadius: 6,
+        },
+        backendText: {
+            color: colors.textMuted,
+        },
+        backendSwitchLink: {
+            color: colors.primary,
+            fontWeight: 'bold',
+        },
+        redirectInfo: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+            backgroundColor: colors.primaryLight,
+            padding: spacing.md,
+            borderRadius: borders.radius,
+            marginBottom: spacing.md,
+        },
+        redirectText: {
+            color: colors.text,
+            flex: 1,
+        },
+    });
+};
 
 export default LoginPage;

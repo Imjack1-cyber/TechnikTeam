@@ -1,12 +1,17 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Animated, Platform } from 'react-native';
 import Icon from '@expo/vector-icons/FontAwesome5';
+import { useAuthStore } from '../../store/authStore';
+import { getThemeColors, typography, spacing } from '../../styles/theme';
 // TODO: To enable sound, the 'expo-av' package must be installed.
 // Run 'npx expo install expo-av' in the /frontend directory.
 // Then, uncomment the line below and the audio-related code in the useEffect hook.
 // import { Audio } from 'expo-av';
 
 const WarningNotification = ({ notification, onDismiss }) => {
+    const theme = useAuthStore(state => state.theme);
+    const colors = getThemeColors(theme);
+    const styles = pageStyles(theme);
 	const flashAnimation = useRef(new Animated.Value(0)).current;
     // const soundObject = useRef(new Audio.Sound()); // UNCOMMENT AFTER INSTALL
 
@@ -16,11 +21,11 @@ const WarningNotification = ({ notification, onDismiss }) => {
         */
 	   const loadAndPlaySound = async () => {
             try {
-                await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-                await soundObject.current.loadAsync(require('../../../assets/audio/attention.mp3'));
-                await soundObject.current.setIsLoopingAsync(true);
+                // await Audio.setAudioModeAsync({ playsInSilentModeIOS: true }); // UNCOMMENT
+                // await soundObject.current.loadAsync(require('../../../assets/audio/attention.mp3')); // UNCOMMENT
+                // await soundObject.current.setIsLoopingAsync(true); // UNCOMMENT
                 if(isMounted) {
-                    await soundObject.current.playAsync();
+                    // await soundObject.current.playAsync(); // UNCOMMENT
                 }
             } catch (error) {
                 console.error("Failed to load and play sound for warning notification:", error);
@@ -47,7 +52,7 @@ const WarningNotification = ({ notification, onDismiss }) => {
 
 	const backgroundColor = flashAnimation.interpolate({
 		inputRange: [0, 1],
-		outputRange: ['rgba(0,0,0,0.6)', 'rgba(220, 53, 69, 0.6)'] // danger-color
+		outputRange: ['rgba(0,0,0,0.6)', `rgba(${colors.dangerRgb}, 0.6)`]
 	});
 
 	return (
@@ -59,7 +64,7 @@ const WarningNotification = ({ notification, onDismiss }) => {
 		>
 			<Animated.View style={[styles.overlay, { backgroundColor }]}>
 				<View style={styles.modalContent}>
-					<Icon name="exclamation-triangle" size={60} color="#dc3545" />
+					<Icon name="exclamation-triangle" size={60} color={colors.danger} />
 					<Text style={styles.title}>{notification.title}</Text>
 					<Text style={styles.description}>{notification.description}</Text>
 					<TouchableOpacity onPress={onDismiss} style={styles.button}>
@@ -71,47 +76,50 @@ const WarningNotification = ({ notification, onDismiss }) => {
 	);
 };
 
-const styles = StyleSheet.create({
-	overlay: {
-		flex: 1,
-		justifyContent: 'center',
-		alignItems: 'center',
-		padding: 20,
-	},
-	modalContent: {
-		width: '100%',
-		maxWidth: 500,
-		backgroundColor: '#ffffff', // surface-color
-		borderRadius: 8,
-		padding: 24,
-		alignItems: 'center',
-		borderWidth: 3,
-		borderColor: '#dc3545', // danger-color
-	},
-	title: {
-		fontSize: 24,
-		fontWeight: 'bold',
-		color: '#dc3545', // danger-color
-		marginTop: 16,
-		marginBottom: 8,
-	},
-	description: {
-		fontSize: 18,
-		textAlign: 'center',
-		marginBottom: 24,
-		color: '#212529', // text-color
-	},
-	button: {
-		backgroundColor: '#dc3545', // danger-color
-		paddingVertical: 12,
-		paddingHorizontal: 30,
-		borderRadius: 6,
-	},
-	buttonText: {
-		color: '#fff',
-		fontSize: 16,
-		fontWeight: 'bold',
-	},
-});
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        overlay: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+        },
+        modalContent: {
+            width: '100%',
+            maxWidth: 500,
+            backgroundColor: colors.surface,
+            borderRadius: 8,
+            padding: 24,
+            alignItems: 'center',
+            borderWidth: 3,
+            borderColor: colors.danger,
+        },
+        title: {
+            fontSize: typography.h2,
+            fontWeight: 'bold',
+            color: colors.danger,
+            marginTop: spacing.md,
+            marginBottom: spacing.sm,
+        },
+        description: {
+            fontSize: typography.h4,
+            textAlign: 'center',
+            marginBottom: spacing.lg,
+            color: colors.text,
+        },
+        button: {
+            backgroundColor: colors.danger,
+            paddingVertical: 12,
+            paddingHorizontal: 30,
+            borderRadius: 6,
+        },
+        buttonText: {
+            color: colors.white,
+            fontSize: 16,
+            fontWeight: 'bold',
+        },
+    });
+};
 
 export default WarningNotification;

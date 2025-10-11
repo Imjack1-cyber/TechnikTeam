@@ -5,8 +5,15 @@ import apiClient from '../services/apiClient';
 import MarkdownDisplay from 'react-native-markdown-display';
 import Icon from '@expo/vector-icons/FontAwesome5';
 import Modal from '../components/ui/Modal';
+import { useAuthStore } from '../store/authStore';
+import { getCommonStyles } from '../styles/commonStyles';
+import { getThemeColors, typography, spacing } from '../styles/theme';
 
 const AnnouncementModal = ({ announcement, onClose }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = getCommonStyles(theme);
+    const pageSpecificStyles = pageStyles(theme);
+
     if (!announcement) return null;
 
     return (
@@ -15,12 +22,12 @@ const AnnouncementModal = ({ announcement, onClose }) => {
                 Gepostet von <Text style={{ fontWeight: 'bold' }}>{announcement.authorUsername}</Text> am{" "}
                 {new Date(announcement.createdAt).toLocaleDateString('de-DE')}
             </Text>
-            <ScrollView style={styles.modalMarkdownContainer}>
-                <MarkdownDisplay style={{ body: { padding: 12 } }}>
+            <ScrollView style={pageSpecificStyles.modalMarkdownContainer}>
+                <MarkdownDisplay style={{ body: { padding: 12, color: getThemeColors(theme).text } }}>
                     {announcement.content}
                 </MarkdownDisplay>
             </ScrollView>
-            <TouchableOpacity style={[styles.button, { marginTop: 16 }]} onPress={onClose}>
+            <TouchableOpacity style={[styles.button, styles.secondaryButton, { marginTop: 16 }]} onPress={onClose}>
                 <Text style={styles.buttonText}>Schließen</Text>
             </TouchableOpacity>
         </Modal>
@@ -32,6 +39,8 @@ const AnnouncementsPage = () => {
     const { data: announcements, loading, error } = useApi(apiCall, { subscribeTo: 'ANNOUNCEMENT' });
     const [modalData, setModalData] = useState(null);
     const [expandedIds, setExpandedIds] = useState([]); // track expanded announcements
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
 
     const toggleExpand = (id) => {
         setExpandedIds((prev) =>
@@ -41,7 +50,7 @@ const AnnouncementsPage = () => {
 
     const renderContent = () => {
         if (loading) {
-            return <ActivityIndicator size="large" color="#007bff" />;
+            return <ActivityIndicator size="large" color={getThemeColors(theme).primary} />;
         }
         if (error) {
             return <Text style={styles.errorText}>{error}</Text>;
@@ -49,7 +58,7 @@ const AnnouncementsPage = () => {
         if (announcements?.length === 0) {
             return (
                 <View style={styles.card}>
-                    <Text>Aktuell gibt es keine neuen Mitteilungen.</Text>
+                    <Text style={styles.bodyText}>Aktuell gibt es keine neuen Mitteilungen.</Text>
                 </View>
             );
         }
@@ -71,8 +80,7 @@ const AnnouncementsPage = () => {
                         {new Date(post.createdAt).toLocaleDateString('de-DE')}
                     </Text>
 
-                    {/* Render Markdown */}
-                    <MarkdownDisplay>
+                    <MarkdownDisplay style={{ body: { color: getThemeColors(theme).text } }}>
                         {previewContent}
                     </MarkdownDisplay>
 
@@ -114,88 +122,46 @@ const AnnouncementsPage = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f8f9fa',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-    },
-    headerIcon: {
-        color: '#002B5B',
-        marginRight: 12,
-    },
-    title: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#002B5B',
-    },
-    description: {
-        fontSize: 16,
-        color: '#6c757d',
-        paddingHorizontal: 16,
-        marginBottom: 16,
-    },
-    card: {
-        backgroundColor: '#ffffff',
-        borderRadius: 8,
-        padding: 16,
-        marginHorizontal: 16,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: '#dee2e6',
-    },
-    cardTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#002B5B',
-    },
-    subtitle: {
-        color: '#6c757d',
-        marginTop: 4,
-        marginBottom: 12,
-        fontSize: 12,
-    },
-    errorText: {
-        color: '#dc3545',
-        padding: 16,
-        textAlign: 'center',
-    },
-    actionsRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 12,
-        borderTopWidth: 1,
-        borderTopColor: '#eee',
-        paddingTop: 12,
-    },
-    readMoreButton: {
-        alignItems: 'center',
-    },
-    readMoreText: {
-        color: '#007bff',
-        fontWeight: 'bold',
-    },
-    modalMarkdownContainer: {
-        maxHeight: '80%',
-        borderWidth: 1,
-        borderColor: '#dee2e6',
-        borderRadius: 6,
-        marginTop: 12,
-    },
-    button: {
-        backgroundColor: '#6c757d',
-        padding: 12,
-        borderRadius: 6,
-        alignItems: 'center',
-    },
-    buttonText: {
-        color: '#fff',
-        fontWeight: '500',
-    },
-});
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        header: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+            paddingTop: 16,
+        },
+        headerIcon: {
+            color: colors.heading,
+            marginRight: 12,
+        },
+        description: {
+            paddingHorizontal: 16,
+            marginBottom: 16,
+        },
+        actionsRow: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginTop: 12,
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+            paddingTop: 12,
+        },
+        readMoreButton: {
+            alignItems: 'center',
+        },
+        readMoreText: {
+            color: colors.primary,
+            fontWeight: 'bold',
+        },
+        modalMarkdownContainer: {
+            maxHeight: '80%',
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 6,
+            marginTop: 12,
+        },
+    });
+};
 
 export default AnnouncementsPage;

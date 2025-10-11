@@ -210,14 +210,14 @@ const AdminUsersPage = () => {
                         </TouchableOpacity>
                     ) : (
                         <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.warning}, !canSuspend && styles.disabledButton]} onPress={() => setSuspendingUser(user)} disabled={!canSuspend}>
-                            <Icon name="user-lock" size={14} color={colors.black} />
-                            <Text style={[styles.actionButtonText, {color: colors.black}]}>Sperren</Text>
+                            <Icon name="user-lock" size={14} color={colors.textOnWarning} />
+                            <Text style={[styles.actionButtonText, {color: colors.textOnWarning}]}>Sperren</Text>
                         </TouchableOpacity>
                     )}
                     {canDelete && (
                          <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.danger}]} onPress={() => setDeletingUser(user)}>
-                            <Icon name="trash" size={14} color="#fff" />
-                            <Text style={[styles.actionButtonText, {color: '#fff'}]}>Löschen</Text>
+                            <Icon name="trash" size={14} color={colors.white} />
+                            <Text style={[styles.actionButtonText, {color: colors.white}]}>Löschen</Text>
                          </TouchableOpacity>
                     )}
                 </View>

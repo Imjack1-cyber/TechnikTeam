@@ -14,10 +14,14 @@ const lightColors = {
 	border: '#dee2e6',
 	success: '#28a745',
 	danger: '#dc3545',
+	dangerRgb: '220, 53, 69',
 	warning: '#ffc107',
 	info: '#0dcaf0',
 	white: '#ffffff',
 	black: '#000000',
+    disabledSurface: '#e9ecef',
+    disabledText: '#6c757d',
+    textOnWarning: '#000000',
 };
 
 const darkColors = {
@@ -32,10 +36,14 @@ const darkColors = {
 	border: '#30363d',
 	success: '#56d364',
 	danger: '#f87171',
+	dangerRgb: '248, 113, 113',
 	warning: '#f0b72f',
 	info: '#67d4ed',
 	white: '#ffffff',
 	black: '#000000',
+    disabledSurface: '#21262d',
+    disabledText: '#484f58',
+    textOnWarning: '#000000',
 };
 
 export const getThemeColors = (theme = 'light') => {

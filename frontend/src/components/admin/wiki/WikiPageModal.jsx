@@ -5,10 +5,12 @@ import apiClient from '../../../services/apiClient';
 import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../store/authStore';
 import { getCommonStyles } from '../../../styles/commonStyles';
+import { getThemeColors } from '../../../styles/theme';
 
 const WikiPageModal = ({ isOpen, onClose, onSuccess, parentPath }) => {
 	const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
 	const [fileName, setFileName] = useState('');
@@ -40,7 +42,7 @@ const WikiPageModal = ({ isOpen, onClose, onSuccess, parentPath }) => {
 			<View>
 				{error && <Text style={styles.errorText}>{error}</Text>}
 				<Text style={styles.label}>Übergeordneter Pfad</Text>
-				<TextInput style={[styles.input, { backgroundColor: '#e9ecef' }]} value={parentPath || '/'} editable={false} />
+				<TextInput style={[styles.input, { backgroundColor: colors.background }]} value={parentPath || '/'} editable={false} />
 				<Text style={styles.label}>Dateiname (z.B. `neue-seite.md`)</Text>
 				<TextInput style={styles.input} value={fileName} onChangeText={setFileName} autoCapitalize="none" autoCorrect={false} />
 				

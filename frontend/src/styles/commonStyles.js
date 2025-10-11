@@ -104,7 +104,11 @@ export const getCommonStyles = (theme) => {
 			color: colors.danger,
 		},
         disabledButton: {
-            opacity: 0.65,
+            backgroundColor: colors.disabledSurface,
+            borderColor: colors.border,
+        },
+        disabledButtonText: {
+            color: colors.disabledText,
         },
 
 		// Forms

@@ -1,15 +1,21 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Modal from './Modal';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
+import { useAuthStore } from '../../store/authStore';
+import { getThemeColors, typography, spacing } from '../../styles/theme';
 
 const DownloadWarningModal = ({ isOpen, onClose, onConfirm, file }) => {
+    const theme = useAuthStore(state => state.theme);
+    const colors = getThemeColors(theme);
+    const styles = pageStyles(theme);
+
 	if (!isOpen || !file) return null;
 
 	return (
 		<Modal isOpen={isOpen} onClose={onClose} title="Download-Warnung">
 			<View style={styles.container}>
-				<Icon name="exclamation-triangle" size={48} color="#ffc107" style={styles.icon} />
+				<Icon name="exclamation-triangle" size={48} color={colors.warning} style={styles.icon} />
 				<Text style={styles.title}>Potenziell unsichere Datei</Text>
 				<Text style={styles.description}>
 					Sie sind im Begriff, die Datei <Text style={{ fontWeight: 'bold' }}>"{file.filename}"</Text> herunterzuladen.
@@ -21,10 +27,10 @@ const DownloadWarningModal = ({ isOpen, onClose, onConfirm, file }) => {
 					Möchten Sie den Download fortsetzen?
 				</Text>
 				<View style={styles.buttonContainer}>
-					<TouchableOpacity onPress={onClose} style={[styles.button, styles.secondaryButton]}>
-						<Text style={styles.secondaryButtonText}>Abbrechen</Text>
+					<TouchableOpacity onPress={onClose} style={[styles.button, { backgroundColor: colors.textMuted }]}>
+						<Text style={styles.buttonText}>Abbrechen</Text>
 					</TouchableOpacity>
-					<TouchableOpacity onPress={onConfirm} style={[styles.button, styles.dangerButton]}>
+					<TouchableOpacity onPress={onConfirm} style={[styles.button, { backgroundColor: colors.danger }]}>
 						<Text style={styles.buttonText}>Ja, herunterladen</Text>
 					</TouchableOpacity>
 				</View>
@@ -33,55 +39,50 @@ const DownloadWarningModal = ({ isOpen, onClose, onConfirm, file }) => {
 	);
 };
 
-const styles = StyleSheet.create({
-	container: {
-		alignItems: 'center',
-	},
-	icon: {
-		marginBottom: 16,
-	},
-	title: {
-		fontSize: 20,
-		fontWeight: 'bold',
-		marginBottom: 8,
-	},
-	description: {
-		textAlign: 'center',
-		fontSize: 16,
-		marginBottom: 8,
-		color: '#212529',
-	},
-	question: {
-		fontWeight: 'bold',
-		textAlign: 'center',
-		fontSize: 16,
-		marginTop: 16,
-	},
-	buttonContainer: {
-		flexDirection: 'row',
-		justifyContent: 'center',
-		gap: 16,
-		marginTop: 24,
-	},
-	button: {
-		paddingVertical: 10,
-		paddingHorizontal: 20,
-		borderRadius: 6,
-	},
-	secondaryButton: {
-		backgroundColor: '#6c757d',
-	},
-	dangerButton: {
-		backgroundColor: '#dc3545',
-	},
-	buttonText: {
-		color: '#fff',
-		fontWeight: '500',
-	},
-	secondaryButtonText: {
-		color: '#fff',
-		fontWeight: '500',
-	},
-});
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        container: {
+            alignItems: 'center',
+        },
+        icon: {
+            marginBottom: spacing.md,
+        },
+        title: {
+            fontSize: typography.h3,
+            fontWeight: 'bold',
+            marginBottom: spacing.sm,
+            color: colors.heading,
+        },
+        description: {
+            textAlign: 'center',
+            fontSize: typography.body,
+            marginBottom: spacing.sm,
+            color: colors.text,
+        },
+        question: {
+            fontWeight: 'bold',
+            textAlign: 'center',
+            fontSize: typography.body,
+            marginTop: spacing.md,
+            color: colors.text,
+        },
+        buttonContainer: {
+            flexDirection: 'row',
+            justifyContent: 'center',
+            gap: spacing.md,
+            marginTop: spacing.lg,
+        },
+        button: {
+            paddingVertical: 10,
+            paddingHorizontal: 20,
+            borderRadius: 6,
+        },
+        buttonText: {
+            color: colors.white,
+            fontWeight: '500',
+        },
+    });
+};
 
 export default DownloadWarningModal;

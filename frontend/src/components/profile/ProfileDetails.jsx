@@ -3,7 +3,7 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Platfo
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
 import Modal from '../ui/Modal';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
@@ -11,6 +11,7 @@ import { getThemeColors, typography, spacing } from '../../styles/theme';
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, changes, isSubmitting }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const pageSpecificStyles = pageStyles(theme);
 	if (!isOpen) return null;
 
 	const changeLabels = {
@@ -22,18 +23,18 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, changes, isSubmitting }
 
 	return (
 		<Modal isOpen={isOpen} onClose={onClose} title="Änderungen bestätigen">
-			<Text style={pageStyles(theme).modalText}>Bitte überprüfen Sie die folgenden Änderungen. Diese müssen von einem Administrator genehmigt werden.</Text>
+			<Text style={pageSpecificStyles.modalText}>Bitte überprüfen Sie die folgenden Änderungen. Diese müssen von einem Administrator genehmigt werden.</Text>
 			{Object.entries(changes).map(([key, values]) => (
-				<View key={key} style={pageStyles(theme).changeRow}>
-					<Text style={pageStyles(theme).changeLabel}>{changeLabels[key] || key}</Text>
-					<View style={pageStyles(theme).changeValues}>
-						<Text style={pageStyles(theme).oldValue}>{values.oldVal || 'Nicht gesetzt'}</Text>
-						<Text> → </Text>
-						<Text style={pageStyles(theme).newValue}>{values.newVal || 'Wird entfernt'}</Text>
+				<View key={key} style={pageSpecificStyles.changeRow}>
+					<Text style={pageSpecificStyles.changeLabel}>{changeLabels[key] || key}</Text>
+					<View style={pageSpecificStyles.changeValues}>
+						<Text style={pageSpecificStyles.oldValue}>{values.oldVal || 'Nicht gesetzt'}</Text>
+						<Text style={{ color: getThemeColors(theme).text }}> → </Text>
+						<Text style={pageSpecificStyles.newValue}>{values.newVal || 'Wird entfernt'}</Text>
 					</View>
 				</View>
 			))}
-			<View style={pageStyles(theme).modalButtons}>
+			<View style={pageSpecificStyles.modalButtons}>
 				<TouchableOpacity onPress={onClose} style={[styles.button, styles.secondaryButton]} disabled={isSubmitting}>
 					<Text style={styles.buttonText}>Abbrechen</Text>
 				</TouchableOpacity>
@@ -189,9 +190,9 @@ const pageStyles = (theme) => {
         readOnlyInput: { backgroundColor: 'transparent' },
         actionButtons: { flexDirection: 'row', gap: 8, marginTop: 16, justifyContent: 'flex-end' },
         secondaryButtonText: { color: colors.text },
-        modalText: { marginBottom: 16, fontSize: 16 },
-        changeRow: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#eee' },
-        changeLabel: { fontWeight: 'bold', marginBottom: 4 },
+        modalText: { marginBottom: 16, fontSize: 16, color: colors.text },
+        changeRow: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border },
+        changeLabel: { fontWeight: 'bold', marginBottom: 4, color: colors.text },
         changeValues: { flexDirection: 'row', alignItems: 'center' },
         oldValue: { textDecorationLine: 'line-through', color: colors.danger, marginRight: 8 },
         newValue: { fontWeight: 'bold', color: colors.success, marginLeft: 8 },

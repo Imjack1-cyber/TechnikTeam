@@ -8,14 +8,18 @@ import { useToast } from '../context/ToastContext';
 import { useTransferStore } from '../store/transferStore';
 import { v4 as uuidv4 } from 'uuid'; // For generating unique download IDs
 import TransferButton from '../components/ui/TransferButton';
-import { getThemeColors } from '../styles/theme';
+import { useAuthStore } from '../store/authStore';
+import { getCommonStyles } from '../styles/commonStyles';
+import { getThemeColors, spacing } from '../styles/theme';
 
 const FileLink = ({ file, navigation }) => {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const { addToast } = useToast();
     const { addTransfer, updateTransfer } = useTransferStore();
     const [transferId, setTransferId] = useState(null);
-    const colors = getThemeColors();
+    const theme = useAuthStore(state => state.theme);
+    const colors = getThemeColors(theme);
+    const styles = pageStyles(theme);
 
 	const isMarkdown = file.filename.toLowerCase().endsWith('.md');
 
@@ -61,7 +65,7 @@ const FileLink = ({ file, navigation }) => {
 				</View>
 				{isMarkdown && (
 					<TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('FileEditor', { fileId: file.id })}>
-						<Icon name="pen-alt" size={12} color="#fff" />
+						<Icon name="pen-alt" size={12} color={colors.white} />
 						<Text style={styles.editButtonText}>Bearbeiten</Text>
 					</TouchableOpacity>
 				)}
@@ -82,6 +86,8 @@ const FileLink = ({ file, navigation }) => {
 const FilesPage = ({ navigation }) => {
 	const apiCall = useCallback(() => apiClient.get('/public/files'), []);
 	const { data: fileData, loading, error } = useApi(apiCall, { subscribeTo: ['FILE', 'FILE_CATEGORY'] });
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
 
 	const renderContent = () => {
 		if (loading) return <ActivityIndicator size="large" style={{ marginTop: 20 }} />;
@@ -93,7 +99,7 @@ const FilesPage = ({ navigation }) => {
 		return Object.entries(fileData).map(([categoryName, files]) => (
 			<View style={styles.card} key={categoryName}>
 				<View style={styles.categoryHeader}>
-					<Icon name="folder" size={20} color="#002B5B" />
+					<Icon name="folder" size={20} color={styles.title.color} />
 					<Text style={styles.categoryTitle}>{categoryName}</Text>
 				</View>
 				<View>
@@ -117,21 +123,19 @@ const FilesPage = ({ navigation }) => {
 	);
 };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8f9fa' },
-    header: { flexDirection: 'row', alignItems: 'center', padding: 16 },
-    headerIcon: { color: '#002B5B', marginRight: 12 },
-    title: { fontSize: 24, fontWeight: '700', color: '#002B5B' },
-    description: { fontSize: 16, color: '#6c757d', paddingHorizontal: 16, marginBottom: 16 },
-    card: { backgroundColor: '#ffffff', borderRadius: 8, padding: 16, marginHorizontal: 16, marginBottom: 16, borderWidth: 1, borderColor: '#dee2e6' },
-    categoryHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-    categoryTitle: { fontSize: 18, fontWeight: '600', color: '#002B5B', marginLeft: 8 },
-    fileRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 0, borderBottomWidth: 1, borderBottomColor: '#dee2e6' },
-    fileLink: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-    fileName: { color: '#007bff', fontSize: 16 },
-    editButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#6c757d', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 4, gap: 6 },
-    editButtonText: { color: '#fff', fontSize: 12 },
-    errorText: { color: '#dc3545', textAlign: 'center', padding: 16 },
-});
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        header: { flexDirection: 'row', alignItems: 'center', padding: 16 },
+        headerIcon: { color: colors.heading, marginRight: 12 },
+        description: { fontSize: 16, color: colors.textMuted, paddingHorizontal: 16, marginBottom: 16 },
+        categoryHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+        categoryTitle: { fontSize: 18, fontWeight: '600', color: colors.heading, marginLeft: 8 },
+        fileRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 0, borderBottomWidth: 1, borderBottomColor: colors.border },
+        fileLink: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+        editButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.textMuted, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 4, gap: 6 },
+        editButtonText: { color: colors.white, fontSize: 12 },
+    });
+};
 
 export default FilesPage;
