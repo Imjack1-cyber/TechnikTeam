@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/authStore';
 import { useToast } from '../context/ToastContext';
 import Icon from '@expo/vector-icons/FontAwesome5';
 import apiClient from '../services/apiClient';
-import { getThemeColors, spacing } from '../styles/theme';
+import { getThemeColors, spacing, borders } from '../styles/theme';
 import { passkeyService } from '../services/passkeyService'; // Import the frontend passkey service
 import AdminModal from '../components/ui/AdminModal';
 
@@ -98,7 +98,7 @@ const LoginPage = ({ navigation }) => {
 
 	const [preAuthToken, setPreAuthToken] = useState(null);
 
-	const { login, backendMode, setBackendMode, completePasskeyLogin } = useAuthStore();
+	const { login, backendMode, setBackendMode, completePasskeyLogin, postLoginRedirectPath } = useAuthStore();
 	const { addToast } = useToast();
 
 	const handleAuthSuccess = async (loginData) => {
@@ -179,6 +179,12 @@ const LoginPage = ({ navigation }) => {
 		<SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" />
 			<View style={styles.loginBox}>
+                {postLoginRedirectPath && (
+                    <View style={styles.redirectInfo}>
+                        <Icon name="info-circle" size={16} color={getThemeColors('light').primary} />
+                        <Text style={styles.redirectText}>Bitte anmelden, um <Text style={{fontWeight: 'bold'}}>{postLoginRedirectPath}</Text> anzuzeigen.</Text>
+                    </View>
+                )}
 				<Icon name="bolt" size={40} color="#007bff" style={{ alignSelf: 'center', marginBottom: 8 }} />
 				<Text style={styles.title}>TechnikTeam</Text>
 				{error && <Text style={styles.errorText}>{error}</Text>}
@@ -288,6 +294,19 @@ const styles = StyleSheet.create({
     backendSwitchLink: {
         color: '#007bff',
         fontWeight: 'bold',
+    },
+    redirectInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        backgroundColor: getThemeColors('light').primaryLight,
+        padding: spacing.md,
+        borderRadius: borders.radius,
+        marginBottom: spacing.md,
+    },
+    redirectText: {
+        color: getThemeColors('light').text,
+        flex: 1,
     },
 });
 

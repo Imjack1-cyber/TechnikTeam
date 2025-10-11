@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Platform } from 'react-native';
+import { StyleSheet, View, Platform, Linking } from 'react-native';
 import { useAuthStore } from './src/store/authStore';
 import { ToastProvider } from './src/context/ToastContext';
 import ToastContainer from './src/components/ui/ToastContainer';
@@ -201,11 +201,38 @@ export default function App() {
 
             const token = await getToken();
             if (token) {
+                // User has a token, proceed as normal
                 apiClient.setAuthToken(token);
                 try {
                     await useAuthStore.getState().fetchUserSession();
                 } catch (error) {
                     console.log("Session token from storage is invalid. Clearing.");
+                }
+            } else {
+                // No token found, check for initial deep link URL to store for post-login redirect
+                let initialPath = null;
+                if (Platform.OS === 'web') {
+                    initialPath = window.location.pathname;
+                } else {
+                    const initialUrl = await Linking.getInitialURL();
+                    if (initialUrl) {
+                        try {
+                            const url = new URL(initialUrl);
+                            initialPath = url.pathname;
+                        } catch (e) {
+                            console.warn(`Could not parse initial URL: ${initialUrl}`, e);
+                        }
+                    }
+                }
+    
+                if (initialPath) {
+                    const publicPrefixes = ['/login', '/share/', '/verify/', '/poll/', '/maintenance'];
+                    const isPublicPath = publicPrefixes.some(prefix => initialPath.startsWith(prefix));
+    
+                    if (!isPublicPath && initialPath !== '/') {
+                        console.log(`[App] No session found. Storing post-login redirect path: ${initialPath}`);
+                        useAuthStore.getState().setPostLoginRedirectPath(initialPath);
+                    }
                 }
             }
             setIsLoading(false);

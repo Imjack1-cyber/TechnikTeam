@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import apiClient from '../services/apiClient';
 import { storage, setToken, removeToken } from '../lib/storage';
 import { Platform } from 'react-native';
+import { navigateFromUrl } from '../router/navigationHelper';
 
 const hasAdminAccess = (roleName) => {
 	// Frontend authorization check based on role.
@@ -36,6 +37,8 @@ export const useAuthStore = create(
 			layout: defaultLayout,
 			maintenanceStatus: { mode: 'OFF', message: '' },
 			previousLogin: null,
+            postLoginRedirectPath: null,
+            setPostLoginRedirectPath: (path) => set({ postLoginRedirectPath: path }),
             completeLogin: async (loginData) => {
                 const { session, token } = loginData;
                 const { user, navigation, maintenanceStatus, previousLogin } = session;
@@ -71,6 +74,16 @@ export const useAuthStore = create(
                     maintenanceStatus: maintenanceStatus || { mode: 'OFF', message: '' },
                     previousLogin: previousLogin,
                 });
+
+                const redirectPath = get().postLoginRedirectPath;
+                if (redirectPath) {
+                    console.log(`[authStore] Post-login redirect found. Navigating to: ${redirectPath}`);
+                    // Use a slight delay to ensure the navigator is ready after the state change
+                    setTimeout(() => {
+                        navigateFromUrl(redirectPath);
+                        set({ postLoginRedirectPath: null }); // Clear the path after using it
+                    }, 100);
+                }
             },
 			login: async (username, password) => {
 				try {
@@ -103,7 +116,7 @@ export const useAuthStore = create(
 					await removeToken();
 					apiClient.setAuthToken(null);
                     // Preserve theme and backendMode on logout
-					set(state => ({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, layout: defaultLayout, maintenanceStatus: { mode: 'OFF', message: '' }, previousLogin: null, theme: state.theme, backendMode: state.backendMode }));
+					set(state => ({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, layout: defaultLayout, maintenanceStatus: { mode: 'OFF', message: '' }, previousLogin: null, theme: state.theme, backendMode: state.backendMode, postLoginRedirectPath: null }));
 				}
 			},
 			fetchUserSession: async () => {
