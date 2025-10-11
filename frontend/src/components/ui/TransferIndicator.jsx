@@ -1,10 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, Platform } from 'react-native';
-import { useDownloadStore } from '../../store/downloadStore';
+import { useTransferStore } from '../../store/transferStore';
 import { useAuthStore } from '../../store/authStore';
 import { getThemeColors, typography, spacing, borders, shadows } from '../../styles/theme';
 import ProgressBar from './ProgressBar';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import * as Sharing from 'expo-sharing';
 
 const formatBytes = (bytes, decimals = 2) => {
@@ -33,7 +33,7 @@ const TransferItem = ({ transfer, transferId }) => {
     const theme = useAuthStore(state => state.theme);
     const colors = getThemeColors(theme);
     const styles = pageStyles(theme);
-    const { cancelTransfer } = useDownloadStore();
+    const { cancelTransfer } = useTransferStore();
 
     const handleOpen = async () => {
         if (Platform.OS === 'web' || !transfer.fileUri) return;
@@ -83,12 +83,13 @@ const TransferItem = ({ transfer, transferId }) => {
     );
 };
 
-const DownloadsIndicator = () => {
-    const transfers = useDownloadStore(state => state.transfers);
+const TransferIndicator = () => {
+    const transfers = useTransferStore(state => state.transfers);
     const theme = useAuthStore(state => state.theme);
     const styles = pageStyles(theme);
 
-    const activeTransfers = Object.entries(transfers);
+    const activeTransfers = Object.entries(transfers)
+        .filter(([id, transfer]) => transfer.displayMode === 'indicator');
 
     if (activeTransfers.length === 0) {
         return null;
@@ -157,4 +158,4 @@ const pageStyles = (theme) => {
     });
 };
 
-export default DownloadsIndicator;
+export default TransferIndicator;

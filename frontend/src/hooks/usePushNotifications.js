@@ -4,7 +4,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import apiClient from '../services/apiClient';
 import { useAuthStore } from '../store/authStore';
-import { useDownloadStore } from '../store/downloadStore';
+import { useTransferStore } from '../store/transferStore';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -93,7 +93,7 @@ export const usePushNotifications = () => {
                 const isComplete = progressCurrent >= progressMax;
 
                 // Centralize all update logic in the store. The store will handle dismissal.
-                useDownloadStore.getState().updateDownload(downloadId, {
+                useTransferStore.getState().updateTransfer(downloadId, {
                     progress: progressCurrent,
                     total: progressMax,
                     status: isComplete ? 'completed' : 'downloading',

@@ -4,6 +4,7 @@ import { useBackendStatusStore } from '../store/backendStatusStore';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { getToken } from '../lib/storage';
+import { useTransferStore } from '../store/transferStore';
 
 export const MAX_FILE_SIZE_BYTES = 1000 * 1024 * 1024; // 1000 MB
 
@@ -28,6 +29,36 @@ const getRootUrl = () => {
 let onUnauthorizedCallback = () => {};
 let onMaintenanceCallback = () => {};
 let authToken = null;
+
+// Helper for speed/ETA calculation
+const createSpeedTracker = () => {
+    let lastTime = Date.now();
+    let lastLoaded = 0;
+    const speedSamples = [];
+    const sampleSize = 5;
+
+    return (progress, total) => {
+        const now = Date.now();
+        const timeDelta = (now - lastTime) / 1000; // in seconds
+        const loadedDelta = progress - lastLoaded;
+
+        if (timeDelta > 0.5) { // Update only every 0.5s to get a stable reading
+            const currentSpeed = loadedDelta / timeDelta;
+            speedSamples.push(currentSpeed);
+            if (speedSamples.length > sampleSize) {
+                speedSamples.shift();
+            }
+            lastTime = now;
+            lastLoaded = progress;
+        }
+
+        const avgSpeed = speedSamples.length > 0 ? speedSamples.reduce((a, b) => a + b, 0) / speedSamples.length : 0;
+        const remainingBytes = total - progress;
+        const eta = avgSpeed > 0 ? remainingBytes / avgSpeed : Infinity;
+
+        return { speed: avgSpeed, eta };
+    };
+};
 
 const apiClient = {
 	setup: function(callbacks) {
@@ -120,16 +151,48 @@ const apiClient = {
 			throw error;
 		}
 	},
-    downloadFile: async function(fileId, filename, onProgress) {
-        const downloadUrl = `${this.getBaseUrl()}/public/files/download/${fileId}`;
+    downloadFile: async function(downloadUrl, filename, transferId) {
         const token = await getToken();
         const headers = { Authorization: `Bearer ${token}` };
+        const { updateTransfer } = useTransferStore.getState();
 
         if (Platform.OS === 'web') {
-            onProgress({ totalBytesWritten: 0, totalBytesExpectedToWrite: 1 }); // Indeterminate progress for web
-            const response = await fetch(downloadUrl, { headers });
-            if (!response.ok) throw new Error('Fehler beim Herunterladen der Datei.');
-            const blob = await response.blob();
+            const controller = new AbortController();
+            updateTransfer(transferId, { source: controller });
+            
+            const response = await fetch(downloadUrl, { headers, signal: controller.signal });
+            if (!response.ok) throw new Error('Download-Link ist ungültig oder abgelaufen.');
+
+            const total = parseInt(response.headers.get('Content-Length') || '0', 10);
+            updateTransfer(transferId, { total });
+
+            if (!response.body) {
+                throw new Error("Response body is not available.");
+            }
+
+            const reader = response.body.getReader();
+            const chunks = [];
+            let loaded = 0;
+            const tracker = createSpeedTracker();
+
+            while (true) {
+                try {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    chunks.push(value);
+                    loaded += value.length;
+                    const { speed, eta } = tracker(loaded, total);
+                    updateTransfer(transferId, { progress: loaded, speed, eta, status: 'progressing' });
+                } catch (err) {
+                    if (err.name === 'AbortError') {
+                        console.log('Download aborted by user.');
+                        throw err; // Re-throw to be caught by outer catch block
+                    }
+                    throw err;
+                }
+            }
+            
+            const blob = new Blob(chunks);
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -138,21 +201,91 @@ const apiClient = {
             a.click();
             a.remove();
             window.URL.revokeObjectURL(url);
-            onProgress({ totalBytesWritten: 1, totalBytesExpectedToWrite: 1 }); // Mark as complete
+            updateTransfer(transferId, { status: 'completed' });
         } else {
             // Native logic with progress callback
             const fileUri = FileSystem.documentDirectory + filename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+            const tracker = createSpeedTracker();
             const downloadResumable = FileSystem.createDownloadResumable(
                 downloadUrl,
                 fileUri,
                 { headers },
-                onProgress
+                (progress) => {
+                    const { speed, eta } = tracker(progress.totalBytesWritten, progress.totalBytesExpectedToWrite);
+                    updateTransfer(transferId, {
+                        progress: progress.totalBytesWritten,
+                        total: progress.totalBytesExpectedToWrite,
+                        speed,
+                        eta,
+                        status: 'progressing'
+                    });
+                }
             );
-            const { uri } = await downloadResumable.downloadAsync();
-            if (await Sharing.isAvailableAsync()) {
-                await Sharing.shareAsync(uri, { dialogTitle: filename });
+            updateTransfer(transferId, { source: { abort: () => downloadResumable.pauseAsync() }}); // Adapt abort for resumable
+            try {
+                const { uri } = await downloadResumable.downloadAsync();
+                updateTransfer(transferId, { fileUri: uri, status: 'completed' });
+
+                if (await Sharing.isAvailableAsync()) {
+                    await Sharing.shareAsync(uri, { dialogTitle: filename });
+                }
+            } catch (e) {
+                if (e.message && e.message.includes('paused')) {
+                    console.log(`Download ${transferId} cancelled by user.`);
+                } else {
+                    throw e; // Re-throw other errors
+                }
             }
         }
+    },
+	uploadWithProgress: function(endpoint, formData, transferId) {
+        return new Promise(async (resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            const { updateTransfer } = useTransferStore.getState();
+            updateTransfer(transferId, { source: xhr });
+
+            const tracker = createSpeedTracker();
+            
+            xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable) {
+                    const { speed, eta } = tracker(event.loaded, event.total);
+                    updateTransfer(transferId, {
+                        progress: event.loaded,
+                        total: event.total,
+                        speed,
+                        eta,
+                        status: 'progressing'
+                    });
+                }
+            };
+            
+            xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    resolve(JSON.parse(xhr.responseText));
+                } else {
+                    try {
+                        reject(new Error(JSON.parse(xhr.responseText).message || `HTTP Error: ${xhr.status}`));
+                    } catch {
+                        reject(new Error(`HTTP Error: ${xhr.status}`));
+                    }
+                }
+            };
+            
+            xhr.onerror = () => reject(new Error('Network request failed'));
+            xhr.onabort = () => reject(new Error('Upload canceled'));
+
+            const url = `${this.getBaseUrl()}${endpoint}`;
+            xhr.open('POST', url, true);
+            
+            if (Platform.OS !== 'web') {
+                const token = await getToken();
+                if (token) {
+                    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+                }
+            }
+            
+            xhr.send(formData);
+        });
     },
 	get(endpoint) {
 		return this.request(endpoint, { method: 'GET' });

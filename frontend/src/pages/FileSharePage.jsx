@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, SafeAreaView, Platform, Image } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import useApi from '../hooks/useApi';
@@ -8,17 +8,16 @@ import { getCommonStyles } from '../styles/commonStyles';
 import { getThemeColors, spacing, typography, borders, shadows } from '../styles/theme';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useToast } from '../context/ToastContext';
-import { useDownloadStore } from '../store/downloadStore';
+import { useTransferStore } from '../store/transferStore';
 import { v4 as uuidv4 } from 'uuid';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
+import TransferButton from '../components/ui/TransferButton';
 
 const FileSharePage = () => {
     const route = useRoute();
     const { token } = route.params;
     const { addToast } = useToast();
-    const addDownload = useDownloadStore(state => state.addDownload);
-    const markDownloadAsLocallyComplete = useDownloadStore(state => state.markDownloadAsLocallyComplete);
+    const { addTransfer, updateTransfer } = useTransferStore();
+    const [transferId, setTransferId] = useState(null);
 
     // This is a public page, so we default to the light theme.
     const theme = useAuthStore(state => state.theme || 'light');
@@ -31,43 +30,19 @@ const FileSharePage = () => {
     const handleDownload = async () => {
         if (!file) return;
 
-        addToast(`Download für "${file.filename}" wird vorbereitet...`, 'info');
-        const downloadId = uuidv4();
-        addDownload(downloadId, file.filename);
+        const newTransferId = uuidv4();
+        setTransferId(newTransferId);
+        addTransfer(newTransferId, file.filename, 'download', file.size || null);
 
         try {
-            // The download endpoint itself is now the share link
             const downloadUrl = `${apiClient.getBaseUrl()}/public/files/share/${token}`;
-            
-            // Re-implementing download logic here since this is a public page
-            if (Platform.OS === 'web') {
-                 const response = await fetch(downloadUrl);
-                 if (!response.ok) throw new Error('Download-Link ist ungültig oder abgelaufen.');
-                 const blob = await response.blob();
-                 const url = window.URL.createObjectURL(blob);
-                 const a = document.createElement('a');
-                 a.href = url;
-                 a.download = file.filename;
-                 document.body.appendChild(a);
-                 a.click();
-                 a.remove();
-                 window.URL.revokeObjectURL(url);
-            } else {
-                // Native platform download logic
-                const fileUri = FileSystem.documentDirectory + file.filename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-                const { uri } = await FileSystem.downloadAsync(
-                    downloadUrl,
-                    fileUri,
-                );
-                addToast('Download abgeschlossen!', 'success');
-                if (await Sharing.isAvailableAsync()) {
-                    await Sharing.shareAsync(uri, { dialogTitle: file.filename });
-                }
-            }
-            markDownloadAsLocallyComplete(downloadId);
+            await apiClient.downloadFile(downloadUrl, file.filename, newTransferId);
+            // The apiClient now handles updating the store to 'completed'
         } catch (err) {
-            addToast(`Download fehlgeschlagen: ${err.message}`, 'error');
-            useDownloadStore.getState().updateDownload(downloadId, { status: 'error' });
+            if (err.name !== 'AbortError') {
+                addToast(`Download fehlgeschlagen: ${err.message}`, 'error');
+                updateTransfer(newTransferId, { status: 'error' });
+            }
         }
     };
 
@@ -80,7 +55,7 @@ const FileSharePage = () => {
             return (
                 <>
                     <Icon name="times-circle" solid size={80} color={colors.danger} style={styles.icon} />
-                    <Text style={styles.title}>Ungültiger Link</Text>
+                    <Text style={styles.statusTextError}>Ungültiger Link</Text>
                     <Text style={styles.message}>Dieser Freigabe-Link ist ungültig, abgelaufen oder Sie haben keine Berechtigung, auf diese Datei zuzugreifen.</Text>
                 </>
             );
@@ -94,10 +69,14 @@ const FileSharePage = () => {
                     <Icon name="file-alt" solid size={24} color={colors.primary} />
                     <Text style={styles.filename} numberOfLines={2}>{file.filename}</Text>
                 </View>
-                <TouchableOpacity style={[styles.button, styles.successButton, {width: '100%'}]} onPress={handleDownload}>
-                    <Icon name="download" size={20} color={colors.white} />
-                    <Text style={[styles.buttonText, {fontSize: 18}]}>Herunterladen</Text>
-                </TouchableOpacity>
+                <TransferButton
+                    transferId={transferId}
+                    onPress={handleDownload}
+                    buttonStyle={[styles.button, styles.successButton, {width: '100%'}]}
+                    textStyle={[styles.buttonText, {fontSize: 18}]}
+                    defaultIcon="download"
+                    defaultText="Herunterladen"
+                />
             </>
         );
     };
@@ -206,6 +185,18 @@ const pageStyles = (theme) => {
             textAlign: 'center',
             fontSize: typography.caption,
             color: colors.textMuted,
+        },
+        statusTextSuccess: {
+            fontSize: typography.h2,
+            fontWeight: 'bold',
+            color: colors.success,
+            marginBottom: spacing.lg,
+        },
+        statusTextError: {
+            fontSize: typography.h2,
+            fontWeight: 'bold',
+            color: colors.danger,
+            marginBottom: spacing.lg,
         },
     });
 };

@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, SectionList, TouchableOpacity, ActivityIndicator, Alert, Platform, TextInput } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
-import apiClient, { MAX_FILE_SIZE_BYTES } from '../../services/apiClient';
+import apiClient from '../../services/apiClient';
 import UploadFileModal from '../../components/admin/files/UploadFileModal';
 import { useToast } from '../../context/ToastContext';
 import Icon from 'react-native-vector-icons/FontAwesome5';
@@ -12,6 +12,7 @@ import { getThemeColors, typography, spacing } from '../../styles/theme';
 import AdminModal from '../../components/ui/AdminModal';
 import * as DocumentPicker from 'expo-document-picker';
 import FileShareModal from '../../components/admin/files/FileShareModal';
+import ReplaceFileModal from '../../components/admin/files/ReplaceFileModal';
 
 const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
@@ -50,91 +51,6 @@ const RenameFileModal = ({ isOpen, onClose, onSuccess, file }) => {
         <AdminModal isOpen={isOpen} onClose={onClose} title="Datei umbenennen" onSubmit={handleSubmit} isSubmitting={isSubmitting}>
             <Text style={styles.label}>Neuer Dateiname</Text>
             <TextInput style={styles.input} value={newName} onChangeText={setNewName} />
-        </AdminModal>
-    );
-};
-
-const ReplaceFileModal = ({ isOpen, onClose, onSuccess, file }) => {
-    const theme = useAuthStore(state => state.theme);
-    const styles = getCommonStyles(theme);
-    const { addToast } = useToast();
-    const [newFile, setNewFile] = useState(null); // Will be the asset
-    const [isSubmitting, setIsSubmitting] = useState(false);
-
-    const handlePickFile = async () => {
-        try {
-            const res = await DocumentPicker.getDocumentAsync({});
-            if (res.canceled) {
-                return;
-            }
-            if (res.assets && res.assets[0]) {
-                const asset = res.assets[0];
-                setNewFile(asset);
-            } else {
-                throw new Error("Document picker returned an unexpected response.");
-            }
-        } catch (err) {
-            console.error("DocumentPicker Error:", err);
-            let errorMessage = "Fehler beim Auswählen der Datei.";
-            if (Platform.OS !== 'web' && err.message.includes('permission')) {
-                errorMessage = "Fehler beim Auswählen der Datei. Bitte stellen Sie sicher, dass die App die Berechtigung hat, auf Ihre Dateien zuzugreifen.";
-            }
-            addToast(errorMessage, "error");
-        }
-    };
-
-    const handleSubmit = async () => {
-        if (!newFile) {
-            addToast('Bitte wählen Sie eine gültige Datei aus.', 'error');
-            return;
-        }
-        setIsSubmitting(true);
-        const data = new FormData();
-        
-        if (Platform.OS === 'web') {
-            const response = await fetch(newFile.uri);
-            const blob = await response.blob();
-            data.append('file', new File([blob], newFile.name, { type: newFile.mimeType }));
-        } else {
-            data.append('file', {
-                uri: newFile.uri,
-                name: newFile.name,
-                type: newFile.mimeType,
-            });
-        }
-        
-        // Retain original properties
-        data.append('requiredRole', file.requiredRole);
-        data.append('categoryId', file.categoryId || '');
-
-        try {
-            const result = await apiClient.post(`/admin/files/replace/${file.id}`, data);
-            if (result.success) {
-                addToast('Datei erfolgreich ersetzt.', 'success');
-                onSuccess();
-            } else {
-                throw new Error(result.message);
-            }
-        } catch (err) {
-            addToast(`Fehler: ${err.message}`, 'error');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    return (
-        <AdminModal isOpen={isOpen} onClose={onClose} title="Datei ersetzen" onSubmit={handleSubmit} isSubmitting={isSubmitting}>
-            <Text style={styles.bodyText}>Ersetze "{file?.filename}" durch eine neue Version.</Text>
-             <Text style={styles.label}>Maximalgröße: {MAX_FILE_SIZE_BYTES / 1024 / 1024} MB</Text>
-            <TouchableOpacity style={[styles.button, styles.secondaryButton, { alignSelf: 'flex-start', marginVertical: 16 }]} onPress={handlePickFile}>
-                <Icon name="file" size={16} />
-                <Text>Neue Datei auswählen</Text>
-            </TouchableOpacity>
-            {newFile && (
-                <Text style={[{marginTop: 8}]}>
-                    Ausgewählt: {newFile.name} ({formatFileSize(newFile.size)})
-                </Text>
-            )}
         </AdminModal>
     );
 };
@@ -323,7 +239,7 @@ const AdminFilesPage = ({ navigation }) => {
                 formatFileSize={formatFileSize}
             />
             {modalState.type === 'renameFile' && <RenameFileModal isOpen={true} onClose={closeModal} onSuccess={handleModalSuccess} file={modalState.data} />}
-            {modalState.type === 'replaceFile' && <ReplaceFileModal isOpen={true} onClose={closeModal} onSuccess={handleModalSuccess} file={modalState.data} />}
+            {modalState.type === 'replaceFile' && <ReplaceFileModal isOpen={true} onClose={closeModal} onSuccess={handleModalSuccess} file={modalState.data} formatFileSize={formatFileSize} />}
             {modalState.type === 'renameCategory' && <RenameCategoryModal isOpen={true} onClose={closeModal} onSuccess={handleModalSuccess} category={modalState.data} />}
             {modalState.type === 'confirmDeleteFile' && <DeleteConfirmationModal isOpen={true} onClose={closeModal} onConfirm={() => handleDeleteFile(modalState.data)} itemType="Datei" itemName={modalState.data.filename} />}
             {modalState.type === 'confirmDeleteCategory' && <DeleteConfirmationModal isOpen={true} onClose={closeModal} onConfirm={() => handleDeleteCategory(modalState.data)} itemType="Kategorie" itemName={modalState.data.name} />}

@@ -7,7 +7,9 @@ import { useAuthStore } from '../../../store/authStore';
 import { getCommonStyles } from '../../../styles/commonStyles';
 import { getThemeColors } from '../../../styles/theme';
 import Icon from 'react-native-vector-icons/FontAwesome5';
-import AdminModal from '../../ui/AdminModal';
+import AdminModal from '../../../components/ui/AdminModal';
+import { useTransferStore } from '../../../store/transferStore';
+import { v4 as uuidv4 } from 'uuid';
 
 const VenueModal = ({ isOpen, onClose, onSuccess, venue }) => {
     const theme = useAuthStore(state => state.theme);
@@ -18,6 +20,7 @@ const VenueModal = ({ isOpen, onClose, onSuccess, venue }) => {
     const [formData, setFormData] = useState({ name: '', address: '', notes: '' });
     const [mapImage, setMapImage] = useState(null); // To hold asset
     const { addToast } = useToast();
+    const { addTransfer, updateTransfer } = useTransferStore();
 
     useEffect(() => {
         if (venue) {
@@ -56,30 +59,53 @@ const VenueModal = ({ isOpen, onClose, onSuccess, venue }) => {
         setIsSubmitting(true);
         setError('');
 
+        const transferId = mapImage ? uuidv4() : null;
+        if (transferId) {
+            addTransfer(transferId, mapImage.name, 'upload', mapImage.size);
+            onClose();
+        }
+
         const data = new FormData();
         data.append('venue', JSON.stringify(formData));
 
         if (mapImage) {
-            data.append('mapImage', {
-                uri: mapImage.uri,
-                name: mapImage.name,
-                type: mapImage.mimeType,
-            });
+            if (Platform.OS === 'web') {
+                const response = await fetch(mapImage.uri);
+                const blob = await response.blob();
+                data.append('mapImage', new File([blob], mapImage.name, { type: mapImage.mimeType }));
+            } else {
+                data.append('mapImage', {
+                    uri: mapImage.uri,
+                    name: mapImage.name,
+                    type: mapImage.mimeType,
+                });
+            }
         }
 
         try {
             const endpoint = venue ? `/admin/venues/${venue.id}` : '/admin/venues';
-            // Use POST for both create and update with multipart for reliability across platforms/proxies
-            const result = await apiClient.post(endpoint, data);
+            
+            let result;
+            if (transferId) {
+                result = await apiClient.uploadWithProgress(endpoint, data, transferId);
+            } else {
+                result = await apiClient.post(endpoint, data);
+            }
 
             if (result.success) {
                 addToast(`Ort erfolgreich ${venue ? 'aktualisiert' : 'erstellt'}.`, 'success');
+                if (transferId) updateTransfer(transferId, { status: 'completed' });
                 onSuccess();
             } else { throw new Error(result.message); }
         } catch (err) {
             setError(err.message || 'Fehler beim Speichern');
+            if (transferId) {
+                addToast(`Upload fehlgeschlagen: ${err.message}`, 'error');
+                updateTransfer(transferId, { status: 'error' });
+            }
         } finally {
             setIsSubmitting(false);
+            if (!transferId) onClose();
         }
     };
 
@@ -114,7 +140,7 @@ const VenueModal = ({ isOpen, onClose, onSuccess, venue }) => {
                 </TouchableOpacity>
                 {mapImage && (
                     <Text style={[{marginTop: 8}]}>
-                        Ausgewählt: {mapImage.name} ({(mapImage.size / 1024 / 1024).toFixed(2)} MB)
+                        Ausgewählt: {mapImage.name} ({ (mapImage.size / 1024 / 1024).toFixed(2)} MB)
                     </Text>
                 )}
                 {venue?.mapImagePath && !mapImage && <Text style={{ marginTop: 8 }}>Aktuelles Bild bleibt erhalten.</Text>}

@@ -13,7 +13,7 @@ import { getToken } from './src/lib/storage';
 import SplashScreen from './src/components/common/SplashScreen';
 import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './src/router/navigation';
-import DownloadsIndicator from './src/components/ui/DownloadsIndicator';
+import TransferIndicator from './src/components/ui/TransferIndicator';
 import MaintenanceBanner from './src/components/ui/MaintenanceBanner';
 
 // This is the crucial linking configuration for React Navigation on the web.
@@ -171,7 +171,7 @@ const AppContent = () => {
             <RootNavigator />
             <MaintenanceBanner />
             <ToastContainer />
-            <DownloadsIndicator />
+            <TransferIndicator />
             {warningNotification && <WarningNotification notification={warningNotification} onDismiss={dismissWarning} />}
         </View>
     );

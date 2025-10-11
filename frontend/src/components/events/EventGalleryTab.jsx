@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, Platform, TextInput } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
@@ -9,19 +10,74 @@ import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, spacing, borders } from '../../styles/theme';
 import Icon from 'react-native-vector-icons/FontAwesome5';
+import { useTransferStore } from '../../store/transferStore';
+import { v4 as uuidv4 } from 'uuid';
 
 // PhotoUploadModal would be a new component, similar to others, using a file picker
 const PhotoUploadModal = ({ isOpen, onClose, onSuccess, eventId }) => {
     const { addToast } = useToast();
-    const handleUpload = () => {
-        addToast("File picker not implemented in this demo", "info");
-        onSuccess();
+    const { addTransfer, updateTransfer } = useTransferStore();
+    const [file, setFile] = useState(null);
+    const [caption, setCaption] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handlePickFile = async () => {
+        const result = await DocumentPicker.getDocumentAsync({ type: 'image/*' });
+        if (!result.canceled && result.assets[0]) {
+            setFile(result.assets[0]);
+        }
     };
+
+    const handleUpload = async () => {
+        if (!file) {
+            addToast('Bitte wählen Sie ein Foto aus.', 'error');
+            return;
+        }
+        setIsSubmitting(true);
+        const transferId = uuidv4();
+        addTransfer(transferId, file.name, 'upload', file.size);
+        onClose();
+
+        const data = new FormData();
+        data.append('caption', caption);
+        
+        if (Platform.OS === 'web') {
+            const response = await fetch(file.uri);
+            const blob = await response.blob();
+            data.append('file', new File([blob], file.name, { type: file.mimeType }));
+        } else {
+            data.append('file', { uri: file.uri, name: file.name, type: file.mimeType });
+        }
+
+        try {
+            const result = await apiClient.uploadWithProgress(`/public/events/${eventId}/gallery`, data, transferId);
+            if (result.success) {
+                addToast('Foto erfolgreich hochgeladen.', 'success');
+                updateTransfer(transferId, { status: 'completed' });
+                onSuccess();
+            } else {
+                throw new Error(result.message);
+            }
+        } catch(e) {
+            addToast(`Upload fehlgeschlagen: ${e.message}`, 'error');
+            updateTransfer(transferId, { status: 'error' });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    
+    const styles = getCommonStyles();
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Neues Foto hochladen">
             <View>
-                <Text>Hier wäre die UI zum Auswählen und Hochladen eines Fotos.</Text>
-                <TouchableOpacity onPress={handleUpload} style={getCommonStyles().button}><Text style={getCommonStyles().buttonText}>Hochladen (Simuliert)</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={handlePickFile}>
+                    <Text>Foto auswählen</Text>
+                </TouchableOpacity>
+                {file && <Text>Ausgewählt: {file.name}</Text>}
+                <TextInput style={[styles.input, {marginTop: 16}]} placeholder="Bildunterschrift (optional)" value={caption} onChangeText={setCaption} />
+                <TouchableOpacity style={[styles.button, styles.primaryButton, {marginTop: 16}]} onPress={handleUpload} disabled={isSubmitting}>
+                    {isSubmitting ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Hochladen</Text>}
+                </TouchableOpacity>
             </View>
         </Modal>
     );

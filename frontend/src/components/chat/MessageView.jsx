@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, ActivityIndicator, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, ActivityIndicator, Alert, Linking, Platform } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import useWebSocket from '../../hooks/useWebSocket';
@@ -12,13 +13,15 @@ import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, spacing, typography, borders } from '../../styles/theme';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import MarkdownDisplay from 'react-native-markdown-display';
+import { useTransferStore } from '../../store/transferStore';
+import { v4 as uuidv4 } from 'uuid';
 
 const MessageView = () => {
 	const route = useRoute();
 	const navigation = useNavigation();
 	const { conversationId } = route.params;
 	const user = useAuthStore(state => state.user);
-	const fileInputRef = useRef(null);
+	const { addTransfer, updateTransfer } = useTransferStore();
 	const [newMessage, setNewMessage] = useState('');
 	const [messages, setMessages] = useState([]);
 	const [conversation, setConversation] = useState(null);
@@ -61,6 +64,40 @@ const MessageView = () => {
 			setNewMessage('');
 		}
 	};
+
+    const handlePickFile = async () => {
+        const result = await DocumentPicker.getDocumentAsync({});
+        if (!result.canceled && result.assets[0]) {
+            const file = result.assets[0];
+            const transferId = uuidv4();
+            addTransfer(transferId, file.name, 'upload', file.size);
+
+            const data = new FormData();
+            if (Platform.OS === 'web') {
+                const response = await fetch(file.uri);
+                const blob = await response.blob();
+                data.append('file', new File([blob], file.name, { type: file.mimeType }));
+            } else {
+                data.append('file', { uri: file.uri, name: file.name, type: file.mimeType });
+            }
+
+
+            try {
+                const uploadResult = await apiClient.uploadWithProgress('/public/chat/upload', data, transferId);
+                if (uploadResult.success) {
+                    const fileUrl = `${apiClient.getRootUrl()}/api/v1/public/files/download/${uploadResult.data.id}`;
+                    const markdownLink = `[${uploadResult.data.filename}](${fileUrl})`;
+                    sendMessage({ type: 'new_message', payload: { messageText: markdownLink } });
+                    updateTransfer(transferId, { status: 'completed' });
+                } else {
+                    throw new Error(uploadResult.message);
+                }
+            } catch (e) {
+                addToast(`Upload fehlgeschlagen: ${e.message}`, 'error');
+                updateTransfer(transferId, { status: 'error' });
+            }
+        }
+    };
 
 	const renderMessageContent = (msg) => {
 		const isSentByMe = msg.senderId === user.id;
@@ -110,6 +147,9 @@ const MessageView = () => {
 				contentContainerStyle={{ padding: spacing.md }}
 			/>
 			<View style={styles.inputContainer}>
+                <TouchableOpacity onPress={handlePickFile} style={styles.attachButton}>
+                    <Icon name="paperclip" size={20} color={colors.textMuted} />
+                </TouchableOpacity>
 				<TextInput style={styles.input} value={newMessage} onChangeText={setNewMessage} placeholder="Nachricht schreiben..." multiline maxLength={1024} />
 				<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit}><Text style={styles.buttonText}>Senden</Text></TouchableOpacity>
 			</View>
@@ -130,8 +170,9 @@ const pageStyles = (theme) => {
 		sender: { fontWeight: 'bold', fontSize: typography.small, marginBottom: 2 },
 		metaContainer: { flexDirection: 'row', alignSelf: 'flex-end', alignItems: 'center', gap: spacing.xs, marginTop: 4 },
 		timestamp: { fontSize: typography.caption, color: colors.textMuted },
-		inputContainer: { flexDirection: 'row', padding: spacing.sm, borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, gap: spacing.sm },
-		input: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: spacing.md, backgroundColor: colors.background, maxHeight: 120, paddingVertical: 10 }
+		inputContainer: { flexDirection: 'row', padding: spacing.sm, borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, gap: spacing.sm, alignItems: 'center' },
+		input: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: spacing.md, backgroundColor: colors.background, maxHeight: 120, paddingVertical: 10 },
+        attachButton: { padding: spacing.sm },
 	});
 };
 

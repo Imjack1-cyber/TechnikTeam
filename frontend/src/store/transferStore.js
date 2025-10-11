@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import * as Notifications from 'expo-notifications';
 
-export const useDownloadStore = create((set, get) => ({
+export const useTransferStore = create((set, get) => ({
     /**
-     * @type {Object.<string, {filename: string, type: 'download' | 'upload', status: 'starting'|'progressing'|'completed'|'error'|'canceled', progress: number, total: number, speed: number, eta: number, fileUri: string|null, nativeNotificationId: string|null, source: any|null}>}
+     * @type {Object.<string, {filename: string, type: 'download' | 'upload', status: 'starting'|'progressing'|'completed'|'error'|'canceled', progress: number, total: number, speed: number, eta: number, fileUri: string|null, nativeNotificationId: string|null, source: any|null, displayMode: 'indicator' | 'button'}>}
      */
     transfers: {},
+
+    getTransfer: (id) => get().transfers[id],
 
     addTransfer: (id, filename, type, totalSize) => set(state => ({
         transfers: {
@@ -21,6 +23,7 @@ export const useDownloadStore = create((set, get) => ({
                 fileUri: null,
                 nativeNotificationId: null,
                 source: null, // To store AbortController or XHR instance
+                displayMode: 'indicator', // Default display mode
             },
         },
     })),
@@ -43,6 +46,21 @@ export const useDownloadStore = create((set, get) => ({
                 transfers: {
                     ...state.transfers,
                     [id]: updatedTransfer,
+                },
+            };
+        });
+    },
+
+    setTransferDisplayMode: (id, mode) => {
+        set(state => {
+            const existingTransfer = state.transfers[id];
+            if (!existingTransfer) {
+                return state;
+            }
+            return {
+                transfers: {
+                    ...state.transfers,
+                    [id]: { ...existingTransfer, displayMode: mode },
                 },
             };
         });
