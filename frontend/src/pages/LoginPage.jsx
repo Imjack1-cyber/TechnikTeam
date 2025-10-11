@@ -151,8 +151,7 @@ const LoginPage = ({ navigation }) => {
                 throw new Error(finishResult.message || 'Passkey-Anmeldung fehlgeschlagen.');
             }
         } catch (err) {
-            console.error("Passkey Login Error:", err);
-            setError(err.message || 'Passkey-Anmeldung fehlgeschlagen. Stellen Sie sicher, dass Sie den richtigen Benutzernamen eingegeben und einen Passkey für dieses Konto registriert haben.');
+            setError(passkeyService.getFriendlyPasskeyErrorMessage(err));
         } finally {
             setIsLoading(false);
         }

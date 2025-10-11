@@ -1,7 +1,6 @@
 // This dynamic configuration function ensures that native-only plugins
 // are not included when the config is evaluated in a non-native context.
 // It correctly references the '@bittingz/expo-widgets' package.
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Centralized widget configuration
 const widgetConfig = [
@@ -10,55 +9,30 @@ const widgetConfig = [
     label: "Nächster Einsatz",
     description: "Zeigt deinen nächsten zugewiesenen Event an.",
     updateInterval: 1800000, // 30 minutes
-    component: "./src/widgets/UpcomingEventWidget.jsx",
+    component: "./src/widgets/UpcomingEventWidget.jsx", // <-- ADDED: Path to the component
   },
   {
     name: "OpenTasksWidget",
     label: "Offene Aufgaben",
     description: "Zeigt deine offenen Aufgaben aus laufenden Events.",
     updateInterval: 1800000, // 30 minutes
-    component: "./src/widgets/OpenTasksWidget.jsx",
+    component: "./src/widgets/OpenTasksWidget.jsx", // <-- ADDED: Path to the component
   },
   {
     name: "AdminActionsWidget",
     label: "Admin Schnellzugriff",
     description: "Schnellzugriff auf Admin-Funktionen.",
     updateInterval: 3600000, // 1 hour
-    component: "./src/widgets/AdminActionsWidget.jsx",
+    component: "./src/widgets/AdminActionsWidget.jsx", // <-- ADDED: Path to the component
   },
   {
     name: "AnnouncementsWidget",
     label: "Anschlagbrett",
     description: "Zeigt die neueste Mitteilung vom Anschlagbrett.",
     updateInterval: 1800000, // 30 minutes
-    component: "./src/widgets/AnnouncementsWidget.jsx",
+    component: "./src/widgets/AnnouncementsWidget.jsx", // <-- ADDED: Path to the component
   }
 ];
-
-// This function tells the native widget renderer how to get its data.
-// It reads the persisted state from the Zustand store in AsyncStorage.
-const getWidgetData = async () => {
-    try {
-        const persistedState = await AsyncStorage.getItem('widget-storage');
-        if (!persistedState) {
-            console.log('[getWidgetData] No persisted widget state found.');
-            return {};
-        }
-
-        const state = JSON.parse(persistedState).state;
-        console.log('[getWidgetData] Successfully loaded widget state from AsyncStorage:', state);
-
-        return {
-            UpcomingEventWidget: { props: { nextEvent: state.nextEvent, error: state.error } },
-            OpenTasksWidget: { props: { tasks: state.openTasks, error: state.error } },
-            AnnouncementsWidget: { props: { announcement: state.latestAnnouncement, error: state.error } },
-            // AdminActionsWidget has no dynamic props
-        };
-    } catch (e) {
-        console.error('[getWidgetData] Failed to read widget data from AsyncStorage:', e);
-        return {};
-    }
-};
 
 module.exports = ({ config }) => {
   // Base plugins applicable to all platforms
@@ -70,12 +44,13 @@ module.exports = ({ config }) => {
       },
     ],
     // The widget plugin is always included. Configuration is passed as the second element.
-    ["@bittingz/expo-widgets", { widgets: widgetConfig, getData: getWidgetData }],
+    ["@bittingz/expo-widgets", { widgets: widgetConfig }],
   ];
 
   // Overwrite the static config with our dynamic values
   config.name = "TechnikTeam";
   config.slug = "technikteam";
+  config.scheme = "technikteam";
   config.version = "1.0.0";
   config.orientation = "portrait";
   config.icon = "./assets/icon.png";
@@ -98,12 +73,33 @@ module.exports = ({ config }) => {
       icon: "./assets/notification-icon.png",
       color: "#ffffff"
     },
+    intentFilters: [
+        {
+          action: "VIEW",
+          autoVerify: true,
+          data: [
+            {
+              scheme: "https",
+              host: "technikteam.qs0.de",
+            },
+            {
+              scheme: "https",
+              host: "technikteamdev.qs0.de",
+            },
+          ],
+          category: ["BROWSABLE", "DEFAULT"],
+        },
+      ],
   };
   config.ios = {
     ...(config.ios || {}),
     bundleIdentifier: "de.technikteam",
     googleServicesFile:
       process.env.GOOGLE_SERVICES_INFO_PLIST ?? "./GoogleService-Info.plist",
+    associatedDomains: [
+        "applinks:technikteam.qs0.de",
+        "applinks:technikteamdev.qs0.de",
+    ],
   };
   config.web = {
     ...(config.web || {}),

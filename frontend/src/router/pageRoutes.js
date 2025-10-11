@@ -21,6 +21,8 @@ const pageRoutes = {
 	'HelpList': 'help_list',
 	'HelpDetails': 'help_details',
 	'Notifications': 'notifications',
+    'PollsList': 'polls_list',
+    'PollDetails': 'poll_details',
 
 	// Admin Pages (by Route Name)
 	'AdminDashboard': 'admin_dashboard',
@@ -50,6 +52,7 @@ const pageRoutes = {
 	'AdminChangelogs': 'admin_changelogs',
 	'AdminDocumentation': 'admin_documentation',
 	'AdminNotifications': 'admin_notifications',
+    'AdminPolls': 'admin_polls',
 	'AdminReportsIndex': 'admin_reports_index',
 	'AdminReports': 'admin_reports',
 	'AdminLog': 'admin_log',

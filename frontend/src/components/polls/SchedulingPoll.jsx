@@ -1,17 +1,17 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Alert, Platform } from 'react-native';
 import { useRoute } from '@react-navigation/native';
-import useApi from '../hooks/useApi';
-import apiClient from '../services/apiClient';
-import { useAuthStore } from '../store/authStore';
-import { getCommonStyles } from '../styles/commonStyles';
-import { getThemeColors, spacing, typography, borders } from '../styles/theme';
-import Stepper from '../components/ui/Stepper';
-import { useToast } from '../context/ToastContext';
-import { format, parseISO, eachDayOfInterval } from 'date-fns';
+import useApi from '../../hooks/useApi';
+import apiClient from '../../services/apiClient';
+import { useAuthStore } from '../../store/authStore';
+import { getCommonStyles } from '../../styles/commonStyles';
+import { getThemeColors, spacing, typography, borders } from '../../styles/theme';
+import Stepper from '../ui/Stepper';
+import { useToast } from '../../context/ToastContext';
+import { format, parseISO, eachDayOfInterval, startOfDay, isAfter, isBefore, startOfMonth, endOfMonth, isSameDay, differenceInCalendarDays, addMonths, subMonths } from 'date-fns';
 import Icon from 'react-native-vector-icons/FontAwesome5';
-import Modal from '../components/ui/Modal';
-import ScrollableContent from '../components/ui/ScrollableContent';
+import Modal from '../ui/Modal';
+import ScrollableContent from '../ui/ScrollableContent';
 
 // --- Reusable, Simple Components ---
 
@@ -58,11 +58,9 @@ const DayButton = ({ date, vote, onDayPress, isDisabled, styles, pageStyles }) =
     );
 };
 
-// --- Main Page Component ---
+// --- Main Component ---
 
-const SchedulingPollPage = () => {
-    const route = useRoute();
-    const { uuid } = route.params;
+const SchedulingPoll = ({ pollData, reload }) => {
     const { addToast } = useToast();
     const { user, isAuthenticated, logout } = useAuthStore();
     
@@ -70,10 +68,7 @@ const SchedulingPollPage = () => {
     const styles = getCommonStyles(theme);
     const pageStylesInstance = pageStyles(theme);
     const colors = getThemeColors(theme);
-
-    const apiCall = useCallback(() => apiClient.get(`/public/polls/${uuid}`), [uuid]);
-    const { data: pollData, loading, error: apiError } = useApi(apiCall);
-
+    
     const [step, setStep] = useState(0);
     const [identity, setIdentity] = useState({ guestName: '', verificationCode: '' });
     const [response, setResponse] = useState({ notes: '', dayVotes: {} });
@@ -84,13 +79,13 @@ const SchedulingPollPage = () => {
     const [maybeNotes, setMaybeNotes] = useState('');
 
     useEffect(() => {
-        if (pollData && isAuthenticated && pollData.responders?.includes(user.username)) {
+        if (pollData && pollData.poll?.hasVoted) {
             setStep(3); // Skip to Thank You page if user has voted
         }
-    }, [pollData, isAuthenticated, user]);
+    }, [pollData]);
 
-    const handleLogoutAndParticipate = () => {
-        logout();
+    const handleLogoutAndParticipate = async () => {
+        await logout();
         setStep(0);
         setIdentity({ guestName: '', verificationCode: '' });
     };
@@ -132,9 +127,10 @@ const SchedulingPollPage = () => {
                 notes: response.notes,
                 dayVotes: Object.entries(response.dayVotes).map(([date, vote]) => ({ date, ...vote })),
             };
-            const result = await apiClient.post(`/public/polls/${uuid}/respond`, payload);
+            const result = await apiClient.post(`/public/polls/by-uuid/${pollData.poll.uuid}/vote`, payload);
             if (result.success) {
                 setStep(3);
+                reload(); // Reload data to show results/thank you page correctly
             } else {
                 throw new Error(result.message);
             }
@@ -145,15 +141,17 @@ const SchedulingPollPage = () => {
         }
     };
     
-    if (loading) return <View style={styles.centered}><ActivityIndicator /></View>;
-    if (apiError || !pollData) return (
-        <View style={styles.centered}>
-            <Text style={styles.title}>Umfrage nicht gefunden</Text>
-            <Text style={styles.subtitle}>{apiError || 'Dieser Link ist ungültig oder die Umfrage wurde gelöscht.'}</Text>
-        </View>
-    );
+    if (!pollData || !pollData.poll) {
+        return (
+            <View style={styles.centered}>
+                <Text style={styles.errorText}>Fehler: Umfragedaten konnten nicht korrekt geladen werden.</Text>
+            </View>
+        );
+    }
     
-    const { poll, options, responders } = pollData;
+    const { poll } = pollData;
+    const options = poll.optionsMap || {};
+    
     const adminAvailableDays = new Set(options?.availableDays || []);
 
     const renderStepContent = () => {
@@ -162,7 +160,7 @@ const SchedulingPollPage = () => {
                 return (
                     <View>
                         <Text style={styles.title}>Willkommen zur Umfrage</Text>
-                        <Text style={styles.subtitle}>{poll.title}</Text>
+                        <Text style={styles.subtitle}>{poll.question}</Text>
                         {isAuthenticated ? (
                             <View>
                                 <Text style={{textAlign: 'center', marginBottom: spacing.md}}>Du bist angemeldet als {user.username}.</Text>
@@ -177,19 +175,19 @@ const SchedulingPollPage = () => {
                              <View>
                                 <Text style={styles.label}>Dein Name (als Gast)</Text>
                                 <TextInput style={styles.input} value={identity.guestName} onChangeText={val => setIdentity({...identity, guestName: val})} placeholder="Max Mustermann"/>
-                                {options.requireVerificationCode && (
+                                {poll.verificationCode && (
                                     <>
                                         <Text style={styles.label}>Verifizierungscode</Text>
                                         <TextInput style={styles.input} value={identity.verificationCode} onChangeText={val => setIdentity({...identity, verificationCode: val})} placeholder="Code"/>
                                     </>
                                 )}
                                 <TouchableOpacity style={[styles.button, styles.primaryButton, {marginTop: spacing.md}]} onPress={() => {
-                                    if (responders?.includes(identity.guestName)) {
+                                    if (poll.hasVoted) {
                                         setStep(3);
                                     } else {
                                         setStep(1);
                                     }
-                                }} disabled={!identity.guestName || (options.requireVerificationCode && !identity.verificationCode)}>
+                                }} disabled={!identity.guestName || (poll.verificationCode && !identity.verificationCode)}>
                                     <Text style={styles.buttonText}>Weiter als Gast</Text>
                                 </TouchableOpacity>
                             </View>
@@ -200,7 +198,7 @@ const SchedulingPollPage = () => {
                 const pollDays = eachDayOfInterval({ start: parseISO(poll.startTime), end: parseISO(poll.endTime) });
                 return (
                      <View>
-                        <Text style={styles.title}>{poll.title}</Text>
+                        <Text style={styles.title}>{poll.question}</Text>
                         <Text style={styles.subtitle}>Klicke auf ein Datum: 1x=Kann, 2x=Vielleicht, 3x=Kann nicht, 4x=Zurücksetzen.</Text>
                         <View style={pageStylesInstance.calendarGrid}>
                             {pollDays.map(day => (
@@ -248,7 +246,7 @@ const SchedulingPollPage = () => {
                  {step < 3 && (
                     <View style={{flexDirection: 'row', justifyContent: 'space-between', padding: spacing.md, borderTopWidth: 1, borderColor: colors.border}}>
                         <TouchableOpacity style={[styles.button, styles.secondaryButton, step === 0 && styles.disabledButton]} onPress={() => setStep(s => s - 1)} disabled={step === 0}>
-                            <Text style={styles.buttonText}>Zurück</Text>
+                            <Text style={{color: colors.text}}>Zurück</Text>
                         </TouchableOpacity>
                         {step < 2 ? (
                             <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={() => setStep(s => s + 1)}>
@@ -276,6 +274,7 @@ const SchedulingPollPage = () => {
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
+        centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.md, backgroundColor: colors.background },
         calendarGrid: {
             flexDirection: 'row',
             flexWrap: 'wrap',
@@ -319,4 +318,4 @@ const pageStyles = (theme) => {
     });
 };
 
-export default SchedulingPollPage;
+export default SchedulingPoll;

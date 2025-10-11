@@ -43,7 +43,9 @@ import NotFoundPage from '../pages/error/NotFoundPage';
 import ErrorTrigger from '../pages/error/ErrorTrigger'; // For testing
 import IdCardPage from '../pages/IdCardPage';
 import VerificationPage from '../pages/VerificationPage';
-import SchedulingPollPage from '../pages/SchedulingPollPage';
+import PublicPollPage from '../pages/PublicPollPage';
+import PollsPage from '../pages/PollsPage';
+import PollDetailsPage from '../pages/PollDetailsPage';
 
 // --- Import ALL Admin Screen Components ---
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
@@ -84,7 +86,8 @@ import AdminSystemPage from '../pages/admin/AdminSystemPage';
 import AdminAuthLogPage from '../pages/admin/AdminAuthLogPage';
 import AdminGeoIpPage from '../pages/admin/AdminGeoIpPage';
 import AdminWikiPage from '../pages/admin/AdminWikiPage';
-import AdminAvailabilityStack from '../pages/admin/AdminAvailabilityStack';
+import AdminPollsPage from '../pages/admin/AdminPollsPage';
+import AdminPollResultsPage from '../pages/admin/AdminPollResultsPage';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 
 
@@ -98,7 +101,6 @@ const EventsStack = () => (
         <Stack.Screen name="EventDetails" component={EventDetailsPage} options={{ title: 'Event-Details' }} />
     </Stack.Navigator>
 );
-
 
 // --- Admin Stacks ---
 const AdminUsersStack = () => (
@@ -148,6 +150,7 @@ const AdminContentStack = () => (
         <Stack.Screen name="AdminChangelogs" component={AdminChangelogPage} options={{ title: 'Changelogs' }}/>
         <Stack.Screen name="AdminDocumentation" component={AdminDocumentationPage} options={{ title: 'Seiten-Doku' }}/>
         <Stack.Screen name="AdminNotifications" component={AdminNotificationsPage} options={{ title: 'Benachrichtigungen' }}/>
+        <Stack.Screen name="AdminPolls" component={AdminPollsPage} options={{ title: 'Umfragen verwalten' }}/>
     </Stack.Navigator>
 );
 const AdminReportsStack = () => (
@@ -198,7 +201,6 @@ const MainDrawerNavigator = () => {
             <Drawer.Screen name="Lager & Material" component={AdminStorageStack} options={{ headerShown: false }} />
             <Drawer.Screen name="Lehrgänge & Skills" component={AdminCoursesStack} options={{ headerShown: false }} />
             <Drawer.Screen name="Inhalte & Kommunikation" component={AdminContentStack} options={{ headerShown: false }} />
-            <Drawer.Screen name="Verfügbarkeits-Check" component={AdminAvailabilityStack} options={{ headerShown: false }} />
             <Drawer.Screen name="Berichte" component={AdminReportsStack} options={{ headerShown: false }} />
             <Drawer.Screen name="System & Entwicklung" component={AdminSystemStack} options={{ headerShown: false }} />
         </Drawer.Navigator>
@@ -225,6 +227,8 @@ const AppStack = () => {
                 <Stack.Screen name="EventFeedback" component={EventFeedbackPage} options={{ title: 'Event-Feedback' }} />
                 <Stack.Screen name="FileEditor" component={FileEditorPage} options={{ title: 'Datei-Editor' }} />
                 <Stack.Screen name="IdCard" component={IdCardPage} options={{ title: 'Team Ausweis' }} />
+                <Stack.Screen name="AdminPollResults" component={AdminPollResultsPage} options={{ title: 'Umfrage-Ergebnisse' }} />
+                <Stack.Screen name="PollDetails" component={PollDetailsPage} options={{ title: 'Umfrage-Details' }}/>
                 
                 {/* --- Special screens that should NOT have the main header --- */}
                 <Stack.Screen name="PackKit" component={PackKitPage} options={{ headerShown: false }} />
@@ -245,16 +249,24 @@ const RootNavigator = () => {
     return (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
             {maintenanceStatus.mode === 'HARD' && !isAdmin ? (
-                <Stack.Screen name="Maintenance" component={MaintenancePage} />
-            ) : isAuthenticated ? (
-                <Stack.Screen name="App" component={AppStack} />
+                // In hard maintenance, only allow access to the maintenance page and login (for admins)
+                <>
+                    <Stack.Screen name="Maintenance" component={MaintenancePage} />
+                    <Stack.Screen name="Login" component={LoginPage} />
+                </>
             ) : (
                 <>
-                    <Stack.Screen name="Login" component={LoginPage} />
-                    {/* Publicly accessible screens */}
+                    {isAuthenticated ? (
+                        <Stack.Screen name="App" component={AppStack} />
+                    ) : (
+                        <Stack.Screen name="Login" component={LoginPage} />
+                    )}
+                    {/* Publicly accessible screens are always available */}
                     <Stack.Screen name="Verification" component={VerificationPage} />
                     <Stack.Screen name="FileShare" component={FileSharePage} />
-                    <Stack.Screen name="SchedulingPoll" component={SchedulingPollPage} />
+                    <Stack.Screen name="Poll" component={PublicPollPage} />
+                    {/* The Maintenance screen should also be available if not a hard lock, for soft lock redirects */}
+                    <Stack.Screen name="Maintenance" component={MaintenancePage} />
                 </>
             )}
         </Stack.Navigator>

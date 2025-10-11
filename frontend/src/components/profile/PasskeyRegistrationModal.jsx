@@ -48,7 +48,7 @@ const PasskeyRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
             }
         } catch (err) {
             console.error("Passkey Registration Error:", err);
-            setError(err.message || 'Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.');
+            setError(passkeyService.getFriendlyPasskeyErrorMessage(err));
         } finally {
             setIsLoading(false);
         }

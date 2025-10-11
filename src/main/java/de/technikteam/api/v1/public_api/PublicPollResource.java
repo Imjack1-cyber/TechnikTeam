@@ -1,16 +1,15 @@
 package de.technikteam.api.v1.public_api;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import de.technikteam.api.v1.dto.PollResponseRequest;
-import de.technikteam.dao.AvailabilityDAO;
+import de.technikteam.dao.PollDAO;
 import de.technikteam.model.ApiResponse;
-import de.technikteam.model.AvailabilityPoll;
+import de.technikteam.model.Poll;
 import de.technikteam.model.User;
 import de.technikteam.security.SecurityUser;
-import de.technikteam.service.AvailabilityService;
+import de.technikteam.service.PollService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,74 +19,80 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/public/polls")
-@Tag(name = "Public Polls", description = "Public endpoints for responding to polls.")
+@Tag(name = "Public Polls", description = "Endpoints for participating in polls.")
 public class PublicPollResource {
 
     private static final Logger logger = LogManager.getLogger(PublicPollResource.class);
-    private final AvailabilityDAO availabilityDAO;
-    private final AvailabilityService availabilityService;
-    private final Gson gson = new Gson();
+    private final PollService pollService;
+    private final PollDAO pollDAO;
 
     @Autowired
-    public PublicPollResource(AvailabilityDAO availabilityDAO, AvailabilityService availabilityService) {
-        this.availabilityDAO = availabilityDAO;
-        this.availabilityService = availabilityService;
+    public PublicPollResource(PollService pollService, PollDAO pollDAO) {
+        this.pollService = pollService;
+        this.pollDAO = pollDAO;
     }
 
-    @GetMapping("/{uuid}")
-    @Operation(summary = "Get poll details by public UUID")
-    public ResponseEntity<ApiResponse> getPollByUuid(@PathVariable String uuid) {
-        Optional<AvailabilityPoll> pollOpt = availabilityDAO.findByUuid(uuid);
+    @GetMapping
+    @Operation(summary = "Get all polls for the current user")
+    public ResponseEntity<ApiResponse> getAllPolls(@AuthenticationPrincipal SecurityUser securityUser) {
+        List<Poll> polls = pollDAO.findAll(securityUser.getUser().getId());
+        return ResponseEntity.ok(new ApiResponse(true, "Polls retrieved.", polls));
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Get a single poll by ID")
+    public ResponseEntity<ApiResponse> getPollById(@PathVariable int id, @AuthenticationPrincipal SecurityUser securityUser) {
+        Optional<Poll> pollOpt = pollDAO.findById(id, securityUser.getUser().getId());
         if (pollOpt.isEmpty()) {
             return new ResponseEntity<>(new ApiResponse(false, "Poll not found.", null), HttpStatus.NOT_FOUND);
         }
-        
-        AvailabilityPoll poll = pollOpt.get();
-        // The options are stored as a JSON string, let's parse them for the frontend
-        Type type = new TypeToken<Map<String, Object>>() {}.getType();
-        Map<String, Object> optionsMap = gson.fromJson(poll.getOptions(), type);
-
-        // Get responders to check if user has already voted
-        List<String> responders = availabilityDAO.findResponsesByPollId(poll.getId()).stream()
-                .map(r -> r.getUserId() != null ? r.getUsername() : r.getGuestName())
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-        
-        Map<String, Object> data = Map.of(
-            "poll", poll,
-            "options", optionsMap,
-            "responders", responders
-        );
-
-        return ResponseEntity.ok(new ApiResponse(true, "Poll details retrieved.", data));
+        Poll poll = pollOpt.get();
+        return ResponseEntity.ok(new ApiResponse(true, "Poll retrieved.", poll));
     }
 
-    @PostMapping("/{uuid}/respond")
-    @Operation(summary = "Submit a response to a poll")
-    public ResponseEntity<ApiResponse> submitResponse(
-            @PathVariable String uuid,
-            @RequestBody PollResponseRequest request,
-            @AuthenticationPrincipal SecurityUser securityUser) {
+    @PostMapping("/{id}/vote")
+    @Operation(summary = "Cast or change a vote in a poll")
+    public ResponseEntity<ApiResponse> castVote(@PathVariable int id, @RequestBody Map<String, Object> payload, @AuthenticationPrincipal SecurityUser securityUser) {
+        try {
+            Poll poll = pollDAO.findById(id, securityUser.getUser().getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Poll not found or you have no access."));
+            pollService.submitResponse(poll, securityUser.getUser(), null, payload);
+            return ResponseEntity.ok(new ApiResponse(true, "Vote cast successfully.", null));
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
+        }
+    }
+
+    @GetMapping("/by-uuid/{uuid}")
+    @Operation(summary = "Get a poll by its public UUID")
+    public ResponseEntity<ApiResponse> getPollByUuid(@PathVariable String uuid, @RequestParam(required = false) String guestName, @AuthenticationPrincipal SecurityUser securityUser) {
+        Integer userId = (securityUser != null) ? securityUser.getUser().getId() : null;
+        Optional<Poll> pollOpt = pollDAO.findByUuid(uuid, userId, guestName);
+        if (pollOpt.isEmpty()) {
+            return new ResponseEntity<>(new ApiResponse(false, "Poll not found.", null), HttpStatus.NOT_FOUND);
+        }
+        return ResponseEntity.ok(new ApiResponse(true, "Poll retrieved.", pollOpt.get()));
+    }
+
+    @PostMapping("/by-uuid/{uuid}/vote")
+    @Operation(summary = "Cast a guest vote in a poll or a logged-in user vote via public link")
+    public ResponseEntity<ApiResponse> submitPublicResponse(@PathVariable String uuid, @Valid @RequestBody PollResponseRequest request, @AuthenticationPrincipal SecurityUser securityUser) {
         try {
             User user = (securityUser != null) ? securityUser.getUser() : null;
-            availabilityService.submitPollResponse(uuid, request, user);
-            return ResponseEntity.ok(new ApiResponse(true, "Response submitted successfully.", null));
-        } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(new ApiResponse(false, e.getMessage(), null), HttpStatus.BAD_REQUEST);
+            pollService.submitResponse(uuid, user, request);
+            return ResponseEntity.ok(new ApiResponse(true, "Vote cast successfully.", null));
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            logger.warn("Invalid poll submission for UUID {}: {}", uuid, e.getMessage());
+            return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
         } catch (AccessDeniedException e) {
+            logger.warn("Access denied for poll submission for UUID {}: {}", uuid, e.getMessage());
             return new ResponseEntity<>(new ApiResponse(false, e.getMessage(), null), HttpStatus.FORBIDDEN);
-        } catch (Exception e) {
-            logger.error("Error submitting poll response for UUID {}", uuid, e);
-            return new ResponseEntity<>(new ApiResponse(false, "An internal error occurred.", null), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

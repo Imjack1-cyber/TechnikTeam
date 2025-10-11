@@ -90,10 +90,20 @@ public class PasskeyService {
         }
         AssertionRequest request = AssertionRequest.fromJson(requestJson);
 
-        AssertionResult result = relyingParty.finishAssertion(FinishAssertionOptions.builder()
-                .request(request)
-                .response(credential)
-                .build());
+        AssertionResult result;
+        try {
+            result = relyingParty.finishAssertion(FinishAssertionOptions.builder()
+                    .request(request)
+                    .response(credential)
+                    .build());
+        } catch (AssertionFailedException e) {
+            // Intercept specific technical errors and replace them with user-friendly messages.
+            if (e.getMessage() != null && e.getMessage().contains("Unrequested credential ID")) {
+                throw new AssertionFailedException("Verifizierung fehlgeschlagen: Dieser Passkey ist nicht mehr aktiv. Gründe hierfür können sein, dass du ihn gelöscht hast oder er zu einem anderen Benutzerkonto gehört.");
+            }
+            // Re-throw other assertion failures
+            throw e;
+        }
 
         if (result.isSuccess()) {
             passkeyDAO.updateSignatureCount(result.getCredential().getCredentialId(), result.getSignatureCount());

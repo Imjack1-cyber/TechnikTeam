@@ -17,6 +17,7 @@ export const useUIStore = create((set) => ({
     CHANGELOG: null,
     CONVERSATION: null,
     EVENT_TASK: null,
+    POLL: null,
     // Admin-facing entities
     USER: null,
     ADMIN_LOG: null,

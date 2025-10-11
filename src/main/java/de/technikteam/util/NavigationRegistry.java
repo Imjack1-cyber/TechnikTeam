@@ -10,8 +10,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
+ * 
  * A central registry for all navigation items in the application. This class
+ * 
  * provides a single source of truth for the sidebar links and their required
+ * 
  * permissions, ensuring consistency and simplifying access control logic.
  */
 public final class NavigationRegistry {
@@ -31,21 +34,18 @@ public final class NavigationRegistry {
 		ALL_ITEMS.add(new NavigationItem("Kalender", "/kalender", "fa-calendar-alt", null));
 		ALL_ITEMS.add(new NavigationItem("Feedback", "/feedback", "fa-lightbulb", null));
 		ALL_ITEMS.add(new NavigationItem("Changelogs", "/changelogs", "fa-history", null));
-
 		// Admin Section - CONSOLIDATED
 		ALL_ITEMS.add(new NavigationItem("Admin Dashboard", "/admin/dashboard", "fa-tachometer-alt",
 				Permissions.ADMIN_DASHBOARD_ACCESS));
-		ALL_ITEMS.add(new NavigationItem("Benutzer & Anträge", "/admin/mitglieder", "fa-user-friends",
+		ALL_ITEMS.add(new NavigationItem("Benutzer & Anträge", "/admin/users", "fa-user-friends",
 				Permissions.USER_READ));
-		ALL_ITEMS.add(new NavigationItem("Event Management", "/admin/veranstaltungen", "fa-calendar-alt",
+		ALL_ITEMS.add(new NavigationItem("Event Management", "/admin/events", "fa-calendar-alt",
 				Permissions.EVENT_READ));
-		ALL_ITEMS.add(new NavigationItem("Lager & Material", "/admin/lager", "fa-warehouse", Permissions.STORAGE_READ));
+		ALL_ITEMS.add(new NavigationItem("Lager & Material", "/admin/storage", "fa-warehouse", Permissions.STORAGE_READ));
 		ALL_ITEMS
-				.add(new NavigationItem("Lehrgänge & Skills", "/admin/lehrgaenge", "fa-book", Permissions.COURSE_READ));
+				.add(new NavigationItem("Lehrgänge & Skills", "/admin/courses", "fa-book", Permissions.COURSE_READ));
 		ALL_ITEMS.add(
 				new NavigationItem("Inhalte & Kommunikation", "/admin/content", "fa-desktop", Permissions.FILE_MANAGE));
-		ALL_ITEMS.add(new NavigationItem("Verfügbarkeits-Check", "/admin/availability", "fa-user-clock",
-				Permissions.AVAILABILITY_MANAGE));
 		ALL_ITEMS.add(new NavigationItem("Berichte", "/admin/reports", "fa-chart-line", Permissions.REPORT_READ));
 		ALL_ITEMS.add(new NavigationItem("System & Entwicklung", "/admin/system", "fa-cogs", Permissions.SYSTEM_READ));
 	}
@@ -54,9 +54,11 @@ public final class NavigationRegistry {
 	}
 
 	/**
+	 * 
 	 * Builds a filtered list of navigation items based on the user's permissions.
-	 *
+	 * 
 	 * @param user The current user.
+	 * 
 	 * @return A list of NavigationItem objects the user is allowed to see.
 	 */
 	public static List<NavigationItem> getNavigationItemsForUser(User user) {
@@ -69,7 +71,6 @@ public final class NavigationRegistry {
 
 		return ALL_ITEMS.stream().filter(item -> {
 			final String requiredPerm = item.getRequiredPermission();
-
 			// Public items (no permission required) are always visible to any authenticated
 			// user.
 			if (requiredPerm == null) {

@@ -128,7 +128,25 @@ const startAuthentication = async (options) => {
     return jsonFriendlyCredential;
 };
 
+const getFriendlyPasskeyErrorMessage = (err) => {
+    console.error("Passkey Error:", err);
+    if (err.name === 'NotAllowedError') {
+        return 'Der Vorgang wurde vom Benutzer abgebrochen oder es wurden keine passenden Passkeys auf diesem Gerät gefunden.';
+    }
+    if (err.name === 'InvalidStateError') {
+        return 'Dieser Passkey (z.B. von diesem YubiKey) ist bereits für Ihr Konto registriert.';
+    }
+    if (err.name === 'NotSupportedError') {
+        return 'Ihr Browser oder Gerät unterstützt Passkeys nicht.';
+    }
+     if (err.name === 'SecurityError') {
+        return 'Sicherheitsfehler. Passkeys können nur über eine sichere HTTPS-Verbindung verwendet werden.';
+    }
+    return err.message || 'Ein unbekannter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.';
+};
+
 export const passkeyService = {
     startRegistration,
-    startAuthentication
+    startAuthentication,
+    getFriendlyPasskeyErrorMessage
 };

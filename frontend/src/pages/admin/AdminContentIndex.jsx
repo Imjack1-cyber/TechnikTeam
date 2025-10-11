@@ -6,31 +6,31 @@ import { getThemeColors } from '../../styles/theme';
 import Icon from '@expo/vector-icons/FontAwesome5';
 
 const AdminContentIndex = ({ navigation }) => {
-	const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
+    const { user, isAdmin } = useAuthStore(state => ({ user: state.user, isAdmin: state.isAdmin }));
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
+    const baseLinks = [
+        { to: 'AdminAnnouncements', label: 'Anschlagbrett', icon: 'thumbtack', perm: 'USER_UPDATE' },
+        { to: 'AdminFiles', label: 'Dateien', icon: 'file-upload', perm: 'FILE_MANAGE' },
+        { to: 'AdminFeedback', label: 'Feedback', icon: 'inbox', perm: 'ADMIN_DASHBOARD_ACCESS' },
+        { to: 'AdminPolls', label: 'Umfragen', icon: 'poll-h', perm: 'POLL_MANAGE' },
+        { to: 'AdminNotifications', label: 'Benachrichtigungen', icon: 'bullhorn', perm: 'NOTIFICATION_SEND' },
+        { to: 'AdminChangelogs', label: 'Changelogs', icon: 'history', perm: 'ACCESS_ADMIN_PANEL' },
+        { to: 'AdminDocumentation', label: 'Seiten-Doku', icon: 'book-open', perm: 'DOCUMENTATION_MANAGE' },
+    ];
 
-	const baseLinks = [
-		{ to: 'AdminAnnouncements', label: 'Anschlagbrett', icon: 'thumbtack', perm: 'USER_UPDATE' },
-		{ to: 'AdminFiles', label: 'Dateien', icon: 'file-upload', perm: 'FILE_MANAGE' },
-		{ to: 'AdminFeedback', label: 'Feedback', icon: 'inbox', perm: 'ADMIN_DASHBOARD_ACCESS' },
-		{ to: 'AdminNotifications', label: 'Benachrichtigungen', icon: 'bullhorn', perm: 'NOTIFICATION_SEND' },
-		{ to: 'AdminChangelogs', label: 'Changelogs', icon: 'history', perm: 'ACCESS_ADMIN_PANEL' },
-		{ to: 'AdminDocumentation', label: 'Seiten-Doku', icon: 'book-open', perm: 'DOCUMENTATION_MANAGE' },
-	];
+    const can = (permission) => {
+        return isAdmin || user?.permissions.includes(permission);
+    };
 
-	const can = (permission) => {
-		return isAdmin || user?.permissions.includes(permission);
-	};
-
-	return (
+    return (
         <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-			<View style={styles.header}>
-				<Icon name="desktop" size={24} style={styles.headerIcon} />
-				<Text style={styles.title}>Inhalte &amp; Kommunikation</Text>
-			</View>
-			<Text style={styles.subtitle}>Verwalten Sie hier die redaktionellen Inhalte und Kommunikationskanäle der Anwendung.</Text>
+            <View style={styles.header}>
+                <Icon name="desktop" size={24} style={styles.headerIcon} />
+                <Text style={styles.title}>Inhalte &amp; Kommunikation</Text>
+            </View>
+            <Text style={styles.subtitle}>Verwalten Sie hier die redaktionellen Inhalte und Kommunikationskanäle der Anwendung.</Text>
 
             <View style={styles.grid}>
                 {baseLinks.filter(link => can(link.perm)).map(link => (
@@ -40,8 +40,8 @@ const AdminContentIndex = ({ navigation }) => {
                     </TouchableOpacity>
                 ))}
             </View>
-		</ScrollView>
-	);
+        </ScrollView>
+    );
 };
 
 const pageStyles = (theme) => {

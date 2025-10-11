@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { useAuthStore } from '../store/authStore';
+import { useBackendStatusStore } from '../store/backendStatusStore';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { getToken } from '../lib/storage';
@@ -63,6 +64,11 @@ const apiClient = {
 			});
 			const contentType = response.headers.get("content-type");
 			const isJson = contentType && contentType.includes("application/json");
+
+            if (response.status === 502) {
+                useBackendStatusStore.getState().setIsBackendDown(true);
+                throw new Error('Das Backend ist zurzeit nicht erreichbar (502 Bad Gateway).');
+            }
 			if (response.status === 503) {
 				onMaintenanceCallback();
 				throw new Error('Die Anwendung befindet sich im Wartungsmodus.');
@@ -106,6 +112,7 @@ const apiClient = {
             }
             const baseUrl = getApiBaseUrl();
 			if (error.message.includes('Network request failed') || error.message.includes('Failed to fetch')) {
+                useBackendStatusStore.getState().setIsBackendDown(true);
 				console.error(`API Client Network Error: ${options.method || 'GET'} ${baseUrl}${endpoint}`, error);
 				throw new Error('Netzwerkfehler: Das Backend ist nicht erreichbar.');
 			}

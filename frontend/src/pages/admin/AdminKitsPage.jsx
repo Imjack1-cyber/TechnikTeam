@@ -19,7 +19,8 @@ const KitListItem = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems, st
 
     const getPackKitUrl = () => {
         const baseUrl = apiClient.getRootUrl() || (typeof window !== 'undefined' ? window.location.origin : '');
-        return `${baseUrl}/pack-kit/${kit.id}`;
+        // Use the HTTPS link for universal linking
+        return `https://technikteam.qs0.de/pack-kit/${kit.id}`;
     };
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };

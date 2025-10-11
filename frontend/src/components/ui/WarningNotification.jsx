@@ -13,7 +13,8 @@ const WarningNotification = ({ notification, onDismiss }) => {
 	useEffect(() => {
         let isMounted = true;
         /* UNCOMMENT THIS BLOCK AFTER INSTALLING expo-av
-        const loadAndPlaySound = async () => {
+        */
+	   const loadAndPlaySound = async () => {
             try {
                 await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
                 await soundObject.current.loadAsync(require('../../../assets/audio/attention.mp3'));
@@ -27,7 +28,6 @@ const WarningNotification = ({ notification, onDismiss }) => {
         };
 
 		loadAndPlaySound();
-        */
 
 		Animated.loop(
 			Animated.sequence([

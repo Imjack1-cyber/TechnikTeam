@@ -15,22 +15,20 @@ import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './src/router/navigation';
 import DownloadsIndicator from './src/components/ui/DownloadsIndicator';
 import MaintenanceBanner from './src/components/ui/MaintenanceBanner';
-import useWidgetDataRefresher from './src/hooks/useWidgetDataRefresher';
 
 // This is the crucial linking configuration for React Navigation on the web.
 const linking = {
   prefixes: [
-    'https://technikteam.duckdns.org', 
-    'https://technikteamdev.duckdns.org',
     'https://technikteam.qs0.de', 
-    'https://technikteamdev.qs0.de'
-  ], // Add app domains for deep linking
+    'https://technikteamdev.qs0.de',
+    'technikteam://', // Custom scheme for direct app links
+  ], 
   config: {
     screens: {
         // Public, unauthenticated screens
         Verification: 'verify/:token',
         FileShare: 'share/:token',
-        SchedulingPoll: 'poll/:uuid',
+        Poll: 'poll/:uuid',
 
         // Screens outside the drawer/main authenticated stack
         Login: 'login',
@@ -168,11 +166,10 @@ const linking = {
 const AppContent = () => {
     const { warningNotification, dismissWarning } = useNotifications();
     usePushNotifications(); // Initialize push notification handling
-    useWidgetDataRefresher(); // Initialize widget data refreshing
     return (
         <View style={styles.container}>
-            <MaintenanceBanner />
             <RootNavigator />
+            <MaintenanceBanner />
             <ToastContainer />
             <DownloadsIndicator />
             {warningNotification && <WarningNotification notification={warningNotification} onDismiss={dismissWarning} />}

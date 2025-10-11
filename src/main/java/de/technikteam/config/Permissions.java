@@ -78,6 +78,9 @@ public final class Permissions {
 
 	// --- DOCUMENTATION ---
 	public static final String DOCUMENTATION_MANAGE = "DOCUMENTATION_MANAGE";
+    
+    // --- POLLS ---
+    public static final String POLL_MANAGE = "POLL_MANAGE";
 
 	// --- NAVIGATION-SPECIFIC ---
 	public static final String ADMIN_DASHBOARD_ACCESS = "ADMIN_DASHBOARD_ACCESS";
