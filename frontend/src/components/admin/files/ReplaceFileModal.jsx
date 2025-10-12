@@ -10,10 +10,12 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useTransferStore } from '../../../store/transferStore';
 import { v4 as uuidv4 } from 'uuid';
 import TransferButton from '../../../components/ui/TransferButton';
+import { getThemeColors } from '../../../styles/theme';
 
 const ReplaceFileModal = ({ isOpen, onClose, onSuccess, file, formatFileSize }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
     const { addToast } = useToast();
     const { addTransfer, updateTransfer } = useTransferStore();
 
@@ -89,11 +91,11 @@ const ReplaceFileModal = ({ isOpen, onClose, onSuccess, file, formatFileSize }) 
             <Text style={styles.bodyText}>Ersetze "{file?.filename}" durch eine neue Version.</Text>
              <Text style={styles.label}>Maximalgröße: {MAX_FILE_SIZE_BYTES / 1024 / 1024} MB</Text>
             <TouchableOpacity style={[styles.button, styles.secondaryButton, { alignSelf: 'flex-start', marginVertical: 16 }]} onPress={handlePickFile}>
-                <Icon name="file" size={16} />
-                <Text>Neue Datei auswählen</Text>
+                <Icon name="file" size={16} color={colors.text} />
+                <Text style={{color: colors.text}}>Neue Datei auswählen</Text>
             </TouchableOpacity>
             {newFile && (
-                <Text style={[{marginTop: 8}]}>
+                <Text style={[{marginTop: 8, color: colors.text}]}>
                     Ausgewählt: {newFile.name} ({formatFileSize(newFile.size)})
                 </Text>
             )}

@@ -1,11 +1,26 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Calendar } from 'react-native-calendars';
+import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { useNavigation } from '@react-navigation/native';
 import { format, parseISO } from 'date-fns';
+import { de } from 'date-fns/locale';
+import { useAuthStore } from '../../store/authStore';
+import { getThemeColors, typography } from '../../styles/theme';
+
+LocaleConfig.locales['de'] = {
+  monthNames: ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'],
+  monthNamesShort: ['Jan.','Feb.','März','Apr.','Mai','Juni','Juli','Aug.','Sep.','Okt.','Nov.','Dez.'],
+  dayNames: ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'],
+  dayNamesShort: ['So.','Mo.','Di.','Mi.','Do.','Fr.','Sa.'],
+  today: "Heute"
+};
+LocaleConfig.defaultLocale = 'de';
 
 const ReservationCalendar = ({ reservations }) => {
     const navigation = useNavigation();
+    const theme = useAuthStore(state => state.theme);
+    const colors = getThemeColors(theme);
+    const styles = pageStyles(theme);
 
 	const markedDates = useMemo(() => {
 		if (!reservations) return {};
@@ -20,8 +35,8 @@ const ReservationCalendar = ({ reservations }) => {
 				const dateString = format(d, 'yyyy-MM-dd');
 				markings[dateString] = {
 					selected: true,
-					selectedColor: '#dc3545', // danger-color
-					dotColor: 'white',
+					selectedColor: colors.danger,
+					dotColor: colors.white,
 					marked: true,
                     // Store extra data for onPress
                     eventName: res.event_name,
@@ -30,7 +45,7 @@ const ReservationCalendar = ({ reservations }) => {
 			}
 		});
 		return markings;
-	}, [reservations]);
+	}, [reservations, colors]);
 
     const onDayPress = (day) => {
         const dateString = day.dateString;
@@ -46,12 +61,12 @@ const ReservationCalendar = ({ reservations }) => {
                 markedDates={markedDates}
                 onDayPress={onDayPress}
                 theme={{
-                    calendarBackground: '#ffffff',
-                    textSectionTitleColor: '#6c757d',
-                    todayTextColor: '#007bff',
-                    dayTextColor: '#212529',
-                    arrowColor: '#007bff',
-                    monthTextColor: '#002B5B',
+                    calendarBackground: colors.surface,
+                    textSectionTitleColor: colors.textMuted,
+                    todayTextColor: colors.primary,
+                    dayTextColor: colors.text,
+                    arrowColor: colors.primary,
+                    monthTextColor: colors.heading,
                     textDayFontWeight: '300',
                     textMonthFontWeight: 'bold',
                     textDayHeaderFontWeight: '300',
@@ -64,13 +79,16 @@ const ReservationCalendar = ({ reservations }) => {
 	);
 };
 
-const styles = {
-    title: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#002B5B',
-        marginBottom: 12,
-    }
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        title: {
+            fontSize: typography.h4,
+            fontWeight: '600',
+            color: colors.heading,
+            marginBottom: 12,
+        }
+    });
 };
 
 export default ReservationCalendar;

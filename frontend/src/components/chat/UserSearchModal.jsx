@@ -5,11 +5,12 @@ import apiClient from '../../services/apiClient';
 import Modal from '../ui/Modal';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
-import { getThemeColors } from '../../styles/theme';
+import { getThemeColors, spacing } from '../../styles/theme';
 
 const UserSearchModal = ({ isOpen, onClose, onSelectUser }) => {
     const theme = useAuthStore(state => state.theme);
-    const styles = getCommonStyles(theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 	const { data: users, loading } = useApi(useCallback(() => apiClient.get('/users'), []));
     const [searchText, setSearchText] = useState('');
 
@@ -29,14 +30,15 @@ const UserSearchModal = ({ isOpen, onClose, onSelectUser }) => {
                     placeholder="Benutzer suchen..." 
                     value={searchText} 
                     onChangeText={setSearchText} 
+                    placeholderTextColor={colors.textMuted}
                 />
-				<View style={pageStyles.listContainer}>
+				<View style={styles.listContainer}>
 					{loading ? <ActivityIndicator /> : (
 						<FlatList
                             data={filteredUsers}
                             renderItem={renderItem}
                             keyExtractor={item => item.id.toString()}
-                            ListEmptyComponent={<Text style={{textAlign: 'center', color: getThemeColors(theme).textMuted, marginTop: 16}}>Keine Benutzer gefunden.</Text>}
+                            ListEmptyComponent={<Text style={{textAlign: 'center', color: colors.textMuted, marginTop: 16}}>Keine Benutzer gefunden.</Text>}
                         />
 					)}
 				</View>
@@ -45,24 +47,26 @@ const UserSearchModal = ({ isOpen, onClose, onSelectUser }) => {
 	);
 };
 
-const pageStyles = StyleSheet.create({
-    listContainer: {
-        maxHeight: 300, // Fixed height for scrollability
-        borderWidth: 1,
-        borderColor: '#dee2e6', // border-color
-        borderRadius: 8,
-        padding: 8,
-    },
-    listItem: {
-        paddingVertical: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0', // Light border for list items
-    },
-    listItemText: {
-        fontSize: 16,
-        color: '#212529', // text-color
-    }
-});
-
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        listContainer: {
+            maxHeight: 300,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 8,
+            padding: spacing.sm,
+        },
+        listItem: {
+            paddingVertical: 10,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+        },
+        listItemText: {
+            fontSize: 16,
+            color: colors.text,
+        }
+    });
+};
 
 export default UserSearchModal;

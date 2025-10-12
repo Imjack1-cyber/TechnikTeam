@@ -4,32 +4,34 @@ import AdminModal from './AdminModal';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 
-const ConfirmationModal = ({
+const DeleteConfirmationModal = ({
     isOpen,
     onClose,
     onConfirm,
     title,
     message,
-    confirmText = 'Confirm',
-    confirmButtonVariant = 'danger',
-    isSubmitting = false
+    confirmText = 'Löschen',
+    itemType,
+    itemName
 }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
 
+    const finalTitle = title || `${itemType} "${itemName}" löschen?`;
+    const finalMessage = message || 'Diese Aktion kann nicht rückgängig gemacht werden.';
+    
     return (
         <AdminModal
             isOpen={isOpen}
             onClose={onClose}
-            title={title}
+            title={finalTitle}
             onSubmit={onConfirm}
-            isSubmitting={isSubmitting}
             submitText={confirmText}
-            submitButtonVariant={confirmButtonVariant}
+            submitButtonVariant="danger"
         >
-            <Text style={styles.bodyText}>{message}</Text>
+            <Text style={styles.bodyText}>{finalMessage}</Text>
         </AdminModal>
     );
 };
 
-export default ConfirmationModal;
+export default DeleteConfirmationModal;

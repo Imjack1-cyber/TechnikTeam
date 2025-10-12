@@ -14,10 +14,13 @@ import AdminModal from '../../components/ui/AdminModal';
 import ScrollableContent from '../../components/ui/ScrollableContent';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 import Modal from '../../components/ui/Modal';
+import Clipboard from '@react-native-clipboard/clipboard';
+import PasswordDisplayModal from '../../components/admin/users/PasswordDisplayModal';
 
 const SuspendUserModal = ({ isOpen, onClose, user, onSuccess }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
 	const [duration, setDuration] = useState('7d');
 	const [reason, setReason] = useState('');
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,28 +61,11 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuccess }) => {
         >
             {error && <Text style={styles.errorText}>{error}</Text>}
             <Text style={styles.label}>Dauer (z.B. 1h, 7d, indefinite)</Text>
-            <TextInput style={styles.input} value={duration} onChangeText={setDuration} />
+            <TextInput style={styles.input} value={duration} onChangeText={setDuration} placeholderTextColor={colors.textMuted} />
             <Text style={styles.label}>Grund</Text>
-            <TextInput style={[styles.input, styles.textArea]} value={reason} onChangeText={setReason} multiline/>
+            <TextInput style={[styles.input, styles.textArea]} value={reason} onChangeText={setReason} multiline placeholderTextColor={colors.textMuted}/>
         </AdminModal>
 	);
-};
-
-const PasswordDisplayModal = ({ isOpen, onClose, username, newPassword }) => {
-    const theme = useAuthStore(state => state.theme);
-    const styles = getCommonStyles(theme);
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Neues Passwort">
-            <Text style={styles.bodyText}>Das temporäre Passwort für <Text style={{fontWeight: 'bold'}}>{username}</Text> lautet:</Text>
-            <TextInput
-                style={[styles.input, {textAlign: 'center', fontWeight: 'bold', fontSize: 18, marginVertical: 16}]}
-                value={newPassword}
-                editable={false}
-                selectTextOnFocus
-            />
-            <Text style={styles.bodyText}>Bitte geben Sie dieses Passwort sicher an den Benutzer weiter.</Text>
-        </Modal>
-    );
 };
 
 const pageStyles = (theme) => {
@@ -136,8 +122,9 @@ const AdminUsersPage = () => {
         try {
             const result = await apiClient.post(`/users/${resettingUser.id}/reset-password`);
             if (result.success) {
+                Clipboard.setString(result.data.newPassword);
                 setNewPasswordInfo({ username: result.data.username, newPassword: result.data.newPassword });
-                addToast('Passwort zurückgesetzt.', 'success');
+                addToast('Passwort zurückgesetzt & in Zwischenablage kopiert.', 'success');
             } else { throw new Error(result.message); }
         } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
         finally {

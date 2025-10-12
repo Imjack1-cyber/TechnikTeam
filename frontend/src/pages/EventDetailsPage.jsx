@@ -9,7 +9,7 @@ import MarkdownDisplay from 'react-native-markdown-display';
 import { useToast } from '../context/ToastContext';
 import ChecklistTab from '../components/events/ChecklistTab';
 import EventGalleryTab from '../components/events/EventGalleryTab';
-import TaskModal from '../components/events/TaskModal';
+import TaskModal from '../components/admin/events/TaskModal';
 import AdminEventTeamTab from '../components/admin/events/AdminEventTeamTab';
 import AdminEventTasksTab from '../components/admin/events/AdminEventTasksTab';
 import { getCommonStyles } from '../styles/commonStyles';
@@ -98,8 +98,8 @@ const UserTaskView = ({ event, user, categories, canManageTasks, isParticipant, 
     return (
         <View style={{ flex: 1 }}>
              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md, paddingTop: spacing.md }}>
-                <BouncyCheckbox isChecked={showDoneTasks} onPress={onShowDoneTasksToggle} />
-                <Text>Erledigte Aufgaben anzeigen</Text>
+                <BouncyCheckbox isChecked={showDoneTasks} onPress={onShowDoneTasksToggle} fillColor={colors.primary} />
+                <Text style={{color: colors.text}}>Erledigte Aufgaben anzeigen</Text>
             </View>
             <FlatList
                 horizontal
@@ -128,14 +128,15 @@ const UserTaskView = ({ event, user, categories, canManageTasks, isParticipant, 
 const DetailsTab = ({ event }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
     return (
         <ScrollableContent contentContainerStyle={styles.contentContainer}>
             <View style={styles.card}>
                 <Text style={styles.cardTitle}>Beschreibung</Text>
-                <MarkdownDisplay>{event.description || 'Keine Beschreibung.'}</MarkdownDisplay>
+                <MarkdownDisplay style={{body: {color: colors.text}}}>{event.description || 'Keine Beschreibung.'}</MarkdownDisplay>
                 <Text style={[styles.cardTitle, {marginTop: 16}]}>Details</Text>
-                <Text>Ort: {event.location || 'N/A'}</Text>
-                <Text>Leitung: {event.leaderUsername || 'N/A'}</Text>
+                <Text style={{color: colors.text}}>Ort: {event.location || 'N/A'}</Text>
+                <Text style={{color: colors.text}}>Leitung: {event.leaderUsername || 'N/A'}</Text>
             </View>
         </ScrollableContent>
     );
@@ -237,6 +238,7 @@ const EventChatTab = ({ eventId }) => {
                     placeholder="Nachricht schreiben..."
                     multiline
                     maxLength={1024}
+                    placeholderTextColor={colors.textMuted}
                 />
                 <TouchableOpacity style={[styles.button, styles.primaryButton, isSending && styles.disabledButton]} onPress={handleSubmit} disabled={isSending}>
                     <Text style={styles.buttonText}>Senden</Text>
@@ -382,15 +384,15 @@ const EventDetailsPage = () => {
             
             <View style={styles.contentContainer}>
                 <AccordionSection title="Details">
-                    <MarkdownDisplay>{event.description || 'Keine Beschreibung.'}</MarkdownDisplay>
-                    <Text style={{fontWeight: 'bold', marginTop: 16}}>Ort:</Text>
-                    <Text>{event.location || 'N/A'}</Text>
-                    <Text style={{fontWeight: 'bold', marginTop: 8}}>Leitung:</Text>
-                    <Text>{event.leaderUsername || 'N/A'}</Text>
+                    <MarkdownDisplay style={{body: {color: colors.text}}}>{event.description || 'Keine Beschreibung.'}</MarkdownDisplay>
+                    <Text style={{fontWeight: 'bold', marginTop: 16, color: colors.text}}>Ort:</Text>
+                    <Text style={{color: colors.text}}>{event.location || 'N/A'}</Text>
+                    <Text style={{fontWeight: 'bold', marginTop: 8, color: colors.text}}>Leitung:</Text>
+                    <Text style={{color: colors.text}}>{event.leaderUsername || 'N/A'}</Text>
                 </AccordionSection>
 
                 <AccordionSection title="Team">
-                    {isAdmin ? <AdminEventTeamTab event={event} onTeamUpdate={reloadEventDetails} /> : <Text>Teamansicht in Kürze verfügbar.</Text>}
+                    {isAdmin ? <AdminEventTeamTab event={event} onTeamUpdate={reloadEventDetails} /> : <Text style={{color: colors.text}}>Teamansicht in Kürze verfügbar.</Text>}
                 </AccordionSection>
 
                 <AccordionSection title="Aufgaben">
@@ -495,8 +497,8 @@ const pageStyles = (theme) => {
         deletedText: { fontStyle: 'italic' },
 		sender: { fontWeight: 'bold', fontSize: typography.small, marginBottom: 2 },
 		timestamp: { fontSize: typography.caption, color: colors.textMuted },
-		inputContainer: { flexDirection: 'row', padding: spacing.sm, borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, gap: spacing.sm },
-		chatInput: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: spacing.md, backgroundColor: colors.background, maxHeight: 120, paddingVertical: 10 }
+		inputContainer: { flexDirection: 'row', padding: spacing.sm, borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, gap: spacing.sm, alignItems: 'center' },
+		chatInput: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: spacing.md, backgroundColor: colors.background, maxHeight: 120, paddingVertical: 10, color: colors.text }
     });
 };
 

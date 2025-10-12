@@ -113,7 +113,7 @@ const UploadFileModal = ({ isOpen, onClose, onSuccess, formatFileSize }) => {
                 
                 <View style={styles.formGroup}>
                     <Text style={styles.label}>1. Kategorie auswählen</Text>
-                    <Picker selectedValue={categoryId} onValueChange={setCategoryId}>
+                    <Picker selectedValue={categoryId} onValueChange={setCategoryId} itemStyle={{color: colors.text}}>
                         <Picker.Item label="-- Bitte wählen --" value="" />
                         {categories?.map(cat => <Picker.Item key={cat.id} label={cat.name} value={cat.id} />)}
                         <Picker.Item label="** Neue Kategorie erstellen **" value="NEW" />
@@ -123,18 +123,18 @@ const UploadFileModal = ({ isOpen, onClose, onSuccess, formatFileSize }) => {
                 {categoryId === 'NEW' && (
                     <View style={styles.formGroup}>
                         <Text style={styles.label}>Name der neuen Kategorie</Text>
-                        <TextInput style={styles.input} value={newCategoryName} onChangeText={setNewCategoryName} />
+                        <TextInput style={styles.input} value={newCategoryName} onChangeText={setNewCategoryName} placeholderTextColor={colors.textMuted}/>
                     </View>
                 )}
 
                 <View style={styles.formGroup}>
                     <Text style={styles.label}>2. Datei auswählen (Max: {MAX_FILE_SIZE_BYTES / 1024 / 1024} MB)</Text>
                     <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={handlePickFile}>
-                        <Icon name="file" size={16} />
-                        <Text>Datei auswählen</Text>
+                        <Icon name="file" size={16} color={colors.text} />
+                        <Text style={{color: colors.text}}>Datei auswählen</Text>
                     </TouchableOpacity>
                     {file && (
-                        <Text style={[{marginTop: 8}]}>
+                        <Text style={[{marginTop: 8, color: colors.text}]}>
                             Ausgewählt: {file.name} ({formatFileSize(file.size)})
                         </Text>
                     )}
@@ -142,7 +142,7 @@ const UploadFileModal = ({ isOpen, onClose, onSuccess, formatFileSize }) => {
 
                 <View style={styles.formGroup}>
                     <Text style={styles.label}>3. Sichtbarkeit festlegen</Text>
-                     <Picker selectedValue={requiredRole} onValueChange={setRequiredRole}>
+                     <Picker selectedValue={requiredRole} onValueChange={setRequiredRole} itemStyle={{color: colors.text}}>
                         <Picker.Item label="Alle Benutzer" value="NUTZER" />
                         <Picker.Item label="Nur Admins" value="ADMIN" />
                     </Picker>

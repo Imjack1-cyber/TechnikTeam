@@ -18,6 +18,7 @@ import ConfirmationModal from '../../components/ui/ConfirmationModal';
 const ChangelogModal = ({ isOpen, onClose, onSuccess, changelog }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
 	const { addToast } = useToast();
@@ -71,13 +72,13 @@ const ChangelogModal = ({ isOpen, onClose, onSuccess, changelog }) => {
         >
             {error && <Text style={styles.errorText}>{error}</Text>}
             <Text style={styles.label}>Version (z.B. 2.1.0)</Text>
-            <TextInput style={styles.input} value={formData.version} onChangeText={val => setFormData({...formData, version: val})} />
+            <TextInput style={styles.input} value={formData.version} onChangeText={val => setFormData({...formData, version: val})} placeholderTextColor={colors.textMuted} />
             <Text style={styles.label}>Titel</Text>
-            <TextInput style={styles.input} value={formData.title} onChangeText={val => setFormData({...formData, title: val})} />
+            <TextInput style={styles.input} value={formData.title} onChangeText={val => setFormData({...formData, title: val})} placeholderTextColor={colors.textMuted} />
             
             <Text style={styles.label}>Veröffentlichungsdatum</Text>
             <TouchableOpacity onPress={() => setDatePickerVisible(true)} style={[styles.input, { justifyContent: 'center' }]}>
-                <Text style={{color: getThemeColors(theme).text}}>{format(parseISO(formData.releaseDate), 'dd.MM.yyyy')}</Text>
+                <Text style={{color: colors.text}}>{format(parseISO(formData.releaseDate), 'dd.MM.yyyy')}</Text>
             </TouchableOpacity>
             <DateTimePickerModal
                 isVisible={isDatePickerVisible}
@@ -88,7 +89,7 @@ const ChangelogModal = ({ isOpen, onClose, onSuccess, changelog }) => {
             />
 
             <Text style={styles.label}>Anmerkungen (Markdown)</Text>
-            <TextInput style={[styles.input, styles.textArea]} value={formData.notes} onChangeText={val => setFormData({...formData, notes: val})} multiline />
+            <TextInput style={[styles.input, styles.textArea]} value={formData.notes} onChangeText={val => setFormData({...formData, notes: val})} multiline placeholderTextColor={colors.textMuted} />
         </AdminModal>
 	);
 };

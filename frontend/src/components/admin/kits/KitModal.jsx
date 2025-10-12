@@ -5,10 +5,12 @@ import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../store/authStore';
 import { getCommonStyles } from '../../../styles/commonStyles';
 import AdminModal from '../../ui/AdminModal';
+import { getThemeColors } from '../../../styles/theme';
 
 const KitModal = ({ isOpen, onClose, onSuccess, kit }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
 	const isEditMode = !!kit;
 	const [formData, setFormData] = useState({
 		name: kit?.name || '',
@@ -57,15 +59,15 @@ const KitModal = ({ isOpen, onClose, onSuccess, kit }) => {
             {error && <Text style={styles.errorText}>{error}</Text>}
             <View style={styles.formGroup}>
                 <Text style={styles.label}>Name des Kits</Text>
-                <TextInput style={styles.input} value={formData.name} onChangeText={(val) => handleChange('name', val)} />
+                <TextInput style={styles.input} value={formData.name} onChangeText={(val) => handleChange('name', val)} placeholderTextColor={colors.textMuted} />
             </View>
             <View style={styles.formGroup}>
                 <Text style={styles.label}>Beschreibung</Text>
-                <TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={(val) => handleChange('description', val)} multiline />
+                <TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={(val) => handleChange('description', val)} multiline placeholderTextColor={colors.textMuted} />
             </View>
             <View style={styles.formGroup}>
                 <Text style={styles.label}>Physischer Standort des Kits</Text>
-                <TextInput style={styles.input} value={formData.location} onChangeText={(val) => handleChange('location', val)} placeholder="z.B. Lager, Schrank 3, Fach A" />
+                <TextInput style={styles.input} value={formData.location} onChangeText={(val) => handleChange('location', val)} placeholder="z.B. Lager, Schrank 3, Fach A" placeholderTextColor={colors.textMuted} />
             </View>
         </AdminModal>
 	);

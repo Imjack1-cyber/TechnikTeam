@@ -26,6 +26,7 @@ export const getCommonStyles = (theme) => {
 			flex: 1,
 			justifyContent: 'center',
 			alignItems: 'center',
+            backgroundColor: colors.background,
 		},
 
 		// Typography
@@ -99,9 +100,11 @@ export const getCommonStyles = (theme) => {
 		},
 		dangerOutlineButton: {
 			borderColor: colors.danger,
+            borderWidth: 1,
 		},
 		dangerOutlineButtonText: {
 			color: colors.danger,
+            fontWeight: '500',
 		},
         disabledButton: {
             backgroundColor: colors.disabledSurface,
@@ -118,7 +121,7 @@ export const getCommonStyles = (theme) => {
 		label: {
 			fontSize: typography.small,
 			fontWeight: typography.fontWeights.medium,
-			color: colors.textMuted,
+			color: colors.text,
 			marginBottom: spacing.sm,
 		},
 		input: {
@@ -134,6 +137,9 @@ export const getCommonStyles = (theme) => {
         textArea: {
             minHeight: 120,
             textAlignVertical: 'top',
+        },
+        readOnlyInput: {
+            backgroundColor: colors.background,
         },
         
         // Lists
@@ -153,7 +159,7 @@ export const getCommonStyles = (theme) => {
             color: colors.text,
         },
         detailsListValue: {
-            color: colors.textMuted,
+            color: colors.text,
         },
 	});
 };

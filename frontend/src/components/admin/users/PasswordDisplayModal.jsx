@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
-import { useAuthStore } from '../../store/authStore';
-import { getCommonStyles } from '../../styles/commonStyles';
-import Modal from './Modal';
-import { getThemeColors } from '../../styles/theme';
+import { useAuthStore } from '../../../store/authStore';
+import { getCommonStyles } from '../../../styles/commonStyles';
+import Modal from '../../ui/Modal';
+import { getThemeColors } from '../../../styles/theme';
 
 const PasswordDisplayModal = ({ isOpen, onClose, username, newPassword }) => {
     const theme = useAuthStore(state => state.theme);

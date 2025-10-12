@@ -44,7 +44,7 @@ const WikiPageModal = ({ isOpen, onClose, onSuccess, parentPath }) => {
 				<Text style={styles.label}>Übergeordneter Pfad</Text>
 				<TextInput style={[styles.input, { backgroundColor: colors.background }]} value={parentPath || '/'} editable={false} />
 				<Text style={styles.label}>Dateiname (z.B. `neue-seite.md`)</Text>
-				<TextInput style={styles.input} value={fileName} onChangeText={setFileName} autoCapitalize="none" autoCorrect={false} />
+				<TextInput style={styles.input} value={fileName} onChangeText={setFileName} autoCapitalize="none" autoCorrect={false} placeholderTextColor={colors.textMuted} />
 				
                 <TouchableOpacity style={[styles.button, styles.primaryButton, {marginTop: 16}]} onPress={handleSubmit} disabled={isSubmitting}>
 					{isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Seite erstellen</Text>}

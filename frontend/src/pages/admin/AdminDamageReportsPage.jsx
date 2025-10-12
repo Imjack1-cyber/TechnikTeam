@@ -9,10 +9,12 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography } from '../../styles/theme';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const ActionModal = ({ isOpen, onClose, onSuccess, report, action }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState('');
 	const [notes, setNotes] = useState('');
@@ -49,13 +51,13 @@ const ActionModal = ({ isOpen, onClose, onSuccess, report, action }) => {
 				{action === 'confirm' && (
 					<View style={styles.formGroup}>
 						<Text style={styles.label}>Anzahl als defekt markieren</Text>
-						<TextInput style={styles.input} value={quantity} onChangeText={setQuantity} keyboardType="number-pad" />
+						<TextInput style={styles.input} value={quantity} onChangeText={setQuantity} keyboardType="number-pad" placeholderTextColor={colors.textMuted}/>
 					</View>
 				)}
 				{action === 'reject' && (
 					<View style={styles.formGroup}>
 						<Text style={styles.label}>Grund für die Ablehnung (optional)</Text>
-						<TextInput style={[styles.input, styles.textArea]} value={notes} onChangeText={setNotes} multiline />
+						<TextInput style={[styles.input, styles.textArea]} value={notes} onChangeText={setNotes} multiline placeholderTextColor={colors.textMuted}/>
 					</View>
 				)}
 				<View style={{flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 16}}>
@@ -139,7 +141,7 @@ const AdminDamageReportsPage = () => {
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
-        container: { flex: 1 },
+        container: { flex: 1, backgroundColor: colors.background },
         headerContainer: { flexDirection: 'row', alignItems: 'center' },
         headerIcon: { color: colors.heading, marginRight: 12 },
         description: { marginTop: 8, color: colors.text },

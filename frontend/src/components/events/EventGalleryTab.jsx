@@ -15,6 +15,9 @@ import { v4 as uuidv4 } from 'uuid';
 
 // PhotoUploadModal would be a new component, similar to others, using a file picker
 const PhotoUploadModal = ({ isOpen, onClose, onSuccess, eventId }) => {
+    const theme = useAuthStore(state => state.theme);
+    const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
     const { addToast } = useToast();
     const { addTransfer, updateTransfer } = useTransferStore();
     const [file, setFile] = useState(null);
@@ -50,13 +53,13 @@ const PhotoUploadModal = ({ isOpen, onClose, onSuccess, eventId }) => {
         }
 
         try {
-            const result = await apiClient.uploadWithProgress(`/public/events/${eventId}/gallery`, data, transferId);
-            if (result.success) {
+            const uploadResult = await apiClient.uploadWithProgress(`/public/events/${eventId}/gallery`, data, transferId);
+            if (uploadResult.success) {
                 addToast('Foto erfolgreich hochgeladen.', 'success');
                 updateTransfer(transferId, { status: 'completed' });
                 onSuccess();
             } else {
-                throw new Error(result.message);
+                throw new Error(uploadResult.message);
             }
         } catch(e) {
             addToast(`Upload fehlgeschlagen: ${e.message}`, 'error');
@@ -66,17 +69,16 @@ const PhotoUploadModal = ({ isOpen, onClose, onSuccess, eventId }) => {
         }
     };
     
-    const styles = getCommonStyles();
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Neues Foto hochladen">
             <View>
                 <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={handlePickFile}>
-                    <Text>Foto auswählen</Text>
+                    <Text style={styles.buttonText}>Foto auswählen</Text>
                 </TouchableOpacity>
-                {file && <Text>Ausgewählt: {file.name}</Text>}
-                <TextInput style={[styles.input, {marginTop: 16}]} placeholder="Bildunterschrift (optional)" value={caption} onChangeText={setCaption} />
+                {file && <Text style={{color: colors.text}}>Ausgewählt: {file.name}</Text>}
+                <TextInput style={[styles.input, {marginTop: 16}]} placeholder="Bildunterschrift (optional)" value={caption} onChangeText={setCaption} placeholderTextColor={colors.textMuted}/>
                 <TouchableOpacity style={[styles.button, styles.primaryButton, {marginTop: 16}]} onPress={handleUpload} disabled={isSubmitting}>
-                    {isSubmitting ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Hochladen</Text>}
+                    {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Hochladen</Text>}
                 </TouchableOpacity>
             </View>
         </Modal>
@@ -134,7 +136,7 @@ const EventGalleryTab = ({ event, user }) => {
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
                 numColumns={2}
-                ListEmptyComponent={<Text style={{padding: spacing.md}}>Für diese Veranstaltung wurden noch keine Fotos hochgeladen.</Text>}
+                ListEmptyComponent={<Text style={{padding: spacing.md, color: colors.text}}>Für diese Veranstaltung wurden noch keine Fotos hochgeladen.</Text>}
                 contentContainerStyle={{padding: spacing.md}}
             />
 

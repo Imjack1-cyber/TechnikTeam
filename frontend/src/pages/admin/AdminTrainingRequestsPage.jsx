@@ -15,6 +15,7 @@ const AdminTrainingRequestsPage = () => {
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
     const [deletingRequest, setDeletingRequest] = useState(null);
     const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
 

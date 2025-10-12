@@ -11,6 +11,7 @@ import RNPickerSelect from 'react-native-picker-select';
 import RepeatMeetingModal from '../../components/admin/meetings/RepeatMeetingModal';
 import MeetingModal from '../../components/admin/meetings/MeetingModal';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import { getThemeColors, spacing } from '../../styles/theme';
 
 const AdminMeetingsPage = () => {
     const route = useRoute();
@@ -27,6 +28,7 @@ const AdminMeetingsPage = () => {
 
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
 
 	const courseName = meetingsData?.[0]?.parentCourseName || 'Lehrgang';
     
@@ -63,13 +65,17 @@ const AdminMeetingsPage = () => {
             <TouchableOpacity onPress={() => navigation.navigate('MeetingDetails', { meetingId: meeting.id })}>
                 <Text style={styles.cardTitle}>{meeting.name}</Text>
             </TouchableOpacity>
-            <View style={styles.detailRow}>
-                <Text style={styles.label}>Datum:</Text>
-                <Text style={styles.value}>{new Date(meeting.meetingDateTime).toLocaleString('de-DE')}</Text>
+            <View style={styles.detailsListRow}>
+                <Text style={styles.detailsListLabel}>Datum:</Text>
+                <Text style={styles.detailsListValue}>{new Date(meeting.meetingDateTime).toLocaleString('de-DE')}</Text>
             </View>
-            <View style={styles.detailRow}>
-                <Text style={styles.label}>Teilnehmer:</Text>
-                <Text style={styles.value}>{meeting.participantCount || 0} / {meeting.maxParticipants || '∞'}</Text>
+             <View style={styles.detailsListRow}>
+                <Text style={styles.detailsListLabel}>Leitung:</Text>
+                <Text style={styles.detailsListValue}>{meeting.leaderUsername || 'N/A'}</Text>
+            </View>
+            <View style={styles.detailsListRow}>
+                <Text style={styles.detailsListLabel}>Teilnehmer:</Text>
+                <Text style={styles.detailsListValue}>{meeting.participantCount || 0} / {meeting.maxParticipants || '∞'}</Text>
             </View>
             <View style={{flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 16}}>
                 <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => openModal(meeting)}><Text style={styles.buttonText}>Bearbeiten</Text></TouchableOpacity>
@@ -99,7 +105,7 @@ const AdminMeetingsPage = () => {
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
                 contentContainerStyle={styles.contentContainer}
-                ListEmptyComponent={<View style={styles.card}><Text>Keine Meetings für diesen Lehrgang geplant.</Text></View>}
+                ListEmptyComponent={<View style={styles.card}><Text style={{color: colors.text}}>Keine Meetings für diesen Lehrgang geplant.</Text></View>}
             />
             {repeatingMeeting && (
                 <RepeatMeetingModal

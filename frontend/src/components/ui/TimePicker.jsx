@@ -8,6 +8,10 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 import { format, setHours, setMinutes } from 'date-fns';
 
 const WebTimePickerModal = ({ isVisible, date, onConfirm, onCancel }) => {
+    const theme = useAuthStore(state => state.theme);
+    const colors = getThemeColors(theme);
+    const styles = localStyles(theme);
+
     const [hour, setHour] = useState(date.getHours());
     const [minute, setMinute] = useState(date.getMinutes());
 
@@ -19,23 +23,23 @@ const WebTimePickerModal = ({ isVisible, date, onConfirm, onCancel }) => {
 
     return (
         <RNModal visible={isVisible} transparent animationType="fade" onRequestClose={onCancel}>
-            <View style={localStyles.modalOverlay}>
-                <View style={localStyles.modalContent}>
-                    <Text style={localStyles.headerTitle}>Uhrzeit auswählen</Text>
-                    <View style={localStyles.pickerContainer}>
-                        <TouchableOpacity onPress={() => setHour(h => (h + 1) % 24)}><Icon name="chevron-up" size={24} /></TouchableOpacity>
-                        <Text style={localStyles.timeText}>{String(hour).padStart(2, '0')}</Text>
-                        <TouchableOpacity onPress={() => setHour(h => (h - 1 + 24) % 24)}><Icon name="chevron-down" size={24} /></TouchableOpacity>
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <Text style={styles.headerTitle}>Uhrzeit auswählen</Text>
+                    <View style={styles.pickerContainer}>
+                        <TouchableOpacity onPress={() => setHour(h => (h + 1) % 24)}><Icon name="chevron-up" size={24} color={colors.text}/></TouchableOpacity>
+                        <Text style={styles.timeText}>{String(hour).padStart(2, '0')}</Text>
+                        <TouchableOpacity onPress={() => setHour(h => (h - 1 + 24) % 24)}><Icon name="chevron-down" size={24} color={colors.text}/></TouchableOpacity>
                     </View>
-                    <Text style={localStyles.timeText}>:</Text>
-                    <View style={localStyles.pickerContainer}>
-                         <TouchableOpacity onPress={() => setMinute(m => (m + 1) % 60)}><Icon name="chevron-up" size={24} /></TouchableOpacity>
-                        <Text style={localStyles.timeText}>{String(minute).padStart(2, '0')}</Text>
-                        <TouchableOpacity onPress={() => setMinute(m => (m - 1 + 60) % 60)}><Icon name="chevron-down" size={24} /></TouchableOpacity>
+                    <Text style={styles.timeText}>:</Text>
+                    <View style={styles.pickerContainer}>
+                         <TouchableOpacity onPress={() => setMinute(m => (m + 1) % 60)}><Icon name="chevron-up" size={24} color={colors.text} /></TouchableOpacity>
+                        <Text style={styles.timeText}>{String(minute).padStart(2, '0')}</Text>
+                        <TouchableOpacity onPress={() => setMinute(m => (m - 1 + 60) % 60)}><Icon name="chevron-down" size={24} color={colors.text} /></TouchableOpacity>
                     </View>
-                    <View style={localStyles.actionsRow}>
-                         <TouchableOpacity onPress={onCancel} style={[localStyles.actionButton, localStyles.cancelButton]}><Text>Abbrechen</Text></TouchableOpacity>
-                         <TouchableOpacity onPress={handleConfirm} style={[localStyles.actionButton, localStyles.confirmButton]}><Text style={{ color: '#fff' }}>OK</Text></TouchableOpacity>
+                    <View style={styles.actionsRow}>
+                         <TouchableOpacity onPress={onCancel} style={[styles.actionButton, styles.cancelButton]}><Text style={{color: colors.text}}>Abbrechen</Text></TouchableOpacity>
+                         <TouchableOpacity onPress={handleConfirm} style={[styles.actionButton, styles.confirmButton]}><Text style={{ color: colors.white }}>OK</Text></TouchableOpacity>
                     </View>
                 </View>
             </View>
@@ -59,8 +63,9 @@ const TimePicker = ({ label, value, onChange, isWebModal = false }) => {
     };
 
     if (isWebModal) { // Special compact layout for embedding in another modal
+        const local = localStyles(theme);
         return (
-             <View style={localStyles.webModalContainer}>
+             <View style={local.webModalContainer}>
                 <Text style={styles.label}>Uhrzeit</Text>
                 <TouchableOpacity onPress={showPicker} style={[styles.input, { justifyContent: 'center' }]}>
                     <Text style={{color: colors.text}}>{format(value, 'HH:mm')}</Text>
@@ -96,27 +101,30 @@ const TimePicker = ({ label, value, onChange, isWebModal = false }) => {
     );
 };
 
-const localStyles = StyleSheet.create({
-    modalOverlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'center', padding: 20 },
-    modalContent: { backgroundColor: '#fff', borderRadius: 12, padding: 12, alignItems: 'center' },
-    pickerContainer: { flexDirection: 'column', alignItems: 'center', marginHorizontal: 16 },
-    timeText: { fontSize: 48, fontWeight: 'bold', marginVertical: 8 },
-    actionsRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16, width: '100%' },
-    actionButton: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 6, marginLeft: 8 },
-    cancelButton: { backgroundColor: '#eee' },
-    confirmButton: { backgroundColor: '#1976D2' },
-    headerTitle: { fontWeight: '600', fontSize: 16, marginBottom: 16 },
-    webModalContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: spacing.md,
-        marginTop: spacing.md,
-        paddingTop: spacing.md,
-        borderTopWidth: 1,
-        borderTopColor: '#eee'
-    },
-});
+const localStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.6)', justifyContent: 'center', padding: 20 },
+        modalContent: { backgroundColor: colors.surface, borderRadius: 12, padding: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap' },
+        pickerContainer: { flexDirection: 'column', alignItems: 'center', marginHorizontal: 16 },
+        timeText: { fontSize: 48, fontWeight: 'bold', marginVertical: 8, color: colors.text },
+        actionsRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16, width: '100%' },
+        actionButton: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 6, marginLeft: 8 },
+        cancelButton: { backgroundColor: colors.background },
+        confirmButton: { backgroundColor: colors.primary },
+        headerTitle: { fontWeight: '600', fontSize: 16, marginBottom: 16, width: '100%', textAlign: 'center', color: colors.heading },
+        webModalContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: spacing.md,
+            marginTop: spacing.md,
+            paddingTop: spacing.md,
+            borderTopWidth: 1,
+            borderTopColor: colors.border
+        },
+    });
+};
 
 
 export default TimePicker;

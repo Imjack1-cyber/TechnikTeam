@@ -81,7 +81,7 @@ const SharePageModal = ({
                 
                 <View style={styles.linkContainer}>
                     <TextInput
-                        style={styles.input}
+                        style={[styles.input, styles.readOnlyInput]}
                         value={url}
                         editable={false}
                     />
@@ -131,12 +131,6 @@ const pageStyles = (theme) => {
             alignItems: 'center',
             marginVertical: spacing.md,
         },
-        input: {
-            flex: 1,
-            borderTopRightRadius: 0,
-            borderBottomRightRadius: 0,
-            marginBottom: 0,
-        },
         copyButton: {
             backgroundColor: colors.primary,
             padding: 14,
@@ -146,7 +140,7 @@ const pageStyles = (theme) => {
         qrContainer: {
             alignItems: 'center',
             padding: spacing.md,
-            backgroundColor: colors.surface,
+            backgroundColor: colors.white,
             borderRadius: borders.radius,
             borderWidth: 1,
             borderColor: colors.border,

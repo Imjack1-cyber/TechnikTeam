@@ -11,7 +11,7 @@ import { getToken } from '../lib/storage';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { getThemeColors } from '../styles/theme';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const MeetingDetailsPage = () => {
 	const route = useRoute();
@@ -21,10 +21,11 @@ const MeetingDetailsPage = () => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
     const { addToast } = useToast();
+    const colors = getThemeColors(theme);
 
     const handleDownloadAttachment = async (attachment) => {
         addToast('Download wird gestartet...', 'info');
-        const downloadUrl = `${apiClient.getBaseUrl()}/api/v1/public/files/download/${attachment.id}`;
+        const downloadUrl = `${apiClient.getBaseUrl()}/public/files/download/${attachment.id}`;
         const token = await getToken();
     
         try {
@@ -76,11 +77,11 @@ const MeetingDetailsPage = () => {
 			<Text style={[styles.subtitle, {marginTop: -16}]}>{meeting.name}</Text>
 
 			<View style={styles.card}>
-                <View style={styles.detailsListRow}><Text style={styles.detailsListLabel}>Datum:</Text><Text>{new Date(meeting.meetingDateTime).toLocaleString('de-DE')}</Text></View>
-                <View style={styles.detailsListRow}><Text style={styles.detailsListLabel}>Ort:</Text><Text>{meeting.location || 'N/A'}</Text></View>
-                <View style={styles.detailsListRow}><Text style={styles.detailsListLabel}>Leitung:</Text><Text>{meeting.leaderUsername || 'N/A'}</Text></View>
+                <View style={styles.detailsListRow}><Text style={styles.detailsListLabel}>Datum:</Text><Text style={styles.detailsListValue}>{new Date(meeting.meetingDateTime).toLocaleString('de-DE')}</Text></View>
+                <View style={styles.detailsListRow}><Text style={styles.detailsListLabel}>Ort:</Text><Text style={styles.detailsListValue}>{meeting.location || 'N/A'}</Text></View>
+                <View style={styles.detailsListRow}><Text style={styles.detailsListLabel}>Leitung:</Text><Text style={styles.detailsListValue}>{meeting.leaderUsername || 'N/A'}</Text></View>
 				<Text style={[styles.cardTitle, {marginTop: 16}]}>Beschreibung</Text>
-				<MarkdownDisplay>
+				<MarkdownDisplay style={{body: {color: colors.text}}}>
 					{meeting.description || 'Keine Beschreibung vorhanden.'}
 				</MarkdownDisplay>
 			</View>
@@ -90,11 +91,11 @@ const MeetingDetailsPage = () => {
                 {attachments?.length > 0 ? (
                     attachments.map(att => (
                         <TouchableOpacity key={att.id} style={[styles.detailsListRow, {justifyContent: 'flex-start', gap: 8}]} onPress={() => handleDownloadAttachment(att)}>
-                            <Icon name="download" size={16} color={getThemeColors(theme).primary} />
-                            <Text style={{color: getThemeColors(theme).primary}}>{att.filename}</Text>
+                            <Icon name="download" size={16} color={colors.primary} />
+                            <Text style={{color: colors.primary}}>{att.filename}</Text>
                         </TouchableOpacity>
                     ))
-                ) : <Text>Keine Anhänge verfügbar.</Text>}
+                ) : <Text style={{color: colors.text}}>Keine Anhänge verfügbar.</Text>}
             </View>
 		</ScrollView>
 	);

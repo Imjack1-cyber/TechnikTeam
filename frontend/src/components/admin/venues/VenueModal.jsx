@@ -89,6 +89,7 @@ const VenueModal = ({ isOpen, onClose, onSuccess, venue }) => {
             if (transferId) {
                 result = await apiClient.uploadWithProgress(endpoint, data, transferId);
             } else {
+                const method = venue ? 'put' : 'post'; // The endpoint now expects POST for updates with multipart
                 result = await apiClient.post(endpoint, data);
             }
 
@@ -121,29 +122,29 @@ const VenueModal = ({ isOpen, onClose, onSuccess, venue }) => {
             {error && <Text style={styles.errorText}>{error}</Text>}
             <View style={styles.formGroup}>
                 <Text style={styles.label}>Name des Ortes</Text>
-                <TextInput style={styles.input} value={formData.name} onChangeText={val => setFormData({ ...formData, name: val })} />
+                <TextInput style={styles.input} value={formData.name} onChangeText={val => setFormData({ ...formData, name: val })} placeholderTextColor={colors.textMuted} />
             </View>
             <View style={styles.formGroup}>
                 <Text style={styles.label}>Adresse (optional)</Text>
-                <TextInput style={styles.input} value={formData.address} onChangeText={val => setFormData({ ...formData, address: val })} />
+                <TextInput style={styles.input} value={formData.address} onChangeText={val => setFormData({ ...formData, address: val })} placeholderTextColor={colors.textMuted} />
             </View>
             <View style={styles.formGroup}>
                 <Text style={styles.label}>Notizen</Text>
-                <TextInput style={[styles.input, styles.textArea]} value={formData.notes} onChangeText={val => setFormData({ ...formData, notes: val })} multiline />
+                <TextInput style={[styles.input, styles.textArea]} value={formData.notes} onChangeText={val => setFormData({ ...formData, notes: val })} multiline placeholderTextColor={colors.textMuted} />
             </View>
 
             <View style={styles.formGroup}>
                 <Text style={styles.label}>Raumplan / Kartenbild (max. {MAX_FILE_SIZE_BYTES / 1024 / 1024} MB)</Text>
                 <TouchableOpacity style={[styles.button, styles.secondaryButton, { alignSelf: 'flex-start' }]} onPress={handlePickImage}>
-                    <Icon name="image" size={16} />
-                    <Text>Bild auswählen</Text>
+                    <Icon name="image" size={16} color={colors.text} />
+                    <Text style={{color: colors.text}}>Bild auswählen</Text>
                 </TouchableOpacity>
                 {mapImage && (
-                    <Text style={[{marginTop: 8}]}>
+                    <Text style={[{marginTop: 8, color: colors.text}]}>
                         Ausgewählt: {mapImage.name} ({ (mapImage.size / 1024 / 1024).toFixed(2)} MB)
                     </Text>
                 )}
-                {venue?.mapImagePath && !mapImage && <Text style={{ marginTop: 8 }}>Aktuelles Bild bleibt erhalten.</Text>}
+                {venue?.mapImagePath && !mapImage && <Text style={{ marginTop: 8, color: colors.text }}>Aktuelles Bild bleibt erhalten.</Text>}
             </View>
         </AdminModal>
     );

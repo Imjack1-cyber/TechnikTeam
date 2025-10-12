@@ -83,7 +83,7 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
     const renderGeneralTab = () => (
         <View>
             <Text style={styles.label}>Benutzername</Text>
-            <TextInput style={styles.input} value={formData.username || ''} onChangeText={val => handleChange('username', val)} />
+            <TextInput style={styles.input} value={formData.username || ''} onChangeText={val => handleChange('username', val)} placeholderTextColor={colors.textMuted}/>
             {!isEditMode && <>
                 <Text style={styles.label}>Passwort</Text>
                 <View style={styles.passwordContainer}>
@@ -92,6 +92,7 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
                         value={formData.password || ''} 
                         onChangeText={val => handleChange('password', val)} 
                         secureTextEntry={!isPasswordVisible} 
+                        placeholderTextColor={colors.textMuted}
                     />
                     <TouchableOpacity style={styles.eyeIcon} onPress={() => setIsPasswordVisible(!isPasswordVisible)}>
                         <Icon name={isPasswordVisible ? 'eye-slash' : 'eye'} size={18} color={colors.textMuted} />
@@ -99,18 +100,18 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
                 </View>
             </>}
             <Text style={styles.label}>Rolle</Text>
-            <Picker selectedValue={formData.roleId} onValueChange={val => handleChange('roleId', val)}>
+            <Picker selectedValue={formData.roleId} onValueChange={val => handleChange('roleId', val)} itemStyle={{color: colors.text}}>
                 {roles.map(role => <Picker.Item key={role.id} label={role.roleName} value={role.id} />)}
             </Picker>
             <Text style={styles.label}>E-Mail</Text>
-            <TextInput style={styles.input} value={formData.email || ''} onChangeText={val => handleChange('email', val)} keyboardType="email-address"/>
+            <TextInput style={styles.input} value={formData.email || ''} onChangeText={val => handleChange('email', val)} keyboardType="email-address" placeholderTextColor={colors.textMuted}/>
         </View>
     );
 
     const renderNotesTab = () => (
         <View style={{ flex: 1 }}>
             <Text style={styles.label}>Interne Notizen</Text>
-            <TextInput style={[styles.input, styles.textArea, { flex: 1 }]} value={formData.adminNotes || ''} onChangeText={val => handleChange('adminNotes', val)} multiline/>
+            <TextInput style={[styles.input, styles.textArea, { flex: 1 }]} value={formData.adminNotes || ''} onChangeText={val => handleChange('adminNotes', val)} multiline placeholderTextColor={colors.textMuted}/>
         </View>
     );
 
@@ -124,9 +125,9 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
             submitText="Benutzer speichern"
         >
             <View style={styles.tabs}>
-                <TouchableOpacity style={[styles.tabButton, activeTab === 'general' && styles.activeTab]} onPress={() => setActiveTab('general')}><Text>Allgemein</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.tabButton, activeTab === 'permissions' && styles.activeTab]} onPress={() => setActiveTab('permissions')}><Text>Berechtigungen</Text></TouchableOpacity>
-                {isEditMode && <TouchableOpacity style={[styles.tabButton, activeTab === 'notes' && styles.activeTab]} onPress={() => setActiveTab('notes')}><Text>Notizen</Text></TouchableOpacity>}
+                <TouchableOpacity style={[styles.tabButton, activeTab === 'general' && styles.activeTab]} onPress={() => setActiveTab('general')}><Text style={[styles.tabText, activeTab === 'general' && styles.activeTabText]}>Allgemein</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.tabButton, activeTab === 'permissions' && styles.activeTab]} onPress={() => setActiveTab('permissions')}><Text style={[styles.tabText, activeTab === 'permissions' && styles.activeTabText]}>Berechtigungen</Text></TouchableOpacity>
+                {isEditMode && <TouchableOpacity style={[styles.tabButton, activeTab === 'notes' && styles.activeTab]} onPress={() => setActiveTab('notes')}><Text style={[styles.tabText, activeTab === 'notes' && styles.activeTabText]}>Notizen</Text></TouchableOpacity>}
             </View>
 
             {error && <Text style={styles.errorText}>{error}</Text>}
@@ -146,6 +147,8 @@ const pageStyles = (theme) => {
         tabs: { flexDirection: 'row', borderBottomWidth: 1, borderColor: colors.border, marginBottom: 16 },
         tabButton: { paddingBottom: 8, marginRight: 16 },
         activeTab: { borderBottomWidth: 3, borderBottomColor: colors.primary },
+        tabText: { color: colors.textMuted },
+        activeTabText: { color: colors.primary },
         passwordContainer: {
             position: 'relative',
             justifyContent: 'center',

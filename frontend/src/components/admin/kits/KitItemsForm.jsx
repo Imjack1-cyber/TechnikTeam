@@ -90,7 +90,7 @@ const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
 			<Text style={styles.cardTitle}>Inhalt bearbeiten</Text>
 			{error && <Text style={styles.errorText}>{error}</Text>}
 			<View>
-				{items.length === 0 && <Text>Dieses Kit ist leer. Fügen Sie einen Artikel hinzu.</Text>}
+				{items.length === 0 && <Text style={{color: colors.text}}>Dieses Kit ist leer. Fügen Sie einen Artikel hinzu.</Text>}
 				{items.map((item, index) => {
 					const selectedStorageItem = allStorageItems.find(si => si.id === parseInt(item.itemId));
 					return (
@@ -99,6 +99,7 @@ const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
                                 <Picker
                                     selectedValue={item.itemId}
                                     onValueChange={(val) => handleItemChange(index, 'itemId', val)}
+                                    itemStyle={{color: colors.text}}
                                 >
                                     <Picker.Item label="-- Artikel auswählen --" value="" />
                                     {allStorageItems.map(i => <Picker.Item key={i.id} label={i.name} value={i.id} />)}
@@ -119,8 +120,8 @@ const KitItemsForm = ({ kit, allStorageItems, onUpdateSuccess }) => {
 			</View>
 			<View style={styles.actionsContainer}>
 				<TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={handleAddItem}>
-					<Icon name="plus" size={14} />
-                    <Text> Zeile hinzufügen</Text>
+					<Icon name="plus" size={14} color={colors.white} />
+                    <Text style={styles.buttonText}> Zeile hinzufügen</Text>
 				</TouchableOpacity>
 				<TouchableOpacity style={[styles.button, styles.successButton]} onPress={handleSubmit} disabled={isSubmitting}>
 					<Icon name="save" size={14} color="#fff" />
@@ -155,6 +156,7 @@ const pageStyles = (theme) => {
             borderRadius: 8,
             paddingHorizontal: spacing.sm,
             textAlign: 'center',
+            color: colors.text,
         },
         actionsContainer: {
             marginTop: spacing.md,

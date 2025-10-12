@@ -7,7 +7,7 @@ import { useToast } from '../context/ToastContext';
 import Modal from '../components/ui/Modal';
 import { getCommonStyles } from '../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../styles/theme';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../store/authStore';
 
 const LehrgaengePage = () => {
@@ -43,21 +43,18 @@ const LehrgaengePage = () => {
                 <TouchableOpacity onPress={() => navigation.navigate('MeetingDetails', { meetingId: meeting.id })}>
                     <Text style={styles.cardTitle}>{meeting.parentCourseName}: {meeting.name}</Text>
                 </TouchableOpacity>
-                <View style={styles.detailRow}>
-                    <Text style={styles.label}>Datum:</Text>
-                    <Text style={styles.value}>{new Date(meeting.meetingDateTime).toLocaleString('de-DE')}</Text>
+                <View style={styles.detailsListRow}><Text style={styles.detailsListLabel}>Datum:</Text><Text style={styles.detailsListValue}>{new Date(meeting.meetingDateTime).toLocaleString('de-DE')}</Text></View>
+                 <View style={styles.detailsListRow}>
+                    <Text style={styles.detailsListLabel}>Leitung:</Text>
+                    <Text style={styles.detailsListValue}>{meeting.leaderUsername || 'N/A'}</Text>
                 </View>
-                 <View style={styles.detailRow}>
-                    <Text style={styles.label}>Leitung:</Text>
-                    <Text style={styles.value}>{meeting.leaderUsername || 'N/A'}</Text>
+                <View style={styles.detailsListRow}>
+                    <Text style={styles.detailsListLabel}>Teilnehmer:</Text>
+                    <Text style={styles.detailsListValue}>{meeting.participantCount || 0} / {meeting.maxParticipants || '∞'}</Text>
                 </View>
-                <View style={styles.detailRow}>
-                    <Text style={styles.label}>Teilnehmer:</Text>
-                    <Text style={styles.value}>{meeting.participantCount || 0} / {meeting.maxParticipants || '∞'}</Text>
-                </View>
-                <View style={[styles.detailRow, { borderBottomWidth: 0 }]}>
-                    <Text style={styles.label}>Dein Status:</Text>
-                    <Text style={[styles.value, isSignedUp && { color: colors.success, fontWeight: 'bold' }]}>{meeting.userAttendanceStatus}</Text>
+                <View style={[styles.detailsListRow, { borderBottomWidth: 0 }]}>
+                    <Text style={styles.detailsListLabel}>Dein Status:</Text>
+                    <Text style={[styles.detailsListValue, isSignedUp && { color: colors.success, fontWeight: 'bold' }]}>{meeting.userAttendanceStatus}</Text>
                 </View>
                 <TouchableOpacity 
                     style={[styles.button, isSignedUp ? styles.dangerButton : styles.successButton, {marginTop: 16}]} 

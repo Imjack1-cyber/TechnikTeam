@@ -86,7 +86,7 @@ const MeetingModal = ({ isOpen, onClose, onSuccess, meeting, courseId }) => {
         >
             {error && <Text style={styles.errorText}>{error}</Text>}
             <Text style={styles.label}>Name</Text>
-            <TextInput style={styles.input} value={formData.name} onChangeText={val => handleChange('name', val)} />
+            <TextInput style={styles.input} value={formData.name} onChangeText={val => handleChange('name', val)} placeholderTextColor={colors.textMuted} />
             
             <DateTimePicker
                 label="Beginn"
@@ -110,13 +110,13 @@ const MeetingModal = ({ isOpen, onClose, onSuccess, meeting, courseId }) => {
             />
 
             <Text style={styles.label}>Leitung</Text>
-            <Picker selectedValue={formData.leaderUserId} onValueChange={val => setFormData({...formData, leaderUserId: val})}>
+            <Picker selectedValue={formData.leaderUserId} onValueChange={val => setFormData({...formData, leaderUserId: val})} itemStyle={{ color: colors.text }}>
                 <Picker.Item label="(Keine)" value="" />
                 {users?.map(u => <Picker.Item key={u.id} label={u.username} value={u.id} />)}
             </Picker>
             
             <Text style={styles.label}>Maximale Teilnehmer (leer für unbegrenzt)</Text>
-            <TextInput style={styles.input} value={formData.maxParticipants} onChangeText={val => handleChange('maxParticipants', val)} keyboardType="number-pad"/>
+            <TextInput style={styles.input} value={formData.maxParticipants} onChangeText={val => handleChange('maxParticipants', val)} keyboardType="number-pad" placeholderTextColor={colors.textMuted}/>
         </AdminModal>
     );
 };

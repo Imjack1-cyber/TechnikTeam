@@ -8,7 +8,7 @@ import { useToast } from '../../context/ToastContext';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import BouncyCheckbox from "react-native-bouncy-checkbox";
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const ManageParticipantsModal = ({ isOpen, onClose, onAddUsers, onRemoveUser, conversation }) => {
 	const user = useAuthStore(state => state.user);
@@ -57,7 +57,7 @@ const ManageParticipantsModal = ({ isOpen, onClose, onAddUsers, onRemoveUser, co
                     keyExtractor={item => item.id.toString()}
                     renderItem={({item: p}) => (
                         <View style={styles.participantRow}>
-                            <Text>{p.username} {p.id === conversation.creatorId && '(Ersteller)'}</Text>
+                            <Text style={{color: colors.text}}>{p.username} {p.id === conversation.creatorId && '(Ersteller)'}</Text>
                             {user.id !== p.id && (
                                 <TouchableOpacity onPress={() => handleRemoveClick(p)}>
                                     <Icon name="times" size={18} color={colors.danger} />
@@ -85,7 +85,7 @@ const ManageParticipantsModal = ({ isOpen, onClose, onAddUsers, onRemoveUser, co
                                     fillColor={colors.primary}
                                 />
                             )}
-                            ListEmptyComponent={<Text>Alle Benutzer sind bereits in dieser Gruppe.</Text>}
+                            ListEmptyComponent={<Text style={{color: colors.textMuted}}>Alle Benutzer sind bereits in dieser Gruppe.</Text>}
                         />
                     )}
 				</View>
@@ -101,7 +101,7 @@ const ManageParticipantsModal = ({ isOpen, onClose, onAddUsers, onRemoveUser, co
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
-        sectionTitle: { fontSize: typography.h4, fontWeight: 'bold', marginBottom: spacing.sm },
+        sectionTitle: { fontSize: typography.h4, fontWeight: 'bold', marginBottom: spacing.sm, color: colors.text },
         participantRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm },
         divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.md },
         userListContainer: { maxHeight: '40%', borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 8 },

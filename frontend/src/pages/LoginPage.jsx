@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, StatusBar, Alert, Platform } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { useToast } from '../context/ToastContext';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import apiClient from '../services/apiClient';
 import { getThemeColors, spacing, borders, typography } from '../styles/theme';
 import { passkeyService } from '../services/passkeyService'; // Import the frontend passkey service
@@ -59,6 +59,7 @@ const TwoFactorAuthForm = ({ username, preAuthToken, onAuthSuccess }) => {
 				keyboardType="number-pad"
 				maxLength={6}
 				autoFocus
+                placeholderTextColor={colors.textMuted}
 			/>
 			
             {showRecovery && (
@@ -69,6 +70,7 @@ const TwoFactorAuthForm = ({ username, preAuthToken, onAuthSuccess }) => {
                         value={backupCode}
                         onChangeText={(val) => { setBackupCode(val); setToken(''); }}
                         placeholder="8-stelliger Code"
+                        placeholderTextColor={colors.textMuted}
                     />
                 </>
             )}
@@ -203,6 +205,7 @@ const LoginPage = ({ navigation }) => {
 						autoCapitalize="none"
 						autoComplete="username"
 						editable={!isLoading}
+                        placeholderTextColor={colors.textMuted}
 					/>
 					<Text style={styles.label}>Passwort</Text>
 					<View style={styles.passwordContainer}>
@@ -213,6 +216,7 @@ const LoginPage = ({ navigation }) => {
 							secureTextEntry={!isPasswordVisible}
 							autoComplete="password"
 							editable={!isLoading}
+                            placeholderTextColor={colors.textMuted}
 						/>
 						<TouchableOpacity onPress={() => setIsPasswordVisible(!isPasswordVisible)} style={styles.eyeIcon}>
 							<Icon name={isPasswordVisible ? 'eye-slash' : 'eye'} size={18} color={colors.textMuted} />
@@ -222,7 +226,7 @@ const LoginPage = ({ navigation }) => {
 						{isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Anmelden</Text>}
 					</TouchableOpacity>
                     <TouchableOpacity style={[styles.button, styles.secondaryButton, { marginTop: 8}]} onPress={handlePasskeyLogin} disabled={isLoading}>
-                        {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Login mit Passkey</Text>}
+                        {isLoading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Login mit Passkey</Text>}
                     </TouchableOpacity>
 				</View>
 			</View>
@@ -271,7 +275,8 @@ const pageStyles = (theme) => {
         loginBox: { width: '100%', maxWidth: 400, padding: 24, backgroundColor: colors.surface, borderRadius: 8, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 5 },
         title: { fontSize: 24, fontWeight: '700', textAlign: 'center', marginBottom: 24, color: colors.heading },
         subtitle: { fontSize: 16, textAlign: 'center', marginBottom: 16, color: colors.textMuted },
-        eyeIcon: { position: 'absolute', right: 12, padding: 4 },
+        passwordContainer: { position: 'relative', justifyContent: 'center' },
+        eyeIcon: { position: 'absolute', right: 12, top: 0, height: '100%', justifyContent: 'center', paddingBottom: 16 },
         recoveryInfo: {
             marginTop: 16,
             padding: 12,

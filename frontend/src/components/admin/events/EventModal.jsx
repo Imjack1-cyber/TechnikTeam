@@ -124,7 +124,7 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklis
     const renderGeneral = () => (
         <View>
             <Text style={styles.label}>Name</Text>
-            <TextInput style={styles.input} value={formData.name} onChangeText={val => handleChange('name', val)} />
+            <TextInput style={styles.input} value={formData.name} onChangeText={val => handleChange('name', val)} placeholderTextColor={colors.textMuted}/>
             
             <DateTimePicker
                 label="Beginn"
@@ -141,24 +141,24 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklis
             />
 
             <Text style={styles.label}>Ort</Text>
-            <Picker selectedValue={formData.venueId} onValueChange={val => handleChange('venueId', val)}>
+            <Picker selectedValue={formData.venueId} onValueChange={val => handleChange('venueId', val)} itemStyle={{ color: colors.text }}>
                 <Picker.Item label="-- Veranstaltungsort auswählen --" value="" />
                 {venues?.map(v => <Picker.Item key={v.id} label={v.name} value={v.id} />)}
             </Picker>
 
-            <Text style={styles.label}>Beschreibung</Text><TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={val => handleChange('description', val)} multiline />
+            <Text style={styles.label}>Beschreibung</Text><TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={val => handleChange('description', val)} multiline placeholderTextColor={colors.textMuted}/>
         </View>
     );
 
     const renderDetails = () => (
         <View>
             <Text style={styles.label}>Status</Text>
-            <Picker selectedValue={formData.status} onValueChange={val => handleChange('status', val)}><Picker.Item label="Geplant" value="GEPLANT" /><Picker.Item label="Laufend" value="LAUFEND" /><Picker.Item label="Abgeschlossen" value="ABGESCHLOSSEN" /><Picker.Item label="Abgesagt" value="ABGESAGT" /></Picker>
+            <Picker selectedValue={formData.status} onValueChange={val => handleChange('status', val)} itemStyle={{ color: colors.text }}><Picker.Item label="Geplant" value="GEPLANT" /><Picker.Item label="Laufend" value="LAUFEND" /><Picker.Item label="Abgeschlossen" value="ABGESCHLOSSEN" /><Picker.Item label="Abgesagt" value="ABGESAGT" /></Picker>
             <Text style={styles.label}>Leitung</Text>
-            <Picker selectedValue={formData.leaderUserId} onValueChange={val => handleChange('leaderUserId', val)}><Picker.Item label="(Keine)" value="" />{users?.map(u => <Picker.Item key={u.id} label={u.username} value={u.id} />)}</Picker>
+            <Picker selectedValue={formData.leaderUserId} onValueChange={val => handleChange('leaderUserId', val)} itemStyle={{ color: colors.text }}><Picker.Item label="(Keine)" value="" />{users?.map(u => <Picker.Item key={u.id} label={u.username} value={u.id} />)}</Picker>
             
             <Text style={[styles.label, {marginTop: 16}]}>Checklisten-Vorlage (Optional)</Text>
-            <Picker selectedValue={templateId} onValueChange={setTemplateId}>
+            <Picker selectedValue={templateId} onValueChange={setTemplateId} itemStyle={{ color: colors.text }}>
                 <Picker.Item label="-- Keine Vorlage --" value="" />
                 {checklistTemplates.map(t => <Picker.Item key={t.id} label={t.name} value={t.id} />)}
             </Picker>
@@ -179,9 +179,9 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklis
             isSubmitting={isSubmitting}
             submitText="Event speichern"
         >
-            <View style={{flexDirection: 'row', borderBottomWidth: 1, borderColor: getThemeColors(theme).border, marginBottom: 16}}>
-                <TouchableOpacity onPress={() => setActiveTab('general')} style={{paddingBottom: 8, marginRight: 16, borderBottomWidth: activeTab === 'general' ? 3 : 0, borderBottomColor: getThemeColors(theme).primary}}><Text>Allgemein</Text></TouchableOpacity>
-                <TouchableOpacity onPress={() => setActiveTab('details')} style={{paddingBottom: 8, borderBottomWidth: activeTab === 'details' ? 3 : 0, borderBottomColor: getThemeColors(theme).primary}}><Text>Details & Bedarf</Text></TouchableOpacity>
+            <View style={styles.tabs}>
+                <TouchableOpacity style={[styles.tabButton, activeTab === 'general' && styles.activeTab]} onPress={() => setActiveTab('general')}><Text style={[styles.tabText, activeTab === 'general' && styles.activeTabText]}>Allgemein</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.tabButton, activeTab === 'details' && styles.activeTab]} onPress={() => setActiveTab('details')}><Text style={[styles.tabText, activeTab === 'details' && styles.activeTabText]}>Details & Bedarf</Text></TouchableOpacity>
             </View>
             {error && <Text style={styles.errorText}>{error}</Text>}
             
@@ -192,8 +192,13 @@ const EventModal = ({ isOpen, onClose, onSuccess, event, adminFormData, checklis
 };
 
 const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
     return StyleSheet.create({
-        // No custom styles needed here anymore
+        tabs: { flexDirection: 'row', borderBottomWidth: 1, borderColor: colors.border, marginBottom: 16 },
+        tabButton: { paddingBottom: 8, marginRight: 16 },
+        activeTab: { borderBottomWidth: 3, borderBottomColor: colors.primary },
+        tabText: { color: colors.textMuted },
+        activeTabText: { color: colors.primary },
     });
 };
 

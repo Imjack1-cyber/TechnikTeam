@@ -15,7 +15,6 @@ const RequestActionModal = ({ isOpen, onClose, onConfirm, request, action, isSub
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
     if (!request) return null;
-
     let changes = {};
     try {
         changes = JSON.parse(request.requestedChanges);
@@ -59,41 +58,39 @@ const RequestActionModal = ({ isOpen, onClose, onConfirm, request, action, isSub
     );
 };
 
-
 const AdminRequestsPage = () => {
     const navigation = useNavigation();
-	const apiCall = useCallback(() => apiClient.get('/requests/pending'), []);
-	const { data: requests, loading, error, reload } = useApi(apiCall, { subscribeTo: 'PROFILE_REQUEST' });
-	const [actionableRequest, setActionableRequest] = useState(null); // { request: {...}, action: 'approve' | 'deny' }
+    const apiCall = useCallback(() => apiClient.get('/requests/pending'), []);
+    const { data: requests, loading, error, reload } = useApi(apiCall, { subscribeTo: 'PROFILE_REQUEST' });
+    const [actionableRequest, setActionableRequest] = useState(null); // { request: {...}, action: 'approve' | 'deny' }
     const [isSubmitting, setIsSubmitting] = useState(false);
-	const { addToast } = useToast();
-
+    const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
 
-	const handleConfirmAction = async () => {
+    const handleConfirmAction = async () => {
         if (!actionableRequest) return;
-        
+
         const { request, action } = actionableRequest;
         setIsSubmitting(true);
-		try {
-			const result = await apiClient.post(`/requests/${request.id}/${action}`);
-			if (result.success) {
-				addToast(`Antrag #${request.id} erfolgreich ${action === 'approve' ? 'genehmigt' : 'abgelehnt'}.`, 'success');
-				reload();
-			} else { throw new Error(result.message); }
-		} catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
+        try {
+            const result = await apiClient.post(`/requests/${request.id}/${action}`);
+            if (result.success) {
+                addToast(`Antrag #${request.id} erfolgreich ${action === 'approve' ? 'genehmigt' : 'abgelehnt'}.`, 'success');
+                reload();
+            } else { throw new Error(result.message); }
+        } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
         finally {
             setIsSubmitting(false);
             setActionableRequest(null);
         }
-	};
+    };
 
     const renderItem = ({ item }) => {
         let changes = {};
         try {
             changes = JSON.parse(item.requestedChanges);
-        } catch (e) {}
+        } catch (e) { }
 
         const changeLabels = {
             email: 'E-Mail',
@@ -112,19 +109,19 @@ const AdminRequestsPage = () => {
 
                 <View style={styles.changesContainer}>
                     <Text style={styles.label}>Beantragte Änderungen:</Text>
-                     {Object.entries(changes).map(([key, value]) => (
+                    {Object.entries(changes).map(([key, value]) => (
                         <View key={key} style={styles.changeRow}>
                             <Text style={styles.changeKey}>{changeLabels[key] || key}:</Text>
                             <Text style={styles.changeValue}>{String(value)}</Text>
                         </View>
-                     ))}
+                    ))}
                 </View>
 
                 <View style={styles.cardActions}>
                     <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => setActionableRequest({ request: item, action: 'approve' })}>
                         <Text style={styles.buttonText}>Genehmigen</Text>
                     </TouchableOpacity>
-                     <TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={() => setActionableRequest({ request: item, action: 'deny' })}>
+                    <TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={() => setActionableRequest({ request: item, action: 'deny' })}>
                         <Text style={styles.buttonText}>Ablehnen</Text>
                     </TouchableOpacity>
                 </View>
@@ -132,7 +129,7 @@ const AdminRequestsPage = () => {
         );
     };
 
-	return (
+    return (
         <View style={styles.container}>
             {loading ? (
                 <View style={styles.centered}><ActivityIndicator size="large" /></View>
@@ -156,7 +153,7 @@ const AdminRequestsPage = () => {
                     }
                 />
             )}
-            
+
             <RequestActionModal
                 isOpen={!!actionableRequest}
                 onClose={() => setActionableRequest(null)}
@@ -166,7 +163,7 @@ const AdminRequestsPage = () => {
                 isSubmitting={isSubmitting}
             />
         </View>
-	);
+    );
 };
 
 const pageStyles = (theme) => {
@@ -180,11 +177,11 @@ const pageStyles = (theme) => {
             paddingBottom: 0,
             borderBottomWidth: 0,
         },
-        cardActions: { 
-            flexDirection: 'row', 
-            justifyContent: 'flex-end', 
-            gap: 8, 
-            marginTop: 16 
+        cardActions: {
+            flexDirection: 'row',
+            justifyContent: 'flex-end',
+            gap: 8,
+            marginTop: 16
         },
         changesContainer: {
             marginTop: spacing.md,

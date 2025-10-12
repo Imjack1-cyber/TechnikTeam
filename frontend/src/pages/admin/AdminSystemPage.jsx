@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Alert, Switch } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
@@ -7,7 +7,7 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
-import { RadioButton } from 'react-native-paper'; // Example for radio buttons
+import { RadioButton } from 'react-native-paper'; 
 import ScrollableContent from '../../components/ui/ScrollableContent';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
@@ -72,7 +72,7 @@ const MaintenanceModeManager = () => {
                 </RadioButton.Group>
                 
                 <Text style={styles.label}>Angezeigte Nachricht</Text>
-                <TextInput style={[styles.input, styles.textArea]} value={message} onChangeText={setMessage} multiline placeholder="z.B. Führen gerade Datenbank-Updates durch."/>
+                <TextInput style={[styles.input, styles.textArea]} value={message} onChangeText={setMessage} multiline placeholder="z.B. Führen gerade Datenbank-Updates durch." placeholderTextColor={colors.textMuted}/>
                 
                 <TouchableOpacity style={[styles.button, styles.successButton]} onPress={handleSubmit} disabled={isSubmitting}>
                     <Text style={styles.buttonText}>Status aktualisieren</Text>

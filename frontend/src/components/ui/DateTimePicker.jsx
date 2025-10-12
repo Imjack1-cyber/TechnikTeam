@@ -9,6 +9,10 @@ import { format, addDays, startOfDay, eachDayOfInterval, startOfMonth, endOfMont
 import TimePicker from './TimePicker';
 
 const WebDatePickerModal = ({ isVisible, date, onConfirm, onCancel, minimumDate, maximumDate }) => {
+  const theme = useAuthStore(state => state.theme);
+  const colors = getThemeColors(theme);
+  const styles = localStyles(theme);
+
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(date || new Date()));
   const [selectedDate, setSelectedDate] = useState(date ? startOfDay(date) : startOfDay(new Date()));
   const [selectedTime, setSelectedTime] = useState(date || new Date());
@@ -56,17 +60,17 @@ const WebDatePickerModal = ({ isVisible, date, onConfirm, onCancel, minimumDate,
 
   return (
     <RNModal visible={true} transparent animationType="fade" onRequestClose={onCancel}>
-      <View style={localStyles.modalOverlay}>
-        <View style={localStyles.modalContent}>
-          <View style={localStyles.headerRow}>
-            <TouchableOpacity onPress={goPrev} style={localStyles.navButton}><Text>{'<'}</Text></TouchableOpacity>
-            <Text style={localStyles.headerTitle}>{format(currentMonth, 'MMMM yyyy')}</Text>
-            <TouchableOpacity onPress={goNext} style={localStyles.navButton}><Text>{'>'}</Text></TouchableOpacity>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.headerRow}>
+            <TouchableOpacity onPress={goPrev} style={styles.navButton}><Text style={{color: colors.text}}>{'<'}</Text></TouchableOpacity>
+            <Text style={styles.headerTitle}>{format(currentMonth, 'MMMM yyyy')}</Text>
+            <TouchableOpacity onPress={goNext} style={styles.navButton}><Text style={{color: colors.text}}>{'>'}</Text></TouchableOpacity>
           </View>
-          <View style={localStyles.weekDaysRow}>
-            {['S','M','T','W','T','F','S'].map(d => <Text key={d} style={localStyles.weekDayText}>{d}</Text>)}
+          <View style={styles.weekDaysRow}>
+            {['S','M','T','W','T','F','S'].map(d => <Text key={d} style={styles.weekDayText}>{d}</Text>)}
           </View>
-          <View style={localStyles.grid}>
+          <View style={styles.grid}>
             {days.map((d, idx) => {
               const key = d ? format(d, 'yyyy-MM-dd') : `blank-${idx}`;
               const disabled = isDisabled(d);
@@ -76,9 +80,9 @@ const WebDatePickerModal = ({ isVisible, date, onConfirm, onCancel, minimumDate,
                   key={key}
                   onPress={() => !disabled && setSelectedDate(startOfDay(d))}
                   activeOpacity={disabled ? 1 : 0.7}
-                  style={[localStyles.dayCell, disabled && localStyles.dayCellDisabled, selectedDay && localStyles.dayCellSelected]}
+                  style={[styles.dayCell, disabled && styles.dayCellDisabled, selectedDay && styles.dayCellSelected]}
                 >
-                  <Text style={[localStyles.dayText, disabled && localStyles.dayTextDisabled, selectedDay && localStyles.dayTextSelected]}>
+                  <Text style={[styles.dayText, disabled && styles.dayTextDisabled, selectedDay && styles.dayTextSelected]}>
                     {d ? format(d, 'd') : ''}
                   </Text>
                 </TouchableOpacity>
@@ -86,9 +90,9 @@ const WebDatePickerModal = ({ isVisible, date, onConfirm, onCancel, minimumDate,
             })}
           </View>
           <TimePicker value={selectedTime} onChange={handleConfirmTime} isWebModal={true}/>
-          <View style={localStyles.actionsRow}>
-            <TouchableOpacity onPress={onCancel} style={[localStyles.actionButton, localStyles.cancelButton]}><Text>Abbrechen</Text></TouchableOpacity>
-            <TouchableOpacity onPress={handleFinalConfirm} style={[localStyles.actionButton, localStyles.confirmButton]}><Text style={{ color: '#fff' }}>Auswählen</Text></TouchableOpacity>
+          <View style={styles.actionsRow}>
+            <TouchableOpacity onPress={onCancel} style={[styles.actionButton, styles.cancelButton]}><Text style={{color: colors.text}}>Abbrechen</Text></TouchableOpacity>
+            <TouchableOpacity onPress={handleFinalConfirm} style={[styles.actionButton, styles.confirmButton]}><Text style={{ color: colors.white }}>Auswählen</Text></TouchableOpacity>
           </View>
         </View>
       </View>
@@ -146,25 +150,28 @@ const DateTimePicker = ({ label, value, onChange, mode = 'datetime' }) => {
     );
 };
 
-const localStyles = StyleSheet.create({
-    modalOverlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'center', padding: 20 },
-    modalContent: { backgroundColor: '#fff', borderRadius: 12, padding: 12, maxHeight: '90%' },
-    headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-    navButton: { padding: 8 },
-    headerTitle: { fontWeight: '600', fontSize: 16 },
-    weekDaysRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-    weekDayText: { width: 32, textAlign: 'center', fontWeight: '600' },
-    grid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
-    dayCell: { width: `${100 / 7}%`, paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
-    dayCellDisabled: { opacity: 0.3 },
-    dayCellSelected: { backgroundColor: '#1976D2', borderRadius: 18 },
-    dayText: { textAlign: 'center' },
-    dayTextDisabled: { color: '#999' },
-    dayTextSelected: { color: '#fff', fontWeight: '700' },
-    actionsRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 6 },
-    actionButton: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 6, marginLeft: 8 },
-    cancelButton: { backgroundColor: '#eee' },
-    confirmButton: { backgroundColor: '#1976D2' },
-});
+const localStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.6)', justifyContent: 'center', padding: 20 },
+        modalContent: { backgroundColor: colors.surface, borderRadius: 12, padding: 12, maxHeight: '90%' },
+        headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+        navButton: { padding: 8 },
+        headerTitle: { fontWeight: '600', fontSize: 16, color: colors.heading },
+        weekDaysRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+        weekDayText: { width: 32, textAlign: 'center', fontWeight: '600', color: colors.textMuted },
+        grid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
+        dayCell: { width: `${100 / 7}%`, paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
+        dayCellDisabled: { opacity: 0.3 },
+        dayCellSelected: { backgroundColor: colors.primary, borderRadius: 18 },
+        dayText: { textAlign: 'center', color: colors.text },
+        dayTextDisabled: { color: colors.disabledText },
+        dayTextSelected: { color: colors.white, fontWeight: '700' },
+        actionsRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 6 },
+        actionButton: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 6, marginLeft: 8 },
+        cancelButton: { backgroundColor: colors.background },
+        confirmButton: { backgroundColor: colors.primary },
+    });
+};
 
 export default DateTimePicker;

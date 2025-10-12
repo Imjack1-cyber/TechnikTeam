@@ -29,7 +29,7 @@ const KitListItem = ({ kit, onEdit, onDelete, onItemsUpdate, allStorageItems, st
 	return (
         <>
             <AccordionSection title={kit.name}>
-                {!storageReady ? <ActivityIndicator /> : (
+                {!storageReady ? <ActivityIndicator color={colors.primary} /> : (
                     <KitItemsForm kit={kit} allStorageItems={allStorageItems} onUpdateSuccess={onItemsUpdate} />
                 )}
                 <View style={styles.cardActions}>
@@ -75,6 +75,7 @@ const AdminKitsPage = () => {
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
     const filteredKits = useMemo(() => {
         if (!kits) return [];
@@ -125,7 +126,7 @@ const AdminKitsPage = () => {
 	return (
 		<View style={styles.container}>
 			<View style={styles.contentContainer}>
-                <Text style={styles.title}><Icon name="box-open" size={24} /> Kit-Verwaltung</Text>
+                <Text style={styles.title}><Icon name="box-open" size={24} color={colors.heading} /> Kit-Verwaltung</Text>
                 <Text style={styles.subtitle}>Verwalten Sie hier wiederverwendbare Material-Zusammenstellungen.</Text>
                 <TouchableOpacity style={[styles.button, styles.successButton, {alignSelf: 'flex-start'}]} onPress={() => openModal()}>
                     <Icon name="plus" size={16} color="#fff"/>
@@ -136,10 +137,11 @@ const AdminKitsPage = () => {
                     placeholder="Kit suchen..."
                     value={searchTerm}
                     onChangeText={setSearchTerm}
+                    placeholderTextColor={colors.textMuted}
                 />
             </View>
 
-            {loading && <ActivityIndicator size="large" style={{marginTop: 20}} />}
+			{loading && <ActivityIndicator size="large" />}
 			{error && <Text style={styles.errorText}>{error}</Text>}
 			
             <FlatList
@@ -171,8 +173,6 @@ const AdminKitsPage = () => {
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
-        accordionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 0 },
-        accordionContent: { paddingTop: spacing.md, borderTopWidth: 1, borderColor: colors.border, marginTop: spacing.md },
         cardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm, marginTop: spacing.md },
     });
 };

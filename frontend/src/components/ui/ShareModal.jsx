@@ -143,6 +143,7 @@ const ShareModal = ({
                         value={url} 
                         size={80} 
                         backgroundColor="transparent"
+                        color={colors.text}
                     />
                 </View>
                 <View style={{flex: 1}}>
@@ -173,7 +174,7 @@ const ShareModal = ({
             {isCreatable && (
                 <View style={styles.newLinkContainer}>
                     <Text style={styles.cardTitle}>Neuen Link erstellen</Text>
-                    <Picker selectedValue={accessLevel} onValueChange={setAccessLevel}>
+                    <Picker selectedValue={accessLevel} onValueChange={setAccessLevel} itemStyle={{ color: colors.text }}>
                         <Picker.Item label="Öffentlich (jeder mit Link)" value="PUBLIC" />
                         <Picker.Item label="Angemeldete Benutzer" value="LOGGED_IN" />
                         <Picker.Item label="Nur Administratoren" value="ADMIN" />
@@ -247,7 +248,7 @@ const pageStyles = (theme) => {
         },
         qrCodeContainer: {
             padding: 4,
-            backgroundColor: 'white',
+            backgroundColor: colors.white,
             borderRadius: 4,
         },
         linkLabel: {

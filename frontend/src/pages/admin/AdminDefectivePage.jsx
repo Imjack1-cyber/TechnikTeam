@@ -11,6 +11,17 @@ import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography } from '../../styles/theme';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
+const HealthIndicator = ({ item }) => {
+	const theme = useAuthStore(state => state.theme);
+    const colors = getThemeColors(theme);
+	let color = colors.success;
+	if (item.defectiveQuantity > 0) color = colors.danger;
+	else if (item.maxQuantity > 0 && item.availableQuantity < item.maxQuantity * 0.25) color = colors.warning; // Low stock warning
+    else if (item.maxQuantity > 0 && item.availableQuantity < item.maxQuantity) color = colors.info; // Not full but okay
+
+	return <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }} />;
+};
+
 const AdminDefectivePage = () => {
     const navigation = useNavigation();
 	const apiCall = useCallback(() => apiClient.get('/storage'), []);

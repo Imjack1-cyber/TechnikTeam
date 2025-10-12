@@ -6,7 +6,7 @@ import { useToast } from '../../context/ToastContext';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { useAuthStore } from '../../store/authStore';
 import { getThemeColors, spacing } from '../../styles/theme';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { Picker } from '@react-native-picker/picker';
 
 const CartModal = ({ isOpen, onClose, cart, onUpdateQuantity, onRemove, onSwitchType, onSubmit, activeEvents, onSuccess }) => {
@@ -65,7 +65,7 @@ const CartModal = ({ isOpen, onClose, cart, onUpdateQuantity, onRemove, onSwitch
 							<TouchableOpacity onPress={() => onSwitchType(item.id, type)}>
                                 <Icon name={type === 'checkout' ? 'arrow-down' : 'arrow-up'} size={20} color={type === 'checkout' ? colors.danger : colors.success} />
                             </TouchableOpacity>
-							<Text style={{ flex: 1 }}>{item.name}</Text>
+							<Text style={{ flex: 1, color: colors.text }}>{item.name}</Text>
 							<TextInput
 								value={String(item.cartQuantity)}
 								onChangeText={val => onUpdateQuantity(item.id, type, parseInt(val, 10) || 1)}
@@ -92,11 +92,11 @@ const CartModal = ({ isOpen, onClose, cart, onUpdateQuantity, onRemove, onSwitch
 
 				<View style={styles.formGroup}>
 					<Text style={styles.label}>Notiz (optional, gilt für alle Artikel)</Text>
-					<TextInput style={styles.input} value={notes} onChangeText={setNotes} placeholder="z.B. für Event XYZ" />
+					<TextInput style={styles.input} value={notes} onChangeText={setNotes} placeholder="z.B. für Event XYZ" placeholderTextColor={colors.textMuted}/>
 				</View>
 				<View style={styles.formGroup}>
 					<Text style={styles.label}>Zuweisen zu Event (optional, gilt für alle Artikel)</Text>
-					<Picker selectedValue={eventId} onValueChange={setEventId}>
+					<Picker selectedValue={eventId} onValueChange={setEventId} itemStyle={{ color: colors.text }}>
 						<Picker.Item label="Kein Event" value="" />
 						{activeEvents.map(event => (
 							<Picker.Item key={event.id} label={event.name} value={event.id} />
@@ -132,6 +132,7 @@ const pageStyles = (theme) => {
             borderRadius: 8,
             paddingHorizontal: spacing.sm,
             textAlign: 'center',
+            color: colors.text,
         },
     };
 };

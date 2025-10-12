@@ -11,6 +11,8 @@ const RelatedItemsManager = ({ item, allItems, onSave, onCancel }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
     const colors = getThemeColors(theme);
+    const pageSpecificStyles = pageStyles(theme);
+
 	const relationsApiCall = useCallback(() => apiClient.get(`/admin/storage/${item.id}/relations`), [item.id]);
 	const { data: relatedItems, loading, error } = useApi(relationsApiCall);
 	const [selectedIds, setSelectedIds] = useState(new Set());
@@ -52,20 +54,20 @@ const RelatedItemsManager = ({ item, allItems, onSave, onCancel }) => {
 		<View>
 			{loading && <ActivityIndicator />}
 			{error && <Text style={styles.errorText}>{error}</Text>}
-			<View style={pageStyles.listContainer}>
+			<View style={pageSpecificStyles.listContainer}>
 				{availableItems.map(i => (
 					<BouncyCheckbox
                         key={i.id}
                         text={i.name}
                         isChecked={selectedIds.has(i.id)}
                         onPress={() => handleToggle(i.id)}
-                        style={pageStyles.checkboxRow}
+                        style={pageSpecificStyles.checkboxRow}
                         textStyle={{ color: colors.text, textDecorationLine: 'none' }}
                         fillColor={colors.primary}
                     />
 				))}
 			</View>
-			<View style={pageStyles.buttonContainer}>
+			<View style={pageSpecificStyles.buttonContainer}>
 				<TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={onCancel}>
                     <Text style={styles.buttonText}>Abbrechen</Text>
                 </TouchableOpacity>
@@ -77,22 +79,25 @@ const RelatedItemsManager = ({ item, allItems, onSave, onCancel }) => {
 	);
 };
 
-const pageStyles = StyleSheet.create({
-    listContainer: {
-        borderWidth: 1,
-        borderColor: '#dee2e6',
-        borderRadius: 8,
-        padding: 8,
-    },
-    checkboxRow: {
-        paddingVertical: 8,
-    },
-    buttonContainer: {
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-        gap: 8,
-        marginTop: 16,
-    }
-});
+const pageStyles = (theme) => {
+    const colors = getThemeColors(theme);
+    return StyleSheet.create({
+        listContainer: {
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 8,
+            padding: 8,
+        },
+        checkboxRow: {
+            paddingVertical: 8,
+        },
+        buttonContainer: {
+            flexDirection: 'row',
+            justifyContent: 'flex-end',
+            gap: 8,
+            marginTop: 16,
+        }
+    });
+};
 
 export default RelatedItemsManager;

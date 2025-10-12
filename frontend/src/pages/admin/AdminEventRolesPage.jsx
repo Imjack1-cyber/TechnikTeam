@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, ScrollView, Alert, Linking } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import Modal from '../../components/ui/Modal';
@@ -7,12 +7,14 @@ import { useToast } from '../../context/ToastContext';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
-import { getThemeColors } from '../../styles/theme';
+import { getThemeColors, typography } from '../../styles/theme';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import AdminModal from '../../components/ui/AdminModal';
 
 const RoleModal = ({ isOpen, onClose, onSuccess, role }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const { addToast } = useToast();
@@ -46,20 +48,20 @@ const RoleModal = ({ isOpen, onClose, onSuccess, role }) => {
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={role ? 'Rolle bearbeiten' : 'Neue Rolle erstellen'}>
-            <ScrollView>
-                {error && <Text style={styles.errorText}>{error}</Text>}
-                <Text style={styles.label}>Rollenname</Text>
-                <TextInput style={styles.input} value={formData.name} onChangeText={val => setFormData({ ...formData, name: val })} />
-                <Text style={styles.label}>Beschreibung</Text>
-                <TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={val => setFormData({ ...formData, description: val })} multiline />
-                <Text style={styles.label}>Font Awesome Icon</Text>
-                <TextInput style={styles.input} value={formData.iconClass} onChangeText={val => setFormData({ ...formData, iconClass: val })} placeholder="z.B. fa-user-tag" />
-                <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit} disabled={isSubmitting}>
-                    {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Speichern</Text>}
-                </TouchableOpacity>
-            </ScrollView>
-        </Modal>
+        <AdminModal isOpen={isOpen} onClose={onClose} title={role ? 'Rolle bearbeiten' : 'Neue Rolle erstellen'} onSubmit={handleSubmit} isSubmitting={isSubmitting}>
+            {error && <Text style={styles.errorText}>{error}</Text>}
+            <Text style={styles.label}>Rollenname</Text>
+            <TextInput style={styles.input} value={formData.name} onChangeText={val => setFormData({ ...formData, name: val })} placeholderTextColor={colors.textMuted}/>
+            <Text style={styles.label}>Beschreibung</Text>
+            <TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={val => setFormData({ ...formData, description: val })} multiline placeholderTextColor={colors.textMuted}/>
+            <Text style={styles.label}>Font Awesome Icon</Text>
+            <TouchableOpacity style={{ alignSelf: 'flex-start', marginBottom: 4 }} onPress={() => Linking.openURL('https://fontawesome.com/search?m=free&s=solid')}>
+                <Text style={{ color: colors.primary, fontSize: typography.small }}>
+                    <Icon name="search" /> Icons suchen (solid)
+                </Text>
+            </TouchableOpacity>
+            <TextInput style={styles.input} value={formData.iconClass} onChangeText={val => setFormData({ ...formData, iconClass: val })} placeholder="z.B. fa-user-tag" placeholderTextColor={colors.textMuted}/>
+        </AdminModal>
     );
 };
 
@@ -73,6 +75,7 @@ const AdminEventRolesPage = () => {
     const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
 
     const openModal = (role = null) => {
         setEditingRole(role);
@@ -102,7 +105,7 @@ const AdminEventRolesPage = () => {
     const renderItem = ({ item }) => (
         <View style={styles.card}>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: 16}}>
-                <Icon name={item.iconClass.replace('fa-', '')} solid size={24} />
+                <Icon name={item.iconClass.replace('fa-', '')} solid size={24} color={colors.textMuted}/>
                 <Text style={styles.cardTitle}>{item.name}</Text>
             </View>
             <Text style={styles.bodyText}>{item.description}</Text>
@@ -137,7 +140,7 @@ const AdminEventRolesPage = () => {
                     onClose={() => setDeletingRole(null)}
                     onConfirm={confirmDelete}
                     title={`Rolle "${deletingRole.name}" löschen?`}
-                    message="Dies kann nicht rückgängig gemacht werden."
+                    message="Diese Aktion kann nicht rückgängig gemacht werden."
                     confirmText="Löschen"
                     confirmButtonVariant="danger"
                     isSubmitting={isSubmittingDelete}

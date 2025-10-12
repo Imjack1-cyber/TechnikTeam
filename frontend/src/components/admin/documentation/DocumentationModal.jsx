@@ -28,7 +28,7 @@ const DocumentationModal = ({ isOpen, onClose, onSuccess, doc, allDocs }) => {
         return ['Allgemein', ...existing.filter(c => c !== 'Allgemein'), 'NEW_CATEGORY'];
     }, [allDocs]);
 
-    const pageKeyOptions = useMemo(() => Object.entries(pageRoutes).map(([key, value]) => ({ label: `${key} (${value})`, value })), []);
+    const pageKeyOptions = useMemo(() => Object.entries(pageRoutes).map(([key, value]) => ({ label: `${key} (${value})`, value: key })), []);
 
 
     useEffect(() => {
@@ -95,7 +95,7 @@ const DocumentationModal = ({ isOpen, onClose, onSuccess, doc, allDocs }) => {
         >
             {error && <Text style={styles.errorText}>{error}</Text>}
             <Text style={styles.label}>Titel</Text>
-            <TextInput style={styles.input} value={formData.title} onChangeText={val => handleChange('title', val)} />
+            <TextInput style={styles.input} value={formData.title} onChangeText={val => handleChange('title', val)} placeholderTextColor={colors.textMuted} />
             
             <Text style={styles.label}>Seiten-Schlüssel (pageKey)</Text>
             <Picker selectedValue={formData.pageKey} onValueChange={val => handleChange('pageKey', val)} itemStyle={{ color: colors.text }}>
@@ -109,11 +109,11 @@ const DocumentationModal = ({ isOpen, onClose, onSuccess, doc, allDocs }) => {
             </Picker>
 
             {formData.category === 'NEW_CATEGORY' && (
-                <TextInput style={styles.input} value={newCategory} onChangeText={setNewCategory} placeholder="Name der neuen Kategorie" />
+                <TextInput style={styles.input} value={newCategory} onChangeText={setNewCategory} placeholder="Name der neuen Kategorie" placeholderTextColor={colors.textMuted}/>
             )}
 
             <Text style={styles.label}>Features (Markdown)</Text>
-            <TextInput style={[styles.input, styles.textArea]} value={formData.features} onChangeText={val => handleChange('features', val)} multiline />
+            <TextInput style={[styles.input, styles.textArea]} value={formData.features} onChangeText={val => handleChange('features', val)} multiline placeholderTextColor={colors.textMuted}/>
             
             <Text style={styles.label}>Verwandte Seiten</Text>
             <MultipleSelectList 
@@ -126,6 +126,7 @@ const DocumentationModal = ({ isOpen, onClose, onSuccess, doc, allDocs }) => {
                 boxStyles={styles.input}
                 inputStyles={{ color: colors.text }}
                 dropdownTextStyles={{ color: colors.text }}
+                badgeStyles={{backgroundColor: colors.primary}}
                 defaultOptions={relatedPagesOptions.filter(opt => selectedRelatedKeys.includes(opt.key))}
             />
             <View style={{flexDirection: 'row', alignItems: 'center', marginVertical: 16}}>

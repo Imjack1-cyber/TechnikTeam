@@ -13,6 +13,7 @@ import AdminModal from '../../components/ui/AdminModal';
 import * as DocumentPicker from 'expo-document-picker';
 import FileShareModal from '../../components/admin/files/FileShareModal';
 import ReplaceFileModal from '../../components/admin/files/ReplaceFileModal';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
@@ -26,6 +27,7 @@ const formatFileSize = (bytes) => {
 const RenameFileModal = ({ isOpen, onClose, onSuccess, file }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
     const { addToast } = useToast();
     const [newName, setNewName] = useState(file?.filename || '');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,7 +52,7 @@ const RenameFileModal = ({ isOpen, onClose, onSuccess, file }) => {
     return (
         <AdminModal isOpen={isOpen} onClose={onClose} title="Datei umbenennen" onSubmit={handleSubmit} isSubmitting={isSubmitting}>
             <Text style={styles.label}>Neuer Dateiname</Text>
-            <TextInput style={styles.input} value={newName} onChangeText={setNewName} />
+            <TextInput style={styles.input} value={newName} onChangeText={setNewName} placeholderTextColor={colors.textMuted}/>
         </AdminModal>
     );
 };
@@ -58,6 +60,7 @@ const RenameFileModal = ({ isOpen, onClose, onSuccess, file }) => {
 const RenameCategoryModal = ({ isOpen, onClose, onSuccess, category }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
     const { addToast } = useToast();
     const [newName, setNewName] = useState(category?.name || '');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,31 +85,16 @@ const RenameCategoryModal = ({ isOpen, onClose, onSuccess, category }) => {
     return (
         <AdminModal isOpen={isOpen} onClose={onClose} title="Kategorie umbenennen" onSubmit={handleSubmit} isSubmitting={isSubmitting}>
              <Text style={styles.label}>Neuer Kategoriename</Text>
-            <TextInput style={styles.input} value={newName} onChangeText={setNewName} />
+            <TextInput style={styles.input} value={newName} onChangeText={setNewName} placeholderTextColor={colors.textMuted}/>
         </AdminModal>
     );
 };
 
-const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, itemType, itemName }) => {
-    return (
-        <AdminModal
-            isOpen={isOpen}
-            onClose={onClose}
-            title={`${itemType} löschen`}
-            onSubmit={onConfirm}
-            submitText="Löschen"
-            submitButtonVariant="danger"
-        >
-            <Text>Sind Sie sicher, dass Sie "{itemName}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.</Text>
-        </AdminModal>
-    );
-};
-
-
-const AdminFilesPage = ({ navigation }) => {
+const AdminFilesPage = () => {
 	const filesApiCall = useCallback(() => apiClient.get('/admin/files'), []);
 	const { data: fileApiResponse, loading, error, reload: reloadFiles } = useApi(filesApiCall, { subscribeTo: ['FILE', 'FILE_CATEGORY'] });
     const { addToast } = useToast();
+    const navigation = useNavigation();
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [modalState, setModalState] = useState({ type: null, data: null });
 
@@ -131,7 +119,8 @@ const AdminFilesPage = ({ navigation }) => {
     const closeModal = () => setModalState({ type: null, data: null });
 
 
-	const handleDeleteFile = async (file) => {
+	const handleDeleteFile = async () => {
+        const file = modalState.data;
         closeModal();
         try {
             const result = await apiClient.delete(`/admin/files/${file.id}`);
@@ -142,7 +131,8 @@ const AdminFilesPage = ({ navigation }) => {
         } catch (err) { addToast(err.message, 'error'); }
 	};
 
-    const handleDeleteCategory = async (category) => {
+    const handleDeleteCategory = async () => {
+        const category = modalState.data;
         closeModal();
         try {
             const result = await apiClient.delete(`/admin/files/categories/${category.id}`);
@@ -229,7 +219,7 @@ const AdminFilesPage = ({ navigation }) => {
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={renderItem}
                 renderSectionHeader={renderSectionHeader}
-                ListEmptyComponent={<View style={styles.card}><Text>Keine Dateien gefunden.</Text></View>}
+                ListEmptyComponent={<View style={styles.card}><Text style={{color: colors.text}}>Keine Dateien gefunden.</Text></View>}
             />
             
             <UploadFileModal
@@ -241,8 +231,8 @@ const AdminFilesPage = ({ navigation }) => {
             {modalState.type === 'renameFile' && <RenameFileModal isOpen={true} onClose={closeModal} onSuccess={handleModalSuccess} file={modalState.data} />}
             {modalState.type === 'replaceFile' && <ReplaceFileModal isOpen={true} onClose={closeModal} onSuccess={handleModalSuccess} file={modalState.data} formatFileSize={formatFileSize} />}
             {modalState.type === 'renameCategory' && <RenameCategoryModal isOpen={true} onClose={closeModal} onSuccess={handleModalSuccess} category={modalState.data} />}
-            {modalState.type === 'confirmDeleteFile' && <DeleteConfirmationModal isOpen={true} onClose={closeModal} onConfirm={() => handleDeleteFile(modalState.data)} itemType="Datei" itemName={modalState.data.filename} />}
-            {modalState.type === 'confirmDeleteCategory' && <DeleteConfirmationModal isOpen={true} onClose={closeModal} onConfirm={() => handleDeleteCategory(modalState.data)} itemType="Kategorie" itemName={modalState.data.name} />}
+            {modalState.type === 'confirmDeleteFile' && <ConfirmationModal isOpen={true} onClose={closeModal} onConfirm={handleDeleteFile} title="Datei löschen" message={`Datei "${modalState.data.filename}" wirklich löschen?`} />}
+            {modalState.type === 'confirmDeleteCategory' && <ConfirmationModal isOpen={true} onClose={closeModal} onConfirm={handleDeleteCategory} title="Kategorie löschen" message={`Kategorie "${modalState.data.name}" wirklich löschen?`} />}
             {modalState.type === 'shareFile' && <FileShareModal isOpen={true} onClose={closeModal} file={modalState.data} />}
 		</View>
 	);

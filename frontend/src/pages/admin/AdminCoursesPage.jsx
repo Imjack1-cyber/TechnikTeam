@@ -4,68 +4,14 @@ import { useNavigation } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import AdminModal from '../../components/ui/AdminModal';
 import ScrollableContent from '../../components/ui/ScrollableContent';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
-
-const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
-    const theme = useAuthStore(state => state.theme);
-    const styles = getCommonStyles(theme);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState('');
-    const { addToast } = useToast();
-    const [formData, setFormData] = useState({ name: '', abbreviation: '', description: '' });
-
-    useEffect(() => {
-        if (course) {
-            setFormData({ name: course.name, abbreviation: course.abbreviation, description: course.description });
-        } else {
-            setFormData({ name: '', abbreviation: '', description: '' });
-        }
-    }, [course]);
-
-    const handleSubmit = async () => {
-        setIsSubmitting(true);
-        setError('');
-        try {
-            const result = course 
-                ? await apiClient.put(`/courses/${course.id}`, formData) 
-                : await apiClient.post('/courses', formData);
-            if (result.success) {
-                addToast(`Vorlage erfolgreich ${course ? 'aktualisiert' : 'erstellt'}.`, 'success');
-                onSuccess();
-            } else { throw new Error(result.message); }
-        } catch (err) {
-            setError(err.message || 'Speichern fehlgeschlagen');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    return (
-        <AdminModal
-            isOpen={isOpen}
-            onClose={onClose}
-            title={course ? 'Vorlage bearbeiten' : 'Neue Vorlage'}
-            onSubmit={handleSubmit}
-            isSubmitting={isSubmitting}
-            submitText="Speichern"
-        >
-            {error && <Text style={styles.errorText}>{error}</Text>}
-            <Text style={styles.label}>Name</Text>
-            <TextInput style={styles.input} value={formData.name} onChangeText={val => setFormData({...formData, name: val})} />
-            <Text style={styles.label}>Abkürzung</Text>
-            <TextInput style={styles.input} value={formData.abbreviation} onChangeText={val => setFormData({...formData, abbreviation: val})} />
-            <Text style={styles.label}>Beschreibung</Text>
-            <TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={val => setFormData({...formData, description: val})} multiline />
-        </AdminModal>
-    );
-};
-
+import CourseModal from '../../components/admin/courses/CourseModal';
 
 const AdminCoursesPage = ({ navigation }) => {
 	const apiCall = useCallback(() => apiClient.get('/courses'), []);
@@ -100,6 +46,12 @@ const AdminCoursesPage = ({ navigation }) => {
         }
 	};
     
+    const handleSuccess = () => {
+        setIsModalOpen(false);
+        setEditingCourse(null);
+        reload();
+    };
+
     const renderItem = ({ item }) => (
         <View style={styles.card}>
             <Text style={styles.cardTitle}>{item.name}</Text>
@@ -131,7 +83,7 @@ const AdminCoursesPage = ({ navigation }) => {
                 <Icon name="book" size={24} style={styles.headerIcon}/>
 			    <Text style={styles.title}>Lehrgangs-Vorlagen</Text>
             </View>
-             <TouchableOpacity style={[styles.button, styles.successButton, { marginHorizontal: 16, marginBottom: 16, alignSelf: 'flex-start'}]} onPress={() => openModal()}>
+             <TouchableOpacity style={[styles.button, styles.successButton, { alignSelf: 'flex-start', marginHorizontal: 16, marginBottom: 16}]} onPress={() => openModal()}>
                 <Icon name="plus" size={16} color="#fff" />
                 <Text style={styles.buttonText}>Neue Vorlage</Text>
             </TouchableOpacity>
@@ -145,7 +97,7 @@ const AdminCoursesPage = ({ navigation }) => {
                 contentContainerStyle={{paddingHorizontal: 16}}
             />
             {isModalOpen && (
-                <CourseModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); reload(); }} course={editingCourse} />
+                <CourseModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} course={editingCourse} />
             )}
             {deletingCourse && (
                 <ConfirmationModal

@@ -5,7 +5,7 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
 import MarkdownDisplay from 'react-native-markdown-display';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
@@ -15,14 +15,14 @@ import Modal from '../../components/ui/Modal';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const AnnouncementModal = ({ isOpen, onClose, onSuccess, announcement }) => {
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [error, setError] = useState('');
-	const { addToast } = useToast();
-    const [title, setTitle] = useState('');
-    const [content, setContent] = useState('');
-
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState('');
+    const { addToast } = useToast();
+    const [title, setTitle] = useState('');
+    const [content, setContent] = useState('');
+    const colors = getThemeColors(theme);
 
     useEffect(() => {
         if(announcement) {
@@ -69,16 +69,18 @@ const AnnouncementModal = ({ isOpen, onClose, onSuccess, announcement }) => {
         >
             {error && <Text style={styles.errorText}>{error}</Text>}
             <Text style={styles.label}>Titel</Text>
-            <TextInput style={styles.input} value={title} onChangeText={setTitle} />
+            <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholderTextColor={colors.textMuted} />
             <Text style={styles.label}>Inhalt (Markdown unterstützt)</Text>
-            <TextInput style={[styles.input, styles.textArea]} value={content} onChangeText={setContent} multiline />
+            <TextInput style={[styles.input, styles.textArea]} value={content} onChangeText={setContent} multiline placeholderTextColor={colors.textMuted} />
         </AdminModal>
 	);
 };
 
 const ViewAnnouncementModal = ({ announcement, onClose }) => {
     if (!announcement) return null;
-    const styles = { ...getCommonStyles(), ...pageStyles() };
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
     return (
         <Modal isOpen={true} onClose={onClose} title={announcement.title}>
@@ -86,11 +88,11 @@ const ViewAnnouncementModal = ({ announcement, onClose }) => {
                 Gepostet von <Text style={{ fontWeight: 'bold' }}>{announcement.authorUsername}</Text> am {new Date(announcement.createdAt).toLocaleDateString('de-DE')}
             </Text>
             <ScrollView style={styles.modalMarkdownContainer}>
-                <MarkdownDisplay style={{ body: { padding: 12 } }}>
+                <MarkdownDisplay style={{ body: { padding: 12, color: colors.text } }}>
                     {announcement.content}
                 </MarkdownDisplay>
             </ScrollView>
-            <TouchableOpacity style={[styles.button, { backgroundColor: '#6c757d', marginTop: 16 }]} onPress={onClose}>
+            <TouchableOpacity style={[styles.button, styles.secondaryButton, { marginTop: 16 }]} onPress={onClose}>
                 <Text style={styles.buttonText}>Schließen</Text>
             </TouchableOpacity>
         </Modal>
@@ -151,7 +153,7 @@ const AdminAnnouncementsPage = () => {
         const previewContent = isVeryLongContent && !isExpanded ? item.content.slice(0, 400) + " …" : item.content;
 
         return (
-            <View style={styles.card}>
+            <View style={styles.card} key={item.id}>
                 <View style={styles.cardHeader}>
                     <View style={{flex: 1}}>
                         <Text style={styles.cardTitle}>{item.title}</Text>
@@ -165,13 +167,15 @@ const AdminAnnouncementsPage = () => {
                     </View>
                 </View>
                 <View style={isVeryLongContent && !isExpanded ? styles.markdownContainerTruncated : {}}>
-                    <MarkdownDisplay>{previewContent}</MarkdownDisplay>
+                    <MarkdownDisplay style={{ body: { color: colors.text } }}>{previewContent}</MarkdownDisplay>
                 </View>
                  {isVeryLongContent && (
                     <View style={styles.actionsRow}>
                         {!isExpanded &&
                             <TouchableOpacity style={styles.readMoreButton} onPress={() => toggleExpand(item.id)}>
-                                <Text style={styles.readMoreText}>Mehr anzeigen</Text>
+                                <Text style={styles.readMoreText}>
+                                    Mehr anzeigen
+                                </Text>
                             </TouchableOpacity>
                         }
                         {isExpanded &&
@@ -245,7 +249,7 @@ const pageStyles = (theme) => {
             marginTop: 12,
             paddingTop: 12,
             borderTopWidth: 1,
-            borderTopColor: '#eee',
+            borderTopColor: colors.border,
         },
         readMoreButton: {
             alignItems: 'center',

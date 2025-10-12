@@ -5,7 +5,7 @@ import apiClient from '../../services/apiClient';
 import Modal from '../ui/Modal';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
-import { getThemeColors } from '../../styles/theme';
+import { getThemeColors, spacing } from '../../styles/theme';
 import BouncyCheckbox from 'react-native-bouncy-checkbox';
 
 const GroupChatModal = ({ isOpen, onClose, onCreateGroup }) => {
@@ -51,10 +51,11 @@ const GroupChatModal = ({ isOpen, onClose, onCreateGroup }) => {
 					value={groupName}
 					onChangeText={setGroupName}
 					placeholder="Name der neuen Gruppe"
+                    placeholderTextColor={colors.textMuted}
 				/>
 				<Text style={styles.label}>Mitglieder auswählen</Text>
 				<View style={styles.userListContainer}>
-                    {loading ? <ActivityIndicator/> : (
+                    {loading ? <ActivityIndicator /> : (
                         <FlatList
                             data={users}
                             renderItem={renderItem}
@@ -78,7 +79,7 @@ const pageStyles = (theme) => {
             borderWidth: 1,
             borderColor: colors.border,
             borderRadius: 8,
-            padding: 8,
+            padding: spacing.sm,
         },
         checkboxRow: {
             paddingVertical: 8,

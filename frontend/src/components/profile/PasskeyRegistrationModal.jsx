@@ -75,6 +75,7 @@ const PasskeyRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
                     onChangeText={setDeviceName}
                     placeholder="z.B. Mein iPhone, Arbeitslaptop"
                     editable={!isLoading}
+                    placeholderTextColor={colors.textMuted}
                 />
 
                 <TouchableOpacity 
@@ -88,9 +89,5 @@ const PasskeyRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
         </Modal>
     );
 };
-
-const localStyles = StyleSheet.create({
-    // Add any specific styles if needed
-});
 
 export default PasskeyRegistrationModal;
