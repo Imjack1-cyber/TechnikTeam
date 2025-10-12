@@ -6,14 +6,14 @@ import { getThemeColors, typography, spacing } from '../../styles/theme';
 // TODO: To enable sound, the 'expo-av' package must be installed.
 // Run 'npx expo install expo-av' in the /frontend directory.
 // Then, uncomment the line below and the audio-related code in the useEffect hook.
-// import { Audio } from 'expo-av';
+import { Audio } from 'expo-av';
 
 const WarningNotification = ({ notification, onDismiss }) => {
     const theme = useAuthStore(state => state.theme);
     const colors = getThemeColors(theme);
     const styles = pageStyles(theme);
 	const flashAnimation = useRef(new Animated.Value(0)).current;
-    // const soundObject = useRef(new Audio.Sound()); // UNCOMMENT AFTER INSTALL
+    const soundObject = useRef(new Audio.Sound()); // UNCOMMENT AFTER INSTALL
 
 	useEffect(() => {
         let isMounted = true;
@@ -21,11 +21,11 @@ const WarningNotification = ({ notification, onDismiss }) => {
         */
 	   const loadAndPlaySound = async () => {
             try {
-                // await Audio.setAudioModeAsync({ playsInSilentModeIOS: true }); // UNCOMMENT
-                // await soundObject.current.loadAsync(require('../../../assets/audio/attention.mp3')); // UNCOMMENT
-                // await soundObject.current.setIsLoopingAsync(true); // UNCOMMENT
+                await Audio.setAudioModeAsync({ playsInSilentModeIOS: true }); // UNCOMMENT
+                await soundObject.current.loadAsync(require('../../../assets/audio/attention.mp3')); // UNCOMMENT
+                await soundObject.current.setIsLoopingAsync(true); // UNCOMMENT
                 if(isMounted) {
-                    // await soundObject.current.playAsync(); // UNCOMMENT
+                    await soundObject.current.playAsync(); // UNCOMMENT
                 }
             } catch (error) {
                 console.error("Failed to load and play sound for warning notification:", error);
@@ -43,7 +43,7 @@ const WarningNotification = ({ notification, onDismiss }) => {
 
 		return () => {
             isMounted = false;
-			// soundObject.current.unloadAsync(); // UNCOMMENT AFTER INSTALL
+			soundObject.current.unloadAsync(); // UNCOMMENT AFTER INSTALL
 			flashAnimation.stopAnimation();
 		};
 	}, [flashAnimation]);

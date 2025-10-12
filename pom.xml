@@ -27,7 +27,7 @@
         <commons-io.version>2.16.1</commons-io.version>
         <owasp-java-html-sanitizer.version>20240325.1</owasp-java-html-sanitizer.version>
         <bucket4j.version>8.9.0</bucket4j.version>
-        <webauthn.version>2.1.0</webauthn.version>
+        <webauthn.version>2.2.0</webauthn.version>
     </properties>
 
     <dependencies>

@@ -43,9 +43,13 @@ module.exports = ({ config }) => {
         "username": "Technik-Team",
       },
     ],
-    // The widget plugin is always included. Configuration is passed as the second element.
-    ["@bittingz/expo-widgets", { widgets: widgetConfig }],
   ];
+
+  // Conditionally add the widgets plugin only for native platforms.
+  // The 'EXPO_PLATFORM' env var is set by Expo CLI during the build process.
+  if (process.env.EXPO_PLATFORM !== 'web') {
+    plugins.push(["@bittingz/expo-widgets", { widgets: widgetConfig }]);
+  }
 
   // Overwrite the static config with our dynamic values
   config.name = "TechnikTeam";
