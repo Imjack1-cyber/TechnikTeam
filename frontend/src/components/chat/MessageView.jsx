@@ -99,6 +99,20 @@ const MessageView = () => {
         }
     };
 
+    const handleFileDownload = async (fileUrl, fileName) => {
+        const transferId = uuidv4();
+        addToast('Download wird gestartet...', 'info');
+        addTransfer(transferId, fileName, 'download', null);
+        try {
+            await apiClient.downloadFile(fileUrl, fileName, transferId);
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                addToast(`Download fehlgeschlagen: ${err.message}`, 'error');
+                updateTransfer(transferId, { status: 'error' });
+            }
+        }
+    };
+
 	const renderMessageContent = (msg) => {
 		const isSentByMe = msg.senderId === user.id;
 		const fileRegex = /\[(.*?)\]\((.*?)\)/;
@@ -106,7 +120,12 @@ const MessageView = () => {
 		if (fileMatch) {
 			const fileName = fileMatch[1];
 			const fileUrl = fileMatch[2];
-			return <TouchableOpacity onPress={() => Linking.openURL(fileUrl)}><Text style={{ color: isSentByMe ? colors.white : colors.text }}><Icon name="file-alt" /> {fileName}</Text></TouchableOpacity>;
+			return (
+                <TouchableOpacity onPress={() => handleFileDownload(fileUrl, fileName)} style={styles.fileButton}>
+                    <Icon name="file-alt" solid size={16} color={isSentByMe ? colors.white : colors.primary} />
+                    <Text style={[styles.fileButtonText, { color: isSentByMe ? colors.white : colors.primary }]}> {fileName}</Text>
+                </TouchableOpacity>
+            );
 		}
 		return <MarkdownDisplay style={{ body: { color: isSentByMe ? colors.white : colors.text } }}>{msg.messageText}</MarkdownDisplay>;
 	};
@@ -174,6 +193,16 @@ const pageStyles = (theme) => {
 		inputContainer: { flexDirection: 'row', padding: spacing.sm, borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, gap: spacing.sm, alignItems: 'center' },
 		input: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: spacing.md, backgroundColor: colors.background, maxHeight: 120, paddingVertical: 10, color: colors.text },
         attachButton: { padding: spacing.sm },
+        fileButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: spacing.sm,
+            borderRadius: borders.radius,
+        },
+        fileButtonText: {
+            textDecorationLine: 'underline',
+            fontWeight: 'bold',
+        },
 	});
 };
 

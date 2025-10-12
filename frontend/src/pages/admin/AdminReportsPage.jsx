@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import EventTrendChart from '../../components/admin/dashboard/EventTrendChart';
@@ -8,6 +8,9 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
+import { useToast } from '../../context/ToastContext';
+import { useTransferStore } from '../../store/transferStore';
+import { v4 as uuidv4 } from 'uuid';
 
 const AdminReportsPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/reports/dashboard'), []);
@@ -15,8 +18,26 @@ const AdminReportsPage = () => {
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
+    const { addToast } = useToast();
+    const { addTransfer, updateTransfer } = useTransferStore();
 
-	const getCsvLink = (reportType) => `${apiClient.getRootUrl()}/api/v1/reports/${reportType}?export=csv`;
+    const handleDownloadReport = async (reportType) => {
+        const url = `${apiClient.getRootUrl()}/api/v1/reports/${reportType}?export=csv`;
+        const filename = `${reportType}-report-${new Date().toISOString().split('T')[0]}.csv`;
+        const transferId = uuidv4();
+        
+        addToast('Download wird gestartet...', 'info');
+        addTransfer(transferId, filename, 'download', null);
+
+        try {
+            await apiClient.downloadFile(url, filename, transferId);
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                 addToast(`Download fehlgeschlagen: ${err.message}`, 'error');
+                 updateTransfer(transferId, { status: 'error' });
+            }
+        }
+    };
 
 	if (loading) return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
 	if (error) return <View style={styles.centered}><Text style={styles.errorText}>{error}</Text></View>;
@@ -46,21 +67,21 @@ const AdminReportsPage = () => {
 				<Text style={styles.cardTitle}>Sonstige Berichte & Exporte</Text>
                 <View style={styles.exportRow}>
                     <Text style={styles.exportLabel}>Teilnahme-Zusammenfassung</Text>
-                    <TouchableOpacity style={styles.exportButton} onPress={() => Linking.openURL(getCsvLink('event-participation'))}>
+                    <TouchableOpacity style={styles.exportButton} onPress={() => handleDownloadReport('event-participation')}>
                         <Icon name="file-csv" size={16} color={colors.white} />
                         <Text style={styles.buttonText}>CSV</Text>
                     </TouchableOpacity>
                 </View>
                 <View style={styles.exportRow}>
                     <Text style={styles.exportLabel}>Nutzungsfrequenz (Material)</Text>
-                    <TouchableOpacity style={styles.exportButton} onPress={() => Linking.openURL(getCsvLink('inventory-usage'))}>
+                    <TouchableOpacity style={styles.exportButton} onPress={() => handleDownloadReport('inventory-usage')}>
                          <Icon name="file-csv" size={16} color={colors.white} />
                         <Text style={styles.buttonText}>CSV</Text>
                     </TouchableOpacity>
                 </View>
                 <View style={styles.exportRow}>
                     <Text style={styles.exportLabel}>Vollständige Benutzeraktivität</Text>
-                    <TouchableOpacity style={styles.exportButton} onPress={() => Linking.openURL(getCsvLink('user-activity'))}>
+                    <TouchableOpacity style={styles.exportButton} onPress={() => handleDownloadReport('user-activity')}>
                          <Icon name="file-csv" size={16} color={colors.white} />
                         <Text style={styles.buttonText}>CSV</Text>
                     </TouchableOpacity>

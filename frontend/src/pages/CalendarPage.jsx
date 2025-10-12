@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import CalendarView from '../components/calendar/CalendarView'; // Now using the universal calendar view
@@ -7,6 +7,9 @@ import Icon from '@expo/vector-icons/FontAwesome5';
 import { useAuthStore } from '../store/authStore';
 import { getCommonStyles } from '../styles/commonStyles';
 import { getThemeColors } from '../styles/theme';
+import { useToast } from '../context/ToastContext';
+import { useTransferStore } from '../store/transferStore';
+import { v4 as uuidv4 } from 'uuid';
 
 const CalendarPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/public/calendar/entries'), []);
@@ -14,10 +17,25 @@ const CalendarPage = () => {
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
+    const { addToast } = useToast();
+    const { addTransfer, updateTransfer } = useTransferStore();
 
-	const handleSubscribe = () => {
+	const handleSubscribe = async () => {
 		const icsUrl = `${apiClient.getRootUrl()}/api/v1/public/calendar.ics`;
-		Linking.openURL(icsUrl).catch(err => console.error("Couldn't load page", err));
+		const filename = 'technikteam-kalender.ics';
+        const transferId = uuidv4();
+        
+        addToast('Download wird gestartet...', 'info');
+        addTransfer(transferId, filename, 'download', null);
+        
+        try {
+            await apiClient.downloadFile(icsUrl, filename, transferId);
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                addToast(`Download fehlgeschlagen: ${err.message}`, 'error');
+                updateTransfer(transferId, { status: 'error' });
+            }
+        }
 	};
 
 	if (loading) {
