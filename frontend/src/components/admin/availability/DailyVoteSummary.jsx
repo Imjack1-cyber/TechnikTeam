@@ -6,7 +6,7 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 import { format, parseISO } from 'date-fns';
 
 const DailyVoteSummary = ({ analysis, adminAvailableDays }) => {
-    const theme = 'light'; // This view is admin-only, but let's assume light for consistency
+    const theme = useAuthStore(state => state.theme);
     const colors = getThemeColors(theme);
     const styles = pageStyles({ colors });
 

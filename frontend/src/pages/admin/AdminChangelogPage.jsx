@@ -4,7 +4,7 @@ import useApi from '../../hooks/useApi';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../context/ToastContext';
 import MarkdownDisplay from 'react-native-markdown-display';
-import Icon from '@expo/vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
@@ -77,7 +77,7 @@ const ChangelogModal = ({ isOpen, onClose, onSuccess, changelog }) => {
             
             <Text style={styles.label}>Veröffentlichungsdatum</Text>
             <TouchableOpacity onPress={() => setDatePickerVisible(true)} style={[styles.input, { justifyContent: 'center' }]}>
-                <Text>{format(parseISO(formData.releaseDate), 'dd.MM.yyyy')}</Text>
+                <Text style={{color: getThemeColors(theme).text}}>{format(parseISO(formData.releaseDate), 'dd.MM.yyyy')}</Text>
             </TouchableOpacity>
             <DateTimePickerModal
                 isVisible={isDatePickerVisible}
@@ -95,7 +95,9 @@ const ChangelogModal = ({ isOpen, onClose, onSuccess, changelog }) => {
 
 const ViewChangelogModal = ({ changelog, onClose }) => {
     if (!changelog) return null;
-    const styles = { ...getCommonStyles(), ...pageStyles() };
+    const theme = useAuthStore(state => state.theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
     return (
         <Modal isOpen={true} onClose={onClose} title={`Version ${changelog.version} - ${changelog.title}`}>
@@ -103,11 +105,11 @@ const ViewChangelogModal = ({ changelog, onClose }) => {
                 Veröffentlicht am {new Date(changelog.releaseDate).toLocaleDateString('de-DE')}
             </Text>
             <ScrollView style={styles.modalMarkdownContainer}>
-                <MarkdownDisplay style={{ body: { padding: 12 } }}>
+                <MarkdownDisplay style={{ body: { padding: 12, color: colors.text } }}>
                     {changelog.notes}
                 </MarkdownDisplay>
             </ScrollView>
-            <TouchableOpacity style={[styles.button, { backgroundColor: '#6c757d', marginTop: 16 }]} onPress={onClose}>
+            <TouchableOpacity style={[styles.button, styles.secondaryButton, { marginTop: 16 }]} onPress={onClose}>
                 <Text style={styles.buttonText}>Schließen</Text>
             </TouchableOpacity>
         </Modal>
@@ -171,9 +173,9 @@ const AdminChangelogPage = () => {
                     </View>
                 </View>
                 <View style={isVeryLongContent && !isExpanded ? styles.markdownContainerTruncated : {}}>
-                    <MarkdownDisplay>{previewContent}</MarkdownDisplay>
+                    <MarkdownDisplay style={{ body: { color: colors.text } }}>{previewContent}</MarkdownDisplay>
                 </View>
-                {isVeryLongContent && (
+                 {isVeryLongContent && (
                     <View style={styles.actionsRow}>
                         {!isExpanded &&
                             <TouchableOpacity style={styles.readMoreButton} onPress={() => toggleExpand(item.id)}>
@@ -195,8 +197,8 @@ const AdminChangelogPage = () => {
     };
 
 	return (
-		<ScrollableContent style={styles.container}>
-			<View style={styles.headerContainer}>
+		<View style={styles.container}>
+            <View style={styles.headerContainer}>
                 <Icon name="history" size={24} style={styles.headerIcon} />
 			    <Text style={styles.title}>Changelogs verwalten</Text>
             </View>
@@ -229,18 +231,17 @@ const AdminChangelogPage = () => {
                     isSubmitting={isSubmittingDelete}
                 />
             )}
-		</ScrollableContent>
+		</View>
 	);
 };
 
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
-        container: { flex: 1 },
         headerContainer: { padding: spacing.md, flexDirection: 'row', alignItems: 'center' },
         headerIcon: { color: colors.heading, marginRight: 12 },
         cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
-        cardTitle: { fontSize: typography.h4, fontWeight: 'bold', flexShrink: 1 },
+        cardTitle: { fontSize: typography.h4, fontWeight: 'bold', flexShrink: 1, color: colors.heading },
         cardActions: { flexDirection: 'row', gap: 16 },
         markdownContainerTruncated: { maxHeight: 200, overflow: 'hidden' },
         actionsRow: {
@@ -249,7 +250,7 @@ const pageStyles = (theme) => {
             marginTop: 12,
             paddingTop: 12,
             borderTopWidth: 1,
-            borderTopColor: '#eee',
+            borderTopColor: colors.border,
         },
         readMoreButton: {
             alignItems: 'center',
@@ -264,16 +265,6 @@ const pageStyles = (theme) => {
             borderColor: colors.border,
             borderRadius: 6,
             marginTop: 12,
-        },
-        button: {
-            backgroundColor: '#6c757d',
-            padding: 12,
-            borderRadius: 6,
-            alignItems: 'center',
-        },
-        buttonText: {
-            color: '#fff',
-            fontWeight: '500',
         },
     });
 };

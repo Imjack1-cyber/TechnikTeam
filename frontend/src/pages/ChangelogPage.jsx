@@ -3,16 +3,17 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import MarkdownDisplay from 'react-native-markdown-display';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from '@expo/vector-icons/FontAwesome5';
 import Modal from '../components/ui/Modal';
 import { useAuthStore } from '../store/authStore';
 import { getCommonStyles } from '../styles/commonStyles';
-import { getThemeColors, spacing, typography } from '../styles/theme';
+import { getThemeColors, typography, spacing } from '../styles/theme';
 
 const ChangelogModal = ({ changelog, onClose }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
     const pageSpecificStyles = pageStyles(theme);
+    const colors = getThemeColors(theme);
 
     if (!changelog) return null;
 
@@ -22,7 +23,7 @@ const ChangelogModal = ({ changelog, onClose }) => {
                 Veröffentlicht am {new Date(changelog.releaseDate).toLocaleDateString('de-DE')}
             </Text>
             <ScrollView style={pageSpecificStyles.modalMarkdownContainer}>
-                <MarkdownDisplay style={{ body: { padding: 12, color: getThemeColors(theme).text } }}>
+                <MarkdownDisplay style={{ body: { padding: 12, color: colors.text } }}>
                     {changelog.notes}
                 </MarkdownDisplay>
             </ScrollView>
@@ -34,8 +35,8 @@ const ChangelogModal = ({ changelog, onClose }) => {
 };
 
 const ChangelogPage = () => {
-    const apiCall = useCallback(() => apiClient.get('/public/changelog'), []);
-    const { data: changelogs, loading, error } = useApi(apiCall, { subscribeTo: 'CHANGELOG' });
+	const apiCall = useCallback(() => apiClient.get('/public/changelog'), []);
+	const { data: changelogs, loading, error } = useApi(apiCall, { subscribeTo: 'CHANGELOG' });
     const [modalData, setModalData] = useState(null);
     const [expandedIds, setExpandedIds] = useState([]);
     const theme = useAuthStore(state => state.theme);
@@ -48,21 +49,21 @@ const ChangelogPage = () => {
         );
     };
 
-    const renderContent = () => {
-        if (loading) {
-            return <ActivityIndicator size="large" color={colors.primary} />;
-        }
-        if (error) {
-            return <Text style={styles.errorText}>{error}</Text>;
-        }
-        if (changelogs?.length === 0) {
-            return (
-                <View style={styles.card}>
-                    <Text style={styles.bodyText}>Keine Changelog-Einträge vorhanden.</Text>
-                </View>
-            );
-        }
-        return changelogs?.map(cl => {
+	const renderContent = () => {
+		if (loading) {
+			return <ActivityIndicator size="large" color={colors.primary} />;
+		}
+		if (error) {
+			return <Text style={styles.errorText}>{error}</Text>;
+		}
+		if (changelogs?.length === 0) {
+			return (
+				<View style={styles.card}>
+					<Text style={styles.bodyText}>Keine Changelog-Einträge vorhanden.</Text>
+				</View>
+			);
+		}
+		return changelogs?.map(cl => {
             const isLongContent = cl.notes.length > 500;
             const isExpanded = expandedIds.includes(cl.id);
             const previewContent = isLongContent && !isExpanded ? cl.notes.slice(0, 400) + " …" : cl.notes;
@@ -97,27 +98,24 @@ const ChangelogPage = () => {
                 </View>
             );
         });
-    };
+	};
 
-    return (
-        <ScrollView style={styles.container}>
-            <View style={styles.header}>
-                <Icon name="history" size={24} style={styles.headerIcon} />
-                <Text style={styles.title}>Changelogs & Neuerungen</Text>
-            </View>
-            <Text style={styles.description}>Hier finden Sie eine Übersicht aller wichtigen Änderungen und neuen Features der Anwendung.</Text>
-            {renderContent()}
+	return (
+		<ScrollView style={styles.container}>
+			<View style={styles.header}>
+				<Icon name="history" size={24} style={styles.headerIcon} />
+				<Text style={styles.title}>Changelogs & Neuerungen</Text>
+			</View>
+			<Text style={styles.description}>Hier finden Sie eine Übersicht aller wichtigen Änderungen und neuen Features der Anwendung.</Text>
+			{renderContent()}
             <ChangelogModal changelog={modalData} onClose={() => setModalData(null)} />
-        </ScrollView>
-    );
+		</ScrollView>
+	);
 };
 
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
-        container: {
-            flex: 1,
-        },
         header: {
             flexDirection: 'row',
             alignItems: 'center',
@@ -128,13 +126,11 @@ const pageStyles = (theme) => {
             color: colors.heading,
             marginRight: 12,
         },
-        title: {
-            fontSize: typography.h2,
-            fontWeight: '700',
-        },
         description: {
+            fontSize: 16,
+            color: colors.textMuted,
             paddingHorizontal: 16,
-            marginVertical: 8,
+            marginBottom: 16,
         },
         actionsRow: {
             flexDirection: 'row',

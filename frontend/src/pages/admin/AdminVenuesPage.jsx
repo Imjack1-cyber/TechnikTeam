@@ -19,8 +19,7 @@ const AdminVenuesPage = () => {
     const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
-    const commonStyles = getCommonStyles(theme);
-    const styles = { ...commonStyles, ...pageStyles(theme) };
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
 
 	const openModal = (venue = null) => {
@@ -69,8 +68,8 @@ const AdminVenuesPage = () => {
     );
 
 	return (
-        <>
-            <View style={[styles.container, {overflow: 'auto'}]}>
+        <View style={styles.container}>
+            <View style={styles.innerContainer}>
                 <View style={styles.headerContainer}>
                     <Icon name="map-marked-alt" size={24} style={styles.headerIcon} />
                     <Text style={styles.title}>Veranstaltungsorte</Text>
@@ -89,9 +88,8 @@ const AdminVenuesPage = () => {
                     renderItem={renderItem}
                     keyExtractor={item => item.id.toString()}
                 />
-
-                {isModalOpen && <VenueModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} venue={editingVenue} />}
             </View>
+            {isModalOpen && <VenueModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} venue={editingVenue} />}
             {deletingVenue && (
                 <ConfirmationModal
                     isOpen={!!deletingVenue}
@@ -104,14 +102,14 @@ const AdminVenuesPage = () => {
                     confirmButtonVariant="danger"
                 />
             )}
-        </>
+        </View>
 	);
 };
 
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
-        container: { flex: 1, padding: spacing.md },
+        innerContainer: { flex: 1, padding: spacing.md },
         headerContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
         headerIcon: { color: colors.heading, marginRight: 12 },
         cardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 16 },

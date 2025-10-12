@@ -189,7 +189,7 @@ const AdminUsersPage = () => {
                     <Text style={styles.cardTitle}>{user.username}</Text>
                     <Text style={isLocked ? styles.badgeDanger : styles.badgeSuccess}>{isLocked ? 'Gesperrt' : 'Aktiv'}</Text>
                 </View>
-                <Text>ID: {user.id} | Rolle: {user.roleName}</Text>
+                <Text style={styles.bodyText}>ID: {user.id} | Rolle: {user.roleName}</Text>
                 <View style={styles.actionsContainer}>
                     <TouchableOpacity style={styles.actionButton} onPress={() => openModal(user)}>
                         <Icon name="edit" size={14} color={colors.text} />
@@ -226,7 +226,7 @@ const AdminUsersPage = () => {
     };
 
 	return (
-		<ScrollableContent>
+		<ScrollableContent style={styles.container}>
 			<TouchableOpacity style={[styles.button, styles.successButton, {margin: 16}]} onPress={() => openModal()}>
                 <Icon name="user-plus" size={16} color="#fff" />
                 <Text style={styles.buttonText}>Neuen Benutzer anlegen</Text>

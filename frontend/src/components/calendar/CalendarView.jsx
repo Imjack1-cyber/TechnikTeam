@@ -1,11 +1,20 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Calendar } from 'react-native-calendars';
+import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { useNavigation } from '@react-navigation/native';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useAuthStore } from '../../store/authStore';
 import { getThemeColors, typography, spacing, borders } from '../../styles/theme';
+
+LocaleConfig.locales['de'] = {
+  monthNames: ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'],
+  monthNamesShort: ['Jan.','Feb.','März','Apr.','Mai','Juni','Juli','Aug.','Sep.','Okt.','Nov.','Dez.'],
+  dayNames: ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'],
+  dayNamesShort: ['So.','Mo.','Di.','Mi.','Do.','Fr.','Sa.'],
+  today: "Heute"
+};
+LocaleConfig.defaultLocale = 'de';
 
 const CalendarView = ({ entries }) => {
     const navigation = useNavigation();
@@ -22,14 +31,23 @@ const CalendarView = ({ entries }) => {
 
             for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
                 const dateString = format(d, 'yyyy-MM-dd');
-                markings[dateString] = {
-                    selected: true,
-                    selectedColor: entry.type === 'Event' ? colors.danger : colors.primary,
-                    dotColor: colors.white,
-                    marked: true,
-                    // Store entry data for onPress
-                    entryData: entry
+                const existing = markings[dateString];
+                
+                const newDot = {
+                    key: `${entry.type}-${entry.id}`,
+                    color: entry.type === 'Event' ? colors.danger : colors.primary,
                 };
+
+                if (existing?.dots) {
+                    existing.dots.push(newDot);
+                } else {
+                     markings[dateString] = {
+                        dots: [newDot],
+                        marked: true,
+                        // Store entry data for onPress
+                        entryData: entry
+                    };
+                }
             }
         });
         return markings;
@@ -53,6 +71,7 @@ const CalendarView = ({ entries }) => {
                 current={currentDate}
                 onDayPress={onDayPress}
                 markedDates={markedDates}
+                markingType={'multi-dot'}
                 enableSwipeMonths={true}
                 theme={{
                     calendarBackground: colors.surface,
@@ -63,11 +82,15 @@ const CalendarView = ({ entries }) => {
                     textDayFontWeight: '300',
                     textMonthFontWeight: 'bold',
                     textDayHeaderFontWeight: '500',
-                    textDayFontSize: typography.body,
-                    textMonthFontSize: typography.h3,
-                    textDayHeaderFontSize: typography.small,
                     arrowColor: colors.primary,
-                    'stylesheet.calendar.header': {
+                    'stylesheet.calendar.main': {
+                        week: {
+                            marginTop: 5,
+                            flexDirection: 'row',
+                            justifyContent: 'space-around'
+                        }
+                    },
+                     'stylesheet.calendar.header': {
                         week: {
                             marginTop: 5,
                             flexDirection: 'row',
@@ -89,7 +112,7 @@ const pageStyles = (theme) => {
             borderWidth: borders.width,
             borderColor: colors.border,
             borderRadius: borders.radius,
-            overflow: 'hidden', // Ensure borderRadius is applied
+            overflow: 'hidden',
         },
     });
 };

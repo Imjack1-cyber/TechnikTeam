@@ -11,16 +11,16 @@ import { getThemeColors, typography, spacing, borders } from '../../styles/theme
 const FeedbackColumn = ({ title, submissions, onCardClick }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
-    const colors = getThemeColors(theme);
+    const pageSpecificStyles = pageStyles(theme);
 	return (
-		<View style={pageStyles(theme).feedbackColumn}>
-			<Text style={pageStyles(theme).columnTitle}>{title}</Text>
+		<View style={pageSpecificStyles.feedbackColumn}>
+			<Text style={pageSpecificStyles.columnTitle}>{title}</Text>
 			<ScrollView>
 				{submissions.map(sub => (
 					<TouchableOpacity key={sub.id} style={styles.card} onPress={() => onCardClick(sub)}>
-						<Text style={pageStyles(theme).cardSubject}>{sub.subject}</Text>
-						<Text style={pageStyles(theme).cardPreview} numberOfLines={2}>{sub.content}</Text>
-						<Text style={pageStyles(theme).cardMeta}>
+						<Text style={pageSpecificStyles.cardSubject}>{sub.subject}</Text>
+						<Text style={pageSpecificStyles.cardPreview} numberOfLines={2}>{sub.content}</Text>
+						<Text style={pageSpecificStyles.cardMeta}>
                             Von: {sub.username} am {new Date(sub.submittedAt).toLocaleDateString('de-DE')}
                         </Text>
 					</TouchableOpacity>
@@ -83,10 +83,10 @@ const AdminFeedbackPage = () => {
 				<Modal isOpen={!!selectedFeedback} onClose={() => setSelectedFeedback(null)} title={selectedFeedback.subject}>
 					<View style={{ flex: 1 }}>
                         <ScrollView>
-                            <Text>Von: {selectedFeedback.username}</Text>
-                            <Text>Eingereicht am: {new Date(selectedFeedback.submittedAt).toLocaleString('de-DE')}</Text>
+                            <Text style={styles.bodyText}>Von: {selectedFeedback.username}</Text>
+                            <Text style={styles.bodyText}>Eingereicht am: {new Date(selectedFeedback.submittedAt).toLocaleString('de-DE')}</Text>
                             <View style={styles.contentBox}>
-                                <Text>{selectedFeedback.content}</Text>
+                                <Text style={styles.bodyText}>{selectedFeedback.content}</Text>
                             </View>
                         </ScrollView>
                         <View style={styles.modalFooter}>
@@ -111,12 +111,12 @@ const pageStyles = (theme) => {
     return StyleSheet.create({
         board: { paddingHorizontal: spacing.md, paddingBottom: spacing.md, },
         feedbackColumn: { width: 300, backgroundColor: colors.background, borderRadius: borders.radius, padding: spacing.sm, marginRight: spacing.md },
-        columnTitle: { fontSize: typography.h4, fontWeight: 'bold', borderBottomWidth: 1, borderColor: colors.border, paddingBottom: spacing.sm, marginBottom: spacing.md },
-        cardSubject: { fontWeight: 'bold', marginBottom: 4 },
+        columnTitle: { fontSize: typography.h4, fontWeight: 'bold', borderBottomWidth: 1, borderColor: colors.border, paddingBottom: spacing.sm, marginBottom: spacing.md, color: colors.heading },
+        cardSubject: { fontWeight: 'bold', marginBottom: 4, color: colors.text },
         cardPreview: { fontSize: typography.small, color: colors.textMuted, marginBottom: 8 },
         cardMeta: { fontSize: typography.caption, color: colors.textMuted },
         contentBox: { backgroundColor: colors.background, padding: spacing.md, borderRadius: 6, marginVertical: spacing.md },
-        modalSectionTitle: { fontSize: typography.h4, fontWeight: 'bold', marginTop: spacing.lg },
+        modalSectionTitle: { fontSize: typography.h4, fontWeight: 'bold', marginTop: spacing.lg, color: colors.text },
         statusButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: spacing.sm },
     });
 }

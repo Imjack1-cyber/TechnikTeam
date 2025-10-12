@@ -39,20 +39,20 @@ const AdminDefectivePage = () => {
             <TouchableOpacity onPress={() => navigation.navigate('StorageItemDetails', { itemId: item.id })}>
                 <Text style={styles.cardTitle}>{item.name}</Text>
             </TouchableOpacity>
-            <View style={styles.detailRow}>
-                <Text style={styles.label}>Defekt / Gesamt:</Text>
-                <Text style={styles.value}>{item.defectiveQuantity} / {item.quantity}</Text>
+            <View style={styles.detailsListRow}>
+                <Text style={styles.detailsListLabel}>Defekt / Gesamt:</Text>
+                <Text style={styles.detailsListValue}>{item.defectiveQuantity} / {item.quantity}</Text>
             </View>
-            <View style={styles.detailRow}>
-                <Text style={styles.label}>Grund:</Text>
-                <Text style={[styles.value, {flex: 1, textAlign: 'right'}]} numberOfLines={1}>{item.defectReason || '-'}</Text>
+            <View style={styles.detailsListRow}>
+                <Text style={styles.detailsListLabel}>Grund:</Text>
+                <Text style={[styles.detailsListValue, {flex: 1, textAlign: 'right'}]} numberOfLines={1}>{item.defectReason || '-'}</Text>
             </View>
             <View style={{flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 16}}>
                 <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => openModal('repair', item)}>
                     <Text style={styles.buttonText}>Repariert</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.button, {backgroundColor: colors.warning}]} onPress={() => openModal('defect', item)}>
-                    <Text style={{color: '#000', fontWeight: '500'}}>Status</Text>
+                    <Text style={{color: colors.textOnWarning, fontWeight: '500'}}>Status</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -74,7 +74,7 @@ const AdminDefectivePage = () => {
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
                 contentContainerStyle={styles.contentContainer}
-                ListEmptyComponent={<View style={styles.card}><Text>Aktuell sind keine Artikel als defekt gemeldet.</Text></View>}
+                ListEmptyComponent={<View style={styles.card}><Text style={styles.bodyText}>Aktuell sind keine Artikel als defekt gemeldet.</Text></View>}
             />
 
 			{modalState.isOpen && (

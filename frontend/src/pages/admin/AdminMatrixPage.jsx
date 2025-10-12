@@ -128,12 +128,12 @@ const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
         headerCell: { backgroundColor: colors.background, padding: spacing.sm, borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' },
-        headerText: { fontWeight: 'bold', textAlign: 'center' },
+        headerText: { fontWeight: 'bold', textAlign: 'center', color: colors.text },
         courseHeader: { borderBottomWidth: 0 },
         meetingHeader: { height: 60 },
-        cell: { height: 50, borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' },
+        cell: { height: 50, borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.surface },
         userCell: { backgroundColor: colors.surface, alignItems: 'flex-start', paddingLeft: spacing.sm },
-        userText: { fontWeight: '500' },
+        userText: { fontWeight: '500', color: colors.text },
     });
 };
 

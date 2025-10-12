@@ -13,6 +13,7 @@ const AnnouncementModal = ({ announcement, onClose }) => {
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
     const pageSpecificStyles = pageStyles(theme);
+    const colors = getThemeColors(theme);
 
     if (!announcement) return null;
 
@@ -23,7 +24,7 @@ const AnnouncementModal = ({ announcement, onClose }) => {
                 {new Date(announcement.createdAt).toLocaleDateString('de-DE')}
             </Text>
             <ScrollView style={pageSpecificStyles.modalMarkdownContainer}>
-                <MarkdownDisplay style={{ body: { padding: 12, color: getThemeColors(theme).text } }}>
+                <MarkdownDisplay style={{ body: { padding: 12, color: colors.text } }}>
                     {announcement.content}
                 </MarkdownDisplay>
             </ScrollView>
@@ -41,6 +42,7 @@ const AnnouncementsPage = () => {
     const [expandedIds, setExpandedIds] = useState([]); // track expanded announcements
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
     const toggleExpand = (id) => {
         setExpandedIds((prev) =>
@@ -50,7 +52,7 @@ const AnnouncementsPage = () => {
 
     const renderContent = () => {
         if (loading) {
-            return <ActivityIndicator size="large" color={getThemeColors(theme).primary} />;
+            return <ActivityIndicator size="large" color={colors.primary} />;
         }
         if (error) {
             return <Text style={styles.errorText}>{error}</Text>;
@@ -67,7 +69,6 @@ const AnnouncementsPage = () => {
             const isLongContent = post.content.length > 500;
             const isExpanded = expandedIds.includes(post.id);
 
-            // Show truncated preview if not expanded
             const previewContent = isLongContent && !isExpanded
                 ? post.content.slice(0, 400) + " …"
                 : post.content;
@@ -80,7 +81,7 @@ const AnnouncementsPage = () => {
                         {new Date(post.createdAt).toLocaleDateString('de-DE')}
                     </Text>
 
-                    <MarkdownDisplay style={{ body: { color: getThemeColors(theme).text } }}>
+                    <MarkdownDisplay style={{ body: { color: colors.text } }}>
                         {previewContent}
                     </MarkdownDisplay>
 
@@ -136,6 +137,8 @@ const pageStyles = (theme) => {
             marginRight: 12,
         },
         description: {
+            fontSize: 16,
+            color: colors.textMuted,
             paddingHorizontal: 16,
             marginBottom: 16,
         },

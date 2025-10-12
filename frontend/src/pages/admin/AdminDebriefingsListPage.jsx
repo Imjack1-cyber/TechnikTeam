@@ -15,6 +15,7 @@ const AdminDebriefingsListPage = () => {
 	const { data: debriefings, loading, error } = useApi(apiCall);
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
 
     const renderItem = ({ item }) => (
         <View style={styles.card}>
@@ -27,12 +28,12 @@ const AdminDebriefingsListPage = () => {
                 </Text>
             </View>
             <View style={{marginTop: 16}}>
-                <Text style={{fontWeight: 'bold', marginBottom: 4}}>Was lief gut?</Text>
-                <MarkdownDisplay>{item.whatWentWell}</MarkdownDisplay>
+                <Text style={{fontWeight: 'bold', marginBottom: 4, color: colors.text}}>Was lief gut?</Text>
+                <MarkdownDisplay style={{ body: { color: colors.text } }}>{item.whatWentWell}</MarkdownDisplay>
             </View>
              <View style={{marginTop: 16}}>
-                <Text style={{fontWeight: 'bold', marginBottom: 4}}>Was kann verbessert werden?</Text>
-                <MarkdownDisplay>{item.whatToImprove}</MarkdownDisplay>
+                <Text style={{fontWeight: 'bold', marginBottom: 4, color: colors.text}}>Was kann verbessert werden?</Text>
+                <MarkdownDisplay style={{ body: { color: colors.text } }}>{item.whatToImprove}</MarkdownDisplay>
             </View>
         </View>
     );
@@ -53,7 +54,7 @@ const AdminDebriefingsListPage = () => {
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
                 contentContainerStyle={{paddingHorizontal: 16}}
-                ListEmptyComponent={<View style={styles.card}><Text>Es wurden noch keine Debriefings eingereicht.</Text></View>}
+                ListEmptyComponent={<View style={styles.card}><Text style={styles.bodyText}>Es wurden noch keine Debriefings eingereicht.</Text></View>}
             />
 		</View>
 	);

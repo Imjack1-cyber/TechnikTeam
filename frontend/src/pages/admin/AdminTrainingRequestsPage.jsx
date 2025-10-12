@@ -58,29 +58,27 @@ const AdminTrainingRequestsPage = () => {
     );
 
 	return (
-        <>
-            <View style={styles.container}>
-                <View style={styles.headerContainer}>
-                    <Icon name="question-circle" size={24} style={styles.headerIcon} />
-                    <Text style={styles.title}>Lehrgangsanfragen</Text>
-                </View>
-                <Text style={styles.subtitle}>Hier sehen Sie alle von Benutzern eingereichten Wünsche für neue Lehrgänge.</Text>
-
-                {loading && <ActivityIndicator size="large" />}
-                {error && <Text style={styles.errorText}>{error}</Text>}
-
-                <FlatList
-                    data={requests}
-                    renderItem={renderItem}
-                    keyExtractor={item => item.id.toString()}
-                    contentContainerStyle={styles.contentContainer}
-                    ListEmptyComponent={
-                        <View style={styles.card}>
-                            <Text>Keine Lehrgangsanfragen von Benutzern vorhanden.</Text>
-                        </View>
-                    }
-                />
+        <View style={styles.container}>
+            <View style={styles.headerContainer}>
+                <Icon name="question-circle" size={24} style={styles.headerIcon} />
+                <Text style={styles.title}>Lehrgangsanfragen</Text>
             </View>
+            <Text style={styles.subtitle}>Hier sehen Sie alle von Benutzern eingereichten Wünsche für neue Lehrgänge.</Text>
+
+            {loading && <ActivityIndicator size="large" />}
+            {error && <Text style={styles.errorText}>{error}</Text>}
+
+            <FlatList
+                data={requests}
+                renderItem={renderItem}
+                keyExtractor={item => item.id.toString()}
+                contentContainerStyle={styles.contentContainer}
+                ListEmptyComponent={
+                    <View style={styles.card}>
+                        <Text style={styles.bodyText}>Keine Lehrgangsanfragen von Benutzern vorhanden.</Text>
+                    </View>
+                }
+            />
             {deletingRequest && (
                 <ConfirmationModal
                     isOpen={!!deletingRequest}
@@ -93,7 +91,7 @@ const AdminTrainingRequestsPage = () => {
                     confirmButtonVariant="danger"
                 />
             )}
-        </>
+        </View>
 	);
 };
 

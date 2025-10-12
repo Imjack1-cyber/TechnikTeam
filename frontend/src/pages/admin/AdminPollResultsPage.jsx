@@ -13,7 +13,6 @@ const AdminPollResultsPage = () => {
     const route = useRoute();
     const { pollId } = route.params;
     
-    // Admin results might need different data, but for now, we can reuse the public endpoints for simplicity
     const apiCall = useCallback(() => apiClient.get(`/admin/polls/${pollId}/results`), [pollId]);
     const { data, loading, error, reload } = useApi(apiCall, { subscribeTo: 'POLL' });
     
@@ -29,12 +28,11 @@ const AdminPollResultsPage = () => {
     }
 
     if (!data || !data.poll) {
-        return <View style={styles.centered}><Text>Umfragedaten nicht gefunden.</Text></View>;
+        return <View style={styles.centered}><Text style={styles.bodyText}>Umfragedaten nicht gefunden.</Text></View>;
     }
 
     const { poll, analysis, adminAvailableDays } = data;
 
-    // Conditionally render the correct results component based on poll type
     switch (poll.type) {
         case 'SCHEDULING':
         case 'AVAILABILITY':
@@ -49,14 +47,12 @@ const AdminPollResultsPage = () => {
             );
         case 'MULTIPLE_CHOICE':
         case 'WORD_CLOUD':
-            // The InternalPoll component already has logic to show results if hasVoted is true.
-            // We can reuse it by passing a modified poll object.
             const pollDataForDisplay = {
-                poll: { ...poll, hasVoted: true }, // Force results view
+                poll: { ...poll, hasVoted: true },
             };
             return <InternalPoll pollData={pollDataForDisplay} reload={reload} />;
         default:
-            return <View style={styles.centered}><Text>Unbekannter Umfragetyp</Text></View>;
+            return <View style={styles.centered}><Text style={styles.bodyText}>Unbekannter Umfragetyp</Text></View>;
     }
 };
 

@@ -151,7 +151,7 @@ const AdminRequestsPage = () => {
                     }
                     ListEmptyComponent={
                         <View style={[styles.card, { marginTop: 16 }]}>
-                            <Text>Keine offenen Anträge vorhanden.</Text>
+                            <Text style={styles.bodyText}>Keine offenen Anträge vorhanden.</Text>
                         </View>
                     }
                 />

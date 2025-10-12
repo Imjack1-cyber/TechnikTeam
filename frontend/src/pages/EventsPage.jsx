@@ -99,7 +99,6 @@ const EventsPage = () => {
         const isSignUpAction = event.userAttendanceStatus === 'OFFEN' || event.userAttendanceStatus === 'ABGEMELDET';
         const action = isSignUpAction ? 'signup' : 'signoff';
         
-        // Users can sign up for planned or running events, but cannot sign off from completed/cancelled ones.
         const canPerformAction = event.status === 'GEPLANT' || event.status === 'LAUFEND';
         const isSignupDisabled = isSignUpAction && (!event.userQualified || !canPerformAction);
 
@@ -119,7 +118,7 @@ const EventsPage = () => {
                             onPress={() => openModal(event, action)}
                             disabled={isSignupDisabled}
                         >
-                            <Text style={styles.buttonText}>{isSignUpAction ? 'Anmelden' : 'Abmelden'}</Text>
+                            <Text style={[styles.buttonText, isSignupDisabled && styles.disabledButtonText]}>{isSignUpAction ? 'Anmelden' : 'Abmelden'}</Text>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -131,7 +130,7 @@ const EventsPage = () => {
 	if (error) return <View style={styles.centered}><Text style={styles.errorText}>{error}</Text></View>;
 
 	return (
-        <>
+        <View style={styles.container}>
             <FlatList
                 data={events}
                 renderItem={renderItem}
@@ -148,7 +147,7 @@ const EventsPage = () => {
                 action={modalState.action}
                 isSubmitting={isSubmitting}
             />
-        </>
+        </View>
 	);
 };
 

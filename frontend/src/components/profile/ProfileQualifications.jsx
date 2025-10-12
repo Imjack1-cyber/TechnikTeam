@@ -18,7 +18,7 @@ const ProfileQualifications = ({ qualifications }) => {
 		<View style={styles.card}>
 			<Text style={styles.cardTitle}>Meine Qualifikationen</Text>
 			{!qualifications || qualifications.length === 0 ? (
-				<Text>Keine Qualifikationen erworben.</Text>
+				<Text style={styles.bodyText}>Keine Qualifikationen erworben.</Text>
 			) : (
 				<FlatList
 					data={qualifications}

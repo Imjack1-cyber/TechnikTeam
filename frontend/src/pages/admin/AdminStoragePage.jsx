@@ -33,6 +33,7 @@ const AdminStoragePage = () => {
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
 	const openModal = (mode, item = null) => setModalState({ isOpen: true, item, mode });
 	const handleSuccess = () => { setModalState({ isOpen: false, item: null, mode: 'edit' }); reload(); };
@@ -64,7 +65,7 @@ const AdminStoragePage = () => {
                 </TouchableOpacity>
                 {item.imagePath && (
                     <TouchableOpacity onPress={() => setLightboxSrc(getImagePath(item.imagePath))}>
-                        <Icon name="camera" size={18} color={getThemeColors(theme).textMuted} />
+                        <Icon name="camera" size={18} color={colors.textMuted} />
                     </TouchableOpacity>
                 )}
             </View>
@@ -73,13 +74,13 @@ const AdminStoragePage = () => {
                 <Text style={styles.value}>{item.availableQuantity}/{item.maxQuantity} {item.defectiveQuantity > 0 && `(${item.defectiveQuantity} def.)`}</Text>
             </View>
             <View style={styles.cardActions}>
-                <TouchableOpacity style={styles.actionButton} onPress={() => openModal('edit', item)}><Text>Bearbeiten</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.actionButton} onPress={() => openModal('defect', item)}><Text>Defekt</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.actionButton} onPress={() => openModal('edit', item)}><Text style={{ color: colors.text }}>Bearbeiten</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.actionButton} onPress={() => openModal('defect', item)}><Text style={{ color: colors.text }}>Defekt</Text></TouchableOpacity>
                 {item.defectiveQuantity > 0 && (
-                    <TouchableOpacity style={styles.actionButton} onPress={() => openModal('repair', item)}><Text>Repariert</Text></TouchableOpacity>
+                    <TouchableOpacity style={styles.actionButton} onPress={() => openModal('repair', item)}><Text style={{ color: colors.text }}>Repariert</Text></TouchableOpacity>
                 )}
-                <TouchableOpacity style={styles.actionButton} onPress={() => setQrCodeItem(item)}><Text>QR</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.actionButton} onPress={() => setDeletingItem(item)}><Text style={{color: getThemeColors(theme).danger}}>Löschen</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.actionButton} onPress={() => setQrCodeItem(item)}><Text style={{ color: colors.text }}>QR</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.actionButton} onPress={() => setDeletingItem(item)}><Text style={{color: colors.danger}}>Löschen</Text></TouchableOpacity>
             </View>
         </View>
     );
@@ -106,7 +107,7 @@ const AdminStoragePage = () => {
 				<Modal isOpen={!!qrCodeItem} onClose={() => setQrCodeItem(null)} title={`QR-Code für: ${qrCodeItem.name}`}>
 					<View style={{alignItems: 'center', padding: 16}}>
 						<QRCode value={`${apiClient.getRootUrl()}/lager/qr-aktion/${qrCodeItem.id}`} size={256} />
-						<Text style={{marginTop: 16}}>Scannen für schnelle Aktionen.</Text>
+						<Text style={{marginTop: 16, color: colors.text}}>Scannen für schnelle Aktionen.</Text>
 					</View>
 				</Modal>
 			)}
@@ -131,9 +132,12 @@ const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
         cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-        cardTitle: { fontSize: typography.h4, fontWeight: 'bold' },
+        cardTitle: { fontSize: typography.h4, fontWeight: 'bold', color: colors.heading },
         cardActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12, justifyContent: 'flex-end' },
         actionButton: { padding: 8, backgroundColor: colors.background, borderRadius: 6 },
+        detailRow: { flexDirection: 'row', alignItems: 'center' },
+        label: { color: colors.textMuted },
+        value: { color: colors.text, marginLeft: 4 },
     });
 };
 

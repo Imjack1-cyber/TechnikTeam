@@ -77,10 +77,6 @@ const UserProfilePage = () => {
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
-        container: {
-            flex: 1,
-            backgroundColor: colors.background,
-        },
         mainContent: {
             paddingVertical: spacing.md,
         },

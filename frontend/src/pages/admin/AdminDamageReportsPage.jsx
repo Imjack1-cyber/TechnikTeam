@@ -43,8 +43,8 @@ const ActionModal = ({ isOpen, onClose, onSuccess, report, action }) => {
 	return (
 		<Modal isOpen={isOpen} onClose={onClose} title={`Meldung #${report.id} ${action === 'confirm' ? 'bestätigen' : 'ablehnen'}`}>
 			<View>
-                <Text>Artikel: {report.itemName}</Text>
-                <Text>Beschreibung des Nutzers: {report.reportDescription}</Text>
+                <Text style={styles.bodyText}>Artikel: {report.itemName}</Text>
+                <Text style={styles.bodyText}>Beschreibung des Nutzers: {report.reportDescription}</Text>
 				{error && <Text style={styles.errorText}>{error}</Text>}
 				{action === 'confirm' && (
 					<View style={styles.formGroup}>
@@ -78,8 +78,7 @@ const AdminDamageReportsPage = () => {
 	const [selectedReport, setSelectedReport] = useState(null);
 	const [action, setAction] = useState(null);
     const theme = useAuthStore(state => state.theme);
-    const commonStyles = getCommonStyles(theme);
-    const styles = { ...commonStyles, ...pageStyles(theme) };
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
 
 	const openModal = (report, act) => {
 		setSelectedReport(report);
@@ -127,7 +126,7 @@ const AdminDamageReportsPage = () => {
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
                 contentContainerStyle={styles.contentContainer}
-                ListEmptyComponent={<View style={styles.card}><Text>Keine offenen Meldungen vorhanden.</Text></View>}
+                ListEmptyComponent={<View style={styles.card}><Text style={styles.bodyText}>Keine offenen Meldungen vorhanden.</Text></View>}
             />
 
 			{selectedReport && (
@@ -140,6 +139,7 @@ const AdminDamageReportsPage = () => {
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
+        container: { flex: 1 },
         headerContainer: { flexDirection: 'row', alignItems: 'center' },
         headerIcon: { color: colors.heading, marginRight: 12 },
         description: { marginTop: 8, color: colors.text },

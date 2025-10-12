@@ -82,8 +82,10 @@ const pageStyles = (theme) => {
             marginRight: 12,
         },
         description: {
+            fontSize: 16,
+            color: colors.textMuted,
             paddingHorizontal: 16,
-            marginVertical: 8,
+            marginBottom: 16,
         },
         searchCard: {
             backgroundColor: colors.surface,

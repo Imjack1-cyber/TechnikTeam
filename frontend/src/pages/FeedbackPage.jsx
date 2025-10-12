@@ -12,6 +12,7 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 const FeedbackPage = () => {
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
+    const colors = getThemeColors(theme);
 
     const apiCall = useCallback(() => apiClient.get('/public/feedback/user'), []);
     const { data: submissions, loading, error, reload } = useApi(apiCall);
@@ -67,10 +68,10 @@ const FeedbackPage = () => {
                 {submitError && <Text style={styles.errorText}>{submitError}</Text>}
 
                 <Text style={styles.label}>Betreff</Text>
-                <TextInput style={styles.input} value={subject} onChangeText={setSubject} placeholder="z.B. Feature-Wunsch: Dunkelmodus" />
+                <TextInput style={styles.input} value={subject} onChangeText={setSubject} placeholder="z.B. Feature-Wunsch: Dunkelmodus" placeholderTextColor={colors.textMuted} />
 
                 <Text style={styles.label}>Deine Nachricht</Text>
-                <TextInput style={[styles.input, styles.textArea]} value={content} onChangeText={setContent} multiline placeholder="Bitte beschreibe deine Idee oder das Problem..." />
+                <TextInput style={[styles.input, styles.textArea]} value={content} onChangeText={setContent} multiline placeholder="Bitte beschreibe deine Idee oder das Problem..." placeholderTextColor={colors.textMuted} />
 
                 <TouchableOpacity style={[styles.button, styles.successButton]} onPress={handleSubmit} disabled={isSubmitting}>
                     {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Feedback absenden</Text>}
@@ -85,7 +86,7 @@ const FeedbackPage = () => {
                 {submissions && submissions.length > 0 ? (
                     submissions.map(item => renderSubmission(item))
                 ) : (
-                    <Text>Du hast noch kein Feedback eingereicht.</Text>
+                    <Text style={styles.bodyText}>Du hast noch kein Feedback eingereicht.</Text>
                 )}
             </View>
         </ScrollView>

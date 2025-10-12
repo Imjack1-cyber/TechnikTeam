@@ -15,6 +15,7 @@ const MaintenanceModeManager = () => {
     const theme = useAuthStore(state => state.theme);
     const setMaintenanceStatus = useAuthStore(state => state.setMaintenanceStatus);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
 	const apiCall = useCallback(() => apiClient.get('/admin/system/maintenance'), []);
 	const { data, loading, error, reload } = useApi(apiCall);
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,9 +65,9 @@ const MaintenanceModeManager = () => {
                 
                 <RadioButton.Group onValueChange={newValue => setMode(newValue)} value={mode}>
                     <View>
-                        <View style={pageStyles(theme).radioRow}><RadioButton value="OFF" /><Text>Aus</Text></View>
-                        <View style={pageStyles(theme).radioRow}><RadioButton value="SOFT" /><Text>Warnung (Banner)</Text></View>
-                        <View style={pageStyles(theme).radioRow}><RadioButton value="HARD" /><Text style={{color: getThemeColors(theme).danger}}>Sperre (Nur Admins)</Text></View>
+                        <View style={pageStyles(theme).radioRow}><RadioButton value="OFF" /><Text style={{ color: colors.text }}>Aus</Text></View>
+                        <View style={pageStyles(theme).radioRow}><RadioButton value="SOFT" /><Text style={{ color: colors.text }}>Warnung (Banner)</Text></View>
+                        <View style={pageStyles(theme).radioRow}><RadioButton value="HARD" /><Text style={{color: colors.danger}}>Sperre (Nur Admins)</Text></View>
                     </View>
                 </RadioButton.Group>
                 
@@ -116,17 +117,17 @@ const AdminSystemPage = () => {
 					<>
 						<View style={styles.card}>
 							<Text style={styles.cardTitle}>CPU & Speicher</Text>
-							<View style={styles.detailRow}><Text style={styles.label}>CPU-Auslastung:</Text><Text style={styles.value}>{stats.cpuLoad > 0 ? formatPercent(stats.cpuLoad) : 'Wird geladen...'}</Text></View>
-							<View style={styles.detailRow}><Text style={styles.label}>RAM-Nutzung:</Text><Text style={styles.value}>{formatGB(stats.usedMemory)} / {formatGB(stats.totalMemory)}</Text></View>
+							<View style={styles.detailsListRow}><Text style={styles.detailsListLabel}>CPU-Auslastung:</Text><Text style={styles.detailsListValue}>{stats.cpuLoad > 0 ? formatPercent(stats.cpuLoad) : 'Wird geladen...'}</Text></View>
+							<View style={styles.detailsListRow}><Text style={styles.detailsListLabel}>RAM-Nutzung:</Text><Text style={styles.detailsListValue}>{formatGB(stats.usedMemory)} / {formatGB(stats.totalMemory)}</Text></View>
 						</View>
 						<View style={styles.card}>
 							<Text style={styles.cardTitle}>Festplattenspeicher</Text>
-							<View style={styles.detailRow}><Text style={styles.label}>Speichernutzung:</Text><Text style={styles.value}>{formatGB(stats.usedDiskSpace)} / {formatGB(stats.totalDiskSpace)}</Text></View>
+							<View style={styles.detailsListRow}><Text style={styles.detailsListLabel}>Speichernutzung:</Text><Text style={styles.detailsListValue}>{formatGB(stats.usedDiskSpace)} / {formatGB(stats.totalDiskSpace)}</Text></View>
 						</View>
 						<View style={styles.card}>
 							<Text style={styles.cardTitle}>Laufzeit & Energie</Text>
-							<View style={styles.detailRow}><Text style={styles.label}>Server-Laufzeit:</Text><Text style={styles.value}>{stats.uptime}</Text></View>
-							<View style={styles.detailRow}><Text style={styles.label}>Batteriestatus:</Text><Text style={styles.value}>{stats.batteryPercentage >= 0 ? `${stats.batteryPercentage}%` : 'Nicht verfügbar'}</Text></View>
+							<View style={styles.detailsListRow}><Text style={styles.detailsListLabel}>Server-Laufzeit:</Text><Text style={styles.detailsListValue}>{stats.uptime}</Text></View>
+							<View style={styles.detailsListRow}><Text style={styles.detailsListLabel}>Batteriestatus:</Text><Text style={styles.detailsListValue}>{stats.batteryPercentage >= 0 ? `${stats.batteryPercentage}%` : 'Nicht verfügbar'}</Text></View>
 						</View>
 					</>
 				)}

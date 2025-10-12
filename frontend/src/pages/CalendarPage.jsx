@@ -12,8 +12,7 @@ const CalendarPage = () => {
 	const apiCall = useCallback(() => apiClient.get('/public/calendar/entries'), []);
 	const { data: calendarEntries, loading, error } = useApi(apiCall);
     const theme = useAuthStore(state => state.theme);
-    const commonStyles = getCommonStyles(theme);
-    const styles = { ...commonStyles, ...pageStyles(theme) };
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
 
 	const handleSubscribe = () => {
@@ -36,7 +35,7 @@ const CalendarPage = () => {
 				<Text style={styles.title}>Terminübersicht</Text>
 			</View>
 			<View style={styles.descriptionContainer}>
-				<Text style={styles.description}>
+				<Text style={styles.subtitle}>
 					Übersicht aller anstehenden Veranstaltungen und Lehrgänge.
 				</Text>
 				<TouchableOpacity style={styles.subscribeButton} onPress={handleSubscribe}>

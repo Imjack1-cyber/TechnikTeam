@@ -121,9 +121,9 @@ const MessageView = () => {
 	return (
 		<View style={styles.container}>
 			<View style={styles.header}>
-				<TouchableOpacity onPress={() => navigation.goBack()}><Icon name="arrow-left" size={20} /></TouchableOpacity>
+				<TouchableOpacity onPress={() => navigation.goBack()}><Icon name="arrow-left" size={20} color={colors.text} /></TouchableOpacity>
 				<Text style={styles.headerTitle}>{getHeaderText()}</Text>
-				{conversation?.groupChat && conversation.creatorId === user.id && <TouchableOpacity onPress={() => setIsManageModalOpen(true)}><Icon name="user-plus" size={20} /></TouchableOpacity>}
+				{conversation?.groupChat && conversation.creatorId === user.id && <TouchableOpacity onPress={() => setIsManageModalOpen(true)}><Icon name="user-plus" size={20} color={colors.text} /></TouchableOpacity>}
 			</View>
 			<FlatList
 				data={messages}
@@ -150,7 +150,7 @@ const MessageView = () => {
                 <TouchableOpacity onPress={handlePickFile} style={styles.attachButton}>
                     <Icon name="paperclip" size={20} color={colors.textMuted} />
                 </TouchableOpacity>
-				<TextInput style={styles.input} value={newMessage} onChangeText={setNewMessage} placeholder="Nachricht schreiben..." multiline maxLength={1024} />
+				<TextInput style={styles.input} value={newMessage} onChangeText={setNewMessage} placeholder="Nachricht schreiben..." placeholderTextColor={colors.textMuted} multiline maxLength={1024} />
 				<TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSubmit}><Text style={styles.buttonText}>Senden</Text></TouchableOpacity>
 			</View>
 			{isManageModalOpen && conversation && <ManageParticipantsModal isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} onAddUsers={() => { }} onRemoveUser={() => { }} conversation={conversation} />}
@@ -161,8 +161,9 @@ const MessageView = () => {
 const pageStyles = (theme) => {
 	const colors = getThemeColors(theme);
 	return StyleSheet.create({
+        container: { flex: 1, backgroundColor: colors.surface },
 		header: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderBottomWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-		headerTitle: { flex: 1, fontSize: typography.h4, fontWeight: 'bold', textAlign: 'center' },
+		headerTitle: { flex: 1, fontSize: typography.h4, fontWeight: 'bold', textAlign: 'center', color: colors.heading },
 		bubbleContainer: { flexDirection: 'row', maxWidth: '80%', marginVertical: spacing.xs },
 		sent: { alignSelf: 'flex-end', justifyContent: 'flex-end' },
 		received: { alignSelf: 'flex-start', justifyContent: 'flex-start' },
@@ -171,7 +172,7 @@ const pageStyles = (theme) => {
 		metaContainer: { flexDirection: 'row', alignSelf: 'flex-end', alignItems: 'center', gap: spacing.xs, marginTop: 4 },
 		timestamp: { fontSize: typography.caption, color: colors.textMuted },
 		inputContainer: { flexDirection: 'row', padding: spacing.sm, borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, gap: spacing.sm, alignItems: 'center' },
-		input: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: spacing.md, backgroundColor: colors.background, maxHeight: 120, paddingVertical: 10 },
+		input: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: spacing.md, backgroundColor: colors.background, maxHeight: 120, paddingVertical: 10, color: colors.text },
         attachButton: { padding: spacing.sm },
 	});
 };

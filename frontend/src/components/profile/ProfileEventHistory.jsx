@@ -4,11 +4,13 @@ import { useNavigation } from '@react-navigation/native';
 import Icon from '@expo/vector-icons/FontAwesome5';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { useAuthStore } from '../../store/authStore';
+import { getThemeColors } from '../../styles/theme';
 
 const ProfileEventHistory = ({ eventHistory }) => {
 	const navigation = useNavigation();
     const theme = useAuthStore(state => state.theme);
     const styles = getCommonStyles(theme);
+    const colors = getThemeColors(theme);
 
 	const formatDate = (dateString) => {
 		if (!dateString) return '';
@@ -35,7 +37,7 @@ const ProfileEventHistory = ({ eventHistory }) => {
 						style={[styles.button, styles.primaryButton, {marginTop: 16}]}
 						onPress={() => navigation.navigate('EventFeedback', { eventId: item.id })}
 					>
-						<Icon name="star" solid color="#fff" size={14} />
+						<Icon name="star" solid color={colors.white} size={14} />
 						<Text style={styles.buttonText}>Feedback geben</Text>
 					</TouchableOpacity>
 				)}
@@ -50,7 +52,7 @@ const ProfileEventHistory = ({ eventHistory }) => {
                 // Using map instead of FlatList as it's not the main scroll view
                 eventHistory.map(item => renderItem(item))
 			) : (
-                <Text>Keine Event-Historie vorhanden.</Text>
+                <Text style={styles.bodyText}>Keine Event-Historie vorhanden.</Text>
             )}
 		</View>
 	);

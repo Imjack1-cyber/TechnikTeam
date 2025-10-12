@@ -27,8 +27,7 @@ const ConversationList = () => {
 	const { addToast } = useToast();
 
     const theme = useAuthStore(state => state.theme);
-    const commonStyles = getCommonStyles(theme);
-    const styles = { ...commonStyles, ...pageStyles(theme) };
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
 
 	const handleSelectUser = async (userId) => {
@@ -141,7 +140,7 @@ const pageStyles = (theme) => {
     return StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.surface },
         header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, borderBottomWidth: 1, borderColor: colors.border },
-        headerTitle: { fontSize: typography.h3, fontWeight: 'bold' },
+        headerTitle: { fontSize: typography.h3, fontWeight: 'bold', color: colors.heading },
         actions: { flexDirection: 'row', gap: spacing.sm },
         button: { padding: spacing.sm, backgroundColor: colors.primary, borderRadius: borders.radius },
         listContainer: { flex: 1 },
@@ -149,7 +148,7 @@ const pageStyles = (theme) => {
         activeConversationItem: { backgroundColor: colors.primaryLight, borderRightWidth: 3, borderRightColor: colors.primary },
         conversationIcon: { color: colors.textMuted, marginRight: spacing.md },
         conversationDetails: { flex: 1 },
-        conversationUsername: { fontWeight: 'bold', fontSize: typography.body },
+        conversationUsername: { fontWeight: 'bold', fontSize: typography.body, color: colors.text },
         conversationSnippet: { fontSize: typography.small, color: colors.textMuted },
         emptyListText: { padding: spacing.md, textAlign: 'center', color: colors.textMuted },
     });

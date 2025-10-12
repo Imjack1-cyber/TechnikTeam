@@ -44,7 +44,6 @@ const AchievementModal = ({ isOpen, onClose, onSuccess, achievement }) => {
                 setKeyPrefix(foundPrefix);
                 setKeyValue(achievement.achievementKey.substring(foundPrefix.length));
             } else {
-                // Fallback for old custom keys, though they can't be created anymore
                 setKeyPrefix(KEY_PREFIXES[0]);
                 setKeyValue(achievement.achievementKey);
             }
@@ -55,7 +54,6 @@ const AchievementModal = ({ isOpen, onClose, onSuccess, achievement }) => {
         }
     }, [achievement, isOpen]);
 
-    // Effect to combine prefix and value into the final achievementKey
     useEffect(() => {
         const finalKey = `${keyPrefix}${keyValue}`;
         setFormData(prev => ({ ...prev, achievementKey: finalKey.toUpperCase() }));
@@ -95,7 +93,7 @@ const AchievementModal = ({ isOpen, onClose, onSuccess, achievement }) => {
             <Text style={styles.label}>System-Schlüssel</Text>
             <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
                 <View style={[styles.input, { flex: 2, paddingHorizontal: 0 }]}>
-                    <Picker selectedValue={keyPrefix} onValueChange={(itemValue) => setKeyPrefix(itemValue)}>
+                    <Picker selectedValue={keyPrefix} onValueChange={(itemValue) => setKeyPrefix(itemValue)} itemStyle={{ color: colors.text }}>
                         {KEY_PREFIXES.map(p => <Picker.Item key={p} label={p} value={p} />)}
                     </Picker>
                 </View>
@@ -201,7 +199,7 @@ const AdminAchievementsPage = () => {
                 contentContainerStyle={{ paddingHorizontal: 16 }}
                 ListEmptyComponent={
                     <View style={styles.card}>
-                        <Text>Keine Abzeichen konfiguriert.</Text>
+                        <Text style={styles.bodyText}>Keine Abzeichen konfiguriert.</Text>
                     </View>
                 }
             />
@@ -240,7 +238,7 @@ const pageStyles = (theme) => {
         buttonText: { color: '#fff' },
         secondaryButtonText: { color: '#fff' },
         dangerOutlineButtonText: { color: colors.danger },
-        code: { fontFamily: 'monospace', backgroundColor: colors.background, padding: 4, borderRadius: 4 },
+        code: { fontFamily: 'monospace', backgroundColor: colors.background, padding: 4, borderRadius: 4, color: colors.text },
         helperText: {
             fontSize: typography.caption,
             color: colors.textMuted,

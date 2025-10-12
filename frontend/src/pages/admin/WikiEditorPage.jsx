@@ -122,7 +122,7 @@ const WikiEditorPage = () => {
             {viewMode === 'edit' ? (
                 <TextInput value={content} onChangeText={handleContentChange} multiline style={styles.textArea} />
             ) : (
-                <ScrollView style={{padding: spacing.md}}><MarkdownDisplay>{content}</MarkdownDisplay></ScrollView>
+                <ScrollView style={{padding: spacing.md}}><MarkdownDisplay style={{ body: { color: colors.text } }}>{content}</MarkdownDisplay></ScrollView>
             )}
             {deletingEntry && (
                 <ConfirmationModal

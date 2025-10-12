@@ -9,7 +9,7 @@ import { useToast } from '../../context/ToastContext';
 import apiClient from '../../services/apiClient';
 
 const WordCloud = ({ data }) => {
-    const theme = 'light';
+    const theme = useAuthStore(state => state.theme);
     const colors = getThemeColors(theme);
     const styles = wordCloudStyles({ colors });
 
@@ -20,13 +20,12 @@ const WordCloud = ({ data }) => {
         const counts = data.map(item => item.value);
         const max = Math.max(...counts);
         const min = Math.min(...counts);
-        // Shuffle for more dynamic layout
         const shuffled = [...data].sort(() => 0.5 - Math.random());
         return { maxCount: max, minCount: min, words: shuffled };
     }, [data]);
 
     const getFontSize = (count) => {
-        if (maxCount === minCount) return 18; // Base size if all words have same count
+        if (maxCount === minCount) return 18;
         const minSize = 14;
         const maxSize = 48;
         const sizeRange = maxSize - minSize;
@@ -85,7 +84,7 @@ const InternalPoll = ({ pollData, reload }) => {
     const [guestName, setGuestName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const theme = 'light';
+    const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
 

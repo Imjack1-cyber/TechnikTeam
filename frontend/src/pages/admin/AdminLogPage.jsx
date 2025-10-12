@@ -19,8 +19,7 @@ const AdminLogPage = () => {
 	const { addToast } = useToast();
 
     const theme = useAuthStore(state => state.theme);
-    const commonStyles = getCommonStyles(theme);
-    const styles = { ...commonStyles, ...pageStyles(theme) };
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
 
     const [searchTerm, setSearchTerm] = useState('');
@@ -97,8 +96,8 @@ const AdminLogPage = () => {
                 <Text style={styles.detailsText}>{log.details}</Text>
                 {canRevoke && (
                     <View style={styles.cardActions}>
-                        <TouchableOpacity style={[styles.button, {backgroundColor: getThemeColors(theme).warning}, isRevocable ? {} : styles.disabledButton]} onPress={() => setRevokingLog(log)} disabled={!isRevocable}>
-                            <Text style={{color: '#000'}}>Widerrufen</Text>
+                        <TouchableOpacity style={[styles.button, {backgroundColor: colors.warning}, isRevocable ? {} : styles.disabledButton]} onPress={() => setRevokingLog(log)} disabled={!isRevocable}>
+                            <Text style={{color: colors.textOnWarning}}>Widerrufen</Text>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -114,18 +113,18 @@ const AdminLogPage = () => {
 			</View>
 
             <View style={styles.filterContainer}>
-                <TextInput style={styles.input} placeholder="In Details suchen..." value={searchTerm} onChangeText={setSearchTerm} />
+                <TextInput style={styles.input} placeholder="In Details suchen..." value={searchTerm} onChangeText={setSearchTerm} placeholderTextColor={colors.textMuted} />
                 <View style={{flexDirection: 'row', gap: spacing.md}}>
                     <View style={{flex: 1}}>
                         <Text style={styles.label}>Admin</Text>
-                        <Picker selectedValue={selectedUser} onValueChange={setSelectedUser}>
+                        <Picker selectedValue={selectedUser} onValueChange={setSelectedUser} itemStyle={{ color: colors.text }}>
                             <Picker.Item label="Alle" value="" />
                             {uniqueUsers.map(u => <Picker.Item key={u} label={u} value={u} />)}
                         </Picker>
                     </View>
                     <View style={{flex: 1}}>
                          <Text style={styles.label}>Aktionstyp</Text>
-                        <Picker selectedValue={selectedAction} onValueChange={setSelectedAction}>
+                        <Picker selectedValue={selectedAction} onValueChange={setSelectedAction} itemStyle={{ color: colors.text }}>
                             <Picker.Item label="Alle" value="" />
                             {uniqueActions.map(a => <Picker.Item key={a} label={a} value={a} />)}
                         </Picker>
@@ -147,7 +146,7 @@ const AdminLogPage = () => {
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
                 contentContainerStyle={styles.contentContainer}
-                ListEmptyComponent={<View style={styles.card}><Text>Keine Log-Einträge gefunden, die den Filtern entsprechen.</Text></View>}
+                ListEmptyComponent={<View style={styles.card}><Text style={styles.bodyText}>Keine Log-Einträge gefunden, die den Filtern entsprechen.</Text></View>}
             />
             {revokingLog && (
                 <ConfirmationModal
@@ -168,8 +167,6 @@ const AdminLogPage = () => {
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
-        container: { flex: 1 },
-        contentContainer: { paddingHorizontal: spacing.md, paddingBottom: spacing.md },
         headerContainer: { flexDirection: 'row', alignItems: 'center', padding: spacing.md },
         headerIcon: { color: colors.heading, marginRight: 12 },
         filterContainer: {
@@ -187,13 +184,13 @@ const pageStyles = (theme) => {
             marginTop: spacing.md,
         },
         cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
-        cardTitle: { fontSize: typography.h4, fontWeight: 'bold' },
+        cardTitle: { fontSize: typography.h4, fontWeight: 'bold', color: colors.heading },
         badge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 20, fontSize: 12, fontWeight: '600', color: colors.white, overflow: 'hidden' },
         infoBadge: { backgroundColor: colors.textMuted },
         okBadge: { backgroundColor: colors.success },
         detailRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
         value: { color: colors.primary },
-        detailsText: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderColor: colors.border },
+        detailsText: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderColor: colors.border, color: colors.text },
         cardActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 },
     });
 };

@@ -8,7 +8,7 @@ import Modal from '../../components/ui/Modal';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
-import { getThemeColors, typography } from '../../styles/theme';
+import { getThemeColors, typography, spacing } from '../../styles/theme';
 import DocumentationModal from '../../components/admin/documentation/DocumentationModal';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
@@ -107,7 +107,10 @@ const pageStyles = (theme) => {
         headerContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16},
         headerIcon: { color: colors.heading, marginRight: 12 },
         cardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 16 },
-        code: { fontFamily: 'monospace', backgroundColor: colors.background, padding: 4, borderRadius: 4 },
+        code: { fontFamily: 'monospace', backgroundColor: colors.background, padding: 4, borderRadius: 4, color: colors.text },
+        detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
+        label: { color: colors.textMuted },
+        value: { color: colors.text },
     });
 };
 

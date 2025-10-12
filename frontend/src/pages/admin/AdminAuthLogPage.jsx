@@ -58,9 +58,9 @@ const AdminAuthLogPage = () => {
         return (
             <View style={styles.card}>
                 <Text style={styles.cardTitle}>{log.username}</Text>
-                <Text>{new Date(log.timestamp).toLocaleString('de-DE')}</Text>
-                <Text>{log.ipAddress} ({log.countryCode || 'N/A'})</Text>
-                <Text><Icon name={log.deviceType === 'Desktop' ? 'desktop' : 'mobile-alt'} /> {log.deviceType}</Text>
+                <Text style={styles.bodyText}>{new Date(log.timestamp).toLocaleString('de-DE')}</Text>
+                <Text style={styles.bodyText}>{log.ipAddress} ({log.countryCode || 'N/A'})</Text>
+                <Text style={styles.bodyText}><Icon name={log.deviceType === 'Desktop' ? 'desktop' : 'mobile-alt'} /> {log.deviceType}</Text>
                 {isActive && (
                     <TouchableOpacity style={[styles.button, styles.dangerButton, {marginTop: 8}]} onPress={() => setRevokingSession(log)}>
                         <Text style={styles.buttonText}>Logout erzwingen</Text>
@@ -77,13 +77,13 @@ const AdminAuthLogPage = () => {
 			    <Text style={styles.title}>Login-Verlauf</Text>
             </View>
 			<View style={styles.filterContainer}>
-                <TextInput style={styles.input} placeholder="Benutzer filtern..." value={userFilter} onChangeText={setUserFilter} />
-                <TextInput style={styles.input} placeholder="IP filtern..." value={ipFilter} onChangeText={setIpFilter} />
+                <TextInput style={styles.input} placeholder="Benutzer filtern..." value={userFilter} onChangeText={setUserFilter} placeholderTextColor={colors.textMuted} />
+                <TextInput style={styles.input} placeholder="IP filtern..." value={ipFilter} onChangeText={setIpFilter} placeholderTextColor={colors.textMuted} />
                 <RadioButton.Group onValueChange={newValue => setShowFilter(newValue)} value={showFilter}>
                     <View style={{flexDirection: 'row', justifyContent: 'space-around'}}>
-                        <View style={styles.radioRow}><RadioButton value="ALL" /><Text>Alle</Text></View>
-                        <View style={styles.radioRow}><RadioButton value="ACTIVE" /><Text>Nur Aktive</Text></View>
-                        <View style={styles.radioRow}><RadioButton value="INACTIVE" /><Text>Nur Inaktive</Text></View>
+                        <View style={styles.radioRow}><RadioButton value="ALL" /><Text style={{ color: colors.text }}>Alle</Text></View>
+                        <View style={styles.radioRow}><RadioButton value="ACTIVE" /><Text style={{ color: colors.text }}>Nur Aktive</Text></View>
+                        <View style={styles.radioRow}><RadioButton value="INACTIVE" /><Text style={{ color: colors.text }}>Nur Inaktive</Text></View>
                     </View>
                 </RadioButton.Group>
             </View>

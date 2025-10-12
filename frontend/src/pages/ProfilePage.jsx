@@ -84,7 +84,7 @@ const ProfilePage = () => {
     };
 
 	return (
-		<ScrollableContent>
+		<ScrollableContent style={styles.container}>
 			<View style={styles.header}>
                 <Icon name={user.profileIconClass?.replace('fa-', '') || 'user-circle'} solid size={80} color={colors.primary} />
                 <View style={styles.headerTextContainer}>
@@ -122,10 +122,6 @@ const ProfilePage = () => {
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
-        container: {
-            flex: 1,
-            backgroundColor: colors.background,
-        },
         mainContent: {
             padding: spacing.md,
         },

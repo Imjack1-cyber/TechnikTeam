@@ -82,15 +82,15 @@ const AdminNotificationsPage = () => {
                     <View style={styles.formGroup}>
                         <Text style={styles.label}>Stufe</Text>
                         <RadioButton.Group onValueChange={val => setFormData({...formData, level: val})} value={formData.level}>
-                            <View style={styles.radioRow}><RadioButton value="Informational" /><Text>Info</Text></View>
-                            <View style={styles.radioRow}><RadioButton value="Important" /><Text>Wichtig</Text></View>
+                            <View style={styles.radioRow}><RadioButton value="Informational" /><Text style={{ color: colors.text }}>Info</Text></View>
+                            <View style={styles.radioRow}><RadioButton value="Important" /><Text style={{ color: colors.text }}>Wichtig</Text></View>
                             <View style={styles.radioRow}><RadioButton value="Warning" /><Text style={{color: colors.danger}}>Warnung (Notfall)</Text></View>
                         </RadioButton.Group>
                     </View>
 
                     <View style={styles.formGroup}>
                         <Text style={styles.label}>Android Wichtigkeit</Text>
-                        <Picker selectedValue={formData.androidImportance} onValueChange={val => setFormData({...formData, androidImportance: val})}>
+                        <Picker selectedValue={formData.androidImportance} onValueChange={val => setFormData({...formData, androidImportance: val})} itemStyle={{ color: colors.text }}>
                             <Picker.Item label="Standard" value="DEFAULT" />
                             <Picker.Item label="Hoch (Heads-up)" value="HIGH" />
                         </Picker>
@@ -98,7 +98,7 @@ const AdminNotificationsPage = () => {
 
                     <View style={styles.formGroup}>
                         <Text style={styles.label}>Zielgruppe</Text>
-                        <Picker selectedValue={formData.targetType} onValueChange={val => setFormData({...formData, targetType: val, targetId: ''})}>
+                        <Picker selectedValue={formData.targetType} onValueChange={val => setFormData({...formData, targetType: val, targetId: ''})} itemStyle={{ color: colors.text }}>
                             <Picker.Item label="Alle Benutzer" value="ALL" />
                             <Picker.Item label="Event-Teilnehmer" value="EVENT" />
                             <Picker.Item label="Meeting-Teilnehmer" value="MEETING" />
@@ -108,7 +108,7 @@ const AdminNotificationsPage = () => {
                     {formData.targetType === 'EVENT' && (
                         <View style={styles.formGroup}>
                             <Text style={styles.label}>Spezifisches Event</Text>
-                            <Picker selectedValue={formData.targetId} onValueChange={val => setFormData({...formData, targetId: val})}>
+                            <Picker selectedValue={formData.targetId} onValueChange={val => setFormData({...formData, targetId: val})} itemStyle={{ color: colors.text }}>
                                 <Picker.Item label="-- Bitte auswählen --" value="" />
                                 {events?.map(e => <Picker.Item key={e.id} label={e.name} value={e.id} />)}
                             </Picker>
@@ -117,7 +117,7 @@ const AdminNotificationsPage = () => {
                     {formData.targetType === 'MEETING' && (
                          <View style={styles.formGroup}>
                             <Text style={styles.label}>Spezifisches Meeting</Text>
-                            <Picker selectedValue={formData.targetId} onValueChange={val => setFormData({...formData, targetId: val})}>
+                            <Picker selectedValue={formData.targetId} onValueChange={val => setFormData({...formData, targetId: val})} itemStyle={{ color: colors.text }}>
                                 <Picker.Item label="-- Bitte auswählen --" value="" />
                                 {meetings?.map(m => <Picker.Item key={m.id} label={`${m.parentCourseName}: ${m.name}`} value={m.id} />)}
                             </Picker>
@@ -145,7 +145,6 @@ const AdminNotificationsPage = () => {
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
-        container: { flex: 1 },
         headerContainer: { flexDirection: 'row', alignItems: 'center' },
         headerIcon: { color: colors.heading, marginRight: 12 },
         radioRow: { flexDirection: 'row', alignItems: 'center' },

@@ -37,8 +37,7 @@ const StoragePage = () => {
     const [isCartOpen, setIsCartOpen] = useState(false);
     const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
-    const commonStyles = getCommonStyles(theme);
-    const styles = pageStyles(theme);
+    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -88,7 +87,7 @@ const StoragePage = () => {
     const getImagePath = (path) => `${apiClient.getRootUrl()}/api/v1/public/files/images/${path.split('/').pop()}`;
 
     const renderItem = ({ item }) => (
-        <View style={commonStyles.card}>
+        <View style={styles.card}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
                 {item.imagePath ? (
                     <TouchableOpacity onPress={() => { setLightboxSrc(getImagePath(item.imagePath)); setIsLightboxOpen(true); }}>
@@ -100,19 +99,19 @@ const StoragePage = () => {
                     </View>
                 )}
                 <TouchableOpacity style={{ flex: 1 }} onPress={() => navigation.navigate('StorageItemDetails', { itemId: item.id })}>
-                    <Text style={commonStyles.cardTitle}>{item.name}</Text>
+                    <Text style={styles.cardTitle}>{item.name}</Text>
                 </TouchableOpacity>
             </View>
             <AvailabilityBar available={item.availableQuantity} max={item.maxQuantity} />
             <Text style={styles.quantityText}>{item.availableQuantity} / {item.maxQuantity} Verfügbar</Text>
             <View style={styles.cardActions}>
-                <TouchableOpacity style={[commonStyles.button, commonStyles.dangerOutlineButton]} onPress={() => handleAddToCart(item, 'checkout')} disabled={item.availableQuantity <= 0}>
+                <TouchableOpacity style={[styles.button, styles.dangerOutlineButton]} onPress={() => handleAddToCart(item, 'checkout')} disabled={item.availableQuantity <= 0}>
                     <Icon name="minus" size={14} color={colors.danger} />
-                    <Text style={commonStyles.dangerOutlineButtonText}> Entnehmen</Text>
+                    <Text style={styles.dangerOutlineButtonText}> Entnehmen</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[commonStyles.button, commonStyles.successButton]} onPress={() => handleAddToCart(item, 'checkin')}>
+                <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => handleAddToCart(item, 'checkin')}>
                     <Icon name="plus" size={14} color={colors.white} />
-                    <Text style={commonStyles.buttonText}> Einräumen</Text>
+                    <Text style={styles.buttonText}> Einräumen</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -122,11 +121,11 @@ const StoragePage = () => {
         <Text style={styles.sectionHeader}>{title}</Text>
     );
 
-    if (loading) return <View style={commonStyles.centered}><ActivityIndicator size="large" /></View>;
-    if (error) return <View style={commonStyles.centered}><Text style={commonStyles.errorText}>{error}</Text></View>;
+    if (loading) return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
+    if (error) return <View style={styles.centered}><Text style={styles.errorText}>{error}</Text></View>;
 
     return (
-        <>
+        <View style={styles.container}>
             <SectionList
                 sections={sections}
                 renderItem={renderItem}
@@ -136,10 +135,10 @@ const StoragePage = () => {
                 contentContainerStyle={{ padding: spacing.md, paddingBottom: 80 }}
                 ListHeaderComponent={
                     <>
-                        <Text style={commonStyles.title}>Lagerübersicht</Text>
-                        <Text style={commonStyles.subtitle}>Übersicht aller erfassten Artikel im Lager.</Text>
+                        <Text style={styles.title}>Lagerübersicht</Text>
+                        <Text style={styles.subtitle}>Übersicht aller erfassten Artikel im Lager.</Text>
                         <TextInput
-                            style={[commonStyles.input, {marginBottom: spacing.md}]}
+                            style={[styles.input, {marginBottom: spacing.md}]}
                             placeholder="Artikel suchen..."
                             value={searchTerm}
                             onChangeText={setSearchTerm}
@@ -147,7 +146,7 @@ const StoragePage = () => {
                     </>
                 }
                 ListEmptyComponent={
-                    <View style={commonStyles.card}>
+                    <View style={styles.card}>
                         <Text>Keine Artikel für Ihre Suche gefunden.</Text>
                     </View>
                 }
@@ -175,7 +174,7 @@ const StoragePage = () => {
                     reload();
                 }}
             />
-        </>
+        </View>
     );
 };
 
