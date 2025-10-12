@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+const { Platform } = require('react-native');
 
 // This file acts as a dynamic dispatcher for platform-specific passkey services.
 if (Platform.OS === 'web') {

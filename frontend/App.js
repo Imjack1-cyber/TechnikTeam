@@ -15,6 +15,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './src/router/navigation';
 import TransferIndicator from './src/components/ui/TransferIndicator';
 import MaintenanceBanner from './src/components/ui/MaintenanceBanner';
+import useWidgetDataRefresher from './src/hooks/useWidgetDataRefresher';
 
 // This is the crucial linking configuration for React Navigation on the web.
 const linking = {
@@ -166,6 +167,7 @@ const linking = {
 const AppContent = () => {
     const { warningNotification, dismissWarning } = useNotifications();
     usePushNotifications(); // Initialize push notification handling
+    useWidgetDataRefresher(); // Initialize widget data refreshing
     return (
         <View style={styles.container}>
             <RootNavigator />

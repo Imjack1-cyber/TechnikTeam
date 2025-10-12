@@ -20,7 +20,7 @@ const getApiBaseUrl = () => {
 const getRootUrl = () => {
     const mode = useAuthStore.getState().backendMode;
     if (Platform.OS === 'web') {
-        return '';
+        return '/TechnikTeam';
     }
     const host = mode === 'dev' ? 'technikteamdev.qs0.de' : 'technikteam.qs0.de';
     return `https://${host}/TechnikTeam`;

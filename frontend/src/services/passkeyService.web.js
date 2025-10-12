@@ -148,7 +148,7 @@ const getFriendlyPasskeyErrorMessage = (err) => {
     return err.message || 'Ein unbekannter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.';
 };
 
-export const passkeyService = {
+module.exports.passkeyService = {
     startRegistration,
     startAuthentication,
     getFriendlyPasskeyErrorMessage
