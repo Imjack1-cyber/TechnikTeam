@@ -39,18 +39,23 @@ public class PasskeyDAO implements CredentialRepository {
         cred.setPublicKeyCose(new ByteArray(rs.getBytes("public_key")));
         cred.setSignatureCount(rs.getLong("signature_count"));
         cred.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+        if (rs.getTimestamp("last_used_at") != null) {
+            cred.setLastUsedAt(rs.getTimestamp("last_used_at").toLocalDateTime());
+        }
+        cred.setUserAgent(rs.getString("user_agent"));
         return cred;
     };
 
     public boolean saveCredential(PasskeyCredential credential) {
-        String sql = "INSERT INTO user_passkeys (user_id, device_name, credential_id, public_key, signature_count, user_handle) VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO user_passkeys (user_id, device_name, credential_id, public_key, signature_count, user_handle, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?)";
         return jdbcTemplate.update(sql,
                 credential.getUserId(),
                 credential.getDeviceName(),
                 credential.getCredentialId().getBytes(),
                 credential.getPublicKeyCose().getBytes(),
                 credential.getSignatureCount(),
-                credential.getUserHandle().getBytes()
+                credential.getUserHandle().getBytes(),
+                credential.getUserAgent()
         ) > 0;
     }
     
@@ -67,6 +72,11 @@ public class PasskeyDAO implements CredentialRepository {
     public boolean updateSignatureCount(ByteArray credentialId, long newSignatureCount) {
         String sql = "UPDATE user_passkeys SET signature_count = ? WHERE credential_id = ?";
         return jdbcTemplate.update(sql, newSignatureCount, credentialId.getBytes()) > 0;
+    }
+    
+    public boolean updateLastUsedTimestamp(ByteArray credentialId) {
+        String sql = "UPDATE user_passkeys SET last_used_at = NOW() WHERE credential_id = ?";
+        return jdbcTemplate.update(sql, credentialId.getBytes()) > 0;
     }
     
     public Set<RegisteredCredential> getCredentialsByUserHandle(ByteArray userHandle) {

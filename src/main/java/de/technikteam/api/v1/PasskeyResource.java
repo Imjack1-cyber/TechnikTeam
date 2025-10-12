@@ -67,7 +67,7 @@ public class PasskeyResource {
             String credentialJson = objectMapper.writeValueAsString(finishRequest.credential());
             PublicKeyCredential<AuthenticatorAttestationResponse, ClientRegistrationExtensionOutputs> credential = PublicKeyCredential.parseRegistrationResponseJson(credentialJson);
             
-            passkeyService.finishRegistration(credential, request.getSession(), securityUser.getUser(), finishRequest.deviceName());
+            passkeyService.finishRegistration(credential, request.getSession(), securityUser.getUser(), finishRequest.deviceName(), request);
             
             return ResponseEntity.ok(new ApiResponse(true, "Passkey registered successfully.", null));
         } catch (Exception e) {
@@ -76,14 +76,26 @@ public class PasskeyResource {
     }
 
     @PostMapping("/authentication/start")
-    @Operation(summary = "Start Passkey Authentication")
-    public ResponseEntity<ApiResponse> startAuthentication(@RequestBody Map<String, String> payload, HttpServletRequest request) {
+    @Operation(summary = "Start Passkey Authentication with Username")
+    public ResponseEntity<ApiResponse> startAuthenticationWithUsername(@RequestBody Map<String, String> payload, HttpServletRequest request) {
         String username = payload.get("username");
         if (username == null || username.isBlank()) {
             return ResponseEntity.badRequest().body(new ApiResponse(false, "Username is required.", null));
         }
         try {
             PublicKeyCredentialRequestOptions options = passkeyService.startAuthentication(username, request.getSession());
+            return ResponseEntity.ok(new ApiResponse(true, "Authentication options generated.", options));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
+        }
+    }
+
+    @PostMapping("/authentication/start/discoverable")
+    @Operation(summary = "Start Discoverable Passkey Authentication")
+    public ResponseEntity<ApiResponse> startDiscoverableAuthentication(HttpServletRequest request) {
+        try {
+            // Pass null username to indicate a discoverable credential request
+            PublicKeyCredentialRequestOptions options = passkeyService.startAuthentication(null, request.getSession());
             return ResponseEntity.ok(new ApiResponse(true, "Authentication options generated.", options));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));

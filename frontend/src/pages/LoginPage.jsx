@@ -99,7 +99,6 @@ const LoginPage = ({ navigation }) => {
 	const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState('');
-    const [isPasskeyInfoModalOpen, setIsPasskeyInfoModalOpen] = useState(false);
     const [isBackendSwitcherOpen, setIsBackendSwitcherOpen] = useState(false);
 
 	const [preAuthToken, setPreAuthToken] = useState(null);
@@ -135,18 +134,11 @@ const LoginPage = ({ navigation }) => {
 	};
     
     const handlePasskeyLogin = async () => {
-        if (Platform.OS !== 'web' || !navigator.credentials) {
-            setIsPasskeyInfoModalOpen(true);
-            return;
-        }
-        if (!username) {
-            setError('Bitte geben Sie zuerst Ihren Benutzernamen ein.');
-            return;
-        }
         setIsLoading(true);
         setError('');
         try {
-            const startResult = await apiClient.post('/passkeys/authentication/start', { username });
+            // Start with discoverable credentials (no username)
+            const startResult = await apiClient.post('/passkeys/authentication/start/discoverable');
             if (!startResult.success) throw new Error(startResult.message);
             
             const credential = await passkeyService.startAuthentication(startResult.data);
@@ -238,17 +230,6 @@ const LoginPage = ({ navigation }) => {
                     <Text style={styles.backendSwitchLink}>Wechseln</Text>
                 </TouchableOpacity>
             </View>
-            <AdminModal
-                isOpen={isPasskeyInfoModalOpen}
-                onClose={() => setIsPasskeyInfoModalOpen(false)}
-                title="Nicht unterstützt"
-                onSubmit={() => setIsPasskeyInfoModalOpen(false)}
-                submitText="OK"
-            >
-                <Text style={styles.bodyText}>
-                    Passkey-Login ist derzeit nur im Web-Browser verfügbar oder Ihr Gerät unterstützt es nicht.
-                </Text>
-            </AdminModal>
             <AdminModal
                 isOpen={isBackendSwitcherOpen}
                 onClose={() => setIsBackendSwitcherOpen(false)}

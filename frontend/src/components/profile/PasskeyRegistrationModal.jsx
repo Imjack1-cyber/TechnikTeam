@@ -58,14 +58,12 @@ const PasskeyRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
         <Modal isOpen={isOpen} onClose={onClose} title="Neuen Passkey registrieren">
             <View>
                 <Text style={styles.bodyText}>
-                    Registrieren Sie ein neues Gerät (z.B. Ihr Smartphone oder Ihren Computer), um sich passwortlos anmelden zu können.
+                    Registrieren Sie dieses Gerät (z.B. Ihr Smartphone oder Ihren Computer), um sich zukünftig schnell und sicher ohne Passwort anzumelden.
                 </Text>
-                {Platform.OS !== 'web' && (
-                    <Text style={[styles.bodyText, {color: colors.warning, marginTop: spacing.sm}]}>
-                        Hinweis: Diese Funktion ist auf mobilen Apps noch experimentell und erfordert möglicherweise zusätzliche Browser-Apps oder Systemeinstellungen.
-                    </Text>
-                )}
-
+                <Text style={[styles.bodyText, { fontSize: 12, color: colors.textMuted, marginTop: spacing.sm}]}>
+                    Ein Passkey nutzt die biometrischen Daten (Face ID, Fingerabdruck) oder die PIN Ihres Geräts für den Login.
+                </Text>
+                
                 {error && <Text style={styles.errorText}>{error}</Text>}
 
                 <Text style={styles.label}>Name des Geräts</Text>
@@ -83,7 +81,7 @@ const PasskeyRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
                     onPress={handleRegister} 
                     disabled={isLoading || !deviceName.trim()}
                 >
-                    {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Registrieren</Text>}
+                    {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Registrierung starten</Text>}
                 </TouchableOpacity>
             </View>
         </Modal>

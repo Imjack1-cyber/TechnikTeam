@@ -12,7 +12,7 @@ import useApi from '../../hooks/useApi';
 import ConfirmationModal from '../ui/ConfirmationModal';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import PasskeyRegistrationModal from './PasskeyRegistrationModal';
-import { getThemeColors } from '../../styles/theme';
+import { getThemeColors, spacing } from '../../styles/theme';
 
 const Disable2FAModal = ({ isOpen, onClose, onSuccess }) => {
     const theme = useAuthStore(state => state.theme);
@@ -104,6 +104,20 @@ const ProfileSecurity = ({ user, onUpdate }) => {
         }
     };
 
+    const getIconForUserAgent = (userAgent) => {
+        if (!userAgent) return 'question-circle';
+        const ua = userAgent.toLowerCase();
+        if (ua.includes('android')) return 'android';
+        if (ua.includes('iphone') || ua.includes('ipad')) return 'apple';
+        if (ua.includes('windows')) return 'windows';
+        if (ua.includes('macintosh')) return 'apple';
+        if (ua.includes('linux')) return 'linux';
+        if (ua.includes('firefox')) return 'firefox-browser';
+        if (ua.includes('chrome')) return 'chrome';
+        if (ua.includes('safari')) return 'safari';
+        return 'desktop';
+    };
+
     return (
         <>
             <ProfileActiveSessions onUpdate={onUpdate} />
@@ -131,7 +145,7 @@ const ProfileSecurity = ({ user, onUpdate }) => {
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                         <Text style={styles.detailsListLabel}>Passkeys (Passwortloser Login)</Text>
                         <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => setIsPasskeyRegistrationModalOpen(true)}>
-                            <Text style={styles.buttonText}>Gerät registrieren</Text>
+                            <Text style={styles.buttonText}>Passkey hinzufügen</Text>
                         </TouchableOpacity>
                     </View>
                     <Text style={[styles.subtitle, {marginTop: 8, marginBottom: 8}]}>Registrierte Geräte für den passwortlosen Login.</Text>
@@ -142,9 +156,12 @@ const ProfileSecurity = ({ user, onUpdate }) => {
                             keyExtractor={item => item.id.toString()}
                             renderItem={({ item }) => (
                                 <View style={{flexDirection: 'row', alignItems: 'center', paddingVertical: 4, width: '100%'}}>
-                                    <Icon name="key" size={14} style={{marginRight: 8}} />
-                                    <Text style={{flex: 1}}>{item.deviceName}</Text>
-                                    <Text style={{color: colors.textMuted, marginRight: 16}}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+                                    <Icon name={getIconForUserAgent(item.userAgent)} size={16} style={{marginRight: 8, color: colors.textMuted}} />
+                                    <Text style={{flex: 1, color: colors.text}}>{item.deviceName}</Text>
+                                    <View style={{alignItems: 'flex-end', marginRight: 16}}>
+                                        <Text style={{color: colors.textMuted, fontSize: 12}}>Erstellt: {new Date(item.createdAt).toLocaleDateString()}</Text>
+                                        {item.lastUsedAt && <Text style={{color: colors.textMuted, fontSize: 12}}>Zuletzt: {new Date(item.lastUsedAt).toLocaleDateString()}</Text>}
+                                    </View>
                                     <TouchableOpacity onPress={() => setDeletingPasskey(item)}>
                                         <Icon name="trash" size={16} color={colors.danger} />
                                     </TouchableOpacity>
@@ -152,7 +169,7 @@ const ProfileSecurity = ({ user, onUpdate }) => {
                             )}
                         />
                     ) : (
-                        !passkeysLoading && <Text>Keine Passkeys registriert.</Text>
+                        !passkeysLoading && <Text style={{color: colors.text}}>Keine Passkeys registriert.</Text>
                     )}
                 </View>
             </View>

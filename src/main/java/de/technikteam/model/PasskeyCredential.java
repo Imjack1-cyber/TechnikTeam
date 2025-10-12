@@ -8,7 +8,8 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 
 /**
- * Represents a WebAuthn/Passkey credential stored in the `user_passkeys` table.
+ * 
+ * Represents a WebAuthn/Passkey credential stored in the user_passkeys table.
  */
 public class PasskeyCredential {
 	private long id;
@@ -19,6 +20,8 @@ public class PasskeyCredential {
 	private ByteArray publicKeyCose;
 	private long signatureCount;
 	private LocalDateTime createdAt;
+	private LocalDateTime lastUsedAt;
+	private String userAgent;
 
 	public long getId() {
 		return id;
@@ -82,5 +85,21 @@ public class PasskeyCredential {
 
 	public void setCreatedAt(LocalDateTime createdAt) {
 		this.createdAt = createdAt;
+	}
+
+	public LocalDateTime getLastUsedAt() {
+		return lastUsedAt;
+	}
+
+	public void setLastUsedAt(LocalDateTime lastUsedAt) {
+		this.lastUsedAt = lastUsedAt;
+	}
+
+	public String getUserAgent() {
+		return userAgent;
+	}
+
+	public void setUserAgent(String userAgent) {
+		this.userAgent = userAgent;
 	}
 }

@@ -1,14 +1,30 @@
 package de.technikteam.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.yubico.webauthn.*;
-import com.yubico.webauthn.data.*;
-import com.yubico.webauthn.exception.RegistrationFailedException;
+import com.yubico.webauthn.AssertionRequest;
+import com.yubico.webauthn.AssertionResult;
+import com.yubico.webauthn.FinishAssertionOptions;
+import com.yubico.webauthn.FinishRegistrationOptions;
+import com.yubico.webauthn.RegistrationResult;
+import com.yubico.webauthn.RelyingParty;
+import com.yubico.webauthn.StartAssertionOptions;
+import com.yubico.webauthn.StartRegistrationOptions;
+import com.yubico.webauthn.data.AuthenticatorAssertionResponse;
+import com.yubico.webauthn.data.AuthenticatorAttestationResponse;
+import com.yubico.webauthn.data.ByteArray;
+import com.yubico.webauthn.data.ClientAssertionExtensionOutputs;
+import com.yubico.webauthn.data.ClientRegistrationExtensionOutputs;
+import com.yubico.webauthn.data.PublicKeyCredential;
+import com.yubico.webauthn.data.PublicKeyCredentialCreationOptions;
+import com.yubico.webauthn.data.PublicKeyCredentialRequestOptions;
+import com.yubico.webauthn.data.UserIdentity;
 import com.yubico.webauthn.exception.AssertionFailedException;
+import com.yubico.webauthn.exception.RegistrationFailedException;
 import de.technikteam.dao.PasskeyDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.PasskeyCredential;
 import de.technikteam.model.User;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -50,7 +66,7 @@ public class PasskeyService {
     }
 
     @Transactional
-    public void finishRegistration(PublicKeyCredential<AuthenticatorAttestationResponse, ClientRegistrationExtensionOutputs> credential, HttpSession session, User user, String deviceName) throws RegistrationFailedException, JsonProcessingException {
+    public void finishRegistration(PublicKeyCredential<AuthenticatorAttestationResponse, ClientRegistrationExtensionOutputs> credential, HttpSession session, User user, String deviceName, HttpServletRequest httpRequest) throws RegistrationFailedException, JsonProcessingException {
         String requestJson = (String) session.getAttribute(REGISTRATION_REQUEST_KEY);
         if (requestJson == null) {
             throw new IllegalStateException("No registration in progress.");
@@ -69,15 +85,17 @@ public class PasskeyService {
         newCredential.setUserHandle(requestOptions.getUser().getId());
         newCredential.setPublicKeyCose(result.getPublicKeyCose());
         newCredential.setSignatureCount(result.getSignatureCount());
+        newCredential.setUserAgent(httpRequest.getHeader("User-Agent"));
         passkeyDAO.saveCredential(newCredential);
 
         session.removeAttribute(REGISTRATION_REQUEST_KEY);
     }
 
     public PublicKeyCredentialRequestOptions startAuthentication(String username, HttpSession session) throws JsonProcessingException {
-        AssertionRequest assertionRequest = relyingParty.startAssertion(StartAssertionOptions.builder()
-                .username(Optional.of(username))
-                .build());
+        StartAssertionOptions options = StartAssertionOptions.builder()
+                .username(Optional.ofNullable(username).filter(s -> !s.isBlank()))
+                .build();
+        AssertionRequest assertionRequest = relyingParty.startAssertion(options);
         session.setAttribute(AUTHENTICATION_REQUEST_KEY, assertionRequest.toJson());
         return assertionRequest.getPublicKeyCredentialRequestOptions();
     }
@@ -107,6 +125,7 @@ public class PasskeyService {
 
         if (result.isSuccess()) {
             passkeyDAO.updateSignatureCount(result.getCredential().getCredentialId(), result.getSignatureCount());
+            passkeyDAO.updateLastUsedTimestamp(result.getCredential().getCredentialId());
             Optional<String> username = passkeyDAO.getUsernameForUserHandle(result.getCredential().getUserHandle());
             if (username.isPresent()) {
                 return userDAO.getUserByUsername(username.get());
