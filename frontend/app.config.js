@@ -1,57 +1,46 @@
-// This dynamic configuration function ensures that native-only plugins
-// are not included when the config is evaluated in a non-native context.
-// It correctly references the '@bittingz/expo-widgets' package.
+// app.config.js
+import withExpoWidgets from './node_modules/@bittingz/expo-widgets/plugin/build/index.js';
 
-// Centralized widget configuration
 const widgetConfig = [
   {
     name: "UpcomingEventWidget",
     label: "Nächster Einsatz",
     description: "Zeigt deinen nächsten zugewiesenen Event an.",
-    updateInterval: 1800000, // 30 minutes
-    component: "./src/widgets/UpcomingEventWidget.jsx", // <-- ADDED: Path to the component
+    updateInterval: 1800000,
+    component: "./src/widgets/UpcomingEventWidget.jsx",
   },
   {
     name: "OpenTasksWidget",
     label: "Offene Aufgaben",
     description: "Zeigt deine offenen Aufgaben aus laufenden Events.",
-    updateInterval: 1800000, // 30 minutes
-    component: "./src/widgets/OpenTasksWidget.jsx", // <-- ADDED: Path to the component
+    updateInterval: 1800000,
+    component: "./src/widgets/OpenTasksWidget.jsx",
   },
   {
     name: "AdminActionsWidget",
     label: "Admin Schnellzugriff",
     description: "Schnellzugriff auf Admin-Funktionen.",
-    updateInterval: 3600000, // 1 hour
-    component: "./src/widgets/AdminActionsWidget.jsx", // <-- ADDED: Path to the component
+    updateInterval: 3600000,
+    component: "./src/widgets/AdminActionsWidget.jsx",
   },
   {
     name: "AnnouncementsWidget",
     label: "Anschlagbrett",
     description: "Zeigt die neueste Mitteilung vom Anschlagbrett.",
-    updateInterval: 1800000, // 30 minutes
-    component: "./src/widgets/AnnouncementsWidget.jsx", // <-- ADDED: Path to the component
-  }
+    updateInterval: 1800000,
+    component: "./src/widgets/AnnouncementsWidget.jsx",
+  },
 ];
 
-module.exports = ({ config }) => {
-  // Base plugins applicable to all platforms
-  const plugins = [
-    [
-      "expo-updates",
-      {
-        "username": "Technik-Team",
-      },
-    ],
-  ];
+export default ({ config }) => {
+  // Apply the widgets plugin first
+  config = withExpoWidgets(config, { widgets: widgetConfig });
 
-  // Conditionally add the widgets plugin only for native platforms.
-  // The 'EXPO_PLATFORM' env var is set by Expo CLI during the build process.
-  if (process.env.EXPO_PLATFORM !== 'web') {
-    plugins.push(["@bittingz/expo-widgets", { widgets: widgetConfig }]);
-  }
+  // Base plugins
+  config.plugins = config.plugins || [];
+  config.plugins.push(["expo-updates", { username: "Technik-Team" }]);
 
-  // Overwrite the static config with our dynamic values
+  // General app config
   config.name = "TechnikTeam";
   config.slug = "technikteam";
   config.scheme = "technikteam";
@@ -65,6 +54,8 @@ module.exports = ({ config }) => {
     backgroundColor: "#ffffff",
   };
   config.assetBundlePatterns = ["**/*"];
+
+  // Android config
   config.android = {
     ...(config.android || {}),
     package: "de.technikteam",
@@ -75,36 +66,33 @@ module.exports = ({ config }) => {
     },
     notification: {
       icon: "./assets/notification-icon.png",
-      color: "#ffffff"
+      color: "#ffffff",
     },
     intentFilters: [
-        {
-          action: "VIEW",
-          autoVerify: true,
-          data: [
-            {
-              scheme: "https",
-              host: "technikteam.qs0.de",
-            },
-            {
-              scheme: "https",
-              host: "technikteamdev.qs0.de",
-            },
-          ],
-          category: ["BROWSABLE", "DEFAULT"],
-        },
-      ],
+      {
+        action: "VIEW",
+        autoVerify: true,
+        data: [
+          { scheme: "https", host: "technikteam.qs0.de" },
+          { scheme: "https", host: "technikteamdev.qs0.de" },
+        ],
+        category: ["BROWSABLE", "DEFAULT"],
+      },
+    ],
   };
+
+  // iOS config
   config.ios = {
     ...(config.ios || {}),
     bundleIdentifier: "de.technikteam",
-    googleServicesFile:
-      process.env.GOOGLE_SERVICES_INFO_PLIST ?? "./GoogleService-Info.plist",
+    googleServicesFile: process.env.GOOGLE_SERVICES_INFO_PLIST ?? "./GoogleService-Info.plist",
     associatedDomains: [
-        "applinks:technikteam.qs0.de",
-        "applinks:technikteamdev.qs0.de",
+      "applinks:technikteam.qs0.de",
+      "applinks:technikteamdev.qs0.de",
     ],
   };
+
+  // Web config
   config.web = {
     ...(config.web || {}),
     favicon: "./assets/favicon.png",
@@ -114,15 +102,16 @@ module.exports = ({ config }) => {
         "BAv_VgqykjTTPK53NZHllECPvkkMkdJFos3buGrlZOGD_T1WY6GebGRe-N2FFmDlOybMgpppTJjuaiXBGLfQEJU",
     },
   };
-  config.plugins = plugins;
+
+  // EAS/extra config
   config.extra = {
     ...(config.extra || {}),
     eas: {
       projectId: "f362ae37-0995-4578-b240-654bb4a07a72",
     },
   };
+
   config.owner = "technikteamnobs";
 
-  // Return the modified config object
   return config;
 };

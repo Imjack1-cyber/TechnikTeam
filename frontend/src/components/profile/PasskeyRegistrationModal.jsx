@@ -19,7 +19,8 @@ const PasskeyRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
     const [error, setError] = useState('');
 
     const handleRegister = async () => {
-        if (!deviceName.trim()) {
+        const trimmed = (deviceName || '').trim();
+        if (!trimmed) {
             setError('Bitte geben Sie einen Namen für das Gerät ein.');
             return;
         }
@@ -37,7 +38,7 @@ const PasskeyRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
             // Send the resulting credential to the backend to finish registration
             const finishResult = await apiClient.post('/passkeys/registration/finish', { 
                 credential: credential, 
-                deviceName: deviceName.trim() 
+                deviceName: trimmed 
             });
 
             if (finishResult.success) {
@@ -70,16 +71,24 @@ const PasskeyRegistrationModal = ({ isOpen, onClose, onSuccess }) => {
                 <TextInput
                     style={styles.input}
                     value={deviceName}
-                    onChangeText={setDeviceName}
+                    // Use an explicit wrapper so we always set a string value (prevents unexpected event objects)
+                    onChangeText={(text) => {
+                        try {
+                            setDeviceName(text == null ? '' : String(text));
+                        } catch (e) {
+                            // Fallback to empty string on any unexpected input
+                            setDeviceName('');
+                        }
+                    }}
                     placeholder="z.B. Mein iPhone, Arbeitslaptop"
                     editable={!isLoading}
-                    placeholderTextColor={colors.textMuted}
+                    placeholderTextColor={colors.textMuted || '#999'}
                 />
 
                 <TouchableOpacity 
                     style={[styles.button, styles.primaryButton, { marginTop: spacing.md }]} 
                     onPress={handleRegister} 
-                    disabled={isLoading || !deviceName.trim()}
+                    disabled={isLoading || !(deviceName && deviceName.trim())}
                 >
                     {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Registrierung starten</Text>}
                 </TouchableOpacity>

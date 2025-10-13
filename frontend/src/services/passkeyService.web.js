@@ -22,36 +22,32 @@ function base64UrlToBuffer(base64Url) {
     return buffer.buffer;
 }
 
+// --- Shared sanitizer for credential descriptors (used in both registration & auth)
+function sanitizeCredentialDescriptors(creds) {
+    if (!Array.isArray(creds)) return undefined;
 
-// Recursively convert PublicKeyCredential and its nested ArrayBuffers to a JSON-compatible object
-// with Base64URL-encoded binary data.
-function publicKeyCredentialToJson(cred) {
-    if (!cred) return cred;
-
-    if (cred instanceof Array) {
-        return cred.map(publicKeyCredentialToJson);
-    }
-
-    if (cred instanceof ArrayBuffer) {
-        return bufferToBase64Url(cred);
-    }
-
-    if (cred instanceof Object) {
-        const obj = {};
-        for (const key in cred) {
-            if (Object.prototype.hasOwnProperty.call(cred, key)) {
-                obj[key] = publicKeyCredentialToJson(cred[key]);
+    return creds
+        .map(cred => {
+            if (!cred || typeof cred.id !== 'string') return null;
+            const clean = {
+                type: cred.type || 'public-key',
+                id: base64UrlToBuffer(cred.id),
+            };
+            // Only include transports if it's a valid non-empty array of strings
+            if (Array.isArray(cred.transports) && cred.transports.every(t => typeof t === 'string')) {
+                clean.transports = cred.transports;
             }
-        }
-        return obj;
-    }
-
-    return cred;
+            return clean;
+        })
+        .filter(Boolean);
 }
 
-
+// --- WebAuthn Registration
 const startRegistration = async (options) => {
-    // The server sends JSON with Base64URL strings. We need to convert them to ArrayBuffers for the browser API.
+    if (!options || !options.challenge) {
+        throw new Error("Missing required WebAuthn registration options from server.");
+    }
+
     const publicKey = {
         ...options,
         challenge: base64UrlToBuffer(options.challenge),
@@ -59,19 +55,14 @@ const startRegistration = async (options) => {
             ...options.user,
             id: base64UrlToBuffer(options.user.id),
         },
+        excludeCredentials: sanitizeCredentialDescriptors(options.excludeCredentials),
     };
 
-    if (publicKey.excludeCredentials) {
-        publicKey.excludeCredentials = publicKey.excludeCredentials.map(cred => ({
-            ...cred,
-            id: base64UrlToBuffer(cred.id),
-        }));
-    }
+    console.log("[Passkey] Starting registration with sanitized options:", publicKey);
 
     const credential = await navigator.credentials.create({ publicKey });
 
-    // Manually construct a clean JSON object for the backend, converting all ArrayBuffers to Base64URL.
-    // This avoids sending extra fields like `publicKeyAlgorithm` that the server parser rejects.
+    // Convert to JSON-friendly format for backend
     const jsonFriendlyCredential = {
         id: credential.id,
         rawId: bufferToBase64Url(credential.rawId),
@@ -86,35 +77,22 @@ const startRegistration = async (options) => {
     return jsonFriendlyCredential;
 };
 
-
+// --- WebAuthn Authentication
 const startAuthentication = async (options) => {
-    // Convert Base64URL strings in options back to ArrayBuffers for navigator.credentials.get
+    if (!options || !options.challenge) {
+        throw new Error("Missing required WebAuthn authentication options from server.");
+    }
+
     const publicKey = {
         ...options,
         challenge: base64UrlToBuffer(options.challenge),
+        allowCredentials: sanitizeCredentialDescriptors(options.allowCredentials),
     };
 
-    if (Array.isArray(publicKey.allowCredentials)) {
-        publicKey.allowCredentials = publicKey.allowCredentials.map(cred => {
-            const newCred = {
-                type: cred.type,
-                id: base64UrlToBuffer(cred.id),
-            };
-            if (Array.isArray(cred.transports)) {
-                newCred.transports = cred.transports;
-            }
-            return newCred;
-        });
-    } else {
-        // If allowCredentials is not an array (e.g., null or undefined from server),
-        // ensure it's not passed to the browser API to avoid errors.
-        delete publicKey.allowCredentials;
-    }
-
+    console.log("[Passkey] Starting authentication with sanitized options:", publicKey);
 
     const credential = await navigator.credentials.get({ publicKey });
 
-    // Manually construct a clean JSON object for the backend.
     const jsonFriendlyCredential = {
         id: credential.id,
         rawId: bufferToBase64Url(credential.rawId),
@@ -123,7 +101,9 @@ const startAuthentication = async (options) => {
             authenticatorData: bufferToBase64Url(credential.response.authenticatorData),
             clientDataJSON: bufferToBase64Url(credential.response.clientDataJSON),
             signature: bufferToBase64Url(credential.response.signature),
-            userHandle: credential.response.userHandle ? bufferToBase64Url(credential.response.userHandle) : null,
+            userHandle: credential.response.userHandle
+                ? bufferToBase64Url(credential.response.userHandle)
+                : null,
         },
         clientExtensionResults: credential.getClientExtensionResults(),
     };
@@ -131,23 +111,30 @@ const startAuthentication = async (options) => {
     return jsonFriendlyCredential;
 };
 
+// --- Friendly error message generator
 const getFriendlyPasskeyErrorMessage = (err) => {
     console.error("Passkey Error:", err);
+
     if (err.name === 'NotAllowedError') {
         return 'Der Vorgang wurde vom Benutzer abgebrochen oder es wurden keine passenden Passkeys auf diesem Gerät gefunden.';
     }
     if (err.name === 'InvalidStateError') {
-        return 'Dieser Passkey (z.B. von diesem YubiKey) ist bereits für Ihr Konto registriert.';
+        return 'Dieser Passkey ist bereits registriert oder wird aktuell verwendet.';
     }
     if (err.name === 'NotSupportedError') {
         return 'Ihr Browser oder Gerät unterstützt Passkeys nicht.';
     }
-     if (err.name === 'SecurityError') {
+    if (err.name === 'SecurityError') {
         return 'Sicherheitsfehler. Passkeys können nur über eine sichere HTTPS-Verbindung verwendet werden.';
     }
+    if (err.message?.includes('transports')) {
+        return 'Ungültige Passkey-Daten vom Server empfangen (transports-Feld fehlerhaft). Bitte erneut versuchen.';
+    }
+
     return err.message || 'Ein unbekannter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.';
 };
 
+// --- Consistent CommonJS export
 module.exports.passkeyService = {
     startRegistration,
     startAuthentication,
