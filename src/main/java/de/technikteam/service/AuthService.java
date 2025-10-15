@@ -83,6 +83,25 @@ public class AuthService {
 				.issuedAt(Date.from(now)).expiration(Date.from(expiry)).signWith(secretKey).compact();
 	}
 
+	public String generateSsoToken(User user, String clientType) {
+		Instant now = Instant.now();
+		Instant expiry = now.plus(10, ChronoUnit.MINUTES); // 10 minute lifetime
+
+		String jti = UUID.randomUUID().toString();
+		logger.info("Generating SSO token for user '{}' (ID: {}) with JTI: {}", user.getUsername(), user.getId(), jti);
+
+		return Jwts.builder()
+				.issuer(JWT_ISSUER)
+				.subject(String.valueOf(user.getId()))
+				.id(jti) // JTI for one-time use tracking
+				.claim("type", "SSO") // Special claim to identify this token type
+                .claim("clientType", clientType) // NEW: Add client type claim
+				.issuedAt(Date.from(now))
+				.expiration(Date.from(expiry))
+				.signWith(secretKey)
+				.compact();
+	}
+
 	public Claims parseTokenClaims(String token) {
 		return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
 	}
@@ -103,9 +122,9 @@ public class AuthService {
 		try {
 			Claims claims = parseTokenClaims(token);
 
-			// Pre-auth tokens are not valid for general API access
-			if ("PRE_AUTH_2FA".equals(claims.get("auth_level", String.class))) {
-				logger.warn("Attempted to use a PRE_AUTH_2FA token for a general API request. Denying.");
+			// Pre-auth and SSO tokens are not valid for general API access
+			if ("PRE_AUTH_2FA".equals(claims.get("auth_level", String.class)) || "SSO".equals(claims.get("type", String.class))) {
+				logger.warn("Attempted to use a special-purpose token for a general API request. Denying.");
 				return null;
 			}
 

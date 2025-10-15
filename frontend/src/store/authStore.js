@@ -38,6 +38,7 @@ export const useAuthStore = create(
 			maintenanceStatus: { mode: 'OFF', message: '' },
 			previousLogin: null,
             postLoginRedirectPath: null,
+            ssoError: null,
             setPostLoginRedirectPath: (path) => set({ postLoginRedirectPath: path }),
             completeLogin: async (loginData) => {
                 const { session, token } = loginData;
@@ -73,6 +74,7 @@ export const useAuthStore = create(
 					layout: userLayout,
                     maintenanceStatus: maintenanceStatus || { mode: 'OFF', message: '' },
                     previousLogin: previousLogin,
+                    ssoError: null, // Clear any SSO error on successful login
                 });
 
                 const redirectPath = get().postLoginRedirectPath;
@@ -87,6 +89,7 @@ export const useAuthStore = create(
             },
 			login: async (username, password) => {
 				try {
+                    set({ ssoError: null }); // Clear SSO error on manual login attempt
                     const clientType = Platform.OS === 'web' ? 'web' : 'native';
 					const response = await apiClient.post('/auth/login', { username, password, clientType });
 					if (response.success && response.data) {
@@ -104,6 +107,21 @@ export const useAuthStore = create(
 					throw error;
 				}
 			},
+            ssoLogin: async (ssoToken) => {
+                try {
+                    const response = await apiClient.post('/auth/sso-login', { token: ssoToken });
+                    if (response.success && response.data) {
+                        await get().completeLogin(response.data);
+                        return { status: 'SUCCESS' };
+                    }
+                    throw new Error(response.message || 'SSO-Anmeldung fehlgeschlagen');
+                } catch (error) {
+                    console.error('SSO Login failed:', error);
+                    set({ ssoError: error.message || 'Ein unbekannter SSO-Fehler ist aufgetreten.' });
+                    get().logout(); // Ensure we are fully logged out on failure
+                    throw error;
+                }
+            },
             completePasskeyLogin: (loginData) => {
                 return get().completeLogin(loginData);
             },
@@ -115,8 +133,8 @@ export const useAuthStore = create(
 				} finally {
 					await removeToken();
 					apiClient.setAuthToken(null);
-                    // Preserve theme and backendMode on logout
-					set(state => ({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, layout: defaultLayout, maintenanceStatus: { mode: 'OFF', message: '' }, previousLogin: null, theme: state.theme, backendMode: state.backendMode, postLoginRedirectPath: null }));
+                    // Preserve theme and backendMode on logout, clear ssoError
+					set(state => ({ user: null, navigationItems: [], isAuthenticated: false, isAdmin: false, layout: defaultLayout, maintenanceStatus: { mode: 'OFF', message: '' }, previousLogin: null, theme: state.theme, backendMode: state.backendMode, postLoginRedirectPath: null, ssoError: null }));
 				}
 			},
 			fetchUserSession: async () => {

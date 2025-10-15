@@ -103,7 +103,7 @@ const LoginPage = ({ navigation }) => {
 
 	const [preAuthToken, setPreAuthToken] = useState(null);
 
-	const { login, backendMode, setBackendMode, completePasskeyLogin, postLoginRedirectPath } = useAuthStore();
+	const { login, backendMode, setBackendMode, completePasskeyLogin, postLoginRedirectPath, ssoError } = useAuthStore();
 	const { addToast } = useToast();
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
@@ -187,7 +187,7 @@ const LoginPage = ({ navigation }) => {
                 )}
 				<Icon name="bolt" size={40} color={colors.primary} style={{ alignSelf: 'center', marginBottom: 8 }} />
 				<Text style={styles.title}>TechnikTeam</Text>
-				{error && <Text style={styles.errorText}>{error}</Text>}
+				{(error || ssoError) && <Text style={styles.errorText}>{error || ssoError}</Text>}
 				<View>
 					<Text style={styles.label}>Benutzername</Text>
 					<TextInput

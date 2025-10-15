@@ -1,57 +1,61 @@
 import { useEffect } from 'react';
-import { AppState, Platform } from 'react-native';
+import { AppState, Platform, NativeModules } from 'react-native';
 import apiClient from '../services/apiClient';
 import { useWidgetStore } from '../store/widgetStore';
 import { useAuthStore } from '../store/authStore';
 
-// Define a dummy update function for web to prevent crashes.
-let updateAllWidgets = async () => {};
-
-// On native platforms, dynamically import the actual update function.
-if (Platform.OS !== 'web') {
-    try {
-        // This require() is evaluated at runtime and only on native.
-        updateAllWidgets = require('@bittingz/expo-widgets').updateAllWidgets;
-    } catch (e) {
-        console.error("Could not load '@bittingz/expo-widgets'. Widgets will not function.", e);
-    }
-}
+// Get a reference to our custom native module
+const { SharedDataModule } = NativeModules;
 
 const useWidgetDataRefresher = () => {
     const setWidgetData = useWidgetStore(state => state.setWidgetData);
     const isAuthenticated = useAuthStore(state => state.isAuthenticated);
 
     const refreshData = async () => {
-        // The function is now safe to call on any platform, but we still
-        // only want to perform the logic on native.
         if (Platform.OS === 'web' || !isAuthenticated) {
             return;
         }
 
-        console.log('[useWidgetDataRefresher] App became active. Refreshing widget data...');
+        console.log('[WidgetRefresher] App state is active. Starting widget data refresh...');
 
         try {
             const result = await apiClient.get('/public/dashboard/widget-data');
-            if (result.success) {
-                console.log('[useWidgetDataRefresher] Fetched data:', result.data);
-                // Update the persisted Zustand store
-                setWidgetData({
+            if (result.success && result.data) {
+                const dataToStore = {
                     nextEvent: result.data.nextEvent,
                     openTasks: result.data.openTasks,
                     latestAnnouncement: result.data.latestAnnouncement,
                     error: null,
-                });
-                // Trigger a native widget update
-                await updateAllWidgets();
-                console.log('[useWidgetDataRefresher] Successfully updated all widgets.');
+                    lastUpdated: new Date().toISOString(),
+                };
+                
+                // Persist data in the Zustand store (for the app)
+                setWidgetData(dataToStore);
+                
+                // Send the data to the native side via our custom module
+                if (SharedDataModule) {
+                    const jsonData = JSON.stringify(dataToStore);
+                    SharedDataModule.setData(jsonData);
+                    console.log('[WidgetRefresher] Successfully sent data to native SharedPreferences.');
+                }
             } else {
-                throw new Error(result.message);
+                throw new Error(result.message || "API call was not successful or returned no data.");
             }
         } catch (error) {
-            console.error('[useWidgetDataRefresher] Failed to refresh widget data:', error);
-            // Also persist the error state so widgets can display it
-            setWidgetData({ error: error.message });
-            await updateAllWidgets();
+            console.error('[WidgetRefresher] Failed to refresh widget data:', error);
+            const errorData = { 
+                nextEvent: null, openTasks: [], latestAnnouncement: null,
+                error: error.message,
+                lastUpdated: new Date().toISOString(),
+            };
+            
+            // Persist error state
+            setWidgetData(errorData);
+
+            // Also send error state to native side so widgets can display an error
+            if (SharedDataModule) {
+                SharedDataModule.setData(JSON.stringify(errorData));
+            }
         }
     };
 

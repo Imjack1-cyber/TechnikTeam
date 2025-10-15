@@ -1,79 +1,67 @@
-// Native implementation of the passkey service using expo-passkeys
-const Passkeys = require('expo-passkeys');
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+import apiClient from './apiClient';
+import { useAuthStore } from '../store/authStore';
 
-/**
- * Ensures that allowCredentials and excludeCredentials arrays are valid
- * and that transports fields are arrays or removed.
- */
-const sanitizeOptions = (options) => {
-  const sanitized = { ...options };
-
-  const sanitizeArray = (arr) => {
-    if (!arr || !Array.isArray(arr)) return undefined;
-    return arr.map(item => {
-      const newItem = { ...item };
-      if (newItem.transports && !Array.isArray(newItem.transports)) {
-        delete newItem.transports;
-      }
-      return newItem;
-    });
-  };
-
-  sanitized.allowCredentials = sanitizeArray(sanitized.allowCredentials);
-  sanitized.excludeCredentials = sanitizeArray(sanitized.excludeCredentials);
-
-  return sanitized;
+// Get the correct base URL for the web version
+const getWebUrl = () => {
+    const mode = useAuthStore.getState().backendMode;
+    const host = mode === 'dev' ? 'technikteamdev.qs0.de' : 'technikteam.qs0.de';
+    return `https://${host}/TechnikTeam`;
 };
 
 /**
- * Start registration on native devices
- * @param {object} options PublicKeyCredentialCreationOptions from server
+ * Start passkey registration by opening the web profile page in an in-app browser.
+ * An SSO token is generated to automatically log the user in on the web.
  */
-const startRegistration = async (options) => {
-  if (!Passkeys || typeof Passkeys.create !== 'function') {
-    throw new Error('expo-passkeys is not available or create() is undefined');
-  }
-
-  const sanitizedOptions = sanitizeOptions(options);
-  const credential = await Passkeys.create(sanitizedOptions);
-  return credential;
+const startRegistration = async () => {
+    try {
+        // Request a single-use SSO token from the backend
+        const ssoResult = await apiClient.post('/public/profile/sso-token');
+        if (!ssoResult.success) {
+            throw new Error('Could not generate a temporary login token.');
+        }
+        
+        // Construct the URL to the web profile page with the token and an action
+        const webUrl = getWebUrl();
+        const url = `${webUrl}/profil?action=register-passkey&sso_token=${ssoResult.data.token}`;
+        
+        // Open the in-app browser
+        await WebBrowser.openBrowserAsync(url);
+    } catch (err) {
+        // We throw the error so the UI can catch it and display a message
+        throw err;
+    }
 };
 
 /**
- * Start authentication on native devices
- * @param {object} options PublicKeyCredentialRequestOptions from server
+ * Start passkey authentication by opening the web login page.
+ * After successful login, the web app will redirect back to the native app
+ * via a deep link, carrying a new session token.
  */
-const startAuthentication = async (options) => {
-  if (!Passkeys || typeof Passkeys.get !== 'function') {
-    throw new Error('expo-passkeys is not available or get() is undefined');
-  }
+const startAuthentication = async () => {
+    try {
+        const webUrl = getWebUrl();
+        // The redirect URL is the app's custom scheme
+        const redirectUrl = Linking.createURL('sso');
+        // The clientType=native tells the backend to issue a long-lived token
+        const url = `${webUrl}/login?clientType=native&redirect_uri=${encodeURIComponent(redirectUrl)}`;
 
-  const sanitizedOptions = sanitizeOptions(options);
-  const credential = await Passkeys.get(sanitizedOptions);
-  return credential;
+        // Open the in-app browser to the login page
+        await WebBrowser.openBrowserAsync(url);
+    } catch (err) {
+        throw err;
+    }
 };
 
-/**
- * Returns user-friendly error messages for native passkeys
- */
 const getFriendlyPasskeyErrorMessage = (err) => {
   if (!err) return 'Ein unbekannter Fehler ist aufgetreten.';
-  console.error('Native Passkey Error:', err);
-
-  if (err.code === 'ERR_PASSKEYS_CANCELLED') {
-    return 'Der Vorgang wurde vom Benutzer abgebrochen.';
-  }
-  if (err.code === 'ERR_PASSKEYS_NOT_SUPPORTED') {
-    return 'Ihr Gerät oder Betriebssystem unterstützt Passkeys nicht.';
-  }
-  if (err.code === 'ERR_PASSKEYS_UNKNOWN') {
-    return 'Ein unbekannter nativer Fehler ist aufgetreten. Bitte versuchen Sie es erneut.';
-  }
+  console.error('Passkey Web Flow Error:', err);
   return err.message || 'Ein unbekannter Fehler ist aufgetreten.';
 };
 
-// Export using CommonJS to match the dispatcher
-module.exports.passkeyService = {
+// Export the new web-based native implementation
+export const passkeyService = {
   startRegistration,
   startAuthentication,
   getFriendlyPasskeyErrorMessage,

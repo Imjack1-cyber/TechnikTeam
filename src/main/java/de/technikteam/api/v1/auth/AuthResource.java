@@ -161,6 +161,58 @@ public class AuthResource {
 		}
 	}
 
+	@PostMapping("/sso-login")
+	@Operation(summary = "Log in using a single-use SSO token")
+	public ResponseEntity<ApiResponse> ssoLogin(@org.springframework.web.bind.annotation.RequestBody Map<String, String> payload, HttpServletResponse response) {
+		String ssoToken = payload.get("token");
+		logger.info("SSO login attempt received with a token.");
+		if (ssoToken == null || ssoToken.isBlank()) {
+			logger.warn("SSO login failed: Token was missing.");
+			return ResponseEntity.badRequest().body(new ApiResponse(false, "SSO token is required.", null));
+		}
+
+		try {
+			Claims claims = authService.parseTokenClaims(ssoToken);
+			logger.debug("SSO token parsed successfully for JTI: {}", claims.getId());
+			if (!"SSO".equals(claims.get("type", String.class))) {
+				logger.warn("SSO login failed: Invalid token type for JTI: {}", claims.getId());
+				return new ResponseEntity<>(new ApiResponse(false, "Invalid token type.", null), HttpStatus.FORBIDDEN);
+			}
+
+			if (authService.isTokenRevoked(claims.getId())) {
+				logger.warn("SSO login failed: Token has already been used. JTI: {}", claims.getId());
+				return new ResponseEntity<>(new ApiResponse(false, "This SSO token has already been used.", null), HttpStatus.FORBIDDEN);
+			}
+
+			int userId = Integer.parseInt(claims.getSubject());
+			User user = userDAO.getUserById(userId);
+
+			if (user == null) {
+				logger.warn("SSO login failed: User ID {} from token not found.", userId);
+				return new ResponseEntity<>(new ApiResponse(false, "User not found.", null), HttpStatus.NOT_FOUND);
+			}
+			
+			// Mark token as used immediately
+			authService.revokeToken(claims.getId());
+			logger.info("SSO token with JTI {} has been revoked after use.", claims.getId());
+
+			// Proceed with full login, but only for web since this is a web redirect
+			String token = authService.generateToken(user, 8 * 60 * 60); // 8-hour web token
+			authService.addJwtCookie(user, response);
+			logger.info("SSO login successful for user '{}'. Session cookie set.", user.getUsername());
+
+			List<NavigationItem> navigationItems = NavigationRegistry.getNavigationItemsForUser(user);
+			Map<String, Object> sessionData = Map.of("user", user, "navigation", navigationItems, "maintenanceStatus", settingsService.getMaintenanceStatus());
+			Map<String, Object> responseData = Map.of("session", sessionData, "token", token);
+			
+			return ResponseEntity.ok(new ApiResponse(true, "SSO login successful.", responseData));
+
+		} catch (Exception e) {
+			logger.error("SSO login failed with an exception.", e);
+			return new ResponseEntity<>(new ApiResponse(false, "Invalid or expired SSO token.", null), HttpStatus.UNAUTHORIZED);
+		}
+	}
+
 	@PostMapping("/verify-2fa")
 	@Operation(summary = "Verify 2FA Token", description = "Verifies a TOTP or backup code to complete a login attempt from an unknown location.")
 	public ResponseEntity<ApiResponse> verifyTwoFactor(@Valid @org.springframework.web.bind.annotation.RequestBody TwoFactorVerificationRequest verificationRequest,

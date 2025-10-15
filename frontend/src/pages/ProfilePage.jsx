@@ -1,6 +1,6 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useCallback, useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import useApi from '../hooks/useApi';
 import apiClient from '../services/apiClient';
 import ProfileDetails from '../components/profile/ProfileDetails';
@@ -18,6 +18,7 @@ import ScrollableContent from '../components/ui/ScrollableContent';
 
 const ProfilePage = () => {
     const navigation = useNavigation();
+	const route = useRoute();
 	const { addToast } = useToast();
 	const { fetchUserSession } = useAuthStore(state => ({
         fetchUserSession: state.fetchUserSession
@@ -31,6 +32,33 @@ const ProfilePage = () => {
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
     const [activeTab, setActiveTab] = useState('overview');
+    const [initialAction, setInitialAction] = useState(null);
+
+    useEffect(() => {
+        let action = null;
+        if (Platform.OS === 'web') {
+            const params = new URLSearchParams(window.location.search);
+            action = params.get('action');
+            if (action) {
+                // Clean URL after consuming action
+                const url = new URL(window.location);
+                url.searchParams.delete('action');
+                // Don't delete sso_token here, App.js already did it.
+                window.history.replaceState({}, document.title, url.pathname + url.search);
+            }
+        } else if (route.params?.action) {
+            action = route.params.action;
+            navigation.setParams({ action: undefined });
+        }
+        
+        if (action) {
+            console.log(`[ProfilePage] Detected action: ${action}`);
+            setInitialAction(action);
+            if (action === 'register-passkey') {
+                setActiveTab('security'); // Switch to security tab automatically
+            }
+        }
+    }, [route.params?.action, navigation]);
 
 	const handleUpdate = useCallback(() => {
 		addToast('Profildaten werden aktualisiert...', 'info');
@@ -61,7 +89,11 @@ const ProfilePage = () => {
             case 'security':
                 return (
                     <>
-                        <ProfileSecurity user={user} onUpdate={handleUpdate} />
+                        <ProfileSecurity 
+                            user={user} 
+                            onUpdate={handleUpdate} 
+                            initialAction={initialAction}
+                        />
                         <ProfileLoginHistory loginHistory={knownIps || []} onUpdate={handleUpdate} />
                     </>
                 );

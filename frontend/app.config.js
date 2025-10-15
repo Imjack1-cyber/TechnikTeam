@@ -1,44 +1,10 @@
-// app.config.js
-import withExpoWidgets from './node_modules/@bittingz/expo-widgets/plugin/build/index.js';
-
-const widgetConfig = [
-  {
-    name: "UpcomingEventWidget",
-    label: "Nächster Einsatz",
-    description: "Zeigt deinen nächsten zugewiesenen Event an.",
-    updateInterval: 1800000,
-    component: "./src/widgets/UpcomingEventWidget.jsx",
-  },
-  {
-    name: "OpenTasksWidget",
-    label: "Offene Aufgaben",
-    description: "Zeigt deine offenen Aufgaben aus laufenden Events.",
-    updateInterval: 1800000,
-    component: "./src/widgets/OpenTasksWidget.jsx",
-  },
-  {
-    name: "AdminActionsWidget",
-    label: "Admin Schnellzugriff",
-    description: "Schnellzugriff auf Admin-Funktionen.",
-    updateInterval: 3600000,
-    component: "./src/widgets/AdminActionsWidget.jsx",
-  },
-  {
-    name: "AnnouncementsWidget",
-    label: "Anschlagbrett",
-    description: "Zeigt die neueste Mitteilung vom Anschlagbrett.",
-    updateInterval: 1800000,
-    component: "./src/widgets/AnnouncementsWidget.jsx",
-  },
-];
-
 export default ({ config }) => {
-  // Apply the widgets plugin first
-  config = withExpoWidgets(config, { widgets: widgetConfig });
-
   // Base plugins
   config.plugins = config.plugins || [];
   config.plugins.push(["expo-updates", { username: "Technik-Team" }]);
+  // REMOVED: The expo-passkeys plugin is removed to fix the native build.
+  // config.plugins.push("expo-passkeys");
+
 
   // General app config
   config.name = "TechnikTeam";
@@ -68,6 +34,7 @@ export default ({ config }) => {
       icon: "./assets/notification-icon.png",
       color: "#ffffff",
     },
+    // REMOVED: The widgets array is now handled natively.
     intentFilters: [
       {
         action: "VIEW",
@@ -75,6 +42,8 @@ export default ({ config }) => {
         data: [
           { scheme: "https", host: "technikteam.qs0.de" },
           { scheme: "https", host: "technikteamdev.qs0.de" },
+          // Add intent filter for your app's custom scheme
+          { scheme: "technikteam" }
         ],
         category: ["BROWSABLE", "DEFAULT"],
       },
@@ -89,7 +58,10 @@ export default ({ config }) => {
     associatedDomains: [
       "applinks:technikteam.qs0.de",
       "applinks:technikteamdev.qs0.de",
+      "webcredentials:technikteam.qs0.de",
+      "webcredentials:technikteamdev.qs0.de",
     ],
+    "usesAppleSignIn": true
   };
 
   // Web config

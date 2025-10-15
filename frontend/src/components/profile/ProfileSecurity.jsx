@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Alert, Platform, FlatList } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Alert, Platform, FlatList, Linking } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useToast } from '../../context/ToastContext';
 import { useAuthStore } from '../../store/authStore';
@@ -13,6 +13,7 @@ import ConfirmationModal from '../ui/ConfirmationModal';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import PasskeyRegistrationModal from './PasskeyRegistrationModal';
 import { getThemeColors, spacing } from '../../styles/theme';
+import * as WebBrowser from 'expo-web-browser';
 
 const Disable2FAModal = ({ isOpen, onClose, onSuccess }) => {
     const theme = useAuthStore(state => state.theme);
@@ -62,15 +63,16 @@ const Disable2FAModal = ({ isOpen, onClose, onSuccess }) => {
     );
 };
 
-const ProfileSecurity = ({ user, onUpdate }) => {
+const ProfileSecurity = ({ user, onUpdate, initialAction }) => {
     const navigation = useNavigation();
     const { addToast } = useToast();
     const [is2faModalOpen, setIs2faModalOpen] = useState(false);
     const [isDisableModalOpen, setIsDisableModalOpen] = useState(false);
-    const [isPasskeyRegistrationModalOpen, setIsPasskeyRegistrationModalOpen] = useState(false); // New state for passkey registration modal
+    const [isPasskeyRegistrationModalOpen, setIsPasskeyRegistrationModalOpen] = useState(false);
     const [deletingPasskey, setDeletingPasskey] = useState(null);
     const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
     const theme = useAuthStore(state => state.theme);
+    const { backendMode } = useAuthStore(state => ({ backendMode: state.backendMode }));
     const styles = getCommonStyles(theme);
     const colors = getThemeColors(theme);
 
@@ -78,14 +80,26 @@ const ProfileSecurity = ({ user, onUpdate }) => {
     const passkeysApiCall = useCallback(() => apiClient.get('/passkeys'), []);
     const { data: passkeys, loading: passkeysLoading, reload: reloadPasskeys } = useApi(passkeysApiCall);
 
+    useEffect(() => {
+        if (initialAction === 'register-passkey') {
+            handleAddPasskey();
+        }
+    }, [initialAction]);
+
     const handleSetupComplete = () => {
         setIs2faModalOpen(false);
         onUpdate(); // Reload profile data to get the new 2FA status
     };
 
+    const handleAddPasskey = async () => {
+        // This unified approach allows the PasskeyRegistrationModal to handle
+        // the platform-specific logic via the passkeyService.
+        setIsPasskeyRegistrationModalOpen(true);
+    };
+    
     const handlePasskeyRegistrationComplete = () => {
         setIsPasskeyRegistrationModalOpen(false);
-        reloadPasskeys(); // Reload passkeys list after new registration
+        reloadPasskeys(); 
     };
     
     const confirmDeletePasskey = async () => {
@@ -144,7 +158,7 @@ const ProfileSecurity = ({ user, onUpdate }) => {
                 <View style={[styles.detailsListRow, { borderBottomWidth: 0, flexDirection: 'column', alignItems: 'flex-start' }]}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                         <Text style={styles.detailsListLabel}>Passkeys (Passwortloser Login)</Text>
-                        <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => setIsPasskeyRegistrationModalOpen(true)}>
+                        <TouchableOpacity style={[styles.button, styles.successButton]} onPress={handleAddPasskey}>
                             <Text style={styles.buttonText}>Passkey hinzufügen</Text>
                         </TouchableOpacity>
                     </View>
@@ -193,7 +207,6 @@ const ProfileSecurity = ({ user, onUpdate }) => {
                 }}
             />
             
-            {/* Passkey Registration Modal */}
             <PasskeyRegistrationModal
                 isOpen={isPasskeyRegistrationModalOpen}
                 onClose={() => setIsPasskeyRegistrationModalOpen(false)}

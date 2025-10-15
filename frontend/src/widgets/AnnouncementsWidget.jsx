@@ -2,29 +2,36 @@ import React from 'react';
 import { View, Text, StyleSheet, Platform, TouchableOpacity, Linking } from 'react-native';
 import { getThemeColors, typography, spacing } from '../styles/theme';
 import Icon from '@expo/vector-icons/FontAwesome5';
+import { useWidgetStore } from '../store/widgetStore';
 
-const AnnouncementsWidget = ({ announcement, error }) => {
+const AnnouncementsWidget = () => {
+    const { latestAnnouncement, error } = useWidgetStore.getState();
     const colors = getThemeColors('light');
     const styles = pageStyles({ colors });
 
     const renderContent = () => {
         if (error) {
-            return <Text style={styles.errorText}>{error}</Text>;
+            return (
+                <View style={styles.centered}>
+                    <Icon name="exclamation-triangle" size={24} color={colors.danger} />
+                    <Text style={styles.errorText}>Fehler beim Laden.</Text>
+                </View>
+            );
         }
-        if (!announcement) {
+        if (!latestAnnouncement) {
             return <Text style={styles.placeholderText}>Keine neuen Mitteilungen.</Text>;
         }
 
-        const postDate = new Date(announcement.createdAt);
+        const postDate = new Date(latestAnnouncement.createdAt);
         const formattedDate = postDate.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
         return (
             <TouchableOpacity onPress={() => Linking.openURL(`technikteam://bulletin-board`)}>
-                <Text style={styles.title} numberOfLines={2}>{announcement.title}</Text>
-                <Text style={styles.content} numberOfLines={4}>{announcement.content}</Text>
+                <Text style={styles.title} numberOfLines={2}>{latestAnnouncement.title}</Text>
+                <Text style={styles.content} numberOfLines={Platform.OS === 'ios' ? 5 : 4}>{latestAnnouncement.content}</Text>
                 <View style={styles.footer}>
                     <Icon name="user-circle" solid size={12} color={colors.textMuted} />
-                    <Text style={styles.footerText}>{announcement.authorUsername} - {formattedDate}</Text>
+                    <Text style={styles.footerText}>{latestAnnouncement.authorUsername} - {formattedDate}</Text>
                 </View>
             </TouchableOpacity>
         );
@@ -44,6 +51,11 @@ const pageStyles = ({ colors }) => StyleSheet.create({
         backgroundColor: colors.surface,
         padding: spacing.md,
     },
+    centered: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     header: {
         fontSize: typography.h4,
         fontWeight: 'bold',
@@ -51,7 +63,7 @@ const pageStyles = ({ colors }) => StyleSheet.create({
         marginBottom: spacing.sm,
     },
     title: {
-        fontSize: typography.body, // Adjusted for widget size
+        fontSize: typography.body,
         fontWeight: '600',
         color: colors.primary,
         marginBottom: spacing.sm,
@@ -79,6 +91,8 @@ const pageStyles = ({ colors }) => StyleSheet.create({
     errorText: {
         color: colors.danger,
         marginTop: spacing.md,
+        fontWeight: '500',
+        textAlign: 'center',
     },
 });
 

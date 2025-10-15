@@ -1,10 +1,8 @@
-const { Platform } = require('react-native');
+import { Platform } from 'react-native';
+import { passkeyService as webService } from './passkeyService.web.js';
+import { passkeyService as nativeService } from './passkeyService.native.js';
 
-// Dispatcher for platform-specific passkey services
-const impl = Platform.OS === 'web'
-  ? require('./passkeyService.web.js')
-  : require('./passkeyService.native.js');
-
-module.exports = {
-  passkeyService: impl.passkeyService,
-};
+export const passkeyService = Platform.select({
+    web: webService,
+    default: nativeService,
+});

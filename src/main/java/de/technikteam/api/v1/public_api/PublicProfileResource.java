@@ -9,6 +9,7 @@ import de.technikteam.model.ApiResponse;
 import de.technikteam.model.User;
 import de.technikteam.model.dto.LoginIpInfo;
 import de.technikteam.security.SecurityUser;
+import de.technikteam.service.AuthService;
 import de.technikteam.service.ProfileRequestService;
 import de.technikteam.service.TwoFactorAuthService;
 import de.technikteam.util.PasswordPolicyValidator;
@@ -24,7 +25,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,12 +46,13 @@ public class PublicProfileResource {
     private final AuthenticationLogDAO authLogDAO;
     private final TwoFactorAuthDAO twoFactorAuthDAO;
 	private final PasskeyDAO passkeyDAO;
+	private final AuthService authService;
 
 	@Autowired
 	public PublicProfileResource(UserDAO userDAO, EventDAO eventDAO, UserQualificationsDAO qualificationsDAO,
 			AchievementDAO achievementDAO, ProfileChangeRequestDAO requestDAO,
 			ProfileRequestService profileRequestService, TwoFactorAuthService twoFactorAuthService,
-            AuthenticationLogDAO authLogDAO, TwoFactorAuthDAO twoFactorAuthDAO, PasskeyDAO passkeyDAO) {
+            AuthenticationLogDAO authLogDAO, TwoFactorAuthDAO twoFactorAuthDAO, PasskeyDAO passkeyDAO, AuthService authService) {
 		this.userDAO = userDAO;
 		this.eventDAO = eventDAO;
 		this.qualificationsDAO = qualificationsDAO;
@@ -62,6 +63,7 @@ public class PublicProfileResource {
         this.authLogDAO = authLogDAO;
         this.twoFactorAuthDAO = twoFactorAuthDAO;
 		this.passkeyDAO = passkeyDAO;
+		this.authService = authService;
 	}
 
 	@GetMapping
@@ -119,6 +121,16 @@ public class PublicProfileResource {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
 					new ApiResponse(false, "Ihr Antrag konnte nicht gespeichert werden: " + e.getMessage(), null));
 		}
+	}
+
+	@PostMapping("/sso-token")
+	@Operation(summary = "Generate a single-use SSO token for in-app browser login")
+	public ResponseEntity<ApiResponse> generateSsoToken(@AuthenticationPrincipal SecurityUser securityUser, @RequestParam(defaultValue = "web") String clientType) {
+		if (securityUser == null) {
+			return new ResponseEntity<>(new ApiResponse(false, "Authentication required.", null), HttpStatus.UNAUTHORIZED);
+		}
+		String ssoToken = authService.generateSsoToken(securityUser.getUser(), clientType);
+		return ResponseEntity.ok(new ApiResponse(true, "SSO token generated.", Map.of("token", ssoToken)));
 	}
 
 	@PostMapping("/register-device")

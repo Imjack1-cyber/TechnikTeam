@@ -2,19 +2,26 @@ import React from 'react';
 import { View, Text, StyleSheet, Platform, TouchableOpacity, Linking } from 'react-native';
 import { getThemeColors, typography, spacing } from '../styles/theme';
 import Icon from '@expo/vector-icons/FontAwesome5';
+import { useWidgetStore } from '../store/widgetStore';
 
-const OpenTasksWidget = ({ tasks, error }) => {
+const OpenTasksWidget = () => {
+    const { openTasks, error } = useWidgetStore.getState();
     const colors = getThemeColors('light');
     const styles = pageStyles({ colors });
 
     const renderContent = () => {
         if (error) {
-            return <Text style={styles.errorText}>{error}</Text>;
+            return (
+                <View style={styles.centered}>
+                    <Icon name="exclamation-triangle" size={24} color={colors.danger} />
+                    <Text style={styles.errorText}>Fehler beim Laden.</Text>
+                </View>
+            );
         }
-        if (!tasks || tasks.length === 0) {
+        if (!openTasks || openTasks.length === 0) {
             return <Text style={styles.placeholderText}>Keine offenen Aufgaben.</Text>;
         }
-        return tasks.slice(0, 3).map(task => (
+        return openTasks.slice(0, 3).map(task => (
              <TouchableOpacity
                 key={task.id}
                 style={styles.taskItem}
@@ -42,6 +49,11 @@ const pageStyles = ({ colors }) => StyleSheet.create({
         flex: 1,
         backgroundColor: colors.surface,
         padding: spacing.md,
+    },
+    centered: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     header: {
         fontSize: typography.h4,
@@ -71,7 +83,8 @@ const pageStyles = ({ colors }) => StyleSheet.create({
     },
     errorText: {
         color: colors.danger,
-        marginTop: spacing.md,
+        marginTop: spacing.sm,
+        fontWeight: '500'
     },
 });
 
