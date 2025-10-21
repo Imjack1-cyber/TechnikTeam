@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import de.technikteam.security.SecurityUser;
 import org.springframework.web.bind.annotation.*;
@@ -43,6 +44,7 @@ public class AdminEventResource {
 
 	@GetMapping
 	@Operation(summary = "Get all events", description = "Retrieves a list of all events in the system, sorted by date.")
+	@PreAuthorize("hasAuthority('EVENT_READ')")
 	public ResponseEntity<ApiResponse> getAllEvents() {
 		List<Event> events = eventDAO.getAllEvents();
 		return ResponseEntity.ok(new ApiResponse(true, "Veranstaltungen erfolgreich abgerufen.", events));
@@ -50,6 +52,7 @@ public class AdminEventResource {
 
 	@PostMapping
 	@Operation(summary = "Create a new event", description = "Creates a new event with skill requirements and item reservations. Attachments must be managed separately.")
+	@PreAuthorize("hasAuthority('EVENT_CREATE')")
 	public ResponseEntity<ApiResponse> createEvent(@Valid @RequestBody EventUpdateRequest eventData,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
@@ -74,6 +77,7 @@ public class AdminEventResource {
 
 	@PostMapping("/{id}")
 	@Operation(summary = "Update an event", description = "Updates an existing event with skill requirements and item reservations. Attachments must be managed separately.")
+	@PreAuthorize("hasAuthority('EVENT_UPDATE')")
 	public ResponseEntity<ApiResponse> updateEvent(@PathVariable int id,
 			@Valid @RequestBody EventUpdateRequest eventData,
 			@AuthenticationPrincipal SecurityUser securityUser) {
@@ -102,6 +106,7 @@ public class AdminEventResource {
 
 	@PostMapping("/{id}/clone")
 	@Operation(summary = "Clone an event", description = "Creates a deep copy of an existing event, including its details, requirements, and tasks.")
+	@PreAuthorize("hasAuthority('EVENT_CREATE')")
 	public ResponseEntity<ApiResponse> cloneEvent(@PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
@@ -118,6 +123,7 @@ public class AdminEventResource {
 
 	@PostMapping("/{id}/start")
 	@Operation(summary = "Start an event", description = "Changes an event's status from PLANNED to RUNNING.")
+	@PreAuthorize("hasAuthority('EVENT_UPDATE')")
 	public ResponseEntity<ApiResponse> startEvent(@PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
@@ -137,6 +143,7 @@ public class AdminEventResource {
 
 	@PostMapping("/{id}/stop")
 	@Operation(summary = "Stop a running event", description = "Changes an event's status from RUNNING to COMPLETED.")
+	@PreAuthorize("hasAuthority('EVENT_UPDATE')")
 	public ResponseEntity<ApiResponse> stopEvent(@PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {
@@ -156,6 +163,7 @@ public class AdminEventResource {
 
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete an event", description = "Permanently deletes an event and all associated data.")
+	@PreAuthorize("hasAuthority('EVENT_DELETE')")
 	public ResponseEntity<ApiResponse> deleteEvent(@PathVariable int id) {
 		if (eventDAO.deleteEvent(id)) {
 			notificationService.broadcastUIUpdate("EVENT", "DELETED", Map.of("id", id));
@@ -168,6 +176,7 @@ public class AdminEventResource {
 
 	@PostMapping("/{eventId}/assignments")
 	@Operation(summary = "Update team assignments for an event", description = "Sets the entire team for an event, including their roles.")
+	@PreAuthorize("hasAuthority('EVENT_MANAGE_ASSIGNMENTS')")
 	public ResponseEntity<ApiResponse> updateAssignments(@PathVariable int eventId,
 			@RequestBody List<EventAssignmentDTO> assignments, @AuthenticationPrincipal SecurityUser securityUser) {
 		try {

@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 @RequestMapping("/api/v1/admin/users")
 @Tag(name = "Admin Users", description = "Admin endpoints for managing users, including suspension.")
 @SecurityRequirement(name = "bearerAuth")
+@PreAuthorize("hasAuthority('USER_UPDATE')")
 public class AdminUserManagementResource {
 
 	private final AdminUserManagementService adminService;

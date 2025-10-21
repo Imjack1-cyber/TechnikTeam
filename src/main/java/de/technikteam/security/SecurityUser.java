@@ -1,11 +1,14 @@
 package de.technikteam.security;
 
+import de.technikteam.config.Permissions;
 import de.technikteam.model.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.io.Serializable;
+import java.lang.reflect.Field;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -27,8 +30,26 @@ public class SecurityUser implements UserDetails, Serializable {
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
 		// Convert the user's permission strings and role into Spring Security GrantedAuthority objects.
-		Set<GrantedAuthority> authorities = user.getPermissions().stream().map(SimpleGrantedAuthority::new)
+		Set<String> permissionKeys = new HashSet<>(user.getPermissions());
+
+		// If user has the master admin permission, grant them all other permissions programmatically.
+		if (permissionKeys.contains(Permissions.ACCESS_ADMIN_PANEL)) {
+			Field[] fields = Permissions.class.getDeclaredFields();
+			Arrays.stream(fields)
+					.filter(field -> java.lang.reflect.Modifier.isStatic(field.getModifiers()) && field.getType().equals(String.class))
+					.forEach(field -> {
+						try {
+							permissionKeys.add((String) field.get(null));
+						} catch (IllegalAccessException e) {
+							// Should not happen for public static final fields
+						}
+					});
+		}
+
+		Set<GrantedAuthority> authorities = permissionKeys.stream()
+				.map(SimpleGrantedAuthority::new)
 				.collect(Collectors.toSet());
+
 		// Add role as an authority, prefixed with "ROLE_"
 		if (user.getRoleName() != null && !user.getRoleName().isBlank()) {
 			authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRoleName().toUpperCase()));

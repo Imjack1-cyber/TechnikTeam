@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -54,6 +55,7 @@ public class AdminEventDebriefingResource {
 
 	@GetMapping("/debriefings")
 	@Operation(summary = "Get all debriefing reports")
+	@PreAuthorize("hasAuthority('EVENT_DEBRIEFING_VIEW')")
 	public ResponseEntity<ApiResponse> getAllDebriefings() {
 		List<EventDebriefing> debriefings = debriefingDAO.findAll().stream().map(debriefingService::enrichDebriefing)
 				.collect(Collectors.toList());
@@ -62,6 +64,7 @@ public class AdminEventDebriefingResource {
 
 	@GetMapping("/{eventId}/debriefing")
 	@Operation(summary = "Get a debriefing for a specific event")
+	@PreAuthorize("hasAuthority('EVENT_DEBRIEFING_VIEW')")
 	public ResponseEntity<ApiResponse> getDebriefingForEvent(@PathVariable int eventId) {
 		Optional<EventDebriefing> debriefingOpt = debriefingDAO.findByEventId(eventId);
 		if (debriefingOpt.isPresent()) {
@@ -94,6 +97,7 @@ public class AdminEventDebriefingResource {
 
 	@GetMapping("/{eventId}/feedback-summary")
 	@Operation(summary = "Get aggregated user feedback for an event")
+	@PreAuthorize("hasAuthority('EVENT_DEBRIEFING_VIEW')")
 	public ResponseEntity<ApiResponse> getFeedbackSummary(@PathVariable int eventId) {
 		List<FeedbackResponse> responses = feedbackDAO.getResponsesForEvent(eventId);
 		return ResponseEntity.ok(new ApiResponse(true, "User feedback summary retrieved.", responses));

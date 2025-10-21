@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,6 +21,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/admin/event-roles")
 @Tag(name = "Admin Event Roles", description = "Endpoints for managing predefined event roles.")
 @SecurityRequirement(name = "bearerAuth")
+@PreAuthorize("hasAuthority('EVENT_CREATE')")
 public class AdminEventRoleResource {
 
 	private final EventRoleDAO eventRoleDAO;

@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,6 +33,7 @@ public class LogResource {
 
 	@GetMapping
 	@Operation(summary = "Get admin action logs", description = "Retrieves a list of all administrative actions. Can be limited.")
+	@PreAuthorize("hasAuthority('LOG_READ')")
 	public ResponseEntity<ApiResponse> getLogs(@RequestParam(required = false) Integer limit) {
 		List<AdminLog> logs;
 		if (limit != null) {
@@ -44,6 +46,7 @@ public class LogResource {
 
 	@PostMapping("/{logId}/revoke")
 	@Operation(summary = "Revoke an admin action", description = "Revokes a previously logged administrative action, if the action is reversible.")
+	@PreAuthorize("hasAuthority('LOG_REVOKE')")
 	public ResponseEntity<ApiResponse> revokeLogAction(@PathVariable long logId,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		try {

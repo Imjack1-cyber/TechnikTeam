@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +27,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/admin/meetings")
 @Tag(name = "Admin Meetings", description = "Admin endpoints for managing meetings, waitlists and repeats.")
 @SecurityRequirement(name = "bearerAuth")
+@PreAuthorize("hasAuthority('COURSE_UPDATE')")
 public class AdminMeetingManagementResource {
 
 	private final MeetingSignupService signupService;
@@ -79,6 +81,7 @@ public class AdminMeetingManagementResource {
 
 	@Operation(summary = "Create a repeat meeting for an existing meeting (admin). This links the new meeting via parent_meeting_id.")
 	@PostMapping("/{meetingId}/repeat")
+	@PreAuthorize("hasAuthority('COURSE_CREATE')")
 	public ResponseEntity<ApiResponse> createRepeatMeeting(@PathVariable int meetingId,
 			@RequestBody Map<String, String> payload, @AuthenticationPrincipal SecurityUser securityUser) {
 		Meeting original = meetingDAO.getMeetingById(meetingId);

@@ -19,7 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/admin/geoip/rules")
 @Tag(name = "Admin GeoIP", description = "Endpoints for managing GeoIP filtering rules.")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAuthority('ACCESS_ADMIN_PANEL')")
 public class AdminGeoIpResource {
 
     private final GeoIpRuleDAO geoIpRuleDAO;

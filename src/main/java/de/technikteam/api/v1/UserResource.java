@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -49,6 +50,7 @@ public class UserResource {
 
 	@GetMapping
 	@Operation(summary = "Get all users", description = "Retrieves a list of all users in the system.")
+	@PreAuthorize("hasAuthority('USER_READ')")
 	public ResponseEntity<ApiResponse> getAllUsers(@RequestParam(required = false) Integer eventId) {
 		List<User> users;
 		if (eventId != null) {
@@ -61,6 +63,7 @@ public class UserResource {
 
 	@GetMapping("/{id}")
 	@Operation(summary = "Get user by ID", description = "Retrieves a single user by their ID, including their permissions.")
+	@PreAuthorize("hasAuthority('USER_READ')")
 	public ResponseEntity<ApiResponse> getUserById(
 			@Parameter(description = "ID of the user to retrieve") @PathVariable int id) {
 		User user = userDAO.getUserById(id);
@@ -73,6 +76,7 @@ public class UserResource {
 
 	@PostMapping
 	@Operation(summary = "Create a new user", description = "Creates a new user with a specified role and individual permissions.")
+	@PreAuthorize("hasAuthority('USER_CREATE')")
 	public ResponseEntity<ApiResponse> createUser(@Valid @RequestBody UserCreateRequest createRequest,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 		PasswordPolicyValidator.ValidationResult validationResult = PasswordPolicyValidator
@@ -105,6 +109,7 @@ public class UserResource {
 
 	@PutMapping("/{id}")
 	@Operation(summary = "Update a user", description = "Updates an existing user's profile details, role, and individual permissions.")
+	@PreAuthorize("hasAuthority('USER_UPDATE')")
 	public ResponseEntity<ApiResponse> updateUser(
 			@Parameter(description = "ID of the user to update") @PathVariable int id,
 			@Valid @RequestBody UserUpdateRequest updateRequest, @AuthenticationPrincipal SecurityUser securityUser) {
@@ -137,6 +142,7 @@ public class UserResource {
 
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Delete a user", description = "Permanently deletes a user from the system.")
+	@PreAuthorize("hasAuthority('USER_DELETE')")
 	public ResponseEntity<ApiResponse> deleteUser(
 			@Parameter(description = "ID of the user to delete") @PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
@@ -158,6 +164,7 @@ public class UserResource {
 
 	@PostMapping("/{id}/reset-password")
 	@Operation(summary = "Reset user's password", description = "Resets a user's password to a new, randomly generated password.")
+	@PreAuthorize("hasAuthority('USER_PASSWORD_RESET')")
 	public ResponseEntity<ApiResponse> resetPassword(
 			@Parameter(description = "ID of the user whose password will be reset") @PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
@@ -188,6 +195,7 @@ public class UserResource {
 
 	@PostMapping("/{id}/unlock")
 	@Operation(summary = "Unlock a user account", description = "Unlocks a user account that was locked due to too many failed login attempts.")
+	@PreAuthorize("hasAuthority('USER_UPDATE')")
 	public ResponseEntity<ApiResponse> unlockUser(
 			@Parameter(description = "ID of the user to unlock") @PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {

@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,6 +21,7 @@ import java.util.List;
 @RequestMapping("/api/v1/admin/checklist-templates")
 @Tag(name = "Admin Checklist Templates", description = "Endpoints for managing pre-flight checklist templates.")
 @SecurityRequirement(name = "bearerAuth")
+@PreAuthorize("hasAuthority('EVENT_MANAGE_TASKS')")
 public class AdminChecklistTemplateResource {
 
 	private final ChecklistTemplateDAO templateDAO;

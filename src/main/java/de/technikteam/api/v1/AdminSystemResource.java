@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +22,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/admin/system")
 @Tag(name = "Admin System", description = "Endpoints for retrieving system information and statistics.")
 @SecurityRequirement(name = "bearerAuth")
+@PreAuthorize("hasAuthority('SYSTEM_READ')")
 public class AdminSystemResource {
 
 	private final SystemInfoService systemInfoService;

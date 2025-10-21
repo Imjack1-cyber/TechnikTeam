@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,6 +40,7 @@ public class AdminFormDataResource {
 
 	@GetMapping("/users")
 	@Operation(summary = "Get data for user forms", description = "Retrieves all roles and grouped permissions needed to populate admin forms for creating or editing users.")
+	@PreAuthorize("hasAuthority('USER_READ')")
 	public ResponseEntity<ApiResponse> getFormDataForUserForms() {
 		List<Role> roles = roleDAO.getAllRoles();
 		List<Permission> allPermissions = permissionDAO.getAllPermissions();
@@ -58,6 +60,7 @@ public class AdminFormDataResource {
 
 	@GetMapping("/achievements")
 	@Operation(summary = "Get data for achievement forms", description = "Retrieves all courses for use in achievement conditions.")
+	@PreAuthorize("hasAuthority('ACHIEVEMENT_VIEW')")
 	public ResponseEntity<ApiResponse> getFormDataForAchievementForms() {
 		List<Course> courses = courseDAO.getAllCourses();
 		return ResponseEntity.ok(new ApiResponse(true, "Formulardaten für Abzeichen erfolgreich abgerufen.",

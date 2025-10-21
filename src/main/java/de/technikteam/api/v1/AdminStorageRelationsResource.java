@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,6 +15,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/admin/storage/{itemId}/relations")
 @Tag(name = "Admin Storage", description = "Endpoints for managing inventory items.")
+@PreAuthorize("hasAuthority('STORAGE_UPDATE')")
 public class AdminStorageRelationsResource {
 
 	private final StorageItemRelationService relationService;

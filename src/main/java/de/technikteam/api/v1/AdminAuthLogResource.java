@@ -14,6 +14,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,6 +43,7 @@ public class AdminAuthLogResource {
 
     @GetMapping
     @Operation(summary = "Get recent authentication logs")
+    @PreAuthorize("hasAuthority('LOG_READ')")
     public ResponseEntity<ApiResponse> getAuthLogs(@RequestParam(defaultValue = "100") int limit) {
         logger.debug("Request received to get auth logs with limit: {}", limit);
         List<AuthenticationLog> logs = authLogDAO.getLogs(limit);
@@ -51,6 +53,7 @@ public class AdminAuthLogResource {
 
     @PostMapping("/revoke-session")
     @Operation(summary = "Revoke a user session via JWT ID")
+    @PreAuthorize("hasAuthority('LOG_REVOKE')")
     public ResponseEntity<ApiResponse> revokeSession(@RequestBody Map<String, String> payload,
             @AuthenticationPrincipal SecurityUser securityUser) {
         String jti = payload.get("jti");

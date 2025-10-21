@@ -41,7 +41,7 @@ public class AdminNotificationResource {
 
 	@PostMapping
 	@Operation(summary = "Send a broadcast notification", description = "Sends a real-time notification to a specified group of users.")
-	@PreAuthorize("hasRole('ADMIN') or hasAuthority('NOTIFICATION_SEND')")
+	@PreAuthorize("hasAuthority('NOTIFICATION_SEND')")
 	public ResponseEntity<ApiResponse> sendNotification(@Valid @RequestBody NotificationRequest request,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 

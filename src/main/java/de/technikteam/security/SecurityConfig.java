@@ -57,9 +57,7 @@ public class SecurityConfig {
                                  "/api/v1/public/files/share/**", "/api/v1/public/scheduling-polls/**", "/api/v1/public/polls/by-uuid/**")
 						.permitAll()
                         .requestMatchers("/api/v1/auth/me").authenticated() // Crucial fix: require authentication but no specific role
-                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/admin/venues/*").hasRole("ADMIN") // Allow PUT for updates with multipart
-						.requestMatchers("/admin/**", "/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").hasAuthority("ACCESS_ADMIN_PANEL")
 						.anyRequest().authenticated())
 				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
