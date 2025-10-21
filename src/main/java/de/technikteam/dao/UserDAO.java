@@ -184,13 +184,25 @@ public class UserDAO {
 	}
 
 	public Set<String> getPermissionsForUser(int userId) {
-		String sql = "SELECT p.permission_key FROM permissions p "
-				+ "JOIN user_permissions up ON p.id = up.permission_id " + "WHERE up.user_id = ?";
+		String sql = """
+		    -- Directly assigned user permissions
+		    SELECT p.permission_key
+		    FROM user_permissions up
+		    JOIN permissions p ON up.permission_id = p.id
+		    WHERE up.user_id = ?
+		    UNION
+		    -- Permissions inherited from the user's role
+		    SELECT p.permission_key
+		    FROM role_permissions rp
+		    JOIN permissions p ON rp.permission_id = p.id
+		    JOIN users u ON u.role_id = rp.role_id
+		    WHERE u.id = ?
+		""";
 		try {
-			List<String> permissionKeys = jdbcTemplate.queryForList(sql, String.class, userId);
+			List<String> permissionKeys = jdbcTemplate.queryForList(sql, String.class, userId, userId);
 			return new HashSet<>(permissionKeys);
 		} catch (Exception e) {
-			logger.error("Error fetching permissions for user {}", userId, e);
+			logger.error("Error fetching resolved permissions for user {}", userId, e);
 			return Set.of();
 		}
 	}

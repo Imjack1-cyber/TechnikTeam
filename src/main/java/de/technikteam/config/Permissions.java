@@ -19,6 +19,8 @@ public final class Permissions {
 	public static final String USER_UPDATE = "USER_UPDATE";
 	public static final String USER_DELETE = "USER_DELETE";
 	public static final String USER_PASSWORD_RESET = "USER_PASSWORD_RESET";
+	public static final String PERMISSION_MANAGE = "PERMISSION_MANAGE";
+
 
 	// --- EVENT MANAGEMENT ---
 	public static final String EVENT_CREATE = "EVENT_CREATE";

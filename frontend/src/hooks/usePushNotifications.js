@@ -5,6 +5,7 @@ import * as Notifications from 'expo-notifications';
 import apiClient from '../services/apiClient';
 import { useAuthStore } from '../store/authStore';
 import { useTransferStore } from '../store/transferStore';
+import { navigateFromUrl } from '../router/navigationHelper';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -104,7 +105,14 @@ export const usePushNotifications = () => {
 
         const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
             console.log('User tapped on notification:', response);
-            // Handle navigation here if needed based on response.notification.request.content.data
+            const { data } = response.notification.request.content;
+            const url = data?.url;
+
+            if (url) {
+                console.log(`[PushNotification] Tapped notification with URL, navigating to: ${url}`);
+                // Use the centralized navigation helper to handle the deep link
+                navigateFromUrl(url);
+            }
         });
 
         return () => {

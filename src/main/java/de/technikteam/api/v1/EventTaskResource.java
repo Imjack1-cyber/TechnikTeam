@@ -12,6 +12,7 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -53,6 +54,24 @@ public class EventTaskResource {
 			logger.error("Failed to save task for event {}", eventId, e);
 			return ResponseEntity.internalServerError()
 					.body(new ApiResponse(false, "Failed to save task: " + e.getMessage(), null));
+		}
+	}
+
+	@DeleteMapping("/{taskId}")
+	@Operation(summary = "Delete an event task")
+	public ResponseEntity<ApiResponse> deleteTask(@PathVariable int eventId, @PathVariable int taskId,
+			@AuthenticationPrincipal SecurityUser securityUser) {
+		logger.debug("Received request to delete task {} from event {}", taskId, eventId);
+		try {
+			eventTaskService.deleteTask(eventId, taskId, securityUser.getUser());
+			return ResponseEntity.ok(new ApiResponse(true, "Task deleted successfully.", null));
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(false, e.getMessage(), null));
+		} catch (AccessDeniedException e) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, e.getMessage(), null));
+		} catch (Exception e) {
+			logger.error("Error deleting task", e);
+			return ResponseEntity.internalServerError().body(new ApiResponse(false, "An internal error occurred.", null));
 		}
 	}
 

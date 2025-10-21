@@ -13,6 +13,7 @@ const AdminUsersIndex = ({ navigation }) => {
 
 	const baseLinks = [
 		{ to: 'AdminUsers', label: 'Benutzer Verwalten', icon: 'users-cog', perm: 'USER_READ' },
+		{ to: 'AdminPermissions', label: 'Rollen & Berechtigungen', icon: 'key', perm: 'PERMISSION_MANAGE' },
 		{ to: 'AdminRequests', label: 'Profilanträge', icon: 'inbox', perm: 'USER_UPDATE' },
 		{ to: 'AdminTrainingRequests', label: 'Lehrgangsanfragen', icon: 'question-circle', perm: 'COURSE_CREATE' },
 		{ to: 'AdminAchievements', label: 'Abzeichen', icon: 'award', perm: 'ACHIEVEMENT_VIEW' },

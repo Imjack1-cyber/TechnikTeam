@@ -28,6 +28,7 @@ const pageRoutes = {
 	'AdminDashboard': 'admin_dashboard',
 	'AdminUsersIndex': 'admin_users_index',
 	'AdminUsers': 'admin_users',
+	'AdminPermissions': 'admin_permissions',
 	'AdminRequests': 'admin_requests',
 	'AdminTrainingRequests': 'admin_training_requests',
 	'AdminAchievements': 'admin_achievements',

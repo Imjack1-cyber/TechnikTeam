@@ -1,224 +1,130 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, TextInput, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import useApi from '../../../hooks/useApi';
 import apiClient from '../../../services/apiClient';
-import TaskModal from '../../events/TaskModal';
+import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../store/authStore';
 import { getCommonStyles } from '../../../styles/commonStyles';
-import { getThemeColors, spacing, typography, borders, shadows } from '../../../styles/theme';
+import { getThemeColors, typography, spacing, borders } from '../../../styles/theme';
 import Icon from 'react-native-vector-icons/FontAwesome5';
-import AdminModal from '../../ui/AdminModal';
-import BouncyCheckbox from "react-native-bouncy-checkbox";
+import { Picker } from '@react-native-picker/picker';
 
-const CategoryModal = ({ isOpen, onClose, eventId, onSuccess }) => {
-    const theme = useAuthStore(state => state.theme);
-    const styles = getCommonStyles(theme);
-    const [name, setName] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-
-    const handleSubmit = async () => {
-        setIsSubmitting(true);
-        try {
-            await apiClient.post(`/admin/events/${eventId}/task-categories`, { name });
-            onSuccess();
-        } catch (error) {
-            // handle error
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    return (
-        <AdminModal isOpen={isOpen} onClose={onClose} title="Neue Kategorie erstellen" onSubmit={handleSubmit} isSubmitting={isSubmitting}>
-            <Text style={styles.label}>Kategoriename</Text>
-            <TextInput style={styles.input} value={name} onChangeText={setName} />
-        </AdminModal>
-    );
-};
-
-const DeleteCategoryModal = ({ isOpen, onClose, category, onSuccess }) => {
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    
-    const handleDelete = async () => {
-        setIsSubmitting(true);
-        try {
-            await apiClient.delete(`/admin/events/${category.eventId}/task-categories/${category.id}`);
-            onSuccess();
-        } catch (error) {
-            // handle error
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-    
-    return (
-        <AdminModal isOpen={isOpen} onClose={onClose} title={`Kategorie "${category.name}" löschen?`} onSubmit={handleDelete} isSubmitting={isSubmitting} submitText="Löschen" submitButtonVariant="danger">
-            <Text>Alle Aufgaben in dieser Kategorie werden als "Unkategorisiert" markiert. Möchten Sie fortfahren?</Text>
-        </AdminModal>
-    );
-};
-
-const TaskCard = ({ task, onOpenModal, styles, colors }) => {
-    const getTaskCardStyle = () => {
-        const needsHelp = task.status === 'IN_PROGRESS' && task.assignedUsers.length < task.requiredPersons;
-        if (task.status === 'LOCKED') return styles.lockedTask;
-        if (task.status === 'DONE') return styles.doneTask;
-        if (task.isImportant || needsHelp) return styles.importantTask;
-        if (task.status === 'IN_PROGRESS') return styles.inProgressTask;
-        return {}; // Default for OPEN
-    };
-    const isDone = task.status === 'DONE';
-
-    return (
-        <TouchableOpacity style={[styles.taskCard, getTaskCardStyle()]} onPress={() => onOpenModal('task', task)}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Text style={[styles.taskName, isDone && styles.doneTaskText]}>{task.name}</Text>
-                <Text style={styles.displayOrder}>#{task.displayOrder}</Text>
-            </View>
-            <View style={styles.metaContainer}>
-                <View style={styles.metaItem}>
-                    <Icon name="users" size={12} color={colors.textMuted} />
-                    <Text style={styles.metaText}>{task.assignedUsers.length} / {task.requiredPersons}</Text>
-                </View>
-            </View>
-            {task.assignedUsers.length > 0 && (
-                <View style={styles.assigneeList}>
-                    <Text style={styles.assigneeText}>Aktiv: {task.assignedUsers.map(u => u.username).join(', ')}</Text>
-                </View>
-            )}
-        </TouchableOpacity>
-    );
-};
-
-const KanbanColumn = ({ title, tasks, onOpenModal, styles, colors }) => (
-    <View style={styles.kanbanColumn}>
-        <Text style={styles.columnTitle}>{title}</Text>
-        <ScrollView>
-            {tasks.map(task => (
-                <TaskCard key={task.id} task={task} onOpenModal={onOpenModal} styles={styles} colors={colors} />
-            ))}
-        </ScrollView>
-    </View>
-);
-
-const AdminEventTasksTab = ({ event, onUpdate }) => {
+const AdminEventTeamTab = ({ event, onTeamUpdate }) => {
+	const { addToast } = useToast();
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [assignedUsers, setAssignedUsers] = useState(event.assignedAttendees || []);
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
+
+	const rolesApiCall = useCallback(() => apiClient.get('/admin/event-roles'), []);
+	const { data: allRoles } = useApi(rolesApiCall);
+
+	const availableUsersApiCall = useCallback(() => apiClient.get(`/users?eventId=${event.id}`), [event.id]);
+	const { data: availableUsers, loading: availableLoading } = useApi(availableUsersApiCall);
+
+	const assignedUserIds = useMemo(() => new Set(assignedUsers.map(u => u.id)), [assignedUsers]);
+
+    const { unassignedAdmins, unassignedRegularUsers } = useMemo(() => {
+        const unassigned = availableUsers?.filter(u => !assignedUserIds.has(u.id)) || [];
+        return {
+            unassignedAdmins: unassigned.filter(u => u.roleName === 'ADMIN'),
+            unassignedRegularUsers: unassigned.filter(u => u.roleName !== 'ADMIN'),
+        };
+    }, [availableUsers, assignedUserIds]);
+
+
+	const handleAssignUser = (user) => {
+		setAssignedUsers(prev => [...prev, { ...user, assignedEventRoleId: null }]);
+	};
+
+	const handleUnassignUser = (userId) => {
+		setAssignedUsers(prev => prev.filter(u => u.id !== userId));
+	};
+
+	const handleRoleChange = (userId, newRoleId) => {
+		setAssignedUsers(prev => prev.map(u => u.id === userId ? { ...u, assignedEventRoleId: newRoleId } : u));
+	};
+
+	const handleSaveTeam = async () => {
+		setIsSubmitting(true);
+		const payload = assignedUsers.map(u => ({ userId: u.id, roleId: u.assignedEventRoleId || null }));
+		try {
+			const result = await apiClient.post(`/events/${event.id}/assignments`, payload);
+			if (result.success) {
+				addToast('Team erfolgreich gespeichert!', 'success');
+				onTeamUpdate();
+			} else { throw new Error(result.message); }
+		} catch (err) {
+			addToast(`Fehler beim Speichern: ${err.message}`, 'error');
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
     
-    const categoriesApiCall = useCallback(() => apiClient.get(`/admin/events/${event.id}/task-categories`), [event.id]);
-    const { data: categories, loading: categoriesLoading, reload: reloadCategories } = useApi(categoriesApiCall);
-
-    const [modalState, setModalState] = useState({ type: null, data: null });
-    const [showDoneTasks, setShowDoneTasks] = useState(false);
-
-    const openModal = (type, data = null) => setModalState({ type, data });
-
-    const handleSuccess = () => {
-        setModalState({ type: null, data: null });
-        reloadCategories();
-        onUpdate();
-    };
-
-    const tasksByCategory = useMemo(() => {
-        const byCategory = {};
-
-        const allCategories = categories ? [...categories, {id: 0, name: 'Unkategorisiert'}] : [{id: 0, name: 'Unkategorisiert'}];
-        allCategories.forEach(cat => {
-            byCategory[cat.id] = { ...cat, tasks: [] };
-        });
-
-        const filteredTasks = event.eventTasks?.filter(task => showDoneTasks || task.status !== 'DONE');
-
-        filteredTasks?.forEach(task => {
-            const categoryId = task.categoryId || 0;
-            if (byCategory[categoryId]) {
-                byCategory[categoryId].tasks.push(task);
-            }
-        });
-
-        Object.values(byCategory).forEach(cat => {
-            cat.tasks.sort((a, b) => a.displayOrder - b.displayOrder);
-        });
-
-        return Object.values(byCategory).filter(cat => cat.tasks.length > 0);
-    }, [event.eventTasks, categories, showDoneTasks]);
-    
-
-    return (
-        <View style={{flex: 1}}>
-            <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md}}>
-                <View style={{flexDirection: 'row', gap: spacing.sm}}>
-                    <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => openModal('task')}>
-                        <Icon name="plus" size={16} color={colors.white} />
-                        <Text style={styles.buttonText}> Aufgabe</Text>
-                    </TouchableOpacity>
-                     <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => openModal('category')}>
-                        <Icon name="folder-plus" size={16} color={colors.text} />
-                        <Text style={{color: colors.text}}> Kategorie</Text>
-                    </TouchableOpacity>
-                </View>
-                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <BouncyCheckbox isChecked={showDoneTasks} onPress={(isChecked) => setShowDoneTasks(isChecked)} size={20} />
-                    <Text>Erledigte anzeigen</Text>
-                </View>
-            </View>
-
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.kanbanBoard}>
-                    {tasksByCategory.map(category => (
-                        <KanbanColumn key={category.id} title={category.name} tasks={category.tasks} onOpenModal={openModal} styles={styles} colors={colors} />
-                    ))}
-                </View>
-            </ScrollView>
-
-            <TaskModal
-                isOpen={modalState.type === 'task'}
-                onClose={() => setModalState({type: null, data: null})}
-                onSuccess={handleSuccess}
-                event={event}
-                task={modalState.data}
-                allUsers={event.assignedAttendees}
-                categories={categories || []}
-            />
-            <CategoryModal
-                isOpen={modalState.type === 'category'}
-                onClose={() => setModalState({type: null, data: null})}
-                onSuccess={handleSuccess}
-                eventId={event.id}
-            />
-             {modalState.type === 'deleteCategory' && (
-                <DeleteCategoryModal
-                    isOpen={true}
-                    onClose={() => setModalState({type: null, data: null})}
-                    onSuccess={handleSuccess}
-                    category={modalState.data}
-                />
-             )}
+    const renderUnassigned = ({item}) => (
+        <View style={styles.listItem}>
+            <Text style={styles.userName}>{item.username}</Text>
+            <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => handleAssignUser(item)}>
+                <Icon name="plus" size={14} color="#fff" />
+                <Text style={styles.buttonText}>Hinzufügen</Text>
+            </TouchableOpacity>
         </View>
     );
+
+     const renderAssigned = ({item}) => (
+        <View style={styles.listItem}>
+            <TouchableOpacity onPress={() => handleUnassignUser(item.id)}>
+                <Icon name="times" size={20} color={colors.danger} />
+            </TouchableOpacity>
+            <Text style={styles.userName}>{item.username}</Text>
+            <View style={styles.pickerContainer}>
+                <Picker selectedValue={item.assignedEventRoleId} onValueChange={(val) => handleRoleChange(item.id, parseInt(val, 10))} itemStyle={{color: colors.text}}>
+                    <Picker.Item label="(Unzugewiesen)" value={null} />
+                    {allRoles?.map(role => <Picker.Item key={role.id} label={role.name} value={role.id} />)}
+                </Picker>
+            </View>
+        </View>
+    );
+
+	return (
+		<View>
+			<TouchableOpacity style={[styles.button, styles.successButton, { alignSelf: 'flex-end', marginBottom: 16 }]} onPress={handleSaveTeam} disabled={isSubmitting}>
+				{isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Team speichern</Text>}
+			</TouchableOpacity>
+			<View style={styles.columnsContainer}>
+				<View style={styles.column}>
+					<Text style={styles.columnTitle}>Verfügbare Mitglieder</Text>
+                    {availableLoading ? <ActivityIndicator/> : 
+                        <ScrollView>
+                            <Text style={styles.subHeader}>Administratoren</Text>
+                            <FlatList data={unassignedAdmins} renderItem={renderUnassigned} keyExtractor={item => item.id.toString()} ListEmptyComponent={<Text style={styles.emptyText}>Keine Admins verfügbar.</Text>} />
+                            <Text style={[styles.subHeader, {marginTop: spacing.md}]}>Teilnehmer</Text>
+                            <FlatList data={unassignedRegularUsers} renderItem={renderUnassigned} keyExtractor={item => item.id.toString()} ListEmptyComponent={<Text style={styles.emptyText}>Keine Teilnehmer verfügbar.</Text>} />
+                        </ScrollView>
+                    }
+				</View>
+				<View style={styles.column}>
+					<Text style={styles.columnTitle}>Zugewiesenes Team</Text>
+                    <FlatList data={assignedUsers} renderItem={renderAssigned} keyExtractor={item => item.id.toString()} />
+				</View>
+			</View>
+		</View>
+	);
 };
 
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
-        kanbanBoard: { flexDirection: 'row', gap: spacing.md, paddingBottom: spacing.md },
-        kanbanColumn: { width: 280, backgroundColor: colors.background, borderRadius: borders.radius, padding: spacing.sm, height: '100%'},
-        columnTitle: { fontSize: typography.h4, fontWeight: 'bold', padding: spacing.sm, color: colors.heading },
-        taskCard: { backgroundColor: colors.surface, borderRadius: borders.radius, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border, ...shadows.sm },
-        lockedTask: { backgroundColor: colors.background, opacity: 0.7 },
-        importantTask: { backgroundColor: 'rgba(255, 193, 7, 0.1)', borderColor: colors.warning },
-        inProgressTask: { backgroundColor: 'rgba(40, 167, 69, 0.1)', borderColor: colors.success },
-        doneTask: { backgroundColor: colors.background, opacity: 0.6 },
-        doneTaskText: { textDecorationLine: 'line-through', color: colors.textMuted },
-        taskName: { fontWeight: 'bold', marginBottom: spacing.xs, color: colors.text, fontSize: typography.body },
-        displayOrder: { fontSize: typography.caption, color: colors.textMuted, fontWeight: 'bold' },
-        metaContainer: { flexDirection: 'row', gap: spacing.md, marginVertical: spacing.sm },
-        metaItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-        metaText: { color: colors.textMuted, fontSize: typography.small },
-        assigneeList: { marginTop: spacing.sm, borderTopWidth: 1, borderColor: colors.border, paddingTop: spacing.sm },
-        assigneeText: { color: colors.textMuted, fontSize: typography.small },
+        columnsContainer: { flexDirection: 'row', gap: spacing.md },
+        column: { flex: 1, backgroundColor: colors.background, padding: spacing.sm, borderRadius: borders.radius, maxHeight: 500 },
+        columnTitle: { fontSize: typography.h4, fontWeight: 'bold', marginBottom: spacing.md, color: colors.heading },
+        subHeader: { fontWeight: '600', color: colors.textMuted, paddingBottom: spacing.xs, borderBottomWidth: 1, borderColor: colors.border, marginBottom: spacing.sm },
+        listItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, borderBottomWidth: 1, borderColor: colors.border },
+        userName: { flex: 1, fontSize: typography.body, color: colors.text },
+        pickerContainer: { flex: 1.5, borderWidth: 1, borderColor: colors.border, borderRadius: 8 },
+        emptyText: { color: colors.textMuted, fontStyle: 'italic', padding: spacing.sm },
     });
 };
 
-export default AdminEventTasksTab;
+export default AdminEventTeamTab;

@@ -1,20 +1,26 @@
 package de.technikteam.service;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import de.technikteam.api.v1.dto.NotificationPayload;
+import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.EventDAO;
 import de.technikteam.dao.EventTaskDAO;
 import de.technikteam.dao.UserDAO;
 import de.technikteam.model.Event;
 import de.technikteam.model.EventTask;
 import de.technikteam.model.User;
+import de.technikteam.websocket.ChatSessionManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.html.PolicyFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -32,19 +38,25 @@ public class EventTaskService {
 	private final UserDAO userDAO;
 	private final EventDAO eventDAO;
 	private final NotificationService notificationService;
+	private final AdminLogService adminLogService;
 	private final PolicyFactory richTextPolicy;
+	private final ChatSessionManager sessionManager;
+	private final Gson gson;
 	private static final Logger logger = LogManager.getLogger(EventTaskService.class);
 
 	private static final Pattern MENTION_PATTERN = Pattern.compile("@(\\w+)");
 
 	@Autowired
 	public EventTaskService(EventTaskDAO taskDAO, UserDAO userDAO, EventDAO eventDAO,
-			NotificationService notificationService, @Qualifier("richTextPolicy") PolicyFactory richTextPolicy) {
+			NotificationService notificationService, AdminLogService adminLogService, @Qualifier("richTextPolicy") PolicyFactory richTextPolicy, ChatSessionManager sessionManager) {
 		this.taskDAO = taskDAO;
 		this.userDAO = userDAO;
 		this.eventDAO = eventDAO;
 		this.notificationService = notificationService;
+		this.adminLogService = adminLogService;
 		this.richTextPolicy = richTextPolicy;
+		this.sessionManager = sessionManager;
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
 	@Transactional
@@ -87,25 +99,57 @@ public class EventTaskService {
         
         // After saving, re-calculate all task statuses for the event
         calculateAndUpdateTaskStatuses(task.getEventId());
+        
+        // Check if the saved task needs help
+        EventTask savedTask = taskDAO.getTasksForEvent(task.getEventId()).stream().filter(t -> t.getId() == taskId).findFirst().orElse(null);
+        if (savedTask != null) {
+            sendHelpNeededNotification(savedTask);
+        }
 
-		// Broadcast a general UI update to all clients to indicate that the event data
-		// has changed.
-		notificationService.broadcastUIUpdate("EVENT", "UPDATED", Map.of("id", task.getEventId()));
-		logger.debug("Broadcasted EVENT_UPDATED notification for eventId: {}", task.getEventId());
+        // Broadcast full event object for real-time updates
+        Event updatedEvent = eventDAO.getEventById(task.getEventId());
+        Map<String, Object> broadcastPayload = Map.of("type", "EVENT_FULL_UPDATE", "payload", updatedEvent);
+        sessionManager.broadcast(String.valueOf(task.getEventId()), gson.toJson(broadcastPayload));
 
 		return taskId;
+	}
+
+	@Transactional
+	public void deleteTask(int eventId, int taskId, User currentUser) {
+		Event event = eventDAO.getEventById(eventId);
+		if (event == null) throw new IllegalArgumentException("Event not found.");
+
+		boolean canManage = currentUser.hasAdminAccess() || event.getLeaderUserId() == currentUser.getId();
+		if (!canManage) {
+			throw new AccessDeniedException("You do not have permission to delete tasks for this event.");
+		}
+
+		if (taskDAO.deleteTask(taskId)) {
+			adminLogService.log(currentUser.getUsername(), "EVENT_TASK_DELETE", "Deleted task ID " + taskId + " from event '" + event.getName() + "'.");
+			calculateAndUpdateTaskStatuses(eventId);
+
+			// Broadcast full event object for real-time updates
+			Event updatedEvent = eventDAO.getEventById(eventId);
+			Map<String, Object> broadcastPayload = Map.of("type", "EVENT_FULL_UPDATE", "payload", updatedEvent);
+			sessionManager.broadcast(String.valueOf(eventId), gson.toJson(broadcastPayload));
+		}
 	}
     
     @Transactional
     public void reorderTasks(int eventId, Map<String, List<Integer>> payload, User adminUser) {
-        // This is a placeholder for a more complex reordering logic.
-        // For now, we assume the DAO can handle it if we had such a method.
-        // Example: todoDAO.updateTaskOrders(entry.getValue(), categoryId);
-        logger.info("User {} reordered tasks for event {}. (Logic to be implemented in DAO)", adminUser.getUsername(), eventId);
+        logger.info("User {} reordered tasks for event {}.", adminUser.getUsername(), eventId);
+        for (Map.Entry<String, List<Integer>> entry : payload.entrySet()) {
+            int categoryId = Integer.parseInt(entry.getKey());
+            taskDAO.updateTaskOrders(entry.getValue(), categoryId);
+        }
         
         // After reordering, it's crucial to recalculate statuses
         calculateAndUpdateTaskStatuses(eventId);
-        notificationService.broadcastUIUpdate("EVENT", "UPDATED", Map.of("id", eventId));
+
+        // Broadcast full event object for real-time updates
+        Event updatedEvent = eventDAO.getEventById(eventId);
+        Map<String, Object> broadcastPayload = Map.of("type", "EVENT_FULL_UPDATE", "payload", updatedEvent);
+        sessionManager.broadcast(String.valueOf(eventId), gson.toJson(broadcastPayload));
     }
 
 	private void notifyAssignedUsers(EventTask task, int[] assignedUserIds, User currentUser) {
@@ -181,6 +225,14 @@ public class EventTaskService {
 			if (newStatus == null || !List.of("OPEN", "IN_PROGRESS", "DONE", "LOCKED").contains(newStatus)) {
 				throw new IllegalArgumentException("Invalid status provided.");
 			}
+			if ("DONE".equals(newStatus)) {
+				if (!"IN_PROGRESS".equals(task.getStatus())) {
+					throw new IllegalStateException("Task must be IN_PROGRESS before it can be marked as DONE.");
+				}
+				if (task.getAssignedUsers().size() < task.getRequiredPersons()) {
+					throw new IllegalStateException("Not enough people are assigned to complete this task.");
+				}
+			}
 			taskDAO.updateTaskStatus(taskId, newStatus);
 			if("DONE".equals(newStatus)) {
 				calculateAndUpdateTaskStatuses(eventId);
@@ -191,8 +243,18 @@ public class EventTaskService {
 			if (!isParticipant) {
 				throw new SecurityException("You must be a participant of the event to claim tasks.");
 			}
+			// Check if user is already on another active task
+			boolean isAlreadyOnActiveTask = event.getEventTasks().stream()
+					.filter(t -> "IN_PROGRESS".equals(t.getStatus()))
+					.anyMatch(t -> t.getAssignedUsers().stream().anyMatch(u -> u.getId() == currentUser.getId()));
+			if (isAlreadyOnActiveTask) {
+				throw new IllegalStateException("You are already working on another task.");
+			}
+
 			taskDAO.assignUserToTask(taskId, currentUser.getId());
             taskDAO.updateTaskStatus(taskId, "IN_PROGRESS");
+			EventTask claimedTask = taskDAO.getTasksForEvent(eventId).stream().filter(t -> t.getId() == taskId).findFirst().orElse(null);
+			if (claimedTask != null) sendHelpNeededNotification(claimedTask);
 			break;
 
 		case "unclaim":
@@ -200,13 +262,13 @@ public class EventTaskService {
 				throw new SecurityException("You can only un-claim tasks assigned to you.");
 			}
 			taskDAO.unassignUserFromTask(taskId, currentUser.getId());
-            List<User> remainingUsers = taskDAO.getTasksForEvent(eventId).stream()
-                .filter(t -> t.getId() == taskId).findFirst()
-                .map(EventTask::getAssignedUsers).orElse(List.of());
-            if(remainingUsers.isEmpty()){
-                taskDAO.updateTaskStatus(taskId, "OPEN");
-            }
-            // After leaving a task, re-evaluate statuses as it might free up a crew member
+            EventTask unclaimedTask = taskDAO.getTasksForEvent(eventId).stream().filter(t -> t.getId() == taskId).findFirst().orElse(null);
+			if (unclaimedTask != null) {
+				if(unclaimedTask.getAssignedUsers().isEmpty()){
+					taskDAO.updateTaskStatus(taskId, "OPEN");
+				}
+				sendHelpNeededNotification(unclaimedTask);
+			}
             calculateAndUpdateTaskStatuses(eventId);
 			break;
 
@@ -214,61 +276,78 @@ public class EventTaskService {
 			throw new IllegalArgumentException("Invalid action: " + action);
 		}
 
-		notificationService.broadcastUIUpdate("EVENT", "UPDATED", Map.of("id", eventId));
+
+        // Broadcast full event object for real-time updates
+        Event updatedEvent = eventDAO.getEventById(eventId);
+        Map<String, Object> broadcastPayload = Map.of("type", "EVENT_FULL_UPDATE", "payload", updatedEvent);
+        sessionManager.broadcast(String.valueOf(eventId), gson.toJson(broadcastPayload));
 	}
 
     @Transactional
     public void calculateAndUpdateTaskStatuses(int eventId) {
         List<EventTask> allTasks = taskDAO.getTasksForEvent(eventId);
-        List<User> assignedUsers = eventDAO.getAssignedUsersForEvent(eventId);
-        int totalCrewSize = assignedUsers.size();
-
         Map<Integer, EventTask> taskMap = allTasks.stream().collect(Collectors.toMap(EventTask::getId, t -> t));
-        
-        // Step 1: Unlock tasks based on dependencies
+
         for (EventTask task : allTasks) {
-            if ("LOCKED".equals(task.getStatus())) {
-                boolean allDependenciesMet = task.getDependsOn().stream()
-                    .allMatch(dep -> "DONE".equals(taskMap.get(dep.getId()).getStatus()));
-                
-                if (allDependenciesMet) {
-                    taskDAO.updateTaskStatus(task.getId(), "OPEN");
-                    task.setStatus("OPEN"); // Update local copy for subsequent checks in this run
+            // Skip tasks that are already completed.
+            if ("DONE".equals(task.getStatus())) {
+                continue;
+            }
+
+            boolean allDependenciesMet = task.getDependsOn().stream()
+                .allMatch(dep -> "DONE".equals(taskMap.get(dep.getId()).getStatus()));
+
+            String currentStatus = task.getStatus();
+            String newStatus = null;
+
+            if (allDependenciesMet) {
+                // Dependencies are met. If it was locked, it should become open.
+                if ("LOCKED".equals(currentStatus)) {
+                    newStatus = "OPEN";
+                }
+            } else {
+                // Dependencies are NOT met. Any non-done task should be locked.
+                if (!"LOCKED".equals(currentStatus)) {
+                    newStatus = "LOCKED";
                 }
             }
-        }
-        
-        // Step 2: Ensure there are enough open tasks for available crew (headroom)
-        long assignedCrewCount = allTasks.stream()
-            .filter(t -> "IN_PROGRESS".equals(t.getStatus()))
-            .mapToLong(t -> t.getAssignedUsers().size())
-            .sum();
             
-        long openTaskSlots = allTasks.stream()
-            .filter(t -> "OPEN".equals(t.getStatus()))
-            .mapToLong(EventTask::getRequiredPersons)
-            .sum();
-
-        long availableCrew = totalCrewSize - assignedCrewCount;
-
-        if (openTaskSlots < availableCrew) {
-            // Find next unlockable tasks in display order and unlock them until headroom is met
-            allTasks.stream()
-                .filter(t -> "LOCKED".equals(t.getStatus()))
-                .sorted(Comparator.comparingInt(EventTask::getDisplayOrder))
-                .forEach(task -> {
-                    long currentOpenSlots = allTasks.stream().filter(t -> "OPEN".equals(t.getStatus())).mapToLong(EventTask::getRequiredPersons).sum();
-                    if (currentOpenSlots < availableCrew) {
-                         boolean allDependenciesMet = task.getDependsOn().stream()
-                            .allMatch(dep -> "DONE".equals(taskMap.get(dep.getId()).getStatus()));
-                         if(allDependenciesMet) {
-                            taskDAO.updateTaskStatus(task.getId(), "OPEN");
-                            task.setStatus("OPEN");
-                         }
-                    }
-                });
+            if (newStatus != null) {
+                taskDAO.updateTaskStatus(task.getId(), newStatus);
+            }
         }
-
-        notificationService.broadcastUIUpdate("EVENT", "UPDATED", Map.of("id", eventId));
     }
+
+	private void sendHelpNeededNotification(EventTask task) {
+		int assignedCount = task.getAssignedUsers().size();
+		int requiredCount = task.getRequiredPersons();
+		int neededCount = requiredCount - assignedCount;
+
+		if (neededCount <= 0) {
+			return; // No help needed
+		}
+
+		Event event = eventDAO.getEventById(task.getEventId());
+		if (event == null) return;
+
+		// Find users who are part of the event but not currently on any active task
+		List<User> allEventParticipants = event.getAssignedAttendees();
+		Set<Integer> usersOnActiveTasks = taskDAO.getTasksForEvent(event.getId()).stream()
+				.filter(t -> "IN_PROGRESS".equals(t.getStatus()))
+				.flatMap(t -> t.getAssignedUsers().stream())
+				.map(User::getId)
+				.collect(Collectors.toSet());
+
+		List<User> availableUsers = allEventParticipants.stream()
+				.filter(u -> !usersOnActiveTasks.contains(u.getId()))
+				.collect(Collectors.toList());
+
+		NotificationPayload payload = new NotificationPayload();
+		payload.setTitle("Hilfe benötigt bei: " + event.getName());
+		payload.setDescription(String.format("%d weitere Person(en) für Aufgabe '%s' benötigt.", neededCount, task.getName()));
+		payload.setLevel("Important");
+		payload.setUrl(String.format("/veranstaltungen/details/%d?action=claimTask&taskId=%d", event.getId(), task.getId()));
+
+		availableUsers.forEach(user -> notificationService.sendNotificationToUser(user.getId(), payload));
+	}
 }

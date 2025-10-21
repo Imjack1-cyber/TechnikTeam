@@ -9,94 +9,45 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
-import AdminModal from '../../components/ui/AdminModal';
 import ScrollableContent from '../../components/ui/ScrollableContent';
-import Modal from '../../components/ui/Modal';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import AnnouncementModal from '../../components/admin/announcements/AnnouncementModal';
+import ViewAnnouncementModal from '../../components/admin/announcements/ViewAnnouncementModal';
 
-const AnnouncementModal = ({ isOpen, onClose, onSuccess, announcement }) => {
-    const theme = useAuthStore(state => state.theme);
-    const styles = getCommonStyles(theme);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState('');
-    const { addToast } = useToast();
-    const [title, setTitle] = useState('');
-    const [content, setContent] = useState('');
+const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
-
-    useEffect(() => {
-        if(announcement) {
-            setTitle(announcement.title);
-            setContent(announcement.content);
-        } else {
-            setTitle('');
-            setContent('');
-        }
-    }, [announcement]);
-
-	const handleSubmit = async () => {
-		setIsSubmitting(true);
-		setError('');
-		const data = { title, content };
-
-		try {
-			const result = announcement
-				? await apiClient.put(`/admin/announcements/${announcement.id}`, data)
-				: await apiClient.post('/admin/announcements', data);
-
-			if (result.success) {
-				addToast(`Mitteilung erfolgreich ${announcement ? 'aktualisiert' : 'erstellt'}.`, 'success');
-				onSuccess();
-			} else {
-				throw new Error(result.message);
-			}
-		} catch (err) {
-			setError(err.message || 'Speichern fehlgeschlagen.');
-		} finally {
-			setIsSubmitting(false);
-		}
-	};
-
-	return (
-        <AdminModal
-            isOpen={isOpen}
-            onClose={onClose}
-            title={announcement ? "Mitteilung bearbeiten" : "Neue Mitteilung erstellen"}
-            onSubmit={handleSubmit}
-            isSubmitting={isSubmitting}
-            submitText="Speichern"
-            submitButtonVariant="primary"
-        >
-            {error && <Text style={styles.errorText}>{error}</Text>}
-            <Text style={styles.label}>Titel</Text>
-            <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholderTextColor={colors.textMuted} />
-            <Text style={styles.label}>Inhalt (Markdown unterstützt)</Text>
-            <TextInput style={[styles.input, styles.textArea]} value={content} onChangeText={setContent} multiline placeholderTextColor={colors.textMuted} />
-        </AdminModal>
-	);
-};
-
-const ViewAnnouncementModal = ({ announcement, onClose }) => {
-    if (!announcement) return null;
-    const theme = useAuthStore(state => state.theme);
-    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
-    const colors = getThemeColors(theme);
-
-    return (
-        <Modal isOpen={true} onClose={onClose} title={announcement.title}>
-            <Text style={styles.subtitle}>
-                Gepostet von <Text style={{ fontWeight: 'bold' }}>{announcement.authorUsername}</Text> am {new Date(announcement.createdAt).toLocaleDateString('de-DE')}
-            </Text>
-            <ScrollView style={styles.modalMarkdownContainer}>
-                <MarkdownDisplay style={{ body: { padding: 12, color: colors.text } }}>
-                    {announcement.content}
-                </MarkdownDisplay>
-            </ScrollView>
-            <TouchableOpacity style={[styles.button, styles.secondaryButton, { marginTop: 16 }]} onPress={onClose}>
-                <Text style={styles.buttonText}>Schließen</Text>
-            </TouchableOpacity>
-        </Modal>
-    );
+    return StyleSheet.create({
+        headerContainer: { flexDirection: 'row', alignItems: 'center', padding: 16 },
+        headerIcon: { color: colors.heading, marginRight: 12 },
+        createButton: { flexDirection: 'row', gap: 8, alignSelf: 'flex-start', marginHorizontal: 16, marginBottom: 16 },
+        cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
+        cardTitle: { fontSize: typography.h4, fontWeight: 'bold', color: colors.heading, flexShrink: 1 },
+        subtitle: { fontSize: typography.caption, color: colors.textMuted },
+        cardActions: { flexDirection: 'row', gap: 16 },
+        markdownContainerTruncated: { maxHeight: 200, overflow: 'hidden' },
+        actionsRow: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginTop: 12,
+            paddingTop: 12,
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+        },
+        readMoreButton: {
+            alignItems: 'center',
+        },
+        readMoreText: {
+            color: colors.primary,
+            fontWeight: 'bold',
+        },
+        modalMarkdownContainer: {
+            maxHeight: '80%',
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 6,
+            marginTop: 12,
+        },
+    });
 };
 
 const AdminAnnouncementsPage = () => {
@@ -230,42 +181,6 @@ const AdminAnnouncementsPage = () => {
             )}
 		</View>
 	);
-};
-
-const pageStyles = (theme) => {
-    const colors = getThemeColors(theme);
-    return StyleSheet.create({
-        headerContainer: { flexDirection: 'row', alignItems: 'center', padding: 16 },
-        headerIcon: { color: colors.heading, marginRight: 12 },
-        createButton: { flexDirection: 'row', gap: 8, alignSelf: 'flex-start', marginHorizontal: 16, marginBottom: 16 },
-        cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
-        cardTitle: { fontSize: typography.h4, fontWeight: 'bold', color: colors.heading, flexShrink: 1 },
-        subtitle: { fontSize: typography.caption, color: colors.textMuted },
-        cardActions: { flexDirection: 'row', gap: 16 },
-        markdownContainerTruncated: { maxHeight: 200, overflow: 'hidden' },
-        actionsRow: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            marginTop: 12,
-            paddingTop: 12,
-            borderTopWidth: 1,
-            borderTopColor: colors.border,
-        },
-        readMoreButton: {
-            alignItems: 'center',
-        },
-        readMoreText: {
-            color: colors.primary,
-            fontWeight: 'bold',
-        },
-        modalMarkdownContainer: {
-            maxHeight: '80%',
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 6,
-            marginTop: 12,
-        },
-    });
 };
 
 export default AdminAnnouncementsPage;

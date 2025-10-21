@@ -11,13 +11,13 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 @Component
-public class ChecklistWebSocketHandler extends TextWebSocketHandler {
+public class EventWebSocketHandler extends TextWebSocketHandler {
 
 	private final EventDAO eventDAO;
-	private final ChatSessionManager sessionManager; // Reusing this manager
+	private final ChatSessionManager sessionManager;
 
 	@Autowired
-	public ChecklistWebSocketHandler(EventDAO eventDAO, ChatSessionManager sessionManager) {
+	public EventWebSocketHandler(EventDAO eventDAO, ChatSessionManager sessionManager) {
 		this.eventDAO = eventDAO;
 		this.sessionManager = sessionManager;
 	}
@@ -34,7 +34,7 @@ public class ChecklistWebSocketHandler extends TextWebSocketHandler {
 
 		boolean canAccess = user.hasAdminAccess() || (eventId != null && eventDAO.isUserAssociatedWithEvent(Integer.parseInt(eventId), user.getId()));
 		if (!canAccess) {
-			session.close(CloseStatus.POLICY_VIOLATION.withReason("Keine Berechtigung für diese Event-Checkliste."));
+			session.close(CloseStatus.POLICY_VIOLATION.withReason("Keine Berechtigung für dieses Event."));
 			return;
 		}
 
@@ -61,6 +61,7 @@ public class ChecklistWebSocketHandler extends TextWebSocketHandler {
 	}
 
 	private String getEventId(WebSocketSession session) {
+		if (session.getUri() == null) return null;
 		String path = session.getUri().getPath();
 		String[] parts = path.split("/");
 		if (parts.length > 0) {

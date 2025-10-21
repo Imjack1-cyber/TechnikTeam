@@ -3,6 +3,7 @@ package de.technikteam.config;
 import de.technikteam.dao.PermissionDAO;
 import de.technikteam.dao.RoleDAO;
 import de.technikteam.dao.UserDAO;
+import de.technikteam.model.Permission;
 import de.technikteam.model.Role;
 import de.technikteam.model.User;
 import de.technikteam.service.UserService;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class InitialAdminCreator implements CommandLineRunner {
@@ -52,23 +54,13 @@ public class InitialAdminCreator implements CommandLineRunner {
 					.orElseThrow(() -> new RuntimeException("CRITICAL: 'ADMIN' role not found in database. Cannot create initial admin user."));
 			adminUser.setRoleId(adminRole.getId());
 
-			String randomPassword = generateRandomPassword(8);
-//			String randomPassword = "TechnikTeam1+";
+			String randomPassword = generateRandomPassword(12);
 
-			List<String> permissionKeysToGrant = List.of(Permissions.ACCESS_ADMIN_PANEL, Permissions.NOTIFICATION_SEND,
-					Permissions.LOG_READ, Permissions.LOG_REVOKE);
-			List<String> permissionIds = new ArrayList<>();
+			// Grant ALL permissions to the root admin user
+			List<String> permissionIds = permissionDAO.getAllPermissions().stream()
+					.map(p -> String.valueOf(p.getId()))
+					.collect(Collectors.toList());
 
-			for (String key : permissionKeysToGrant) {
-				Integer id = permissionDAO.getPermissionIdByKey(key);
-				if (id != null) {
-					permissionIds.add(String.valueOf(id));
-				} else {
-					logger.error(
-							"FATAL: Could not find the essential permission '{}'. The default admin user will lack this right.",
-							key);
-				}
-			}
 
 			userService.createUserWithPermissions(adminUser, randomPassword, permissionIds.toArray(new String[0]),
 					"SYSTEM");

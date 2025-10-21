@@ -183,7 +183,13 @@ public class EventTaskDAO {
 				EventTask task = tasksById.get(taskId);
 				EventTask parentTask = tasksById.get(dependsOnId);
 				if (task != null && parentTask != null) {
-					task.getDependsOn().add(parentTask);
+					// Create a lightweight representation of the dependency to prevent serialization loops
+					EventTask dependencyStub = new EventTask();
+					dependencyStub.setId(parentTask.getId());
+					dependencyStub.setName(parentTask.getName());
+					dependencyStub.setDisplayOrder(parentTask.getDisplayOrder());
+
+					task.getDependsOn().add(dependencyStub);
 					parentTask.getDependencyFor().add(task);
 				}
 			});
@@ -224,6 +230,15 @@ public class EventTaskDAO {
 	public boolean updateTaskStatus(int taskId, String status) {
 		String sql = "UPDATE event_tasks SET status = ? WHERE id = ?";
 		return jdbcTemplate.update(sql, status, taskId) > 0;
+	}
+
+	public void updateTaskOrders(List<Integer> taskIds, int categoryId) {
+		String sql = "UPDATE event_tasks SET display_order = ?, category_id = ? WHERE id = ?";
+		jdbcTemplate.batchUpdate(sql, taskIds, 100, (ps, taskId) -> {
+			ps.setInt(1, taskIds.indexOf(taskId));
+			ps.setInt(2, categoryId);
+			ps.setInt(3, taskId);
+		});
 	}
 
 	public boolean assignUserToTask(int taskId, int userId) {

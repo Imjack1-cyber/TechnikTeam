@@ -18,6 +18,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -140,20 +141,16 @@ public class UserResource {
 			@Parameter(description = "ID of the user to delete") @PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
 
-		User userToDelete = userDAO.getUserById(id);
-		if (userToDelete == null) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND)
-					.body(new ApiResponse(false, "User to delete not found.", null));
-		}
-
-		if (userToDelete.getId() == 1) {
-			return ResponseEntity.badRequest()
-					.body(new ApiResponse(false, "The default admin account cannot be deleted.", null));
-		}
-
-		if (userService.deleteUser(id, securityUser.getUser())) {
-			return ResponseEntity.ok(new ApiResponse(true, "User deleted successfully", Map.of("deletedUserId", id)));
-		} else {
+		try {
+			if (userService.deleteUser(id, securityUser.getUser())) {
+				return ResponseEntity.ok(new ApiResponse(true, "User deleted successfully", Map.of("deletedUserId", id)));
+			} else {
+				return ResponseEntity.status(HttpStatus.NOT_FOUND)
+						.body(new ApiResponse(false, "User to delete not found.", null));
+			}
+		} catch (AccessDeniedException e) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, e.getMessage(), null));
+		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body(new ApiResponse(false, "Failed to delete user.", null));
 		}
@@ -164,6 +161,11 @@ public class UserResource {
 	public ResponseEntity<ApiResponse> resetPassword(
 			@Parameter(description = "ID of the user whose password will be reset") @PathVariable int id,
 			@AuthenticationPrincipal SecurityUser securityUser) {
+
+		if (id == 1) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN)
+					.body(new ApiResponse(false, "The password for the root admin account cannot be reset.", null));
+		}
 
 		User userToReset = userDAO.getUserById(id);
 		if (userToReset == null) {

@@ -52,6 +52,7 @@ const PhotoUploadModal = ({ isOpen, onClose, onSuccess, eventId }) => {
             data.append('file', { uri: file.uri, name: file.name, type: file.mimeType });
         }
 
+
         try {
             const uploadResult = await apiClient.uploadWithProgress(`/public/events/${eventId}/gallery`, data, transferId);
             if (uploadResult.success) {

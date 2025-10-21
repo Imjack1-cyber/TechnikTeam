@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform, FlatList, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform, FlatList, TextInput, useWindowDimensions } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import apiClient from '../services/apiClient';
 import useApi from '../hooks/useApi';
@@ -11,7 +11,6 @@ import ChecklistTab from '../components/events/ChecklistTab';
 import EventGalleryTab from '../components/events/EventGalleryTab';
 import TaskModal from '../components/admin/events/TaskModal';
 import AdminEventTeamTab from '../components/admin/events/AdminEventTeamTab';
-import AdminEventTasksTab from '../components/admin/events/AdminEventTasksTab';
 import { getCommonStyles } from '../styles/commonStyles';
 import { getThemeColors, spacing, typography, borders, shadows } from '../styles/theme';
 import Icon from 'react-native-vector-icons/FontAwesome5';
@@ -22,146 +21,10 @@ import useWebSocket from '../hooks/useWebSocket';
 import AccordionSection from '../components/ui/AccordionSection';
 import { format, isToday, isYesterday, formatDistanceToNowStrict } from 'date-fns';
 import { de } from 'date-fns/locale';
+import TaskBoard from '../components/events/TaskBoard';
 
-const UserTaskCard = ({ task, user, canManageTasks, isParticipant, onOpenModal, onAction, styles, colors }) => {
-    const getTaskCardStyle = () => {
-        const needsHelp = task.status === 'IN_PROGRESS' && task.assignedUsers.length < task.requiredPersons;
-        if (task.status === 'LOCKED') return styles.lockedTask;
-        if (task.status === 'DONE') return styles.doneTask;
-        if (task.isImportant || needsHelp) return styles.importantTask;
-        if (task.status === 'IN_PROGRESS') return styles.inProgressTask;
-        return {}; // Default for OPEN
-    };
-    const isDone = task.status === 'DONE';
-    const isAssigned = task.assignedUsers.some(u => u.id === user.id);
-    const isActionable = task.status === 'OPEN' || task.status === 'IN_PROGRESS';
-    
-    return (
-        <View style={[styles.taskCard, getTaskCardStyle()]}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Text style={[styles.taskName, isDone && styles.doneTaskText]}>{task.name}</Text>
-                <Text style={styles.displayOrder}>#{task.displayOrder}</Text>
-            </View>
-             <View style={styles.metaContainer}>
-                <View style={styles.metaItem}>
-                    <Icon name="users" size={12} color={colors.textMuted} />
-                    <Text style={styles.metaText}>{task.assignedUsers.length} / {task.requiredPersons}</Text>
-                </View>
-            </View>
-            {task.assignedUsers.length > 0 && (
-                <View style={styles.assigneeList}>
-                    <Text style={styles.assigneeText}>Aktiv: {task.assignedUsers.map(u => u.username).join(', ')}</Text>
-                </View>
-            )}
-             <View style={{flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8}}>
-                {canManageTasks && <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => onOpenModal(task)}><Text style={styles.buttonText}>Bearbeiten</Text></TouchableOpacity>}
-                {!isAssigned && isParticipant && isActionable && <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => onAction(task.id, 'claim')}><Text style={styles.buttonText}>Mitmachen</Text></TouchableOpacity>}
-                {isAssigned && <TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={() => onAction(task.id, 'unclaim')}><Text style={styles.buttonText}>Verlassen</Text></TouchableOpacity>}
-                {isAssigned && <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={() => onAction(task.id, 'updateStatus', 'DONE')}><Text style={styles.buttonText}>Abschließen</Text></TouchableOpacity>}
-            </View>
-        </View>
-    );
-};
-
-const UserKanbanColumn = ({ item, ...props }) => (
-    <View style={props.styles.kanbanColumn}>
-        <Text style={props.styles.columnTitle}>{item.name}</Text>
-        <FlatList
-            data={item.tasks}
-            renderItem={({ item: task }) => <UserTaskCard task={task} {...props} />}
-            keyExtractor={task => task.id.toString()}
-        />
-    </View>
-);
-
-const UserTaskView = ({ event, user, categories, canManageTasks, isParticipant, onOpenModal, onAction, showDoneTasks, onShowDoneTasksToggle, styles, colors }) => {
-    const categorizedTasks = useMemo(() => {
-        if (!event.eventTasks) return [];
-        const filteredTasks = event.eventTasks.filter(task => showDoneTasks || task.status !== 'DONE');
-        
-        const tasksByCat = filteredTasks.reduce((acc, task) => {
-            const categoryId = task.categoryId || 0;
-            if (!acc[categoryId]) acc[categoryId] = [];
-            acc[categoryId].push(task);
-            return acc;
-        }, {});
-
-        const allCategories = categories ? [...categories, {id: 0, name: 'Unkategorisiert'}] : [{id: 0, name: 'Unkategorisiert'}];
-        
-        return allCategories.map(cat => ({
-            ...cat,
-            tasks: (tasksByCat[cat.id] || []).sort((a,b) => a.displayOrder - b.displayOrder)
-        })).filter(cat => cat.tasks.length > 0);
-
-    }, [event.eventTasks, showDoneTasks, categories]);
-
-    return (
-        <View style={{ flex: 1 }}>
-             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md, paddingTop: spacing.md }}>
-                <BouncyCheckbox isChecked={showDoneTasks} onPress={onShowDoneTasksToggle} fillColor={colors.primary} />
-                <Text style={{color: colors.text}}>Erledigte Aufgaben anzeigen</Text>
-            </View>
-            <FlatList
-                horizontal
-                data={categorizedTasks}
-                renderItem={({ item }) => (
-                    <UserKanbanColumn
-                        item={item}
-                        event={event}
-                        user={user}
-                        canManageTasks={canManageTasks}
-                        isParticipant={isParticipant}
-                        onOpenModal={onOpenModal}
-                        onAction={onAction}
-                        styles={styles}
-                        colors={colors}
-                    />
-                )}
-                keyExtractor={item => item.id.toString()}
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.kanbanBoard}
-            />
-        </View>
-    );
-};
-
-const DetailsTab = ({ event }) => {
-    const theme = useAuthStore(state => state.theme);
-    const styles = getCommonStyles(theme);
-    const colors = getThemeColors(theme);
-    return (
-        <ScrollableContent contentContainerStyle={styles.contentContainer}>
-            <View style={styles.card}>
-                <Text style={styles.cardTitle}>Beschreibung</Text>
-                <MarkdownDisplay style={{body: {color: colors.text}}}>{event.description || 'Keine Beschreibung.'}</MarkdownDisplay>
-                <Text style={[styles.cardTitle, {marginTop: 16}]}>Details</Text>
-                <Text style={{color: colors.text}}>Ort: {event.location || 'N/A'}</Text>
-                <Text style={{color: colors.text}}>Leitung: {event.leaderUsername || 'N/A'}</Text>
-            </View>
-        </ScrollableContent>
-    );
-};
-
-const TeamTab = ({ event, onUpdate, isAdmin }) => {
-    if (isAdmin) {
-        return <AdminEventTeamTab event={event} onTeamUpdate={onUpdate} />;
-    }
-    return <View style={getCommonStyles().centered}><Text>Teamansicht in Kürze verfügbar.</Text></View>;
-};
-
-const TasksTab = ({ event, user, categories, canManageTasks, isParticipant, handleOpenTaskModal, handleTaskAction }) => {
-    const [showDoneTasks, setShowDoneTasks] = useState(false);
-    const theme = useAuthStore(state => state.theme);
-    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
-    const colors = getThemeColors(theme);
-    return <UserTaskView event={event} user={user} categories={categories} canManageTasks={canManageTasks} isParticipant={isParticipant} onOpenModal={handleOpenTaskModal} onAction={handleTaskAction} showDoneTasks={showDoneTasks} onShowDoneTasksToggle={() => setShowDoneTasks(!showDoneTasks)} styles={styles} colors={colors} />;
-};
-
-const EventChatTab = ({ eventId }) => {
+const EventChatTab = ({ eventId, styles, colors }) => {
     const user = useAuthStore(state => state.user);
-    const theme = useAuthStore(state => state.theme);
-    const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
-    const colors = getThemeColors(theme);
 
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
@@ -257,34 +120,51 @@ const EventDetailsPage = () => {
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
+    const { width } = useWindowDimensions();
+    const isLargeScreen = width >= 768;
+
 
 	const eventApiCall = useCallback(() => apiClient.get(`/public/events/${eventId}`), [eventId]);
-	const { data: event, loading: eventLoading, error: eventError, reload: reloadEventDetails } = useApi(eventApiCall, { subscribeTo: 'EVENT' });
-    const categoriesApiCall = useCallback(() => eventId ? apiClient.get(`/admin/events/${eventId}/task-categories`) : null, [eventId]);
-    const { data: categories, loading: categoriesLoading } = useApi(categoriesApiCall);
+	const { data: initialEvent, loading: eventLoading, error: eventError, reload } = useApi(eventApiCall);
+
+    const categoriesApiCall = useCallback(() => {
+        // Only admins fetch the full list of categories to manage them.
+        // Regular users derive categories from the tasks they receive.
+        if (isAdmin && eventId) {
+            return apiClient.get(`/admin/events/${eventId}/task-categories`);
+        }
+        return null;
+    }, [eventId, isAdmin]);
+    const { data: categories, loading: categoriesLoading, reload: reloadCategories } = useApi(categoriesApiCall);
 	
-    const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-    const [editingTask, setEditingTask] = useState(null);
+    const [event, setEvent] = useState(null);
+    const [activeTab, setActiveTab] = useState('tasks');
     const [isStarting, setIsStarting] = useState(false);
     const [isStopping, setIsStopping] = useState(false);
     const [isStartConfirmModalOpen, setIsStartConfirmModalOpen] = useState(false);
     const [isStopConfirmModalOpen, setIsStopConfirmModalOpen] = useState(false);
-    const [showDoneTasks, setShowDoneTasks] = useState(false);
 
-    const handleOpenTaskModal = (task = null) => {
-        setEditingTask(task);
-        setIsTaskModalOpen(true);
-    };
+    useEffect(() => {
+        if (initialEvent) {
+            setEvent(initialEvent);
+            // Context-aware default tab
+            if (initialEvent.status === 'GEPLANT') {
+                setActiveTab('checklist');
+            } else if (initialEvent.status === 'LAUFEND') {
+                setActiveTab('tasks');
+            } else {
+                setActiveTab('details');
+            }
+        }
+    }, [initialEvent]);
 
-    const handleTaskAction = async (taskId, action, status = null) => {
-        try {
-            const result = await apiClient.post(`/events/${eventId}/tasks/${taskId}/action`, { action, status });
-            if (result.success) {
-                addToast('Aktion erfolgreich.', 'success');
-                reloadEventDetails();
-            } else { throw new Error(result.message); }
-        } catch (err) { addToast(`Fehler: ${err.message}`, 'error'); }
-    };
+    const handleWebSocketMessage = useCallback((message) => {
+        if (message.type === 'EVENT_FULL_UPDATE' && message.payload?.id === parseInt(eventId, 10)) {
+            setEvent(message.payload);
+        }
+    }, [eventId]);
+
+    useWebSocket(`/ws/event/${eventId}`, handleWebSocketMessage, [eventId]);
 
     const handleStartEvent = () => {
         setIsStartConfirmModalOpen(true);
@@ -296,7 +176,7 @@ const EventDetailsPage = () => {
             const result = await apiClient.post(`/events/${eventId}/start`);
             if (result.success) {
                 addToast('Event erfolgreich gestartet.', 'success');
-                reloadEventDetails();
+                // No reload needed
             } else {
                 throw new Error(result.message);
             }
@@ -318,7 +198,7 @@ const EventDetailsPage = () => {
             const result = await apiClient.post(`/events/${eventId}/stop`);
             if (result.success) {
                 addToast('Event erfolgreich beendet.', 'success');
-                reloadEventDetails();
+                // No reload needed
             } else {
                 throw new Error(result.message);
             }
@@ -330,21 +210,59 @@ const EventDetailsPage = () => {
         }
     };
 
+    const handleUpdate = () => {
+        reload();
+        reloadCategories();
+    };
 
-	if (eventLoading || categoriesLoading) return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
+	if (eventLoading || categoriesLoading || !event) return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
 	if (eventError) return <View style={styles.centered}><Text style={styles.errorText}>{eventError}</Text></View>;
-	if (!event) return <View style={styles.centered}><Text>Event nicht gefunden.</Text></View>;
     
     const isParticipant = event.userAttendanceStatus === 'ANGEMELDET' || event.userAttendanceStatus === 'ZUGEWIESEN';
-    const canManageTasks = isAdmin || user.id === event.leaderUserId;
+    const canManage = isAdmin || user.id === event.leaderUserId;
+
+    const renderTabContent = () => {
+        switch (activeTab) {
+            case 'tasks':
+                return <TaskBoard event={event} user={user} categories={categories || []} canManageTasks={canManage} isParticipant={isParticipant} onUpdate={handleUpdate} />;
+            case 'checklist':
+                return <ChecklistTab event={event} canManage={canManage} />;
+            case 'chat':
+                return <EventChatTab eventId={event.id} styles={styles} colors={colors} />;
+            case 'gallery':
+                return <EventGalleryTab event={event} user={user} />;
+            case 'details':
+            default:
+                return (
+                    <View style={styles.detailsTabContent}>
+                        <AccordionSection title="Details">
+                            <MarkdownDisplay style={{body: {color: colors.text}}}>{event.description || 'Keine Beschreibung.'}</MarkdownDisplay>
+                            <Text style={{fontWeight: 'bold', marginTop: 16, color: colors.text}}>Ort:</Text>
+                            <Text style={{color: colors.text}}>{event.location || 'N/A'}</Text>
+                            <Text style={{fontWeight: 'bold', marginTop: 8, color: colors.text}}>Leitung:</Text>
+                            <Text style={{color: colors.text}}>{event.leaderUsername || 'N/A'}</Text>
+                        </AccordionSection>
+                        <AccordionSection title="Team">
+                            {canManage ? <AdminEventTeamTab event={event} onTeamUpdate={handleUpdate} /> : <Text style={{color: colors.text}}>Teamansicht in Kürze verfügbar.</Text>}
+                        </AccordionSection>
+                    </View>
+                );
+        }
+    };
     
+    const tabs = ['details', 'tasks', 'checklist'];
+    if (event.status === 'LAUFEND' || isLargeScreen) tabs.push('chat');
+    if (event.status === 'ABGESCHLOSSEN') tabs.push('gallery');
+    
+    const tabLabels = { details: 'Details', tasks: 'Aufgaben', checklist: 'Checkliste', chat: 'Chat', gallery: 'Galerie' };
+
 	return (
         <ScrollableContent style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.title}>{event.name}</Text>
                 <View style={{flexDirection: 'row', alignItems: 'center', gap: spacing.sm}}>
                     <StatusBadge status={event.status} />
-                    {canManageTasks && event.status === 'GEPLANT' && (
+                    {canManage && event.status === 'GEPLANT' && (
                         <TouchableOpacity 
                             style={[styles.button, styles.successButton, {paddingVertical: 6, paddingHorizontal: 12}]}
                             onPress={handleStartEvent}
@@ -361,7 +279,7 @@ const EventDetailsPage = () => {
                             }
                         </TouchableOpacity>
                     )}
-                    {canManageTasks && event.status === 'LAUFEND' && (
+                    {canManage && event.status === 'LAUFEND' && (
                         <TouchableOpacity 
                             style={[styles.button, styles.dangerButton, {paddingVertical: 6, paddingHorizontal: 12}]}
                             onPress={handleStopEvent}
@@ -382,82 +300,35 @@ const EventDetailsPage = () => {
             </View>
             <Text style={styles.subtitle}>{new Date(event.eventDateTime).toLocaleString('de-DE')}</Text>
             
-            <View style={styles.contentContainer}>
-                <AccordionSection title="Details">
-                    <MarkdownDisplay style={{body: {color: colors.text}}}>{event.description || 'Keine Beschreibung.'}</MarkdownDisplay>
-                    <Text style={{fontWeight: 'bold', marginTop: 16, color: colors.text}}>Ort:</Text>
-                    <Text style={{color: colors.text}}>{event.location || 'N/A'}</Text>
-                    <Text style={{fontWeight: 'bold', marginTop: 8, color: colors.text}}>Leitung:</Text>
-                    <Text style={{color: colors.text}}>{event.leaderUsername || 'N/A'}</Text>
-                </AccordionSection>
+            <View style={styles.tabContainer}>
+                {tabs.map(tab => (
+                    <TouchableOpacity
+                        key={tab}
+                        style={[styles.tabButton, activeTab === tab && styles.activeTab]}
+                        onPress={() => setActiveTab(tab)}
+                    >
+                        <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>{tabLabels[tab]}</Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
 
-                <AccordionSection title="Team">
-                    {isAdmin ? <AdminEventTeamTab event={event} onTeamUpdate={reloadEventDetails} /> : <Text style={{color: colors.text}}>Teamansicht in Kürze verfügbar.</Text>}
-                </AccordionSection>
-
-                <AccordionSection title="Aufgaben">
-                    <UserTaskView event={event} user={user} categories={categories || []} canManageTasks={canManageTasks} isParticipant={isParticipant} onOpenModal={handleOpenTaskModal} onAction={handleTaskAction} showDoneTasks={showDoneTasks} onShowDoneTasksToggle={() => setShowDoneTasks(!showDoneTasks)} styles={styles} colors={colors} />
-                </AccordionSection>
-                
-                {canManageTasks && (
-                    <AccordionSection title="Aufgaben (Admin)">
-                        <AdminEventTasksTab event={event} onUpdate={reloadEventDetails} />
-                    </AccordionSection>
-                )}
-                
-                <AccordionSection title="Checkliste">
-                    <ChecklistTab event={event} />
-                </AccordionSection>
-
-                {event.status === 'LAUFEND' && (
-                    <AccordionSection title="Chat">
-                        <EventChatTab eventId={event.id} />
-                    </AccordionSection>
-                )}
-
-                {event.status === 'ABGESCHLOSSEN' && (
-                    <AccordionSection title="Galerie">
-                        <EventGalleryTab event={event} user={user} />
-                    </AccordionSection>
+            <View style={[styles.mainArea, isLargeScreen && styles.mainAreaLarge]}>
+                <View style={[isLargeScreen && styles.mainContentPanel]}>
+                    {renderTabContent()}
+                </View>
+                {isLargeScreen && (activeTab === 'tasks' || activeTab === 'checklist') && (
+                    <View style={styles.sideContentPanel}>
+                         <EventChatTab eventId={event.id} styles={styles} colors={colors} />
+                    </View>
                 )}
             </View>
 
-            <TaskModal
-                isOpen={isTaskModalOpen}
-                onClose={() => setIsTaskModalOpen(false)}
-                onSuccess={() => { setIsTaskModalOpen(false); reloadEventDetails(); }}
-                event={event}
-                task={editingTask}
-                allUsers={event.assignedAttendees || []}
-                categories={categories || []}
-            />
-
-            <AdminModal
-                isOpen={isStartConfirmModalOpen}
-                onClose={() => setIsStartConfirmModalOpen(false)}
-                onSubmit={performStartEvent}
-                title="Event starten?"
-                submitText="Starten"
-                submitButtonVariant="success"
-                isSubmitting={isStarting}
-            >
-                <Text style={styles.bodyText}>
-                    Möchten Sie das Event "{event.name}" wirklich starten? Alle zugewiesenen Mitglieder werden benachrichtigt.
-                </Text>
+            <AdminModal isOpen={isStartConfirmModalOpen} onClose={() => setIsStartConfirmModalOpen(false)} onSubmit={performStartEvent} title="Event starten?" submitText="Starten" submitButtonVariant="success" isSubmitting={isStarting}>
+                <Text style={styles.bodyText}>Möchten Sie das Event "{event.name}" wirklich starten? Alle zugewiesenen Mitglieder werden benachrichtigt.</Text>
             </AdminModal>
             
-            <AdminModal
-                isOpen={isStopConfirmModalOpen}
-                onClose={() => setIsStopConfirmModalOpen(false)}
-                onSubmit={performStopEvent}
-                title="Event beenden?"
-                submitText="Beenden"
-                submitButtonVariant="danger"
-                isSubmitting={isStopping}
-            >
-                <Text style={styles.bodyText}>
-                    Möchten Sie das Event "{event.name}" wirklich beenden? Der Status wird auf "Abgeschlossen" gesetzt und alle Teilnehmer werden benachrichtigt.
-                </Text>
+            <AdminModal isOpen={isStopConfirmModalOpen} onClose={() => setIsStopConfirmModalOpen(false)} onSubmit={performStopEvent} title="Event beenden?" submitText="Beenden" submitButtonVariant="danger" isSubmitting={isStopping}>
+                <Text style={styles.bodyText}>Möchten Sie das Event "{event.name}" wirklich beenden? Der Status wird auf "Abgeschlossen" gesetzt und alle Teilnehmer werden benachrichtigt.</Text>
             </AdminModal>
         </ScrollableContent>
 	);
@@ -466,26 +337,17 @@ const EventDetailsPage = () => {
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
     return StyleSheet.create({
-        header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16 },
-        categoryContainer: { marginBottom: spacing.lg },
-        categoryTitle: { fontSize: typography.h3, fontWeight: 'bold', marginBottom: spacing.md, borderBottomWidth: 1, borderColor: colors.border, paddingBottom: spacing.sm },
-        lockedTask: { opacity: 0.7 },
-        importantTask: { backgroundColor: 'rgba(255, 193, 7, 0.1)', borderColor: colors.warning },
-        inProgressTask: { backgroundColor: 'rgba(40, 167, 69, 0.1)', borderColor: colors.success },
-        doneTask: { backgroundColor: colors.background, opacity: 0.6 },
-        doneTaskText: { textDecorationLine: 'line-through', color: colors.textMuted },
-        taskName: { fontWeight: 'bold', marginBottom: spacing.xs, color: colors.text, fontSize: typography.body },
-        displayOrder: { fontSize: typography.caption, color: colors.textMuted, fontWeight: 'bold' },
-        metaContainer: { flexDirection: 'row', gap: spacing.md, marginVertical: spacing.sm },
-        metaItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-        metaText: { color: colors.textMuted, fontSize: typography.small },
-        assigneeList: { marginTop: spacing.sm, borderTopWidth: 1, borderColor: colors.border, paddingTop: spacing.sm },
-        assigneeText: { color: colors.textMuted, fontSize: typography.small },
-        // Kanban styles
-        kanbanBoard: { paddingVertical: spacing.sm },
-        kanbanColumn: { width: 300, backgroundColor: colors.background, borderRadius: borders.radius, padding: spacing.sm, marginRight: spacing.md, height: 500 },
-        columnTitle: { fontSize: typography.h4, fontWeight: 'bold', padding: spacing.sm, color: colors.heading },
-        taskCard: { backgroundColor: colors.surface, borderRadius: borders.radius, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border, ...shadows.sm },
+        header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, flexWrap: 'wrap' },
+        tabContainer: { flexDirection: 'row', paddingHorizontal: spacing.md, borderBottomWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+        tabButton: { paddingVertical: spacing.md, paddingHorizontal: spacing.sm, marginRight: spacing.md, borderBottomWidth: 3, borderBottomColor: 'transparent' },
+        activeTab: { borderBottomColor: colors.primary },
+        tabText: { color: colors.textMuted, fontWeight: '500' },
+        activeTabText: { color: colors.primary },
+        detailsTabContent: { padding: spacing.md },
+        mainArea: {},
+        mainAreaLarge: { flexDirection: 'row', flex: 1 },
+        mainContentPanel: { flex: 2 },
+        sideContentPanel: { flex: 1, borderLeftWidth: 1, borderColor: colors.border },
         // Chat styles
         bubbleContainer: { flexDirection: 'row', maxWidth: '80%', marginVertical: spacing.xs },
 		sent: { alignSelf: 'flex-end', justifyContent: 'flex-end' },
@@ -496,6 +358,7 @@ const pageStyles = (theme) => {
         receivedText: { color: colors.text },
         deletedText: { fontStyle: 'italic' },
 		sender: { fontWeight: 'bold', fontSize: typography.small, marginBottom: 2 },
+		metaContainer: { flexDirection: 'row', alignSelf: 'flex-end', alignItems: 'center', gap: spacing.xs, marginTop: 4 },
 		timestamp: { fontSize: typography.caption, color: colors.textMuted },
 		inputContainer: { flexDirection: 'row', padding: spacing.sm, borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, gap: spacing.sm, alignItems: 'center' },
 		chatInput: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: spacing.md, backgroundColor: colors.background, maxHeight: 120, paddingVertical: 10, color: colors.text }

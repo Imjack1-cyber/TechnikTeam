@@ -4,10 +4,11 @@ import apiClient from '../services/apiClient';
 import { storage, setToken, removeToken } from '../lib/storage';
 import { Platform } from 'react-native';
 import { navigateFromUrl } from '../router/navigationHelper';
+import { Permissions } from '../lib/permissions';
 
-const hasAdminAccess = (roleName) => {
-	// Frontend authorization check based on role.
-	return roleName === 'ADMIN';
+const hasAdminAccess = (permissions) => {
+	// Frontend authorization check based on permissions.
+	return permissions && permissions.includes(Permissions.ACCESS_ADMIN_PANEL);
 };
 
 const defaultLayout = {
@@ -69,7 +70,7 @@ export const useAuthStore = create(
                     user: user,
                     navigationItems: navigation,
                     isAuthenticated: true,
-                    isAdmin: hasAdminAccess(user.roleName),
+                    isAdmin: hasAdminAccess(user.permissions),
                     theme: newTheme,
 					layout: userLayout,
                     maintenanceStatus: maintenanceStatus || { mode: 'OFF', message: '' },
@@ -165,7 +166,7 @@ export const useAuthStore = create(
 							user: user,
 							navigationItems: navigation,
 							isAuthenticated: true,
-							isAdmin: hasAdminAccess(user.roleName),
+							isAdmin: hasAdminAccess(user.permissions),
 							theme: newTheme,
 							layout: userLayout,
 							maintenanceStatus: maintenanceStatus || { mode: 'OFF', message: '' },

@@ -51,6 +51,7 @@ import PollDetailsPage from '../pages/PollDetailsPage';
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
 import AdminUsersIndex from '../pages/admin/AdminUsersIndex';
 import AdminUsersPage from '../pages/admin/AdminUsersPage';
+import AdminPermissionsPage from '../pages/admin/AdminPermissionsPage';
 import AdminRequestsPage from '../pages/admin/AdminRequestsPage';
 import AdminTrainingRequestsPage from '../pages/admin/AdminTrainingRequestsPage';
 import AdminAchievementsPage from '../pages/admin/AdminAchievementsPage';
@@ -107,6 +108,7 @@ const AdminUsersStack = () => (
     <Stack.Navigator screenOptions={{ header: (props) => <Header {...props} /> }}>
         <Stack.Screen name="AdminUsersIndex" component={AdminUsersIndex} options={{ title: 'Benutzer & Anträge' }} />
         <Stack.Screen name="AdminUsers" component={AdminUsersPage} options={{ title: 'Benutzer Verwalten' }} />
+        <Stack.Screen name="AdminPermissions" component={AdminPermissionsPage} options={{ title: 'Rollen & Berechtigungen' }} />
         <Stack.Screen name="AdminRequests" component={AdminRequestsPage} options={{ title: 'Profilanträge' }} />
         <Stack.Screen name="AdminTrainingRequests" component={AdminTrainingRequestsPage} options={{ title: 'Lehrgangsanfragen' }} />
         <Stack.Screen name="AdminAchievements" component={AdminAchievementsPage} options={{ title: 'Abzeichen' }} />

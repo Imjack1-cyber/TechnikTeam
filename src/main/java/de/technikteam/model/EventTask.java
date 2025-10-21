@@ -24,7 +24,7 @@ public class EventTask {
 	private List<StorageItem> requiredItems = new ArrayList<>();
 	private List<InventoryKit> requiredKits = new ArrayList<>();
 	private List<EventTask> dependsOn = new ArrayList<>(); 
-	private List<EventTask> dependencyFor = new ArrayList<>(); 
+	private transient List<EventTask> dependencyFor = new ArrayList<>(); 
     private List<Attachment> attachments = new ArrayList<>();
 
 

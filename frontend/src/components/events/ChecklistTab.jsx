@@ -11,7 +11,7 @@ import { getCommonStyles } from '../../styles/commonStyles';
 import { getThemeColors, typography, spacing } from '../../styles/theme';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 
-const ChecklistTab = ({ event }) => {
+const ChecklistTab = ({ event, canManage }) => {
     const navigation = useNavigation();
 	const { addToast } = useToast();
 	const [checklistItems, setChecklistItems] = useState([]);
@@ -34,7 +34,7 @@ const ChecklistTab = ({ event }) => {
 		}
 	}, []);
 
-	useWebSocket(`/ws/checklist/${event.id}`, handleWebSocketMessage);
+	useWebSocket(`/ws/checklist/${event.id}`, handleWebSocketMessage, [event.id]);
 
 	const handleStatusChange = async (itemId, newStatus) => {
 		try {
@@ -62,10 +62,10 @@ const ChecklistTab = ({ event }) => {
                 <TouchableOpacity onPress={() => navigation.navigate('StorageItemDetails', { itemId: item.itemId })}>
                     <Text style={styles.itemName}>{item.itemName}</Text>
                 </TouchableOpacity>
-                <Text>Menge: {item.quantity}</Text>
+                <Text style={{color: colors.text}}>Menge: {item.quantity}</Text>
             </View>
             <View style={styles.pickerContainer}>
-                <Picker selectedValue={item.status} onValueChange={(val) => handleStatusChange(item.id, val)}>
+                <Picker selectedValue={item.status} onValueChange={(val) => handleStatusChange(item.id, val)} itemStyle={{color: colors.text}}>
                     <Picker.Item label="Ausstehend" value="PENDING" />
                     <Picker.Item label="Eingepackt" value="PACKED_OUT" />
                     <Picker.Item label="Zurück & OK" value="RETURNED_CHECKED" />
@@ -79,16 +79,18 @@ const ChecklistTab = ({ event }) => {
 		<View>
 			<View style={styles.controlsContainer}>
 				<Text style={styles.description}>Haken Sie Artikel beim Ein- und Ausladen ab.</Text>
-				<TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={handleGenerateChecklist}>
-                    <Icon name="sync" size={14} color={colors.text} />
-					<Text style={{color: colors.text}}>Generieren</Text>
-				</TouchableOpacity>
+                {canManage && (
+                    <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={handleGenerateChecklist}>
+                        <Icon name="sync" size={14} color={colors.text} />
+                        <Text style={{color: colors.text}}> Aus Reservierung generieren</Text>
+                    </TouchableOpacity>
+                )}
 			</View>
 			<FlatList
                 data={checklistItems}
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
-                ListEmptyComponent={<Text style={{ padding: spacing.md }}>Keine Artikel auf der Checkliste.</Text>}
+                ListEmptyComponent={<Text style={{ padding: spacing.md, color: colors.text }}>Keine Artikel auf der Checkliste.</Text>}
             />
 		</View>
 	);

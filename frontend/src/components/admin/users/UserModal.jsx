@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import PermissionsTab from './PermissionTab';
 import apiClient from '../../../services/apiClient';
@@ -9,6 +9,7 @@ import { getThemeColors, spacing } from '../../../styles/theme';
 import { Picker } from '@react-native-picker/picker';
 import AdminModal from '../../ui/AdminModal';
 import Icon from 'react-native-vector-icons/FontAwesome5';
+import useApi from '../../../hooks/useApi'; // <-- Import was missing
 
 const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions, isLoadingData }) => {
 	const [activeTab, setActiveTab] = useState('general');
@@ -20,6 +21,8 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
     const theme = useAuthStore(state => state.theme);
     const styles = { ...getCommonStyles(theme), ...pageStyles(theme) };
     const colors = getThemeColors(theme);
+    const { data: overviewData, reload: reloadOverview } = useApi(useCallback(() => apiClient.get('/admin/permissions/overview'), []));
+
 
 	const isEditMode = !!user;
 
@@ -39,7 +42,7 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
 							className: result.data.className || '',
 							email: result.data.email || '',
 							adminNotes: result.data.adminNotes || '',
-							permissionIds: new Set(result.data.permissions.map(p => p.id))
+							permissionIds: new Set((overviewData?.directUserPermissions || {})[user.id] || [])
 						});
 					}
 				} catch (err) { setError('Benutzerdetails konnten nicht geladen werden.'); }
@@ -53,7 +56,7 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
 			}
 		};
 		fetchUserData();
-	}, [user, isEditMode, roles, isOpen]);
+	}, [user, isEditMode, roles, isOpen, overviewData]);
 
 	const handleChange = (name, value) => setFormData(prev => ({ ...prev, [name]: value }));
 	const handlePermissionChange = (permissionId) => setFormData(prev => {
@@ -134,7 +137,7 @@ const UserModal = ({ isOpen, onClose, onSuccess, user, roles, groupedPermissions
             
             <View style={{ flex: 1 }}>
                 {activeTab === 'general' && renderGeneralTab()}
-                {activeTab === 'permissions' && <PermissionsTab groupedPermissions={groupedPermissions} assignedIds={formData.permissionIds || new Set()} onPermissionChange={handlePermissionChange} isLoading={isLoadingData} />}
+                {activeTab === 'permissions' && <PermissionsTab groupedPermissions={groupedPermissions} inheritedIds={new Set((overviewData?.rolePermissions || {})[formData.roleId] || [])} assignedIds={formData.permissionIds || new Set()} onPermissionChange={handlePermissionChange} isLoading={isLoadingData || !overviewData} />}
                 {activeTab === 'notes' && isEditMode && renderNotesTab()}
             </View>
 		</AdminModal>

@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -63,6 +64,9 @@ public class UserService {
 
 	@Transactional
 	public boolean deleteUser(int userId, User adminUser) {
+		if (userId == 1) {
+			throw new AccessDeniedException("The root admin account (ID 1) cannot be deleted.");
+		}
 		User userToDelete = userDAO.getUserById(userId);
 		if (userToDelete == null) {
 			return false;

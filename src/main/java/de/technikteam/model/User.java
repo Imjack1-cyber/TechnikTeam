@@ -2,6 +2,8 @@ package de.technikteam.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import de.technikteam.config.Permissions;
+
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -53,7 +55,7 @@ public class User {
 	}
 
 	public boolean hasAdminAccess() {
-		return "ADMIN".equals(this.roleName);
+		return permissions != null && permissions.contains(Permissions.ACCESS_ADMIN_PANEL);
 	}
 
 	public int getId() {

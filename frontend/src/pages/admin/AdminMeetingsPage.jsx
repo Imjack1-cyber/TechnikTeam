@@ -7,7 +7,6 @@ import { useToast } from '../../context/ToastContext';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useAuthStore } from '../../store/authStore';
 import { getCommonStyles } from '../../styles/commonStyles';
-import RNPickerSelect from 'react-native-picker-select';
 import RepeatMeetingModal from '../../components/admin/meetings/RepeatMeetingModal';
 import MeetingModal from '../../components/admin/meetings/MeetingModal';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';

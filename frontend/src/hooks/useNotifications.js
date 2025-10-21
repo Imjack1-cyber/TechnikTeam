@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import RNEventSource from 'react-native-sse';
 import { getToken } from '../lib/storage';
+import apiClient from '../services/apiClient';
 
 const getSseBaseUrl = () => {
     const mode = useAuthStore.getState().backendMode;
@@ -63,6 +64,24 @@ export const useNotifications = () => {
 
 			es.addEventListener("notification", (event) => {
 				const data = JSON.parse(event.data);
+                
+                const claimMatch = data.url?.match(/\/events\/(\d+)\/tasks\/(\d+)\/claim-via-notification/);
+                if (claimMatch) {
+                    const [, eventId, taskId] = claimMatch;
+                    apiClient.post(`/events/${eventId}/tasks/${taskId}/action`, { action: 'claim' })
+                        .then(result => {
+                            if (result.success) {
+                                addToast('Du wurdest der Aufgabe zugewiesen!', 'success', `/veranstaltungen/details/${eventId}`);
+                            } else {
+                                addToast(`Zuweisung fehlgeschlagen: ${result.message}`, 'error');
+                            }
+                        })
+                        .catch(err => {
+                            addToast(`Fehler bei der Zuweisung: ${err.message}`, 'error');
+                        });
+                    return; // Don't show the toast for the notification itself
+                }
+
 				incrementUnseenNotificationCount();
 				if (data.level === 'Warning') {
 					setWarningNotification(data);

@@ -16,57 +16,8 @@ import ConfirmationModal from '../../components/ui/ConfirmationModal';
 import Modal from '../../components/ui/Modal';
 import Clipboard from '@react-native-clipboard/clipboard';
 import PasswordDisplayModal from '../../components/admin/users/PasswordDisplayModal';
-
-const SuspendUserModal = ({ isOpen, onClose, user, onSuccess }) => {
-    const theme = useAuthStore(state => state.theme);
-    const styles = getCommonStyles(theme);
-    const colors = getThemeColors(theme);
-	const [duration, setDuration] = useState('7d');
-	const [reason, setReason] = useState('');
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [error, setError] = useState('');
-	const { addToast } = useToast();
-
-    useEffect(() => {
-        if(isOpen) {
-            console.log(`SuspendUserModal opened for user: ${user?.username}`);
-        }
-    }, [isOpen, user]);
-
-	const handleSubmit = async () => {
-		setIsSubmitting(true);
-		setError('');
-		try {
-			const result = await apiClient.post(`/admin/users/${user.id}/suspend`, { duration, reason });
-			if (result.success) {
-				addToast(`Benutzer ${user.username} wurde gesperrt.`, 'success');
-				onSuccess();
-			} else { throw new Error(result.message); }
-		} catch (err) {
-			setError(err.message || 'Sperren fehlgeschlagen.');
-		} finally {
-			setIsSubmitting(false);
-		}
-	};
-
-	return (
-		<AdminModal
-            isOpen={isOpen}
-            onClose={onClose}
-            title={`Benutzer sperren: ${user.username}`}
-            onSubmit={handleSubmit}
-            isSubmitting={isSubmitting}
-            submitText="Benutzer sperren"
-            submitButtonVariant="danger"
-        >
-            {error && <Text style={styles.errorText}>{error}</Text>}
-            <Text style={styles.label}>Dauer (z.B. 1h, 7d, indefinite)</Text>
-            <TextInput style={styles.input} value={duration} onChangeText={setDuration} placeholderTextColor={colors.textMuted} />
-            <Text style={styles.label}>Grund</Text>
-            <TextInput style={[styles.input, styles.textArea]} value={reason} onChangeText={setReason} multiline placeholderTextColor={colors.textMuted}/>
-        </AdminModal>
-	);
-};
+import SuspendUserModal from '../../components/admin/users/SuspendUserModal';
+import { Permissions } from '../../lib/permissions';
 
 const pageStyles = (theme) => {
     const colors = getThemeColors(theme);
@@ -167,8 +118,11 @@ const AdminUsersPage = () => {
     
     const renderItem = ({ item: user }) => {
         const isLocked = user.isLocked || user.status === 'SUSPENDED';
-        const canDelete = currentUser?.id === 1 ? (user.id !== 1) : (user.roleName !== 'ADMIN');
-        const canSuspend = currentUser?.id === 1 ? user.id !== 1 : user.roleName !== 'ADMIN';
+        const hasAdminPanelAccess = user.permissions?.includes(Permissions.ACCESS_ADMIN_PANEL);
+
+        const canDelete = user.id !== 1; // Protect root admin
+        const canSuspend = user.id !== currentUser.id && (currentUser.id === 1 || !hasAdminPanelAccess); // Root can suspend anyone but self, others can't suspend admins
+        const canResetPassword = user.id !== 1;
 
         return (
             <View style={styles.card}>
@@ -186,7 +140,7 @@ const AdminUsersPage = () => {
                         <Icon name="id-card" size={14} color={colors.text} />
                         <Text style={styles.actionButtonText}>Profil</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton} onPress={() => setResettingUser(user)}>
+                    <TouchableOpacity style={[styles.actionButton, !canResetPassword && styles.disabledButton]} onPress={() => setResettingUser(user)} disabled={!canResetPassword}>
                         <Icon name="key" size={14} color={colors.text} />
                         <Text style={styles.actionButtonText}>Reset PW</Text>
                     </TouchableOpacity>

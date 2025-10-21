@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -59,10 +60,16 @@ public class PublicEventResource {
 		if (event == null) {
 			return ResponseEntity.status(404).body(new ApiResponse(false, "Veranstaltung nicht gefunden.", null));
 		}
-		if (securityUser != null) {
-			String status = eventDAO.getUserAttendanceStatus(id, securityUser.getUser().getId());
-			event.setUserAttendanceStatus(status);
+		User user = securityUser.getUser();
+
+		// Authorization check
+		boolean canAccess = user.hasAdminAccess() || eventDAO.isUserAssociatedWithEvent(id, user.getId());
+		if (!canAccess) {
+			throw new AccessDeniedException("Sie haben keine Berechtigung, die Details dieser Veranstaltung einzusehen.");
 		}
+
+		String status = eventDAO.getUserAttendanceStatus(id, user.getId());
+		event.setUserAttendanceStatus(status);
 		return ResponseEntity.ok(new ApiResponse(true, "Veranstaltungsdetails erfolgreich abgerufen.", event));
 	}
 

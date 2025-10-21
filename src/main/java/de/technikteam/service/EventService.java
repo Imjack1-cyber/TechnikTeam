@@ -1,10 +1,13 @@
 package de.technikteam.service;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import de.technikteam.api.v1.dto.EventAssignmentDTO;
 import de.technikteam.api.v1.dto.NotificationPayload;
+import de.technikteam.config.LocalDateTimeAdapter;
 import de.technikteam.dao.*;
 import de.technikteam.model.*;
+import de.technikteam.websocket.ChatSessionManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.html.PolicyFactory;
@@ -43,13 +46,15 @@ public class EventService {
 	private final NotificationService notificationService;
 	private final ScheduledNotificationDAO scheduledNotificationDAO;
 	private final PolicyFactory richTextPolicy;
+	private final ChatSessionManager sessionManager;
+	private final Gson gson;
 
 	@Autowired
 	public EventService(EventDAO eventDAO, EventTaskDAO taskDAO, MeetingDAO meetingDAO, AttachmentDAO attachmentDAO,
 			EventCustomFieldDAO customFieldDAO, ChecklistDAO checklistDAO, ConfigurationService configService,
 			AdminLogService adminLogService, NotificationService notificationService,
 			ScheduledNotificationDAO scheduledNotificationDAO,
-			@Qualifier("richTextPolicy") PolicyFactory richTextPolicy) {
+			@Qualifier("richTextPolicy") PolicyFactory richTextPolicy, ChatSessionManager sessionManager) {
 		this.eventDAO = eventDAO;
 		this.taskDAO = taskDAO;
 		this.meetingDAO = meetingDAO;
@@ -61,6 +66,8 @@ public class EventService {
 		this.notificationService = notificationService;
 		this.scheduledNotificationDAO = scheduledNotificationDAO;
 		this.richTextPolicy = richTextPolicy;
+		this.sessionManager = sessionManager;
+		this.gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()).create();
 	}
 
 	@Transactional
@@ -113,6 +120,12 @@ public class EventService {
 
 		logger.info("Transaction for event ID {} committed successfully.", eventId);
 		notificationService.broadcastUIUpdate("EVENT", isUpdate ? "UPDATED" : "CREATED", Map.of("id", eventId));
+
+		// Broadcast full event object for real-time updates
+		Event updatedEvent = eventDAO.getEventById(eventId);
+		Map<String, Object> broadcastPayload = Map.of("type", "EVENT_FULL_UPDATE", "payload", updatedEvent);
+		sessionManager.broadcast(String.valueOf(eventId), gson.toJson(broadcastPayload));
+
 		return eventId;
 	}
 
@@ -150,6 +163,11 @@ public class EventService {
 
 			// Trigger UI update for everyone
 			notificationService.broadcastUIUpdate("EVENT", "UPDATED", Map.of("id", eventId));
+			// Broadcast full event object for real-time updates
+			Event updatedEvent = eventDAO.getEventById(eventId);
+			Map<String, Object> broadcastPayload = Map.of("type", "EVENT_FULL_UPDATE", "payload", updatedEvent);
+			sessionManager.broadcast(String.valueOf(eventId), gson.toJson(broadcastPayload));
+
 		} else {
 			throw new RuntimeException("Failed to update event status in database.");
 		}
@@ -189,6 +207,11 @@ public class EventService {
 
 			// Trigger UI update for everyone
 			notificationService.broadcastUIUpdate("EVENT", "UPDATED", Map.of("id", eventId));
+			// Broadcast full event object for real-time updates
+			Event updatedEvent = eventDAO.getEventById(eventId);
+			Map<String, Object> broadcastPayload = Map.of("type", "EVENT_FULL_UPDATE", "payload", updatedEvent);
+			sessionManager.broadcast(String.valueOf(eventId), gson.toJson(broadcastPayload));
+
 		} else {
 			throw new RuntimeException("Failed to update event status in database.");
 		}
@@ -224,6 +247,11 @@ public class EventService {
 		}
 
 		notificationService.broadcastUIUpdate("EVENT", "UPDATED", Map.of("id", eventId));
+		// Broadcast full event object for real-time updates
+		Event updatedEvent = eventDAO.getEventById(eventId);
+		Map<String, Object> broadcastPayload = Map.of("type", "EVENT_FULL_UPDATE", "payload", updatedEvent);
+		sessionManager.broadcast(String.valueOf(eventId), gson.toJson(broadcastPayload));
+
 	}
 
 	public void signOffUserFromRunningEvent(int userId, String username, int eventId, String reason) {
