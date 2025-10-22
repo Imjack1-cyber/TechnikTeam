@@ -71,6 +71,7 @@ const linking = {
                                     AdminUsersIndex: '',
                                     AdminUsers: 'manage',
                                     AdminRequests: 'requests',
+                                    AdminPasswordResets: 'password-resets',
                                     AdminTrainingRequests: 'training-requests',
                                     AdminAchievements: 'achievements'
                                 }
@@ -155,6 +156,7 @@ const linking = {
                     HelpDetails: 'help/:pageKey',
                     Forbidden: 'forbidden',
                     IdCard: 'profil/id-card',
+                    VerificationRequest: 'verify-identity/:token',
                     NotFound: '*', // Catch-all for 404
                 }
             }
@@ -255,7 +257,7 @@ export default function App() {
                 }
 
                 if (initialPath) {
-                    const publicPrefixes = ['/login', '/share/', '/verify/', '/poll/', '/maintenance'];
+                    const publicPrefixes = ['/login', '/share/', '/verify/', '/poll/', '/maintenance', '/verify-identity/'];
                     const isPublicPath = publicPrefixes.some(prefix => initialPath.startsWith(prefix));
 
                     if (!isPublicPath && initialPath !== '/') {

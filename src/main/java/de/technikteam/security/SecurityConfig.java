@@ -54,7 +54,8 @@ public class SecurityConfig {
                                  "/api/v1/auth/login", "/api/v1/auth/sso-login", "/api/v1/auth/verify-2fa", "/api/v1/auth/csrf-token",
                                  "/api/v1/passkeys/authentication/**",
                                  "/ws/**", "/actuator/health", "/api/v1/public/notifications/sse", "/api/v1/public/verify/**",
-                                 "/api/v1/public/files/share/**", "/api/v1/public/scheduling-polls/**", "/api/v1/public/polls/by-uuid/**")
+                                 "/api/v1/public/files/share/**", "/api/v1/public/scheduling-polls/**", "/api/v1/public/polls/by-uuid/**",
+                                 "/api/v1/identity-verification/**")
 						.permitAll()
                         .requestMatchers("/api/v1/auth/me").authenticated() // Crucial fix: require authentication but no specific role
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").hasAuthority("ACCESS_ADMIN_PANEL")

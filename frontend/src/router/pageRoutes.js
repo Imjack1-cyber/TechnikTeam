@@ -30,6 +30,7 @@ const pageRoutes = {
 	'AdminUsers': 'admin_users',
 	'AdminPermissions': 'admin_permissions',
 	'AdminRequests': 'admin_requests',
+	'AdminPasswordResets': 'admin_password_resets',
 	'AdminTrainingRequests': 'admin_training_requests',
 	'AdminAchievements': 'admin_achievements',
 	'AdminEventsIndex': 'admin_events_index',

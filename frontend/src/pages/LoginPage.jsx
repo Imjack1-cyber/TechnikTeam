@@ -8,6 +8,7 @@ import { getThemeColors, spacing, borders, typography } from '../styles/theme';
 import { passkeyService } from '../services/passkeyService'; // Import the frontend passkey service
 import AdminModal from '../components/ui/AdminModal';
 import { getCommonStyles } from '../styles/commonStyles';
+import PasswordResetModal from '../components/auth/PasswordResetModal';
 
 const TwoFactorAuthForm = ({ username, preAuthToken, onAuthSuccess }) => {
     const theme = useAuthStore(state => state.theme);
@@ -100,6 +101,7 @@ const LoginPage = ({ navigation }) => {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState('');
     const [isBackendSwitcherOpen, setIsBackendSwitcherOpen] = useState(false);
+    const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
 	const [preAuthToken, setPreAuthToken] = useState(null);
 
@@ -220,8 +222,12 @@ const LoginPage = ({ navigation }) => {
                     <TouchableOpacity style={[styles.button, styles.secondaryButton, { marginTop: 8}]} onPress={handlePasskeyLogin} disabled={isLoading}>
                         {isLoading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Login mit Passkey</Text>}
                     </TouchableOpacity>
+                    <TouchableOpacity style={{ marginTop: 16 }} onPress={() => setIsResetModalOpen(true)}>
+                        <Text style={{ color: colors.primary, textAlign: 'center' }}>Passwort vergessen?</Text>
+                    </TouchableOpacity>
 				</View>
 			</View>
+            <PasswordResetModal isOpen={isResetModalOpen} onClose={() => setIsResetModalOpen(false)} />
             <View style={styles.backendSwitcher}>
                 <Text style={styles.backendText}>
                     Verbunden mit: <Text style={{ fontWeight: 'bold' }}>{backendMode === 'dev' ? 'Development' : 'Production'}</Text>

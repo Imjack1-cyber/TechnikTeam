@@ -33,6 +33,7 @@ export const useUIStore = create((set) => ({
     ACHIEVEMENT: null,
     DOCUMENTATION: null,
     WIKI: null,
+    IDENTITY_VERIFICATION: null,
   },
 
   /**

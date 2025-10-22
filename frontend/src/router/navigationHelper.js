@@ -58,6 +58,13 @@ export function navigateFromUrl(url) {
     return;
   }
 
+  // --- Parameterized verification route ---
+  match = url.match(/^\/verify-identity\/([a-zA-Z0-9-_]+)$/);
+    if (match) {
+        navigationRef.navigate('VerificationRequest', { token: match[1] });
+        return;
+    }
+
   // --- Static Routes (User and Admin) ---
   const staticRoutes = {
     '/home': () => navigationRef.navigate('Dashboard'),
@@ -77,6 +84,7 @@ export function navigateFromUrl(url) {
     '/admin/dashboard': () => navigationRef.navigate('Admin Dashboard'),
     '/admin/users/manage': () => navigationRef.navigate('Benutzer & Anträge', { screen: 'AdminUsers' }),
     '/admin/users/requests': () => navigationRef.navigate('Benutzer & Anträge', { screen: 'AdminRequests' }),
+    '/admin/users/password-resets': () => navigationRef.navigate('Benutzer & Anträge', { screen: 'AdminPasswordResets' }),
     '/admin/events/manage': () => navigationRef.navigate('Event Management', { screen: 'AdminEvents' }),
     '/admin/storage/manage': () => navigationRef.navigate('Lager & Material', { screen: 'AdminStorage' }),
     '/admin/courses/manage': () => navigationRef.navigate('Lehrgänge & Skills', { screen: 'AdminCourses' }),

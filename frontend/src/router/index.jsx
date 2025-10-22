@@ -46,6 +46,7 @@ import VerificationPage from '../pages/VerificationPage';
 import PublicPollPage from '../pages/PublicPollPage';
 import PollsPage from '../pages/PollsPage';
 import PollDetailsPage from '../pages/PollDetailsPage';
+import VerificationRequestPage from '../pages/VerificationRequestPage';
 
 // --- Import ALL Admin Screen Components ---
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
@@ -53,6 +54,7 @@ import AdminUsersIndex from '../pages/admin/AdminUsersIndex';
 import AdminUsersPage from '../pages/admin/AdminUsersPage';
 import AdminPermissionsPage from '../pages/admin/AdminPermissionsPage';
 import AdminRequestsPage from '../pages/admin/AdminRequestsPage';
+import AdminPasswordResetsPage from '../pages/admin/AdminPasswordResetsPage';
 import AdminTrainingRequestsPage from '../pages/admin/AdminTrainingRequestsPage';
 import AdminAchievementsPage from '../pages/admin/AdminAchievementsPage';
 import AdminEventsIndex from '../pages/admin/AdminEventsIndex';
@@ -110,6 +112,7 @@ const AdminUsersStack = () => (
         <Stack.Screen name="AdminUsers" component={AdminUsersPage} options={{ title: 'Benutzer Verwalten' }} />
         <Stack.Screen name="AdminPermissions" component={AdminPermissionsPage} options={{ title: 'Rollen & Berechtigungen' }} />
         <Stack.Screen name="AdminRequests" component={AdminRequestsPage} options={{ title: 'Profilanträge' }} />
+        <Stack.Screen name="AdminPasswordResets" component={AdminPasswordResetsPage} options={{ title: 'Passwort-Anfragen' }} />
         <Stack.Screen name="AdminTrainingRequests" component={AdminTrainingRequestsPage} options={{ title: 'Lehrgangsanfragen' }} />
         <Stack.Screen name="AdminAchievements" component={AdminAchievementsPage} options={{ title: 'Abzeichen' }} />
     </Stack.Navigator>
@@ -231,6 +234,7 @@ const AppStack = () => {
                 <Stack.Screen name="IdCard" component={IdCardPage} options={{ title: 'Team Ausweis' }} />
                 <Stack.Screen name="AdminPollResults" component={AdminPollResultsPage} options={{ title: 'Umfrage-Ergebnisse' }} />
                 <Stack.Screen name="PollDetails" component={PollDetailsPage} options={{ title: 'Umfrage-Details' }}/>
+                <Stack.Screen name="VerificationRequest" component={VerificationRequestPage} options={{ title: 'Anfrage bestätigen' }} />
                 
                 {/* --- Special screens that should NOT have the main header --- */}
                 <Stack.Screen name="PackKit" component={PackKitPage} options={{ headerShown: false }} />

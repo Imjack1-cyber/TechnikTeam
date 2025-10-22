@@ -1,6 +1,7 @@
 package de.technikteam.api.v1.public_api;
 
 import com.google.gson.Gson;
+import de.technikteam.api.v1.dto.IdentityVerificationConfirmRequest;
 import de.technikteam.api.v1.dto.PasswordChangeRequest;
 import de.technikteam.api.v1.dto.ProfileChangeRequestDTO;
 import de.technikteam.api.v1.dto.TwoFactorSetupDTO;
@@ -10,6 +11,7 @@ import de.technikteam.model.User;
 import de.technikteam.model.dto.LoginIpInfo;
 import de.technikteam.security.SecurityUser;
 import de.technikteam.service.AuthService;
+import de.technikteam.service.IdentityVerificationService;
 import de.technikteam.service.ProfileRequestService;
 import de.technikteam.service.TwoFactorAuthService;
 import de.technikteam.util.PasswordPolicyValidator;
@@ -47,12 +49,13 @@ public class PublicProfileResource {
     private final TwoFactorAuthDAO twoFactorAuthDAO;
 	private final PasskeyDAO passkeyDAO;
 	private final AuthService authService;
+	private final IdentityVerificationService identityVerificationService;
 
 	@Autowired
 	public PublicProfileResource(UserDAO userDAO, EventDAO eventDAO, UserQualificationsDAO qualificationsDAO,
 			AchievementDAO achievementDAO, ProfileChangeRequestDAO requestDAO,
 			ProfileRequestService profileRequestService, TwoFactorAuthService twoFactorAuthService,
-            AuthenticationLogDAO authLogDAO, TwoFactorAuthDAO twoFactorAuthDAO, PasskeyDAO passkeyDAO, AuthService authService) {
+            AuthenticationLogDAO authLogDAO, TwoFactorAuthDAO twoFactorAuthDAO, PasskeyDAO passkeyDAO, AuthService authService, IdentityVerificationService identityVerificationService) {
 		this.userDAO = userDAO;
 		this.eventDAO = eventDAO;
 		this.qualificationsDAO = qualificationsDAO;
@@ -64,6 +67,7 @@ public class PublicProfileResource {
         this.twoFactorAuthDAO = twoFactorAuthDAO;
 		this.passkeyDAO = passkeyDAO;
 		this.authService = authService;
+		this.identityVerificationService = identityVerificationService;
 	}
 
 	@GetMapping
@@ -291,5 +295,17 @@ public class PublicProfileResource {
     public ResponseEntity<ApiResponse> forgetAllIps(@AuthenticationPrincipal SecurityUser securityUser) {
         twoFactorAuthDAO.clearKnownIpsForUser(securityUser.getUser().getId());
         return ResponseEntity.ok(new ApiResponse(true, "All known locations have been forgotten. 2FA will be required on your next login.", null));
+    }
+
+    @PostMapping("/verify-identity")
+    @Operation(summary = "Confirm or deny an identity verification request", description = "Called by the native app to approve/deny a password reset or MFA login.")
+    public ResponseEntity<ApiResponse> confirmIdentityVerification(@Valid @RequestBody IdentityVerificationConfirmRequest request, @AuthenticationPrincipal SecurityUser securityUser) {
+        try {
+            identityVerificationService.verifyRequest(request.challengeToken(), request.decision(), securityUser.getUser());
+            String action = "deny".equalsIgnoreCase(request.decision()) ? "abgelehnt" : "bestätigt";
+            return ResponseEntity.ok(new ApiResponse(true, "Anfrage erfolgreich " + action + ".", null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage(), null));
+        }
     }
 }

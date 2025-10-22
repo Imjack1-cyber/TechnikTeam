@@ -15,6 +15,7 @@ const AdminUsersIndex = ({ navigation }) => {
 		{ to: 'AdminUsers', label: 'Benutzer Verwalten', icon: 'users-cog', perm: 'USER_READ' },
 		{ to: 'AdminPermissions', label: 'Rollen & Berechtigungen', icon: 'key', perm: 'PERMISSION_MANAGE' },
 		{ to: 'AdminRequests', label: 'Profilanträge', icon: 'inbox', perm: 'USER_UPDATE' },
+		{ to: 'AdminPasswordResets', label: 'Passwort-Anfragen', icon: 'shield-alt', perm: 'USER_PASSWORD_RESET' },
 		{ to: 'AdminTrainingRequests', label: 'Lehrgangsanfragen', icon: 'question-circle', perm: 'COURSE_CREATE' },
 		{ to: 'AdminAchievements', label: 'Abzeichen', icon: 'award', perm: 'ACHIEVEMENT_VIEW' },
 	];
